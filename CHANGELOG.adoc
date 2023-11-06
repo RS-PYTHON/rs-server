@@ -15,6 +15,7 @@ The RS-SERVER is delivered with a version using 3 digits: X.Y.Z
 
 === Added
 
+* initialize technical documentation
 * initialize python project
 
 === Fixed
