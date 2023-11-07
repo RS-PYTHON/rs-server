@@ -1,0 +1,8 @@
+{
+	"webserver": "http://127.0.0.1:5000",
+	"user": "test",
+	"password": "test",
+    "ProductFilter": "PublicationDate",
+    "ProductFilterValue": "gt 2019",
+    "OutputPath": "/Users/ovidiu/work/RS/rs-server/ingestion/Downloads"
+}
