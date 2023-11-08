@@ -17,8 +17,12 @@ def querry_Files(executionUnit):
 
 @task(name="Querry Sessions endpoint", task_run_name="querrySessions")
 def querry_Sessions(executionUnit):
-    # SessionsRoute = "Sessions"
-    pass
+    endpoint = "Sessions"
+    endpointArgs = f"$filter={executionUnit.SessionFilter} {executionUnit.SessionFilterValue}"
+    endRoute = f"{executionUnit.webserver}/{endpoint}?{endpointArgs}"
+    data = requests.get(endRoute)
+    executionUnit.sessionQuerry = json.loads(data.content)
+    return executionUnit
 
 
 @task(name="Init data ingestion parameters")
@@ -31,12 +35,9 @@ def initIngestion(fileLocation):
         return type("RSUnit", (object,), data)
 
 
-@task(name="Download file from CADIP")
+@task(name="Download file from CADIP")  # , on_completion=[querryQualityInfo(executionUnit, response)])
 def downloadFile(executionUnit, response=None):
-    if response:
-        fileId = json.loads(response)["Id"]
-    else:
-        fileId = json.loads(executionUnit.filesQuerry)["Id"]
+    fileId = json.loads(response if response else executionUnit.filesQuerry)["Id"]
     endpoint = f"Files({fileId})/$value"
     endRoute = f"{executionUnit.webserver}/{endpoint}"
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
@@ -57,10 +58,7 @@ def downloadFile(executionUnit, response=None):
 
 @task(name="Check quality info of download")
 def querryQualityInfo(executionUnit, response=None):
-    if response:
-        sessionId = json.loads(response)["Id"]
-    else:
-        sessionId = executionUnit.filesQuerry["Id"]
+    sessionId = json.loads(response)["Id"] if response else executionUnit.filesQuerry["Id"]
     endPoint = f"Sessions({sessionId})?expand=qualityInfo"
     endRoute = f"{executionUnit.webserver}/{endPoint}"
     print(sessionId)
@@ -70,12 +68,20 @@ def querryQualityInfo(executionUnit, response=None):
     return executionUnit.qualityResponse["ErrorTFs"] == 0
 
 
-@flow(task_runner=DaskTaskRunner())
+def dummy_task(**kwargs):
+    print("Dummy")
+
+
+@flow(task_runner=DaskTaskRunner(), on_completion=[dummy_task])
 def test_CADIP(ingestionFile):
+    # Recover flow parameters from json file, and create dynamic object
     executionUnit = initIngestion(ingestionFile)
-    querry_Sessions(executionUnit)  # tbd
-    executionUnit = querry_Files(executionUnit)
+    # Querry active sessions by filtering sattelite type to S1A
+    executionUnit = querry_Sessions(executionUnit, wait_for=initIngestion)  # tbd
+    # Send execution object and parameters to quarry files from cadip server
+    executionUnit = querry_Files(executionUnit, wait_for=querry_Sessions)
     process_status = True
+    # iterate available files, download and check quality info
     if "responses" in executionUnit.filesQuerry:
         for response in executionUnit.filesQuerry["responses"]:
             downloadFile.submit(executionUnit, response)
