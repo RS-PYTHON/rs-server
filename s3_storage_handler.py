@@ -268,6 +268,8 @@ def get_secrets(secrets, secret_file, logger=None):
     except Exception as e:
         if logger:
             logger.error("Could not get the secrets, exception: {}".format(e))
+        else:
+            print("Could not get the secrets, exception: {}".format(e))
         return False
     if secrets["accesskey"] is None or secrets["secretkey"] is None:
         return False
