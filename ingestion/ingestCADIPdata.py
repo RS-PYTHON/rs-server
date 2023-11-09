@@ -1,32 +1,47 @@
 import json
 
 import requests  # type: ignore
-from prefect import flow, task
+from prefect import flow, task, get_run_logger
 from prefect_dask import DaskTaskRunner
+import dask
+
+dask.config.set({"distributed.worker.memory.terminate": False})
 
 
 @task(name="Querry Files endpoint", task_run_name="querryFiles")
 def querry_Files(executionUnit):
+    logger = get_run_logger()
+    logger.info("Starting to querry files")
     endpoint = "Files"
     endpointArgs = f"$filter={executionUnit.ProductFilter} {executionUnit.ProductFilterValue}"
     endRoute = f"{executionUnit.webserver}/{endpoint}?{endpointArgs}"
+    logger.info(f"endpoint called {endRoute}")
     data = requests.get(endRoute)  # , auth=(executionUnit.user, executionUnit.password))
+    logger.info(f"webserver response {json.loads(data.content)}")
     executionUnit.filesQuerry = json.loads(data.content)
+    logger.info("Finished files querry")
     return executionUnit
 
 
 @task(name="Querry Sessions endpoint", task_run_name="querrySessions")
 def querry_Sessions(executionUnit):
+    logger = get_run_logger()
+    logger.info("Starting to querry sesions")
     endpoint = "Sessions"
     endpointArgs = f"$filter={executionUnit.SessionFilter} {executionUnit.SessionFilterValue}"
     endRoute = f"{executionUnit.webserver}/{endpoint}?{endpointArgs}"
     data = requests.get(endRoute)
+    logger.info(f"endpoint called {endRoute}")
+    logger.info(f"webserver response {json.loads(data.content)}")
     executionUnit.sessionQuerry = json.loads(data.content)
+    logger.info("Finished session querry")
     return executionUnit
 
 
 @task(name="Init data ingestion parameters")
 def initIngestion(fileLocation):
+    logger = get_run_logger()
+    logger.info("Starting to ingest flow arguments")
     with open(fileLocation, "r") as file:
         # SimpleNamespace or metaclass? hmm
         # from types import SimpleNamespace
@@ -38,16 +53,15 @@ def initIngestion(fileLocation):
 @task(name="Download file from CADIP")  # , on_completion=[querryQualityInfo(executionUnit, response)])
 def downloadFile(executionUnit, response=None):
     fileId = json.loads(response if response else executionUnit.filesQuerry)["Id"]
+    fileName = json.loads(response if response else executionUnit.filesQuerry)["Name"]
     endpoint = f"Files({fileId})/$value"
     endRoute = f"{executionUnit.webserver}/{endpoint}"
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
-    # TBD since you request download only by fileID, how to get filename? update mockup to send fileinfo response
-    filename = f"{executionUnit.OutputPath}/{fileId}.raw"
+    filename = f"{executionUnit.OutputPath}/{fileName}"
     with requests.get(endRoute, stream=True) as req:
         req.raise_for_status()
         import random
         import time
-
         time.sleep(random.randint(5, 10))
         with open(filename, "wb") as outfile:
             for chunk in req.iter_content(chunk_size=8192):
@@ -58,12 +72,14 @@ def downloadFile(executionUnit, response=None):
 
 @task(name="Check quality info of download")
 def querryQualityInfo(executionUnit, response=None):
+    logger = get_run_logger()
+    logger.info("Starting to check quality info")
     sessionId = json.loads(response)["Id"] if response else executionUnit.filesQuerry["Id"]
     endPoint = f"Sessions({sessionId})?expand=qualityInfo"
     endRoute = f"{executionUnit.webserver}/{endPoint}"
-    print(sessionId)
-    print(endRoute)
     data = requests.get(endRoute)
+    logger.info(f"endpoint called {endRoute}")
+    logger.info(f"webserver response {json.loads(data.content)}")
     executionUnit.qualityResponse = json.loads(data.content)
     return executionUnit.qualityResponse["ErrorTFs"] == 0
 
