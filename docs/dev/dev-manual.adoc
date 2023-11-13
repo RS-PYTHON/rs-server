@@ -7,12 +7,12 @@ The documentation is organized in 4 sections :
 * link:get-started.adoc[Get started] provides tutorials helping you start coding on rs-server.
 
 * How-to guides are practical procedures for developer
-// ** link to how-to 1
-// ** link to how-to 2
+// ** TODO how to build the software
+// ** TODO how to deploy the software
 
 * Reference guides give you technical information about the code and software API
-// ** link to the generated python API
-// ** link to the generated REST API
+// ** TODO link to the generated python API
+// ** TODO link to the generated REST API
 ** link:code-style.adoc[Coding rules]
 // ** Guidelines
 // *** link to specific guideline 1
