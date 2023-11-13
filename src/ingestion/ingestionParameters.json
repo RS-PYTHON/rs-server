@@ -6,5 +6,5 @@
     "SessionFilterValue": "eq S1A",
     "ProductFilter": "PublicationDate",
     "ProductFilterValue": "gt 2019",
-    "OutputPath": "/Users/ovidiu/work/RS/rs-server/ingestion/Downloads"
+    "OutputPath": "src/ingestion/Downloads"
 }
