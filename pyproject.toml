@@ -19,6 +19,7 @@ python = ">=3.11.0,<4.0"
 requests = ">=2.31.0"
 prefect = ">=2.13.8"
 prefect-dask = "^0.2.5"
+dask = "^2023.11.0"
 
 [tool.poetry.group.dev]
 optional = true

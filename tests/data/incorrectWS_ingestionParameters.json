@@ -1,0 +1,10 @@
+{
+	"webserver": "http://incorrect_WEBSERVER:9999",
+	"user": "test",
+	"password": "test",
+    "SessionFilter": "Satellite",
+    "SessionFilterValue": "eq S1A",
+    "ProductFilter": "PublicationDate",
+    "ProductFilterValue": "gt 2019",
+    "OutputPath": "tests/data/Downloads"
+}

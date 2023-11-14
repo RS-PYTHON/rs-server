@@ -4,9 +4,11 @@ import dask
 import requests  # type: ignore
 from prefect import flow, get_run_logger, task
 from prefect_dask import DaskTaskRunner
+from requests.exceptions import ConnectionError
 
 dask.config.set({"distributed.worker.memory.terminate": False})
 
+UNAUTHORIZED = 401
 
 @task(name="Querry Files endpoint", task_run_name="querryFiles")
 def querry_files(execution_unit):
@@ -41,16 +43,20 @@ def querry_sessions(execution_unit):
 
 
 @task(name="Init data ingestion parameters")
-def init_ingestion(file_location):
+def init_ingestion(file_location, logger = None):
     """Docstring to be added."""
-    logger = get_run_logger()
+    if not logger:
+        logger = get_run_logger()
     logger.info("Starting to ingest flow arguments")
     with open(file_location, "r") as file:
         # SimpleNamespace or metaclass? hmm
         # from types import SimpleNamespace
         # return json.loads(file.read(), object_hook=lambda d: SimpleNamespace(**d))
         data = json.loads(file.read())
-        return type("RSUnit", (object,), data)
+    object_exec = type("RSUnit", (object,), data)
+    setattr(object_exec, "created", True)
+    logger.info("Succesfuly created an execution unit!")
+    return object_exec
 
 
 @task(name="Download file from CADIP")  # , on_completion=[querryQualityInfo(executionUnit, response)])
@@ -88,6 +94,34 @@ def querry_quality_info(execution_unit, response=None):
     execution_unit.qualityResponse = json.loads(data.content)
     return execution_unit.qualityResponse["ErrorTFs"] == 0
 
+@task(name="Check given credentials")
+def login(execution_unit, logger = None) -> bool:
+    """Docstring to be added."""
+    if not logger:
+        logger = get_run_logger()
+    logger.info("Starting to login to CADIP webserver")
+    username = execution_unit.user
+    password = execution_unit.password
+    end_point = "/"
+    end_route = f"{execution_unit.webserver}/{end_point}"
+    data = requests.get(end_route, auth=(username, password))
+    if data.status_code == UNAUTHORIZED:
+        logger.info("Wrong credentials!")
+        setattr(execution_unit, "logged_in", False)
+        return False
+    logger.info("Succesfully authentificated!")
+    setattr(execution_unit, "logged_in", True)
+    return True
+
+@task(name = "Check webserver connection")
+def check_connection(execution_unit: object) -> bool:
+    """Docstring to be added."""
+    try:
+        requests.get(execution_unit.webserver)
+    except ConnectionError:
+        return False
+    return True
+
 
 def dummy_task(**kwargs):
     """Docstring to be added."""
@@ -95,10 +129,16 @@ def dummy_task(**kwargs):
 
 
 @flow(task_runner=DaskTaskRunner(), on_completion=[dummy_task])
-def test_CADIP(ingestion_file):  # noqa: N802
+def execute(ingestion_file):  # noqa: N802
     """Docstring to be added."""
     # Recover flow parameters from json file, and create dynamic object
     execution_unit = init_ingestion(ingestion_file)
+    # Check webserver
+    if not check_connection(execution_unit):
+        return False
+    # Verify credentials
+    if not login(execution_unit):
+        return False
     # Querry active sessions by filtering sattelite type to S1A
     execution_unit = querry_sessions(execution_unit, wait_for=init_ingestion)  # tbd
     # Send execution object and parameters to quarry files from cadip server
@@ -116,5 +156,7 @@ def test_CADIP(ingestion_file):  # noqa: N802
 
 
 if __name__ == "__main__":
-    # realUsageTest()
-    test_CADIP("src/ingestion/ingestionParameters.json")
+    #realUsageTest()
+    # sys.argv tbu
+    execute("src/ingestion/ingestionParameters.json")
+    #pass
