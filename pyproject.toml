@@ -33,6 +33,9 @@ ruff = "^0.1.3"
 mypy = "^1.6.1"
 pre-commit = "^3.5.0"
 
+[tool.ruff.lint.extend-per-file-ignores]
+# init should be empty, doesn't need any docstrings
+"__init__.py" = ["D104"]
 
 [build-system]
 requires = ["poetry-core"]

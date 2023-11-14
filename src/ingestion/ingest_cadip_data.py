@@ -10,6 +10,7 @@ dask.config.set({"distributed.worker.memory.terminate": False})
 
 UNAUTHORIZED = 401
 
+
 @task(name="Querry Files endpoint", task_run_name="querryFiles")
 def querry_files(execution_unit):
     """Docstring to be added."""
@@ -43,7 +44,7 @@ def querry_sessions(execution_unit):
 
 
 @task(name="Init data ingestion parameters")
-def init_ingestion(file_location, logger = None):
+def init_ingestion(file_location, logger=None):
     """Docstring to be added."""
     if not logger:
         logger = get_run_logger()
@@ -72,6 +73,7 @@ def download_file(execution_unit, response=None):
         req.raise_for_status()
         import random
         import time
+
         time.sleep(random.randint(5, 10))
         with open(filename, "wb") as outfile:
             for chunk in req.iter_content(chunk_size=8192):
@@ -94,8 +96,9 @@ def querry_quality_info(execution_unit, response=None):
     execution_unit.qualityResponse = json.loads(data.content)
     return execution_unit.qualityResponse["ErrorTFs"] == 0
 
+
 @task(name="Check given credentials")
-def login(execution_unit, logger = None) -> bool:
+def login(execution_unit, logger=None) -> bool:
     """Docstring to be added."""
     if not logger:
         logger = get_run_logger()
@@ -113,8 +116,9 @@ def login(execution_unit, logger = None) -> bool:
     setattr(execution_unit, "logged_in", True)
     return True
 
-@task(name = "Check webserver connection")
-def check_connection(execution_unit: object) -> bool:
+
+@task(name="Check webserver connection")
+def check_connection(execution_unit) -> bool:
     """Docstring to be added."""
     try:
         requests.get(execution_unit.webserver)
@@ -156,7 +160,7 @@ def execute(ingestion_file):  # noqa: N802
 
 
 if __name__ == "__main__":
-    #realUsageTest()
+    # realUsageTest()
     # sys.argv tbu
     execute("src/ingestion/ingestionParameters.json")
-    #pass
+    # pass
