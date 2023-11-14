@@ -135,10 +135,10 @@ def execute(ingestion_file):  # noqa: N802
     execution_unit = init_ingestion(ingestion_file)
     # Check webserver
     if not check_connection(execution_unit):
-        return False
+        raise ValueError("Incorrect webserver address")
     # Verify credentials
     if not login(execution_unit):
-        return False
+        raise ValueError("Incorrect credentials")
     # Querry active sessions by filtering sattelite type to S1A
     execution_unit = querry_sessions(execution_unit, wait_for=init_ingestion)  # tbd
     # Send execution object and parameters to quarry files from cadip server

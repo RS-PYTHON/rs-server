@@ -30,8 +30,8 @@ def test_flow(ingestion_file):
     # Check that some files were downloaded.
     assert current_files != initial_files
 
-#TC-002: Create a Prefect workflow that calls this task with invalid service root URI. Check that the error is displayed
-#  in Prefect UI but that credentials are not logged.
+#TC-003: Create a Prefect workflow that calls this task with invalid credentials. Check that the error is displayed in 
+# Prefect UI but that credentials are not logged.
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "ingestion_file",
@@ -41,10 +41,12 @@ def test_flow(ingestion_file):
 )
 def test_incorrect_credentials(ingestion_file):
     """Docstring to be added."""
-    assert not ingestion_flow.execute(ingestion_file)
+    with pytest.raises(ValueError):
+        ingestion_flow.execute(ingestion_file)
+        assert False # if reached then execute didn't raised value error, threfore test should fail.
 
-#TC-003: Create a Prefect workflow that calls this task with invalid credentials. Check that the error is displayed in 
-# Prefect UI but that credentials are not logged.
+#TC-002: Create a Prefect workflow that calls this task with invalid service root URI. Check that the error is displayed
+#  in Prefect UI but that credentials are not logged.
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "ingestion_file",
@@ -54,4 +56,6 @@ def test_incorrect_credentials(ingestion_file):
 )
 def test_incorrect_webserver(ingestion_file):
     """Docstring to be added."""
-    assert not ingestion_flow.execute(ingestion_file)
+    with pytest.raises(ValueError):
+        ingestion_flow.execute(ingestion_file)
+        assert False # if reached then execute didn't raised value error, threfore test should fail.
