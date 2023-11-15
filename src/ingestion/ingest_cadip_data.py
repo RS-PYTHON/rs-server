@@ -20,7 +20,7 @@ def querry_files(execution_unit):
     endpoint_args = f"$filter={execution_unit.ProductFilter} {execution_unit.ProductFilterValue}"
     end_route = f"{execution_unit.webserver}/{endpoint}?{endpoint_args}"
     logger.info(f"endpoint called {end_route}")
-    data = requests.get(end_route)  # , auth=(executionUnit.user, executionUnit.password))
+    data = execution_unit.cadip_session.get(end_route)  # , auth=(executionUnit.user, executionUnit.password))
     logger.info(f"webserver response {json.loads(data.content)}")
     execution_unit.filesQuerry = json.loads(data.content)
     logger.info("Finished files querry")
@@ -35,7 +35,7 @@ def querry_sessions(execution_unit):
     endpoint = "Sessions"
     endpoint_args = f"$filter={execution_unit.SessionFilter} {execution_unit.SessionFilterValue}"
     end_route = f"{execution_unit.webserver}/{endpoint}?{endpoint_args}"
-    data = requests.get(end_route)
+    data = execution_unit.cadip_session.get(end_route)
     logger.info(f"endpoint called {end_route}")
     logger.info(f"webserver response {json.loads(data.content)}")
     execution_unit.sessionQuerry = json.loads(data.content)
@@ -69,7 +69,7 @@ def download_file(execution_unit, response=None):
     end_route = f"{execution_unit.webserver}/{endpoint}"
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
-    with requests.get(end_route, stream=True) as req:
+    with execution_unit.cadip_session.get(end_route, stream=True) as req:
         req.raise_for_status()
         import random
         import time
@@ -90,7 +90,7 @@ def querry_quality_info(execution_unit, response=None):
     session_id = json.loads(response)["Id"] if response else execution_unit.filesQuerry["Id"]
     end_point = f"Sessions({session_id})?expand=qualityInfo"
     end_route = f"{execution_unit.webserver}/{end_point}"
-    data = requests.get(end_route)
+    data = execution_unit.cadip_session.get(end_route)
     logger.info(f"endpoint called {end_route}")
     logger.info(f"webserver response {json.loads(data.content)}")
     execution_unit.qualityResponse = json.loads(data.content)
@@ -107,13 +107,16 @@ def login(execution_unit, logger=None) -> bool:
     password = execution_unit.password
     end_point = "/"
     end_route = f"{execution_unit.webserver}/{end_point}"
-    data = requests.get(end_route, auth=(username, password))
+    session = requests.Session()
+    data = session.get(end_route, auth=(username, password))
     if data.status_code == UNAUTHORIZED:
         logger.info("Wrong credentials!")
         setattr(execution_unit, "logged_in", False)
         return False
     logger.info("Succesfully authentificated!")
-    setattr(execution_unit, "logged_in", True)
+    # persist auth parameters to request session
+    session.auth = (execution_unit.user, execution_unit.password)
+    setattr(execution_unit, "cadip_session", session)
     return True
 
 
