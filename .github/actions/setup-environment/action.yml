@@ -1,0 +1,17 @@
+name: setup-environment
+description: 'Setup the project environment with python and dependencies'
+
+# TODO input param to activate or not dev dependencies
+runs:
+  using: "composite"
+  steps:
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - uses: snok/install-poetry@v1
+
+    - name: Install dependencies
+      run: poetry install --with dev
+      shell: bash
