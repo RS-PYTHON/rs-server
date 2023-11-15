@@ -1,0 +1,63 @@
+name: Check code quality
+
+# TODO determine when we launch CI automatically
+# TODO handle CI on an orphan branch ?
+# TODO externalize python version as env variable
+# TODO don't fail on error
+on:
+  push:
+    branches:
+      - 'feat**'
+
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+  workflow_dispatch:
+
+jobs:
+
+  check-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/check-format
+
+  check-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/check-lint
+
+  check-typing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/check-typing
+
+# TODO add when writen
+#  check-vulnerabilities:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: ./.github/actions/check-security
+
+  run-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/run-unit-tests
+
+  run-integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/run-integration-tests
+
+# TODO add when writen
+#  - sonar project configuration
+#  - export previous elements as reports for sonar
+#  generate-quality-report:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: ./.github/actions/generate-quality-report
