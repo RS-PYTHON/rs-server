@@ -66,3 +66,8 @@ line-length = 120 # is it useful if not using ruff formatter ?
 select = ["F", "E", "I", "N", "D", "PL"]
 ignore = ["D203", "D213"]
 # TODO try to replace black by ruff formatter
+
+[tool.mypy]
+warn_unused_ignores = true
+# Force analyze of partially annotate function signatures
+check_untyped_defs = true
