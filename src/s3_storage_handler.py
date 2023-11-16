@@ -122,21 +122,22 @@ def files_to_be_downloaded(bucket, paths, logger):
             continue
         logger.debug("total: {} | s3_files = {}".format(total, s3_files))
         basename_part = get_basename(path)
-        logger.debug("basename_part = {} |  {}".format(basename_part, s3_files[0]["Objects"][0]["Key"]))
+        logger.debug("basename_part = {}".format(basename_part))
+
         # check if it's a file or a dir
-        if len(s3_files[0]["Objects"]) == 1 and path == s3_files[0]["Objects"][0]["Key"]:
+        if len(s3_files) == 1 and path == s3_files[0]:
             # the current key is a file, append it to the list
-            list_with_files.append(("", s3_files[0]["Objects"][0]["Key"]))
+            list_with_files.append(("", s3_files[0]))
             logger.debug("ONE/ list_with_files = {}".format(list_with_files))
         else:
             # the current key is a folder, append all its files (reursively gathered) to the list
-            for idx in s3_files[0]["Objects"]:
-                logger.debug("IDX = {}".format(idx))
-                split = idx["Key"].split("/")
+            for s3_file in s3_files:
+                logger.debug("s3_file = {}".format(s3_file))
+                split = s3_file.split("/")
                 split_idx = split.index(basename_part)
                 logger.debug("split_idx = {}".format(split_idx))
                 logger.debug("split[split_idx:-1] = {}".format(split[split_idx:-1]))
-                list_with_files.append((os.path.join(*split[split_idx:-1]), idx["Key"]))
+                list_with_files.append((os.path.join(*split[split_idx:-1]), s3_file))
                 logger.debug("IDX/ list_with_files = {}".format(list_with_files))
 
     return list_with_files
@@ -189,53 +190,39 @@ def files_to_be_uploaded(paths, logger):
 def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pattern=None):
     if s3_client is None:
         sys.exit(-1)
-    s3_files = dict(Objects=[])
+    s3_files = []
     total = 0
-    if not check_bucket_access(s3_client, bucket):
-        logger.error(
-            "Could not get any information regarding the prefix s3://{}/{}. The \
-bucket {} does not exist or is not accessible. Aborting".format(
-                bucket,
-                prefix,
-                bucket,
-            ),
-        )
-        return s3_files, total
-
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
         pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
-        s3_files = []
         for page in pages:
-            # logger.debug("1")
-            s3_files.append(dict(Objects=[]))
-            cnt = len(s3_files) - 1
-            # logger.debug("2")
+            # logger.info("page = {} | ty[e = {}".format(page, type(page)))
+            # s3_files.append(dict(Objects=[]))
+            # cnt = len(s3_files) - 1
             for item in page.get("Contents", ()):
-                # logger.debug("3")
                 if item is not None:
                     total += 1
                     if max_timestamp is not None:
                         if item["LastModified"] < max_timestamp:
-                            (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
+                            # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
+                            s3_files.append(item["Key"])
                             # logger.debug("{}".format(item["LastModified"]))
                     elif pattern is not None:
                         if pattern in item["Key"]:
-                            (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
-                            logger.debug("found pattern {} in {} ".format(pattern, item["Key"]))
+                            # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
+                            # logger.debug("found pattern {} in {} ".format(pattern, item["Key"]))
+                            s3_files.append(item["Key"])
                     else:
-                        (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
-
-        return s3_files, total
-    except TypeError as typeErr:
-        print("Listing files from s3://{}/{} failed (type error):{}".format(bucket, prefix, typeErr))
-        return s3_files, total
-    except KeyError as keyErr:
-        print("Listing files from s3://{}/{} failed (key error):{}".format(bucket, prefix, keyErr))
-        return s3_files, total
+                        # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
+                        s3_files.append(item["Key"])
     except botocore.exceptions.ClientError as error:
-        print("Listing files from s3://{}/{} failed (key error):{}".format(bucket, prefix, error))
-        return s3_files, total
+        logger.error("Listing files from s3://{}/{} failed (client error):{}".format(bucket, prefix, error))
+    except TypeError as typeErr:
+        logger.error("Listing files from s3://{}/{} failed (type error):{}".format(bucket, prefix, typeErr))
+    except KeyError as keyErr:
+        logger.error("Listing files from s3://{}/{} failed (key error):{}".format(bucket, prefix, keyErr))
+
+    return s3_files, total
 
 
 def get_s3_data(s3_url):
@@ -287,7 +274,7 @@ async def prefect_get_keys_from_s3(
     bucket,
     local_prefix,
     idx,
-    overwrite=True,
+    overwrite=False,
     max_retries=DWN_S3FILE_RETRIES,
 ):
     logger = get_run_logger()
@@ -340,8 +327,9 @@ bucket {} does not exist or is not accessible. Aborting".format(
                 )
                 os.remove(local_file)
             else:
-                logger.info(
-                    "Downloading task {}: File {} already exists. Skipping it".format(
+                logger.warning(
+                    "Downloading task {}: File {} already exists. Skipping it \
+(use the overwrite flag if you want to overwrite this file)".format(
                         idx,
                         get_basename(local_file),
                     ),
