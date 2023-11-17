@@ -16,6 +16,10 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.11.0,<4.0"
+moto = "==4.2.8"
+boto3 = "==1.28.85"
+botocore = "==1.31.85"
+flask-cors = "^4.0.0"
 requests = ">=2.31.0"
 prefect = ">=2.13.8"
 prefect-dask = "^0.2.5"
@@ -61,5 +65,4 @@ line-length = 120 # is it useful if not using ruff formatter ?
 # PL = pylint
 select = ["F", "E", "I", "N", "D", "PL"]
 ignore = ["D203", "D213"]
-
 # TODO try to replace black by ruff formatter
