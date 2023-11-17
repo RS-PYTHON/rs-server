@@ -1,0 +1,11 @@
+= Get Started
+
+The first step is to link:environment/installation.adoc[install your development environment].
+
+link:environment/description.adoc[The technical stack description] can provide you with more details on the environment.
+
+link:background/tree-structure.adoc[The tree structure] explains how the project is organized.
+
+link:background/workflow.adoc[The development workflow] describes the workflow followed by developers to implement stories.
+
+We also would like to read link:background/[the best practices].

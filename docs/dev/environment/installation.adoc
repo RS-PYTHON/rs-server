@@ -1,0 +1,137 @@
+
+= Install your development environment.
+:hardbreaks:
+
+== Pre requises
+
+This tutorial assumes the developer has already basic knowledge
+and is using a ubuntu working station.
+This tutorial lets the user uses its preferred IDE.
+You could extend your environment with specific IDE integration.
+
+== Checkout the project
+
+The source code is hosted on github.
+You should configure your github token access before.
+
+* Create a project folder that will contain all useful files
+
+[source, bash]
+----
+RSPY_ROOT=~/projects/rspy
+mkidr -P $RSPY_ROOT
+mkdir $RSPY_ROOT/src/
+cd $RSPY_ROOT
+----
+
+* Checkout the project
+
+[source, bash]
+----
+cd $RSPY_ROOT/src
+git clone --branch develop git@github.com:RS-PYTHON/rs-server.git
+----
+
+== Install Python
+
+rs-server is using python 3.11.
+You should install a compatible python version on your working station.
+
+It is recommended to use https://github.com/pyenv/pyenv[pyenv] to handle your python versions.
+Pyenv provides you an easy way to switch between different python versions.
+
+[source, bash]
+----
+cd $RSPY_ROOT/src
+pyenv install 3.11.3
+pyenv local 3.11.3
+----
+
+NOTE: The python version is an example. You could use more recent versions.
+
+These commands install python 3.11 on your workstation and enforces this version for rs-server only.
+
+== Install Poetry
+
+The dependency management on rs-server is done with https://python-poetry.org/[Poetry].
+
+Is it recommended to use https://github.com/pypa/pipx[pipx] to install your python tools.
+Pipx provides you with isolated environment for your python tools.
+
+[source, bash]
+----
+cd $RSPY_ROOT/src
+pipx install poetry
+----
+
+== Setup the project
+
+The project is managed by poetry.
+
+You should first initialize the project locally
+[source, bash]
+----
+cd $RSPY_ROOT/src/rs-server
+poetry install --with dev
+----
+This command initialize and activate a virtual environment for your project.
+It installs in this environment the project dependencies
+and the develop dependencies (--with dev).
+
+NOTE: Your IDE can provide poetry integration.
+
+== Verify your local environment
+
+To verify your environment is correctly installed,
+you can run the unittests and verify that they run nominally
+
+[source, bash]
+----
+cd $RSPY_ROOT/src/rs-server
+pytest tests -m "unit"
+----
+
+// TODO give the extract of the expected result
+
+NOTE: Your IDE can provide integration to run your unittests.
+
+== Install trivi
+
+link:https://aquasecurity.github.io/trivy/v0.47/[trivy] is used to do some security and license checks on the repository, the generated wheel packages and the docker images.
+
+trivi is run on the pre-commit and the CI
+to verify the repository compliance with common vulnerabilities, secrets and licenses.
+
+To install trivy on your local environment,
+follow link:https://aquasecurity.github.io/trivy/v0.47/getting-started/installation/[the official procedure].
+
+== Install pre-commit hooks
+
+pre-commit is used to check basic rules before each commit.
+You should activate them :
+
+[source, bash]
+----
+cd $RSPY_ROOT/src/rs-server
+poetry run pre-commit install
+----
+
+Once installed, checks will be performed before each commit
+to ensure your code is compliant with project best practice :
+* assert no unresolved merge conflicts
+* fix end of file
+* fix trailing whitespace
+* check toml
+* run black formatter
+* run ruff linter
+* run trivy repo checks
+
+NOTE: It is useful to configure your IDE to run black and ruff at each file saving
+so that you keep your code compliant with the project coding style.
+
+== Additional IDE configuration
+
+We will not give specific IDE configurations.
+Nevertheless, it is relevant to configure your IDE
+to run format and lint after each save
+to keep your code compliant with the coding style at any moment.

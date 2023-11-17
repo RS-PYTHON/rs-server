@@ -34,15 +34,3 @@ repos:
             "--config-file=.mypy.ini",
             --ignore-missing-imports
         ]
-
-# Security and license checks on python (with trivi)
-#-   repo: https://github.com/mxab/pre-commit-trivy.git
-#    rev: v0.8.0
-#    hooks:
-#    -   id: trivyfs-docker
-#        args:
-#            - --scanners
-#            - vuln,secret,license
-#            - --skip-dirs
-#            - ./tests
-#            - . # last arg indicates the path/file to scan
