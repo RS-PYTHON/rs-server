@@ -1,0 +1,36 @@
+= rs-server
+
+This repository contains all the python libraries allowing to build Copernicus processing chains.
+
+
+== Installing / Getting started
+
+include::docs/users/installation.adoc[]
+
+== Features
+
+// TODO main functionalities summary
+// Extract to specific page and include here
+
+== Configuration
+
+// TODO how to configure the software
+// Extract to specific page and include here
+
+== Developing
+
+// Start include at line 2 to remove the main title
+include::docs/dev/dev-manual.adoc[lines=2..-1]
+
+== Links
+
+- Project homepage: https://github.com/RS-PYTHON/rs-server
+- Repository: https://github.com/RS-PYTHON/rs-server
+- Issue tracker: https://github.com/RS-PYTHON/rs-server/issues
+-- In case of sensitive bugs like security vulnerabilities, please contact
+    my@email.com directly instead of using issue tracker. We value your effort
+    to improve the security and privacy of this project!
+
+== Licensing
+
+The code in this project is licensed under Apache License 2.0.
