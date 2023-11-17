@@ -1,0 +1,11 @@
+:hardbreaks:
+
+NOTE: rs-server isn't currently installable.
+
+// TODO pre requises to install rs-server
+// TODO the install procedure
+// TODO what is expected as a result
+// TODO how to check it is nominally installed
+
+
+// TODO Initial configuration
