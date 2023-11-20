@@ -298,7 +298,7 @@ async def prefect_get_keys_from_s3(  # noqa
     if s3_client is None:
         logger.error("Could not get the s3 handler. Exiting....")
         sys.exit(-1)
-    if not check_bucket_access(s3_client, bucket):
+    if not check_bucket_access(s3_client, bucket, logger):
         logger.error(
             "Downloading task {}: Could not downloadn any of the received files because the \
 bucket {} does not exist or is not accessible. Aborting".format(
@@ -423,7 +423,7 @@ async def prefect_put_files_to_s3(collection_files, bucket, s3_path, idx, max_re
     if s3_client is None:
         logger.error("Could not get the s3 handler. Exiting....")
         sys.exit(-1)
-    if not check_bucket_access(s3_client, bucket):
+    if not check_bucket_access(s3_client, bucket, logger):
         logger.error(
             "Uploading task {}: Could not upload any of the received files because the \
 bucket {} does not exist or is not accessible. Aborting".format(
