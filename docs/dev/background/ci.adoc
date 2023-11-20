@@ -1,0 +1,22 @@
+= Continuous integration
+:hardbreaks:
+
+The continuous integration is made with github actions.
+Several workflows are used :
+
+* check quality code
+* TODO others
+
+== check quality code workflow
+
+This workflow is responsible the compliance with code style.
+It verifies that :
+* the code is well formatted (with black)
+* the code is well linted (with ruff)
+* the typing is correct (with mypy)
+* there is no common vulnerability (with trivy)
+* there is no license issue (with trivy)
+* the unit tests runs succesfully (with pytest)
+* the integration tests runs succesfully (with pytest)
+
+It also generates and publish a sonarqube report on code quality.

@@ -19,9 +19,10 @@ The documentation is organized in 4 sections :
 // *** link to specific guideline 1
 
 
-* Additional informations
+* Additional information
 ** link:background/tree-structure.adoc[project tree structure]
-** link:environment/description.adoc[development environment]
+** link:environment/description.adoc[Development environment]
 ** software stack
-** link:background/workflow.adoc[development workflow]
+** link:background/workflow.adoc[Development workflow]
+** link:background/ci.adoc[Continuous integration description]
 ** Design & concepts
