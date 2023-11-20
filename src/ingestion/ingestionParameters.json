@@ -1,10 +1,20 @@
 {
-	"webserver": "http://127.0.0.1:5000",
-	"user": "test",
-	"password": "test",
-    "SessionFilter": "Satellite",
-    "SessionFilterValue": "eq S1A",
-    "ProductFilter": "PublicationDate",
-    "ProductFilterValue": "gt 2019",
-    "OutputPath": "src/ingestion/Downloads"
+    "CADIP": {
+        "webserver": "http://127.0.0.1:5000",
+        "user": "test",
+        "password": "test",
+        "SessionFilter": "Satellite",
+        "SessionFilterValue": "eq S1A",
+        "ProductFilter": "PublicationDate",
+        "ProductFilterValue": "gt 2019",
+        "OutputPath": "src/ingestion/Downloads"
+    },
+    "ADGS": {
+        "webserver": "http://127.0.0.1:5001",
+        "user": "test",
+        "password": "test",
+        "ProductFilter": "contains",
+        "ProductFilterValue": "(Name, 'S2__OPER')",
+        "OutputPath": "src/ingestion/Downloads"
+    }
 }
