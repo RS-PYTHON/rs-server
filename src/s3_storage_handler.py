@@ -1,3 +1,4 @@
+"""Docstring to be added."""
 import ntpath
 import os
 import sys
@@ -18,12 +19,15 @@ UP_S3FILE_RETRIES = 20
 global aws_terminating_node_notice
 aws_terminating_node_notice = False
 SET_PREFECT_LOGGING_LEVEL = "DEBUG"
+S3_ERR_FORBIDDEN_ACCESS = 403
+S3_ERR_NOT_FOUND = 404
 
 s3_client_mutex = Lock()
 
 
 # get the s3 handler
 def get_s3_client():
+    """Docstring to be added."""
     # This mutex is needed in case of more threads accessing at the same time this function
     s3_client_mutex.acquire()
     client_config = botocore.config.Config(
@@ -50,6 +54,7 @@ def get_s3_client():
 
 # delete a file from s3 by using the s3 handler
 def delete_file_from_s3(s3_client, bucket, s3_obj):
+    """Docstring to be added."""
     if s3_client is None or bucket is None or s3_obj is None:
         print("Input error for deleting the file")
         return False
@@ -68,6 +73,7 @@ def delete_file_from_s3(s3_client, bucket, s3_obj):
 # helper functions
 # function to read the secrets from .s3cfg or aws credentials files
 def get_secrets(secrets, secret_file, logger=None):
+    """Docstring to be added."""
     try:
         with open(secret_file, "r") as aws_credentials_file:
             lines = aws_credentials_file.readlines()
@@ -93,6 +99,7 @@ def get_secrets(secrets, secret_file, logger=None):
 
 # get the filename only from a full path to it
 def get_basename(input_path):
+    """Docstring to be added."""
     path, filename = ntpath.split(input_path)
     return filename or ntpath.basename(path)
 
@@ -101,6 +108,7 @@ def get_basename(input_path):
 # the list should contains pairs (local_prefix_where_the_file_will_be_downloaded, full_s3_key_path)
 # if a s3 key doesn't exist, the pair will be (None, requested_s3_key_path)
 def files_to_be_downloaded(bucket, paths, logger):
+    """Docstring to be added."""
     if logger is None:
         print("files_to_be_downloaded func: No logger object provided")
         sys.exit(-1)
@@ -114,8 +122,8 @@ def files_to_be_downloaded(bucket, paths, logger):
     list_with_files = []
     # for each key, identify it as a file or a folder
     # in the case of a folder, the files will be recursively gathered
-    for path in paths:
-        path = path.strip()
+    for key in paths:
+        path = key.strip()
         s3_files, total = list_s3_files_obj(s3_client, bucket, path, logger)
         if total == 0:
             logger.warning("No key {} found.".format(path))
@@ -137,7 +145,7 @@ def files_to_be_downloaded(bucket, paths, logger):
                 split_idx = split.index(basename_part)
                 logger.debug("split_idx = {}".format(split_idx))
                 logger.debug("split[split_idx:-1] = {}".format(split[split_idx:-1]))
-                list_with_files.append((os.path.join(*split[split_idx:-1]), s3_file))
+                list_with_files.append((os.path.join(*split[split_idx:-1]), s3_file.strip("/")))
                 logger.debug("IDX/ list_with_files = {}".format(list_with_files))
 
     return list_with_files
@@ -147,13 +155,14 @@ def files_to_be_downloaded(bucket, paths, logger):
 # the list will contain pairs (s3_path, absolute_local_file_path)
 # if the local file doesn't exist, the pair will be (None, requested_file_to_upload)
 def files_to_be_uploaded(paths, logger):
+    """Docstring to be added."""
     if logger is None:
         print("files_to_be_uploaded func: No logger object provided")
         return False
 
     list_with_files = []
-    for path in paths:
-        path = path.strip()
+    for local in paths:
+        path = local.strip()
         # check if it is a file
         logger.debug("path = {}".format(path))
         if os.path.isfile(path):
@@ -163,7 +172,7 @@ def files_to_be_uploaded(paths, logger):
         elif os.path.isdir(path):
             for root, dir_names, filenames in os.walk(path):
                 for file in filenames:
-                    full_file_path = os.path.join(root, file)
+                    full_file_path = os.path.join(root, file.strip("/"))
                     logger.debug("full_file_path = {} | dir_names = {}".format(full_file_path, dir_names))
                     if not os.path.isfile(full_file_path):
                         continue
@@ -187,7 +196,8 @@ def files_to_be_uploaded(paths, logger):
 
 
 # get the content of a s3 directory
-def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pattern=None):
+def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pattern=None):  # noqa
+    """Docstring to be added."""
     if s3_client is None:
         sys.exit(-1)
     s3_files = []
@@ -226,6 +236,7 @@ def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pat
 
 
 def get_s3_data(s3_url):
+    """Docstring to be added."""
     s3_data = s3_url.replace("s3://", "").split("/")
     bucket = ""
     start_idx = 0
@@ -240,8 +251,9 @@ def get_s3_data(s3_url):
     return bucket, prefix, s3_file
 
 
-def check_bucket_access(s3_client, bucket):
-    if s3_client is None:
+def check_bucket_access(s3_client, bucket, logger):
+    """Docstring to be added."""
+    if s3_client is None or logger is None:
         raise
     try:
         s3_client.head_bucket(Bucket=bucket)
@@ -249,10 +261,10 @@ def check_bucket_access(s3_client, bucket):
         # check that it was a 404 vs 403 errors
         # If it was a 404 error, then the bucket does not exist.
         error_code = int(error.response["Error"]["Code"])
-        if error_code == 403:
-            print("Private Bucket. Forbidden Access!")
-        elif error_code == 404:
-            print("Bucket Does Not Exist!")
+        if error_code == S3_ERR_FORBIDDEN_ACCESS:
+            logger.error("{} is a private bucket. Forbidden access!".format(bucket))
+        elif error_code == S3_ERR_NOT_FOUND:
+            logger.error("{} bucket does not exist!".format(bucket))
         return False
 
     return True
@@ -269,7 +281,7 @@ def check_bucket_access(s3_client, bucket):
 # max_retries: maximum number of retries in case of a failed download
 # returns: list with the s3 keys that coudn't be downloaded
 @task
-async def prefect_get_keys_from_s3(
+async def prefect_get_keys_from_s3(  # noqa
     collection_files,
     bucket,
     local_prefix,
@@ -277,6 +289,7 @@ async def prefect_get_keys_from_s3(
     overwrite=False,
     max_retries=DWN_S3FILE_RETRIES,
 ):
+    """Docstring to be added."""
     logger = get_run_logger()
     logger.setLevel(SET_PREFECT_LOGGING_LEVEL)
     logger.debug("collection_files = {} | bucket = {}".format(collection_files, bucket))
@@ -310,12 +323,12 @@ bucket {} does not exist or is not accessible. Aborting".format(
 
         keep_trying = max_retries
         logger.debug("type = {} | collection_file = {}".format(type(collection_file), collection_file))
-        local_path = os.path.join(local_prefix, collection_file[0])
+        local_path = os.path.join(local_prefix, collection_file[0].strip("/"))
         s3_file = collection_file[1]
         # for each file to download, create the local dir (if it does not exist)
         os.makedirs(local_path, exist_ok=True)
         # create the path for local file
-        local_file = os.path.join(local_path, get_basename(s3_file))
+        local_file = os.path.join(local_path, get_basename(s3_file).strip("/"))
         cnt = 0
         if os.path.isfile(local_file):
             if overwrite:  # The file already exists, so delete it first
@@ -401,7 +414,8 @@ Exception: {}. Retrying in {} seconds for {} more times".format(
 
 
 @task
-async def prefect_put_files_to_s3(collection_files, bucket, s3_path, idx, max_retries=UP_S3FILE_RETRIES):
+async def prefect_put_files_to_s3(collection_files, bucket, s3_path, idx, max_retries=UP_S3FILE_RETRIES):  # noqa
+    """Docstring to be added."""
     logger = get_run_logger()
     logger.setLevel(SET_PREFECT_LOGGING_LEVEL)
     failed_files = []
@@ -432,10 +446,11 @@ bucket {} does not exist or is not accessible. Aborting".format(
         if s3_client is None:
             logger.error("Could not get the s3 handler. Exiting....")
             sys.exit(-1)
-            keep_trying = max_retries
+
+        keep_trying = max_retries
         file_to_be_uploaded = collection_file[1]
         # create the s3 key
-        s3_obj = os.path.join(s3_path, collection_file[0], os.path.basename(file_to_be_uploaded))
+        s3_obj = os.path.join(s3_path, collection_file[0], os.path.basename(file_to_be_uploaded).strip("/"))
         while not aws_terminating_node_notice:
             try:
                 logger.info(
