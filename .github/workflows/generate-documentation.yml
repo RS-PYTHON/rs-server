@@ -1,0 +1,32 @@
+name: Check code quality
+
+on:
+  push:
+    branches:
+      - 'feat**'
+
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+  workflow_dispatch:
+
+jobs:
+  generate-documentation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: tonynv/asciidoctor-action@v2
+        with:
+          # tag::adoc-cmd[]
+          program: asciidoctor -a toc=left -a toclevels=3 -a hardbreaks -D dist/doc -o index.html README.adoc
+          # end::adoc-cmd[]
+
+      - name: Deploy docs to ghpages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./dist/doc
