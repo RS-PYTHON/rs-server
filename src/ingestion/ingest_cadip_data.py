@@ -142,7 +142,7 @@ def dummy_task(**kwargs):
 def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     """Docstring to be added."""
     # Recover flow parameters from json file, and create dynamic object
-    execution_unit = init_ingestion(ingestion_file, **kwargs)
+    execution_unit = init_ingestion(ingestion_file, target="CADIP")
     # Check webserver
     if not check_connection(execution_unit):
         raise ValueError("Incorrect webserver address")
@@ -155,9 +155,6 @@ def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     execution_unit = querry_files(execution_unit, wait_for=querry_sessions)
     process_status = True
     # iterate available files, download and check quality info
-    import pdb
-
-    pdb.set_trace()
     if "responses" in json.loads(execution_unit.filesQuerry):
         for response in json.loads(execution_unit.filesQuerry)["responses"]:
             download_file.submit(execution_unit, response)
@@ -171,5 +168,5 @@ def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
 if __name__ == "__main__":
     # realUsageTest()
     # sys.argv tbu
-    execute_cadip_ingestion("src/ingestion/ingestionParameters.json", target="CADIP")
+    execute_cadip_ingestion("src/ingestion/ingestionParameters.json")
     # pass
