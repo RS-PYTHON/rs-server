@@ -1,5 +1,4 @@
 = Coding style
-:hardbreaks:
 
 These are the coding style followed on the rs-server project.
 

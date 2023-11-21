@@ -1,7 +1,7 @@
-= The development technical stack
+= Development environment description
 
-The following page describes the development technical stack
-and tries to explain the choices that have been made.
+The following table describes the development technical stack
+and explains briefly the choices that have been made.
 
 [cols=3,options=header]
 |===
@@ -52,3 +52,5 @@ and tries to explain the choices that have been made.
 |technical documentation
 |asciidoctor
 |good standard, simple syntax, good feedback from a team member
+
+|===
