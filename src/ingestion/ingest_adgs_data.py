@@ -1,11 +1,13 @@
 """Docstring to be added."""
 import json
+import os
 
 import requests
 from prefect import flow, get_run_logger, task
 from prefect_dask import DaskTaskRunner
 
 UNAUTHORIZED = 401
+
 
 @task(name="Init data ingestion parameters")
 def init_ingestion(file_location, **kwargs):
@@ -26,6 +28,7 @@ def init_ingestion(file_location, **kwargs):
     logger.info("Succesfuly created an execution unit!")
     return object_exec
 
+
 @task(name="Check webserver connection")
 def check_connection(execution_unit) -> bool:
     """Docstring to be added."""
@@ -34,6 +37,7 @@ def check_connection(execution_unit) -> bool:
     except ConnectionError:
         return False
     return True
+
 
 @task(name="Check given credentials")
 def login(execution_unit, logger=None) -> bool:
@@ -57,6 +61,7 @@ def login(execution_unit, logger=None) -> bool:
     setattr(execution_unit, "session", session)
     return True
 
+
 @task(name="Querry Files catalog", task_run_name="querryFiles")
 def querry_files(execution_unit):
     """Docstring to be added."""
@@ -72,6 +77,7 @@ def querry_files(execution_unit):
     logger.info("Finished files querry")
     return execution_unit
 
+
 @task(name="Download file from ADGS")  # , on_completion=[querryQualityInfo(executionUnit, response)])
 def download_file(execution_unit, response=None):
     """Docstring to be added."""
@@ -81,16 +87,36 @@ def download_file(execution_unit, response=None):
     end_route = f"{execution_unit.webserver}/{endpoint}"
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
+    os.makedirs(execution_unit.OutputPath, exist_ok=True)
     with execution_unit.session.get(end_route, stream=True) as req:
         # Can be removed if replaced with real download data.
         import random
         import time
+
         time.sleep(random.randint(5, 10))
 
         with open(filename, "wb") as outfile:
             outfile.write(req.raw.read())
     execution_unit.succesfullDownload = True
     return execution_unit
+
+
+@task(name="Download file from ADGS using s3 storage")  # , on_completion=[querryQualityInfo(executionUnit, response)])
+def download_file_s3(execution_unit, response=None):
+    """Docstring to be added."""
+    file_id = json.loads(response if response else execution_unit.filesQuerry)["Id"]
+    file_name = json.loads(response if response else execution_unit.filesQuerry)["Name"]
+    endpoint = f"Products({file_id})/$S30S"
+    end_route = f"{execution_unit.webserver}/{endpoint}"
+    # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
+    filename = f"{execution_unit.OutputPath}/{file_name}"
+    os.makedirs(execution_unit.OutputPath, exist_ok=True)
+    with execution_unit.session.get(end_route, stream=True) as req:
+        with open(filename, "wb") as outfile:
+            outfile.write(req.raw.read())
+    execution_unit.succesfullDownload = True
+    return execution_unit
+
 
 @flow(task_runner=DaskTaskRunner())
 def execute_adgs_ingestion(ingestion_file, **kwargs):  # noqa: N802
@@ -111,4 +137,4 @@ def execute_adgs_ingestion(ingestion_file, **kwargs):  # noqa: N802
 
 
 if __name__ == "__main__":
-    execute_adgs_ingestion("src/ingestion/ingestionParameters.json", target='ADGS')
+    execute_adgs_ingestion("src/ingestion/ingestionParameters.json", target="ADGS")
