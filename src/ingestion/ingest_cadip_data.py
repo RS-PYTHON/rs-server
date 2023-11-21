@@ -1,5 +1,5 @@
 import json  # noqa: D100
-
+import os
 import dask
 import requests  # type: ignore
 from prefect import flow, get_run_logger, task
@@ -11,7 +11,7 @@ dask.config.set({"distributed.worker.memory.terminate": False})
 UNAUTHORIZED = 401
 
 
-@task(name="Querry Files endpoint", task_run_name="querryFiles")
+@task(name="Querry CADIP Files endpoint", task_run_name="querryFiles")
 def querry_files(execution_unit):
     """Docstring to be added."""
     logger = get_run_logger()
@@ -27,7 +27,7 @@ def querry_files(execution_unit):
     return execution_unit
 
 
-@task(name="Querry Sessions endpoint", task_run_name="querrySessions")
+@task(name="Querry CADIP Sessions endpoint", task_run_name="querrySessions")
 def querry_sessions(execution_unit):
     """Docstring to be added."""
     logger = get_run_logger()
@@ -43,7 +43,7 @@ def querry_sessions(execution_unit):
     return execution_unit
 
 
-@task(name="Init data ingestion parameters")
+@task(name="Init CADIP data ingestion parameters")
 def init_ingestion(file_location, **kwargs):
     """Docstring to be added."""
     if "logger" not in kwargs.keys():
@@ -63,21 +63,18 @@ def init_ingestion(file_location, **kwargs):
     return object_exec
 
 
-@task(name="Download file from CADIP")  # , on_completion=[querryQualityInfo(executionUnit, response)])
+@task(name="Download file from CADIP s3")  # , on_completion=[querryQualityInfo(executionUnit, response)])
 def download_file(execution_unit, response=None):
     """Docstring to be added."""
     file_id = json.loads(response if response else execution_unit.filesQuerry)["Id"]
     file_name = json.loads(response if response else execution_unit.filesQuerry)["Name"]
-    endpoint = f"Files({file_id})/$value"
+    endpoint = f"Files({file_id})/$S3OS"
     end_route = f"{execution_unit.webserver}/{endpoint}"
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
-    with execution_unit.session.get(end_route, stream=True) as req:
+    os.makedirs(execution_unit.OutputPath, exist_ok=True)
+    with execution_unit.cadip_session.get(end_route, stream=True) as req:
         req.raise_for_status()
-        import random
-        import time
-
-        time.sleep(random.randint(5, 10))
         with open(filename, "wb") as outfile:
             for chunk in req.iter_content(chunk_size=8192):
                 outfile.write(chunk)
@@ -85,7 +82,27 @@ def download_file(execution_unit, response=None):
     return execution_unit
 
 
-@task(name="Check quality info of download")
+@task(name="Download file from CADIP")  # , on_completion=[querryQualityInfo(executionUnit, response)])
+def download_file_http(execution_unit, response=None):
+    """Docstring to be added."""
+    file_id = json.loads(response if response else execution_unit.filesQuerry)["Id"]
+    file_name = json.loads(response if response else execution_unit.filesQuerry)["Name"]
+    endpoint = f"Files({file_id})/$value"
+    end_route = f"{execution_unit.webserver}/{endpoint}"
+    # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
+    filename = f"{execution_unit.OutputPath}/{file_name}"
+    os.makedirs(execution_unit.OutputPath, exist_ok=True)
+    with execution_unit.cadip_session.get(end_route, stream=True) as req:
+        req.raise_for_status()
+        with open(filename, "wb") as outfile:
+            for chunk in req.iter_content(chunk_size=8192):
+                outfile.write(chunk)
+    execution_unit.succesfullDownload = True
+    return execution_unit
+
+
+
+@task(name="Check CADIP quality info of download")
 def querry_quality_info(execution_unit, response=None):
     """Docstring to be added."""
     logger = get_run_logger()
@@ -100,7 +117,7 @@ def querry_quality_info(execution_unit, response=None):
     return execution_unit.qualityResponse["ErrorTFs"] == 0
 
 
-@task(name="Check given credentials")
+@task(name="Check CADIP given credentials")
 def login(execution_unit, logger=None) -> bool:
     """Docstring to be added."""
     if not logger:
@@ -123,7 +140,7 @@ def login(execution_unit, logger=None) -> bool:
     return True
 
 
-@task(name="Check webserver connection")
+@task(name="Check CADIP webserver connection")
 def check_connection(execution_unit) -> bool:
     """Docstring to be added."""
     try:
@@ -157,11 +174,11 @@ def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     # iterate available files, download and check quality info
     if "responses" in json.loads(execution_unit.filesQuerry):
         for response in json.loads(execution_unit.filesQuerry)["responses"]:
-            download_file.submit(execution_unit, response)
-            process_status = querry_quality_info.submit(execution_unit, response) or process_status
+            download_file.fn(execution_unit, response)
+            #process_status = querry_quality_info.submit(execution_unit, response) or process_status
     else:
-        download_file(execution_unit)
-        process_status = querry_quality_info(execution_unit) or process_status
+        download_file.fn(execution_unit)
+        #process_status = querry_quality_info(execution_unit) or process_status
     return process_status
 
 

@@ -9,7 +9,7 @@ from prefect_dask import DaskTaskRunner
 UNAUTHORIZED = 401
 
 
-@task(name="Init data ingestion parameters")
+@task(name="Init ADGS data ingestion parameters")
 def init_ingestion(file_location, **kwargs):
     """Docstring to be added."""
     if "logger" not in kwargs.keys():
@@ -29,7 +29,7 @@ def init_ingestion(file_location, **kwargs):
     return object_exec
 
 
-@task(name="Check webserver connection")
+@task(name="Check ADGS webserver connection")
 def check_connection(execution_unit) -> bool:
     """Docstring to be added."""
     try:
@@ -39,7 +39,7 @@ def check_connection(execution_unit) -> bool:
     return True
 
 
-@task(name="Check given credentials")
+@task(name="Check ADGS given credentials")
 def login(execution_unit, logger=None) -> bool:
     """Docstring to be added."""
     if not logger:
@@ -62,7 +62,7 @@ def login(execution_unit, logger=None) -> bool:
     return True
 
 
-@task(name="Querry Files catalog", task_run_name="querryFiles")
+@task(name="Querry ADGS Files catalog", task_run_name="querryFiles")
 def querry_files(execution_unit):
     """Docstring to be added."""
     logger = get_run_logger()
