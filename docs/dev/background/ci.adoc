@@ -1,4 +1,4 @@
-= Continuous integration
+= Continuous integration workflows
 
 The continuous integration is made with github actions.
 Several workflows are used :

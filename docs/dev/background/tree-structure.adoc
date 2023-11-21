@@ -1,4 +1,4 @@
-= Tree structure
+= Project tree structure
 
 The rs-server repository tree structure is given in the following graph
 
