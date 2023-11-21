@@ -20,9 +20,9 @@ def querry_files(execution_unit):
     endpoint_args = f"$filter={execution_unit.ProductFilter} {execution_unit.ProductFilterValue}"
     end_route = f"{execution_unit.webserver}/{endpoint}?{endpoint_args}"
     logger.info(f"endpoint called {end_route}")
-    data = execution_unit.cadip_session.get(end_route)  # , auth=(executionUnit.user, executionUnit.password))
-    logger.info(f"webserver response {json.loads(data.content)}")
-    execution_unit.filesQuerry = json.loads(data.content)
+    data = execution_unit.session.get(end_route)  # , auth=(executionUnit.user, executionUnit.password))
+    logger.info(f"webserver response {data.content}")
+    execution_unit.filesQuerry = data.content
     logger.info("Finished files querry")
     return execution_unit
 
@@ -35,25 +35,28 @@ def querry_sessions(execution_unit):
     endpoint = "Sessions"
     endpoint_args = f"$filter={execution_unit.SessionFilter} {execution_unit.SessionFilterValue}"
     end_route = f"{execution_unit.webserver}/{endpoint}?{endpoint_args}"
-    data = execution_unit.cadip_session.get(end_route)
+    data = execution_unit.session.get(end_route)
     logger.info(f"endpoint called {end_route}")
-    logger.info(f"webserver response {json.loads(data.content)}")
-    execution_unit.sessionQuerry = json.loads(data.content)
+    logger.info(f"webserver response {data.content}")
+    execution_unit.sessionQuerry = data.content
     logger.info("Finished session querry")
     return execution_unit
 
 
 @task(name="Init data ingestion parameters")
-def init_ingestion(file_location, logger=None):
+def init_ingestion(file_location, **kwargs):
     """Docstring to be added."""
-    if not logger:
+    if "logger" not in kwargs.keys():
         logger = get_run_logger()
     logger.info("Starting to ingest flow arguments")
     with open(file_location, "r") as file:
         # SimpleNamespace or metaclass? hmm
         # from types import SimpleNamespace
         # return json.loads(file.read(), object_hook=lambda d: SimpleNamespace(**d))
-        data = json.loads(file.read())
+        if "target" in kwargs:
+            data = json.loads(file.read())[kwargs["target"]]
+        else:
+            data = json.loads(file.read())
     object_exec = type("RSUnit", (object,), data)
     setattr(object_exec, "created", True)
     logger.info("Succesfuly created an execution unit!")
@@ -69,7 +72,7 @@ def download_file(execution_unit, response=None):
     end_route = f"{execution_unit.webserver}/{endpoint}"
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
-    with execution_unit.cadip_session.get(end_route, stream=True) as req:
+    with execution_unit.session.get(end_route, stream=True) as req:
         req.raise_for_status()
         import random
         import time
@@ -90,7 +93,7 @@ def querry_quality_info(execution_unit, response=None):
     session_id = json.loads(response)["Id"] if response else execution_unit.filesQuerry["Id"]
     end_point = f"Sessions({session_id})?expand=qualityInfo"
     end_route = f"{execution_unit.webserver}/{end_point}"
-    data = execution_unit.cadip_session.get(end_route)
+    data = execution_unit.session.get(end_route)
     logger.info(f"endpoint called {end_route}")
     logger.info(f"webserver response {json.loads(data.content)}")
     execution_unit.qualityResponse = json.loads(data.content)
@@ -116,7 +119,7 @@ def login(execution_unit, logger=None) -> bool:
     logger.info("Succesfully authentificated!")
     # persist auth parameters to request session
     session.auth = (execution_unit.user, execution_unit.password)
-    setattr(execution_unit, "cadip_session", session)
+    setattr(execution_unit, "session", session)
     return True
 
 
@@ -136,10 +139,10 @@ def dummy_task(**kwargs):
 
 
 @flow(task_runner=DaskTaskRunner(), on_completion=[dummy_task])
-def execute(ingestion_file):  # noqa: N802
+def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     """Docstring to be added."""
     # Recover flow parameters from json file, and create dynamic object
-    execution_unit = init_ingestion(ingestion_file)
+    execution_unit = init_ingestion(ingestion_file, **kwargs)
     # Check webserver
     if not check_connection(execution_unit):
         raise ValueError("Incorrect webserver address")
@@ -152,8 +155,11 @@ def execute(ingestion_file):  # noqa: N802
     execution_unit = querry_files(execution_unit, wait_for=querry_sessions)
     process_status = True
     # iterate available files, download and check quality info
-    if "responses" in execution_unit.filesQuerry:
-        for response in execution_unit.filesQuerry["responses"]:
+    import pdb
+
+    pdb.set_trace()
+    if "responses" in json.loads(execution_unit.filesQuerry):
+        for response in json.loads(execution_unit.filesQuerry)["responses"]:
             download_file.submit(execution_unit, response)
             process_status = querry_quality_info.submit(execution_unit, response) or process_status
     else:
@@ -165,5 +171,5 @@ def execute(ingestion_file):  # noqa: N802
 if __name__ == "__main__":
     # realUsageTest()
     # sys.argv tbu
-    execute("src/ingestion/ingestionParameters.json")
+    execute_cadip_ingestion("src/ingestion/ingestionParameters.json", target="CADIP")
     # pass
