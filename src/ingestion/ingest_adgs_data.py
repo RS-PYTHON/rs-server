@@ -106,7 +106,7 @@ def download_file_s3(execution_unit, response=None):
     """Docstring to be added."""
     file_id = json.loads(response if response else execution_unit.filesQuerry)["Id"]
     file_name = json.loads(response if response else execution_unit.filesQuerry)["Name"]
-    endpoint = f"Products({file_id})/$S30S"
+    endpoint = f"Products({file_id})/$S3OS"
     end_route = f"{execution_unit.webserver}/{endpoint}"
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
@@ -132,7 +132,7 @@ def execute_adgs_ingestion(ingestion_file, **kwargs):  # noqa: N802
     # download
     if "responses" in execution_unit.filesQuerry:
         for response in execution_unit.filesQuerry["responses"]:
-            download_file.submit(execution_unit, json.dumps(response))
+            download_file.fn(execution_unit, json.dumps(response))
     return True
 
 
