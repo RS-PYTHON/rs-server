@@ -1197,77 +1197,24 @@ It verifies that :<br>
 <div class="sect4">
 <h5 id="_generate_documentation_workflow">generate documentation workflow</h5>
 <div class="paragraph">
-<p>This workflow build and publish the technical documentation as github pages.<br>
-It uses the <a href="https://github.com/marketplace/actions/asciidoctor-ghpages">asciidoctor-ghpages</a> github action.</p>
+<p>This workflow build the documentation using the following command :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-yml" data-lang="yml">          program: asciidoctor -a toc=left -a toclevels=3 -a hardbreaks -D dist/doc -o index.html README.adoc</code></pre>
+</div>
 </div>
 <div class="paragraph">
-<p>The built documentation is push to a dedicated branch named 'gh-pages'.<br>
-This branch is used to public github pages.<br>
+<p>and then publish the results to the 'gh-pages' branch.<br>
+The 'gh-pages' is the source branch of the <a href="https://rs-python.github.io/rs-server/">github page</a>.</p>
+</div>
+<div class="paragraph">
+<p>This workflow is configured to be executed at each developer commit for demo puprose.<br>
+It will be updated in the future.<br>
 = Design &amp; concepts</p>
 </div>
-</div>
-<div class="sect4">
-<h5 id="_layers_separation">Layers separation</h5>
 <div class="paragraph">
-<p>The software is split in three layers :</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>the orchestration</p>
-</li>
-<li>
-<p>the core library</p>
-</li>
-<li>
-<p>the external resources connectors</p>
-</li>
-</ul>
-</div>
-<div class="sect5">
-<h6 id="_description">Description</h6>
-<div class="paragraph">
-<p>The main layer is the code library.<br>
-It is represented in TODO color on the diagram.<br>
-It is focus on providing the business logic<br>
-without depending on external technical things like network or orchestration.</p>
-</div>
-<div class="paragraph">
-<p>The orchestration is the upper layer.<br>
-It automatizes the functionalities provided by the core library.<br>
-It is implemented with the Prefect framework.</p>
-</div>
-<div class="paragraph">
-<p>The external resources connectors are a technical under layer.<br>
-It is used by the core library (using dependency inversion principle)  to access external resources.</p>
-</div>
-</div>
-<div class="sect5">
-<h6 id="_example">Example</h6>
-
-</div>
-<div class="sect5">
-<h6 id="_rationale">Rationale</h6>
-<div class="paragraph">
-<p>The core library is isolated from external connectors and orchestration<br>
-mostly to keep the business logic independent of technical details.</p>
-</div>
-<div class="paragraph">
-<p>These separations help the core library to be focused on the functionalities<br>
-without depending on network or orchestration details.<br>
-It helps the core library to be more testable, evolutive and maintanable.</p>
-</div>
-<div class="paragraph">
-<p>The software is more modulable.<br>
-It is easier to compose the different layers,<br>
-easier to use external resources connectors for several needs.</p>
-</div>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_interaction_with_station">Interaction with station</h5>
-<div class="paragraph">
-<p>This is a global design of the library.</p>
+<p>NOTE : The design elements will be added here</p>
 </div>
 </div>
 </div>
@@ -1305,7 +1252,7 @@ easier to use external resources connectors for several needs.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-11-21 15:21:39 UTC
+Last updated 2023-11-22 13:37:26 UTC
 </div>
 </div>
 </body>
