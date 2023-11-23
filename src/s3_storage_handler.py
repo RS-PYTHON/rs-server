@@ -402,7 +402,7 @@ Exception: {}. Retrying in {} seconds for {} more times".format(
                 )
                 s3_client.close()
                 s3_client = None
-                time_cnt = 0
+                time_cnt = 0.0
                 while time_cnt < DWN_S3FILE_RETRY_TIMEOUT and not aws_terminating_node_notice:
                     time.sleep(0.2)
                     time_cnt += 0.2
@@ -499,7 +499,7 @@ Exception: {}. Retrying in {} seconds for {} more times".format(
                 if s3_client is not None:
                     s3_client.close()
                 s3_client = None
-                time_cnt = 0
+                time_cnt = 0.0
                 while time_cnt < UP_S3FILE_RETRY_TIMEOUT and not aws_terminating_node_notice:
                     time.sleep(0.2)
                     time_cnt += 0.2
