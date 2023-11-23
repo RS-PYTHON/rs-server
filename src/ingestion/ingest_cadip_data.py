@@ -157,7 +157,7 @@ def dummy_task(**kwargs):
     print("Dummy")
 
 
-@flow(task_runner=DaskTaskRunner(), on_completion=[dummy_task])
+@flow(task_runner=DaskTaskRunner(), on_completion=[dummy_task])  # type: ignore
 def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     """Docstring to be added."""
     # Recover flow parameters from json file, and create dynamic object
@@ -169,9 +169,9 @@ def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     if not login(execution_unit):
         raise ValueError("Incorrect credentials")
     # Querry active sessions by filtering sattelite type to S1A
-    execution_unit = querry_sessions(execution_unit, wait_for=init_ingestion)  # tbd
+    execution_unit = querry_sessions(execution_unit, wait_for=init_ingestion)  # type: ignore
     # Send execution object and parameters to quarry files from cadip server
-    execution_unit = querry_files(execution_unit, wait_for=querry_sessions)
+    execution_unit = querry_files(execution_unit, wait_for=querry_sessions)  # type: ignore
     process_status = True
     # iterate available files, download and check quality info
     if "responses" in json.loads(execution_unit.filesQuerry):
