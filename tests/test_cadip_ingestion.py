@@ -10,7 +10,6 @@ import src.ingestion.ingest_cadip_data as ingestion_flow
 
 # TC-001: Create a Prefect workflow that calls this task with publication date filters. Check that the task returns the
 # expected result
-@pytest.mark.unit
 @pytest.mark.parametrize("ingestion_file", [("tests/data/correct_ingestionParameters.json")])
 def test_flow(ingestion_file):
     """Docstring to be added."""
@@ -28,7 +27,6 @@ def test_flow(ingestion_file):
 
 # TC-003: Create a Prefect workflow that calls this task with invalid credentials. Check that the error is displayed in
 # Prefect UI but that credentials are not logged.
-@pytest.mark.unit
 @pytest.mark.parametrize("ingestion_file", [("tests/data/incorrect_ingestionParameters.json")])
 def test_incorrect_credentials(ingestion_file):
     """Docstring to be added."""
@@ -39,7 +37,6 @@ def test_incorrect_credentials(ingestion_file):
 
 # TC-002: Create a Prefect workflow that calls this task with invalid service root URI. Check that the error is
 # displayed in Prefect UI but that credentials are not logged.
-@pytest.mark.unit
 @pytest.mark.parametrize("ingestion_file", [("tests/data/incorrectWS_ingestionParameters.json")])
 def test_incorrect_webserver(ingestion_file):
     """Docstring to be added."""
