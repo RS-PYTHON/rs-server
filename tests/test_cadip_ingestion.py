@@ -1,4 +1,4 @@
-"""File docstring to be added."""  # noqa: N999
+"""File docstring to be added."""
 import json
 import os
 import shutil
@@ -19,7 +19,7 @@ def test_flow(ingestion_file):
         os.mkdir(ingestion["OutputPath"])
     initial_files = os.listdir(ingestion["OutputPath"])
     # check that flow didn't failed.
-    assert ingestion_flow.execute(ingestion_file)
+    assert ingestion_flow.execute_cadip_ingestion(ingestion_file)
     current_files = os.listdir(ingestion["OutputPath"])
     shutil.rmtree(ingestion["OutputPath"])
     # Check that some files were downloaded.
@@ -33,7 +33,7 @@ def test_flow(ingestion_file):
 def test_incorrect_credentials(ingestion_file):
     """Docstring to be added."""
     with pytest.raises(ValueError):
-        ingestion_flow.execute(ingestion_file)
+        ingestion_flow.execute_cadip_ingestion(ingestion_file)
         assert False  # if reached then execute didn't raised value error, threfore test should fail.
 
 
@@ -44,5 +44,5 @@ def test_incorrect_credentials(ingestion_file):
 def test_incorrect_webserver(ingestion_file):
     """Docstring to be added."""
     with pytest.raises(ValueError):
-        ingestion_flow.execute(ingestion_file)
+        ingestion_flow.execute_cadip_ingestion(ingestion_file)
         assert False  # if reached then execute didn't raised value error, threfore test should fail.

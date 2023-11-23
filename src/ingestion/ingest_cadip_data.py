@@ -1,7 +1,10 @@
-import json  # noqa: D100
+"""FIXME add a module description here."""
+
+import json
 import os
+
 import dask
-import requests  # type: ignore
+import requests
 from prefect import flow, get_run_logger, task
 from prefect_dask import DaskTaskRunner
 from requests.exceptions import ConnectionError
@@ -101,7 +104,6 @@ def download_file_http(execution_unit, response=None):
     return execution_unit
 
 
-
 @task(name="Check CADIP quality info of download")
 def querry_quality_info(execution_unit, response=None):
     """Docstring to be added."""
@@ -175,10 +177,10 @@ def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     if "responses" in json.loads(execution_unit.filesQuerry):
         for response in json.loads(execution_unit.filesQuerry)["responses"]:
             download_file.fn(execution_unit, response)
-            #process_status = querry_quality_info.submit(execution_unit, response) or process_status
+            # process_status = querry_quality_info.submit(execution_unit, response) or process_status
     else:
         download_file.fn(execution_unit)
-        #process_status = querry_quality_info(execution_unit) or process_status
+        # process_status = querry_quality_info(execution_unit) or process_status
     return process_status
 
 
