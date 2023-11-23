@@ -49,9 +49,10 @@ build-backend = "poetry.core.masonry.api"
 line-length = 120
 
 [tool.pytest.ini_options]
-# This is mandatory for pytest-docker
-# to have a pytest.rootdir set to project.rootdir
-
+markers = [
+    "unit", # mark a test as unittest
+    "integration", # mark a test as integration test
+]
 
 [tool.ruff]
 line-length = 120 # is it useful if not using ruff formatter ?
@@ -68,6 +69,13 @@ ignore = ["D203", "D213"]
 # TODO try to replace black by ruff formatter
 
 [tool.mypy]
+warn_unused_config = true
+warn_redundant_casts = true
 warn_unused_ignores = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
+
+# TODO add the plugin if possible (request for example)
+[[tool.mypy.overrides]]
+module = "flask_bcrypt,flask_httpauth,requests.*"
+ignore_missing_imports = true
