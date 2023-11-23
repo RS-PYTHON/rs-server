@@ -29,6 +29,8 @@ repos:
     rev: 'v1.6.1'  # Use the sha / tag you want to point at
     hooks:
     -   id: mypy
+        additional_dependencies:
+          - types-requests==2.31.0
 
 # Security and license checks on python (with trivi)
 #-   repo: https://github.com/mxab/pre-commit-trivy.git
