@@ -177,10 +177,10 @@ def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     if "responses" in json.loads(execution_unit.filesQuerry):
         for response in json.loads(execution_unit.filesQuerry)["responses"]:
             download_file_http.submit(execution_unit, response)
-            #process_status = querry_quality_info.submit(execution_unit, response) or process_status
+            # process_status = querry_quality_info.submit(execution_unit, response) or process_status
     else:
         download_file_http(execution_unit)
-        #process_status = querry_quality_info(execution_unit) or process_status
+        # process_status = querry_quality_info(execution_unit) or process_status
     return process_status
 
 
