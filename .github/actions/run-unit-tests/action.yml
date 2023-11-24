@@ -7,5 +7,5 @@ runs:
       uses: ./.github/actions/setup-environment
 
     - name: run-pytest
-      run: poetry run pytest -m "unit" tests
+      run: poetry run pytest tests # run all tests
       shell: bash
