@@ -13,7 +13,7 @@ import src.ingestion.ingest_cadip_data as ingestion_flow
 @pytest.mark.parametrize("ingestion_file", [("tests/data/correct_ingestionParameters.json")])
 def test_flow(ingestion_file):
     """Docstring to be added."""
-    ingestion = json.loads(open(ingestion_file).read())
+    ingestion = json.loads(open(ingestion_file).read())["CADIP"]
     if not os.path.exists(ingestion["OutputPath"]):
         os.mkdir(ingestion["OutputPath"])
     initial_files = os.listdir(ingestion["OutputPath"])
