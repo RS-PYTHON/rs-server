@@ -1,0 +1,20 @@
+@startuml
+'https://plantuml.com/activity-diagram-beta
+
+start
+:verify request;
+if (is valid ?) then (yes)
+  :call rs-lib for functional needs;
+  if (rs-lib raised exception?) then (yes)
+    :build error response;
+  else (no))
+    :build nominal response;
+  endif
+else (no)
+    :build bad request response;
+
+endif
+:return response;
+stop
+
+@enduml

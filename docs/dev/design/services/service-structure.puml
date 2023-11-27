@@ -1,0 +1,20 @@
+@startuml
+
+skinparam Legend {
+	BorderColor transparent
+}
+
+legend
+services
+|_ <service-name>
+    |_ api/
+    |_ library/
+    |_ Dockerfile
+
+|_ common
+    |_ api/
+    |_ library/
+    |_ __init__.py
+
+end legend
+@enduml

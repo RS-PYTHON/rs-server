@@ -1,0 +1,28 @@
+= The core library
+
+The core library is responsible for providing the functionalities.
+It is independent of the API layer.
+It provides only functionalities without technical dependencies
+such as transfer protocole.
+It is composed of shared and specific elements divided in functional modules.
+Shared elements can be extended with service specific elements.
+
+== Shared elements
+
+Several functionalities of the core library are shared with several services.
+These elements are provided by common library module.
+
+== Service specific functionalities
+
+Some functionalities are specific to a service.
+In this case, the functionality is provided specially for this service.
+
+== Modules
+
+NOTE: TODO Brief introduction with the list of main modules
+
+:leveloffset: +2
+
+include::library/data-retrieval/data-retrieval.adoc[]
+
+:leveloffset: -2
