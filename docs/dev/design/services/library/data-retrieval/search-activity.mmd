@@ -1,0 +1,20 @@
+flowchart
+
+    START
+
+    check-conn{is authenticatedd ?}
+    authent[authenticate]
+    search[search for files]
+    returns[returns data iterable]
+    ERROR[raises an error]
+
+    START --> check-conn
+    check-conn -->|yes| search
+    check-conn -->|no| authent -->|ok| search
+
+    search --> returns --> END
+
+    check-conn -->|connexion failed| ERROR
+    authent -->|failed| ERROR
+    search -->|failed| ERROR
+    ERROR --> END

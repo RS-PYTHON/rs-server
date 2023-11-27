@@ -1,0 +1,57 @@
+classDiagram
+
+    note for Criteria "composed criteria for the search"
+    class Criteria {
+
+    }
+
+    note for DownloadStatus "abstract (DIP)"
+    class DownloadStatus {
+        download_is_started(at_time, for_file_id)
+        download_is_finished(at_time, for_file_id)
+        download_failed(at_time, for_file_id, with_error)
+    }
+    DownloadStatus <|-- PGDownloadStatus
+
+    note for Provider "abstract (DIP)"
+    class Provider {
+        login()
+        logout()
+        search(critera)
+        download(file_id) -> Path?
+    }
+    Provider --> Criteria
+
+    note for CadipProvider "EODAG API Plugin"
+    class CadipProvider {
+
+    }
+    Provider <|-- CadipProvider
+
+
+    class Storage {
+        login()
+        logout()
+        store(file)
+    }
+    class S3Bucket {
+
+    }
+    class LocalFolder {
+
+    }
+    Storage <|-- S3Bucket
+    Storage <|-- LocalFolder
+
+
+    class Site {
+        Provider provider
+        Storage storage
+        DownloadStatus status_updater
+        search(critera: Criteria) -> Iterable[Data]
+        download(file_id: ?, path_in_storage: ?)
+    }
+    Site --> Provider
+    Site --> Storage
+    Site --> Criteria
+    Site --> DownloadStatus

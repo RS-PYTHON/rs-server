@@ -1,0 +1,66 @@
+= Data retrieval
+
+This module is responsible for external data retrieval.
+It provides two main functionalities :
+
+* search for data in a distant site with filter criteria
+* download data from a distant site to local folder or a S3 bucket
+
+It also handles authentification on these sites.
+
+NOTE: TODO insert the class diagram class.mmd here
+
+A Site is an external data site that gives access data.
+It provides two functionalities : search and download data.
+It handles all the common mechanisms to search and download data from a site.
+
+A Site uses :
+
+* a Provider to perform the interaction with the external site.
+* a Storage to store downloaded Data
+* a DownloadStatus to give progress information downloads
+
+== Search for data
+
+NOTE: TODO insert the activity diagram 'search-activity.mmd' here
+
+A site can search for data with criteria using the search function.
+The Criteria is composed of atomic criteria.
+
+First, the site ensures its Provider is authenticated.
+If not, it tries to log in.
+In case of connexion issues, it raises a specific ConnexionFailed exception.
+In case of authentication issues, it raises a specific AuthenticationFailed exception.
+
+Then, the site asks its Provider to perform the search.
+In case of error during search, it raises a specific SearchFailed exception.
+
+Finally, it returns an iterable through the found data.
+The found Data are product metadata properties (dict-like object).
+
+== Download a data
+
+NOTE: TODO insert the activity diagram 'download-activity.mmd' here
+
+A site can download a file to a specific path from its external id using the download function.
+
+First, the site ensures its Provider is authenticated.
+If not, it tries to log in.
+In case of connexion issues, it raises a specific ConnexionFailed exception.
+In case of authentication issues, it raises a specific AuthenticationFailed exception.
+
+Then, it updates the download status to indicate the download has started.
+
+Then, the site asks its Provider to perform the download.
+In case of error during download,
+it updates the status with the error information,
+and it raises a specific DownloadFailed exception.
+
+Then, it asks its Storage to store the downloaded data with its Storage.
+
+== Provider
+
+Providers are implemented using https://eodag.readthedocs.io/en/stable/index.html[EODAG].
+A provider can be implemented using a https://eodag.readthedocs.io/en/stable/plugins_reference/api.html[EODAG API Plugin].
+
+// TODO small description how to use eodag

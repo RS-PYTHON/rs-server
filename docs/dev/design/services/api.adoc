@@ -1,0 +1,38 @@
+= The API
+
+The API is responsible for providing a REST endpoint
+to access the core library functionalities.
+
+It checks the requests parameters
+and then uses the core library to fulfill the request.
+Finally, it builds an adequate response.
+
+NOTE: TODO insert the activity diagram api/activity.mmd
+
+The API is responsible for handling the REST interface.
+It does no functional process.
+All functional processes are done by the library.
+
+== Service API structure
+
+All service API layers share the same structure.
+
+NOTE: TODO insert the structure diagram
+
+The service contains an api folder.
+This folder contains a python file for each providing endpoint.
+
+
+== Shared elements
+
+All service api layer share common mechanism.
+These mechanism are provided in a common api module.
+
+// TODO describe the shared elements
+// Probably useful param verification, logging, monitoring,...
+
+== Framework used
+
+This layer is implemented using <TODO make the tradeoff>.
+
+// TODO give some rationale for this choice.
