@@ -76,7 +76,7 @@ def download_file(execution_unit, response=None):
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
     os.makedirs(execution_unit.OutputPath, exist_ok=True)
-    with execution_unit.cadip_session.get(end_route, stream=True) as req:
+    with execution_unit.session.get(end_route, stream=True) as req:
         req.raise_for_status()
         with open(filename, "wb") as outfile:
             for chunk in req.iter_content(chunk_size=8192):
@@ -95,7 +95,7 @@ def download_file_http(execution_unit, response=None):
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
     os.makedirs(execution_unit.OutputPath, exist_ok=True)
-    with execution_unit.cadip_session.get(end_route, stream=True) as req:
+    with execution_unit.session.get(end_route, stream=True) as req:
         req.raise_for_status()
         with open(filename, "wb") as outfile:
             for chunk in req.iter_content(chunk_size=8192):
@@ -176,10 +176,10 @@ def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     # iterate available files, download and check quality info
     if "responses" in json.loads(execution_unit.filesQuerry):
         for response in json.loads(execution_unit.filesQuerry)["responses"]:
-            download_file.fn(execution_unit, response)
+            download_file_http.submit(execution_unit, response)
             # process_status = querry_quality_info.submit(execution_unit, response) or process_status
     else:
-        download_file.fn(execution_unit)
+        download_file_http(execution_unit)
         # process_status = querry_quality_info(execution_unit) or process_status
     return process_status
 
