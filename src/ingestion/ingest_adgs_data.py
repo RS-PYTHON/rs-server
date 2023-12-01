@@ -120,9 +120,7 @@ def download_file_s3(execution_unit, response=None):
 
 @flow(task_runner=DaskTaskRunner())
 def execute_adgs_ingestion(ingestion_file, **kwargs):  # noqa: N802
-    
-    """Docstring to be added"""
-
+    """Docstring to be added."""
     execution_unit = init_ingestion(ingestion_file, target="ADGS")
     if not check_connection(execution_unit):
         raise ValueError("Incorrect webserver address")

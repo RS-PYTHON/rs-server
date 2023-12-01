@@ -6,8 +6,8 @@ name: Check code quality
 # TODO don't fail on error
 on:
   push:
-    branches:
-      - 'feat**'
+    # branches:
+    #   - 'feat**'
 
   pull_request:
     types: [opened, synchronize, reopened]
@@ -18,46 +18,71 @@ jobs:
 
   check-format:
     runs-on: ubuntu-latest
+    name: Check format (black)
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/check-format
+      - uses: ./.github/actions/install-python
+      - uses: psf/black@stable
+        with:
+          options: --check --verbose
 
   check-lint:
     runs-on: ubuntu-latest
+    name: Check linting (ruff)
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/check-lint
+      - uses: ./.github/actions/poetry-install
+      - run: poetry run ruff check --output-format=github .
+        shell: bash
 
   check-typing:
     runs-on: ubuntu-latest
+    name: Check typing (mypy)
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/check-typing
+      - uses: ./.github/actions/poetry-install
+      - run: poetry run mypy .
+        shell: bash
 
-# TODO add when writen
-#  check-vulnerabilities:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v3
-#      - uses: ./.github/actions/check-security
+  # TODO to be completed
+  # check-vulnerabilities:
+  #   runs-on: ubuntu-latest
+  #   name: Check vulnerabilities (trivy)
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: aquasecurity/trivy-action@master
+  #       with:
+  #         scan-type: 'fs'
+  #         scan-ref: '.'
 
   run-unit-tests:
     runs-on: ubuntu-latest
+    name: Run unit tests (pytest)
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/run-unit-tests
+      - uses: ./.github/actions/poetry-install
+      - run: poetry run pytest -m "unit" tests
+        shell: bash
 
   run-integration-tests:
     runs-on: ubuntu-latest
+    name: Run integration tests (pytest)
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/run-integration-tests
+      - uses: ./.github/actions/poetry-install
+      - run: poetry run pytest -m "integration" tests
+        shell: bash
 
-# TODO add when writen
-#  - sonar project configuration
-#  - export previous elements as reports for sonar
-#  generate-quality-report:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v3
-#      - uses: ./.github/actions/generate-quality-report
+  # TODO add when writen
+  #  - sonar project configuration
+  #  - export previous elements as reports for sonar
+  # generate-quality-report:
+  #   runs-on: ubuntu-latest
+  #   name: Generate quality report (sonarqube)
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: kitabisa/sonarqube-action@v1.2.0
+  #       with:
+  #         host: ${{ secrets.SONARQUBE_HOST }}
+  #         login: ${{ secrets.SONARQUBE_TOKEN }}
+  #         #password: ""

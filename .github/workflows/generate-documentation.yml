@@ -2,8 +2,8 @@ name: Generate documentation
 
 on:
   push:
-    branches:
-      - 'feat**'
+    # branches:
+    #   - 'feat**'
 
   pull_request:
     types: [opened, synchronize, reopened]
@@ -13,6 +13,7 @@ on:
 jobs:
   generate-documentation:
     runs-on: ubuntu-latest
+    name: Generate documentation
     permissions:
       contents: write
     steps:

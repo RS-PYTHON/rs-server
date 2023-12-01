@@ -1,0 +1,18 @@
+name: poetry-install
+description: "'poetry install' this project"
+
+inputs:
+  options:
+    description: "'poetry install' options e.g. '--with dev'"
+    required: false
+    default: --with dev
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: ./.github/actions/install-python
+
+    - uses: snok/install-poetry@v1
+    - run: poetry install ${{ inputs.options }} # don't use quotes around options
+      shell: bash
