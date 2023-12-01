@@ -2,7 +2,6 @@ name: Check code quality
 
 # TODO determine when we launch CI automatically
 # TODO handle CI on an orphan branch ?
-# TODO externalize python version as env variable
 # TODO don't fail on error
 on:
   push:
@@ -13,6 +12,11 @@ on:
     types: [opened, synchronize, reopened]
 
   workflow_dispatch:
+
+env:
+  SOURCES: src
+  TESTS: tests
+  REPORTS: .reports
 
 jobs:
 
@@ -26,14 +30,21 @@ jobs:
         with:
           options: --check --verbose
 
-  check-lint:
+  check-linting:
     runs-on: ubuntu-latest
-    name: Check linting (ruff)
+    name: Check linting (ruff, flake8)
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/poetry-install
-      - run: poetry run ruff check --output-format=github .
+      - uses: actions/checkout@v3      
+      - uses: ./.github/actions/poetry-install      
+      - run: poetry run ruff check --output-format=github . # used by pre-commit
         shell: bash
+      - run: poetry run flake8 ${SOURCES} ${TESTS} --output-file ${REPORTS}/flake8.txt # used by sonarqube
+        shell: bash
+      - uses: actions/upload-artifact@v3
+        with:
+          name: flake8.txt
+          path: .reports/flake8.txt
+          retention-days: 1
 
   check-typing:
     runs-on: ubuntu-latest
