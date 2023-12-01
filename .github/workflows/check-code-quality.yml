@@ -16,7 +16,6 @@ on:
 env:
   SOURCES: src
   TESTS: tests
-  REPORTS: .reports
 
 jobs:
 
@@ -38,7 +37,7 @@ jobs:
       - uses: ./.github/actions/poetry-install      
       - run: poetry run ruff check --output-format=github . # used by pre-commit
         shell: bash
-      - run: poetry run flake8 ${SOURCES} ${TESTS} --output-file ${REPORTS}/flake8.txt # used by sonarqube
+      - run: poetry run flake8 ${SOURCES} ${TESTS} --output-file .reports/flake8.txt # used by sonarqube
         shell: bash
       - uses: actions/upload-artifact@v3
         with:
@@ -77,12 +76,24 @@ jobs:
       - run: |
           set -x && poetry run pytest ${TESTS} \
             -m unit \
-            --cov=${SOURCES} \
-            --junit-xml=${REPORTS}/TEST-pytests.xml \
-            --cov-report=xml:${REPORTS}/coverage.xml \
             --durations=0 \
             --error-for-skips \
+            --cov=${SOURCES} \
+            --cov-report=term \
+            --cov-report=xml:.reports/coverage.xml \
+            --junit-xml=.reports/TEST-pytests.xml \
         shell: bash
+      - uses: irongut/CodeCoverageSummary@v1.3.0
+        with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
+          filename: .reports/coverage.xml
+          badge: false
+          fail_below_min: true
+          format: text
+          hide_branch_rate: false
+          hide_complexity: false
+          indicators: true
+          output: console
+          thresholds: "1 75" # as "low% high%" coverage: fail under "low", "high" is used for the badges
       - uses: actions/upload-artifact@v3
         with:
           name: pytest-unit
@@ -103,12 +114,23 @@ jobs:
       - run: |
           set -x && poetry run pytest ${TESTS} \
             -m integration \
-            --cov=${SOURCES} \
-            --cov-report=term-missing \
-            --cov-append \
             --durations=0 \
             --error-for-skips \
+            --cov=${SOURCES} \
+            --cov-report=term \
+            --cov-report=xml:.reports/coverage-integration.xml \
         shell: bash
+      - uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: .reports/coverage-integration.xml
+          badge: false
+          fail_below_min: true
+          format: text
+          hide_branch_rate: false
+          hide_complexity: false
+          indicators: true
+          output: console
+          thresholds: "1 75"
 
   # TODO add when writen
   #  - sonar project configuration
