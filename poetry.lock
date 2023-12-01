@@ -17,13 +17,13 @@ docs = ["sphinx (==6.1.3)", "sphinx-mdinclude (==0.5.3)"]
 
 [[package]]
 name = "alembic"
-version = "1.12.1"
+version = "1.13.0"
 description = "A database migration tool for SQLAlchemy."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "alembic-1.12.1-py3-none-any.whl", hash = "sha256:47d52e3dfb03666ed945becb723d6482e52190917fdb47071440cfdba05d92cb"},
-    {file = "alembic-1.12.1.tar.gz", hash = "sha256:bca5877e9678b454706347bc10b97cb7d67f300320fa5c3a94423e8266e2823f"},
+    {file = "alembic-1.13.0-py3-none-any.whl", hash = "sha256:a23974ea301c3ee52705db809c7413cecd165290c6679b9998dd6c74342ca23a"},
+    {file = "alembic-1.13.0.tar.gz", hash = "sha256:ab4b3b94d2e1e5f81e34be8a9b7b7575fc9dd5398fccb0bef351ec9b14872623"},
 ]
 
 [package.dependencies]
@@ -32,7 +32,7 @@ SQLAlchemy = ">=1.3.0"
 typing-extensions = ">=4"
 
 [package.extras]
-tz = ["python-dateutil"]
+tz = ["backports.zoneinfo"]
 
 [[package]]
 name = "annotated-types"
@@ -2181,6 +2181,20 @@ pytest = ">=4.6"
 testing = ["fields", "hunter", "process-tests", "pytest-xdist", "six", "virtualenv"]
 
 [[package]]
+name = "pytest-error-for-skips"
+version = "2.0.2"
+description = "Pytest plugin to treat skipped tests a test failure"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
+files = [
+    {file = "pytest-error-for-skips-2.0.2.tar.gz", hash = "sha256:d4d0c89036a4105cabbc5e488c4078756c29cc2e5805b0694c3d9e49e52c0d11"},
+    {file = "pytest_error_for_skips-2.0.2-py3-none-any.whl", hash = "sha256:ccc4029c04f1737aa81445c5f3599247f8a64d279741b4a66bf003782fa00492"},
+]
+
+[package.dependencies]
+pytest = ">=4.6"
+
+[[package]]
 name = "pytest-mock"
 version = "3.12.0"
 description = "Thin-wrapper around the mock package for easier use with pytest"
@@ -3346,4 +3360,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11.0,<4.0"
-content-hash = "e3ec73d6de6e3c24ce58cb107cea4959e1827d783a563f643a76a31fca4a3047"
+content-hash = "29627b5ff01a7682030e200233dfdc22d73ce9bb5ee95569b0c1203868bae3cc"

@@ -42,9 +42,8 @@ jobs:
         shell: bash
       - uses: actions/upload-artifact@v3
         with:
-          name: flake8
-          # We must give a random file (.flake8) in addition to the dir, so it is saved as a dir in the artifact.
-          path: |
+          name: flake8          
+          path: | # add a random file (.flake8) so .reports/ is saved as a dir
             .reports
             .flake8
           retention-days: 1
@@ -82,6 +81,7 @@ jobs:
             --junit-xml=${REPORTS}/TEST-pytests.xml \
             --cov-report=xml:${REPORTS}/coverage.xml \
             --durations=0 \
+            --error-for-skips \
         shell: bash
       - uses: actions/upload-artifact@v3
         with:
@@ -91,29 +91,23 @@ jobs:
             .reports
           retention-days: 1
 
-  test-julien:
-    runs-on: ubuntu-latest
-    name: test
-    needs: [check-linting, run-unit-tests]
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: flake8
-      - uses: actions/download-artifact@v3
-        with:
-          name: pytest-unit
-      - name: Print the final result
-        shell: bash
-        run: |
-          find .
-
+  # TODO: what the integration tests should be, what is the difference from the unit tests ?
+  # Should they be scheduled or run only when merging to the develop or main branch ?
+  # Note that in the code below, the integration tests will not be counted for the code coverage.
   run-integration-tests:
     runs-on: ubuntu-latest
     name: Run integration tests (pytest)
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/poetry-install
-      - run: poetry run pytest -m "integration" tests
+      - run: |
+          set -x && poetry run pytest ${TESTS} \
+            -m integration \
+            --cov=${SOURCES} \
+            --cov-report=term-missing \
+            --cov-append \
+            --durations=0 \
+            --error-for-skips \
         shell: bash
 
   # TODO add when writen
@@ -129,3 +123,21 @@ jobs:
   #         host: ${{ secrets.SONARQUBE_HOST }}
   #         login: ${{ secrets.SONARQUBE_TOKEN }}
   #         #password: ""
+
+
+
+  # test-julien:
+  #   runs-on: ubuntu-latest
+  #   name: test
+  #   needs: [check-linting, run-unit-tests]
+  #   steps:
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: flake8
+  #     - uses: actions/download-artifact@v3
+  #       with:
+  #         name: pytest-unit
+  #     - name: Print the final result
+  #       shell: bash
+  #       run: |
+  #         find .
