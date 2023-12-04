@@ -48,6 +48,7 @@ def get_s3_client():
         print(e)
         s3_client_mutex.release()
         return None
+
     s3_client_mutex.release()
     return s3_client
 
@@ -123,14 +124,13 @@ def files_to_be_downloaded(bucket, paths, logger):
     # for each key, identify it as a file or a folder
     # in the case of a folder, the files will be recursively gathered
     for key in paths:
-        path = key.strip()
+        path = key.strip().lstrip("/")
         s3_files, total = list_s3_files_obj(s3_client, bucket, path, logger)
         if total == 0:
             logger.warning("No key {} found.".format(path))
             continue
         logger.debug("total: {} | s3_files = {}".format(total, s3_files))
         basename_part = get_basename(path)
-        logger.debug("basename_part = {}".format(basename_part))
 
         # check if it's a file or a dir
         if len(s3_files) == 1 and path == s3_files[0]:
@@ -140,13 +140,9 @@ def files_to_be_downloaded(bucket, paths, logger):
         else:
             # the current key is a folder, append all its files (reursively gathered) to the list
             for s3_file in s3_files:
-                logger.debug("s3_file = {}".format(s3_file))
                 split = s3_file.split("/")
                 split_idx = split.index(basename_part)
-                logger.debug("split_idx = {}".format(split_idx))
-                logger.debug("split[split_idx:-1] = {}".format(split[split_idx:-1]))
                 list_with_files.append((os.path.join(*split[split_idx:-1]), s3_file.strip("/")))
-                logger.debug("IDX/ list_with_files = {}".format(list_with_files))
 
     return list_with_files
 
@@ -202,13 +198,11 @@ def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pat
         sys.exit(-1)
     s3_files = []
     total = 0
+    logger.warning("prefix = {}".format(prefix))
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
         pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
         for page in pages:
-            # logger.info("page = {} | ty[e = {}".format(page, type(page)))
-            # s3_files.append(dict(Objects=[]))
-            # cnt = len(s3_files) - 1
             for item in page.get("Contents", ()):
                 if item is not None:
                     total += 1
@@ -320,9 +314,7 @@ bucket {} does not exist or is not accessible. Aborting".format(
         if s3_client is None:
             logger.error("Could not get the s3 handler. Exiting....")
             sys.exit(-1)
-
         keep_trying = max_retries
-        logger.debug("type = {} | collection_file = {}".format(type(collection_file), collection_file))
         local_path = os.path.join(local_prefix, collection_file[0].strip("/"))
         s3_file = collection_file[1]
         # for each file to download, create the local dir (if it does not exist)
@@ -409,7 +401,6 @@ Exception: {}. Retrying in {} seconds for {} more times".format(
 
     if aws_terminating_node_notice:
         print("SIGTERM received, everything has to be shutdown !")
-
     return failed_files
 
 
