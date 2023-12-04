@@ -126,34 +126,44 @@ jobs:
         with:
           filename: .reports/coverage-integration.xml
 
-  # TODO add when writen
-  #  - sonar project configuration
-  #  - export previous elements as reports for sonar
-  # generate-quality-report:
-  #   runs-on: ubuntu-latest
-  #   name: Generate quality report (sonarqube)
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: kitabisa/sonarqube-action@v1.2.0
-  #       with:
-  #         host: ${{ secrets.SONARQUBE_HOST }}
-  #         login: ${{ secrets.SONARQUBE_TOKEN }}
-  #         #password: ""
+  generate-quality-report:
+    runs-on: ubuntu-latest
+    name: Quality report (sonarqube)
+    steps:
+      #- needs: [] # needs reports from previous jobs
+      - uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          # Note: other options ?
+          #   --debug
+          #   -Dsonar.qualitygate.wait=true ? maybe handled by sonarsource/sonarqube-quality-gate-action ?
+          #   -Dsonar.branch.name=${{ github.ref_name }} # Developer Edition or above is required
+          args: >
+            -Dsonar.projectKey=test-project
+            -Dsonar.projectName=test-project
+            -Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
+      # If you wish to fail your job when the Quality Gate is red, uncomment the
+      # following lines. This would typically be used to fail a deployment.
+      - uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true # but still run next jobs
+  
 
 
+        # -Dsonar.projectBaseDir=.
+        # -Dsonar.sources=${SOURCES}
+        # -Dsonar.tests=${TESTS}
+        # -Dsonar.exclusions=
+        # -Dsonar.sourceEncoding=UTF-8
+        # -Dsonar.language=py
+        # -Dsonar.python.version=3.11
 
-  # test-julien:
-  #   runs-on: ubuntu-latest
-  #   name: test
-  #   needs: [check-linting, run-unit-tests]
-  #   steps:
-  #     - uses: actions/download-artifact@v3
-  #       with:
-  #         name: flake8
-  #     - uses: actions/download-artifact@v3
-  #       with:
-  #         name: pytest-unit
-  #     - name: Print the final result
-  #       shell: bash
-  #       run: |
-  #         find .
+
+        # -Dsonar.python.flake8.reportPaths="linter.txt"
+        # -Dsonar.python.bandit.reportPaths="vulnerability.json"
+        # -Dsonar.python.xunit.reportPath="${REPORTS}/TEST-*.xml"
+        # -Dsonar.python.coverage.reportPaths="${REPORTS}/coverage.xml"    
