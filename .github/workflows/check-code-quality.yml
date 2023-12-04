@@ -35,16 +35,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4      
       - uses: ./.github/actions/poetry-install      
-      - run: poetry run ruff check --output-format=github . # used by pre-commit
+      # Used by pre-commit
+      - run: poetry run ruff check --output-format=github .
         shell: bash
-      - run: poetry run flake8 ${SOURCES} ${TESTS} --output-file .reports/flake8.txt # used by sonarqube
+      # Used by sonarqube. See the .flake8 file for configuration.
+      - run: poetry run flake8 ${SOURCES} ${TESTS} --output-file .reports/flake8.txt
         shell: bash
       - uses: actions/upload-artifact@v3
         with:
           name: check-linting
-          path: | # add a random file (.flake8) so .reports/ is saved as a dir
+          path: | # add a random file (.gitignore) so .reports/ is saved as a dir
             .reports
-            .flake8
+            .gitignore
           retention-days: 1
 
   check-typing:
@@ -56,16 +58,29 @@ jobs:
       - run: poetry run mypy .
         shell: bash
 
-  # TODO to be completed
-  # check-vulnerabilities:
-  #   runs-on: ubuntu-latest
-  #   name: Check vulnerabilities (trivy)
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: aquasecurity/trivy-action@master
-  #       with:
-  #         scan-type: 'fs'
-  #         scan-ref: '.'
+  check-vulnerabilities:
+    runs-on: ubuntu-latest
+    name: Check vulnerabilities (bandit)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+      - run: |
+            set -x && mkdir -p .reports && \
+            poetry run bandit -c bandit.yml -r ${SOURCES} -f json -o .reports/bandit.json
+        shell: bash
+        continue-on-error: true # note: the CI will still run, we will resolve issues later
+      - uses: actions/upload-artifact@v3
+        with:
+          name: check-vulnerabilities
+          path: | # add a random file (.gitignore) so .reports/ is saved as a dir
+            .reports
+            .gitignore
+          retention-days: 1
+      # TODO: use trivy ?
+      # - uses: aquasecurity/trivy-action@master
+      #   with:
+      #     scan-type: 'fs'
+      #     scan-ref: '.'
 
   run-unit-tests:
     runs-on: ubuntu-latest
@@ -102,7 +117,7 @@ jobs:
 
   # TODO: what the integration tests should be, what is the difference from the unit tests ?
   # Should they be scheduled or run only when merging to the develop or main branch ?
-  # Note that in the code below, the integration tests will not be counted for the code coverage.
+  # Note that in the code below, the integration tests will not be counted for the code coverage in sonarqube.
   run-integration-tests:
     runs-on: ubuntu-latest
     name: Run integration tests (pytest)
@@ -129,7 +144,8 @@ jobs:
   generate-quality-report:
     runs-on: ubuntu-latest
     name: Quality report (sonarqube)
-    needs: [check-linting, run-unit-tests] # see actions/download-artifact below
+    needs: [check-linting, check-vulnerabilities, run-unit-tests] # see actions/download-artifact below
+    if: always() # generate quality reports even if previous jobs failed
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v3  # download reports from previous jobs
@@ -139,9 +155,11 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: 
+            check-vulnerabilities
+      - uses: actions/download-artifact@v3
+        with:
+          name: 
             run-unit-tests
-      - run: find .reports
-        shell: bash
       - uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -151,7 +169,6 @@ jobs:
           # --debug
           # -Dsonar.projectName=test-project
           # -Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
-          # -Dsonar.python.bandit.reportPaths="vulnerability.json"
           args: >
             -Dsonar.projectKey=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
             -Dsonar.branch.name=${{ github.ref_name }}
@@ -163,6 +180,7 @@ jobs:
             -Dsonar.language=py
             -Dsonar.python.version=3.11  
             -Dsonar.python.flake8.reportPaths=".reports/flake8.txt"
+            -Dsonar.python.bandit.reportPaths=".reports/bandit.json"
             -Dsonar.python.xunit.reportPath=".reports/TEST-*.xml"
             -Dsonar.python.coverage.reportPaths=".reports/coverage.xml"
       # If you wish to fail your job when the Quality Gate is red, uncomment the
@@ -171,4 +189,4 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        continue-on-error: true # 'true' to ignore red Quality Gate, 'false' to fail the workflow
+        #continue-on-error: true # note: the CI will still run, we will resolve issues later
