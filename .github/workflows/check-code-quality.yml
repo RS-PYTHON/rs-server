@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check format (black)
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/install-python
       - uses: psf/black@stable
         with:
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check linting (ruff, flake8)
     steps:
-      - uses: actions/checkout@v3      
+      - uses: actions/checkout@v4      
       - uses: ./.github/actions/poetry-install      
       - run: poetry run ruff check --output-format=github . # used by pre-commit
         shell: bash
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check typing (mypy)
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
       - run: poetry run mypy .
         shell: bash
@@ -61,7 +61,7 @@ jobs:
   #   runs-on: ubuntu-latest
   #   name: Check vulnerabilities (trivy)
   #   steps:
-  #     - uses: actions/checkout@v3
+  #     - uses: actions/checkout@v4
   #     - uses: aquasecurity/trivy-action@master
   #       with:
   #         scan-type: 'fs'
@@ -71,9 +71,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Run unit tests (pytest)
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
-      - run: |
+
+      - name: Run unit tests
+        run: |
           set -x && poetry run pytest ${TESTS} \
             -m unit \
             --durations=0 \
@@ -83,18 +85,14 @@ jobs:
             --cov-report=xml:.reports/coverage.xml \
             --junit-xml=.reports/TEST-pytests.xml \
         shell: bash
-      - uses: irongut/CodeCoverageSummary@v1.3.0
+
+      - name: Code coverage summary
+        uses: irongut/CodeCoverageSummary@v1.3.0
         with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
           filename: .reports/coverage.xml
-          badge: false
-          fail_below_min: true
-          format: text
-          hide_branch_rate: false
-          hide_complexity: false
-          indicators: true
-          output: console
-          thresholds: "1 75" # as "low% high%" coverage: fail under "low", "high" is used for the badges
-      - uses: actions/upload-artifact@v3
+
+      - name: Save reports as artifacts
+        uses: actions/upload-artifact@v3
         with:
           name: pytest-unit
           path: |
@@ -109,9 +107,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Run integration tests (pytest)
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
-      - run: |
+
+      - name: Run integration tests
+        run: |
           set -x && poetry run pytest ${TESTS} \
             -m integration \
             --durations=0 \
@@ -120,17 +120,11 @@ jobs:
             --cov-report=term \
             --cov-report=xml:.reports/coverage-integration.xml \
         shell: bash
-      - uses: irongut/CodeCoverageSummary@v1.3.0
+
+      - name: Save reports as artifacts
+        uses: irongut/CodeCoverageSummary@v1.3.0
         with:
           filename: .reports/coverage-integration.xml
-          badge: false
-          fail_below_min: true
-          format: text
-          hide_branch_rate: false
-          hide_complexity: false
-          indicators: true
-          output: console
-          thresholds: "1 75"
 
   # TODO add when writen
   #  - sonar project configuration
@@ -139,7 +133,7 @@ jobs:
   #   runs-on: ubuntu-latest
   #   name: Generate quality report (sonarqube)
   #   steps:
-  #     - uses: actions/checkout@v3
+  #     - uses: actions/checkout@v4
   #     - uses: kitabisa/sonarqube-action@v1.2.0
   #       with:
   #         host: ${{ secrets.SONARQUBE_HOST }}

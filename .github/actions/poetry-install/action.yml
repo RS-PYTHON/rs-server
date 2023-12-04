@@ -1,5 +1,5 @@
 name: poetry-install
-description: "'poetry install' this project"
+description: "'poetry install' this project and dependencies"
 
 inputs:
   options:
@@ -12,7 +12,6 @@ runs:
   steps:
 
     - uses: ./.github/actions/install-python
-
     - uses: snok/install-poetry@v1
     - run: poetry install ${{ inputs.options }} # don't use quotes around options
       shell: bash
