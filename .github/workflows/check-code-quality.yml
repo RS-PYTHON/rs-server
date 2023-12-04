@@ -41,7 +41,7 @@ jobs:
         shell: bash
       - uses: actions/upload-artifact@v3
         with:
-          name: flake8          
+          name: check-linting
           path: | # add a random file (.flake8) so .reports/ is saved as a dir
             .reports
             .flake8
@@ -94,7 +94,7 @@ jobs:
       - name: Save reports as artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: pytest-unit
+          name: run-unit-tests
           path: |
             .coverage
             .reports
@@ -129,43 +129,46 @@ jobs:
   generate-quality-report:
     runs-on: ubuntu-latest
     name: Quality report (sonarqube)
+    needs: [check-linting, run-unit-tests] # see actions/download-artifact below
     steps:
-      #- needs: [] # needs reports from previous jobs
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v3  # download reports from previous jobs
+        with:
+          name: 
+            check-linting
+      - uses: actions/download-artifact@v3
+        with:
+          name: 
+            run-unit-tests
+      - run: find .reports
+        shell: bash
       - uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           # Note: other options ?
-          #   --debug
-          #   -Dsonar.qualitygate.wait=true ? maybe handled by sonarsource/sonarqube-quality-gate-action ?
-          #   -Dsonar.branch.name=${{ github.ref_name }} # Developer Edition or above is required
-          
-          #-Dsonar.projectName=test-project
-          #-Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
+          # --debug
+          # -Dsonar.projectName=test-project
+          # -Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
+          # -Dsonar.python.bandit.reportPaths="vulnerability.json"
           args: >
             -Dsonar.projectKey=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
-            -Dsonar.branch.name=${{ github.ref_name }} # Developer Edition or above is required
+            -Dsonar.branch.name=${{ github.ref_name }}
+            -Dsonar.projectBaseDir=.
+            -Dsonar.sources=${{ env.SOURCES }}
+            -Dsonar.tests=${{ env.TESTS }}
+            -Dsonar.exclusions=
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.language=py
+            -Dsonar.python.version=3.11  
+            -Dsonar.python.flake8.reportPaths=".reports/flake8.txt"
+            -Dsonar.python.xunit.reportPath=".reports/TEST-*.xml"
+            -Dsonar.python.coverage.reportPaths=".reports/coverage.xml"
       # If you wish to fail your job when the Quality Gate is red, uncomment the
       # following lines. This would typically be used to fail a deployment.
       - uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        continue-on-error: true # but still run next jobs
-  
-
-
-        # -Dsonar.projectBaseDir=.
-        # -Dsonar.sources=${SOURCES}
-        # -Dsonar.tests=${TESTS}
-        # -Dsonar.exclusions=
-        # -Dsonar.sourceEncoding=UTF-8
-        # -Dsonar.language=py
-        # -Dsonar.python.version=3.11
-
-
-        # -Dsonar.python.flake8.reportPaths="linter.txt"
-        # -Dsonar.python.bandit.reportPaths="vulnerability.json"
-        # -Dsonar.python.xunit.reportPath="${REPORTS}/TEST-*.xml"
-        # -Dsonar.python.coverage.reportPaths="${REPORTS}/coverage.xml"    
+        continue-on-error: true # 'true' to ignore red Quality Gate, 'false' to fail the workflow
