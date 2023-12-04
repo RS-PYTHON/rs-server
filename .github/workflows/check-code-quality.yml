@@ -140,10 +140,11 @@ jobs:
           #   --debug
           #   -Dsonar.qualitygate.wait=true ? maybe handled by sonarsource/sonarqube-quality-gate-action ?
           #   -Dsonar.branch.name=${{ github.ref_name }} # Developer Edition or above is required
+          
+          #-Dsonar.projectName=test-project
+          #-Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
           args: >
-            -Dsonar.projectKey=test-project
-            -Dsonar.projectName=test-project
-            -Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
+            -Dsonar.projectKey=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
       # If you wish to fail your job when the Quality Gate is red, uncomment the
       # following lines. This would typically be used to fail a deployment.
       - uses: sonarsource/sonarqube-quality-gate-action@master
