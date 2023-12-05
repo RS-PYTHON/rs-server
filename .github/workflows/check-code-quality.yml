@@ -3,6 +3,7 @@ name: Check code quality
 # TODO determine when we launch CI automatically
 # TODO handle CI on an orphan branch ?
 # TODO don't fail on error
+
 on:
   push:
     # branches:
@@ -170,6 +171,7 @@ jobs:
     name: Quality report (sonarqube)
     needs: [check-linting, check-security, run-unit-tests] # see actions/download-artifact below
     if: always() # generate quality reports even if previous jobs failed
+    permissions: write-all # let phwt/sonarqube-quality-gate-action write a pull request comment
     steps:
       - uses: actions/checkout@v4
       - name: Download linting reports
