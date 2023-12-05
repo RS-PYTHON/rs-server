@@ -1168,7 +1168,7 @@ When the implementation is completed, the state becomes "IMPLEMENTED".</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The continuous integration is made with github actions.<br>
+<p>The continuous integration is implemented with github actions.<br>
 Several workflows are used :</p>
 </div>
 <div class="ulist">
@@ -1187,13 +1187,13 @@ Several workflows are used :</p>
 <div class="paragraph">
 <p>This workflow is responsible the compliance with code style.<br>
 It verifies that :<br>
-* the code is well formatted (with black)<br>
-* the code is well linted (with ruff)<br>
+* the code is well formatted (with black and isort)<br>
+* the code is well linted (with ruff and flake8)<br>
 * the typing is correct (with mypy)<br>
-* there is no common vulnerability (with trivy)<br>
-* there is no license issue (with trivy)<br>
-* the unit tests runs succesfully (with pytest)<br>
-* the integration tests runs succesfully (with pytest)</p>
+* there is no common vulnerability (with bandit and safety)<br>
+* there is no license issue (with safety)<br>
+* the unit tests run succesfully (with pytest)<br>
+* the integration tests run succesfully (with pytest)</p>
 </div>
 <div class="paragraph">
 <p>It also generates and publish a sonarqube report on code quality.</p>
@@ -1257,7 +1257,7 @@ It will be updated in the future.<br>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-12-05 15:20:38 UTC
+Last updated 2023-12-05 15:44:59 UTC
 </div>
 </div>
 </body>
