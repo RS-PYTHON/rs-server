@@ -16,6 +16,7 @@ on:
 env:
   SOURCES: src
   TESTS: tests
+  SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
 jobs:
 
@@ -186,6 +187,7 @@ jobs:
         with:
           name: 
             run-unit-tests
+
       - name: Run sonarqube
         uses: sonarsource/sonarqube-scan-action@master
         env:
@@ -197,7 +199,7 @@ jobs:
           # -Dsonar.projectName=test-project
           # -Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
           args: >
-            -Dsonar.projectKey=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.projectBaseDir=.
             -Dsonar.sources=${{ env.SOURCES }}
@@ -210,9 +212,26 @@ jobs:
             -Dsonar.python.bandit.reportPaths=".reports/bandit.json"
             -Dsonar.python.xunit.reportPath=".reports/TEST-*.xml"
             -Dsonar.python.coverage.reportPaths=".reports/coverage.xml"
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      - name: Check sonarqube quality gate
+
+      - name: Wait for quality gate result
+        run: sleep 5
+
+      - name: Report quality gate result in the pull request comment
+        uses: phwt/sonarqube-quality-gate-action@v1
+        id: quality-gate-result
+        with:
+          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
+
+      - name: Output result
+        run: |
+          echo "${{ steps.quality-gate-result.outputs.project-status }}"
+          echo "${{ steps.quality-gate-result.outputs.quality-gate-result }}"
+
+      - name: Check quality gate status
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
