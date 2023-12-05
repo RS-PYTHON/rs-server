@@ -11,7 +11,11 @@ readme = "README.adoc"
 
 packages = [
     { include = "src" },
+    { include = "services/common/rs_server_common" },
+    { include = "services/cadip/rs_server_cadip" },
     { include = "tests", format = "sdist" },
+    { include = "services/common/tests", format = "sdist" },
+    { include = "services/cadip/tests", format = "sdist" },
 ]
 
 [tool.poetry.dependencies]

@@ -7,5 +7,5 @@ runs:
       uses: ./.github/actions/setup-environment
 
     - name: run-mypy
-      run: poetry run mypy .
+      run: poetry run mypy --explicit-package-bases .
       shell: bash
