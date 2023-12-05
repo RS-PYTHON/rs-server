@@ -1,0 +1,3 @@
+exclude_dirs:
+  - "tests/*.py"
+#skips: ['B314', 'B405', 'B320', 'B410']
