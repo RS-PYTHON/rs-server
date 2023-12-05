@@ -1,9 +1,5 @@
 name: Check code quality
 
-# TODO determine when we launch CI automatically
-# TODO handle CI on an orphan branch ?
-# TODO don't fail on error
-
 on:
   push:
     # branches:
