@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 
 env:
+  PYTHON_VERSION: 3.11
   SOURCES: src
   TESTS: tests
   SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
@@ -205,7 +206,7 @@ jobs:
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
-            -Dsonar.python.version=3.11  
+            -Dsonar.python.version=${{ env.PYTHON_VERSION }}
             -Dsonar.python.flake8.reportPaths=".reports/flake8.txt"
             -Dsonar.python.bandit.reportPaths=".reports/bandit.json"
             -Dsonar.python.xunit.reportPath=".reports/TEST-*.xml"
@@ -234,4 +235,27 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        #continue-on-error: true # note: the CI will still run, we will resolve issues later
+        continue-on-error: true # note: the CI will still run, we will resolve issues later
+        
+  build-publish:
+    runs-on: ubuntu-latest
+    # TODO: to be confirmed, only for new tags. 
+    # The version value in the .toml files should have change too so the .whl filenames are unique 
+    # and won't override a previously publised package.
+    # TODO: How to handle sub-projects ?
+    if: github.ref_type == 'tag' 
+    name: Build and publish .whl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JRubics/poetry-publish@v1.17
+        with:
+          python_version: ${{ env.PYTHON_VERSION }}
+          build_format: wheel # default is wheel and sdist
+          # TODO: one package by sub-project ?
+          package_directory: "subdirectory"
+          # TODO: use the good values
+          repository_name: "foo"
+          repository_url: "https://foo.bar/simple/"
+          repository_username: "username"
+          repository_password: "password"
+        continue-on-error: false # TODO: set to false when we have the good repository values
