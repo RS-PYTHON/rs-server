@@ -21,13 +21,17 @@ jobs:
 
   check-format:
     runs-on: ubuntu-latest
-    name: Check format (black)
+    name: Check format (black, isort)
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/install-python
       - uses: psf/black@stable
         with:
           options: --check --verbose
+      - uses: isort/isort-action@v1
+        with:
+          sort-paths: ${{ env.SOURCES }} ${{ env.TESTS }}
+          configuration: --check-only --diff
 
   check-linting:
     runs-on: ubuntu-latest
