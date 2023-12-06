@@ -1,63 +1,261 @@
 name: Check code quality
 
-# TODO determine when we launch CI automatically
-# TODO handle CI on an orphan branch ?
-# TODO externalize python version as env variable
-# TODO don't fail on error
 on:
   push:
-    branches:
-      - 'feat**'
+    # branches:
+    #   - 'feat**'
 
   pull_request:
     types: [opened, synchronize, reopened]
 
   workflow_dispatch:
 
+env:
+  PYTHON_VERSION: 3.11
+  SOURCES: src
+  TESTS: tests
+  SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
+
 jobs:
 
   check-format:
     runs-on: ubuntu-latest
+    name: Check format (black, isort)
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/check-format
+      - uses: actions/checkout@v4
+      - name: Run black
+        uses: psf/black@stable
+        with:
+          options: --check --verbose
+      - name: Run isort
+        uses: isort/isort-action@v1
+        with:
+          sort-paths: ${{ env.SOURCES }} ${{ env.TESTS }}
+          configuration: --check-only --diff
 
-  check-lint:
+  check-linting:
     runs-on: ubuntu-latest
+    name: Check linting (ruff, flake8)
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/check-lint
+      - uses: actions/checkout@v4      
+
+      # Used by pre-commit
+      - name: Run ruff
+        uses: chartboost/ruff-action@v1
+        with: 
+          src: ${{ env.SOURCES }} ${{ env.TESTS }}
+          args: --output-format=github
+
+      # Used by sonarqube. See the .flake8 file for configuration.
+      - name: Run flake8
+        uses: py-actions/flake8@v2
+        with:
+          path: ${{ env.SOURCES }} ${{ env.TESTS }}
+          args: --output-file .reports/flake8.txt
+
+      - name: Save reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: check-linting
+          path: | # add a random file (.gitignore) so .reports/ is saved as a dir
+            .reports
+            .gitignore
+          retention-days: 1
 
   check-typing:
     runs-on: ubuntu-latest
+    name: Check typing (mypy)
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/check-typing
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+      - name: Run mypy
+        run: poetry run mypy --explicit-package-bases ${SOURCES} ${TESTS}
+        shell: bash
 
-# TODO add when writen
-#  check-vulnerabilities:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v3
-#      - uses: ./.github/actions/check-security
+  check-security:
+    runs-on: ubuntu-latest
+    name: Check security (bandit, safety)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+
+      - name: Run bandit
+        run: |
+            set -x && mkdir -p .reports && \
+            poetry run bandit -c bandit.yml -r ${SOURCES} -f json -o .reports/bandit.json
+        shell: bash
+        continue-on-error: true # note: the CI will still run, we will resolve issues later
+
+      - name: Run safety
+        run: poetry run safety check --full-report
+        shell: bash
+
+      - name: Save reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: check-security
+          path: | # add a random file (.gitignore) so .reports/ is saved as a dir
+            .reports
+            .gitignore
+          retention-days: 1
+      # TODO: use trivy ?
+      # - uses: aquasecurity/trivy-action@master
+      #   with:
+      #     scan-type: 'fs'
+      #     scan-ref: '.'
 
   run-unit-tests:
     runs-on: ubuntu-latest
+    name: Run unit tests (pytest)
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/run-unit-tests
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
 
+      - name: Run unit tests
+        run: |
+          set -x && poetry run pytest ${TESTS} \
+            -m unit \
+            --durations=0 \
+            --error-for-skips \
+            --cov=${SOURCES} \
+            --cov-report=term \
+            --cov-report=xml:.reports/coverage.xml \
+            --junit-xml=.reports/TEST-pytests.xml \
+        shell: bash
+
+      - name: Display code coverage summary in this console
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
+          filename: .reports/coverage.xml
+
+      - name: Save reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: run-unit-tests
+          path: |
+            .coverage
+            .reports
+          retention-days: 1
+
+  # TODO: what the integration tests should be, what is the difference from the unit tests ?
+  # Should they be scheduled or run only when merging to the develop or main branch ?
+  # Note that in the code below, the integration tests will not be counted for the code coverage in sonarqube.
   run-integration-tests:
     runs-on: ubuntu-latest
+    name: Run integration tests (pytest)
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/run-integration-tests
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
 
-# TODO add when writen
-#  - sonar project configuration
-#  - export previous elements as reports for sonar
-#  generate-quality-report:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v3
-#      - uses: ./.github/actions/generate-quality-report
+      - name: Run integration tests
+        run: |
+          set -x && poetry run pytest ${TESTS} \
+            -m integration \
+            --durations=0 \
+            --error-for-skips \
+            --cov=${SOURCES} \
+            --cov-report=term \
+            --cov-report=xml:.reports/coverage-integration.xml \
+        shell: bash
+
+      - name: Display code coverage summary in this console
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: .reports/coverage-integration.xml
+
+  generate-quality-report:
+    runs-on: ubuntu-latest
+    name: Quality report (sonarqube)
+    needs: [check-linting, check-security, run-unit-tests] # see actions/download-artifact below
+    if: always() # generate quality reports even if previous jobs failed
+    permissions: write-all # let phwt/sonarqube-quality-gate-action write a pull request comment
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download linting reports
+        uses: actions/download-artifact@v3
+        with:
+          name: 
+            check-linting
+      - name: Download vulnerability reports
+        uses: actions/download-artifact@v3
+        with:
+          name: 
+            check-security
+      - name: Download unit test reports
+        uses: actions/download-artifact@v3
+        with:
+          name: 
+            run-unit-tests
+
+      - name: Run sonarqube
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          # Note: other options ?
+          # --debug
+          # -Dsonar.projectName=test-project
+          # -Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
+          args: >
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.branch.name=${{ github.ref_name }}
+            -Dsonar.projectBaseDir=.
+            -Dsonar.sources=${{ env.SOURCES }}
+            -Dsonar.tests=${{ env.TESTS }}
+            -Dsonar.exclusions=
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.language=py
+            -Dsonar.python.version=${{ env.PYTHON_VERSION }}
+            -Dsonar.python.flake8.reportPaths=".reports/flake8.txt"
+            -Dsonar.python.bandit.reportPaths=".reports/bandit.json"
+            -Dsonar.python.xunit.reportPath=".reports/TEST-*.xml"
+            -Dsonar.python.coverage.reportPaths=".reports/coverage.xml"
+
+      - name: Wait for quality gate result
+        run: sleep 5
+
+      - name: Report quality gate result in the pull request comment
+        uses: phwt/sonarqube-quality-gate-action@v1
+        id: quality-gate-result
+        with:
+          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
+
+      - name: Output result
+        run: |
+          echo "${{ steps.quality-gate-result.outputs.project-status }}"
+          echo "${{ steps.quality-gate-result.outputs.quality-gate-result }}"
+
+      - name: Check quality gate status
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        continue-on-error: true # note: the CI will still run, we will resolve issues later
+        
+  build-publish:
+    runs-on: ubuntu-latest
+    # TODO: to be confirmed, only for new tags. 
+    # The version value in the .toml files should have change too so the .whl filenames are unique 
+    # and won't override a previously publised package.
+    # TODO: How to handle sub-projects ?
+    if: github.ref_type == 'tag' 
+    name: Build and publish .whl
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JRubics/poetry-publish@v1.17
+        with:
+          python_version: ${{ env.PYTHON_VERSION }}
+          build_format: wheel # default is wheel and sdist
+          # TODO: one package by sub-project ?
+          package_directory: "subdirectory"
+          # TODO: use the good values
+          repository_name: "foo"
+          repository_url: "https://foo.bar/simple/"
+          repository_username: "username"
+          repository_password: "password"
+        continue-on-error: false # TODO: set to false when we have the good repository values
