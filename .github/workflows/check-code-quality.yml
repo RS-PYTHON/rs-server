@@ -239,23 +239,52 @@ jobs:
         
   build-publish:
     runs-on: ubuntu-latest
+    name: Build and publish .whl
     # TODO: to be confirmed, only for new tags. 
     # The version value in the .toml files should have change too so the .whl filenames are unique 
     # and won't override a previously publised package.
     # TODO: How to handle sub-projects ?
-    if: github.ref_type == 'tag' 
-    name: Build and publish .whl
+    # if: github.ref_type == 'tag'
+
+    # Only if these previous jobs succeeded.
+    # TODO: to be discussed
+    needs: [check-format, check-linting, check-typing, run-unit-tests, run-integration-tests, generate-quality-report]
+
     steps:
       - uses: actions/checkout@v4
+
+      # TODO: one package by sub-project ? This is the root project
       - uses: JRubics/poetry-publish@v1.17
         with:
           python_version: ${{ env.PYTHON_VERSION }}
           build_format: wheel # default is wheel and sdist
-          # TODO: one package by sub-project ?
-          package_directory: "subdirectory"
           # TODO: use the good values
-          repository_name: "foo"
-          repository_url: "https://foo.bar/simple/"
-          repository_username: "username"
-          repository_password: "password"
-        continue-on-error: false # TODO: set to false when we have the good repository values
+          repository_name: foo
+          repository_url: https://foo.bar/simple/
+          repository_username: username
+          repository_password: password
+        continue-on-error: true # TODO: set to false when we have the good repository values
+        
+      # TODO: 1st sub-project
+      - uses: JRubics/poetry-publish@v1.17
+        with:
+          python_version: ${{ env.PYTHON_VERSION }}
+          build_format: wheel
+          package_directory: services/cadip
+          repository_name: foo
+          repository_url: https://foo.bar/simple/
+          repository_username: username
+          repository_password: password
+        continue-on-error: true
+        
+      # TODO: 2nd sub-project
+      - uses: JRubics/poetry-publish@v1.17
+        with:
+          python_version: ${{ env.PYTHON_VERSION }}
+          build_format: wheel
+          package_directory: services/cadip
+          repository_name: foo
+          repository_url: https://foo.bar/simple/
+          repository_username: username
+          repository_password: password
+        continue-on-error: true
