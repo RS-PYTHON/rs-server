@@ -1,0 +1,42 @@
+name: Publish wheels and Docker images
+
+# TODO: is it possible to run this workflow only if the check-code-quality workflow has completed successfully ?
+# I've tried workflow_run but see: 
+# https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
+# Note: This event will only trigger a workflow run if the workflow file is on the default branch.
+
+# Run workflow only for new git tags including hierarchical tags like v1.0/beta
+on:
+  push:
+    tags:
+      - '**'
+
+env:
+  PYTHON_VERSION: 3.11
+
+jobs:
+
+  rs-server-whl:
+    runs-on: ubuntu-latest
+    name: "'rs-server' wheel"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/publish-wheel
+
+  services-cadip-whl:
+    runs-on: ubuntu-latest
+    name: "'services/cadip' wheel"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/cadip
+
+  services-common-whl:
+    runs-on: ubuntu-latest
+    name: "'services/common' wheel"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/common

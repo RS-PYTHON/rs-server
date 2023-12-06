@@ -2,12 +2,8 @@ name: Check code quality
 
 on:
   push:
-    # branches:
-    #   - 'feat**'
-
   pull_request:
     types: [opened, synchronize, reopened]
-
   workflow_dispatch:
 
 env:
@@ -84,7 +80,8 @@ jobs:
             set -x && mkdir -p .reports && \
             poetry run bandit -c bandit.yml -r ${SOURCES} -f json -o .reports/bandit.json
         shell: bash
-        continue-on-error: true # note: the CI will still run, we will resolve issues later
+        # Run sonarqube even if bandit finds security issues. We will resolve them later.
+        continue-on-error: true
 
       - name: Run safety
         run: poetry run safety check --full-report
@@ -235,56 +232,6 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        continue-on-error: true # note: the CI will still run, we will resolve issues later
-        
-  build-publish:
-    runs-on: ubuntu-latest
-    name: Build and publish .whl
-    # TODO: to be confirmed, only for new tags. 
-    # The version value in the .toml files should have change too so the .whl filenames are unique 
-    # and won't override a previously publised package.
-    # TODO: How to handle sub-projects ?
-    # if: github.ref_type == 'tag'
-
-    # Only if these previous jobs succeeded.
-    # TODO: to be discussed
-    needs: [check-format, check-linting, check-typing, run-unit-tests, run-integration-tests, generate-quality-report]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # TODO: one package by sub-project ? This is the root project
-      - uses: JRubics/poetry-publish@v1.17
-        with:
-          python_version: ${{ env.PYTHON_VERSION }}
-          build_format: wheel # default is wheel and sdist
-          # TODO: use the good values
-          repository_name: foo
-          repository_url: https://foo.bar/simple/
-          repository_username: username
-          repository_password: password
-        continue-on-error: true # TODO: set to false when we have the good repository values
-        
-      # TODO: 1st sub-project
-      - uses: JRubics/poetry-publish@v1.17
-        with:
-          python_version: ${{ env.PYTHON_VERSION }}
-          build_format: wheel
-          package_directory: services/cadip
-          repository_name: foo
-          repository_url: https://foo.bar/simple/
-          repository_username: username
-          repository_password: password
-        continue-on-error: true
-        
-      # TODO: 2nd sub-project
-      - uses: JRubics/poetry-publish@v1.17
-        with:
-          python_version: ${{ env.PYTHON_VERSION }}
-          build_format: wheel
-          package_directory: services/cadip
-          repository_name: foo
-          repository_url: https://foo.bar/simple/
-          repository_username: username
-          repository_password: password
+        # Mark the step as OK even if the sonarqube quality gate doesn't pass. 
+        # We will resolve these issues later.
         continue-on-error: true

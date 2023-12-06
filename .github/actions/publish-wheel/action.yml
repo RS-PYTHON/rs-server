@@ -1,0 +1,37 @@
+name: publish
+description: Publish wheel
+
+inputs:
+  package_directory:
+    description: An optional subdirectory path if poetry package doesn't reside in the main workflow directory
+    required: false
+    default: .
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Build and publish wheel package
+      uses: JRubics/poetry-publish@v1.17
+      with:
+        python_version: ${{ env.PYTHON_VERSION }}
+        build_format: wheel # default is wheel and sdist
+        package_directory: ${{ inputs.package_directory }}
+        # TODO: use the good values
+        repository_name: foo
+        repository_url: https://foo.bar/simple/
+        repository_username: username
+        repository_password: password
+      continue-on-error: true # TODO: set to false. For now, use true to save wheel as artifact in the next step.
+
+    # Note: the wheel file is built in package_directory/dist 
+    - name: Find wheel filename
+      id: vars
+      run: echo package_name=$(basename ${{ inputs.package_directory }}/dist/*.whl) >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Save wheel package as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ steps.vars.outputs.package_name }}
+        path: ${{ inputs.package_directory }}/dist/${{ steps.vars.outputs.package_name }}
