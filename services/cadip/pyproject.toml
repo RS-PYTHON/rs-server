@@ -1,10 +1,10 @@
 [project]
 name = "rs-server-common"
-version = "0.1.0"
+version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server-cadip"
-version = "0.1.0"
+version = "0.0.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
 
@@ -54,6 +54,9 @@ warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
 
+[tool.poetry-dynamic-versioning]
+enable = true
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"

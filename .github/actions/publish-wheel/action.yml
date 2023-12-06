@@ -12,9 +12,11 @@ runs:
   steps:
 
     - name: Build and publish wheel package
-      uses: JRubics/poetry-publish@v1.17
+      # note: v1.17 fails with 'Detected Git repository, but failed because of dubious ownership'
+      uses: JRubics/poetry-publish@v1.16
       with:
         python_version: ${{ env.PYTHON_VERSION }}
+        plugins: poetry-dynamic-versioning[plugin]
         build_format: wheel # default is wheel and sdist
         package_directory: ${{ inputs.package_directory }}
         # TODO: use the good values
