@@ -1,5 +1,5 @@
 [project]
-name = "rs-server-common"
+name = "rs-server-cadip"
 version = "0.1.0"
 
 [tool.poetry]
@@ -15,6 +15,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
+rs-server-common = {path = "../common", develop = true}
 
 [tool.poetry.group.dev]
 optional = true
