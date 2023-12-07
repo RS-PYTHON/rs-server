@@ -73,7 +73,7 @@ jobs:
 
   check-security:
     runs-on: ubuntu-latest
-    name: Check security (bandit, safety)
+    name: Check security (bandit)
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
@@ -84,12 +84,6 @@ jobs:
             poetry run bandit -c bandit.yml -r ${SOURCES} -f json -o .reports/bandit.json
         shell: bash
          # note: the CI will still run, the issue is reported in sonarqube, we will resolve it later
-        continue-on-error: true
-
-      - name: Run safety
-        run: poetry run safety check --full-report
-        shell: bash
-        # note: the CI will still run, we will resolve it later
         continue-on-error: true
 
       - name: Save reports
@@ -105,6 +99,19 @@ jobs:
       #   with:
       #     scan-type: 'fs'
       #     scan-ref: '.'
+
+  check-deps-security:
+    runs-on: ubuntu-latest
+    name: Check dependencies security (safety)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+
+      - name: Run safety
+        run: poetry run safety check --full-report
+        shell: bash
+        # note: the CI will still run, we will resolve it later
+        continue-on-error: true
 
   run-unit-tests:
     runs-on: ubuntu-latest
