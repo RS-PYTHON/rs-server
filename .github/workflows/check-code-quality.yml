@@ -71,17 +71,26 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit)
+    permissions: write-all # write pull request comments
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
 
-      - name: Run bandit
+      - id: bandit
+        name: Run bandit
         run: |
             set -x && mkdir -p .reports && \
             poetry run bandit -c bandit.yml -r ${SOURCES} -f json -o .reports/bandit.json
         shell: bash
          # note: the CI will still run, the issues are reported in sonarqube, we will resolve them later
         continue-on-error: true
+
+      - name: Add pull request comment if bandit failed
+        uses: mainmatter/continue-on-error-comment@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          outcome: ${{ steps.bandit.outcome }}
+          test-id: "'bandit' failed"
 
       - name: Save reports
         uses: actions/upload-artifact@v3
@@ -100,15 +109,24 @@ jobs:
   check-deps-security:
     runs-on: ubuntu-latest
     name: Check dependencies security (safety)
+    permissions: write-all # write pull request comments
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
 
-      - name: Run safety
+      - id: safety
+        name: Run safety
         run: poetry run safety check --full-report
         shell: bash
         # note: the CI will still run, we will resolve issues later
         continue-on-error: true
+
+      - name: Add pull request comment if safety failed
+        uses: mainmatter/continue-on-error-comment@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          outcome: ${{ steps.safety.outcome }}
+          test-id: "'safety' failed"
 
   run-unit-tests:
     runs-on: ubuntu-latest
@@ -174,7 +192,7 @@ jobs:
     name: Quality report (sonarqube)
     needs: [check-linting, check-security, run-unit-tests] # see actions/download-artifact below
     if: always() # generate quality reports even if previous jobs failed
-    permissions: write-all # let phwt/sonarqube-quality-gate-action write a pull request comment
+    permissions: write-all # write pull request comments
     steps:
       - uses: actions/checkout@v4
       - name: Download linting reports
@@ -236,7 +254,8 @@ jobs:
           echo "${{ steps.quality-gate-result.outputs.project-status }}"
           echo "${{ steps.quality-gate-result.outputs.quality-gate-result }}"
 
-      - name: Check quality gate status
+      - id: check-gate
+        name: Check quality gate status
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
@@ -244,3 +263,10 @@ jobs:
         # Mark the step as OK even if the sonarqube quality gate doesn't pass. 
         # We will resolve these issues later.
         continue-on-error: true
+
+      - name: Add pull request comment if quality gate failed
+        uses: mainmatter/continue-on-error-comment@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          outcome: ${{ steps.check-gate.outcome }}
+          test-id: Red sonarqube quality gate
