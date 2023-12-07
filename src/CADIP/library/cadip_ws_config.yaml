@@ -48,7 +48,7 @@ CADIP:
       max_items_per_page: 20
       # TODO this isn't the true pagination mechanism of CADIP
       total_items_nb_key_path: '$.total'
-    
+
   download:
     type: HTTPDownload
     base_uri: 'https://127.0.0.1:5000/Files'
