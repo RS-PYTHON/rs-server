@@ -16,7 +16,6 @@ repos:
     rev: 23.10.1
     hooks:
     -   id: black
-        args: ['--line-length', '120']
 
 # Lint with auto-fix (with ruff)
 -   repo: https://github.com/astral-sh/ruff-pre-commit
@@ -30,7 +29,17 @@ repos:
     rev: 'v1.6.1'  # Use the sha / tag you want to point at
     hooks:
     -   id: mypy
-        args: [
-            "--config-file=.mypy.ini",
-            --ignore-missing-imports
-        ]
+        additional_dependencies:
+          - types-requests==2.31.0
+
+# Security and license checks on python (with trivi)
+#-   repo: https://github.com/mxab/pre-commit-trivy.git
+#    rev: v0.9.0
+#    hooks:
+#    -   id: trivyfs-docker
+#        args:
+#            - --scanners
+#            - vuln,secret,license
+#            - --skip-dirs
+#            - ./tests
+#            - . # last arg indicates the path/file to scan

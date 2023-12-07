@@ -1,0 +1,5 @@
+= Features
+
+NOTE: The rs-server main functionalities will be described here
+
+// TODO Main functionalities presentation

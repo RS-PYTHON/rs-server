@@ -1,0 +1,14 @@
+name: check-format
+description: "Check python code format"
+runs:
+  using: "composite"
+  steps:
+    - name: Install Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Run black
+      uses: psf/black@stable
+      with:
+        options: "--check --verbose"

@@ -1,0 +1,11 @@
+name: generate-quality-report
+description: "Generate and publish a quality report"
+runs:
+  using: "composite"
+  steps:
+    - name: SonarQube Scan
+      uses: kitabisa/sonarqube-action@v1.2.0
+      with:
+        host: ${{ secrets.SONARQUBE_HOST }}
+        login: ${{ secrets.SONARQUBE_TOKEN }}
+        #password: ""

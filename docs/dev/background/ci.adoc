@@ -1,0 +1,35 @@
+= Continuous integration workflows
+
+The continuous integration is made with github actions.
+Several workflows are used :
+
+* check quality code
+* generate documentation
+
+== check quality code workflow
+
+This workflow is responsible the compliance with code style.
+It verifies that :
+* the code is well formatted (with black)
+* the code is well linted (with ruff)
+* the typing is correct (with mypy)
+* there is no common vulnerability (with trivy)
+* there is no license issue (with trivy)
+* the unit tests runs succesfully (with pytest)
+* the integration tests runs succesfully (with pytest)
+
+It also generates and publish a sonarqube report on code quality.
+
+== generate documentation workflow
+
+This workflow build the documentation using the following command :
+[,yml]
+----
+include::../../../.github/workflows/generate-documentation.yml[tag=adoc-cmd]
+----
+
+and then publish the results to the 'gh-pages' branch.
+The 'gh-pages' is the source branch of the https://rs-python.github.io/rs-server/[github page].
+
+This workflow is configured to be executed at each developer commit for demo puprose.
+It will be updated in the future.
