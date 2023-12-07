@@ -45,8 +45,9 @@ safety = "^2.3.5"
 # init should be empty, doesn't need any docstrings
 "__init__.py" = ["D104"]
 
-[tool.poetry-dynamic-versioning]
+[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
+tagged-metadata = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]

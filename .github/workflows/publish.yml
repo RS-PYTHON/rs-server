@@ -5,11 +5,12 @@ name: Publish wheels and Docker images
 # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
 # Note: This event will only trigger a workflow run if the workflow file is on the default branch.
 
-# Run workflow only for new git tags including hierarchical tags like v1.0/beta
+# Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
   push:
     tags:
       - '**'
+  workflow_dispatch: 
 
 env:
   PYTHON_VERSION: 3.11

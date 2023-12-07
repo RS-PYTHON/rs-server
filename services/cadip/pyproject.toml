@@ -54,8 +54,9 @@ warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
 
-[tool.poetry-dynamic-versioning]
+[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
+tagged-metadata = true
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
