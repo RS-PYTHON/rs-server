@@ -1,6 +1,4 @@
-
-= Install your development environment.
-:hardbreaks:
+= Install your environment
 
 == Pre requises
 

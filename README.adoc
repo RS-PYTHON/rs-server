@@ -1,26 +1,83 @@
 = rs-server
 
+// Note: links to branch 'develop'
+image::https://sonarqube.ops-csc.com/api/project_badges/measure?branch=develop&project=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&metric=alert_status&token=sqb_c9241ef82ea91a8e9a9b604570f834f622dfed05[Quality Gate Status,link="https://sonarqube.ops-csc.com/dashboard?id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&branch=develop"]
+
 This repository contains all the python libraries allowing to build Copernicus processing chains.
 
+== Use the rs-server
 
-== Installing / Getting started
-
+:leveloffset: +2
 include::docs/users/installation.adoc[]
+include::docs/users/functionalities.adoc[]
+include::docs/users/configuration.adoc[]
+:leveloffset: -2
 
-== Features
+== Develop the rs-server
 
-// TODO main functionalities summary
-// Extract to specific page and include here
+All you want to know when you are a rs-server developer.
 
-== Configuration
+The documentation is organized in 4 sections :
 
-// TODO how to configure the software
-// Extract to specific page and include here
+* <<_getting_started>> provides tutorials helping you start coding on rs-server.
+* <<_how_to_guides>> are practical procedures for developer
+* <<_reference_guides>> give you technical information about the code and software API
+* <<_additional_information>> provides background information, design,...
 
-== Developing
+=== Getting started
 
-// Start include at line 2 to remove the main title
-include::docs/dev/dev-manual.adoc[lines=2..-1]
+:leveloffset: 3
+
+include::docs/dev/environment/installation.adoc[]
+
+:leveloffset: 0
+
+==== The next steps
+
+The <<_development_environment_description>> can provide you with more details about the environment.
+The <<_project_tree_structure>> explains how the project is organized.
+The <<_team_workflow>> describes the workflow followed by developers to implement stories.
+You may also want to read the <<_coding_style>>.
+
+=== How-to guides
+
+NOTE: This section will include the awesome and useful procedures of the dev team
+
+=== Reference guides
+
+NOTE: Some other reference guides will be added (api, specific guidelines,...)
+
+:leveloffset: 3
+
+include::docs/dev/code-style.adoc[]
+
+:leveloffset: 0
+
+=== Additional information
+
+:leveloffset: 3
+
+include::docs/dev/background/tree-structure.adoc[]
+
+:leveloffset: 0
+
+:leveloffset: 3
+
+include::docs/dev/environment/description.adoc[]
+
+:leveloffset: 0
+
+==== Software environment description
+
+NOTE: A description of the software stack and the rationales will be added here.
+
+:leveloffset: 3
+
+include::docs/dev/background/workflow.adoc[]
+include::docs/dev/background/ci.adoc[]
+include::docs/dev/design/design.adoc[]
+
+:leveloffset: 0
 
 == Links
 

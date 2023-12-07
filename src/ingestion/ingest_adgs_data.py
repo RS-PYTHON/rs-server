@@ -128,7 +128,7 @@ def execute_adgs_ingestion(ingestion_file, **kwargs):  # noqa: N802
     if not login(execution_unit):
         raise ValueError("Incorrect credentials")
     # Querry files catalog
-    execution_unit = querry_files(execution_unit, wait_for=init_ingestion)
+    execution_unit = querry_files(execution_unit, wait_for=init_ingestion)  # type: ignore
     # download
     if "responses" in execution_unit.filesQuerry:
         for response in execution_unit.filesQuerry["responses"]:

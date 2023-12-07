@@ -1,8 +1,10 @@
-import json  # noqa: D100
+"""FIXME add a module description here."""
+
+import json
 import os
 
 import dask
-import requests  # type: ignore
+import requests
 from prefect import flow, get_run_logger, task
 from prefect_dask import DaskTaskRunner
 from requests.exceptions import ConnectionError
@@ -74,7 +76,7 @@ def download_file(execution_unit, response=None):
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
     os.makedirs(execution_unit.OutputPath, exist_ok=True)
-    with execution_unit.cadip_session.get(end_route, stream=True) as req:
+    with execution_unit.session.get(end_route, stream=True) as req:
         req.raise_for_status()
         with open(filename, "wb") as outfile:
             for chunk in req.iter_content(chunk_size=8192):
@@ -93,7 +95,7 @@ def download_file_http(execution_unit, response=None):
     # data = requests.get(endRoute) #, auth=(executionUnit.user, executionUnit.password))
     filename = f"{execution_unit.OutputPath}/{file_name}"
     os.makedirs(execution_unit.OutputPath, exist_ok=True)
-    with execution_unit.cadip_session.get(end_route, stream=True) as req:
+    with execution_unit.session.get(end_route, stream=True) as req:
         req.raise_for_status()
         with open(filename, "wb") as outfile:
             for chunk in req.iter_content(chunk_size=8192):
@@ -155,7 +157,7 @@ def dummy_task(**kwargs):
     print("Dummy")
 
 
-@flow(task_runner=DaskTaskRunner(), on_completion=[dummy_task])
+@flow(task_runner=DaskTaskRunner(), on_completion=[dummy_task])  # type: ignore
 def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     """Docstring to be added."""
     # Recover flow parameters from json file, and create dynamic object
@@ -167,17 +169,17 @@ def execute_cadip_ingestion(ingestion_file, **kwargs):  # noqa: N802
     if not login(execution_unit):
         raise ValueError("Incorrect credentials")
     # Querry active sessions by filtering sattelite type to S1A
-    execution_unit = querry_sessions(execution_unit, wait_for=init_ingestion)  # tbd
+    execution_unit = querry_sessions(execution_unit, wait_for=init_ingestion)  # type: ignore
     # Send execution object and parameters to quarry files from cadip server
-    execution_unit = querry_files(execution_unit, wait_for=querry_sessions)
+    execution_unit = querry_files(execution_unit, wait_for=querry_sessions)  # type: ignore
     process_status = True
     # iterate available files, download and check quality info
     if "responses" in json.loads(execution_unit.filesQuerry):
         for response in json.loads(execution_unit.filesQuerry)["responses"]:
-            download_file.fn(execution_unit, response)
+            download_file_http.submit(execution_unit, response)
             # process_status = querry_quality_info.submit(execution_unit, response) or process_status
     else:
-        download_file.fn(execution_unit)
+        download_file_http(execution_unit)
         # process_status = querry_quality_info(execution_unit) or process_status
     return process_status
 

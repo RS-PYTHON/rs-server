@@ -1,6 +1,6 @@
-:hardbreaks:
+= Installing / Getting started
 
-NOTE: rs-server isn't currently installable.
+NOTE: The rs-server installation will be described here
 
 // TODO pre requises to install rs-server
 // TODO the install procedure

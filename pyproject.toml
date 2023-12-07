@@ -36,10 +36,15 @@ optional = true
 pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
 pytest-mock = "^3.12.0"
+pytest-error-for-skips = "^2.0.2"
 black = "^23.10.1"
 ruff = "^0.1.3"
 mypy = "^1.6.1"
 pre-commit = "^3.5.0"
+types-requests = "^2.31.0.10"
+flake8 = "^6.1.0"
+bandit = "^1.7.5"
+safety = "^2.3.5"
 
 [tool.ruff.lint.extend-per-file-ignores]
 # init should be empty, doesn't need any docstrings
@@ -53,9 +58,10 @@ build-backend = "poetry.core.masonry.api"
 line-length = 120
 
 [tool.pytest.ini_options]
-# This is mandatory for pytest-docker
-# to have a pytest.rootdir set to project.rootdir
-
+markers = [
+    "unit", # mark a test as unittest
+    "integration", # mark a test as integration test
+]
 
 [tool.ruff]
 line-length = 120 # is it useful if not using ruff formatter ?
@@ -70,3 +76,13 @@ line-length = 120 # is it useful if not using ruff formatter ?
 select = ["F", "E", "I", "N", "D", "PL"]
 ignore = ["D203", "D213"]
 # TODO try to replace black by ruff formatter
+
+[tool.mypy]
+warn_redundant_casts = true
+# Force analyze of partially annotate function signatures
+check_untyped_defs = true
+
+# TODO add the plugin if possible (request for example)
+[[tool.mypy.overrides]]
+module = "boto3,botocore,prefect_dask,ruamel"
+ignore_missing_imports = true

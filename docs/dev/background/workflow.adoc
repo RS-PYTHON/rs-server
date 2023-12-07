@@ -1,5 +1,4 @@
-= Development workflow
-:hardbreaks:
+= Team workflow
 
 == Git
 
