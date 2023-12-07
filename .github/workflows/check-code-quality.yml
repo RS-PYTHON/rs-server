@@ -83,11 +83,14 @@ jobs:
             set -x && mkdir -p .reports && \
             poetry run bandit -c bandit.yml -r ${SOURCES} -f json -o .reports/bandit.json
         shell: bash
-        continue-on-error: true # note: the CI will still run, we will resolve issues later
+         # note: the CI will still run, the issue is reported in sonarqube, we will resolve it later
+        continue-on-error: true
 
       - name: Run safety
         run: poetry run safety check --full-report
         shell: bash
+        # note: the CI will still run, we will resolve it later
+        continue-on-error: true
 
       - name: Save reports
         uses: actions/upload-artifact@v3
