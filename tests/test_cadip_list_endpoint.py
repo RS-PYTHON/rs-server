@@ -7,7 +7,6 @@ from src.CADIP.cadip_backend import app
 
 # TC-001 : User1 send a CURL request to a CADIP-Server on URL /cadip/{station}/cadu/list .
 # He receives the list of CADU in the interval.
-@pytest.mark.unit
 @pytest.mark.parametrize(
     "expected_chunk, expected_chunk_id, expected_chunk_name",
     [
