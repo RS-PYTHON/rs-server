@@ -1,0 +1,13 @@
+name: Test workflow_dispatch in check-code-quality.yml
+
+on:
+  workflow_dispatch:
+
+# workflow_dispatch must be set in the main branch, see: https://stackoverflow.com/a/71423764
+jobs:
+  test-workflow-dispatch-1:
+    runs-on: ubuntu-latest
+    name: Test workflow_dispatch in check-code-quality.yml
+    steps:
+      - run: echo Test workflow_dispatch in check-code-quality.yml
+        shell: bash
