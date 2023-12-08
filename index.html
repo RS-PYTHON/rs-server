@@ -478,6 +478,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="content">
 <div id="preamble">
 <div class="sectionbody">
+<div class="imageblock">
+<div class="content">
+<a class="image" href="https://sonarqube.ops-csc.com/dashboard?id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&branch=develop"><img src="https://sonarqube.ops-csc.com/api/project_badges/measure?branch=develop&project=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&metric=alert_status&token=sqb_c9241ef82ea91a8e9a9b604570f834f622dfed05" alt="Quality Gate Status"></a>
+</div>
+</div>
 <div class="paragraph">
 <p>This repository contains all the python libraries allowing to build Copernicus processing chains.</p>
 </div>
@@ -1163,7 +1168,7 @@ When the implementation is completed, the state becomes "IMPLEMENTED".</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The continuous integration is made with github actions.<br>
+<p>The continuous integration is implemented with github actions.<br>
 Several workflows are used :</p>
 </div>
 <div class="ulist">
@@ -1182,13 +1187,13 @@ Several workflows are used :</p>
 <div class="paragraph">
 <p>This workflow is responsible the compliance with code style.<br>
 It verifies that :<br>
-* the code is well formatted (with black)<br>
-* the code is well linted (with ruff)<br>
+* the code is well formatted (with black and isort)<br>
+* the code is well linted (with ruff and flake8)<br>
 * the typing is correct (with mypy)<br>
-* there is no common vulnerability (with trivy)<br>
-* there is no license issue (with trivy)<br>
-* the unit tests runs succesfully (with pytest)<br>
-* the integration tests runs succesfully (with pytest)</p>
+* there is no common vulnerability (with bandit and safety)<br>
+* there is no license issue (with safety)<br>
+* the unit tests run succesfully (with pytest)<br>
+* the integration tests run succesfully (with pytest)</p>
 </div>
 <div class="paragraph">
 <p>It also generates and publish a sonarqube report on code quality.</p>
@@ -1252,7 +1257,7 @@ It will be updated in the future.<br>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-12-08 11:35:11 UTC
+Last updated 2023-12-08 11:51:23 UTC
 </div>
 </div>
 </body>
