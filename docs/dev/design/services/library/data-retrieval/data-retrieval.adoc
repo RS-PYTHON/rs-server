@@ -6,28 +6,26 @@ It provides two main functionalities :
 * search for data in a distant site with filter criteria
 * download data from a distant site to local folder or a S3 bucket
 
-It also handles authentification on these sites.
+It also handles authentication on these sites.
 
 NOTE: TODO insert the class diagram class.mmd here
 
-A Site is an external data site that gives access data.
-It provides two functionalities : search and download data.
-It handles all the common mechanisms to search and download data from a site.
+A DataRetriever handles the retrieval of external data.
+It uses a Provider to interact with external data provider (search and download).
+It uses a Storage to store downloaded data.
+It uses a DownloadStatus to track download progress.
 
-A Site uses :
-
-* a Provider to perform the interaction with the external site.
-* a Storage to store downloaded Data
-* a DownloadStatus to give progress information downloads
+The DataRetriever handles all the business logic.
+The technical aspects are handled by Provider, Storage and DownloadStatus.
 
 == Search for data
 
 NOTE: TODO insert the activity diagram 'search-activity.mmd' here
 
-A site can search for data with criteria using the search function.
-The Criteria is composed of atomic criteria.
+A DataProvider can search for data with criteria using the search function.
+The Criteria is time period with a start and an end date.
 
-First, the site ensures its Provider is authenticated.
+First, the DataProvider ensures its Provider is authenticated.
 If not, it tries to log in.
 In case of connexion issues, it raises a specific ConnexionFailed exception.
 In case of authentication issues, it raises a specific AuthenticationFailed exception.
@@ -60,7 +58,14 @@ Then, it asks its Storage to store the downloaded data with its Storage.
 
 == Provider
 
-Providers are implemented using https://eodag.readthedocs.io/en/stable/index.html[EODAG].
-A provider can be implemented using a https://eodag.readthedocs.io/en/stable/plugins_reference/api.html[EODAG API Plugin].
+The main provider is the EodagProvider that uses https://eodag.readthedocs.io/en/stable/index.html[EODAG] to perform the activities.
 
-// TODO small description how to use eodag
+== Storage
+
+The main Storage is a S3 bucket.
+
+// TODO What techno to do the S3 interface ?
+
+== Download status
+
+// TODO fill when doing the story
