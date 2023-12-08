@@ -1,0 +1,13 @@
+name: Test workflow_dispatch in generate-documentation.yml
+
+on:
+  workflow_dispatch:
+
+# workflow_dispatch must be set in the main branch, see: https://stackoverflow.com/a/71423764
+jobs:
+  test-workflow-dispatch-2:
+    runs-on: ubuntu-latest
+    name: Test workflow_dispatch in generate-documentation.yml
+    steps:
+      - run: echo Test workflow_dispatch in generate-documentation.yml
+        shell: bash
