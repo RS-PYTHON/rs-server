@@ -26,7 +26,7 @@ runs:
         repository_password: password
       continue-on-error: true # TODO: set to false. For now, use true to save wheel as artifact in the next step.
 
-    # Note: the wheel file is built in package_directory/dist 
+    # Note: the wheel file is built in package_directory/dist
     - name: Find wheel filename
       id: vars
       run: echo package_name=$(basename ${{ inputs.package_directory }}/dist/*.whl) >> "$GITHUB_OUTPUT"

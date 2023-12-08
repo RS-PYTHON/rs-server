@@ -14,6 +14,14 @@ env:
 
 jobs:
 
+  check-pre-commit:
+    runs-on: ubuntu-latest
+    name: Check 'pre-commit run --all-files'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/install-python
+      - uses: pre-commit/action@v3.0.0 # returns non-zero if it was not run locally before commit
+
   check-format:
     runs-on: ubuntu-latest
     name: Check format (black, isort)
@@ -33,12 +41,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Check linting (ruff, flake8)
     steps:
-      - uses: actions/checkout@v4      
+      - uses: actions/checkout@v4
 
       # Used by pre-commit
       - name: Run ruff
         uses: chartboost/ruff-action@v1
-        with: 
+        with:
           src: . # ${{ env.SOURCES }} ${{ env.TESTS }}
           args: --output-format=github
 
@@ -198,17 +206,17 @@ jobs:
       - name: Download linting reports
         uses: actions/download-artifact@v3
         with:
-          name: 
+          name:
             check-linting
       - name: Download vulnerability reports
         uses: actions/download-artifact@v3
         with:
-          name: 
+          name:
             check-security
       - name: Download unit test reports
         uses: actions/download-artifact@v3
         with:
-          name: 
+          name:
             run-unit-tests
 
       - name: Run sonarqube
@@ -260,7 +268,7 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        # Mark the step as OK even if the sonarqube quality gate doesn't pass. 
+        # Mark the step as OK even if the sonarqube quality gate doesn't pass.
         # We will resolve these issues later.
         continue-on-error: true
 

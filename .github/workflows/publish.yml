@@ -1,7 +1,7 @@
 name: Publish wheels and Docker images
 
 # TODO: is it possible to run this workflow only if the check-code-quality workflow has completed successfully ?
-# I've tried workflow_run but see: 
+# I've tried workflow_run but see:
 # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
 # Note: This event will only trigger a workflow run if the workflow file is on the default branch.
 
@@ -10,7 +10,7 @@ on:
   push:
     tags:
       - '**'
-  workflow_dispatch: 
+  workflow_dispatch:
 
 env:
   PYTHON_VERSION: 3.11
