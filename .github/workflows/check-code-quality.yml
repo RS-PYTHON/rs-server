@@ -8,8 +8,8 @@ on:
 
 env:
   PYTHON_VERSION: 3.11
-  SOURCES: src
-  TESTS: tests
+  SOURCES: ./src
+  TESTS: ./tests
   SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
       - name: Run isort
         uses: isort/isort-action@v1
         with:
-          sort-paths: ${{ env.SOURCES }} ${{ env.TESTS }}
+          sort-paths: . # ${{ env.SOURCES }} ${{ env.TESTS }}
           configuration: --check-only --diff
 
   check-linting:
@@ -39,14 +39,14 @@ jobs:
       - name: Run ruff
         uses: chartboost/ruff-action@v1
         with: 
-          src: ${{ env.SOURCES }} ${{ env.TESTS }}
+          src: . # ${{ env.SOURCES }} ${{ env.TESTS }}
           args: --output-format=github
 
       # Used by sonarqube. See the .flake8 file for configuration.
       - name: Run flake8
         uses: py-actions/flake8@v2
         with:
-          path: ${{ env.SOURCES }} ${{ env.TESTS }}
+          path: . # ${{ env.SOURCES }} ${{ env.TESTS }}
           args: --output-file .reports/flake8.txt
 
       - name: Save reports
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
       - name: Run mypy
-        run: poetry run mypy --explicit-package-bases ${SOURCES} ${TESTS}
+        run: poetry run mypy --explicit-package-bases . # ${SOURCES} ${TESTS}
         shell: bash
 
   check-security:
@@ -80,7 +80,7 @@ jobs:
         name: Run bandit
         run: |
             set -x && mkdir -p .reports && \
-            poetry run bandit -c bandit.yml -r ${SOURCES} -f json -o .reports/bandit.json
+            poetry run bandit -c bandit.yml -r . -f json -o .reports/bandit.json # ${SOURCES} ${TESTS}
         shell: bash
          # note: the CI will still run, the issues are reported in sonarqube, we will resolve them later
         continue-on-error: true
@@ -141,7 +141,7 @@ jobs:
             -m unit \
             --durations=0 \
             --error-for-skips \
-            --cov=${SOURCES} \
+            --cov=${SOURCES} --cov=./services \
             --cov-report=term \
             --cov-report=xml:.reports/coverage.xml \
             --junit-xml=.reports/TEST-pytests.xml \
@@ -177,7 +177,7 @@ jobs:
             -m integration \
             --durations=0 \
             --error-for-skips \
-            --cov=${SOURCES} \
+            --cov=${SOURCES} --cov=./services \
             --cov-report=term \
             --cov-report=xml:.reports/coverage-integration.xml \
         shell: bash
@@ -225,7 +225,7 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.projectBaseDir=.
-            -Dsonar.sources=${{ env.SOURCES }}
+            -Dsonar.sources=${{ env.SOURCES }},./services
             -Dsonar.tests=${{ env.TESTS }}
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
