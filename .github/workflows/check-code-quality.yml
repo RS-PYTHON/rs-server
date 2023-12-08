@@ -98,7 +98,7 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           outcome: ${{ steps.bandit.outcome }}
-          test-id: "'bandit' failed"
+          test-id: "Check security (bandit)"
 
       - name: Save reports
         uses: actions/upload-artifact@v3
@@ -134,7 +134,7 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           outcome: ${{ steps.safety.outcome }}
-          test-id: "'safety' failed"
+          test-id: "Check dependencies security (safety)"
 
   run-unit-tests:
     runs-on: ubuntu-latest
@@ -151,14 +151,14 @@ jobs:
             --error-for-skips \
             --cov=${SOURCES} --cov=./services \
             --cov-report=term \
-            --cov-report=xml:.reports/coverage.xml \
-            --junit-xml=.reports/TEST-pytests.xml \
+            --cov-report=xml:.reports/cov-report.xml \
+            --junit-xml=.reports/junit-xml-report.xml \
         shell: bash
 
       - name: Display code coverage summary in this console
         uses: irongut/CodeCoverageSummary@v1.3.0
         with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
-          filename: .reports/coverage.xml
+          filename: .reports/cov-report.xml
 
       - name: Save reports
         uses: actions/upload-artifact@v3
@@ -241,8 +241,8 @@ jobs:
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
             -Dsonar.python.flake8.reportPaths=".reports/flake8.txt"
             -Dsonar.python.bandit.reportPaths=".reports/bandit.json"
-            -Dsonar.python.xunit.reportPath=".reports/TEST-*.xml"
-            -Dsonar.python.coverage.reportPaths=".reports/coverage.xml"
+            -Dsonar.python.coverage.reportPaths=".reports/cov-report.xml"
+            -Dsonar.python.xunit.reportPath=".reports/junit-xml-report.xml"
 
       - name: Wait for quality gate result
         run: sleep 5
@@ -277,4 +277,4 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           outcome: ${{ steps.check-gate.outcome }}
-          test-id: Red sonarqube quality gate
+          test-id: "Quality report (sonarqube)"
