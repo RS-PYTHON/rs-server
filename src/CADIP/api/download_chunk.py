@@ -1,6 +1,5 @@
 """Docstring will be here."""
 import os
-import random
 import threading
 from datetime import datetime
 from threading import Event
@@ -19,32 +18,44 @@ def update_db(id, status):
     print("Fake update of table dwn_status with : {} | {}".format(id, status))
 
 
-def start_eodag_download(station, id, name, local, obs):  # noqa: D417
-    """Initiate a download using the EODAG (Earth Observation Data Access Gateway) client.
+def start_eodag_download(station, id, name, local, obs):
+    """Download a chunk file.
+
+    Initiates a download using EODAG (Earth Observation Data Access Gateway) for a specific
+    satellite station with the given parameters.
 
     Parameters
     ----------
-    - station (str): The identifier of the Earth Observation station.
-    - id (str): The unique identifier associated with the data to be downloaded.
-    - name (str): The name of the data product to be downloaded.
-    - local (str): The local path where the downloaded data will be stored.
-    - obs (str): Additional observation-related information.
+    station : str
+        The name of the satellite station.
+    id : str
+        Identifier for the download operation.
+    name : str
+        Name associated with the download operation.
+    local : str
+        The local path where the file should be downloaded. If None, the default
+        path is used.
+    obs : str
+        The observation details, including the destination path for uploading the file
+        after download. If None, the file is not uploaded.
 
     Returns
     -------
     None
 
-    The function initiates the download process using EODAG, with a sleep of 10 seconds
-    to ensure proper initialization. It then updates the database with the download progress,
-    attempts to download the specified data using EODAG, and handles any exceptions that may occur.
-    If the download is successful, the function prints the EODAG location and updates the
-    database with the download success status.
+    Notes
+    -----
+    - The function initializes EODAG, sets the download path if provided, initializes an
+      Earth Observation Package (EOP), and then downloads the data using EODAG.
+    - After a successful download, it updates the database with a "succeeded" status.
+    - If an observation path is provided, it uploads the file to the specified destination
+      and deletes the local file after uploading.
 
-    If an exception occurs during the download process, it is caught, and the function
-    prints an error message, updates the database with the download failure status, and exits.
+    Example
+    -------
+    >>> start_eodag_download("Sentinel-1", "12345", "Download_1", "/path/to/local", "s3://bucket/data")
     """
     # init eodag object
-    # time.sleep(1)
     init = datetime.now()
     dag_client = init_eodag(station)
     print("init_eodag time: {}".format(datetime.now() - init))
@@ -57,6 +68,7 @@ def start_eodag_download(station, id, name, local, obs):  # noqa: D417
                 outputs_prefix: '{local}'
         """
         )
+
     init = datetime.now()
     eop = init_eop(id, name, local)
     print("init_eop time: {}".format(datetime.now() - init))
@@ -65,7 +77,7 @@ def start_eodag_download(station, id, name, local, obs):  # noqa: D417
         thread_started.set()
         print("set event !")
         init = datetime.now()
-        random.randint(9, 20)
+        # time.sleep(random.randint(9, 20))
         dag_client.download(eop)
         print("download time: {}".format(datetime.now() - init))
     except Exception as e:
@@ -86,27 +98,41 @@ def start_eodag_download(station, id, name, local, obs):  # noqa: D417
 
 
 @router.get("/cadip/{station}/cadu")
-def download(station: str, id: str, name: str, local: str, obs: str):  # noqa: D417
+def download(station: str, id: str, name: str, local: str, obs: str = ""):
     """Initiate an asynchronous download process using EODAG (Earth Observation Data Access Gateway).
 
     Parameters
     ----------
-    - station (str): The identifier of the Earth Observation station.
-    - id (str, optional): The unique identifier associated with the data to be downloaded.
-    - name (str, optional): The name of the data product to be downloaded.
-    - local (str, optional): The local path where the downloaded data will be stored.
-    - obs (str, optional): Additional observation-related information.
+    station : str
+        Identifier of the Earth Observation station.
+    id : str, optional
+        Unique identifier associated with the data to be downloaded.
+    name : str, optional
+        Name of the data product to be downloaded.
+    local : str, optional
+        Local path where the downloaded data will be stored.
+    obs : str, optional
+        Additional observation-related information.
 
     Returns
     -------
-    dict: A dictionary indicating that the download process has been started.
+    dict
+        A dictionary indicating that the download process has been started.
 
+    Notes
+    -----
     The function initiates an asynchronous download process by starting a new thread to execute
     the 'start_eodag_download' function. It prints information before and after starting the thread,
     checks the start of the thread, and updates the database with the download start status.
 
-    Note: The actual download progress can be monitored separately, and the function returns a
+    The actual download progress can be monitored separately, and the function returns a
     dictionary with the key "started" set to "true" to indicate that the download process has begun.
+
+    Example
+    -------
+    >>> result = download("Sentinel-1", id="12345", name="Download_1", local="/path/to/local", obs="s3://bucket/data")
+    >>> print(result)
+    {'started': True}
     """
     # start a thread ->
     print("Before starting thread, local = {} | ".format(locals()))
@@ -134,15 +160,54 @@ def download(station: str, id: str, name: str, local: str, obs: str):  # noqa: D
 
 
 def init_eodag(station):
-    """Docstring will be here."""
-    config_file_path = "CADIP/library/cadip_ws_config.yaml"
+    """Initialize eodag.
+
+    Initialize an instance of the Earth Observation Data Access Gateway (EODAG) for a specified
+    satellite station.
+
+    Parameters
+    ----------
+    station : str
+        Identifier for the CADU station.
+
+    Returns
+    -------
+    EODataAccessGateway
+        An instance of the EODAG configured for the specified station.
+
+    Example:
+        eodag_instance = init_eodag("Sentinel-1")
+    """
+    config_file_path = "src/CADIP/library/cadip_ws_config.yaml"
     eodag = EODataAccessGateway(config_file_path)
     eodag.set_preferred_provider(station)
     return eodag
 
 
-def init_eop(file_id: str, name: str, path: str):
-    """Docstring will be here."""
+def init_eop(file_id: str, name: str, path: str) -> EOProduct:
+    """Initialize EOP.
+
+    Initializes an Earth Observation Package (EOP) with the specified parameters.
+
+    Parameters
+    ----------
+    file_id : str
+        Identifier for the Earth Observation Product (EOP).
+    name : str
+        Name associated with the EOP.
+    path : str
+        The local path where the file associated with the EOP should be stored.
+
+    Returns
+    -------
+    EOProduct
+        An instance of the Earth Observation Product (EOP) initialized
+        with the provided parameters.
+
+    Example
+    -------
+    >>> eop_instance = init_eop("12345", "Sentinel-1_Image", "/path/to/local")
+    """
     properties = {
         "title": name,
         "id": file_id,
