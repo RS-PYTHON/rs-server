@@ -53,10 +53,11 @@ async def list_cadu_handler(station: str, start_date: str = "", stop_date: str =
         # prepare start_stop
         dag_client = init_eodag(station)
         products, number = dag_client.search(start=start_date, end=stop_date, provider=station)
-    return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
+        return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, missing start/stop")
 
 
-def get_station_ws(station: str) -> str:
+def get_station_ws(station: str) -> str | None:
     """Retrieve the configuration data (webserver address) for a CADU station based on its identifier.
 
     Parameters
@@ -81,8 +82,14 @@ def get_station_ws(station: str) -> str:
     - The function reads the station configuration data from a JSON file.
     - If the station identifier is not found in the configuration data, the function returns None.
     """
-    stations_data = json.loads(open("src/CADIP/library/stations_cfg.json").read())
-    return stations_data.get(station.upper(), None)
+    try:
+        with open("src/CADIP/library/stations_cfg.json") as jfile:
+            stations_data = json.load(jfile)
+            return stations_data.get(station.upper(), None)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        # logger to be added.
+        print(f"Error reading JSON file: {e}")
+        return None
 
 
 def init_eodag(station):
@@ -116,30 +123,28 @@ def init_eodag(station):
     return eodag
 
 
-def prepare_products(products_list):
+def prepare_products(products):
     """Prepare a list of products by extracting their ID and Name properties.
 
     Parameters
     ----------
-    products_list : list
+    products : list
         A list of product objects, each containing properties.
 
     Returns
     -------
     list
         A list of tuples, where each tuple contains the ID and Name of a product.
-        If the input products_list is empty, an empty list is returned.
+        If the input products is empty, an empty list is returned.
 
     Example
     -------
-    >>> products_list = [
+    >>> products = [
     ...     EOProduct(properties={"id": 1, "Name": "Product A"}),
     ...     EOProduct(properties={"id": 2, "Name": "Product B"}),
     ...     EOProduct(properties={"id": 3, "Name": "Product C"}),
     ... ]
-    >>> prepare_products(products_list)
+    >>> prepare_products(products)
     [(1, 'Product A'), (2, 'Product B'), (3, 'Product C')]
     """
-    if not products_list:
-        return []
-    return [(product.properties["id"], product.properties["Name"]) for product in products_list]
+    return [(product.properties["id"], product.properties["Name"]) for product in products] if products else []
