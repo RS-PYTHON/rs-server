@@ -8,7 +8,7 @@ on:
 
 env:
   PYTHON_VERSION: 3.11
-  SOURCES: ./src
+  SOURCES: ./rs_server
   TESTS: ./tests
   SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
