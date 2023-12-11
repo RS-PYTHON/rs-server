@@ -7,37 +7,38 @@ inputs:
     required: false
     default: .
 
-outputs:
-  package_name:
-    description: .whl package
-    value: ${{ steps.package_name.outputs.package_name }}
-
 runs:
   using: "composite"
   steps:
 
-    - name: Build and publish wheel package
-      # note: v1.17 fails with 'Detected Git repository, but failed because of dubious ownership'
-      uses: JRubics/poetry-publish@v1.16
+    - uses: ./.github/actions/poetry-install
+
+    - run: |
+        set -x
+        cd ${{ inputs.package_directory }}
+        poetry self add "poetry-dynamic-versioning[plugin]"
+        poetry build --format wheel
+      shell: bash
+
+    # TODO: use the good values
+    - name: Publish wheel package
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        python_version: ${{ env.PYTHON_VERSION }}
-        plugins: poetry-dynamic-versioning[plugin]
-        build_format: wheel # default is wheel and sdist
-        package_directory: ${{ inputs.package_directory }}
-        # TODO: use the good values
-        repository_name: foo
-        repository_url: https://foo.bar/simple/
-        repository_username: username
-        repository_password: password
-      continue-on-error: true # TODO: set to false. For now, use true to save wheel as artifact in the next step.
+        skip-existing: false
+        packages-dir: ${{ inputs.package_directory }}/dist
+        user: username #${{ secrets.ARTIFACTORY_USER }}
+        password: password #${{ secrets.ARTIFACTORY_PASSWORD }}
+        repository-url: https://to/be/completed
 
     # Note: the wheel file is built in package_directory/dist
     - name: Find wheel filename
+      if: always()
       id: package_name
       run: echo package_name=$(basename ${{ inputs.package_directory }}/dist/*.whl) >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Save wheel package as artifact
+      if: always()
       uses: actions/upload-artifact@v3
       with:
         name: ${{ steps.package_name.outputs.package_name }}

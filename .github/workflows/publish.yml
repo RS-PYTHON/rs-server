@@ -7,11 +7,9 @@ name: Publish wheels and Docker images
 
 # Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
-  # push:
-    # tags:
-    #   - '**'
-  pull_request:
-    types: [opened, synchronize, reopened]
+  push:
+    tags:
+      - '**'
   workflow_dispatch:
 
 env:
@@ -22,6 +20,7 @@ jobs:
   rs-server-whl:
     runs-on: ubuntu-latest
     name: "'rs-server' wheel"
+    continue-on-error: true # TODO remove when the right python repo will be set
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/publish-wheel
@@ -29,40 +28,23 @@ jobs:
   services-common-whl:
     runs-on: ubuntu-latest
     name: "'services/common' wheel"
-    outputs:
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO remove when the right python repo will be set
     steps:
       - uses: actions/checkout@v4
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
+      - uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/common
 
   services-cadip-whl:
     runs-on: ubuntu-latest
     name: "'services/cadip' wheel"
-    needs: [services-common-whl]
+    continue-on-error: true # TODO remove when the right python repo will be set
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/poetry-install
-
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v3
-        with:
-          name:
-            ${{ needs.services-common-whl.outputs.package_name }}
 
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      - run: |
-          set -x
-          # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-          sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/cadip/pyproject.toml
-
-          # Update project with local whl installation of the dependencies
-          #pip install ./rs_server_common-*.whl
-          #poetry add rs-server-common
-          #poetry install
-          cd services/cadip && poetry build
+      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+      - run: sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/cadip/pyproject.toml
 
       - uses: ./.github/actions/publish-wheel
         with:
