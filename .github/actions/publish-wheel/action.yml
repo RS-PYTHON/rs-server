@@ -7,6 +7,11 @@ inputs:
     required: false
     default: .
 
+outputs:
+  package_name:
+    description: .whl package
+    value: ${{ steps.package_name.outputs.package_name }}
+
 runs:
   using: "composite"
   steps:
@@ -28,12 +33,12 @@ runs:
 
     # Note: the wheel file is built in package_directory/dist
     - name: Find wheel filename
-      id: vars
+      id: package_name
       run: echo package_name=$(basename ${{ inputs.package_directory }}/dist/*.whl) >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Save wheel package as artifact
       uses: actions/upload-artifact@v3
       with:
-        name: ${{ steps.vars.outputs.package_name }}
-        path: ${{ inputs.package_directory }}/dist/${{ steps.vars.outputs.package_name }}
+        name: ${{ steps.package_name.outputs.package_name }}
+        path: ${{ inputs.package_directory }}/dist/${{ steps.package_name.outputs.package_name }}

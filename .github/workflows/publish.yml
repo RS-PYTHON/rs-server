@@ -7,9 +7,11 @@ name: Publish wheels and Docker images
 
 # Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
-  push:
-    tags:
-      - '**'
+  # push:
+    # tags:
+    #   - '**'
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 env:
@@ -24,20 +26,44 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/publish-wheel
 
-  services-cadip-whl:
-    runs-on: ubuntu-latest
-    name: "'services/cadip' wheel"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/publish-wheel
-        with:
-          package_directory: services/cadip
-
   services-common-whl:
     runs-on: ubuntu-latest
     name: "'services/common' wheel"
+    outputs:
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/publish-wheel
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/common
+
+  services-cadip-whl:
+    runs-on: ubuntu-latest
+    name: "'services/cadip' wheel"
+    needs: [services-common-whl]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v3
+        with:
+          name:
+            ${{ needs.services-common-whl.outputs.package_name }}
+
+      # Hack the pyproject.toml. TODO: find a cleaner to do this.
+      - run: |
+          set -x
+          # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+          sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/cadip/pyproject.toml
+
+          # Update project with local whl installation of the dependencies
+          #pip install ./rs_server_common-*.whl
+          #poetry add rs-server-common
+          #poetry install
+          cd services/cadip && poetry build
+
+      - uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/cadip
