@@ -1,0 +1,42 @@
+= RS services
+
+There are multiple services:
+
+NOTE: TODO insert a table of the service with short description and the list of functionalities
+
+Each service provides several functionalities as https endpoints.
+All services are independent of others.
+Each service is provided as an independent Docker image.
+Each service can handle multiple requests in parallel.
+Services are stateless so they can easily be scaled
+and the activity be divided into the multiple instances.
+
+== Tree structure
+
+NOTE: TODO insert the servie tree structure here
+
+Each service has its own folder named with the service name.
+This folder is a python project.
+It contains the sources and tests for this service.
+It also contains a Dockerfile describing the service output image.
+The sources are separated in two layers : an api and a library packages.
+
+Services shares some elements.
+These elements are provided in a common python project
+stored at the same level of the services.
+
+== Layers separation
+
+In each service, the api is separated from the library.
+The api is responsible for providing the given http endpoints.
+The library is composed of several modules providing the business logic.
+
+The api doesn't provide functionalities itself.
+It uses the library to provide the functionality.
+
+:leveloffset: +2
+
+include::api.adoc[]
+include::library.adoc[]
+
+:leveloffset: -2

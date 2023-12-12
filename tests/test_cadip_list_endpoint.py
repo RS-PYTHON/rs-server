@@ -4,7 +4,7 @@ import responses
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from src.CADIP.cadip_backend import app
+from rs_server.CADIP.cadip_backend import app
 
 
 def create_rs_list_cadu(station: str, start: str, stop: str):  # noqa: D417

@@ -1,0 +1,51 @@
+name: Publish wheels and Docker images
+
+# TODO: is it possible to run this workflow only if the check-code-quality workflow has completed successfully ?
+# I've tried workflow_run but see:
+# https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
+# Note: This event will only trigger a workflow run if the workflow file is on the default branch.
+
+# Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
+on:
+  push:
+    tags:
+      - '**'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: 3.11
+
+jobs:
+
+  rs-server-whl:
+    runs-on: ubuntu-latest
+    name: "'rs-server' wheel"
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/publish-wheel
+
+  services-common-whl:
+    runs-on: ubuntu-latest
+    name: "'services/common' wheel"
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/common
+
+  services-cadip-whl:
+    runs-on: ubuntu-latest
+    name: "'services/cadip' wheel"
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+
+      # Hack the pyproject.toml. TODO: find a cleaner to do this.
+      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+      - run: sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/cadip/pyproject.toml
+
+      - uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/cadip

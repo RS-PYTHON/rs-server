@@ -1,29 +1,29 @@
 [project]
 name = "rs-server"
-version = "0.1.0"
+version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server"
-version = "0.1.0"
+version = "0.0.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
 readme = "README.adoc"
 
 packages = [
-    { include = "src" },
+    { include = "rs_server" },
+    { include = "services/common/rs_server_common" },
+    { include = "services/cadip/rs_server_cadip" },
     { include = "tests", format = "sdist" },
+    { include = "services/common/tests", format = "sdist" },
+    { include = "services/cadip/tests", format = "sdist" },
 ]
 
 [tool.poetry.dependencies]
 python = ">=3.11.0,<4.0"
+# Are all these dependencies mandatory ?
 moto = "==4.2.8"
 boto3 = "==1.28.85"
 botocore = "==1.31.85"
-flask-cors = "^4.0.0"
-requests = ">=2.31.0"
-prefect = ">=2.13.8"
-prefect-dask = "^0.2.5"
-dask = "^2023.11.0"
 fastapi = "^0.104.1"
 uvicorn = "^0.24.0.post1"
 eodag = "^2.11.0"
@@ -41,7 +41,6 @@ black = "^23.10.1"
 ruff = "^0.1.3"
 mypy = "^1.6.1"
 pre-commit = "^3.5.0"
-types-requests = "^2.31.0.10"
 flake8 = "^6.1.0"
 bandit = "^1.7.5"
 safety = "^2.3.5"
@@ -50,9 +49,13 @@ safety = "^2.3.5"
 # init should be empty, doesn't need any docstrings
 "__init__.py" = ["D104"]
 
+[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+enable = true
+tagged-metadata = true
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.black]
 line-length = 120
