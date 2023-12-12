@@ -1,11 +1,15 @@
 """Docstring will be here."""
 import json
+import os.path as osp
+from pathlib import Path
 
 from eodag import EODataAccessGateway
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
+
+CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" / "library"
 
 
 @router.get("/cadip/{station}/cadu/list")
@@ -83,7 +87,7 @@ def get_station_ws(station: str) -> str | None:
     - If the station identifier is not found in the configuration data, the function returns None.
     """
     try:
-        with open("src/CADIP/library/stations_cfg.json") as jfile:
+        with open(CONF_FOLDER / "stations_cfg.json") as jfile:
             stations_data = json.load(jfile)
             return stations_data.get(station.upper(), None)
     except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -117,7 +121,7 @@ def init_eodag(station):
     - The CADU station is set as the preferred provider for the EODataAccessGateway.
     - The returned instance is ready to be used for searching and accessing Earth observation data.
     """
-    config_file_path = "src/CADIP/library/cadip_ws_config.yaml"
+    config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
     eodag = EODataAccessGateway(config_file_path)
     eodag.set_preferred_provider(station)
     return eodag
