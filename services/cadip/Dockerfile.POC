@@ -1,0 +1,9 @@
+FROM python:3.11-alpine
+
+RUN mkdir -p /tmp/whl
+ADD ./*.whl /tmp/whl
+
+RUN pip install --no-cache-dir --upgrade pip
+RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_cadip-*.whl
+
+RUN rm -rf /tmp/whl /root/.cache/pip
