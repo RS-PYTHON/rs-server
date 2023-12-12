@@ -28,7 +28,7 @@ runs:
 
     # Build Docker image using Buildx
     # This Action automatically pulls the code from the branch it's launched from
-    - name: Build image
+    - name: Build Docker image
       uses: docker/build-push-action@v5
       with:
         context: ./dist
@@ -37,27 +37,21 @@ runs:
         tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ inputs.version_name }}
         labels: ${{ steps.meta.outputs.labels }}
 
-#     - name: Scan image
-#       uses: anchore/scan-action@v2
-#       id: scan
-#       with:
-#         image: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}_cadip
-#         acs-report-enable: true
-#         fail-build: true
-#         severity-cutoff: critical
+    - name: Run Trivy vulnerability scanner SARIF
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.DOCKER_IMAGE_NAME }}:${{ inputs.version_name }}
+        format: sarif
+        output: trivy-results.sarif
+        #severity: HIGH,CRITICAL
+        #timeout: '30m'
 
-#     - name: Upload Anchore scan SARIF report
-#       uses: github/codeql-action/upload-sarif@v1
-#       if: always()
-#       with:
-#         sarif_file: ${{ steps.scan.outputs.sarif }}
-
-#     - name: Upload Anchore scan json report
-#       uses: actions/upload-artifact@master
-#       if: always()
-#       with:
-#         name: vulnerabilities
-#         path: ${{ steps.scan.outputs.vulnerabilities }}
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always() # run even if the scan returned a non-zero exit code
+      with:
+        sarif_file: trivy-results.sarif
+        #category: 'scan-${{ inputs.ARTIFACT_NAME }}'
 
 #     # Login against a Docker registry except on PR
 #     # https://github.com/docker/login-action

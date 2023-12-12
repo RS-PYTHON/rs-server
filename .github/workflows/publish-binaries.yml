@@ -76,6 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "'rs-server' Docker image"
     needs: [rs-server-whl]
+    permissions: write-all
     steps:
       - uses: actions/checkout@v4
 
