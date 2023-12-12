@@ -2,13 +2,11 @@
 
 The core library is responsible for providing the rs-server functionalities.
 It is independent of the API layer.
-The business logic is kept independent of technical things like transfer protocol.
-It is composed of shared and specific elements divided in functional modules.
+The business logic is kept independent of technical stuff like transfer protocol.
+It is divided on multiple functional modules like data_retrieval.
 
-Shared elements are provided by the common python project in the library package.
-
-Some functionalities are specific to a service or add specialization to shared elements.
-In this case, the functionality is provided specially for this service.
+There is common mechanisms that are shared.
+The shared elements are provided by the library package of the common python project.
 
 == Modules
 
@@ -16,6 +14,6 @@ NOTE: TODO Brief introduction with the list of main modules
 
 :leveloffset: +2
 
-include::library/data-retrieval/data-retrieval.adoc[]
+include::library/data-retrieval/design.adoc[]
 
 :leveloffset: -2

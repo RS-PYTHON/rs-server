@@ -5,7 +5,7 @@ flowchart
     verify[verify request]
     is-valid{is valid ?}
     bad-request[build bad request response]
-    call-lib[call library for functionalities]
+    process[delegate process]
     has-failed{is exception raised ?}
     error-response[build error response]
     nominal-response[build nominal response]
@@ -13,7 +13,7 @@ flowchart
 
     START --> verify --> is-valid
     is-valid -->|no| bad-request --> return
-    is-valid -->|yes| call-lib --> call-lib --> has-failed
+    is-valid -->|yes| process --> has-failed
 
     has-failed -->|yes| error-response --> return
     has-failed -->|yes| nominal-response --> return
