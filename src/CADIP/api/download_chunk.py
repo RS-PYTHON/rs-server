@@ -4,18 +4,23 @@ import threading
 from datetime import datetime
 from threading import Event
 
-from eodag import EODataAccessGateway, EOProduct
+from eodag import EODataAccessGateway, EOProduct, setup_logging
 from fastapi import APIRouter
 
 from src.s3_storage_handler.s3_storage_handler import prefect_put_files_to_s3
 
+DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
 router = APIRouter()
 
 
 def update_db(id, status):
     """Docstring will be here."""
-    print("Fake update of table dwn_status with : {} | {}".format(id, status))
+    print(
+        "{} : {} : {}: Fake update of table dwn_status with : {} | {}".format(
+            os.getpid(), threading.get_ident(), datetime.now(), id, status
+        )
+    )
 
 
 def start_eodag_download(station, id, name, local, obs):
@@ -56,37 +61,43 @@ def start_eodag_download(station, id, name, local, obs):
     >>> start_eodag_download("Sentinel-1", "12345", "Download_1", "/path/to/local", "s3://bucket/data")
     """
     # init eodag object
-    init = datetime.now()
-    dag_client = init_eodag(station)
-    print("init_eodag time: {}".format(datetime.now() - init))
-    if local is not None:
-        # set the path where the file should be downloaded
-        dag_client.update_providers_config(
-            f"""
-        {station}:
-            download:
-                outputs_prefix: '{local}'
-        """
-        )
-
-    init = datetime.now()
-    eop = init_eop(id, name, local)
-    print("init_eop time: {}".format(datetime.now() - init))
-    # insert into database the filename with status set to progress
     try:
+        init = datetime.now()
+        print("{} : {} : {}: Thread started !".format(os.getpid(), threading.get_ident(), init))
+        setup_logging(3, no_progress_bar=True)
+        dag_client = init_eodag(station)
+        end = datetime.now()
+        print("{} : {} : {}: init_eodag time {}".format(os.getpid(), threading.get_ident(), end, end - init))
+        if local is not None:
+            # set the path where the file should be downloaded
+            dag_client.update_providers_config(
+                f"""
+            {station}:
+                download:
+                    outputs_prefix: '{local}'
+            """
+            )
+
+        init = datetime.now()
+        eop = init_eop(id, name, local)
+        end = datetime.now()
+        print("{} : {} : {}: init_eop time: {}".format(os.getpid(), threading.get_ident(), end, end - init))
+        # insert into database the filename with status set to progress
+
         thread_started.set()
-        print("set event !")
+        print("{} : {} : {}: set event !".format(os.getpid(), threading.get_ident(), datetime.now()))
         init = datetime.now()
         # time.sleep(random.randint(9, 20))
-        dag_client.download(eop)
-        print("download time: {}".format(datetime.now() - init))
+        end = datetime.now()
+        dag_client.download(eop, outputs_prefix=local)
+        print("{} : {} : {}: download time: {}".format(os.getpid(), threading.get_ident(), end, end - init))
     except Exception as e:
-        print("Exception caught: {}".format(e))
+        print("{} : {} : {}: Exception caught: {}".format(os.getpid(), threading.get_ident(), datetime.now(), e))
         update_db(id, "failed")
         return
-    print("Downloaded file: {}".format(eop.location))
+    print("{} : {} : {}: Downloaded file: {}".format(os.getpid(), threading.get_ident(), datetime.now(), eop.location))
 
-    if obs is not None:
+    if obs is not None and len(obs) > 0:
         filename = eop.location
         obs_array = obs.split("/")
         # TODO check the length
@@ -134,8 +145,22 @@ def download(station: str, id: str, name: str, local: str, obs: str = ""):
     >>> print(result)
     {'started': True}
     """
-    # start a thread ->
-    print("Before starting thread, local = {} | ".format(locals()))
+    """
+    start_eodag_download(station,
+            id,
+            name,
+            local,
+            obs)
+    update_db(id, "succeeded")
+    return {"downloaded": "true"}
+    """
+    # start a thread to run the action in background
+
+    print(
+        "{} : {} : {}: MAIN THREAD: Starting thread, local = {}".format(
+            os.getpid(), threading.get_ident(), datetime.now(), locals()
+        )
+    )
     thread = threading.Thread(
         target=start_eodag_download,
         args=(
@@ -148,7 +173,7 @@ def download(station: str, id: str, name: str, local: str, obs: str = ""):
     )
     thread.start()
     # check the start of the thread
-    if not thread_started.wait(timeout=2):
+    if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
         print("Download thread did not start !")
         # update the status in database
         update_db(id, "failed")
@@ -156,6 +181,7 @@ def download(station: str, id: str, name: str, local: str, obs: str = ""):
 
     # update the status in database
     update_db(id, "progress")
+
     return {"started": "true"}
 
 
