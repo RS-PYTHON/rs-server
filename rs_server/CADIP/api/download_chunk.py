@@ -1,17 +1,21 @@
 """Docstring will be here."""
 import os
+import os.path as osp
 import threading
 from datetime import datetime
+from pathlib import Path
 from threading import Event
 
 from eodag import EODataAccessGateway, EOProduct, setup_logging
 from fastapi import APIRouter
 
-from src.s3_storage_handler.s3_storage_handler import prefect_put_files_to_s3
+from rs_server.s3_storage_handler.s3_storage_handler import prefect_put_files_to_s3
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
 router = APIRouter()
+
+CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" / "library"
 
 
 def update_db(id, status):
@@ -204,7 +208,7 @@ def init_eodag(station):
     Example:
         eodag_instance = init_eodag("Sentinel-1")
     """
-    config_file_path = "src/CADIP/library/cadip_ws_config.yaml"
+    config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
     eodag = EODataAccessGateway(config_file_path)
     eodag.set_preferred_provider(station)
     return eodag

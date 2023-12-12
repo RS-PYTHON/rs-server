@@ -1,0 +1,54 @@
+classDiagram
+
+    class Criteria {
+
+    }
+
+    class DownloadStatus {
+        download_is_started(at_time, for_file_id)
+        download_is_finished(at_time, for_file_id)
+        download_failed(at_time, for_file_id, with_error)
+    }
+    DownloadStatus <|-- PGDownloadStatus
+    DownloadStatus <|-- FakeDownloadStatus
+
+    class Provider {
+        login()
+        logout()
+        search(critera)
+        download(file_id) -> Path?
+    }
+    Provider --> Criteria
+
+    class CadipProvider {
+        using eodag
+    }
+    Provider <|-- CadipProvider
+
+
+    class Storage {
+        login()
+        logout()
+        store(file)
+    }
+    class S3Bucket {
+
+    }
+    class LocalFolder {
+
+    }
+    Storage <|-- S3Bucket
+    Storage <|-- LocalFolder
+
+
+    class DataRetriever {
+        Provider provider
+        Storage storage
+        DownloadStatus status_updater
+        search(critera: Criteria) -> Iterable[Data]
+        download(file_id: ?, path_in_storage: ?)
+    }
+    DataRetriever --> Provider
+    DataRetriever --> Storage
+    DataRetriever --> Criteria
+    DataRetriever --> DownloadStatus

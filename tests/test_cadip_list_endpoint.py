@@ -1,20 +1,23 @@
-"""Docstring to be added."""
+"""Unittests for cadip list endpoint."""
 import pytest
 import responses
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from src.CADIP.cadip_backend import app
+from rs_server.CADIP.cadip_backend import app
 
 
-def create_rs_list_cadu(station: str, start: str, stop: str):  # noqa: D417
+def create_rs_list_cadu(station: str, start: str, stop: str):
     """Create an rs-server endpoint for listing CADU products based on start date, stop date, and station.
 
     Parameters
     ----------
-    station (str): The station name used in the request.
-    start_date (str): The start date for the request.
-    stop_date (str): The stop date for the request.
+    station : str
+        The station name used in the request.
+    start : str
+        The start date for the request.
+    stop : str
+        The stop date for the request.
 
     Returns
     -------
@@ -87,7 +90,7 @@ def test_valid_endpoint_request(expected_products):
 
     client = TestClient(app)
     # send request and convert output to python dict
-    data = eval(client.get(endpoint).content.decode())
+    data = client.get(endpoint).json()
     # check that request returned more than 1 element
     assert len(data["CADIP"]) == len(expected_products)
     # Check if ids and names are matching with given parameters
@@ -115,7 +118,7 @@ def test_invalid_endpoint_request():
     endpoint = create_rs_list_cadu("CADIP", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z")
     client = TestClient(app)
     # convert output to python dict
-    data = eval(client.get(endpoint).content.decode())
+    data = client.get(endpoint).json()
     # check that request returned no elements
     assert len(data["CADIP"]) == 0
 
@@ -133,6 +136,13 @@ def test_invalid_endpoint_param_missing_start_stop():
     rs_url = f"/cadip/{cadip_test_station}/cadu/list"
     endpoint = f"{rs_url}?start_date={start_date}"
     client = TestClient(app)
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    # Test with a start / stop date that is not matching format.
+    endpoint = create_rs_list_cadu("CADIP", "2014-01-01", "2023-12-30T12:00:00.000Z")
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    endpoint = create_rs_list_cadu("CADIP", "2023-01-01T12:00:00.000Z", "2025-12")
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 

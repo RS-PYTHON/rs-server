@@ -1,14 +1,12 @@
 name: Generate documentation
 
+# TODO: when to generate the doc ?
+# For now, only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
-  push:
-    # branches:
-    #   - 'feat**'
-
-  pull_request:
-    types: [opened, synchronize, reopened]
-
-  workflow_dispatch:
+    push:
+      tags:
+        - '**'
+    workflow_dispatch:
 
 jobs:
   generate-documentation:
