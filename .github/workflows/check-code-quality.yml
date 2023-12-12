@@ -24,18 +24,21 @@ jobs:
 
   check-format:
     runs-on: ubuntu-latest
-    name: Check format (black, isort)
+    name: Check format (black)
     steps:
       - uses: actions/checkout@v4
       - name: Run black
         uses: psf/black@stable
         with:
           options: --check --verbose
-      - name: Run isort
-        uses: isort/isort-action@v1
-        with:
-          sort-paths: . # ${{ env.SOURCES }} ${{ env.TESTS }}
-          configuration: --check-only --diff
+
+      # TODO: use isort with --format=black
+      # For now disable isort. It should be run anyway with ruff in the pre-commit job.
+      # - name: Run isort
+      #   uses: isort/isort-action@v1
+      #   with:
+      #     sort-paths: . # ${{ env.SOURCES }} ${{ env.TESTS }}
+      #     configuration: --check-only --diff --format=black
 
   check-linting:
     runs-on: ubuntu-latest
