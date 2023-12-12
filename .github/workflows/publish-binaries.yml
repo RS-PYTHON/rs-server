@@ -8,8 +8,8 @@ name: Publish wheels and Docker images
 # Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
   push:
-    # tags:
-    #   - '**'
+    tags:
+      - '**'
   workflow_dispatch:
 
 env:
@@ -80,19 +80,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Download .whl files into ./dist/
-      # - run: mkdir -p ./dist
+      # Download .whl files into ./whl/
       - name: Download .whl dependencies
         uses: actions/download-artifact@v3
         with:
           name: ${{ needs.rs-server-whl.outputs.package_name }}
-          path: ./dist
+          path: ./whl
 
       # Replace invalid characters in the Docker version name, e.g. 1.2.3a4+dev1a2b3c4d becomes 1.2.3a4.dev1a2b3c4d
+      # TODO: move in ./.github/actions/publish-docker
       - run: echo "docker_version_name=$(echo ${{ needs.rs-server-whl.outputs.version_name }} | tr + .)" >> $GITHUB_ENV
 
       - uses: ./.github/actions/publish-docker
         with:
           dockerfile: Dockerfile.POC
-          build_context_path: ./dist
+          build_context_path: ./whl
           version_name: ${{ env.docker_version_name }} # from above step
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+#   services-cadip-img:
+#     runs-on: ubuntu-latest
+#     name: "'services/cadip' Docker image"
+#     needs: [services-common-whl, services-cadip-whl]
+#     permissions: write-all
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       # Download .whl files into ./whl/
+#       - name: Download .whl dependencies
+#         uses: actions/download-artifact@v3
+#         with:
+#           name: ${{ needs.services-common-whl.outputs.package_name }}
+#           path: ./whl
+#       - name: Download .whl dependencies
+#         uses: actions/download-artifact@v3
+#         with:
+#           name: ${{ needs.services-cadip-whl.outputs.package_name }}
+#           path: ./whl
+
+#       # Replace invalid characters in the Docker version name, e.g. 1.2.3a4+dev1a2b3c4d becomes 1.2.3a4.dev1a2b3c4d
+#       # TODO: move in ./.github/actions/publish-docker
+#       - run: echo "docker_version_name=$(echo ${{ needs.services-cadip-whl.outputs.version_name }} | tr + .)" >> $GITHUB_ENV
+
+#       - uses: ./.github/actions/publish-docker
+#         with:
+#           dockerfile: ./services/cadip/Dockerfile.POC
+#           build_context_path: ./whl
+#           version_name: ${{ env.docker_version_name }} # from above step
+#           github_token: ${{ secrets.GITHUB_TOKEN }}

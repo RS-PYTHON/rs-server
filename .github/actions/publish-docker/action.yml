@@ -11,6 +11,9 @@ inputs:
   version_name:
     description: Version name e.g. 1.2.3a4.dev1a2b3c4d
     required: true
+  github_token:
+    description: secrets.GITHUB_TOKEN
+    required: true
 
 # Copied from https://github.com/COPRS/reference-system-software/blob/dependencies
 # and https://github.com/COPRS/reference-system-software/blob/trivy-security-scan-v1/action.yml
@@ -31,7 +34,7 @@ runs:
     - name: Build Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./dist
+        context: ./whl
         file: ${{ inputs.dockerfile }}
         load: true
         tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ inputs.version_name }}
@@ -53,50 +56,13 @@ runs:
         sarif_file: trivy-results.sarif
         #category: 'scan-${{ inputs.ARTIFACT_NAME }}'
 
-#     # Login against a Docker registry except on PR
-#     # https://github.com/docker/login-action
-#     - name: Log into registry ${{ env.DOCKER_REGISTRY }}
-#       if: github.event_name != 'pull_request'
-#       uses: docker/login-action@v3
-#       with:
-#         registry: ${{ env.DOCKER_REGISTRY }}
-#         username: ${{ github.actor }}
-#         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Log into Docker registry ${{ env.DOCKER_REGISTRY }}
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ inputs.github_token }}
 
-#     - name: Push image
-#       run: |
-#         docker push ${{ fromJSON(steps.meta.outputs.json).tags[0] }}_cadip ;
-
-# generate_reports:
-#   needs: build
-#   runs-on: ubuntu-latest
-#   permissions:
-#     contents: read
-
-#   steps:
-#     - name: Download json report from build job
-#       uses: actions/download-artifact@v3
-#       with:
-#         name: vulnerabilities
-
-#     - name: Generate CSV and intermediate HTML report
-#       run: |
-#         echo "SEVERITY;ID;PACKAGE;VERSION;LINK" > vulnerabilities.csv
-#         cat vulnerabilities.json | jq -r '.matches[] | "\(.vulnerability.severity);\(.vulnerability.id);\(.artifact.name);\(.artifact.version);\(.vulnerability.links[0])"' >> vulnerabilities.csv
-#         echo -e '<table>\n<thead>\n<tr class="header">\n<th><p>SEVERITY</p></th>\n<th><p>ID</p></th>\n<th><p>PACKAGE</p></th>\n<th><p>VERSION</p></th>\n</tr>\n</thead>\n<tbody>' > vulnerabilities.html
-#         cat vulnerabilities.json | jq -r '.matches[] | "<tr>;<td><p>\(.vulnerability.severity)</p></td>;<td><p><a href=\"\(.vulnerability.links[0])\">\(.vulnerability.id)</a></p></td>;<td><p>\(.artifact.name)</p></td>;<td><p>\(.artifact.version)</p></td>;</tr>"' | tr -s ';' '\n' | sed 's!><p>Negligible! style="background-color:#FFFFFF;"><p>Negligible!g' | sed 's!><p>Low! style="background-color:#FFFC9E;"><p>Low!g' | sed 's!><p>Medium! style="background-color:#FE996B;"><p>Medium!g' | sed 's!><p>High! style="background-color:#FD6864;"><p>High!g' | sed 's!><p>Critical! style="background-color:#FE0000;"><p>Critical!g' >> vulnerabilities.html
-#         echo -e '</tbody>\n</table>' >> vulnerabilities.html
-
-#     - name: Convert HTLM to PDF
-#       uses: docker://ghcr.io/coprs/reference-system:dependencies_wkhtmltopdf
-#       with:
-#         args: vulnerabilities.html vulnerabilities.pdf
-
-#     - name: Upload Anchore scan reports
-#       uses: actions/upload-artifact@master
-#       with:
-#         name: vulnerabilities
-#         path: |
-#           vulnerabilities.csv
-#           vulnerabilities.pdf
-#           vulnerabilities.json
+    - name: Push image
+      run: docker push ${{ env.DOCKER_IMAGE_NAME }}:${{ inputs.version_name }}
+      shell: bash
