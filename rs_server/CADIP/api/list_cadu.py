@@ -1,9 +1,15 @@
-"""Docstring will be here."""
+"""Module for interacting with CADU system through a FastAPI APIRouter.
+
+This module provides functionality to retrieve a list of products from the CADU system for a specified station.
+It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
+"""
 import json
 import os.path as osp
+from datetime import datetime
 from pathlib import Path
+from typing import List
 
-from eodag import EODataAccessGateway
+from eodag import EODataAccessGateway, EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
@@ -13,7 +19,7 @@ CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" 
 
 
 @router.get("/cadip/{station}/cadu/list")
-async def list_cadu_handler(station: str, start_date: str = "", stop_date: str = ""):
+async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Parameters
@@ -51,17 +57,17 @@ async def list_cadu_handler(station: str, start_date: str = "", stop_date: str =
     - The response includes a JSON representation of the list of products for the specified station.
     - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
-    if not get_station_ws(station):
+    if not station_to_server_url(station):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
-    if start_date and stop_date:
+    if is_valid_format(start_date) and is_valid_format(stop_date):
         # prepare start_stop
         dag_client = init_eodag(station)
         products, number = dag_client.search(start=start_date, end=stop_date, provider=station)
         return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
-    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, missing start/stop")
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
 
 
-def get_station_ws(station: str) -> str | None:
+def station_to_server_url(station: str) -> str | None:
     """Retrieve the configuration data (webserver address) for a CADU station based on its identifier.
 
     Parameters
@@ -77,7 +83,7 @@ def get_station_ws(station: str) -> str | None:
 
     Example
     -------
-    >>> get_station_ws("station123")
+    >>> station_to_server_url("station123")
     'https://station123.example.com'
 
     Notes
@@ -92,11 +98,10 @@ def get_station_ws(station: str) -> str | None:
             return stations_data.get(station.upper(), None)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         # logger to be added.
-        print(f"Error reading JSON file: {e}")
-        return None
+        raise FileNotFoundError(f"Error reading JSON file: {e}")
 
 
-def init_eodag(station):
+def init_eodag(station: str) -> EODataAccessGateway:
     """Initialize an instance of the EODataAccessGateway for a specified CADU station.
 
     Parameters
@@ -122,12 +127,12 @@ def init_eodag(station):
     - The returned instance is ready to be used for searching and accessing Earth observation data.
     """
     config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
-    eodag = EODataAccessGateway(config_file_path)
+    eodag = EODataAccessGateway(config_file_path.as_posix())
     eodag.set_preferred_provider(station)
     return eodag
 
 
-def prepare_products(products):
+def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
     """Prepare a list of products by extracting their ID and Name properties.
 
     Parameters
@@ -152,3 +157,31 @@ def prepare_products(products):
     [(1, 'Product A'), (2, 'Product B'), (3, 'Product C')]
     """
     return [(product.properties["id"], product.properties["Name"]) for product in products] if products else []
+
+
+def is_valid_format(date: str) -> bool:
+    """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS.sssZ".
+
+    Parameters
+    ----------
+    date : str
+        The string to be validated for the specified date format.
+
+    Returns
+    -------
+    bool
+        True if the input string adheres to the expected date format, otherwise False.
+
+    Example
+    -------
+    >>> is_valid_format("2023-01-01T12:00:00.000Z")
+    True
+
+    >>> is_valid_format("2023-01-01 12:00:00")
+    False
+    """
+    try:
+        datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
+        return True
+    except ValueError:
+        return False
