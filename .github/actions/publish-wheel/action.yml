@@ -3,7 +3,7 @@ description: Publish wheel
 
 inputs:
   package_directory:
-    description: An optional subdirectory path if poetry package doesn't reside in the main workflow directory
+    description: Sub project directory
     required: false
     default: .
 
