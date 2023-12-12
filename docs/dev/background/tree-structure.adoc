@@ -11,7 +11,7 @@ skinparam Legend {
 legend
 rs-server
 |_ docs/
-|_ src/
+|_ rs_server/
 |_ tests/
 |_ .gitignore
 |_ .pre-commit-config.yaml
@@ -25,6 +25,6 @@ end legend
 
 ----
 
-* 'src' folder contains all the production code
+* 'rs_server' folder contains all the production code
 * 'tests' folder contains all the unit and integration tests
 * 'docs' folder contains all the technical documentation

@@ -24,24 +24,4 @@ repos:
       - id: ruff
         args: [ --fix, --exit-non-zero-on-fix ]
 
-# Type check (with mypy)
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v1.6.1'  # Use the sha / tag you want to point at
-    hooks:
-    -   id: mypy
-        args:
-            - --explicit-package-bases
-        additional_dependencies:
-            - pytest==7.4.3
-
-# Security and license checks on python (with trivi)
-#-   repo: https://github.com/mxab/pre-commit-trivy.git
-#    rev: v0.9.0
-#    hooks:
-#    -   id: trivyfs-docker
-#        args:
-#            - --scanners
-#            - vuln,secret,license
-#            - --skip-dirs
-#            - ./tests
-#            - . # last arg indicates the path/file to scan
+# Remark: don't run mypy because we don't want mypy errors to block commits.

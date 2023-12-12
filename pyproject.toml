@@ -1,16 +1,16 @@
 [project]
 name = "rs-server"
-version = "0.1.0"
+version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server"
-version = "0.1.0"
+version = "0.0.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
 readme = "README.adoc"
 
 packages = [
-    { include = "src" },
+    { include = "rs_server" },
     { include = "services/common/rs_server_common" },
     { include = "services/cadip/rs_server_cadip" },
     { include = "tests", format = "sdist" },
@@ -45,9 +45,13 @@ safety = "^2.3.5"
 # init should be empty, doesn't need any docstrings
 "__init__.py" = ["D104"]
 
+[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+enable = true
+tagged-metadata = true
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.black]
 line-length = 120
