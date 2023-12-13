@@ -8,12 +8,20 @@ inputs:
   build_context_path:
     description: "'docker build' context path"
     required: true
+  image_suffix:
+    description: Docker image name suffix e.g. _services-cadip
+    required: true
   version_name:
     description: Version name e.g. 1.2.3a4.dev1a2b3c4d
     required: true
   github_token:
     description: secrets.GITHUB_TOKEN
     required: true
+
+outputs:
+  docker_image:
+    description: Docker image name:tag
+    value: ${{ steps.docker_image.outputs.docker_image }}
 
 # Copied from https://github.com/COPRS/reference-system-software/blob/dependencies
 # and https://github.com/COPRS/reference-system-software/blob/trivy-security-scan-v1/action.yml
@@ -27,12 +35,21 @@ runs:
     - run: echo "docker_version_name=$(echo ${{ inputs.version_name }} | tr + .)" >> $GITHUB_ENV
       shell: bash
 
+    # Full Docker image name:tag as ghcr.io/RS-PYTHON/rs-server<suffix>:<version> in lowercase
+    - id: docker_image
+      run: |
+        docker_image=${{ env.DOCKER_REGISTRY }}/${{ github.repository }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}
+        docker_image=${docker_image,,} # lowercase
+        echo docker_image=${docker_image} >> $GITHUB_ENV
+        echo docker_image=${docker_image} >> $GITHUB_OUTPUT
+      shell: bash
+
     # Extract metadata from Git reference and GitHub events
     - name: Extract Docker metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ${{ env.DOCKER_IMAGE_NAME }}
+        images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/rs-server
 
     # Checkout code from the current branch and build Docker image.
     - name: Build Docker image
@@ -41,14 +58,14 @@ runs:
         context: ./whl
         file: ${{ inputs.dockerfile }}
         load: true
-        tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.docker_version_name }}
+        tags: ${{ env.docker_image }}
         labels: ${{ steps.meta.outputs.labels }}
         push: false # push after the security scans below
 
     - name: Run Trivy vulnerability scanner SARIF
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.docker_version_name }}
+        image-ref: ${{ env.docker_image }}
         format: sarif
         output: trivy-results.sarif
         #severity: HIGH,CRITICAL
@@ -67,7 +84,7 @@ runs:
         sarif_file: trivy-results.sarif
         #category:
 
-    - name: Log into Docker registry ${{ env.DOCKER_REGISTRY }}
+    - name: Log into Docker registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.DOCKER_REGISTRY }}
@@ -78,4 +95,4 @@ runs:
     #   uses: docker/build-push-action@v5
     #   with:
     #     push: true
-    #     tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.docker_version_name }}
+    #     tags: ${{ env.docker_image }}
