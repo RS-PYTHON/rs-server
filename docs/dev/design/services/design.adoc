@@ -1,6 +1,6 @@
-= RS services
+= rs-server backend
 
-The rs-service is divided is several services.
+The rs-server backend is divided in several services.
 
 NOTE: TODO insert a table of the service with short description and the list of functionalities
 
@@ -14,6 +14,8 @@ and the activity be divided into the multiple instances.
 
 All services shares some common structures and mechanisms.
 These common elements are provided by the rs-server-common package.
+
+// TODO the catalog service isn't following these rule since it is reused.
 
 == Structure
 

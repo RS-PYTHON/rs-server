@@ -1,3 +1,5 @@
-= User access control (UAC)
+= rs-server frontend
 
-NOTE: TODO TBD
+NOTE: TODO To Be Defined
+
+// TODO UAC and api gateway
