@@ -91,8 +91,6 @@ runs:
         username: ${{ github.actor }}
         password: ${{ inputs.github_token }}
 
-    # - name: Push Docker image
-    #   uses: docker/build-push-action@v5
-    #   with:
-    #     push: true
-    #     tags: ${{ env.docker_image }}
+    - name: Push Docker image
+      run: docker push ${{ env.docker_image }}
+      shell: bash

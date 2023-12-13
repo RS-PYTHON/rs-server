@@ -8,8 +8,8 @@ name: Publish wheels and Docker images
 # Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
   push:
-    # tags:
-    #   - '**'
+    tags:
+      - '**'
   workflow_dispatch:
 
 env:
@@ -34,38 +34,38 @@ jobs:
       - id: publish-wheel
         uses: ./.github/actions/publish-wheel
 
-  # services-common-whl:
-  #   runs-on: ubuntu-latest
-  #   name: "'services/common' wheel"
-  #   outputs:
-  #     version_name: ${{ steps.publish-wheel.outputs.version_name }}
-  #     package_name: ${{ steps.publish-wheel.outputs.package_name }}
-  #   continue-on-error: true # TODO remove when the right python repo will be set
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - id: publish-wheel
-  #       uses: ./.github/actions/publish-wheel
-  #       with:
-  #         package_directory: services/common
+  services-common-whl:
+    runs-on: ubuntu-latest
+    name: "'services/common' wheel"
+    outputs:
+      version_name: ${{ steps.publish-wheel.outputs.version_name }}
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/common
 
-  # services-cadip-whl:
-  #   runs-on: ubuntu-latest
-  #   name: "'services/cadip' wheel"
-  #   outputs:
-  #     version_name: ${{ steps.publish-wheel.outputs.version_name }}
-  #     package_name: ${{ steps.publish-wheel.outputs.package_name }}
-  #   continue-on-error: true # TODO remove when the right python repo will be set
-  #   steps:
-  #     - uses: actions/checkout@v4
+  services-cadip-whl:
+    runs-on: ubuntu-latest
+    name: "'services/cadip' wheel"
+    outputs:
+      version_name: ${{ steps.publish-wheel.outputs.version_name }}
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
 
-  #     # Hack the pyproject.toml. TODO: find a cleaner to do this.
-  #     # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-  #     - run: sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/cadip/pyproject.toml
+      # Hack the pyproject.toml. TODO: find a cleaner to do this.
+      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+      - run: sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/cadip/pyproject.toml
 
-  #     - id: publish-wheel
-  #       uses: ./.github/actions/publish-wheel
-  #       with:
-  #         package_directory: services/cadip
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/cadip
 
   #########################
   # Publish Docker images #
@@ -99,38 +99,47 @@ jobs:
 
   test-pull-rs-server-img:
     runs-on: ubuntu-latest
+    name: Test pulling the 'rs-server' Docker image and run 'pip list'
     needs: [rs-server-img]
     container: ${{ needs.rs-server-img.outputs.docker_image }}
     steps:
       - run: pip list
 
-#   services-cadip-img:
-#     runs-on: ubuntu-latest
-#     name: "'services/cadip' Docker image"
-#     needs: [services-common-whl, services-cadip-whl]
-#     permissions: write-all
-#     steps:
-#       - uses: actions/checkout@v4
+  services-cadip-img:
+    runs-on: ubuntu-latest
+    name: "'services/cadip' Docker image"
+    needs: [services-common-whl, services-cadip-whl]
+    permissions: write-all
+    outputs:
+      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+    steps:
+      - uses: actions/checkout@v4
 
-#       # Download .whl files into ./whl/
-#       - name: Download .whl dependencies
-#         uses: actions/download-artifact@v3
-#         with:
-#           name: ${{ needs.services-common-whl.outputs.package_name }}
-#           path: ./whl
-#       - name: Download .whl dependencies
-#         uses: actions/download-artifact@v3
-#         with:
-#           name: ${{ needs.services-cadip-whl.outputs.package_name }}
-#           path: ./whl
+      # Download .whl files into ./whl/
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.services-common-whl.outputs.package_name }}
+          path: ./whl
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.services-cadip-whl.outputs.package_name }}
+          path: ./whl
 
-#       # Replace invalid characters in the Docker version name, e.g. 1.2.3a4+dev1a2b3c4d becomes 1.2.3a4.dev1a2b3c4d
-#       # TODO: move in ./.github/actions/publish-docker
-#       - run: echo "docker_version_name=$(echo ${{ needs.services-cadip-whl.outputs.version_name }} | tr + .)" >> $GITHUB_ENV
+      - id: publish-docker
+        uses: ./.github/actions/publish-docker
+        with:
+          dockerfile: ./services/cadip/Dockerfile.POC
+          build_context_path: ./whl
+          image_suffix: _services-cadip
+          version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
-#       - uses: ./.github/actions/publish-docker
-#         with:
-#           dockerfile: ./services/cadip/Dockerfile.POC
-#           build_context_path: ./whl
-#           version_name: ${{ env.docker_version_name }} # from above step
-#           github_token: ${{ secrets.GITHUB_TOKEN }}
+  test-pull-services-cadip-img:
+    runs-on: ubuntu-latest
+    name: Test pulling the 'services/cadip' Docker image and run 'pip list'
+    needs: [services-cadip-img]
+    container: ${{ needs.services-cadip-img.outputs.docker_image }}
+    steps:
+      - run: pip list
