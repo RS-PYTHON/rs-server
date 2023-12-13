@@ -40,6 +40,7 @@ pre-commit = "^3.5.0"
 flake8 = "^6.1.0"
 bandit = "^1.7.5"
 safety = "^2.3.5"
+pylint = "^3.0.3"
 
 [tool.ruff.lint.extend-per-file-ignores]
 # init should be empty, doesn't need any docstrings

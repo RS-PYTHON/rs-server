@@ -28,22 +28,31 @@ jobs:
 
   check-linting:
     runs-on: ubuntu-latest
-    name: Check linting (flake8)
+    name: Check linting (pylint, flake8)
+    continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
 
-      # Used by sonarqube. See the .flake8 file for configuration.
+      - name: Run pylint
+        if: always() # even if previous steps returned a non-zero exit code
+        run: poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
+
       - name: Run flake8
         uses: py-actions/flake8@v2
+        if: always()
         with:
           path: .
           args: --output-file ./flake8-report.txt
 
       - name: Save reports
         uses: actions/upload-artifact@v3
+        if: always()
         with:
           name: check-linting
-          path: ./flake8-report.txt
+          path: |
+            ./flake8-report.txt
+            ./pylint-report.txt
           retention-days: 1
 
   check-typing:
@@ -71,7 +80,7 @@ jobs:
         shell: bash
 
       - name: Save reports
-        if: always() # even if bandit returned a non-zero exit code
+        if: always() # even if previous steps returned a non-zero exit code
         uses: actions/upload-artifact@v3
         with:
           name: check-security
@@ -191,6 +200,7 @@ jobs:
         with:
           # See doc:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/importing-external-issues/importing-third-party-issues/
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-execution-parameters/
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-coverage-parameters/
           args: >
@@ -203,7 +213,8 @@ jobs:
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
-            -Dsonar.python.flake8.reportPaths="flake8-report.txt"
+            -Dsonar.python.pylint.reportPaths="./pylint-report.txt"
+            -Dsonar.python.flake8.reportPaths="./flake8-report.txt"
             -Dsonar.python.bandit.reportPaths="./bandit-report.json"
             -Dsonar.python.coverage.reportPaths="./cov-report.xml"
             -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
