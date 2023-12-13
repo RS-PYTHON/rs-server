@@ -1,3 +1,16 @@
 = Design & concepts
 
-NOTE : The design elements will be added here
+The rs-servcer is divided into two main elements :
+
+* the rs-server frontend
+* the rs-server backend
+
+The rs-server frontend is a facade for users that verify the user privileges before accessing to the services provided by the rs-server backend.
+
+:leveloffset: +1
+
+include::uac/design.adoc[]
+
+include::services/design.adoc[]
+
+:leveloffset: -1

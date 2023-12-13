@@ -1,31 +1,45 @@
-= RS services
+= rs-server backend
 
-There are multiple services:
+The rs-server backend is divided in several services.
 
 NOTE: TODO insert a table of the service with short description and the list of functionalities
 
 Each service provides several functionalities as https endpoints.
 All services are independent of others.
 Each service is provided as an independent Docker image.
-Each service can handle multiple requests in parallel.
-Services are stateless so they can easily be scaled
+Each service can be started in laptop or cluster mode. (see later for more details)
+Each service can handle multiple requests in parallel in cluster mode.
+Services are stateless, so they can easily be scaled
 and the activity be divided into the multiple instances.
 
-== Tree structure
+All services shares some common structures and mechanisms.
+These common elements are provided by the rs-server-common package.
+
+// TODO the catalog service isn't following these rule since it is reused.
+
+== Structure
+
+A rs-server service is divided in 3 layers :
+
+* the api layer provides the http endpoints to call the service
+* the event layer provides the kafka interface (read / write)
+* the library layer provides the business logic
+
+
+=== Sources organisation
 
 NOTE: TODO insert the servie tree structure here
 
 Each service has its own folder named with the service name.
 This folder is a python project.
-It contains the sources and tests for this service.
+It contains the sources, tests, configuration,... for this service.
 It also contains a Dockerfile describing the service output image.
-The sources are separated in two layers : an api and a library packages.
+The sources of each layer is separated in a specific package.
 
-Services shares some elements.
-These elements are provided in a common python project
-stored at the same level of the services.
+The shared elements are provided by the rs-server-common package.
+It is handled as a python project as if it is a rs-server service.
 
-== Layers separation
+=== Layers
 
 In each service, the api is separated from the library.
 The api is responsible for providing the given http endpoints.
@@ -34,9 +48,60 @@ The library is composed of several modules providing the business logic.
 The api doesn't provide functionalities itself.
 It uses the library to provide the functionality.
 
-:leveloffset: +2
+:leveloffset: +3
 
 include::api.adoc[]
+
 include::library.adoc[]
 
-:leveloffset: -2
+include::event.adoc[]
+
+:leveloffset: -3
+
+
+=== Services
+
+:leveloffset: +3
+
+include::cadip.adoc[]
+
+:leveloffset: -3
+
+
+== Deploy mode
+
+A service can be started in several modes :
+
+* laptop : monolithic for a local use
+* cluster-api : provide the http endpoint for a cluster use
+* cluster-service : provide the scalable functional service for a cluster use
+
+This mode is a starting parameter of the service
+and it changes how the service will work.
+
+=== laptop
+
+If the service is started locally, the "laptop" mode is used.
+In this mode, the api delegates the process of the request direcly to the library.
+
+WARN: In this mode, only a request can be handled at a time
+
+NOTE : TODO insert the api/component_laptop
+
+=== cluster
+
+When deploying in a cluster, each service is divided in two part :
+
+* A unique "cluster-api" that provides the http endpoint
+and delegate the process of the request to an event message bus.
+
+* A scalable "cluster-service" that consumes the event messages
+and uses the library to process the request.
+Each instance of this service handles an avent at a time.
+
+NOTE : TODO insert the api/component_cluster
+
+
+// TODO == Configuration
+
+// TODO == Build and Deployment

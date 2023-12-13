@@ -10,7 +10,8 @@ It also handles authentication on these sites.
 
 NOTE: TODO insert the class diagram class.mmd here
 
-A DataRetriever handles the retrieval of external data.
+A DataRetriever is the main object of this module.
+It handles the retrieval of external data.
 It uses a Provider to interact with external data provider (search and download).
 It uses a Storage to store downloaded data.
 It uses a DownloadStatus to track download progress.
@@ -23,7 +24,7 @@ The technical aspects are handled by Provider, Storage and DownloadStatus.
 NOTE: TODO insert the activity diagram 'search-activity.mmd' here
 
 A DataProvider can search for data with criteria using the search function.
-The Criteria is time period with a start and an end date.
+The Criteria is time period with a start date and an end date.
 
 First, the DataProvider ensures its Provider is authenticated.
 If not, it tries to log in.
@@ -58,14 +59,20 @@ Then, it asks its Storage to store the downloaded data with its Storage.
 
 == Provider
 
-The main provider is the EodagProvider that uses https://eodag.readthedocs.io/en/stable/index.html[EODAG] to perform the activities.
+The Provider is responsible for technical exchange with the external sites.
+It is implemented with https://eodag.readthedocs.io/en/stable/index.html[EODAG] via the EodagProvider.
 
 == Storage
 
-The main Storage is a S3 bucket.
+The Storage is responsible for storing the file.
+The main storage is the S3Bucket.
 
 // TODO What techno to do the S3 interface ?
 
 == Download status
+
+The DownloadStatus is responsible for tracking download progress.
+The status is stored in a postgresql database.
+The interaction with this database are handled by the PGDownloadStatus.
 
 // TODO fill when doing the story
