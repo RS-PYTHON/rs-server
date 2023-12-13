@@ -2,25 +2,26 @@
 
 The API is responsible for providing a REST endpoint
 to access the core library functionalities.
+It does no functional processes.
 
 It checks the request parameters
-and then uses the core library to fulfill the request.
+Then, it delegates the processing in background.
 Finally, it builds an adequate response.
 
 NOTE: TODO insert the activity diagram api/activity.mmd
 
-The API is responsible for handling the REST interface.
-It does no functional process.
-All functional processes are done by the library.
+The process delegation differs depending on the starting mode.
 
-The API should be able to handle multiple requests in parallel.
+== Structure
 
-
-== Service API structure
-
-For all services, the api layer is an api python package.
+For all services, the api layer is a python package named 'api'.
 This package contains a module for each endpoint.
 This package uses the common api package for common mechanisms.
+
+There is two implementation for each endpoint :
+
+* a local implementation that delegates the process to the library
+* a cluster implement that delegates the process to a kafka event bus
 
 == Shared elements
 
@@ -35,3 +36,29 @@ These mechanisms are provided in a common api module.
 This layer is implemented using FastAPI.
 
 // TODO give some rationale for this choice.
+
+== Deploy mode
+
+The deploy mode modifies the endpoint initialized at the start of the application.
+
+[cols=2,options=header]
+|==
+|Deploy mode
+|Endpoints initialized
+
+|laptop
+|cadip laptop endpoints
+
+|cluster-api
+|cadip cluster endpoints
+
+|cluster-service
+|none
+
+
+NOTE: TODO insert the api/class.mmd
+
+The previous class diagram how these modes are handled in the design.
+Each endpoint has two implementations : one for laptop and one for cadip-api.
+
+At the start of the application, the expected endpoints are routed.
