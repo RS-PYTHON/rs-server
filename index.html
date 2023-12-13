@@ -1219,7 +1219,494 @@ It will be updated in the future.<br>
 = Design &amp; concepts</p>
 </div>
 <div class="paragraph">
-<p>NOTE : The design elements will be added here</p>
+<p>The rs-servcer is divided into two main elements :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the rs-server frontend</p>
+</li>
+<li>
+<p>the rs-server backend</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The rs-server frontend is a facade for users that verify the user privileges before accessing to the services provided by the rs-server backend.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_rs_server_frontend">rs-server frontend</h5>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO To Be Defined
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_rs_server_backend">rs-server backend</h5>
+<div class="paragraph">
+<p>The rs-server backend is divided in several services.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO insert a table of the service with short description and the list of functionalities
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Each service provides several functionalities as https endpoints.<br>
+All services are independent of others.<br>
+Each service is provided as an independent Docker image.<br>
+Each service can be started in laptop or cluster mode. (see later for more details)<br>
+Each service can handle multiple requests in parallel in cluster mode.<br>
+Services are stateless, so they can easily be scaled<br>
+and the activity be divided into the multiple instances.</p>
+</div>
+<div class="paragraph">
+<p>All services shares some common structures and mechanisms.<br>
+These common elements are provided by the rs-server-common package.</p>
+</div>
+<div class="sect5">
+<h6 id="_structure">Structure</h6>
+<div class="paragraph">
+<p>A rs-server service is divided in 3 layers :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the api layer provides the http endpoints to call the service</p>
+</li>
+<li>
+<p>the event layer provides the kafka interface (read / write)</p>
+</li>
+<li>
+<p>the library layer provides the business logic</p>
+</li>
+</ul>
+</div>
+<div class="sect6">
+<h7 id="_sources_organisation">Sources organisation</h7>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO insert the servie tree structure here
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Each service has its own folder named with the service name.<br>
+This folder is a python project.<br>
+It contains the sources, tests, configuration,&#8230;&#8203; for this service.<br>
+It also contains a Dockerfile describing the service output image.<br>
+The sources of each layer is separated in a specific package.</p>
+</div>
+<div class="paragraph">
+<p>The shared elements are provided by the rs-server-common package.<br>
+It is handled as a python project as if it is a rs-server service.</p>
+</div>
+</div>
+<div class="sect6">
+<h7 id="_layers">Layers</h7>
+<div class="paragraph">
+<p>In each service, the api is separated from the library.<br>
+The api is responsible for providing the given http endpoints.<br>
+The library is composed of several modules providing the business logic.</p>
+</div>
+<div class="paragraph">
+<p>The api doesn&#8217;t provide functionalities itself.<br>
+It uses the library to provide the functionality.</p>
+</div>
+<div class="sect7">
+<h8 id="_the_api">The API</h8>
+<div class="paragraph">
+<p>The API is responsible for providing a REST endpoint<br>
+to access the core library functionalities.<br>
+It does no functional processes.</p>
+</div>
+<div class="paragraph">
+<p>It checks the request parameters<br>
+Then, it delegates the processing in background.<br>
+Finally, it builds an adequate response.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO insert the activity diagram api/activity.mmd
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The process delegation differs depending on the starting mode.</p>
+</div>
+<div class="sect8">
+<h9 id="_structure_2">Structure</h9>
+<div class="paragraph">
+<p>For all services, the api layer is a python package named 'api'.<br>
+This package contains a module for each endpoint.<br>
+This package uses the common api package for common mechanisms.</p>
+</div>
+<div class="paragraph">
+<p>There is two implementation for each endpoint :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a local implementation that delegates the process to the library</p>
+</li>
+<li>
+<p>a cluster implement that delegates the process to a kafka event bus</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect8">
+<h9 id="_shared_elements">Shared elements</h9>
+<div class="paragraph">
+<p>All service api layers share common mechanisms.<br>
+These mechanisms are provided in a common api module.</p>
+</div>
+</div>
+<div class="sect8">
+<h9 id="_framework_used">Framework used</h9>
+<div class="paragraph">
+<p>This layer is implemented using FastAPI.</p>
+</div>
+</div>
+<div class="sect8">
+<h9 id="_deploy_mode">Deploy mode</h9>
+<div class="paragraph">
+<p>The deploy mode modifies the endpoint initialized at the start of the application.</p>
+</div>
+<div class="paragraph">
+<p>|==<br>
+|Deploy mode<br>
+|Endpoints initialized</p>
+</div>
+<div class="paragraph">
+<p>|laptop<br>
+|cadip laptop endpoints</p>
+</div>
+<div class="paragraph">
+<p>|cluster-api<br>
+|cadip cluster endpoints</p>
+</div>
+<div class="paragraph">
+<p>|cluster-service<br>
+|none</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO insert the api/class.mmd
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The previous class diagram how these modes are handled in the design.<br>
+Each endpoint has two implementations : one for laptop and one for cadip-api.</p>
+</div>
+<div class="paragraph">
+<p>At the start of the application, the expected endpoints are routed.<br>
+= The core library</p>
+</div>
+<div class="paragraph">
+<p>The core library is responsible for providing the rs-server functionalities.<br>
+It is independent of the API layer.<br>
+The business logic is kept independent of technical stuff like transfer protocol.<br>
+It is divided on multiple functional modules like data_retrieval.</p>
+</div>
+<div class="paragraph">
+<p>There is common mechanisms that are shared.<br>
+The shared elements are provided by the library package of the common python project.</p>
+</div>
+</div>
+<div class="sect8">
+<h9 id="_modules">Modules</h9>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO Brief introduction with the list of main modules
+</td>
+</tr>
+</table>
+</div>
+<div class="sect9">
+<h10 id="_data_retrieval">Data retrieval</h10>
+<div class="paragraph">
+<p>This module is responsible for external data retrieval.<br>
+It provides two main functionalities :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>search for data in a distant site with filter criteria</p>
+</li>
+<li>
+<p>download data from a distant site to local folder or a S3 bucket</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>It also handles authentication on these sites.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO insert the class diagram class.mmd here
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A DataRetriever is the main object of this module.<br>
+It handles the retrieval of external data.<br>
+It uses a Provider to interact with external data provider (search and download).<br>
+It uses a Storage to store downloaded data.<br>
+It uses a DownloadStatus to track download progress.</p>
+</div>
+<div class="paragraph">
+<p>The DataRetriever handles all the business logic.<br>
+The technical aspects are handled by Provider, Storage and DownloadStatus.</p>
+</div>
+<div class="sect10">
+<h11 id="_search_for_data">Search for data</h11>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO insert the activity diagram 'search-activity.mmd' here
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A DataProvider can search for data with criteria using the search function.<br>
+The Criteria is time period with a start date and an end date.</p>
+</div>
+<div class="paragraph">
+<p>First, the DataProvider ensures its Provider is authenticated.<br>
+If not, it tries to log in.<br>
+In case of connexion issues, it raises a specific ConnexionFailed exception.<br>
+In case of authentication issues, it raises a specific AuthenticationFailed exception.</p>
+</div>
+<div class="paragraph">
+<p>Then, the site asks its Provider to perform the search.<br>
+In case of error during search, it raises a specific SearchFailed exception.</p>
+</div>
+<div class="paragraph">
+<p>Finally, it returns an iterable through the found data.<br>
+The found Data are product metadata properties (dict-like object).</p>
+</div>
+</div>
+<div class="sect10">
+<h11 id="_download_a_data">Download a data</h11>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">
+TODO insert the activity diagram 'download-activity.mmd' here
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A site can download a file to a specific path from its external id using the download function.</p>
+</div>
+<div class="paragraph">
+<p>First, the site ensures its Provider is authenticated.<br>
+If not, it tries to log in.<br>
+In case of connexion issues, it raises a specific ConnexionFailed exception.<br>
+In case of authentication issues, it raises a specific AuthenticationFailed exception.</p>
+</div>
+<div class="paragraph">
+<p>Then, it updates the download status to indicate the download has started.</p>
+</div>
+<div class="paragraph">
+<p>Then, the site asks its Provider to perform the download.<br>
+In case of error during download,<br>
+it updates the status with the error information,<br>
+and it raises a specific DownloadFailed exception.</p>
+</div>
+<div class="paragraph">
+<p>Then, it asks its Storage to store the downloaded data with its Storage.</p>
+</div>
+</div>
+<div class="sect10">
+<h11 id="_provider">Provider</h11>
+<div class="paragraph">
+<p>The Provider is responsible for technical exchange with the external sites.<br>
+It is implemented with <a href="https://eodag.readthedocs.io/en/stable/index.html">EODAG</a> via the EodagProvider.</p>
+</div>
+</div>
+<div class="sect10">
+<h11 id="_storage">Storage</h11>
+<div class="paragraph">
+<p>The Storage is responsible for storing the file.<br>
+The main storage is the S3Bucket.</p>
+</div>
+</div>
+<div class="sect10">
+<h11 id="_download_status">Download status</h11>
+<div class="paragraph">
+<p>The DownloadStatus is responsible for tracking download progress.<br>
+The status is stored in a postgresql database.<br>
+The interaction with this database are handled by the PGDownloadStatus.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect7">
+<h8 id="_event_layer">Event layer</h8>
+
+</div>
+</div>
+<div class="sect6">
+<h7 id="_services">Services</h7>
+<div class="sect7">
+<h8 id="_cadip_service">Cadip service</h8>
+<div class="paragraph">
+<p>The cadip service enables users to retrieve data from cadip stations.<br>
+Each instance of this service is started for a given station.</p>
+</div>
+<div class="paragraph">
+<p>It provides 2 endpoints :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>a search endpoint that enables to search files for a time period</p>
+</li>
+<li>
+<p>a download endpoint that enables to download a file from its id and name</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The processes are realized by a DataRetriever configured to use the EODAG provider "CADIP".</p>
+</div>
+<div class="sect8">
+<h9 id="_configuration_2">Configuration</h9>
+<div class="paragraph">
+<p>This service uses several configurations elements :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>the station to url mapping that defines the url of the cadip server for each station</p>
+</li>
+<li>
+<p>the station handled by the instance</p>
+</li>
+<li>
+<p>the eodag configuration used to interact with the cadip station</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_deploy_mode_2">Deploy mode</h6>
+<div class="paragraph">
+<p>A service can be started in several modes :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>laptop : monolithic for a local use</p>
+</li>
+<li>
+<p>cluster-api : provide the http endpoint for a cluster use</p>
+</li>
+<li>
+<p>cluster-service : provide the scalable functional service for a cluster use</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>This mode is a starting parameter of the service<br>
+and it changes how the service will work.</p>
+</div>
+<div class="sect6">
+<h7 id="_laptop">laptop</h7>
+<div class="paragraph">
+<p>If the service is started locally, the "laptop" mode is used.<br>
+In this mode, the api delegates the process of the request direcly to the library.</p>
+</div>
+<div class="paragraph">
+<p>WARN: In this mode, only a request can be handled at a time</p>
+</div>
+<div class="paragraph">
+<p>NOTE : TODO insert the api/component_laptop</p>
+</div>
+</div>
+<div class="sect6">
+<h7 id="_cluster">cluster</h7>
+<div class="paragraph">
+<p>When deploying in a cluster, each service is divided in two part :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A unique "cluster-api" that provides the http endpoint<br>
+and delegate the process of the request to an event message bus.</p>
+</li>
+<li>
+<p>A scalable "cluster-service" that consumes the event messages<br>
+and uses the library to process the request.<br>
+Each instance of this service handles an avent at a time.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>NOTE : TODO insert the api/component_cluster</p>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -1257,7 +1744,7 @@ It will be updated in the future.<br>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-12-13 12:00:27 UTC
+Last updated 2023-12-13 12:19:45 UTC
 </div>
 </div>
 </body>
