@@ -51,7 +51,9 @@ It uses the library to provide the functionality.
 :leveloffset: +3
 
 include::api.adoc[]
+
 include::library.adoc[]
+
 include::event.adoc[]
 
 :leveloffset: -3

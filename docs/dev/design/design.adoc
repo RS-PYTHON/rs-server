@@ -10,6 +10,7 @@ The rs-server frontend is a facade for users that verify the user privileges bef
 :leveloffset: +1
 
 include::uac/design.adoc[]
+
 include::services/design.adoc[]
 
 :leveloffset: -1

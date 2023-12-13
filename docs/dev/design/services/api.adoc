@@ -42,7 +42,7 @@ This layer is implemented using FastAPI.
 The deploy mode modifies the endpoint initialized at the start of the application.
 
 [cols=2,options=header]
-|==
+|===
 |Deploy mode
 |Endpoints initialized
 
@@ -54,6 +54,8 @@ The deploy mode modifies the endpoint initialized at the start of the applicatio
 
 |cluster-service
 |none
+
+|===
 
 
 NOTE: TODO insert the api/class.mmd

@@ -58,9 +58,13 @@ include::docs/dev/code-style.adoc[]
 :leveloffset: +3
 
 include::docs/dev/background/tree-structure.adoc[]
+
 include::docs/dev/environment/description.adoc[]
+
 include::docs/dev/background/workflow.adoc[]
+
 include::docs/dev/background/ci.adoc[]
+
 include::docs/dev/design/design.adoc[]
 
 :leveloffset: -3
