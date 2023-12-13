@@ -62,26 +62,26 @@ runs:
         labels: ${{ steps.meta.outputs.labels }}
         push: false # push after the security scans below
 
-    - name: Run Trivy vulnerability scanner SARIF
+    - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ${{ env.docker_image }}
         format: sarif
-        output: trivy-results.sarif
+        output: trivy-results-docker.sarif
         #severity: HIGH,CRITICAL
         #timeout: '30m'
 
-    - name: Save scan results as artifact
+    - name: Save Trivy scan results as artifact
       uses: actions/upload-artifact@v3
       with:
-        name: trivy-results.sarif
-        path: trivy-results.sarif
+        name: trivy-results-docker.sarif
+        path: trivy-results-docker.sarif
 
-    - name: Upload scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+    - name: Upload Trivy scan results to GitHub Security tab
       if: always() # run even if the scan returned a non-zero exit code
+      uses: github/codeql-action/upload-sarif@v2
       with:
-        sarif_file: trivy-results.sarif
+        sarif_file: trivy-results-docker.sarif
         #category:
 
     - name: Log into Docker registry

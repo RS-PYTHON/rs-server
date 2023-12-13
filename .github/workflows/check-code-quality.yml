@@ -68,43 +68,51 @@ jobs:
 
   check-security:
     runs-on: ubuntu-latest
-    name: Check security (bandit)
+    name: Check security (bandit, safety)
     continue-on-error: true # run other jobs, resolve issues later
+    permissions: write-all
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
 
       - id: bandit
         name: Run bandit
+        if: always() # even if previous steps returned a non-zero exit code
         run: poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
         shell: bash
 
-      - name: Save reports
-        if: always() # even if previous steps returned a non-zero exit code
+      - id: safety
+        name: Run safety
+        if: always()
+        run: poetry run safety check --full-report
+        shell: bash
+
+      - name: Run Trivy vulnerability scanner
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-results-fs.sarif
+          #severity: 'CRITICAL'
+
+      - name: Save reports as artifacts
+        if: always()
         uses: actions/upload-artifact@v3
         with:
           name: check-security
-          path: ./bandit-report.json
+          path: |
+            ./bandit-report.json
+            ./trivy-results-fs.sarif
           retention-days: 1
 
-      # TODO: use trivy ?
-      # - uses: aquasecurity/trivy-action@master
-      #   with:
-      #     scan-type: 'fs'
-      #     scan-ref: '.'
-
-  check-deps-security:
-    runs-on: ubuntu-latest
-    name: Check dependencies security (safety)
-    continue-on-error: true # run other jobs, resolve issues later
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/poetry-install
-
-      - id: safety
-        name: Run safety
-        run: poetry run safety check --full-report
-        shell: bash
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-results-fs.sarif
+          #category:
 
   run-unit-tests:
     runs-on: ubuntu-latest
