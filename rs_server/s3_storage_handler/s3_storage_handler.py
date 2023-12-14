@@ -187,7 +187,7 @@ def files_to_be_uploaded(paths, logger):
 
 
 # get the content of a s3 directory
-def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pattern=None):  # noqa
+def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pattern=None):
     """Docstring to be added."""
     if s3_client is None:
         sys.exit(-1)

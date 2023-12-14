@@ -15,7 +15,7 @@ jobs:
 
   check-format:
     runs-on: ubuntu-latest
-    name: Check format (ruff, black, isort)
+    name: Check format (pre-commit, black, isort)
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/install-python

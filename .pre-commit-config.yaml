@@ -2,7 +2,8 @@ default_language_version:
     python: python3.11
 default_stages: [commit]
 repos:
-# basic verifications
+
+# Basic verifications
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
@@ -11,17 +12,26 @@ repos:
     -   id: trailing-whitespace
     -   id: check-toml
 
-# Format (with black)
+# Format (black)
 -   repo: https://github.com/psf/black
     rev: 23.10.1
     hooks:
     -   id: black
 
-# Lint with auto-fix (with ruff)
--   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.3
+# Format (isort)
+-   repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
     hooks:
-      - id: ruff
-        args: [ --fix, --exit-non-zero-on-fix ]
+    -   id: isort
 
-# Remark: don't run mypy because we don't want mypy errors to block commits.
+# Format (add trailing commas)
+-   repo: https://github.com/asottile/add-trailing-comma
+    rev: v3.1.0
+    hooks:
+    -   id: add-trailing-comma
+
+
+# Remarks:
+#   - don't run flake8, pylint and mypy because they are already run in the CI.
+#   - we don't use ruff because it uses pylint that returns an error code for quality issues
+#     that prevents you from commiting your code.
