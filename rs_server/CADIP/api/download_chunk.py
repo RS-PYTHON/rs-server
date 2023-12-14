@@ -9,7 +9,7 @@ from threading import Event
 from eodag import EODataAccessGateway, EOProduct, setup_logging
 from fastapi import APIRouter
 
-from rs_server.s3_storage_handler.s3_storage_handler import prefect_put_files_to_s3
+from rs_server.s3_storage_handler.s3_storage_handler import get_secrets
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
@@ -67,53 +67,69 @@ def start_eodag_download(station, id, name, local, obs):
     # init eodag object
     try:
         init = datetime.now()
-        print("{} : {} : {}: Thread started !".format(os.getpid(), threading.get_ident(), init))
+        print("{os.getpid()} : {threading.get_ident()} : {init}: Thread started !")
         setup_logging(3, no_progress_bar=True)
+
         dag_client = init_eodag(station)
         end = datetime.now()
         print("{} : {} : {}: init_eodag time {}".format(os.getpid(), threading.get_ident(), end, end - init))
-        if local is not None:
-            # set the path where the file should be downloaded
-            dag_client.update_providers_config(
-                f"""
-            {station}:
-                download:
-                    outputs_prefix: '{local}'
-            """
-            )
 
         init = datetime.now()
-        eop = init_eop(id, name, local)
+        eop = init_eop(id, name)
         end = datetime.now()
         print("{} : {} : {}: init_eop time: {}".format(os.getpid(), threading.get_ident(), end, end - init))
+
         # insert into database the filename with status set to progress
 
         thread_started.set()
         print("{} : {} : {}: set event !".format(os.getpid(), threading.get_ident(), datetime.now()))
         init = datetime.now()
         # time.sleep(random.randint(9, 20))
-        end = datetime.now()
+        if len(local) == 0:
+            local = "/tmp"
         dag_client.download(eop, outputs_prefix=local)
-        print("{} : {} : {}: download time: {}".format(os.getpid(), threading.get_ident(), end, end - init))
+        end = datetime.now()
+        # print("{} : {} : {}: download time: {}".format(os.getpid(), threading.get_ident(), end, ))
+        print(
+            "{} : {} : {}: Downloaded file: {}   in {}".format(
+                os.getpid(), threading.get_ident(), end, eop.location, end - init
+            )
+        )
     except Exception as e:
         print("{} : {} : {}: Exception caught: {}".format(os.getpid(), threading.get_ident(), datetime.now(), e))
         update_db(id, "failed")
         return
-    print("{} : {} : {}: Downloaded file: {}".format(os.getpid(), threading.get_ident(), datetime.now(), eop.location))
 
     if obs is not None and len(obs) > 0:
+        # TODO: the secrets should be set through env vars
+        secrets = {
+            "s3endpoint": None,
+            "accesskey": None,
+            "secretkey": None,
+        }
+        get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+        os.environ["S3_ENDPOINT"] = secrets["s3endpoint"] if secrets["s3endpoint"] is not None else ""
+        os.environ["S3_ACCESS_KEY_ID"] = secrets["accesskey"] if secrets["accesskey"] is not None else ""
+        os.environ["S3_SECRET_ACCESS_KEY"] = secrets["secretkey"] if secrets["secretkey"] is not None else ""
+        os.environ["S3_REGION"] = "sbg"
         filename = eop.location
         obs_array = obs.split("/")
-        # TODO check the length
-        prefect_put_files_to_s3([filename], obs_array[3], "/".join(obs_array[4:]))
+        print(
+            "filename = {} | obs_array = {} | join = {} | filename {}".format(
+                filename, obs_array, "/".join(obs_array[2:]), "/".join(obs_array[2:]) + name
+            )
+        )
 
-        os.remove(filename)
+        # TODO check the length
+        # prefect_put_files_to_s3.fn([filename], obs_array[2], "/".join(obs_array[3:]), 0)
+
+        os.remove(filename[7:])
 
     update_db(id, "succeeded")
 
 
 @router.get("/cadip/{station}/cadu")
-def download(station: str, id: str, name: str, local: str, obs: str = ""):
+def download(station: str, id: str, name: str, local: str = "", obs: str = ""):
     """Initiate an asynchronous download process using EODAG (Earth Observation Data Access Gateway).
 
     Parameters
@@ -214,7 +230,7 @@ def init_eodag(station):
     return eodag
 
 
-def init_eop(file_id: str, name: str, path: str) -> EOProduct:
+def init_eop(file_id: str, name: str) -> EOProduct:
     """Initialize EOP.
 
     Initializes an Earth Observation Package (EOP) with the specified parameters.
@@ -243,7 +259,6 @@ def init_eop(file_id: str, name: str, path: str) -> EOProduct:
         "id": file_id,
         "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
         "downloadLink": f"http://127.0.0.1:5000/Files({file_id})/$value",
-        "outputs_prefix": path,
     }
     product = EOProduct("CADIP", properties)
     # product.register_downloader()
