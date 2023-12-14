@@ -21,32 +21,17 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
-ruff = "^0.1.7"
 black = "^23.11.0"
 mypy = "^1.7.1"
 
 [tool.black]
 line-length = 120
-# TODO try to replace black by ruff formatter
 
 [tool.pytest.ini_options]
 markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
-
-[tool.ruff]
-line-length = 120 # is it useful if not using ruff formatter ?
-
-[tool.ruff.lint]
-# F = PyFlake
-# E = pycodestyle
-# I = isort
-# N = pep8 naming
-# D = pydocstyle
-# PL = pylint
-select = ["F", "E", "I", "N", "D", "PL"]
-ignore = ["D203", "D213"]
 
 [tool.mypy]
 warn_redundant_casts = true

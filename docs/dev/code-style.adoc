@@ -17,8 +17,7 @@ It is run in the pre-commit hooks and can be run after each file save.
 The line length is extended to 120
 but keep lines as small and readable as possible.
 
-The lint is performed by https://github.com/astral-sh/ruff[ruff].
-It is run in the pre-commit hooks and can be run after each file save.
+The lint is performed by pylint and flake8 in the CI workflow.
 
 The doc-strings are written using the reStructuredText
 because the python api is generated using Sphinx.
