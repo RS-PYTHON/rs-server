@@ -143,3 +143,22 @@ jobs:
     container: ${{ needs.services-cadip-img.outputs.docker_image }}
     steps:
       - run: pip list
+
+  ##########
+  # Others #
+  ##########
+
+  message:
+    runs-on: ubuntu-latest
+    name: Information
+    needs: [rs-server-img, services-cadip-img]
+    steps:
+
+      # Display link to Trivy results in the github security tab.
+      # This linke doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
+      - if: github.event_name != 'pull_request'
+        run: >
+          echo "Trivy scan results:
+          https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${{ github.ref_name }}"
+          >> $GITHUB_STEP_SUMMARY
+        shell: bash

@@ -68,7 +68,7 @@ jobs:
 
   check-security:
     runs-on: ubuntu-latest
-    name: Check security (bandit, safety)
+    name: Check security (bandit, safety, trivy)
     continue-on-error: true # run other jobs, resolve issues later
     permissions: write-all
     steps:
@@ -112,12 +112,14 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: trivy-results-fs.sarif
-          #category:
+          category: git repository
 
-      - if: always()
+      # Display link to Trivy results in the github security tab.
+      # This linke doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
+      - if: github.event_name != 'pull_request'
         run: >
           echo "Trivy scan results:
-          https://github.com/${{ github.repository }}/security/code-scanning?query=branch:${{ github.ref_name }}"
+          https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${{ github.ref_name }}"
           >> $GITHUB_STEP_SUMMARY
 
   run-unit-tests:

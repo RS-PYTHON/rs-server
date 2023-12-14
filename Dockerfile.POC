@@ -6,7 +6,7 @@ ADD ./*.whl /tmp/whl
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir /tmp/whl/rs_server-*.whl
 
-# Trivy critical vulnerability
+# Test Trivy critical vulnerability
 RUN DEBIAN_FRONTEND=noninteractive pip install --no-cache-dir flask==2.3.1
 
 RUN rm -rf /tmp/whl /root/.cache/pip
