@@ -39,11 +39,8 @@ jobs:
         run: poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
 
       - name: Run flake8
-        uses: py-actions/flake8@v2
         if: always()
-        with:
-          path: .
-          args: --output-file ./flake8-report.txt
+        run: poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
         uses: actions/upload-artifact@v3

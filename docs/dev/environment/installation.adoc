@@ -121,10 +121,10 @@ to ensure your code is compliant with project best practice :
 * fix trailing whitespace
 * check toml
 * run black formatter
-* run ruff linter
+* run linters
 * run trivy repo checks
 
-NOTE: It is useful to configure your IDE to run black and ruff at each file saving
+NOTE: It is useful to configure your IDE to run black at each file saving
 so that you keep your code compliant with the project coding style.
 
 == Additional IDE configuration
