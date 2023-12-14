@@ -23,9 +23,6 @@ outputs:
     description: Docker image name:tag
     value: ${{ steps.docker_image.outputs.docker_image }}
 
-# Copied from https://github.com/COPRS/reference-system-software/blob/dependencies
-# and https://github.com/COPRS/reference-system-software/blob/trivy-security-scan-v1/action.yml
-
 runs:
   using: "composite"
   steps:
@@ -83,6 +80,13 @@ runs:
       with:
         sarif_file: trivy-results-docker.sarif
         #category:
+
+    - if: always()
+      run: >
+        echo "Trivy scan results:
+        https://github.com/${{ github.repository }}/security/code-scanning?query=branch:${{ github.ref_name }}"
+        >> $GITHUB_STEP_SUMMARY
+      shell: bash
 
     - name: Log into Docker registry
       uses: docker/login-action@v3

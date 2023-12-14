@@ -114,6 +114,12 @@ jobs:
           sarif_file: trivy-results-fs.sarif
           #category:
 
+      - if: always()
+        run: >
+          echo "Trivy scan results:
+          https://github.com/${{ github.repository }}/security/code-scanning?query=branch:${{ github.ref_name }}"
+          >> $GITHUB_STEP_SUMMARY
+
   run-unit-tests:
     runs-on: ubuntu-latest
     name: Run unit tests (pytest)
@@ -251,3 +257,11 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # http instead of https or the url appears as *** in github, I don't know why,
+      # it may be configurable. But http works as well.
+      - if: always()
+        run: >
+          echo "SonarQube report:
+          http://sonarqube.ops-csc.com/dashboard?branch=${{ github.ref_name }}&id=${{ env.SONAR_PROJECT_KEY }}"
+          >> $GITHUB_STEP_SUMMARY
