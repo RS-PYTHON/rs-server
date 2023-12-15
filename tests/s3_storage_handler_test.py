@@ -10,7 +10,8 @@ import pytest
 import requests
 from moto.server import ThreadedMotoServer
 from prefect import flow
-from src.s3_storage_handler import s3_storage_handler
+
+from rs_server.s3_storage_handler import s3_storage_handler
 
 
 @pytest.mark.unit
