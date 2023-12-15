@@ -4,7 +4,6 @@ import os
 import shutil
 
 import pytest
-
 import src.ingestion.ingest_cadip_data as ingestion_flow
 
 
