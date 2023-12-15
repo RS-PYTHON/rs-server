@@ -11,7 +11,9 @@ import requests
 from moto.server import ThreadedMotoServer
 from prefect import flow
 
-from rs_server.s3_storage_handler import s3_storage_handler
+from rs_server.s3_storage_handler.s3_storage_handler import (
+    S3StorageHandler, prefect_get_keys_from_s3, prefect_put_files_to_s3,
+)
 
 
 @pytest.mark.unit
@@ -20,30 +22,69 @@ from rs_server.s3_storage_handler import s3_storage_handler
     [(("false", False)), (("http://localhost:5000", True))],
 )
 def test_get_s3_client(endpoint: str, expected_res: bool):
-    """Docstring to be added."""
+    """test_get_s3_client Function Documentation
+
+    This module provides unit tests for the `S3StorageHandler` class, focusing on the
+    `test_get_s3_client` function.
+
+    Usage:
+        - To execute the unit tests, run the associated test module.
+        - The tests cover the initialization of the `S3StorageHandler` class with different
+          S3 endpoints.
+
+    Dependencies:
+        - pytest
+        - ThreadedMotoServer (from your implementation or external source)
+        - S3StorageHandler (class to be tested)
+
+    Test Parameters:
+        - Two sets of parameters are used for testing, each representing a test case:
+            - ("false", False): Testing with a false endpoint.
+            - ("http://localhost:5000", True): Testing with a valid endpoint.
+
+    Test Execution:
+        - For each test case, a threaded Moto server is started to simulate an S3 server environment.
+        - A logger is set up to capture logs during the test execution.
+        - The `S3StorageHandler` is instantiated with the provided parameters.
+        - Assertions are made based on the expected result for each test case.
+            - If the endpoint is "http://localhost:5000", the instantiation should not raise an exception.
+            - If the endpoint is "false" or any other value, an exception is expected.
+
+    Function Signature:
+        def test_get_s3_client(endpoint: str, expected_res: bool)
+
+    Parameters:
+        - endpoint (str): S3 endpoint to be tested.
+        - expected_res (bool): Expected result of the test case.
+
+    Raises:
+        - AssertionError: If the test case fails.
+
+    Note:
+        - Ensure that the necessary dependencies (pytest, ThreadedMotoServer, S3StorageHandler) are installed.
+        - The Moto server and logger setup are common to both test cases.
+    """
     server = ThreadedMotoServer()
     server.start()
-    secrets = {
-        "s3endpoint": endpoint,
-        "accesskey": "",
-        "secretkey": "",
-    }
-    os.environ["S3_ENDPOINT"] = secrets["s3endpoint"] if secrets["s3endpoint"] is not None else ""
-    os.environ["S3_ACCESS_KEY_ID"] = secrets["accesskey"] if secrets["accesskey"] is not None else ""
-    os.environ["S3_SECRET_ACCESS_KEY"] = secrets["secretkey"] if secrets["secretkey"] is not None else ""
-    os.environ["S3_REGION"] = "sbg"
+    secrets = {"s3endpoint": endpoint, "accesskey": "", "secretkey": "", "region": "sbg"}
+
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
     logger.handlers = []
     logger.addHandler(logging.StreamHandler(sys.stdout))
-    logger.info("TEST")
 
-    s3_client = s3_storage_handler.get_s3_client()
     server.stop()
     if endpoint == "http://localhost:5000":
-        assert s3_client is not None
+        assert S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
+
     else:
-        assert s3_client is None
+        with pytest.raises(Exception) as e_info:
+            assert S3StorageHandler(
+                secrets["accesskey"],
+                secrets["secretkey"],
+                secrets["s3endpoint"],
+                secrets["region"],
+            )
 
 
 @pytest.mark.unit
@@ -69,7 +110,7 @@ def test_get_secrets(s3cfg_file: str, expected_res: bool):
     if "USER" in s3cfg_file:
         s3cfg_file = s3cfg_file.replace("USER", os.environ["USER"])
 
-    assert expected_res == s3_storage_handler.get_secrets(secrets, s3cfg_file, logger)
+    assert expected_res == S3StorageHandler.get_secrets(secrets, s3cfg_file, logger)
 
 
 @pytest.mark.unit
@@ -79,7 +120,7 @@ def test_get_secrets(s3cfg_file: str, expected_res: bool):
 )
 def test_get_basename(path: str, expected_res: bool):
     """Docstring to be added."""
-    assert expected_res == s3_storage_handler.get_basename(path)
+    assert expected_res == S3StorageHandler.get_basename(path)
 
 
 @pytest.mark.unit
@@ -93,20 +134,11 @@ def test_get_basename(path: str, expected_res: bool):
 )
 def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     """Docstring to be added."""
-    secrets = {
-        "s3endpoint": endpoint,
-        "accesskey": None,
-        "secretkey": None,
-    }
+    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
     logger.handlers = []
     logger.addHandler(logging.StreamHandler(sys.stdout))
-
-    os.environ["S3_ENDPOINT"] = secrets["s3endpoint"] if secrets["s3endpoint"] is not None else ""
-    os.environ["S3_ACCESS_KEY_ID"] = secrets["accesskey"] if secrets["accesskey"] is not None else ""
-    os.environ["S3_SECRET_ACCESS_KEY"] = secrets["secretkey"] if secrets["secretkey"] is not None else ""
-    os.environ["S3_REGION"] = "sbg"
 
     # create the test bucket
 
@@ -114,21 +146,18 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     server.start()
 
     requests.post(endpoint + "/moto-api/reset")
-    s3_client = s3_storage_handler.get_s3_client()
-    if s3_storage_handler.check_bucket_access(s3_client, bucket, logger):
+    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
+
+    if s3_handler.check_bucket_access(bucket):
         server.stop()
         logger.error("The bucket {} does exist, for the tests it shouldn't".format(bucket))
         assert False
-    if s3_client is None:
-        server.stop()
-        logger.error("Could not get the s3 handler")
-        assert False
     if bucket == "test-bucket":
-        s3_client.create_bucket(Bucket=bucket)
+        s3_handler.s3_client.create_bucket(Bucket=bucket)
         for idx in range(nb_of_files):
-            s3_client.put_object(Bucket=bucket, Key="test-dir/{}".format(idx), Body="testing")
+            s3_handler.s3_client.put_object(Bucket=bucket, Key="test-dir/{}".format(idx), Body="testing")
     # end of create
-    s3_files, total = s3_storage_handler.list_s3_files_obj(s3_client, bucket, "test-dir", logger)
+    s3_files, total = s3_handler.list_s3_files_obj(bucket, "test-dir")
     server.stop()
     logger.debug("len(s3_files)  = {}".format(len(s3_files)))
     assert len(s3_files) == nb_of_files
@@ -183,38 +212,22 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
 )
 def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list, expected_res: list):
     """Docstring to be added."""
-    secrets = {
-        "s3endpoint": endpoint,
-        "accesskey": None,
-        "secretkey": None,
-    }
+    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
     logger.handlers = []
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
-    # s3cfg_file = "/home/" + os.environ["USER"] + "/.s3cfg"
-
-    # assert s3_storage_handler.get_secrets(secrets, s3cfg_file, logger)
-    os.environ["S3_ENDPOINT"] = secrets["s3endpoint"] if secrets["s3endpoint"] is not None else ""
-    os.environ["S3_ACCESS_KEY_ID"] = secrets["accesskey"] if secrets["accesskey"] is not None else ""
-    os.environ["S3_SECRET_ACCESS_KEY"] = secrets["secretkey"] if secrets["secretkey"] is not None else ""
-    os.environ["S3_REGION"] = "sbg"
-
     server = ThreadedMotoServer()
     server.start()
     requests.post(endpoint + "/moto-api/reset")
-    s3_client = s3_storage_handler.get_s3_client()
-    if s3_client is None:
-        server.stop()
-        logger.error("Could not get the s3 handler")
-        assert False
+    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
     if bucket == "test-bucket":
-        s3_client.create_bucket(Bucket=bucket)
+        s3_handler.s3_client.create_bucket(Bucket=bucket)
         for obj in expected_res:
-            s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing")
+            s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing")
     logger.debug("Bucket created !")
-    collection = s3_storage_handler.files_to_be_downloaded(bucket, lst_with_files, logger)
+    collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
     server.stop()
     assert len(Counter(collection) - Counter(expected_res)) == 0
     assert len(Counter(expected_res) - Counter(collection)) == 0
@@ -308,43 +321,32 @@ async def test_prefect_download_files_from_s3(
     expected_res: list,
 ):
     """Docstring to be added."""
-    secrets = {
-        "s3endpoint": endpoint,
-        "accesskey": None,
-        "secretkey": None,
-    }
+    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
+
     short_s3_storage_handler_test_nb_of_files = 3
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
     logger.handlers = []
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
-    os.environ["S3_ENDPOINT"] = secrets["s3endpoint"] if secrets["s3endpoint"] is not None else ""
-    os.environ["S3_ACCESS_KEY_ID"] = secrets["accesskey"] if secrets["accesskey"] is not None else ""
-    os.environ["S3_SECRET_ACCESS_KEY"] = secrets["secretkey"] if secrets["secretkey"] is not None else ""
-    os.environ["S3_REGION"] = "sbg"
-
     # create the test bucket
     server = ThreadedMotoServer()
     server.start()
     requests.post(endpoint + "/moto-api/reset")
-    s3_client = s3_storage_handler.get_s3_client()
-    if s3_client is None:
-        server.stop()
-        logger.error("Could not get the s3 handler")
-        assert False
+    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
     if bucket == "test-bucket":
-        s3_client.create_bucket(Bucket=bucket)
+        s3_handler.s3_client.create_bucket(Bucket=bucket)
         for obj in lst_with_files_to_be_dwn:
-            s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing")
+            s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing\n")
     # end of create
 
-    collection = s3_storage_handler.files_to_be_downloaded(bucket, lst_with_files, logger)
+    collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
 
     @flow
     async def test_flow():
-        state = await s3_storage_handler.prefect_get_keys_from_s3(
-            collection,
+        state = await prefect_get_keys_from_s3(
+            s3_handler,
+            lst_with_files,
             bucket,
             local_path,
             0,
@@ -418,12 +420,17 @@ async def test_prefect_download_files_from_s3(
 )
 def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
     """Docstring to be added."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
     logger.handlers = []
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
-    collection = s3_storage_handler.files_to_be_uploaded(lst_with_files, logger)
+    server = ThreadedMotoServer()
+    server.start()
+    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
+    server.stop()
+    collection = s3_handler.files_to_be_uploaded(lst_with_files)
     logger.debug("collection   = {}".format(collection))
     logger.debug("expected_res = {}".format(expected_res))
     assert len(Counter(collection) - Counter(expected_res)) == 0
@@ -507,44 +514,29 @@ async def test_prefect_upload_files_to_s3(
     expected_res: list,
 ):
     """Docstring to be added."""
-    secrets = {
-        "s3endpoint": endpoint,
-        "accesskey": None,
-        "secretkey": None,
-    }
+    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
     logger.handlers = []
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
-    # s3cfg_file = "/home/" + os.environ["USER"] + "/.s3cfg"
-
-    # assert s3_storage_handler.get_secrets(secrets, s3cfg_file, logger)
-    os.environ["S3_ENDPOINT"] = secrets["s3endpoint"] if secrets["s3endpoint"] is not None else ""
-    os.environ["S3_ACCESS_KEY_ID"] = secrets["accesskey"] if secrets["accesskey"] is not None else ""
-    os.environ["S3_SECRET_ACCESS_KEY"] = secrets["secretkey"] if secrets["secretkey"] is not None else ""
-    os.environ["S3_REGION"] = "sbg"
     # create the test bucket
     server = ThreadedMotoServer()
     server.start()
     requests.post(endpoint + "/moto-api/reset")
-    s3_client = s3_storage_handler.get_s3_client()
-    if s3_client is None:
-        server.stop()
-        logger.error("Could not get the s3 handler")
-        assert False
+    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
     if bucket == "test-bucket":
-        s3_client.create_bucket(Bucket=bucket)
+        s3_handler.s3_client.create_bucket(Bucket=bucket)
     # end of create
 
-    collection = s3_storage_handler.files_to_be_uploaded(lst_with_files, logger)
+    collection = s3_handler.files_to_be_uploaded(lst_with_files)
     logger.debug("collection              = {}".format(collection))
     logger.debug("lst_with_files_to_be_up = {}".format(lst_with_files_to_be_up))
 
     @flow
     async def test_flow():
         # logger = get_run_logger()
-        state = await s3_storage_handler.prefect_put_files_to_s3(collection, bucket, s3_prefix, 0, return_state=True)
+        state = await prefect_put_files_to_s3(s3_handler, lst_with_files, bucket, s3_prefix, 0, return_state=True)
         result = await state.result(fetch=True)
         # logger.debug("result = {}".format(result))
         return result
@@ -552,7 +544,7 @@ async def test_prefect_upload_files_to_s3(
     res = await test_flow()
     test_bucket_files = []  # type: list[str]
     for key in lst_with_files:
-        s3_files, total = s3_storage_handler.list_s3_files_obj(s3_client, bucket, key, logger)
+        s3_files, total = s3_handler.list_s3_files_obj(bucket, key)
         test_bucket_files = test_bucket_files + s3_files
         # if total == 0:
         #    break
