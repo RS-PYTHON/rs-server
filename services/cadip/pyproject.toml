@@ -1,0 +1,49 @@
+[project]
+name = "rs-server-cadip"
+version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
+
+[tool.poetry]
+name = "rs-server-cadip"
+version = "0.0.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+packages = [
+    { include = "rs_server_cadip" },
+    { include = "tests", format = "sdist" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+rs-server-common = {path = "../common", develop = true}
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+black = "^23.11.0"
+mypy = "^1.7.1"
+
+
+[tool.black]
+line-length = 120
+
+[tool.pytest.ini_options]
+markers = [
+    "unit", # mark a test as unittest
+    "integration", # mark a test as integration test
+]
+
+[tool.mypy]
+warn_redundant_casts = true
+# Force analyze of partially annotate function signatures
+check_untyped_defs = true
+
+[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+enable = true
+tagged-metadata = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"

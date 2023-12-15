@@ -1,5 +1,8 @@
 = rs-server
 
+// Note: links to branch 'develop'
+image::https://sonarqube.ops-csc.com/api/project_badges/measure?branch=develop&project=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&metric=alert_status&token=sqb_c9241ef82ea91a8e9a9b604570f834f622dfed05[Quality Gate Status,link="https://sonarqube.ops-csc.com/dashboard?id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&branch=develop"]
+
 This repository contains all the python libraries allowing to build Copernicus processing chains.
 
 == Use the rs-server
@@ -52,29 +55,19 @@ include::docs/dev/code-style.adoc[]
 
 === Additional information
 
-:leveloffset: 3
+:leveloffset: +3
 
 include::docs/dev/background/tree-structure.adoc[]
 
-:leveloffset: 0
-
-:leveloffset: 3
-
 include::docs/dev/environment/description.adoc[]
 
-:leveloffset: 0
-
-==== Software environment description
-
-NOTE: A description of the software stack and the rationales will be added here.
-
-:leveloffset: 3
-
 include::docs/dev/background/workflow.adoc[]
+
 include::docs/dev/background/ci.adoc[]
+
 include::docs/dev/design/design.adoc[]
 
-:leveloffset: 0
+:leveloffset: -3
 
 == Links
 

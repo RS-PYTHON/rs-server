@@ -1,0 +1,57 @@
+name: publish-wheel
+description: Publish wheel
+
+inputs:
+  package_directory:
+    description: Sub project directory
+    required: false
+    default: .
+
+outputs:
+  version_name:
+    description: version name
+    value: ${{ steps.version_name.outputs.version_name }}
+  package_name:
+    description: .whl package name
+    value: ${{ steps.package_name.outputs.package_name }}
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: ./.github/actions/poetry-install
+
+    - run: |
+        set -x
+        cd ${{ inputs.package_directory }}
+        poetry self add "poetry-dynamic-versioning[plugin]"
+        poetry build --format wheel
+      shell: bash
+
+    # Run 'poetry dynamic-versioning' to find the version name, sed the result
+    - name: Find version name
+      id: version_name
+      run: "echo version_name=$(poetry dynamic-versioning |& sed -n 's|Version: ||p') >> $GITHUB_OUTPUT"
+      shell: bash
+
+    # Note: the wheel file is built in package_directory/dist
+    - name: Find wheel filename
+      id: package_name
+      run: echo package_name=$(basename ${{ inputs.package_directory }}/dist/*.whl) >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Save wheel package as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ steps.package_name.outputs.package_name }}
+        path: ${{ inputs.package_directory }}/dist/${{ steps.package_name.outputs.package_name }}
+
+    # TODO: use the good values
+    - name: Publish wheel package
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        skip-existing: false
+        packages-dir: ${{ inputs.package_directory }}/dist
+        user: username #${{ secrets.ARTIFACTORY_USER }}
+        password: password #${{ secrets.ARTIFACTORY_PASSWORD }}
+        repository-url: https://to/be/completed

@@ -1,0 +1,23 @@
+flowchart
+
+    START
+
+    check-conn{is authenticated ?}
+    authent[authenticate]
+    status-start[download is started]
+    download[download file]
+    store(store file)
+    status-END(download is finished)
+    ERROR[raises an error]
+
+    START --> check-conn
+    check-conn -->|yes| status-start
+    check-conn -->|no| authent -->|ok| status-start
+
+    status-start --> download --> store --> status-END --> END
+
+    check-conn -->|connexion failed| ERROR
+    authent -->|failed| ERROR
+    download -->|failed| ERROR
+    store -->|failed| ERROR
+    ERROR --> END

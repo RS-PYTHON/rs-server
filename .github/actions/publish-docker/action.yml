@@ -1,0 +1,87 @@
+name: publish-docker
+description: Publish Docker image
+
+inputs:
+  dockerfile:
+    description: Dockerfile path
+    required: true
+  build_context_path:
+    description: "'docker build' context path"
+    required: true
+  image_suffix:
+    description: Docker image name suffix e.g. _services-cadip
+    required: true
+  version_name:
+    description: Version name e.g. 1.2.3a4.dev1a2b3c4d
+    required: true
+  github_token:
+    description: secrets.GITHUB_TOKEN
+    required: true
+
+outputs:
+  docker_image:
+    description: Docker image name:tag
+    value: ${{ steps.docker_image.outputs.docker_image }}
+
+runs:
+  using: "composite"
+  steps:
+
+    # Replace invalid characters in the Docker version name, e.g. 1.2.3a4+dev1a2b3c4d becomes 1.2.3a4.dev1a2b3c4d
+    # Then we can use ${{ inputs.docker_version_name }}
+    - run: echo "docker_version_name=$(echo ${{ inputs.version_name }} | tr + .)" >> $GITHUB_ENV
+      shell: bash
+
+    # Full Docker image name:tag as ghcr.io/RS-PYTHON/rs-server<suffix>:<version> in lowercase
+    - id: docker_image
+      run: |
+        docker_image=${{ env.DOCKER_REGISTRY }}/${{ github.repository }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}
+        docker_image=${docker_image,,} # lowercase
+        echo docker_image=${docker_image} >> $GITHUB_ENV
+        echo docker_image=${docker_image} >> $GITHUB_OUTPUT
+      shell: bash
+
+    # Extract metadata from Git reference and GitHub events
+    - name: Extract Docker metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/rs-server
+
+    # Checkout code from the current branch and build Docker image.
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./whl
+        file: ${{ inputs.dockerfile }}
+        load: true
+        tags: ${{ env.docker_image }}
+        labels: ${{ steps.meta.outputs.labels }}
+        push: false # push after the security scans below
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.docker_image }}
+        format: sarif
+        output: trivy-results-docker.sarif
+        #severity: HIGH,CRITICAL
+        #timeout: '30m'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      if: always() # run even if the scan returned a non-zero exit code
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: trivy-results-docker.sarif
+        category: ${{ env.docker_image }}
+
+    - name: Log into Docker registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ inputs.github_token }}
+
+    - name: Push Docker image
+      run: docker push ${{ env.docker_image }}
+      shell: bash

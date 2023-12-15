@@ -1,22 +1,21 @@
-name: Check code quality
+name: Generate documentation
 
+# TODO: when to generate the doc ?
+# For now, only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
-  push:
-    branches:
-      - 'feat**'
-
-  pull_request:
-    types: [opened, synchronize, reopened]
-
-  workflow_dispatch:
+    push:
+      tags:
+        - '**'
+    workflow_dispatch:
 
 jobs:
   generate-documentation:
     runs-on: ubuntu-latest
+    name: Generate documentation
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: tonynv/asciidoctor-action@v2
         with:
