@@ -465,7 +465,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_project_tree_structure">Project tree structure</a></li>
 <li><a href="#_development_environment_description">Development environment description</a></li>
 <li><a href="#_team_workflow">Team workflow</a></li>
-<li><a href="#_continuous_integration_workflows">Continuous integration workflows</a></li>
+<li><a href="#_cicd_workflows">CI/CD workflows</a></li>
 <li><a href="#_design_concepts">Design &amp; concepts</a></li>
 </ul>
 </li>
@@ -1154,55 +1154,269 @@ When the implementation is completed, the state becomes "IMPLEMENTED".</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_continuous_integration_workflows">Continuous integration workflows</h4>
+<h4 id="_cicd_workflows">CI/CD workflows</h4>
 <div class="paragraph">
-<p>The continuous integration is implemented with github actions.<br>
-Several workflows are used :</p>
+<p>The CI/CD (Continuous Integration and Delivery) is implemented using GitHub Actions yaml scripts.</p>
+</div>
+<div class="paragraph">
+<p>Implemented workflows are:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>check quality code</p>
+<p>Check code quality</p>
 </li>
 <li>
-<p>generate documentation</p>
+<p>Publish wheels and Docker images</p>
+</li>
+<li>
+<p>Generate documentation</p>
 </li>
 </ul>
 </div>
 <div class="sect4">
-<h5 id="_check_quality_code_workflow">check quality code workflow</h5>
+<h5 id="_check_code_quality_workflow"><strong>Check code quality</strong> workflow</h5>
 <div class="paragraph">
-<p>This workflow is responsible the compliance with code style.<br>
-It verifies that :<br>
-* the code is well formatted (with black and isort)<br>
-* the code is well linted (with ruff and flake8)<br>
-* the typing is correct (with mypy)<br>
-* there is no common vulnerability (with bandit and safety)<br>
-* there is no license issue (with safety)<br>
-* the unit tests run succesfully (with pytest)<br>
-* the integration tests run succesfully (with pytest)</p>
+<p>This workflow is run either automatically after each <code>git push</code> command on each branch and pull request, or manually.</p>
 </div>
 <div class="paragraph">
-<p>It also generates and publish a sonarqube report on code quality.</p>
+<p>It runs the following jobs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Check format (pre-commit, black, isort)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>This job checks that you have run <code>pre-commit run --all-files</code> in your local git repository before committing. The <code>pre-commit</code> runs <code>black</code> and <code>isort</code> to auto-format your source code and facilitate reviewing differences and merging between git branches.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Check linting (pylint, flake8)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>These linters analyse your code without actually running it. They check for errors, enforce a coding standard, look for code smells, and can make suggestions about how the code could be refactored.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Check typing (mypy)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Add type annotations to your Python programs, and use mypy to type check them.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Check security (bandit, safety, trivy)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Bandit is a tool designed to find common security issues in Python code.</p>
+</li>
+<li>
+<p>Safety checks Python dependencies for known security vulnerabilities and suggests the proper remediations for vulnerabilities detected.</p>
+</li>
+<li>
+<p>Trivy is a comprehensive and versatile security scanner that looks for security issues, and targets where it can find those issues. The scan results are updated into the GitHub Security tab: <a href="https://github.com/RS-PYTHON/rs-server/security/code-scanning" class="bare">https://github.com/RS-PYTHON/rs-server/security/code-scanning</a></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Run unit tests (pytest)</p>
+</li>
+<li>
+<p>Run integration tests (pytest)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Test source code and determine if it is fit to use.</p>
+</li>
+<li>
+<p>Unit tests are faster than integration tests and use mockup servers. Integration tests are run on the production infrastructure (to be confirmed).</p>
+</li>
+<li>
+<p>They also calculate code coverage i.e. percentage measure of the degree to which the source code is executed when the tests are run. Only the unit tests coverage is shown in sonarqube.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Quality report (sonarqube)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>SonarQube is a platform for continuous inspection of code quality to perform automatic reviews with static analysis of code to detect bugs and code smells. It offers reports on duplicated code, coding standards, unit tests, code coverage, code complexity, comments, bugs, and security recommendations.</p>
+</li>
+<li>
+<p>It renders the reports from pylint, flake8, bandit and code coverage in a more graphical way.</p>
+</li>
+<li>
+<p>Reports are displayed at: <a href="https://sonarqube.ops-csc.com/dashboard?branch=develop&amp;id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ" class="bare">https://sonarqube.ops-csc.com/dashboard?branch=develop&amp;id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ</a></p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
 </div>
 </div>
 <div class="sect4">
-<h5 id="_generate_documentation_workflow">generate documentation workflow</h5>
+<h5 id="_publish_wheels_and_docker_images_workflow"><strong>Publish wheels and Docker images</strong> workflow</h5>
 <div class="paragraph">
-<p>This workflow build the documentation using the following command :</p>
+<p>This workflow is run either automatically after adding a git tag to a branch, or manually. It:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Builds source code into Python wheel packages.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Upload them into the Python registry.</p>
+</li>
+<li>
+<p>Make them available for manual download as GitHub Actions artifacts.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Builds the project Docker images (that use the Python wheel packages).</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Scan them with Trivy for security issues and update results into the GitHub Security tab: <a href="https://github.com/RS-PYTHON/rs-server/security/code-scanning" class="bare">https://github.com/RS-PYTHON/rs-server/security/code-scanning</a></p>
+</li>
+<li>
+<p>Upload them into the ghcr.io GitHub package registry: <a href="https://github.com/orgs/RS-PYTHON/packages" class="bare">https://github.com/orgs/RS-PYTHON/packages</a></p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The git tag name must conform to the following syntax examples:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>v2.0</code> is a version for a release with at least major updates.</p>
+</li>
+<li>
+<p><code>v2.1</code> is a version for a release without any major updates.</p>
+</li>
+<li>
+<p><code>v2.1rc1</code> is the version for the first 2.1 release-candidate.</p>
+</li>
+<li>
+<p><code>v1.0a3</code> is the version for sprint 3 features integration.</p>
+</li>
+<li>
+<p><code>v1.0a3+dev9afcfc1</code> is dev commit version during the sprint 3.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>Poetry dynamic versioning</code> python plugin is then used to determine automatically the wheels and Docker images version name. Note that it is slighty different from the git tag name:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>v</code> is removed.</p>
+</li>
+<li>
+<p>For Docker images, <code>+</code> is replaced by <code>.</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>So we have e.g. the wheel filenames:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rs_server-2.0-py3-none-any.whl</code></p>
+</li>
+<li>
+<p><code>rs_server-2.1-py3-none-any.whl</code></p>
+</li>
+<li>
+<p><code>rs_server-2.1rc1-py3-none-any.whl</code></p>
+</li>
+<li>
+<p><code>rs_server-1.0a3-py3-none-any.whl</code></p>
+</li>
+<li>
+<p><code>rs_server-1.0a3+dev9afcfc1-py3-none-any.whl</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>And the Docker images:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:2.0</code></p>
+</li>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:2.1</code></p>
+</li>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:2.1rc1</code></p>
+</li>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:1.0a3</code></p>
+</li>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:1.0a3.dev9afcfc1</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When running manually the workflow, the version name is determined automatically as:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>0.0.0.post1.dev0+&lt;short-hash-commit&gt;</code> for the wheels.</p>
+</li>
+<li>
+<p><code>0.0.0.post1.dev0.&lt;short-hash-commit&gt;</code> for the Docker images.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>e.g. <code>0.0.0.post1.dev0+216f7fa</code> and <code>0.0.0.post1.dev0.216f7fa</code>.</p>
+</div>
+<div class="paragraph">
+<p>But running manually the workflow is discouraged, it is preferred to generate the wheels and Docker images by creating a new git tag (to be discussed).</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_generate_documentation_workflow"><strong>Generate documentation</strong> workflow</h5>
+<div class="paragraph">
+<p>This workflow is run either automatically after adding a git tag to a branch, or manually.</p>
+</div>
+<div class="paragraph">
+<p>It builds the documentation using the command :</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-yml" data-lang="yml">          program: asciidoctor -a toc=left -a toclevels=3 -a hardbreaks -D dist/doc -o index.html README.adoc</code></pre>
+<pre class="highlight"><code class="language-console" data-lang="console">asciidoctor -a toc=left -a toclevels=3 -a hardbreaks -D dist/doc -o index.html README.adoc</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>and then publish the results to the 'gh-pages' branch.<br>
-The 'gh-pages' is the source branch of the <a href="https://rs-python.github.io/rs-server/">github page</a>.</p>
-</div>
-<div class="paragraph">
-<p>This workflow is configured to be executed at each developer commit for demo puprose.<br>
-It will be updated in the future.</p>
+<p>And then publishes the results into the GitHub Pages: <a href="https://rs-python.github.io/rs-server/" class="bare">https://rs-python.github.io/rs-server/</a>.</p>
 </div>
 </div>
 </div>
@@ -1744,7 +1958,7 @@ Each instance of this service handles an avent at a time.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2023-12-15 10:46:44 UTC
+Last updated 2023-12-15 13:19:18 UTC
 </div>
 </div>
 </body>
