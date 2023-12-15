@@ -10,6 +10,8 @@ from threading import Lock
 import boto3
 import botocore
 from prefect import get_run_logger, task
+from prefect import exceptions
+import logging
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6
@@ -150,11 +152,13 @@ def files_to_be_downloaded(bucket, paths, logger):
 # creates the list with local files to be uploaded to the bucket
 # the list will contain pairs (s3_path, absolute_local_file_path)
 # if the local file doesn't exist, the pair will be (None, requested_file_to_upload)
-def files_to_be_uploaded(paths, logger):
+def files_to_be_uploaded(paths, logger = None):
     """Docstring to be added."""
     if logger is None:
-        print("files_to_be_uploaded func: No logger object provided")
-        return False
+        logger = logging.getLogger("s3_storage_handler_test")
+        logger.setLevel(logging.DEBUG)
+        logger.handlers = []
+        logger.addHandler(logging.StreamHandler(sys.stdout))
 
     list_with_files = []
     for local in paths:
@@ -407,10 +411,18 @@ Exception: {}. Retrying in {} seconds for {} more times".format(
 @task
 async def prefect_put_files_to_s3(collection_files, bucket, s3_path, idx, max_retries=UP_S3FILE_RETRIES):  # noqa
     """Docstring to be added."""
-    logger = get_run_logger()
-    logger.setLevel(SET_PREFECT_LOGGING_LEVEL)
+    try:
+        logger = get_run_logger()        
+        logger.setLevel(SET_PREFECT_LOGGING_LEVEL)
+    except exceptions.MissingContextError as mce:
+        logger = logging.getLogger("s3_storage_handler_test")
+        logger.setLevel(logging.DEBUG)
+        logger.handlers = []
+        logger.addHandler(logging.StreamHandler(sys.stdout))
+        logger.info(f"mce = {mce}")
     failed_files = []
-    s3_client = get_s3_client()
+    logger.debug("locals = {}".format(locals()))
+    s3_client = get_s3_client()    
     if s3_client is None:
         logger.error("Could not get the s3 handler. Exiting....")
         sys.exit(-1)
