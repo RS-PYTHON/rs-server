@@ -23,13 +23,13 @@ repos:
     rev: 5.13.2
     hooks:
     -   id: isort
+        args: ["--profile", "black"]
 
 # Format (add trailing commas)
 -   repo: https://github.com/asottile/add-trailing-comma
     rev: v3.1.0
     hooks:
     -   id: add-trailing-comma
-
 
 # Remarks:
 #   - don't run flake8, pylint and mypy because they are already run in the CI.
