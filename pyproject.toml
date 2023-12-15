@@ -42,6 +42,8 @@ bandit = "^1.7.5"
 safety = "^2.3.5"
 pylint = "^3.0.3"
 flake8-pyproject = "^1.2.3"
+flask = "^3.0.0"
+flask-cors = "^4.0.0"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
