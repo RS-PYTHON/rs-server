@@ -195,7 +195,7 @@ def files_to_be_uploaded(paths, logger=None):
 
 
 # get the content of a s3 directory
-def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pattern=None):  # noqa
+def list_s3_files_obj(s3_client, bucket, prefix, logger, max_timestamp=None, pattern=None):
     """Docstring to be added."""
     if s3_client is None:
         sys.exit(-1)
@@ -278,7 +278,7 @@ def check_bucket_access(s3_client, bucket, logger):
 # max_retries: maximum number of retries in case of a failed download
 # returns: list with the s3 keys that coudn't be downloaded
 @task
-async def prefect_get_keys_from_s3(  # noqa
+async def prefect_get_keys_from_s3(
     collection_files,
     bucket,
     local_prefix,
@@ -408,7 +408,7 @@ Exception: {}. Retrying in {} seconds for {} more times".format(
 
 
 @task
-async def prefect_put_files_to_s3(collection_files, bucket, s3_path, idx, max_retries=UP_S3FILE_RETRIES):  # noqa
+async def prefect_put_files_to_s3(collection_files, bucket, s3_path, idx, max_retries=UP_S3FILE_RETRIES):
     """Docstring to be added."""
     try:
         logger = get_run_logger()

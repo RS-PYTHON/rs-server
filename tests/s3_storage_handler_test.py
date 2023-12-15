@@ -298,7 +298,7 @@ def cmp_dirs(dir1, dir2):
         ),
     ],
 )
-async def test_prefect_download_files_from_s3(  # noqa: PLR0913
+async def test_prefect_download_files_from_s3(
     endpoint: str,
     bucket: str,
     local_path: str,
@@ -496,7 +496,7 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
         ),
     ],
 )
-async def test_prefect_upload_files_to_s3(  # noqa: PLR0913
+async def test_prefect_upload_files_to_s3(
     endpoint: str,
     bucket: str,
     s3_prefix: str,
