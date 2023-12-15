@@ -30,8 +30,8 @@ and explains briefly the choices that have been made.
 |standard
 
 |lint
-|ruff
-|recent linter, really fast and efficient
+|pylint, flake8
+|standard
 
 |type check
 |mypy

@@ -55,29 +55,19 @@ include::docs/dev/code-style.adoc[]
 
 === Additional information
 
-:leveloffset: 3
+:leveloffset: +3
 
 include::docs/dev/background/tree-structure.adoc[]
 
-:leveloffset: 0
-
-:leveloffset: 3
-
 include::docs/dev/environment/description.adoc[]
 
-:leveloffset: 0
-
-==== Software environment description
-
-NOTE: A description of the software stack and the rationales will be added here.
-
-:leveloffset: 3
-
 include::docs/dev/background/workflow.adoc[]
+
 include::docs/dev/background/ci.adoc[]
+
 include::docs/dev/design/design.adoc[]
 
-:leveloffset: 0
+:leveloffset: -3
 
 == Links
 
