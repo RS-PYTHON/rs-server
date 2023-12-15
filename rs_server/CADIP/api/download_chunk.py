@@ -1,4 +1,5 @@
 """Docstring will be here."""
+import asyncio
 import os
 import os.path as osp
 import threading
@@ -7,9 +8,10 @@ from pathlib import Path
 from threading import Event
 
 from eodag import EODataAccessGateway, EOProduct, setup_logging
+from eodag.utils import uri_to_path
 from fastapi import APIRouter
 
-from rs_server.s3_storage_handler.s3_storage_handler import get_secrets
+from rs_server.s3_storage_handler.s3_storage_handler import files_to_be_uploaded, get_secrets, prefect_put_files_to_s3
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
@@ -108,11 +110,12 @@ def start_eodag_download(station, id, name, local, obs):
             "secretkey": None,
         }
         get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+        print(f"secrets = {secrets}")
         os.environ["S3_ENDPOINT"] = secrets["s3endpoint"] if secrets["s3endpoint"] is not None else ""
         os.environ["S3_ACCESS_KEY_ID"] = secrets["accesskey"] if secrets["accesskey"] is not None else ""
         os.environ["S3_SECRET_ACCESS_KEY"] = secrets["secretkey"] if secrets["secretkey"] is not None else ""
         os.environ["S3_REGION"] = "sbg"
-        filename = eop.location
+        filename = uri_to_path(eop.location)
         obs_array = obs.split("/")
         print(
             "filename = {} | obs_array = {} | join = {} | filename {}".format(
@@ -121,9 +124,10 @@ def start_eodag_download(station, id, name, local, obs):
         )
 
         # TODO check the length
-        # prefect_put_files_to_s3.fn([filename], obs_array[2], "/".join(obs_array[3:]), 0)
+        collection = files_to_be_uploaded([filename])
+        asyncio.run(prefect_put_files_to_s3.fn(collection, obs_array[2], "/".join(obs_array[3:]), 0))
 
-        os.remove(filename[7:])
+        os.remove(filename)
 
     update_db(id, "succeeded")
 
