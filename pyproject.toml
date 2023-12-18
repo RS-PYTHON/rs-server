@@ -69,7 +69,7 @@ check_untyped_defs = true
 
 # TODO add the plugin if possible (request for example)
 [[tool.mypy.overrides]]
-module = "boto3,botocore,prefect_dask,ruamel"
+module = "boto3,botocore.*,prefect_dask,ruamel,moto.*"
 ignore_missing_imports = true
 
 [tool.flake8]

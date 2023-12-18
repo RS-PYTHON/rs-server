@@ -5,8 +5,8 @@ import logging
 import os
 import shutil
 import sys
-from typing import Coroutine, Any
 from collections import Counter
+from typing import Any, Coroutine
 
 import pytest
 import requests
@@ -348,7 +348,7 @@ async def test_prefect_download_files_from_s3(
     @flow
     async def test_flow():
         config = PrefectGetKeysFromS3Config(s3_handler, lst_with_files, bucket, local_path, 0, True)
-        state : Coroutine[Any, Any, list[Any]] = await prefect_get_keys_from_s3(config, return_state=True)
+        state: Coroutine[Any, Any, list[Any]] = await prefect_get_keys_from_s3(config, return_state=True)
         result = await state.result(fetch=True)
         return result
 

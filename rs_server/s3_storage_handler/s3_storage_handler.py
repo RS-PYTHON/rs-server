@@ -5,14 +5,14 @@ import os
 import sys
 import time
 import traceback
-from typing import Any
 from dataclasses import dataclass
 from datetime import datetime
 from threading import Lock
+from typing import Any
 
 import boto3
 import botocore
-from botocore.exceptions import ClientError 
+from botocore.exceptions import ClientError
 from prefect import exceptions, get_run_logger, task
 
 # seconds
@@ -26,10 +26,66 @@ S3_ERR_NOT_FOUND = 404
 
 
 class S3StorageHandler:
-    """Docstring to be added."""
+    """Interact with an S3 storage
+
+    S3StorageHandler for interacting with an S3 storage service.
+
+    Attributes:
+        access_key_id (str): The access key ID for S3 authentication.
+        secret_access_key (str): The secret access key for S3 authentication.
+        endpoint_url (str): The endpoint URL for the S3 service.
+        region_name (str): The region name.
+
+    Methods:
+        __init__(self, access_key_id, secret_access_key, endpoint_url, region_name):
+            Initializes the S3StorageHandler instance, establishes a connection to S3, and sets up logging.
+
+        __get_s3_client(self, access_key_id, secret_access_key, endpoint_url, region_name):
+            Private function to retrieve or create the S3 client instance.
+
+        connect_s3(self):
+            Establishes a connection to the S3 service.
+
+        disconnect_s3(self):
+            Closes the connection to the S3 service.
+
+        delete_file_from_s3(self, bucket, s3_obj):
+            Deletes a file from S3.
+
+        get_secrets(secrets, secret_file, logger=None):
+            Reads secrets from a specified file.
+
+        get_basename(input_path):
+            Gets the filename from a full path.
+
+        files_to_be_downloaded(self, bucket, paths):
+            Creates a list of S3 keys to be downloaded.
+
+        files_to_be_uploaded(self, paths):
+            Creates a list of local files to be uploaded.
+
+        list_s3_files_obj(self, bucket, prefix, max_timestamp=None, pattern=None):
+            Retrieves the content of an S3 directory.
+
+        get_s3_data(s3_url):
+            Parses S3 URL to extract bucket, prefix, and file.
+
+        check_bucket_access(self, bucket):
+            Checks the accessibility of an S3 bucket.
+    """
 
     def __init__(self, access_key_id, secret_access_key, endpoint_url, region_name):
-        """Docstring to be added."""
+        """Initialize the S3StorageHandler instance.
+
+        Args:
+            access_key_id (str): The access key ID for S3 authentication.
+            secret_access_key (str): The secret access key for S3 authentication.
+            endpoint_url (str): The endpoint URL for the S3 service.
+            region_name (str): The region name.
+
+        Raises:
+            RuntimeError: If the connection to the S3 storage cannot be established.
+        """
         self.logger = logging.getLogger("s3_storage_handler_test")
         self.logger.setLevel(logging.DEBUG)
         self.logger.handlers = []
@@ -41,39 +97,31 @@ class S3StorageHandler:
         self.secret_access_key = secret_access_key
         self.endpoint_url = endpoint_url
         self.region_name = region_name
-        self.s3_client : boto3.client = None
+        self.s3_client: boto3.client = None
         if not self.connect_s3():
             raise RuntimeError("The connection to s3 storage could not be made")
 
-    def connect_s3(self):
-        """Docstring to be added."""
-        if self.s3_client is None:
-            self.s3_client = self.get_s3_client(
-                self.access_key_id,
-                self.secret_access_key,
-                self.endpoint_url,
-                self.region_name,
-            )
-        if self.s3_client is None:
-            return False
-        return True
-
-    def disconnect_s3(self):
-        """Docstring to be added."""
-        if self.s3_client is not None:
-            self.s3_client.close()
-        self.s3_client = None
-
     # get the s3 handler
-    def get_s3_client(self, access_key_id, secret_access_key, endpoint_url, region_name):
-        """Docstring to be added."""
+    def __get_s3_client(self, access_key_id, secret_access_key, endpoint_url, region_name):
+        """Retrieve or creates an S3 client instance.
+
+        Args:
+            access_key_id (str): The access key ID for S3 authentication.
+            secret_access_key (str): The secret access key for S3 authentication.
+            endpoint_url (str): The endpoint URL for the S3 service.
+            region_name (str): The region name.
+
+        Returns:
+            boto3.client: An S3 client instance.
+        """
         # This mutex is needed in case of more threads accessing at the same time this function
         with self.s3_client_mutex:
+            if self.s3_client:
+                return self.s3_client
             client_config = botocore.config.Config(
                 max_pool_connections=100,
                 retries={"total_max_attempts": 10},
             )
-            s3_client = None
             try:
                 s3_client = boto3.client(
                     "s3",
@@ -92,20 +140,52 @@ class S3StorageHandler:
 
         return s3_client
 
+    def connect_s3(self):
+        """Establishe a connection to the S3 service.
+
+        Returns:
+            bool: True if the connection is successful, False otherwise.
+        """
+        if self.s3_client is None:
+            self.s3_client = self.__get_s3_client(
+                self.access_key_id,
+                self.secret_access_key,
+                self.endpoint_url,
+                self.region_name,
+            )
+        if self.s3_client is None:
+            return False
+        return True
+
+    def disconnect_s3(self):
+        """Close the connection to the S3 service."""
+        if self.s3_client is not None:
+            self.s3_client.close()
+        self.s3_client = None
+
     # delete a file from s3 by using the s3 handler
     def delete_file_from_s3(self, bucket, s3_obj):
-        """Docstring to be added."""
+        """Delete a file from S3.
+
+        Args:
+            bucket (str): The S3 bucket name.
+            s3_obj (str): The S3 object key.
+
+        Returns:
+            bool: True if the file is successfully deleted, False otherwise.
+        """
         if self.s3_client is None or bucket is None or s3_obj is None:
             print("Input error for deleting the file")
             return False
         try:
-            self.logger.debug("{bucket} | {s3_obj}")
-            self.logger.info("Delete file s3://{bucket}/{s3_obj}")
-            self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
+            with self.s3_client_mutex:
+                self.logger.debug("{%s} | {%s}", bucket, s3_obj)
+                self.logger.info("Delete file s3://{%s}/{%s}", bucket, s3_obj)
+                self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
         except ClientError as e:
             tb = traceback.format_exc()
-            self.logger.error(f"Failed to delete file s3://{bucket}/{s3_obj}")
-            self.logger.error(f"Exception: {e} | {tb}")
+            self.logger.error("Failed to delete file s3://{%s}/{%s}", bucket, s3_obj)
+            self.logger.error("Exception: {%s} | {%s}", e, tb)
             return False
         return True
 
@@ -113,7 +193,16 @@ class S3StorageHandler:
     # function to read the secrets from .s3cfg or aws credentials files
     @staticmethod
     def get_secrets(secrets, secret_file, logger=None):
-        """Docstring to be added."""
+        """Read secrets from a specified file.
+
+        Args:
+            secrets (dict): Dictionary to store retrieved secrets.
+            secret_file (str): Path to the file containing secrets.
+            logger (Logger, optional): Logger instance for error logging.
+
+        Returns:
+            bool: True if secrets are successfully retrieved, False otherwise.
+        """
         try:
             with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
                 lines = aws_credentials_file.readlines()
@@ -139,7 +228,14 @@ class S3StorageHandler:
     # get the filename only from a full path to it
     @staticmethod
     def get_basename(input_path):
-        """Docstring to be added."""
+        """Get the filename from a full path.
+
+        Args:
+            int_path (str): The full path.
+
+        Returns:
+            str: The filename.
+        """
         path, filename = ntpath.split(input_path)
         return filename or ntpath.basename(path)
 
@@ -147,7 +243,15 @@ class S3StorageHandler:
     # the list should contains pairs (local_prefix_where_the_file_will_be_downloaded, full_s3_key_path)
     # if a s3 key doesn't exist, the pair will be (None, requested_s3_key_path)
     def files_to_be_downloaded(self, bucket, paths):
-        """Docstring to be added."""
+        """Create a list of S3 keys to be downloaded.
+
+        Args:
+            bucket (str): The S3 bucket name.
+            paths (list): List of S3 object keys.
+
+        Returns:
+            list: List of tuples (local_prefix, full_s3_key_path).
+        """
 
         if self.s3_client is None:
             self.logger.error("Could not get the s3 handler")
@@ -184,7 +288,14 @@ class S3StorageHandler:
     # the list will contain pairs (s3_path, absolute_local_file_path)
     # if the local file doesn't exist, the pair will be (None, requested_file_to_upload)
     def files_to_be_uploaded(self, paths):
-        """Docstring to be added."""
+        """Creates a list of local files to be uploaded.
+
+        Args:
+            paths (list): List of local file paths.
+
+        Returns:
+            list: List of tuples (s3_path, absolute_local_file_path).
+        """
 
         list_with_files = []
         for local in paths:
@@ -221,13 +332,24 @@ class S3StorageHandler:
 
     # get the content of a s3 directory
     def list_s3_files_obj(self, bucket, prefix, max_timestamp=None, pattern=None):
-        """Docstring to be added."""
+        """Retrieve the content of an S3 directory.
+
+        Args:
+            bucket (str): The S3 bucket name.
+            prefix (str): The S3 object key prefix.
+            max_timestamp (datetime, optional): Maximum timestamp for file filtering.
+            pattern (str, optional): Pattern to filter file names.
+
+        Returns:
+            tuple: Tuple containing a list of S3 object keys and the total count.
+        """
 
         s3_files = []
         total = 0
         self.logger.warning("prefix = %s", prefix)
         try:
-            paginator : Any = self.s3_client.get_paginator("list_objects_v2")
+            with self.s3_client_mutex:
+                paginator: Any = self.s3_client.get_paginator("list_objects_v2")
             pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
             for page in pages:
                 for item in page.get("Contents", ()):
@@ -255,7 +377,15 @@ class S3StorageHandler:
 
     @staticmethod
     def get_s3_data(s3_url):
-        """Docstring to be added."""
+        """
+        Parses S3 URL to extract bucket, prefix, and file.
+
+        Args:
+            s3_url (str): The S3 URL.
+
+        Returns:
+            tuple: Tuple containing bucket, prefix, and file.
+        """
         s3_data = s3_url.replace("s3://", "").split("/")
         bucket = ""
         start_idx = 0
@@ -270,11 +400,19 @@ class S3StorageHandler:
         return bucket, prefix, s3_file
 
     def check_bucket_access(self, bucket):
-        """Docstring to be added."""
+        """Check the accessibility of an S3 bucket.
+
+        Args:
+            bucket (str): The S3 bucket name.
+
+        Raises:
+            RuntimeError: If an error occurs during the bucket access check.
+        """
         if not self.connect_s3() or self.logger is None:
             raise RuntimeError(f"Error in checking bucket {bucket} access")
         try:
-            self.s3_client.head_bucket(Bucket=bucket)
+            with self.s3_client_mutex:
+                self.s3_client.head_bucket(Bucket=bucket)
         except botocore.client.ClientError as error:
             # check that it was a 404 vs 403 errors
             # If it was a 404 error, then the bucket does not exist.
@@ -289,7 +427,41 @@ class S3StorageHandler:
 
 
 def check_file_overwriting(local_file, overwrite, logger, idx):
-    """Docstring here"""
+    """Check whether a file already exists at the specified local path and handles overwriting.
+
+    Parameters:
+    - local_file (str): The local file path to check.
+    - overwrite (bool): A flag indicating whether to overwrite the existing file if found.
+    - logger (Logger): The logger object for logging messages.
+    - idx (int): An index or identifier associated with the file.
+
+    Returns:
+    bool: True if overwriting is allowed or if the file doesn't exist, False otherwise.
+
+    Raises:
+    FileNotFoundError: If the specified local file does not exist.
+
+    Example:
+    ```python
+    from logging import getLogger
+
+    # Example usage
+    logger = getLogger(__name__)
+    file_path = "path/to/myfile.txt"
+    can_overwrite = check_file_overwriting(file_path, True, logger, 1)
+    if can_overwrite:
+        # Proceed with file download or other operations
+        pass
+    ```
+
+    Note:
+    - If the file already exists and the overwrite flag is set to True, the function will log a message,
+      delete the existing file, and return True.
+    - If the file already exists and the overwrite flag is set to False, the function will log a warning
+      message, and return False. In this case, the existing file won't be deleted.
+    - If the file doesn't exist, the function will return True.
+
+    """
     ret_overwrite = True
     if os.path.isfile(local_file):
         if overwrite:  # The file already exists, so delete it first
@@ -313,7 +485,20 @@ def check_file_overwriting(local_file, overwrite, logger, idx):
 
 @dataclass
 class PrefectGetKeysFromS3Config:
-    """Docstring here"""
+    """S3 configuration for download
+
+    Attributes:
+        s3_storage_handler (S3StorageHandler): An instance of S3StorageHandler for S3 interactions.
+        s3_files (list): A list of S3 object keys.
+        bucket (str): The S3 bucket name.
+        local_prefix (str): The local prefix where files will be downloaded.
+        idx (int): An index used for debug. This is the index of the task launched from a prefect flow
+        overwrite (bool, optional): Flag indicating whether to overwrite existing files. Default is False.
+        max_retries (int, optional): The maximum number of download retries. Default is DWN_S3FILE_RETRIES.
+
+    Methods:
+        None
+    """
 
     s3_storage_handler: S3StorageHandler
     s3_files: list
@@ -324,19 +509,23 @@ class PrefectGetKeysFromS3Config:
     max_retries: int = DWN_S3FILE_RETRIES
 
 
-# Prefect task to download a list of files from the s3 storage
-# collection_files: list of files to be downloaded
-#                   the list is formed from pair objects with the following
-#                   syntax: (local_path_to_be_added_to_the_local_prefix, s3_key)
-# bucket: name of the bucket
-# local_prefix: local path where all the downloaded files will be saved
-# idx: index of the task, should be unique
-# overwrite: overwrites local files if they already exist. default True
-# max_retries: maximum number of retries in case of a failed download
-# returns: list with the s3 keys that coudn't be downloaded
 @task
 async def prefect_get_keys_from_s3(config: PrefectGetKeysFromS3Config) -> list:
-    """Docstring to be added."""
+    """Download S3 keys specified in the configuration.
+
+    Args:
+        config (PrefectGetKeysFromS3Config): Configuration for the S3 download.
+
+    Returns:
+        List[str]: A list with the S3 keys that couldn't be downloaded.
+
+    Raises:
+        Exception: Any unexpected exception raised during the download process.
+
+    The function attempts to download files from S3 according to the provided configuration.
+    It returns a list of S3 keys that couldn't be downloaded successfully.
+
+    """
     try:
         logger = get_run_logger()
         logger.setLevel(SET_PREFECT_LOGGING_LEVEL)
@@ -344,6 +533,9 @@ async def prefect_get_keys_from_s3(config: PrefectGetKeysFromS3Config) -> list:
         logger = config.s3_storage_handler.logger
         logger.info("Could not get the prefect logger due to missing context")
 
+    # collection_files: list of files to be downloaded
+    #                   the list is formed from pair objects with the following
+    #                   syntax: (local_path_to_be_added_to_the_local_prefix, s3_key)
     collection_files = config.s3_storage_handler.files_to_be_downloaded(config.bucket, config.s3_files)
 
     logger.debug("collection_files = %s | bucket = %s", collection_files, config.bucket)
@@ -425,7 +617,19 @@ retried for %s times. Aborting",
 
 @dataclass
 class PrefectPutFilesToS3Config:
-    """Docstring here"""
+    """Configuration for uploading files to S3.
+
+    Attributes:
+        s3_storage_handler (S3StorageHandler): An instance of S3StorageHandler for S3 interactions.
+        files (List): A list of local file paths to be uploaded.
+        bucket (str): The S3 bucket name.
+        s3_path (str): The S3 path where files will be uploaded.
+        idx (int): An index used for debug. This is the index of the task launched from a Prefect flow.
+        max_retries (int, optional): The maximum number of upload retries. Default is UP_S3FILE_RETRIES.
+
+    Methods:
+        None
+    """
 
     s3_storage_handler: S3StorageHandler
     files: list
@@ -437,7 +641,21 @@ class PrefectPutFilesToS3Config:
 
 @task
 async def prefect_put_files_to_s3(config: PrefectPutFilesToS3Config) -> list:
-    """Docstring to be added."""
+    """Upload files to S3 according to the provided configuration.
+
+    Args:
+        config (PrefectPutFilesToS3Config): Configuration for the S3 upload.
+
+    Returns:
+        List[str]: A list with the local file paths that couldn't be uploaded.
+
+    Raises:
+        Exception: Any unexpected exception raised during the upload process.
+
+    The function attempts to upload files to S3 according to the provided configuration.
+    It returns a list of local files that couldn't be uploaded successfully.
+
+    """
     try:
         logger = get_run_logger()
         logger.setLevel(SET_PREFECT_LOGGING_LEVEL)
