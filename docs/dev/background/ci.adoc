@@ -41,7 +41,7 @@ It runs the following jobs:
 
 == *Publish wheels and Docker images* workflow
 
-This workflow is run either automatically after adding a git tag to a branch, or manually. It:
+This workflow is run either automatically after adding a git tag to a commit, or manually. It:
 
 * Builds source code into Python wheel packages.
     ** Upload them into the Python registry.
@@ -91,7 +91,7 @@ But running manually the workflow is discouraged, it is preferred to generate th
 
 == *Generate documentation* workflow
 
-This workflow is run either automatically after adding a git tag to a branch, or manually.
+This workflow is run either automatically after adding a git tag to a commit, or manually.
 
 It builds the documentation using the command :
 [,console,indent=0]
