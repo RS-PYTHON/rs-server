@@ -19,9 +19,10 @@ jobs:
 
       - uses: tonynv/asciidoctor-action@v2
         with:
-          # tag::adoc-cmd[]
-          program: asciidoctor -a toc=left -a toclevels=3 -a hardbreaks -D dist/doc -o index.html README.adoc
-          # end::adoc-cmd[]
+          program:
+            # tag::adoc-cmd[]
+            asciidoctor -a toc=left -a toclevels=3 -a hardbreaks -D dist/doc -o index.html README.adoc
+            # end::adoc-cmd[]
 
       - name: Deploy docs to ghpages
         uses: peaceiris/actions-gh-pages@v3
@@ -29,3 +30,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: ./dist/doc
+
+      - run: >
+          echo "Documentation published to: https://rs-python.github.io/rs-server" >> $GITHUB_STEP_SUMMARY
