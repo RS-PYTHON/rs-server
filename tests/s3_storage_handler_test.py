@@ -11,7 +11,7 @@ from typing import Any, Coroutine
 
 import pytest
 import requests
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, NoCredentialsError
 from moto.server import ThreadedMotoServer
 from prefect import flow
 
@@ -23,6 +23,29 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
     prefect_put_files_to_s3,
 )
 
+def export_aws_credentials():
+    """Export AWS credentials as environment variables for testing purposes.
+
+    This function sets the following environment variables with dummy values for AWS credentials:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - AWS_SECURITY_TOKEN
+    - AWS_SESSION_TOKEN
+    - AWS_DEFAULT_REGION
+
+    Note: This function is intended for testing purposes only, and it should not be used in production.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+    os.environ["AWS_ACCESS_KEY_ID"] = 'testing'
+    os.environ["AWS_SECRET_ACCESS_KEY"] = 'testing'
+    os.environ["AWS_SECURITY_TOKEN"] = 'testing'
+    os.environ["AWS_SESSION_TOKEN"] = 'testing'
+    os.environ["AWS_DEFAULT_REGION"] = 'us-east-1'
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
@@ -152,6 +175,7 @@ def test_get_basename(path: str, expected_res: bool):
 )
 def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     """Docstring to be added."""
+    export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
@@ -170,7 +194,9 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
             secrets["s3endpoint"],
             secrets["region"],
         )
-
+        #import pdb
+        #pdb.set_trace()
+        
         if s3_handler.check_bucket_access(bucket):
             server.stop()
             logger.error("The bucket %s does exist, for the tests it shouldn't", bucket)
@@ -184,7 +210,7 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     except RuntimeError:
         server.stop()
         assert False
-    except ClientError:
+    except (ClientError, NoCredentialsError):
         server.stop()
         assert False
 
@@ -242,6 +268,7 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
 )
 def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list, expected_res: list):
     """Docstring to be added."""
+    export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
@@ -267,7 +294,7 @@ def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list
     except RuntimeError:
         server.stop()
         assert False
-    except ClientError:
+    except (ClientError, NoCredentialsError):
         server.stop()
         assert False
     server.stop()
@@ -362,6 +389,7 @@ async def test_prefect_download_files_from_s3(
     expected_res: list,
 ):
     """Docstring to be added."""
+    export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
     short_s3_storage_handler_test_nb_of_files = 3
@@ -401,7 +429,7 @@ async def test_prefect_download_files_from_s3(
     except RuntimeError:
         server.stop()
         assert False
-    except ClientError:
+    except (ClientError, NoCredentialsError):
         server.stop()
         assert False
     server.stop()
@@ -466,6 +494,7 @@ async def test_prefect_download_files_from_s3(
 )
 def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
     """Docstring to be added."""
+    export_aws_credentials()
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
@@ -569,6 +598,7 @@ async def test_prefect_upload_files_to_s3(
     expected_res: list,
 ):
     """Docstring to be added."""
+    export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
     logger.setLevel(logging.DEBUG)
@@ -613,7 +643,7 @@ async def test_prefect_upload_files_to_s3(
     except RuntimeError:
         server.stop()
         assert False
-    except ClientError:
+    except (ClientError, NoCredentialsError):
         server.stop()
         assert False
     server.stop()
