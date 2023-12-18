@@ -12,9 +12,9 @@ from moto.server import ThreadedMotoServer
 from prefect import flow
 
 from rs_server.s3_storage_handler.s3_storage_handler import (
-    S3StorageHandler,
     PrefectGetKeysFromS3Config,
     PrefectPutFilesToS3Config,
+    S3StorageHandler,
     prefect_get_keys_from_s3,
     prefect_put_files_to_s3,
 )
@@ -346,12 +346,7 @@ async def test_prefect_download_files_from_s3(
 
     @flow
     async def test_flow():
-        config = PrefectGetKeysFromS3Config(s3_handler,
-                                            lst_with_files,
-                                            bucket,
-                                            local_path,
-                                            0,
-                                            True)
+        config = PrefectGetKeysFromS3Config(s3_handler, lst_with_files, bucket, local_path, 0, True)
         state = await prefect_get_keys_from_s3(config, return_state=True)
         result = await state.result(fetch=True)
         return result
@@ -536,12 +531,7 @@ async def test_prefect_upload_files_to_s3(
     @flow
     async def test_flow():
         # logger = get_run_logger()
-        config = PrefectPutFilesToS3Config(s3_handler,
-                                            lst_with_files,
-                                            bucket,
-                                            s3_prefix,
-                                            0,
-                                            True)
+        config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, True)
         state = await prefect_put_files_to_s3(config, return_state=True)
         result = await state.result(fetch=True)
         # logger.debug("result = %s", result))

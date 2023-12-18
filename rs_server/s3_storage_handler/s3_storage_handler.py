@@ -5,9 +5,9 @@ import os
 import sys
 import time
 import traceback
+from dataclasses import dataclass
 from datetime import datetime
 from threading import Lock
-from dataclasses import dataclass
 
 import boto3
 import botocore
@@ -69,8 +69,8 @@ class S3StorageHandler:
         # This mutex is needed in case of more threads accessing at the same time this function
         with self.s3_client_mutex:
             client_config = botocore.config.Config(
-                max_pool_connections = 100,
-                retries = {"total_max_attempts": 10},
+                max_pool_connections=100,
+                retries={"total_max_attempts": 10},
             )
             s3_client = None
             try:
@@ -83,7 +83,7 @@ class S3StorageHandler:
                     config=client_config,
                 )
             except ClientError as e:
-                if e.response['Error']['Code'] == 'EntityAlreadyExists':
+                if e.response["Error"]["Code"] == "EntityAlreadyExists":
                     self.logger("This clent already exists")
                 else:
                     self.logger("Unexpected error")
@@ -203,9 +203,9 @@ class S3StorageHandler:
                             continue
                         self.logger.debug(
                             "get_basename(path) = %s | root = %s | replace = %s",
-                                self.get_basename(path),
-                                root,
-                                root.replace(path, "")
+                            self.get_basename(path),
+                            root,
+                            root.replace(path, ""),
                         )
 
                         keep_path = os.path.join(self.get_basename(path), root.replace(path, "").strip("/")).strip("/")
@@ -244,7 +244,7 @@ class S3StorageHandler:
                             # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
                             s3_files.append(item["Key"])
         except botocore.exceptions.ClientError as error:
-            self.logger.error("Listing files from s3://%s/%s failed (client error):%s",bucket, prefix, error)
+            self.logger.error("Listing files from s3://%s/%s failed (client error):%s", bucket, prefix, error)
         except TypeError as type_err:
             self.logger.error("Listing files from s3://%s/%s failed (type error):%s", bucket, prefix, type_err)
         except KeyError as key_err:
@@ -286,6 +286,7 @@ class S3StorageHandler:
 
         return True
 
+
 def check_file_overwriting(local_file, overwrite, logger, idx):
     """Docstring here"""
     ret_overwrite = True
@@ -293,24 +294,26 @@ def check_file_overwriting(local_file, overwrite, logger, idx):
         if overwrite:  # The file already exists, so delete it first
             logger.info(
                 "Downloading task %s: File %s already exists. Deleting it before downloading",
-                    idx,
-                    S3StorageHandler.get_basename(local_file)
+                idx,
+                S3StorageHandler.get_basename(local_file),
             )
             os.remove(local_file)
         else:
             logger.warning(
                 "Downloading task %s: File %s already exists. Skipping it \
 (use the overwrite flag if you want to overwrite this file)",
-                    idx,
-                    S3StorageHandler.get_basename(local_file)
-                )
+                idx,
+                S3StorageHandler.get_basename(local_file),
+            )
             ret_overwrite = False
 
     return ret_overwrite
 
+
 @dataclass
 class PrefectGetKeysFromS3Config:
     """Docstring here"""
+
     s3_storage_handler: S3StorageHandler
     s3_files: list
     bucket: str
@@ -318,6 +321,7 @@ class PrefectGetKeysFromS3Config:
     idx: int
     overwrite: bool = False
     max_retries: int = DWN_S3FILE_RETRIES
+
 
 # Prefect task to download a list of files from the s3 storage
 # collection_files: list of files to be downloaded
@@ -330,9 +334,7 @@ class PrefectGetKeysFromS3Config:
 # max_retries: maximum number of retries in case of a failed download
 # returns: list with the s3 keys that coudn't be downloaded
 @task
-async def prefect_get_keys_from_s3(
-    config: PrefectGetKeysFromS3Config
-) -> list:
+async def prefect_get_keys_from_s3(config: PrefectGetKeysFromS3Config) -> list:
     """Docstring to be added."""
     try:
         logger = get_run_logger()
@@ -350,8 +352,8 @@ async def prefect_get_keys_from_s3(
         logger.error(
             "Downloading task %s: Could not download any of the received files because the \
 bucket %s does not exist or is not accessible. Aborting",
-                config.idx,
-                config.bucket
+            config.idx,
+            config.bucket,
         )
         for collection_file in collection_files:
             failed_files.append(collection_file[1])
@@ -379,16 +381,15 @@ bucket %s does not exist or is not accessible. Aborting",
         for keep_trying in range(config.max_retries):
             try:
                 dwn_start = datetime.now()
-                logger.debug("Downloading task %s: s3://%s/%s downloading started ",
-                             config.idx, config.bucket, s3_file)
+                logger.debug("Downloading task %s: s3://%s/%s downloading started ", config.idx, config.bucket, s3_file)
                 config.s3_storage_handler.s3_client.download_file(config.bucket, s3_file, local_file)
                 logger.debug(
                     "Downloading task %s: s3://%s/%s downloaded to %s in %s ms",
-                        config.idx,
-                        config.bucket,
-                        s3_file,
-                        local_file,
-                        datetime.now() - dwn_start
+                    config.idx,
+                    config.bucket,
+                    s3_file,
+                    local_file,
+                    datetime.now() - dwn_start,
                 )
                 downloaded = True
                 break
@@ -396,12 +397,12 @@ bucket %s does not exist or is not accessible. Aborting",
                 logger.error(
                     "Downloading task %s: Error when downloading the file %s. \
 Exception: %s. Retrying in %s seconds for %s more times",
-                        config.idx,
-                        s3_file,
-                        error,
-                        DWN_S3FILE_RETRY_TIMEOUT,
-                        keep_trying
-                        )
+                    config.idx,
+                    s3_file,
+                    error,
+                    DWN_S3FILE_RETRY_TIMEOUT,
+                    keep_trying,
+                )
                 config.s3_storage_handler.disconnect_s3()
                 time_cnt = 0.0
                 while time_cnt < DWN_S3FILE_RETRY_TIMEOUT:
@@ -412,23 +413,26 @@ Exception: %s. Retrying in %s seconds for %s more times",
             logger.error(
                 "Downloading task %s: Could not download the file %s. The download was \
 retried for %s times. Aborting",
-                    config.idx,
-                    s3_file,
-                    config.max_retries
+                config.idx,
+                s3_file,
+                config.max_retries,
             )
             failed_files.append(s3_file)
 
     return failed_files
 
+
 @dataclass
 class PrefectPutFilesToS3Config:
     """Docstring here"""
+
     s3_storage_handler: S3StorageHandler
     files: list
     bucket: str
     s3_path: str
     idx: int
     max_retries: int = UP_S3FILE_RETRIES
+
 
 @task
 async def prefect_put_files_to_s3(config: PrefectPutFilesToS3Config) -> list:
@@ -448,8 +452,8 @@ async def prefect_put_files_to_s3(config: PrefectPutFilesToS3Config) -> list:
         logger.error(
             "Uploading task %s: Could not upload any of the received files because the \
 bucket %s does not exist or is not accessible. Aborting",
-                config.idx,
-                config.bucket
+            config.idx,
+            config.bucket,
         )
         for collection_file in collection_files:
             failed_files.append(collection_file[1])
@@ -476,8 +480,8 @@ bucket %s does not exist or is not accessible. Aborting",
                     config.idx,
                     file_to_be_uploaded,
                     config.bucket,
-                    s3_obj
-                    )
+                    s3_obj,
+                )
 
                 config.s3_storage_handler.s3_client.upload_file(file_to_be_uploaded, config.bucket, s3_obj)
                 uploaded = True
@@ -488,23 +492,23 @@ bucket %s does not exist or is not accessible. Aborting",
                     logger.error(
                         "Uploading task %s: Could not upload the file %s to s3://%s/%s. The upload was \
 retried for %s times. Error: %s. Aborting",
-                            config.idx,
-                            file_to_be_uploaded,
-                            config.bucket,
-                            s3_obj,
-                            config.max_retries,
-                            error
+                        config.idx,
+                        file_to_be_uploaded,
+                        config.bucket,
+                        s3_obj,
+                        config.max_retries,
+                        error,
                     )
                     failed_files.append(file_to_be_uploaded)
                     break
                 logger.error(
                     "Uploading task %s: Error when uploading the file %s. \
 Exception: %s. Retrying in %s seconds for %s more times",
-                        config.idx,
-                        file_to_be_uploaded,
-                        error,
-                        UP_S3FILE_RETRY_TIMEOUT,
-                        keep_trying
+                    config.idx,
+                    file_to_be_uploaded,
+                    error,
+                    UP_S3FILE_RETRY_TIMEOUT,
+                    keep_trying,
                 )
                 config.s3_storage_handler.disconnect_s3()
                 time_cnt = 0.0
@@ -517,9 +521,9 @@ Exception: %s. Retrying in %s seconds for %s more times",
             logger.error(
                 "Uploading task %s: Could not upload the file %s. The upload was \
     retried for %s times. Aborting",
-                    config.idx,
-                    file_to_be_uploaded,
-                    config.max_retries
+                config.idx,
+                file_to_be_uploaded,
+                config.max_retries,
             )
             failed_files.append(file_to_be_uploaded)
 
