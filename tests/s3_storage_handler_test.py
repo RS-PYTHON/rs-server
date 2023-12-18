@@ -12,16 +12,20 @@ from moto.server import ThreadedMotoServer
 from prefect import flow
 
 from rs_server.s3_storage_handler.s3_storage_handler import (
-    S3StorageHandler, prefect_get_keys_from_s3, prefect_put_files_to_s3,
+    S3StorageHandler,
+    PrefectGetKeysFromS3Config,
+    PrefectPutFilesToS3Config,
+    prefect_get_keys_from_s3,
+    prefect_put_files_to_s3,
 )
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "endpoint, expected_res",
-    [(("false", False)), (("http://localhost:5000", True))],
+    "endpoint",
+    [("false"), ("http://localhost:5000")],
 )
-def test_get_s3_client(endpoint: str, expected_res: bool):
+def test_get_s3_client(endpoint: str):
     """test_get_s3_client Function Documentation
 
     This module provides unit tests for the `S3StorageHandler` class, focusing on the
@@ -76,9 +80,8 @@ def test_get_s3_client(endpoint: str, expected_res: bool):
     server.stop()
     if endpoint == "http://localhost:5000":
         assert S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
-
     else:
-        with pytest.raises(Exception) as e_info:
+        with pytest.raises(Exception):
             assert S3StorageHandler(
                 secrets["accesskey"],
                 secrets["secretkey"],
@@ -145,21 +148,21 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     server = ThreadedMotoServer()
     server.start()
 
-    requests.post(endpoint + "/moto-api/reset")
+    requests.post(endpoint + "/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
 
     if s3_handler.check_bucket_access(bucket):
         server.stop()
-        logger.error("The bucket {} does exist, for the tests it shouldn't".format(bucket))
+        logger.error("The bucket %s does exist, for the tests it shouldn't", bucket)
         assert False
     if bucket == "test-bucket":
         s3_handler.s3_client.create_bucket(Bucket=bucket)
         for idx in range(nb_of_files):
-            s3_handler.s3_client.put_object(Bucket=bucket, Key="test-dir/{}".format(idx), Body="testing")
+            s3_handler.s3_client.put_object(Bucket=bucket, Key=f"test-dir/{idx}", Body="testing")
     # end of create
-    s3_files, total = s3_handler.list_s3_files_obj(bucket, "test-dir")
+    s3_files, _ = s3_handler.list_s3_files_obj(bucket, "test-dir")
     server.stop()
-    logger.debug("len(s3_files)  = {}".format(len(s3_files)))
+    logger.debug("len(s3_files)  = %s", len(s3_files))
     assert len(s3_files) == nb_of_files
 
 
@@ -220,7 +223,7 @@ def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list
 
     server = ThreadedMotoServer()
     server.start()
-    requests.post(endpoint + "/moto-api/reset")
+    requests.post(endpoint + "/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
     if bucket == "test-bucket":
         s3_handler.s3_client.create_bucket(Bucket=bucket)
@@ -234,7 +237,6 @@ def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list
 
 
 def cmp_dirs(dir1, dir2):
-    """Docstring to be added."""
     """
     Compare two directories recursively. Files in each directory are
     assumed to be equal if their names and contents are equal.
@@ -332,7 +334,7 @@ async def test_prefect_download_files_from_s3(
     # create the test bucket
     server = ThreadedMotoServer()
     server.start()
-    requests.post(endpoint + "/moto-api/reset")
+    requests.post(endpoint + "/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
     if bucket == "test-bucket":
         s3_handler.s3_client.create_bucket(Bucket=bucket)
@@ -344,20 +346,18 @@ async def test_prefect_download_files_from_s3(
 
     @flow
     async def test_flow():
-        state = await prefect_get_keys_from_s3(
-            s3_handler,
-            lst_with_files,
-            bucket,
-            local_path,
-            0,
-            overwrite=True,
-            return_state=True,
-        )
+        config = PrefectGetKeysFromS3Config(s3_handler,
+                                            lst_with_files,
+                                            bucket,
+                                            local_path,
+                                            0,
+                                            True)
+        state = await prefect_get_keys_from_s3(config, return_state=True)
         result = await state.result(fetch=True)
         return result
 
     res = await test_flow()
-    logger.debug("Task returns: {}".format(res))
+    logger.debug("Task returns: %s", res)
     server.stop()
     assert len(Counter(collection) - Counter(lst_with_files_to_be_dwn)) == 0
     assert len(Counter(lst_with_files_to_be_dwn) - Counter(collection)) == 0
@@ -431,8 +431,8 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
     s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
     server.stop()
     collection = s3_handler.files_to_be_uploaded(lst_with_files)
-    logger.debug("collection   = {}".format(collection))
-    logger.debug("expected_res = {}".format(expected_res))
+    logger.debug("collection   = %s", collection)
+    logger.debug("expected_res = %s", expected_res)
     assert len(Counter(collection) - Counter(expected_res)) == 0
     assert len(Counter(expected_res) - Counter(collection)) == 0
 
@@ -523,37 +523,43 @@ async def test_prefect_upload_files_to_s3(
     # create the test bucket
     server = ThreadedMotoServer()
     server.start()
-    requests.post(endpoint + "/moto-api/reset")
+    requests.post(endpoint + "/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
     if bucket == "test-bucket":
         s3_handler.s3_client.create_bucket(Bucket=bucket)
     # end of create
 
     collection = s3_handler.files_to_be_uploaded(lst_with_files)
-    logger.debug("collection              = {}".format(collection))
-    logger.debug("lst_with_files_to_be_up = {}".format(lst_with_files_to_be_up))
+    logger.debug("collection              = {%s}", collection)
+    logger.debug("lst_with_files_to_be_up = %s", lst_with_files_to_be_up)
 
     @flow
     async def test_flow():
         # logger = get_run_logger()
-        state = await prefect_put_files_to_s3(s3_handler, lst_with_files, bucket, s3_prefix, 0, return_state=True)
+        config = PrefectPutFilesToS3Config(s3_handler,
+                                            lst_with_files,
+                                            bucket,
+                                            s3_prefix,
+                                            0,
+                                            True)
+        state = await prefect_put_files_to_s3(config, return_state=True)
         result = await state.result(fetch=True)
-        # logger.debug("result = {}".format(result))
+        # logger.debug("result = %s", result))
         return result
 
     res = await test_flow()
     test_bucket_files = []  # type: list[str]
     for key in lst_with_files:
-        s3_files, total = s3_handler.list_s3_files_obj(bucket, key)
+        s3_files, _ = s3_handler.list_s3_files_obj(bucket, key)
         test_bucket_files = test_bucket_files + s3_files
         # if total == 0:
         #    break
 
     server.stop()
-    logger.debug("test_bucket_files  = {}".format(test_bucket_files))
-    # logger.debug("s3_files  = {}".format(s3_files))
+    logger.debug("test_bucket_files  = %s", test_bucket_files)
+    # logger.debug("s3_files  = %s", s3_files))
 
-    logger.debug("Task returns: {}".format(res))
+    logger.debug("Task returns: %s", res)
     assert len(Counter(collection) - Counter(lst_with_files_to_be_up)) == 0
     assert len(Counter(lst_with_files_to_be_up) - Counter(collection)) == 0
     assert len(Counter(keys_in_bucket) - Counter(test_bucket_files)) == 0

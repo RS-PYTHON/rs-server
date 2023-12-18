@@ -7,9 +7,11 @@ import time
 import traceback
 from datetime import datetime
 from threading import Lock
+from dataclasses import dataclass
 
 import boto3
 import botocore
+from botocore.exceptions import ClientError
 from prefect import exceptions, get_run_logger, task
 
 # seconds
@@ -27,6 +29,12 @@ class S3StorageHandler:
 
     def __init__(self, access_key_id, secret_access_key, endpoint_url, region_name):
         """Docstring to be added."""
+        self.logger = logging.getLogger("s3_storage_handler_test")
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.handlers = []
+        self.logger.addHandler(logging.StreamHandler(sys.stdout))
+        self.logger.info("S3StorageHandler created !")
+
         self.s3_client_mutex = Lock()
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
@@ -35,11 +43,6 @@ class S3StorageHandler:
         self.s3_client = None
         if not self.connect_s3():
             raise RuntimeError("The connection to s3 storage could not be made")
-        self.logger = logging.getLogger("s3_storage_handler_test")
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.handlers = []
-        self.logger.addHandler(logging.StreamHandler(sys.stdout))
-        self.logger.info("S3StorageHandler created !")
 
     def connect_s3(self):
         """Docstring to be added."""
@@ -56,7 +59,8 @@ class S3StorageHandler:
 
     def disconnect_s3(self):
         """Docstring to be added."""
-        self.s3_client.close()
+        if self.s3_client is not None:
+            self.s3_client.close()
         self.s3_client = None
 
     # get the s3 handler
@@ -65,8 +69,8 @@ class S3StorageHandler:
         # This mutex is needed in case of more threads accessing at the same time this function
         with self.s3_client_mutex:
             client_config = botocore.config.Config(
-                max_pool_connections=100,
-                retries=dict(total_max_attempts=10),
+                max_pool_connections = 100,
+                retries = {"total_max_attempts": 10},
             )
             s3_client = None
             try:
@@ -78,8 +82,11 @@ class S3StorageHandler:
                     region_name=region_name,
                     config=client_config,
                 )
-            except Exception as e:
-                print(e)
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'EntityAlreadyExists':
+                    self.logger("This clent already exists")
+                else:
+                    self.logger("Unexpected error")
                 return None
 
         return s3_client
@@ -91,13 +98,13 @@ class S3StorageHandler:
             print("Input error for deleting the file")
             return False
         try:
-            print("{} | {}".format(bucket, s3_obj))
-            print("Trying to delete file s3://{}/{}".format(bucket, s3_obj))
+            self.logger("{bucket} | {s3_obj}")
+            self.logger("Trying to delete file s3://{bucket}/{s3_obj}")
             self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
-        except Exception as e:
+        except ClientError as e:
             tb = traceback.format_exc()
-            print("Failed to delete file s3://{}/{}".format(bucket, s3_obj))
-            print("Exception: {} | {}".format(e, tb))
+            self.logger(f"Failed to delete file s3://{bucket}/{s3_obj}")
+            self.logger(f"Exception: {e} | {tb}")
             return False
         return True
 
@@ -107,7 +114,7 @@ class S3StorageHandler:
     def get_secrets(secrets, secret_file, logger=None):
         """Docstring to be added."""
         try:
-            with open(secret_file, "r") as aws_credentials_file:
+            with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
                 lines = aws_credentials_file.readlines()
                 for line in lines:
                     if secrets["accesskey"] is not None and secrets["secretkey"] is not None:
@@ -118,11 +125,11 @@ class S3StorageHandler:
                         secrets["accesskey"] = line.strip().split("=")[1].strip()
                     if secrets["secretkey"] is None and "secret_" in line and "_key" in line:
                         secrets["secretkey"] = line.strip().split("=")[1].strip()
-        except Exception as e:
+        except OSError as e:
             if logger:
-                logger.error("Could not get the secrets, exception: {}".format(e))
+                logger.error(f"Could not get the secrets, exception: {e}")
             else:
-                print("Could not get the secrets, exception: {}".format(e))
+                print(f"Could not get the secrets, exception: {e}")
             return False
         if secrets["accesskey"] is None or secrets["secretkey"] is None:
             return False
@@ -153,16 +160,16 @@ class S3StorageHandler:
             path = key.strip().lstrip("/")
             s3_files, total = self.list_s3_files_obj(bucket, path)
             if total == 0:
-                self.logger.warning("No key {} found.".format(path))
+                self.logger.warning("No key %s found.", path)
                 continue
-            self.logger.debug("total: {} | s3_files = {}".format(total, s3_files))
+            self.logger.debug("total: %s | s3_files = %s", total, s3_files)
             basename_part = self.get_basename(path)
 
             # check if it's a file or a dir
             if len(s3_files) == 1 and path == s3_files[0]:
                 # the current key is a file, append it to the list
                 list_with_files.append(("", s3_files[0]))
-                self.logger.debug("ONE/ list_with_files = {}".format(list_with_files))
+                self.logger.debug("Append files: list_with_files = %s", list_with_files)
             else:
                 # the current key is a folder, append all its files (reursively gathered) to the list
                 for s3_file in s3_files:
@@ -182,33 +189,32 @@ class S3StorageHandler:
         for local in paths:
             path = local.strip()
             # check if it is a file
-            self.logger.debug("path = {}".format(path))
+            self.logger.debug("path = %s", path)
             if os.path.isfile(path):
-                self.logger.debug("Add {} ".format(path))
+                self.logger.debug("Add %s", path)
                 list_with_files.append(("", path))
 
             elif os.path.isdir(path):
                 for root, dir_names, filenames in os.walk(path):
                     for file in filenames:
                         full_file_path = os.path.join(root, file.strip("/"))
-                        self.logger.debug("full_file_path = {} | dir_names = {}".format(full_file_path, dir_names))
+                        self.logger.debug("full_file_path = %s | dir_names = %s", full_file_path, dir_names)
                         if not os.path.isfile(full_file_path):
                             continue
                         self.logger.debug(
-                            "get_basename(path) = {} | root = {} | replace = {}".format(
+                            "get_basename(path) = %s | root = %s | replace = %s",
                                 self.get_basename(path),
                                 root,
-                                root.replace(path, ""),
-                            ),
+                                root.replace(path, "")
                         )
 
                         keep_path = os.path.join(self.get_basename(path), root.replace(path, "").strip("/")).strip("/")
-                        self.logger.debug("path = {} | keep_path = {} | root = {}".format(path, keep_path, root))
+                        self.logger.debug("path = %s | keep_path = %s | root = %s", path, keep_path, root)
 
-                        self.logger.debug("Add: {} | {}".format(keep_path, full_file_path))
+                        self.logger.debug("Add: %s | %s", keep_path, full_file_path)
                         list_with_files.append((keep_path, full_file_path))
             else:
-                self.logger.warning("The path {} is not a directory nor a file, it will not be uploaded".format(path))
+                self.logger.warning("The path %s is not a directory nor a file, it will not be uploaded", path)
 
         return list_with_files
 
@@ -218,7 +224,7 @@ class S3StorageHandler:
 
         s3_files = []
         total = 0
-        self.logger.warning("prefix = {}".format(prefix))
+        self.logger.warning("prefix = %s", prefix)
         try:
             paginator = self.s3_client.get_paginator("list_objects_v2")
             pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
@@ -226,25 +232,23 @@ class S3StorageHandler:
                 for item in page.get("Contents", ()):
                     if item is not None:
                         total += 1
-                        if max_timestamp is not None:
-                            if item["LastModified"] < max_timestamp:
-                                # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
-                                s3_files.append(item["Key"])
-                                # self.logger.debug("{}".format(item["LastModified"]))
-                        elif pattern is not None:
-                            if pattern in item["Key"]:
-                                # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
-                                # self.logger.debug("found pattern {} in {} ".format(pattern, item["Key"]))
-                                s3_files.append(item["Key"])
+                        if max_timestamp is not None and item["LastModified"] < max_timestamp:
+                            # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
+                            s3_files.append(item["Key"])
+                            # self.logger.debug("%s", item["LastModified"]))
+                        elif pattern is not None and pattern in item["Key"]:
+                            # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
+                            # self.logger.debug("found pattern %s in %s ", pattern, item["Key"]))
+                            s3_files.append(item["Key"])
                         else:
                             # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
                             s3_files.append(item["Key"])
         except botocore.exceptions.ClientError as error:
-            self.logger.error("Listing files from s3://{}/{} failed (client error):{}".format(bucket, prefix, error))
-        except TypeError as typeErr:
-            self.logger.error("Listing files from s3://{}/{} failed (type error):{}".format(bucket, prefix, typeErr))
-        except KeyError as keyErr:
-            self.logger.error("Listing files from s3://{}/{} failed (key error):{}".format(bucket, prefix, keyErr))
+            self.logger.error("Listing files from s3://%s/%s failed (client error):%s",bucket, prefix, error)
+        except TypeError as type_err:
+            self.logger.error("Listing files from s3://%s/%s failed (type error):%s", bucket, prefix, type_err)
+        except KeyError as key_err:
+            self.logger.error("Listing files from s3://%s/%s failed (key error):%s", bucket, prefix, key_err)
 
         return s3_files, total
 
@@ -275,13 +279,45 @@ class S3StorageHandler:
             # If it was a 404 error, then the bucket does not exist.
             error_code = int(error.response["Error"]["Code"])
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
-                self.logger.error("{} is a private bucket. Forbidden access!".format(bucket))
+                self.logger.error("%s is a private bucket. Forbidden access!", bucket)
             elif error_code == S3_ERR_NOT_FOUND:
-                self.logger.error("{} bucket does not exist!".format(bucket))
+                self.logger.error("%s bucket does not exist!", bucket)
             return False
 
         return True
 
+def check_file_overwriting(local_file, overwrite, logger, idx):
+    """Docstring here"""
+    ret_overwrite = True
+    if os.path.isfile(local_file):
+        if overwrite:  # The file already exists, so delete it first
+            logger.info(
+                "Downloading task %s: File %s already exists. Deleting it before downloading",
+                    idx,
+                    S3StorageHandler.get_basename(local_file)
+            )
+            os.remove(local_file)
+        else:
+            logger.warning(
+                "Downloading task %s: File %s already exists. Skipping it \
+(use the overwrite flag if you want to overwrite this file)",
+                    idx,
+                    S3StorageHandler.get_basename(local_file)
+                )
+            ret_overwrite = False
+
+    return ret_overwrite
+
+@dataclass
+class PrefectGetKeysFromS3Config:
+    """Docstring here"""
+    s3_storage_handler: S3StorageHandler
+    s3_files: list
+    bucket: str
+    local_prefix: str
+    idx: int
+    overwrite: bool = False
+    max_retries: int = DWN_S3FILE_RETRIES
 
 # Prefect task to download a list of files from the s3 storage
 # collection_files: list of files to be downloaded
@@ -295,36 +331,27 @@ class S3StorageHandler:
 # returns: list with the s3 keys that coudn't be downloaded
 @task
 async def prefect_get_keys_from_s3(
-    s3_storage_handler: S3StorageHandler,
-    s3_files: list,
-    bucket: str,
-    local_prefix: str,
-    idx: int,
-    overwrite: bool = False,
-    max_retries: int = DWN_S3FILE_RETRIES,
+    config: PrefectGetKeysFromS3Config
 ) -> list:
     """Docstring to be added."""
     try:
         logger = get_run_logger()
         logger.setLevel(SET_PREFECT_LOGGING_LEVEL)
-    except exceptions.MissingContextError as mce:
-        logger = s3_storage_handler.logger
+    except exceptions.MissingContextError:
+        logger = config.s3_storage_handler.logger
         logger.info("Could not get the prefect logger due to missing context")
 
-    collection_files = s3_storage_handler.files_to_be_downloaded(bucket, s3_files)
+    collection_files = config.s3_storage_handler.files_to_be_downloaded(config.bucket, config.s3_files)
 
-    logger.debug("collection_files = {} | bucket = {}".format(collection_files, bucket))
+    logger.debug("collection_files = %s | bucket = %s", collection_files, config.bucket)
     failed_files = []
-    if not s3_storage_handler.connect_s3():
-        return failed_files
 
-    if not s3_storage_handler.check_bucket_access(bucket):
+    if not config.s3_storage_handler.check_bucket_access(config.bucket):
         logger.error(
-            "Downloading task {}: Could not download any of the received files because the \
-bucket {} does not exist or is not accessible. Aborting".format(
-                idx,
-                bucket,
-            ),
+            "Downloading task %s: Could not download any of the received files because the \
+bucket %s does not exist or is not accessible. Aborting",
+                config.idx,
+                config.bucket
         )
         for collection_file in collection_files:
             failed_files.append(collection_file[1])
@@ -335,75 +362,47 @@ bucket {} does not exist or is not accessible. Aborting".format(
             failed_files.append(collection_file[1])
             continue
         # get the s3 client
-        if not s3_storage_handler.connect_s3():
+        if not config.s3_storage_handler.connect_s3():
             return failed_files
         keep_trying = 0
-        local_path = os.path.join(local_prefix, collection_file[0].strip("/"))
+        local_path = os.path.join(config.local_prefix, collection_file[0].strip("/"))
         s3_file = collection_file[1]
         # for each file to download, create the local dir (if it does not exist)
         os.makedirs(local_path, exist_ok=True)
         # create the path for local file
-        local_file = os.path.join(local_path, s3_storage_handler.get_basename(s3_file).strip("/"))
-        cnt = 0
-        if os.path.isfile(local_file):
-            if overwrite:  # The file already exists, so delete it first
-                logger.info(
-                    "Downloading task {}: File {} already exists. Deleting it before downloading".format(
-                        idx,
-                        s3_storage_handler.get_basename(local_file),
-                    ),
-                )
-                os.remove(local_file)
-            else:
-                logger.warning(
-                    "Downloading task {}: File {} already exists. Skipping it \
-(use the overwrite flag if you want to overwrite this file)".format(
-                        idx,
-                        s3_storage_handler.get_basename(local_file),
-                    ),
-                )
-                cnt += 1
-                continue
+        local_file = os.path.join(local_path, config.s3_storage_handler.get_basename(s3_file).strip("/"))
+
+        if not check_file_overwriting(local_file, config.overwrite, logger, config.idx):
+            continue
         # download the files while no external termination notice is received
         downloaded = False
-        for keep_trying in range(max_retries):
+        for keep_trying in range(config.max_retries):
             try:
                 dwn_start = datetime.now()
-                logger.debug("Downloading task {}: s3://{}/{} downloading started ".format(idx, bucket, s3_file))
-                s3_storage_handler.s3_client.download_file(bucket, s3_file, local_file)
+                logger.debug("Downloading task %s: s3://%s/%s downloading started ",
+                             config.idx, config.bucket, s3_file)
+                config.s3_storage_handler.s3_client.download_file(config.bucket, s3_file, local_file)
                 logger.debug(
-                    "Downloading task {}: s3://{}/{} downloaded to {} in {} ms".format(
-                        idx,
-                        bucket,
+                    "Downloading task %s: s3://%s/%s downloaded to %s in %s ms",
+                        config.idx,
+                        config.bucket,
                         s3_file,
                         local_file,
-                        datetime.now() - dwn_start,
-                    ),
+                        datetime.now() - dwn_start
                 )
-                # for debug means
-                cnt += 1
-                if cnt % 10 == 0:
-                    logger.debug(
-                        "Downloading task {}: Files downloaded: {} from a total of {}".format(
-                            idx,
-                            cnt,
-                            len(collection_files),
-                        ),
-                    )
                 downloaded = True
                 break
-            except Exception as error:
+            except botocore.client.ClientError as error:
                 logger.error(
-                    "Downloading task {}: Error when downloading the file {}. \
-Exception: {}. Retrying in {} seconds for {} more times".format(
-                        idx,
+                    "Downloading task %s: Error when downloading the file %s. \
+Exception: %s. Retrying in %s seconds for %s more times",
+                        config.idx,
                         s3_file,
                         error,
                         DWN_S3FILE_RETRY_TIMEOUT,
-                        keep_trying,
-                    ),
-                )
-                s3_storage_handler.disconnect_s3()
+                        keep_trying
+                        )
+                config.s3_storage_handler.disconnect_s3()
                 time_cnt = 0.0
                 while time_cnt < DWN_S3FILE_RETRY_TIMEOUT:
                     time.sleep(0.2)
@@ -411,49 +410,46 @@ Exception: {}. Retrying in {} seconds for {} more times".format(
 
         if not downloaded:
             logger.error(
-                "Downloading task {}: Could not download the file {}. The download was \
-retried for {} times. Aborting".format(
-                    idx,
+                "Downloading task %s: Could not download the file %s. The download was \
+retried for %s times. Aborting",
+                    config.idx,
                     s3_file,
-                    max_retries,
-                ),
+                    config.max_retries
             )
             failed_files.append(s3_file)
 
     return failed_files
 
+@dataclass
+class PrefectPutFilesToS3Config:
+    """Docstring here"""
+    s3_storage_handler: S3StorageHandler
+    files: list
+    bucket: str
+    s3_path: str
+    idx: int
+    max_retries: int = UP_S3FILE_RETRIES
 
 @task
-async def prefect_put_files_to_s3(
-    s3_storage_handler: S3StorageHandler,
-    files: list,
-    bucket: str,
-    s3_path: str,
-    idx: int,
-    max_retries=UP_S3FILE_RETRIES,
-) -> list:
+async def prefect_put_files_to_s3(config: PrefectPutFilesToS3Config) -> list:
     """Docstring to be added."""
     try:
         logger = get_run_logger()
         logger.setLevel(SET_PREFECT_LOGGING_LEVEL)
     except exceptions.MissingContextError:
-        logger = s3_storage_handler.logger
+        logger = config.s3_storage_handler.logger
         logger.info("Could not get the prefect logger due to missing context")
     failed_files = []
-    logger.debug("locals = {}".format(locals()))
+    logger.debug("locals = %s", locals())
 
-    collection_files = s3_storage_handler.files_to_be_uploaded(files)
+    collection_files = config.s3_storage_handler.files_to_be_uploaded(config.files)
 
-    if not s3_storage_handler.connect_s3():
-        return failed_files
-
-    if not s3_storage_handler.check_bucket_access(bucket):
+    if not config.s3_storage_handler.check_bucket_access(config.bucket):
         logger.error(
-            "Uploading task {}: Could not upload any of the received files because the \
-bucket {} does not exist or is not accessible. Aborting".format(
-                idx,
-                bucket,
-            ),
+            "Uploading task %s: Could not upload any of the received files because the \
+bucket %s does not exist or is not accessible. Aborting",
+                config.idx,
+                config.bucket
         )
         for collection_file in collection_files:
             failed_files.append(collection_file[1])
@@ -461,65 +457,56 @@ bucket {} does not exist or is not accessible. Aborting".format(
 
     for collection_file in collection_files:
         if collection_file[0] is None:
-            logger.error("The file {} can't be uploaded, its s3 prefix is None".format(collection_file[0]))
+            logger.error("The file %s can't be uploaded, its s3 prefix is None", collection_file[0])
             failed_files.append(collection_file[1])
             continue
         # get the s3 client
-        if not s3_storage_handler.connect_s3():
+        if not config.s3_storage_handler.connect_s3():
             return failed_files
 
         keep_trying = 0
         file_to_be_uploaded = collection_file[1]
         # create the s3 key
-        s3_obj = os.path.join(s3_path, collection_file[0], os.path.basename(file_to_be_uploaded).strip("/"))
+        s3_obj = os.path.join(config.s3_path, collection_file[0], os.path.basename(file_to_be_uploaded).strip("/"))
         uploaded = False
-        for keep_trying in range(max_retries):
+        for keep_trying in range(config.max_retries):
             try:
                 logger.info(
-                    "Uploading task {}: copy file {} to s3://{}/{}".format(idx, file_to_be_uploaded, bucket, s3_obj),
-                )
-                s3_storage_handler.s3_client.upload_file(file_to_be_uploaded, bucket, s3_obj)
+                    "Uploading task %s: copy file %s to s3://%s/%s",
+                    config.idx,
+                    file_to_be_uploaded,
+                    config.bucket,
+                    s3_obj
+                    )
+
+                config.s3_storage_handler.s3_client.upload_file(file_to_be_uploaded, config.bucket, s3_obj)
                 uploaded = True
                 break
             except botocore.client.ClientError as error:
-                logger.error(
-                    "Uploading task {}: Could not upload the file {} to s3://{}/{}. Error: {}. Aborting".format(
-                        idx,
-                        file_to_be_uploaded,
-                        bucket,
-                        s3_obj,
-                        error,
-                    ),
-                )
-                failed_files.append(file_to_be_uploaded)
-                break
-            except Exception as error:
                 keep_trying -= 1
                 if keep_trying == 0:
                     logger.error(
-                        "Uploading task {}: Could not upload the file {} to s3://{}/{}. The upload was \
-retried for {} times. Error: {}. Aborting".format(
-                            idx,
+                        "Uploading task %s: Could not upload the file %s to s3://%s/%s. The upload was \
+retried for %s times. Error: %s. Aborting",
+                            config.idx,
                             file_to_be_uploaded,
-                            bucket,
+                            config.bucket,
                             s3_obj,
-                            max_retries,
-                            error,
-                        ),
+                            config.max_retries,
+                            error
                     )
                     failed_files.append(file_to_be_uploaded)
                     break
                 logger.error(
-                    "Uploading task {}: Error when uploading the file {}. \
-Exception: {}. Retrying in {} seconds for {} more times".format(
-                        idx,
+                    "Uploading task %s: Error when uploading the file %s. \
+Exception: %s. Retrying in %s seconds for %s more times",
+                        config.idx,
                         file_to_be_uploaded,
                         error,
                         UP_S3FILE_RETRY_TIMEOUT,
-                        keep_trying,
-                    ),
+                        keep_trying
                 )
-                s3_storage_handler.disconnect_s3()
+                config.s3_storage_handler.disconnect_s3()
                 time_cnt = 0.0
                 while time_cnt < UP_S3FILE_RETRY_TIMEOUT:
                     time.sleep(0.2)
@@ -528,12 +515,11 @@ Exception: {}. Retrying in {} seconds for {} more times".format(
 
         if not uploaded:
             logger.error(
-                "Uploading task {}: Could not upload the file {}. The upload was \
-    retried for {} times. Aborting".format(
-                    idx,
+                "Uploading task %s: Could not upload the file %s. The upload was \
+    retried for %s times. Aborting",
+                    config.idx,
                     file_to_be_uploaded,
-                    max_retries,
-                ),
+                    config.max_retries
             )
             failed_files.append(file_to_be_uploaded)
 
