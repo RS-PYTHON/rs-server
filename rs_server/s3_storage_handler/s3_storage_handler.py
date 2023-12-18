@@ -5,13 +5,14 @@ import os
 import sys
 import time
 import traceback
+from typing import Any
 from dataclasses import dataclass
 from datetime import datetime
 from threading import Lock
 
 import boto3
 import botocore
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError 
 from prefect import exceptions, get_run_logger, task
 
 # seconds
@@ -40,7 +41,7 @@ class S3StorageHandler:
         self.secret_access_key = secret_access_key
         self.endpoint_url = endpoint_url
         self.region_name = region_name
-        self.s3_client = None
+        self.s3_client : boto3.client = None
         if not self.connect_s3():
             raise RuntimeError("The connection to s3 storage could not be made")
 
@@ -84,9 +85,9 @@ class S3StorageHandler:
                 )
             except ClientError as e:
                 if e.response["Error"]["Code"] == "EntityAlreadyExists":
-                    self.logger("This clent already exists")
+                    self.logger.error("This clent already exists")
                 else:
-                    self.logger("Unexpected error")
+                    self.logger.error("Unexpected error")
                 return None
 
         return s3_client
@@ -98,13 +99,13 @@ class S3StorageHandler:
             print("Input error for deleting the file")
             return False
         try:
-            self.logger("{bucket} | {s3_obj}")
-            self.logger("Trying to delete file s3://{bucket}/{s3_obj}")
+            self.logger.debug("{bucket} | {s3_obj}")
+            self.logger.info("Delete file s3://{bucket}/{s3_obj}")
             self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
         except ClientError as e:
             tb = traceback.format_exc()
-            self.logger(f"Failed to delete file s3://{bucket}/{s3_obj}")
-            self.logger(f"Exception: {e} | {tb}")
+            self.logger.error(f"Failed to delete file s3://{bucket}/{s3_obj}")
+            self.logger.error(f"Exception: {e} | {tb}")
             return False
         return True
 
@@ -226,7 +227,7 @@ class S3StorageHandler:
         total = 0
         self.logger.warning("prefix = %s", prefix)
         try:
-            paginator = self.s3_client.get_paginator("list_objects_v2")
+            paginator : Any = self.s3_client.get_paginator("list_objects_v2")
             pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
             for page in pages:
                 for item in page.get("Contents", ()):

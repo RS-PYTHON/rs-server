@@ -1,9 +1,11 @@
 """Docstring to be added."""
+# pylint: disable=R0913,R0914 # Too many arguments, Too many local variables
 import filecmp
 import logging
 import os
 import shutil
 import sys
+from typing import Coroutine, Any
 from collections import Counter
 
 import pytest
@@ -95,7 +97,6 @@ def test_get_s3_client(endpoint: str):
     "s3cfg_file, expected_res",
     [(("/home/USER/.s3cfg", True)), (("/path/to/.s3cfg", False))],
 )
-
 # for CI, a fake .s3cfg should be created with access_key and secret_key at least
 # otherwise, this test will not pass
 def test_get_secrets(s3cfg_file: str, expected_res: bool):
@@ -347,7 +348,7 @@ async def test_prefect_download_files_from_s3(
     @flow
     async def test_flow():
         config = PrefectGetKeysFromS3Config(s3_handler, lst_with_files, bucket, local_path, 0, True)
-        state = await prefect_get_keys_from_s3(config, return_state=True)
+        state : Coroutine[Any, Any, list[Any]] = await prefect_get_keys_from_s3(config, return_state=True)
         result = await state.result(fetch=True)
         return result
 
