@@ -5,11 +5,13 @@ import logging
 import os
 import shutil
 import sys
+import tempfile
 from collections import Counter
 from typing import Any, Coroutine
 
 import pytest
 import requests
+from botocore.exceptions import ClientError
 from moto.server import ThreadedMotoServer
 from prefect import flow
 
@@ -95,7 +97,7 @@ def test_get_s3_client(endpoint: str):
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "s3cfg_file, expected_res",
-    [(("/home/USER/.s3cfg", True)), (("/path/to/.s3cfg", False))],
+    [(("./USER/credentials_location/.s3cfg", True)), (("/path/to/none/.s3cfg", False))],
 )
 # for CI, a fake .s3cfg should be created with access_key and secret_key at least
 # otherwise, this test will not pass
@@ -112,9 +114,21 @@ def test_get_secrets(s3cfg_file: str, expected_res: bool):
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
     if "USER" in s3cfg_file:
-        s3cfg_file = s3cfg_file.replace("USER", os.environ["USER"])
-
-    assert expected_res == S3StorageHandler.get_secrets(secrets, s3cfg_file, logger)
+        tmp_s3cfg_file, tmp_path = tempfile.mkstemp()
+        try:
+            # with tempfile.NamedTemporaryFile() as tmp_s3cfg_file:
+            with os.fdopen(tmp_s3cfg_file, "w") as tmp:
+                tmp.write("access_key = test_access_key")
+                tmp.write("secret_key = test_secret_key")
+                tmp.write("host_bucket = https://test_endpoint.com")
+                tmp.flush()
+            assert expected_res == S3StorageHandler.get_secrets(secrets, tmp_path, logger)
+        except OSError:
+            assert False
+        finally:
+            os.remove(tmp_path)
+    else:
+        assert expected_res == S3StorageHandler.get_secrets(secrets, s3cfg_file, logger)
 
 
 @pytest.mark.unit
@@ -148,20 +162,32 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
 
     server = ThreadedMotoServer()
     server.start()
+    try:
+        requests.post(endpoint + "/moto-api/reset", timeout=5)
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
 
-    requests.post(endpoint + "/moto-api/reset", timeout=5)
-    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
-
-    if s3_handler.check_bucket_access(bucket):
+        if s3_handler.check_bucket_access(bucket):
+            server.stop()
+            logger.error("The bucket %s does exist, for the tests it shouldn't", bucket)
+            assert False
+        if bucket == "test-bucket":
+            s3_handler.s3_client.create_bucket(Bucket=bucket)
+            for idx in range(nb_of_files):
+                s3_handler.s3_client.put_object(Bucket=bucket, Key=f"test-dir/{idx}", Body="testing")
+        # end of create
+        s3_files, _ = s3_handler.list_s3_files_obj(bucket, "test-dir")
+    except RuntimeError:
         server.stop()
-        logger.error("The bucket %s does exist, for the tests it shouldn't", bucket)
         assert False
-    if bucket == "test-bucket":
-        s3_handler.s3_client.create_bucket(Bucket=bucket)
-        for idx in range(nb_of_files):
-            s3_handler.s3_client.put_object(Bucket=bucket, Key=f"test-dir/{idx}", Body="testing")
-    # end of create
-    s3_files, _ = s3_handler.list_s3_files_obj(bucket, "test-dir")
+    except ClientError:
+        server.stop()
+        assert False
+
     server.stop()
     logger.debug("len(s3_files)  = %s", len(s3_files))
     assert len(s3_files) == nb_of_files
@@ -224,14 +250,26 @@ def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list
 
     server = ThreadedMotoServer()
     server.start()
-    requests.post(endpoint + "/moto-api/reset", timeout=5)
-    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
-    if bucket == "test-bucket":
-        s3_handler.s3_client.create_bucket(Bucket=bucket)
-        for obj in expected_res:
-            s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing")
-    logger.debug("Bucket created !")
-    collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
+    try:
+        requests.post(endpoint + "/moto-api/reset", timeout=5)
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        if bucket == "test-bucket":
+            s3_handler.s3_client.create_bucket(Bucket=bucket)
+            for obj in expected_res:
+                s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing")
+        logger.debug("Bucket created !")
+        collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
+    except RuntimeError:
+        server.stop()
+        assert False
+    except ClientError:
+        server.stop()
+        assert False
     server.stop()
     assert len(Counter(collection) - Counter(expected_res)) == 0
     assert len(Counter(expected_res) - Counter(collection)) == 0
@@ -335,25 +373,37 @@ async def test_prefect_download_files_from_s3(
     # create the test bucket
     server = ThreadedMotoServer()
     server.start()
-    requests.post(endpoint + "/moto-api/reset", timeout=5)
-    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
-    if bucket == "test-bucket":
-        s3_handler.s3_client.create_bucket(Bucket=bucket)
-        for obj in lst_with_files_to_be_dwn:
-            s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing\n")
-    # end of create
+    try:
+        requests.post(endpoint + "/moto-api/reset", timeout=5)
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        if bucket == "test-bucket":
+            s3_handler.s3_client.create_bucket(Bucket=bucket)
+            for obj in lst_with_files_to_be_dwn:
+                s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing\n")
+        # end of create
 
-    collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
+        collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
 
-    @flow
-    async def test_flow():
-        config = PrefectGetKeysFromS3Config(s3_handler, lst_with_files, bucket, local_path, 0, True)
-        state: Coroutine[Any, Any, list[Any]] = await prefect_get_keys_from_s3(config, return_state=True)
-        result = await state.result(fetch=True)
-        return result
+        @flow
+        async def test_flow():
+            config = PrefectGetKeysFromS3Config(s3_handler, lst_with_files, bucket, local_path, 0, True)
+            state: Coroutine[Any, Any, list[Any]] = await prefect_get_keys_from_s3(config, return_state=True)
+            result = await state.result(fetch=True)
+            return result
 
-    res = await test_flow()
-    logger.debug("Task returns: %s", res)
+        res = await test_flow()
+        logger.debug("Task returns: %s", res)
+    except RuntimeError:
+        server.stop()
+        assert False
+    except ClientError:
+        server.stop()
+        assert False
     server.stop()
     assert len(Counter(collection) - Counter(lst_with_files_to_be_dwn)) == 0
     assert len(Counter(lst_with_files_to_be_dwn) - Counter(collection)) == 0
@@ -424,7 +474,16 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
 
     server = ThreadedMotoServer()
     server.start()
-    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
+    try:
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+    except RuntimeError:
+        server.stop()
+        assert False
     server.stop()
     collection = s3_handler.files_to_be_uploaded(lst_with_files)
     logger.debug("collection   = %s", collection)
@@ -519,33 +578,44 @@ async def test_prefect_upload_files_to_s3(
     # create the test bucket
     server = ThreadedMotoServer()
     server.start()
-    requests.post(endpoint + "/moto-api/reset", timeout=5)
-    s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
-    if bucket == "test-bucket":
-        s3_handler.s3_client.create_bucket(Bucket=bucket)
-    # end of create
+    try:
+        requests.post(endpoint + "/moto-api/reset", timeout=5)
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        if bucket == "test-bucket":
+            s3_handler.s3_client.create_bucket(Bucket=bucket)
+        # end of create
 
-    collection = s3_handler.files_to_be_uploaded(lst_with_files)
-    logger.debug("collection              = {%s}", collection)
-    logger.debug("lst_with_files_to_be_up = %s", lst_with_files_to_be_up)
+        collection = s3_handler.files_to_be_uploaded(lst_with_files)
+        logger.debug("collection              = {%s}", collection)
+        logger.debug("lst_with_files_to_be_up = %s", lst_with_files_to_be_up)
 
-    @flow
-    async def test_flow():
-        # logger = get_run_logger()
-        config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, True)
-        state = await prefect_put_files_to_s3(config, return_state=True)
-        result = await state.result(fetch=True)
-        # logger.debug("result = %s", result))
-        return result
+        @flow
+        async def test_flow():
+            # logger = get_run_logger()
+            config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, True)
+            state = await prefect_put_files_to_s3(config, return_state=True)
+            result = await state.result(fetch=True)
+            # logger.debug("result = %s", result))
+            return result
 
-    res = await test_flow()
-    test_bucket_files = []  # type: list[str]
-    for key in lst_with_files:
-        s3_files, _ = s3_handler.list_s3_files_obj(bucket, key)
-        test_bucket_files = test_bucket_files + s3_files
-        # if total == 0:
-        #    break
-
+        res = await test_flow()
+        test_bucket_files = []  # type: list[str]
+        for key in lst_with_files:
+            s3_files, _ = s3_handler.list_s3_files_obj(bucket, key)
+            test_bucket_files = test_bucket_files + s3_files
+            # if total == 0:
+            #    break
+    except RuntimeError:
+        server.stop()
+        assert False
+    except ClientError:
+        server.stop()
+        assert False
     server.stop()
     logger.debug("test_bucket_files  = %s", test_bucket_files)
     # logger.debug("s3_files  = %s", s3_files))
