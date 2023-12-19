@@ -7,11 +7,10 @@ import shutil
 import sys
 import tempfile
 from collections import Counter
-from typing import Any, Coroutine
+from pathlib import Path
 
 import pytest
 import requests
-from botocore.exceptions import ClientError, NoCredentialsError
 from moto.server import ThreadedMotoServer
 from prefect import flow
 
@@ -22,6 +21,10 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
     prefect_get_keys_from_s3,
     prefect_put_files_to_s3,
 )
+
+# /tests/ folder = parent directory of this current script
+TEST_FOLDER = Path(os.path.realpath(os.path.dirname(__file__)))
+
 
 def export_aws_credentials():
     """Export AWS credentials as environment variables for testing purposes.
@@ -41,11 +44,12 @@ def export_aws_credentials():
     Raises:
         None
     """
-    os.environ["AWS_ACCESS_KEY_ID"] = 'testing'
-    os.environ["AWS_SECRET_ACCESS_KEY"] = 'testing'
-    os.environ["AWS_SECURITY_TOKEN"] = 'testing'
-    os.environ["AWS_SESSION_TOKEN"] = 'testing'
-    os.environ["AWS_DEFAULT_REGION"] = 'us-east-1'
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
@@ -122,8 +126,6 @@ def test_get_s3_client(endpoint: str):
     "s3cfg_file, expected_res",
     [(("./USER/credentials_location/.s3cfg", True)), (("/path/to/none/.s3cfg", False))],
 )
-# for CI, a fake .s3cfg should be created with access_key and secret_key at least
-# otherwise, this test will not pass
 def test_get_secrets(s3cfg_file: str, expected_res: bool):
     """Docstring to be added."""
     secrets = {
@@ -160,7 +162,17 @@ def test_get_secrets(s3cfg_file: str, expected_res: bool):
     [(("/usr/path/to/file", "file")), (("/usr/path/to/folder/", "folder"))],
 )
 def test_get_basename(path: str, expected_res: bool):
-    """Docstring to be added."""
+    """test_get_basename Function Documentation
+
+    Test the get_basename method of the S3StorageHandler class.
+
+    Parameters:
+    - path (str): The input path to be tested.
+    - expected_res (bool): The expected result of the get_basename method.
+
+    Raises:
+    - AssertionError: If the result of S3StorageHandler.get_basename(path) does not match expected_res.
+    """
     assert expected_res == S3StorageHandler.get_basename(path)
 
 
@@ -174,7 +186,18 @@ def test_get_basename(path: str, expected_res: bool):
     ],
 )
 def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
-    """Docstring to be added."""
+    """test_list_s3_files_obj Function Documentation
+
+    Test the list_s3_files_obj method of the S3StorageHandler class.
+
+    Parameters:
+    - endpoint (str): The S3 endpoint for testing.
+    - bucket (str): The name of the S3 bucket for testing.
+    - nb_of_files (int): The expected number of files in the S3 bucket.
+
+    Raises:
+    - AssertionError: If the number of files returned by S3StorageHandler.list_s3_files_obj does not match nb_of_files.
+    """
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
@@ -194,9 +217,9 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
             secrets["s3endpoint"],
             secrets["region"],
         )
-        #import pdb
-        #pdb.set_trace()
-        
+        # import pdb
+        # pdb.set_trace()
+
         if s3_handler.check_bucket_access(bucket):
             server.stop()
             logger.error("The bucket %s does exist, for the tests it shouldn't", bucket)
@@ -206,15 +229,10 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
             for idx in range(nb_of_files):
                 s3_handler.s3_client.put_object(Bucket=bucket, Key=f"test-dir/{idx}", Body="testing")
         # end of create
-        s3_files, _ = s3_handler.list_s3_files_obj(bucket, "test-dir")
-    except RuntimeError:
+        s3_files = s3_handler.list_s3_files_obj(bucket, "test-dir")
+    finally:
         server.stop()
-        assert False
-    except (ClientError, NoCredentialsError):
-        server.stop()
-        assert False
 
-    server.stop()
     logger.debug("len(s3_files)  = %s", len(s3_files))
     assert len(s3_files) == nb_of_files
 
@@ -291,19 +309,16 @@ def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list
                 s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing")
         logger.debug("Bucket created !")
         collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
-    except RuntimeError:
+    finally:
         server.stop()
-        assert False
-    except (ClientError, NoCredentialsError):
-        server.stop()
-        assert False
-    server.stop()
+
     assert len(Counter(collection) - Counter(expected_res)) == 0
     assert len(Counter(expected_res) - Counter(collection)) == 0
 
 
 def cmp_dirs(dir1, dir2):
-    """
+    """cmp_dirs Function Documentation
+
     Compare two directories recursively. Files in each directory are
     assumed to be equal if their names and contents are equal.
 
@@ -337,7 +352,7 @@ def cmp_dirs(dir1, dir2):
             (
                 "http://localhost:5000",
                 "test-bucket",
-                "tmp_dwn_dir",
+                "/tmp/tmp_dwn_dir",
                 [
                     "s3_storage_handler_test/no_root_file1",
                     "s3_storage_handler_test/no_root_file2",
@@ -362,7 +377,7 @@ def cmp_dirs(dir1, dir2):
             (
                 "http://localhost:5000",
                 "test-bucket",
-                "tmp_dwn_dir",
+                "/tmp/tmp_dwn_dir",
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 [("", "s3_storage_handler_test/no_root_file1")],
                 [],
@@ -372,7 +387,7 @@ def cmp_dirs(dir1, dir2):
             (
                 "http://localhost:5000",
                 "bucket-non-existent",
-                "tmp_dwn_dir",
+                "/tmp/tmp_dwn_dir",
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 [],
                 [],
@@ -419,38 +434,27 @@ async def test_prefect_download_files_from_s3(
 
         @flow
         async def test_flow():
-            config = PrefectGetKeysFromS3Config(s3_handler, lst_with_files, bucket, local_path, 0, True)
-            state: Coroutine[Any, Any, list[Any]] = await prefect_get_keys_from_s3(config, return_state=True)
-            result = await state.result(fetch=True)
+            config = PrefectGetKeysFromS3Config(s3_handler, lst_with_files, bucket, local_path, 0, True)  # type: ignore
+            state = await prefect_get_keys_from_s3(config, return_state=True)  # type: ignore
+            result = await state.result(fetch=True)  # type: ignore
             return result
 
-        res = await test_flow()
+        res = await test_flow()  # type: ignore
         logger.debug("Task returns: %s", res)
-    except RuntimeError:
+    finally:
         server.stop()
-        assert False
-    except (ClientError, NoCredentialsError):
-        server.stop()
-        assert False
-    server.stop()
+
     assert len(Counter(collection) - Counter(lst_with_files_to_be_dwn)) == 0
     assert len(Counter(lst_with_files_to_be_dwn) - Counter(collection)) == 0
     assert len(Counter(expected_res) - Counter(res)) == 0
     assert len(Counter(res) - Counter(expected_res)) == 0
 
     if bucket == "test-bucket":
-        arr = os.getcwd().split("/")
-        try:
-            idx = arr.index("rs-server")
-        except OSError:
-            logger.error("Could not find the rs-server root path")
-            assert False
-        path_to_cmp_dirs = os.path.join("/", *(arr[:idx]), "rs-server/tests")        
         try:
             if len(lst_with_files) > short_s3_storage_handler_test_nb_of_files:
-                assert cmp_dirs(os.path.join(path_to_cmp_dirs, "full_s3_storage_handler_test"), local_path)
+                assert cmp_dirs(os.path.join(TEST_FOLDER, "full_s3_storage_handler_test"), local_path)
             else:
-                assert cmp_dirs(os.path.join(path_to_cmp_dirs, "short_s3_storage_handler_test"), local_path)
+                assert cmp_dirs(os.path.join(TEST_FOLDER, "short_s3_storage_handler_test"), local_path)
             shutil.rmtree(local_path)
         except OSError:
             logger.error("The local path was not created")
@@ -464,29 +468,45 @@ async def test_prefect_download_files_from_s3(
         (
             (
                 [
-                    "tests/full_s3_storage_handler_test/no_root_file1",
-                    "tests/full_s3_storage_handler_test/no_root_file2",
-                    "tests/full_s3_storage_handler_test/subdir_1",
-                    "tests/full_s3_storage_handler_test/subdir_2",
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file1"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file2"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_2"),
                 ],
                 [
-                    ("", "tests/full_s3_storage_handler_test/no_root_file1"),
-                    ("", "tests/full_s3_storage_handler_test/no_root_file2"),
-                    ("subdir_1", "tests/full_s3_storage_handler_test/subdir_1/subdir_file"),
-                    ("subdir_1/subsubdir_1", "tests/full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file1"),
-                    ("subdir_1/subsubdir_1", "tests/full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file2"),
-                    ("subdir_1/subsubdir_2", "tests/full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file1"),
-                    ("subdir_1/subsubdir_2", "tests/full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file2"),
-                    ("subdir_2", "tests/full_s3_storage_handler_test/subdir_2/subdir_2_file1"),
-                    ("subdir_2", "tests/full_s3_storage_handler_test/subdir_2/subdir_2_file2"),
+                    ("", str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file1")),
+                    ("", str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file2")),
+                    ("subdir_1", str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subdir_file")),
+                    (
+                        "subdir_1/subsubdir_1",
+                        str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file1"),
+                    ),
+                    (
+                        "subdir_1/subsubdir_1",
+                        str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file2"),
+                    ),
+                    (
+                        "subdir_1/subsubdir_2",
+                        str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file1"),
+                    ),
+                    (
+                        "subdir_1/subsubdir_2",
+                        str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file2"),
+                    ),
+                    ("subdir_2", str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_2/subdir_2_file1")),
+                    ("subdir_2", str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_2/subdir_2_file2")),
                 ],
             )
         ),
         (
             (
-                ["nonexistent_1", "nonexistent_2/file1", "tests/full_s3_storage_handler_test/no_root_file1"],
                 [
-                    ("", "tests/full_s3_storage_handler_test/no_root_file1"),
+                    "nonexistent_1",
+                    "nonexistent_2/file1",
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file1"),
+                ],
+                [
+                    ("", str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file1")),
                 ],
             )
         ),
@@ -510,10 +530,9 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
             secrets["s3endpoint"],
             secrets["region"],
         )
-    except RuntimeError:
+    finally:
         server.stop()
-        assert False
-    server.stop()
+
     collection = s3_handler.files_to_be_uploaded(lst_with_files)
     logger.debug("collection   = %s", collection)
     logger.debug("expected_res = %s", expected_res)
@@ -530,34 +549,46 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
             (
                 "http://localhost:5000",
                 "test-bucket",
-                "tests/full_s3_storage_handler_test",
+                str(TEST_FOLDER / "full_s3_storage_handler_test"),
                 [
-                    "tests/full_s3_storage_handler_test/no_root_file1",
-                    "tests/full_s3_storage_handler_test/no_root_file2",
-                    "tests/full_s3_storage_handler_test/subdir_1",
-                    "tests/full_s3_storage_handler_test/subdir_2",
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file1"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file2"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_2"),
                 ],
                 [
-                    ("", "tests/full_s3_storage_handler_test/no_root_file1"),
-                    ("", "tests/full_s3_storage_handler_test/no_root_file2"),
-                    ("subdir_1", "tests/full_s3_storage_handler_test/subdir_1/subdir_file"),
-                    ("subdir_1/subsubdir_1", "tests/full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file1"),
-                    ("subdir_1/subsubdir_1", "tests/full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file2"),
-                    ("subdir_1/subsubdir_2", "tests/full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file1"),
-                    ("subdir_1/subsubdir_2", "tests/full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file2"),
-                    ("subdir_2", "tests/full_s3_storage_handler_test/subdir_2/subdir_2_file1"),
-                    ("subdir_2", "tests/full_s3_storage_handler_test/subdir_2/subdir_2_file2"),
+                    ("", str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file1")),
+                    ("", str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file2")),
+                    ("subdir_1", str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subdir_file")),
+                    (
+                        "subdir_1/subsubdir_1",
+                        str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file1"),
+                    ),
+                    (
+                        "subdir_1/subsubdir_1",
+                        str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file2"),
+                    ),
+                    (
+                        "subdir_1/subsubdir_2",
+                        str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file1"),
+                    ),
+                    (
+                        "subdir_1/subsubdir_2",
+                        str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file2"),
+                    ),
+                    ("subdir_2", str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_2/subdir_2_file1")),
+                    ("subdir_2", str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_2/subdir_2_file2")),
                 ],
                 [
-                    "tests/full_s3_storage_handler_test/no_root_file1",
-                    "tests/full_s3_storage_handler_test/no_root_file2",
-                    "tests/full_s3_storage_handler_test/subdir_1/subdir_file",
-                    "tests/full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file1",
-                    "tests/full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file2",
-                    "tests/full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file1",
-                    "tests/full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file2",
-                    "tests/full_s3_storage_handler_test/subdir_2/subdir_2_file1",
-                    "tests/full_s3_storage_handler_test/subdir_2/subdir_2_file2",
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file1"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/no_root_file2"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subdir_file"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file1"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file2"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file1"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file2"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_2/subdir_2_file1"),
+                    str(TEST_FOLDER / "full_s3_storage_handler_test/subdir_2/subdir_2_file2"),
                 ],
                 [],
             )
@@ -566,12 +597,16 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
             (
                 "http://localhost:5000",
                 "test-bucket",
-                "tests/short_s3_storage_handler_test",
-                ["nonexistent_1", "nonexistent_2/file1", "tests/short_s3_storage_handler_test/no_root_file1"],
+                str(TEST_FOLDER / "short_s3_storage_handler_test"),
                 [
-                    ("", "tests/short_s3_storage_handler_test/no_root_file1"),
+                    "nonexistent_1",
+                    "nonexistent_2/file1",
+                    str(TEST_FOLDER / "short_s3_storage_handler_test/no_root_file1"),
                 ],
-                ["tests/short_s3_storage_handler_test/no_root_file1"],
+                [
+                    ("", str(TEST_FOLDER / "short_s3_storage_handler_test/no_root_file1")),
+                ],
+                [str(TEST_FOLDER / "short_s3_storage_handler_test/no_root_file1")],
                 [],
             )
         ),
@@ -580,10 +615,14 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
                 "http://localhost:5000",
                 "bucket-nonexistent",
                 "non_existent_dir",
-                ["nonexistent_1", "nonexistent_2/file1", "tests/short_s3_storage_handler_test/no_root_file1"],
-                [("", "tests/short_s3_storage_handler_test/no_root_file1")],
+                [
+                    "nonexistent_1",
+                    "nonexistent_2/file1",
+                    str(TEST_FOLDER / "short_s3_storage_handler_test/no_root_file1"),
+                ],
+                [("", str(TEST_FOLDER / "short_s3_storage_handler_test/no_root_file1"))],
                 [],
-                ["tests/short_s3_storage_handler_test/no_root_file1"],
+                [str(TEST_FOLDER / "short_s3_storage_handler_test/no_root_file1")],
             )
         ),
     ],
@@ -628,25 +667,21 @@ async def test_prefect_upload_files_to_s3(
         async def test_flow():
             # logger = get_run_logger()
             config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, True)
-            state = await prefect_put_files_to_s3(config, return_state=True)
-            result = await state.result(fetch=True)
+            state = await prefect_put_files_to_s3(config, return_state=True)  # type: ignore
+            result = await state.result(fetch=True)  # type: ignore
             # logger.debug("result = %s", result))
             return result
 
-        res = await test_flow()
+        res = await test_flow()  # type: ignore
         test_bucket_files = []  # type: list[str]
         for key in lst_with_files:
-            s3_files, _ = s3_handler.list_s3_files_obj(bucket, key)
+            s3_files = s3_handler.list_s3_files_obj(bucket, key)
             test_bucket_files = test_bucket_files + s3_files
             # if total == 0:
             #    break
-    except RuntimeError:
+    finally:
         server.stop()
-        assert False
-    except (ClientError, NoCredentialsError):
-        server.stop()
-        assert False
-    server.stop()
+
     logger.debug("test_bucket_files  = %s", test_bucket_files)
     # logger.debug("s3_files  = %s", s3_files))
 

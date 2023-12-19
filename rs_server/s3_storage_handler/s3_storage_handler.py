@@ -64,7 +64,7 @@ class S3StorageHandler:
         files_to_be_uploaded(self, paths):
             Creates a list of local files to be uploaded.
 
-        list_s3_files_obj(self, bucket, prefix, max_timestamp=None, pattern=None):
+        list_s3_files_obj(self, bucket, prefix):
             Retrieves the content of an S3 directory.
 
         get_s3_data(s3_url):
@@ -263,11 +263,11 @@ class S3StorageHandler:
         # in the case of a folder, the files will be recursively gathered
         for key in paths:
             path = key.strip().lstrip("/")
-            s3_files, total = self.list_s3_files_obj(bucket, path)
-            if total == 0:
+            s3_files = self.list_s3_files_obj(bucket, path)
+            if len(s3_files) == 0:
                 self.logger.warning("No key %s found.", path)
                 continue
-            self.logger.debug("total: %s | s3_files = %s", total, s3_files)
+            self.logger.debug("total: %s | s3_files = %s", len(s3_files), s3_files)
             basename_part = self.get_basename(path)
 
             # check if it's a file or a dir
@@ -287,7 +287,7 @@ class S3StorageHandler:
     # creates the list with local files to be uploaded to the bucket
     # the list will contain pairs (s3_path, absolute_local_file_path)
     # if the local file doesn't exist, the pair will be (None, requested_file_to_upload)
-    def files_to_be_uploaded(self, paths):
+    def files_to_be_uploaded(self, paths: [str]):
         """Creates a list of local files to be uploaded.
 
         Args:
@@ -330,8 +330,8 @@ class S3StorageHandler:
 
         return list_with_files
 
-    # get the content of a s3 directory
-    def list_s3_files_obj(self, bucket, prefix, max_timestamp=None, pattern=None):
+    # get the content of an s3 directory
+    def list_s3_files_obj(self, bucket, prefix):
         """Retrieve the content of an S3 directory.
 
         Args:
@@ -341,11 +341,11 @@ class S3StorageHandler:
             pattern (str, optional): Pattern to filter file names.
 
         Returns:
-            tuple: Tuple containing a list of S3 object keys and the total count.
+            list: List containing S3 object keys.
         """
 
         s3_files = []
-        total = 0
+
         self.logger.warning("prefix = %s", prefix)
         try:
             with self.s3_client_mutex:
@@ -354,18 +354,7 @@ class S3StorageHandler:
             for page in pages:
                 for item in page.get("Contents", ()):
                     if item is not None:
-                        total += 1
-                        if max_timestamp is not None and item["LastModified"] < max_timestamp:
-                            # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
-                            s3_files.append(item["Key"])
-                            # self.logger.debug("%s", item["LastModified"]))
-                        elif pattern is not None and pattern in item["Key"]:
-                            # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
-                            # self.logger.debug("found pattern %s in %s ", pattern, item["Key"]))
-                            s3_files.append(item["Key"])
-                        else:
-                            # (s3_files[cnt])["Objects"].append(dict(Key=item["Key"]))
-                            s3_files.append(item["Key"])
+                        s3_files.append(item["Key"])
         except botocore.exceptions.ClientError as error:
             self.logger.error("Listing files from s3://%s/%s failed (client error):%s", bucket, prefix, error)
         except TypeError as type_err:
@@ -373,7 +362,7 @@ class S3StorageHandler:
         except KeyError as key_err:
             self.logger.error("Listing files from s3://%s/%s failed (key error):%s", bucket, prefix, key_err)
 
-        return s3_files, total
+        return s3_files
 
     @staticmethod
     def get_s3_data(s3_url):
