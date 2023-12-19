@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
       - name: Run mypy
-        run: poetry run mypy --explicit-package-bases .
+        run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
         shell: bash
 
   check-security:

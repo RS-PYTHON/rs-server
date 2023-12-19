@@ -287,7 +287,7 @@ class S3StorageHandler:
     # creates the list with local files to be uploaded to the bucket
     # the list will contain pairs (s3_path, absolute_local_file_path)
     # if the local file doesn't exist, the pair will be (None, requested_file_to_upload)
-    def files_to_be_uploaded(self, paths: [str]):
+    def files_to_be_uploaded(self, paths: list[str]):
         """Creates a list of local files to be uploaded.
 
         Args:
