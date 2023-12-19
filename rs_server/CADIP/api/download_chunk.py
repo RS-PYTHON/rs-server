@@ -6,10 +6,10 @@ router = APIRouter()
 
 
 @router.get("/cadip/{station}/cadu")
-def download(station: str, id: str = ""):
+def download(station: str, chunk_id: str = ""):
     """Docstring will be here."""
     dag_client = init_eodag(station)
-    eop = init_eop(id)
+    eop = init_eop(chunk_id)
     dag_client.download(eop)
     return {"Path": eop.location}
 

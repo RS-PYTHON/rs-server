@@ -62,7 +62,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     if is_valid_format(start_date) and is_valid_format(stop_date):
         # prepare start_stop
         dag_client = init_eodag(station)
-        products, number = dag_client.search(start=start_date, end=stop_date, provider=station)
+        products, _ = dag_client.search(start=start_date, end=stop_date, provider=station)
         return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
 
@@ -93,12 +93,12 @@ def station_to_server_url(station: str) -> str | None:
     - If the station identifier is not found in the configuration data, the function returns None.
     """
     try:
-        with open(CONF_FOLDER / "stations_cfg.json") as jfile:
+        with open(CONF_FOLDER / "stations_cfg.json", encoding="utf-8") as jfile:
             stations_data = json.load(jfile)
             return stations_data.get(station.upper(), None)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
+    except (FileNotFoundError, json.JSONDecodeError):
         # logger to be added.
-        raise FileNotFoundError(f"Error reading JSON file: {e}")
+        return None
 
 
 def init_eodag(station: str) -> EODataAccessGateway:
