@@ -75,7 +75,7 @@ jobs:
       - id: bandit
         name: Run bandit
         if: always() # even if previous steps returned a non-zero exit code
-        run: >
+        run: |
           set -x
           poetry run bandit -c bandit.yml -r . || true # run next line even if fails
           poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
