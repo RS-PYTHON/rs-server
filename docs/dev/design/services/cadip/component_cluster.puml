@@ -1,0 +1,39 @@
+@startuml
+'https://plantuml.com/component-diagram
+
+
+node "UAC" {
+  HTTPS - [API Gateway]
+}
+
+node "CADIP API" {
+  [API Gateway] ..> HTTP: calls
+  HTTP - [cadip api]
+  [cadip api] - KAFKA_W
+}
+
+
+
+node "CADIP SERVICE" {
+  KAFKA_R - [cadip service]
+}
+
+queue kafka
+KAFKA_W ..> kafka
+kafka ..> KAFKA_R
+
+cloud "CADIP server" {
+}
+
+database "Download Status" {
+}
+
+database "S3 bucket" {
+}
+
+
+[cadip service] ..> [CADIP server]: calls (http)
+[cadip service] ..> [Download Status]: read - write (sql))
+[cadip service] ..> [S3 bucket]: write (S3)
+
+@enduml

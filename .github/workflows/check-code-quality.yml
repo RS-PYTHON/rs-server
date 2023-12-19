@@ -8,62 +8,48 @@ on:
 
 env:
   PYTHON_VERSION: 3.11
-  SOURCES: ./rs_server
   TESTS: ./tests
   SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
 jobs:
 
-  check-pre-commit:
+  check-format:
     runs-on: ubuntu-latest
-    name: Check 'pre-commit run --all-files'
+    name: Check format (pre-commit, black, isort)
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/install-python
-      - uses: pre-commit/action@v3.0.0 # returns non-zero if it was not run locally before commit
-
-  check-format:
-    runs-on: ubuntu-latest
-    name: Check format (black, isort)
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run black
-        uses: psf/black@stable
-        with:
-          options: --check --verbose
-      - name: Run isort
-        uses: isort/isort-action@v1
-        with:
-          sort-paths: . # ${{ env.SOURCES }} ${{ env.TESTS }}
-          configuration: --check-only --diff
+      - run: >
+          echo
+          ":information_source: This job checks that you have run \`pre-commit run --all-files\` in
+          your local git repository before committing."
+          >> $GITHUB_STEP_SUMMARY
+      - uses: pre-commit/action@v3.0.0
 
   check-linting:
     runs-on: ubuntu-latest
-    name: Check linting (ruff, flake8)
+    name: Check linting (pylint, flake8)
+    continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
 
-      # Used by pre-commit
-      - name: Run ruff
-        uses: chartboost/ruff-action@v1
-        with:
-          src: . # ${{ env.SOURCES }} ${{ env.TESTS }}
-          args: --output-format=github
+      - name: Run pylint
+        if: always() # even if previous steps returned a non-zero exit code
+        run: poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
 
-      # Used by sonarqube. See the .flake8 file for configuration.
       - name: Run flake8
-        uses: py-actions/flake8@v2
-        with:
-          path: . # ${{ env.SOURCES }} ${{ env.TESTS }}
-          args: --output-file .reports/flake8.txt
+        if: always()
+        run: poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
         uses: actions/upload-artifact@v3
+        if: always()
         with:
           name: check-linting
-          path: | # add a random file (.gitignore) so .reports/ is saved as a dir
-            .reports
-            .gitignore
+          path: |
+            ./flake8-report.txt
+            ./pylint-report.txt
           retention-days: 1
 
   check-typing:
@@ -74,51 +60,64 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
       - name: Run mypy
-        run: poetry run mypy --explicit-package-bases . # ${SOURCES} ${TESTS}
+        run: poetry run mypy --explicit-package-bases .
         shell: bash
 
   check-security:
     runs-on: ubuntu-latest
-    name: Check security (bandit)
+    name: Check security (bandit, safety, trivy)
     continue-on-error: true # run other jobs, resolve issues later
+    permissions: write-all
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
 
       - id: bandit
         name: Run bandit
-        run: |
-            set -x && mkdir -p .reports && \
-            poetry run bandit -c bandit.yml -r . -f json -o .reports/bandit.json # ${SOURCES} ${TESTS}
+        if: always() # even if previous steps returned a non-zero exit code
+        run: poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
         shell: bash
-
-      - name: Save reports
-        if: always() # even if bandit returned a non-zero exit code
-        uses: actions/upload-artifact@v3
-        with:
-          name: check-security
-          path: | # add a random file (.gitignore) so .reports/ is saved as a dir
-            .reports
-            .gitignore
-          retention-days: 1
-      # TODO: use trivy ?
-      # - uses: aquasecurity/trivy-action@master
-      #   with:
-      #     scan-type: 'fs'
-      #     scan-ref: '.'
-
-  check-deps-security:
-    runs-on: ubuntu-latest
-    name: Check dependencies security (safety)
-    continue-on-error: true # run other jobs, resolve issues later
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/poetry-install
 
       - id: safety
         name: Run safety
+        if: always()
         run: poetry run safety check --full-report
         shell: bash
+
+      - name: Run Trivy vulnerability scanner
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-results-fs.sarif
+          #severity: 'CRITICAL'
+
+      - name: Save reports as artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: check-security
+          path: |
+            ./bandit-report.json
+            ./trivy-results-fs.sarif
+          retention-days: 1
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-results-fs.sarif
+          category: git repository
+
+      # Display link to Trivy results in the github security tab.
+      # This linke doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
+      - if: github.event_name != 'pull_request'
+        run: >
+          echo "Trivy scan results:
+          https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${{ github.ref_name }}"
+          >> $GITHUB_STEP_SUMMARY
 
   run-unit-tests:
     runs-on: ubuntu-latest
@@ -133,16 +132,16 @@ jobs:
             -m unit \
             --durations=0 \
             --error-for-skips \
-            --cov=${SOURCES} --cov=./services \
+            --cov=./rs_server --cov=./services \
             --cov-report=term \
-            --cov-report=xml:.reports/cov-report.xml \
-            --junit-xml=.reports/junit-xml-report.xml \
+            --cov-report=xml:./cov-report.xml \
+            --junit-xml=./junit-xml-report.xml \
         shell: bash
 
       - name: Display code coverage summary in this console
         uses: irongut/CodeCoverageSummary@v1.3.0
         with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
-          filename: .reports/cov-report.xml
+          filename: ./cov-report.xml
 
       - name: Save reports
         uses: actions/upload-artifact@v3
@@ -150,7 +149,8 @@ jobs:
           name: run-unit-tests
           path: |
             .coverage
-            .reports
+            ./cov-report.xml
+            ./junit-xml-report.xml
           retention-days: 1
 
   # TODO: what the integration tests should be, what is the difference from the unit tests ?
@@ -169,15 +169,15 @@ jobs:
             -m integration \
             --durations=0 \
             --error-for-skips \
-            --cov=${SOURCES} --cov=./services \
+            --cov=./rs_server --cov=./services \
             --cov-report=term \
-            --cov-report=xml:.reports/coverage-integration.xml \
+            --cov-report=xml:./coverage-integration.xml \
         shell: bash
 
       - name: Display code coverage summary in this console
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
-          filename: .reports/coverage-integration.xml
+          filename: ./coverage-integration.xml
 
   generate-quality-report:
     runs-on: ubuntu-latest
@@ -211,24 +211,26 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
-          # Note: other options ?
-          # --debug
-          # -Dsonar.projectName=test-project
-          # -Dsonar.links.homepage=https://sonarqube.ops-csc.com/dashboard?id=test-project
+          # See doc:
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/importing-external-issues/importing-third-party-issues/
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-execution-parameters/
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-coverage-parameters/
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.projectBaseDir=.
-            -Dsonar.sources=${{ env.SOURCES }},./services
+            -Dsonar.sources=./rs_server,./services
             -Dsonar.tests=${{ env.TESTS }}
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
             -Dsonar.python.version=${{ env.PYTHON_VERSION }}
-            -Dsonar.python.flake8.reportPaths=".reports/flake8.txt"
-            -Dsonar.python.bandit.reportPaths=".reports/bandit.json"
-            -Dsonar.python.coverage.reportPaths=".reports/cov-report.xml"
-            -Dsonar.python.xunit.reportPath=".reports/junit-xml-report.xml"
+            -Dsonar.python.pylint.reportPaths="./pylint-report.txt"
+            -Dsonar.python.flake8.reportPaths="./flake8-report.txt"
+            -Dsonar.python.bandit.reportPaths="./bandit-report.json"
+            -Dsonar.python.coverage.reportPaths="./cov-report.xml"
+            -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
 
       - name: Wait for quality gate result
         run: sleep 5
@@ -254,3 +256,11 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # http instead of https or the url appears as *** in github, I don't know why,
+      # it may be configurable. But http works as well.
+      - if: always()
+        run: >
+          echo "SonarQube report:
+          http://sonarqube.ops-csc.com/dashboard?branch=${{ github.ref_name }}&id=${{ env.SONAR_PROJECT_KEY }}"
+          >> $GITHUB_STEP_SUMMARY
