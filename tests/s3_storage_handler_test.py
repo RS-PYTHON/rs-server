@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 import requests
+import yaml
 from moto.server import ThreadedMotoServer
 from prefect import flow
 
@@ -44,11 +45,9 @@ def export_aws_credentials():
     Raises:
         None
     """
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    with open(TEST_FOLDER / "config" / "s3.yml", "r", encoding="utf-8") as f:
+        s3_config = yaml.safe_load(f)
+        os.environ.update(s3_config["s3"])
 
 
 @pytest.mark.unit
@@ -141,7 +140,6 @@ def test_get_secrets(s3cfg_file: str, expected_res: bool):
     if "USER" in s3cfg_file:
         tmp_s3cfg_file, tmp_path = tempfile.mkstemp()
         try:
-            # with tempfile.NamedTemporaryFile() as tmp_s3cfg_file:
             with os.fdopen(tmp_s3cfg_file, "w") as tmp:
                 tmp.write("access_key = test_access_key")
                 tmp.write("secret_key = test_secret_key")
@@ -206,7 +204,6 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
     # create the test bucket
-
     server = ThreadedMotoServer()
     server.start()
     try:
@@ -235,6 +232,54 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
 
     logger.debug("len(s3_files)  = %s", len(s3_files))
     assert len(s3_files) == nb_of_files
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint, bucket",
+    [(("http://localhost:5000", "test-bucket")), (("http://localhost:5000", "bucket-nonexistent"))],
+)
+def test_check_bucket_access(endpoint: str, bucket: str):
+    """test_check_bucket_access Function Documentation
+
+    Test the check_bucket_access method of the S3StorageHandler class.
+
+    Parameters:
+    - endpoint (str): The S3 endpoint for testing.
+    - bucket (str): The name of the S3 bucket for testing.
+
+    Raises:
+    - AssertionError: If the result of S3StorageHandler.check_bucket_access does not match the expected result.
+    """
+    export_aws_credentials()
+    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
+    logger = logging.getLogger("s3_storage_handler_test")
+    logger.setLevel(logging.DEBUG)
+    logger.handlers = []
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+
+    server = ThreadedMotoServer()
+    server.start()
+    result = False
+    try:
+        requests.post(endpoint + "/moto-api/reset", timeout=5)
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+
+        if bucket == "test-bucket":
+            # create the test-bucket storage only when needed
+            s3_handler.s3_client.create_bucket(Bucket=bucket)
+            result = s3_handler.check_bucket_access(bucket)
+        else:
+            result = not s3_handler.check_bucket_access(bucket)
+    finally:
+        server.stop()
+
+    assert result
 
 
 @pytest.mark.unit
@@ -285,7 +330,21 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     ],
 )
 def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list, expected_res: list):
-    """Docstring to be added."""
+    """test_files_to_be_downloaded Function Documentation
+
+    Test the files_to_be_downloaded method of the S3StorageHandler class.
+
+    Parameters:
+    - endpoint (str): The S3 endpoint for testing.
+    - bucket (str): The name of the S3 bucket for testing.
+    - lst_with_files (list): List of files to be checked for download.
+    - expected_res (list): List of tuples representing the expected files to be
+     downloaded. Each tuple consists of a prefix and a file path.
+
+    Raises:
+    - AssertionError: If the result of S3StorageHandler.files_to_be_downloaded does not match expected_res.
+    """
+
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
@@ -346,13 +405,12 @@ def cmp_dirs(dir1, dir2):
 @pytest.mark.unit
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "endpoint, bucket, local_path, lst_with_files, lst_with_files_to_be_dwn, expected_res",
+    "endpoint, bucket, lst_with_files, lst_with_files_to_be_dwn, expected_res",
     [
         (
             (
                 "http://localhost:5000",
                 "test-bucket",
-                "/tmp/tmp_dwn_dir",
                 [
                     "s3_storage_handler_test/no_root_file1",
                     "s3_storage_handler_test/no_root_file2",
@@ -377,7 +435,6 @@ def cmp_dirs(dir1, dir2):
             (
                 "http://localhost:5000",
                 "test-bucket",
-                "/tmp/tmp_dwn_dir",
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 [("", "s3_storage_handler_test/no_root_file1")],
                 [],
@@ -387,7 +444,6 @@ def cmp_dirs(dir1, dir2):
             (
                 "http://localhost:5000",
                 "bucket-non-existent",
-                "/tmp/tmp_dwn_dir",
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 [],
                 [],
@@ -398,12 +454,25 @@ def cmp_dirs(dir1, dir2):
 async def test_prefect_download_files_from_s3(
     endpoint: str,
     bucket: str,
-    local_path: str,
     lst_with_files: list,
     lst_with_files_to_be_dwn: list,
     expected_res: list,
 ):
-    """Docstring to be added."""
+    """test_prefect_download_files_from_s3 Function Documentation
+
+    Test the prefect_download_files_from_s3 function.
+
+    Parameters:
+    - endpoint (str): The S3 endpoint for testing.
+    - bucket (str): The name of the S3 bucket for testing.
+    - lst_with_files (list): List of files to be checked for download.
+    - lst_with_files_to_be_dwn (list): List of tuples representing the expected
+    files to be downloaded. Each tuple consists of a prefix and a file path.
+    - expected_res (list): List of tuples representing the expected result of the Prefect workflow.
+
+    Raises:
+    - AssertionError: If the result of the Prefect workflow does not match expected_res.
+    """
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
@@ -431,6 +500,7 @@ async def test_prefect_download_files_from_s3(
         # end of create
 
         collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
+        local_path = tempfile.mkdtemp()
 
         @flow
         async def test_flow():
@@ -636,7 +706,19 @@ async def test_prefect_upload_files_to_s3(
     keys_in_bucket: list,
     expected_res: list,
 ):
-    """Docstring to be added."""
+    """test_prefect_upload_files_to_s3 Function Documentation
+
+    Test the files_to_be_uploaded method of the S3StorageHandler class.
+
+    Parameters:
+    - lst_with_files (list): List of local files to be checked for upload.
+    - expected_res (list): List of tuples representing the expected files to be
+    uploaded. Each tuple consists of a prefix and a file path.
+
+    Raises:
+    - AssertionError: If the result of S3StorageHandler.files_to_be_uploaded does not match expected_res.
+    """
+
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
     logger = logging.getLogger("s3_storage_handler_test")
@@ -665,11 +747,9 @@ async def test_prefect_upload_files_to_s3(
 
         @flow
         async def test_flow():
-            # logger = get_run_logger()
             config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, True)
             state = await prefect_put_files_to_s3(config, return_state=True)  # type: ignore
             result = await state.result(fetch=True)  # type: ignore
-            # logger.debug("result = %s", result))
             return result
 
         res = await test_flow()  # type: ignore
@@ -683,7 +763,6 @@ async def test_prefect_upload_files_to_s3(
         server.stop()
 
     logger.debug("test_bucket_files  = %s", test_bucket_files)
-    # logger.debug("s3_files  = %s", s3_files))
 
     logger.debug("Task returns: %s", res)
     assert len(Counter(collection) - Counter(lst_with_files_to_be_up)) == 0
