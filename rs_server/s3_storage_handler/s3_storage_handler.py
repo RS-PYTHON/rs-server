@@ -219,7 +219,7 @@ class S3StorageHandler:
                     elif secrets["secretkey"] is None and "secret_" in line and "_key" in line:
                         dict_filled += 1
                         secrets["secretkey"] = line.strip().split("=")[1].strip()
-        except OSError as e:
+        except (OSError, IndexError) as e:
             if logger:
                 logger.error(f"Could not get the secrets, exception: {e}")
             else:
