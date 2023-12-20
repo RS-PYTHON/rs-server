@@ -505,7 +505,15 @@ async def test_prefect_download_files_from_s3(
 
         @flow
         async def test_flow():
-            config = PrefectGetKeysFromS3Config(s3_handler, lst_with_files, bucket, local_path, 0, True)  # type: ignore
+            config = PrefectGetKeysFromS3Config(
+                s3_handler,
+                lst_with_files,
+                bucket,
+                local_path,
+                0,
+                True,
+                1,
+            )  # type: ignore
             state = await prefect_get_keys_from_s3(config, return_state=True)  # type: ignore
             result = await state.result(fetch=True)  # type: ignore
             return result
@@ -748,7 +756,7 @@ async def test_prefect_upload_files_to_s3(
 
         @flow
         async def test_flow():
-            config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, True)
+            config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, 1)
             state = await prefect_put_files_to_s3(config, return_state=True)  # type: ignore
             result = await state.result(fetch=True)  # type: ignore
             return result
