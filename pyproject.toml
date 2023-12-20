@@ -48,6 +48,7 @@ safety = "^2.3.5"
 pylint = "^3.0.3"
 flake8-pyproject = "^1.2.3"
 httpx = "^0.25.2"
+uvicorn = "^0.24.0.post1"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true

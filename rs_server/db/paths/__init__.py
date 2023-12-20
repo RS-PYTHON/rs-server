@@ -1,0 +1,1 @@
+"""FastAPI path parameters implementation."""
