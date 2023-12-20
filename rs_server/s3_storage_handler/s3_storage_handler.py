@@ -204,16 +204,20 @@ class S3StorageHandler:
             bool: True if secrets are successfully retrieved, False otherwise.
         """
         try:
+            dict_filled = 0
             with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
                 lines = aws_credentials_file.readlines()
                 for line in lines:
-                    if secrets["accesskey"] is not None and secrets["secretkey"] is not None:
+                    if dict_filled == len(secrets):
                         break
                     if secrets["s3endpoint"] is None and "host_bucket" in line:
+                        dict_filled += 1
                         secrets["s3endpoint"] = line.strip().split("=")[1].strip()
-                    if secrets["accesskey"] is None and "access_key" in line:
+                    elif secrets["accesskey"] is None and "access_key" in line:
+                        dict_filled += 1
                         secrets["accesskey"] = line.strip().split("=")[1].strip()
-                    if secrets["secretkey"] is None and "secret_" in line and "_key" in line:
+                    elif secrets["secretkey"] is None and "secret_" in line and "_key" in line:
+                        dict_filled += 1
                         secrets["secretkey"] = line.strip().split("=")[1].strip()
         except OSError as e:
             if logger:

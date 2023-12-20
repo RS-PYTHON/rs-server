@@ -141,11 +141,12 @@ def test_get_secrets(s3cfg_file: str, expected_res: bool):
         tmp_s3cfg_file, tmp_path = tempfile.mkstemp()
         try:
             with os.fdopen(tmp_s3cfg_file, "w") as tmp:
-                tmp.write("access_key = test_access_key")
-                tmp.write("secret_key = test_secret_key")
-                tmp.write("host_bucket = https://test_endpoint.com")
+                tmp.write("access_key = test_access_key\n")
+                tmp.write("secret_key = test_secret_key\n")
+                tmp.write("host_bucket = https://test_endpoint.com\n")
                 tmp.flush()
-            assert expected_res == S3StorageHandler.get_secrets(secrets, tmp_path, logger)
+            ret = S3StorageHandler.get_secrets(secrets, tmp_path, logger)
+            assert expected_res == ret
         except OSError:
             assert False
         finally:
