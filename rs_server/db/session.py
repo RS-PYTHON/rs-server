@@ -3,9 +3,11 @@
 import logging
 import os
 
+from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # SQLite configuration
 # SQLALCHEMY_DATABASE_URL = "sqlite:////tmp/sql_app.db"
@@ -29,8 +31,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+############################
+# For dependency injection #
+############################
 
-# For dependency injection
+
+# Use manually with with contextmanager(get_db)() as db:
 def get_db():
     db = SessionLocal()
     try:
@@ -41,3 +47,13 @@ def get_db():
         raise
     finally:
         db.close()
+
+
+# Use manually with with contextmanager(reraise_http)() as db:
+def reraise_http():
+    try:
+        yield
+    except Exception as exception:
+        if isinstance(exception, StarletteHTTPException):
+            raise
+        raise HTTPException(status_code=400, detail=str(exception))

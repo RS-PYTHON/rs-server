@@ -1,3 +1,4 @@
+import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
@@ -12,15 +13,13 @@ from rs_server.db.schemas.cadu_product_schema import (
     UserRead,
 )
 from rs_server.db.schemas.download_status_schema import ItemCreate, ItemRead
-from rs_server.db.session import Base, engine, get_db
+from rs_server.db.session import Base, engine, get_db, reraise_http
 
-router = APIRouter(prefix="/cadu_product", tags=["cadu_product"])
+router = APIRouter(prefix="/cadu_product", tags=["cadu_product"], dependencies=[Depends(reraise_http)])
 
 
 @router.post("/cadu/", response_model=CaduProductRead)
 def create_cadu_product(cadu_product: CaduProductCreate, db: Session = Depends(get_db)) -> CaduProductRead:
-    raise HTTPException(status_code=400, detail="Email already registered")
-
     db_cadu_product = CaduProductModel(name=cadu_product.name)
 
     db.add(db_cadu_product)
