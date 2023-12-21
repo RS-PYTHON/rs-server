@@ -6,7 +6,7 @@ from rs_server.db.models.download_status import DownloadStatus
 from rs_server.db.session import Base
 
 
-class CaduProductModel(Base):
+class CaduProduct(Base):
     """CADU Product model implementation."""
 
     __tablename__ = "cadu_products"
