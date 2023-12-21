@@ -75,10 +75,6 @@ log_cli_date_format = "%H:%M:%S" # "%Y-%m-%d %H:%M:%S"
 warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
-
-# TODO add the plugin if possible (request for example)
-[[tool.mypy.overrides]]
-module = "boto3,botocore,prefect_dask,ruamel"
 ignore_missing_imports = true
 
 [tool.flake8]

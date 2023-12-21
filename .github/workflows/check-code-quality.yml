@@ -40,7 +40,10 @@ jobs:
 
       - name: Run flake8
         if: always()
-        run: poetry run flake8 . --output-file ./flake8-report.txt
+        run: |
+            set -x
+            poetry run flake8 . || true # run next line even if fails
+            poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
         uses: actions/upload-artifact@v3
@@ -60,7 +63,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
       - name: Run mypy
-        run: poetry run mypy --explicit-package-bases .
+        run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
         shell: bash
 
   check-security:
@@ -75,7 +78,10 @@ jobs:
       - id: bandit
         name: Run bandit
         if: always() # even if previous steps returned a non-zero exit code
-        run: poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
+        run: |
+          set -x
+          poetry run bandit -c bandit.yml -r . || true # run next line even if fails
+          poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
         shell: bash
 
       - id: safety
@@ -92,6 +98,7 @@ jobs:
           ignore-unfixed: true
           format: sarif
           output: trivy-results-fs.sarif
+          exit-code: 1
           #severity: 'CRITICAL'
 
       - name: Save reports as artifacts
