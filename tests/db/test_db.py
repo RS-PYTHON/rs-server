@@ -10,9 +10,7 @@ from sqlalchemy.orm import Session
 
 import rs_server.db.crud.cadu_product_crud as crud
 from rs_server.db.models.cadu_product_model import CaduProductModel, UserModel
-from rs_server.db.models.download_status_model import ItemModel
 from rs_server.db.schemas.cadu_product_schema import CaduProductCreate, UserCreate
-from rs_server.db.schemas.download_status_schema import ItemCreate
 from rs_server.db.session import SessionLocal, get_db
 from rs_server.db.startup import main_app
 

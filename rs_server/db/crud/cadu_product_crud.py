@@ -1,67 +1,74 @@
-import traceback
-from contextlib import asynccontextmanager
+from fastapi import APIRouter, Depends, HTTPException
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
-from sqlalchemy.orm import Session
-
-from rs_server.db.models.cadu_product_model import CaduProductModel, UserModel
-from rs_server.db.models.download_status_model import ItemModel
+from rs_server.db.models.cadu_product_model import CaduProductModel
+from rs_server.db.models.download_status import DownloadStatus
 from rs_server.db.schemas.cadu_product_schema import (
     CaduProductCreate,
+    CaduProductDownloadDone,
+    CaduProductDownloadFail,
+    CaduProductDownloadStart,
     CaduProductRead,
-    UserCreate,
-    UserRead,
 )
-from rs_server.db.schemas.download_status_schema import ItemCreate, ItemRead
-from rs_server.db.session import Base, engine, get_db, reraise_http
+from rs_server.db.session import add_commit_refresh, get_db, reraise_http
 
-router = APIRouter(prefix="/cadu_product", tags=["cadu_product"], dependencies=[Depends(reraise_http)])
+# All the HTTP
+router = APIRouter(prefix="/cadu_products", tags=["cadu_products"], dependencies=[Depends(reraise_http)])
 
-
-@router.post("/cadu/", response_model=CaduProductRead)
-def create_cadu_product(cadu_product: CaduProductCreate, db: Session = Depends(get_db)) -> CaduProductRead:
-    db_cadu_product = CaduProductModel(name=cadu_product.name)
-
-    db.add(db_cadu_product)
-    db.commit()
-    db.refresh(db_cadu_product)
-    return db_cadu_product
+# from sqlalchemy.sql import text
+# db.execute(text("select * from cadu_products"))
 
 
-@router.get("/users/{user_id}", response_model=UserRead)
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    return db.query(UserModel).filter(UserModel.id == user_id).first()
+@router.get("/", response_model=list[CaduProductRead])
+def get_all_products(skip: int = 0, limit: int = 100, db=Depends(get_db)):
+    return db.query(CaduProductModel).offset(skip).limit(limit).all()
 
 
-@router.post("/users/", response_model=UserRead)
-def get_user_by_email(email: str, db: Session = Depends(get_db)):
-    return db.query(UserModel).filter(UserModel.email == email).first()
+@router.get("/id={product_id}", response_model=CaduProductRead)
+def get_product_by_id(product_id: int, db=Depends(get_db)):
+    ret = db.query(CaduProductModel).filter(CaduProductModel.id == product_id).first()
+    if ret is None:
+        raise HTTPException(status_code=404, detail=f"CADU product not found for ID: {product_id!r}")
+    return ret
 
 
-@router.get("/users/", response_model=list[UserRead])
-def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)) -> list[UserRead]:
-    return db.query(UserModel).offset(skip).limit(limit).all()
+# TODO: useful ?
+@router.get("/name={product_name}", response_model=CaduProductRead)
+def get_product_by_name(product_name: str, db=Depends(get_db)):
+    ret = db.query(CaduProductModel).filter(CaduProductModel.name == product_name).first()
+    if ret is None:
+        raise HTTPException(status_code=404, detail=f"CADU product not found for name: {product_name!r}")
+    return ret
 
 
-@router.post("/users/", response_model=UserRead)
-def create_user(user: UserCreate, db: Session = Depends(get_db)) -> UserRead:
-    fake_hashed_password = user.password + "notreallyhashed"
-    db_user = UserModel(email=user.email, hashed_password=fake_hashed_password)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+@router.post("/", response_model=CaduProductRead)
+def create_product(product: CaduProductCreate, db=Depends(get_db)):
+    ret = CaduProductModel(**product.model_dump(exclude_unset=True))  # create model from the schema values
+    return add_commit_refresh(db, ret)
 
 
-@router.get("/items/", response_model=list[ItemRead])
-def get_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)) -> list[ItemRead]:
-    return db.query(ItemModel).offset(skip).limit(limit).all()
+# TODO: 3 methods for updating or a single one with status and optional fail message as input ?
 
 
-@router.post("/users/{user_id}/items/", response_model=ItemRead)
-def create_user_item(item: ItemCreate, user_id: int, db: Session = Depends(get_db)) -> ItemRead:
-    db_item = ItemModel(**item.dict(), owner_id=user_id)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
+@router.patch("/{product_id}/download_start", response_model=CaduProductRead)
+def product_download_start(product_id: int, info: CaduProductDownloadStart, db=Depends(get_db)):
+    ret = get_product_by_id(product_id, db)
+    ret.downlink_start = info.downlink_start
+    ret.status = DownloadStatus.IN_PROGRESS
+    return add_commit_refresh(db, ret)
+
+
+@router.patch("/{product_id}/download_done", response_model=CaduProductRead)
+def product_download_done(product_id: int, info: CaduProductDownloadDone, db=Depends(get_db)):
+    ret = get_product_by_id(product_id, db)
+    ret.downlink_stop = info.downlink_stop
+    ret.status = DownloadStatus.DONE
+    return add_commit_refresh(db, ret)
+
+
+@router.patch("/{product_id}/download_fail", response_model=CaduProductRead)
+def product_download_fail(product_id: int, info: CaduProductDownloadFail, db=Depends(get_db)):
+    ret = get_product_by_id(product_id, db)
+    ret.downlink_stop = info.downlink_stop
+    ret.status = DownloadStatus.FAILED
+    ret.status_fail_message = info.status_fail_message
+    return add_commit_refresh(db, ret)

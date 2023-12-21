@@ -1,4 +1,4 @@
-from fastapi import APIRouter, FastAPI
+from fastapi import FastAPI
 
 from rs_server.db.crud import cadu_product_crud
 from rs_server.db.session import Base, engine
