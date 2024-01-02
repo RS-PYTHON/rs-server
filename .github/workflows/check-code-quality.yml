@@ -212,6 +212,17 @@ jobs:
           name:
             run-unit-tests
 
+        # The sonarqube step will run a container docker with volume mounting: -v $(pwd):/github/workspace
+        # The coverage report files contain the hard-coded path to the current directory $(pwd).
+        # So we change $(pwd) for /github/workspace in these files.
+      - name: Fix paths in coverage report files
+        run: |
+          set -x
+          for f in ./cov-report.xml ./junit-xml-report.xml; do
+            sed -i "s|$(pwd)|/github/workspace|g" "$f"
+          done
+        shell: bash
+
       - name: Run sonarqube
         uses: sonarsource/sonarqube-scan-action@master
         env:
