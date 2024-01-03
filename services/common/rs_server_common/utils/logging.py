@@ -36,14 +36,40 @@ class Logging:  # pylint: too-few-public-methods
             # Set the minimal log level to use for all new logging instances.
             logger.setLevel(cls.level)
 
-            # Create handler
+            # Create console handler
             handler = logging.StreamHandler()
-
-            # Create formatter and add it to handler
-            c_format = logging.Formatter("%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s - %(message)s", "%H:%M:%S")
-            handler.setFormatter(c_format)
-
-            # Add handler to the logger
+            handler.setFormatter(CustomFormatter())
             logger.addHandler(handler)
 
             return logger
+
+
+class CustomFormatter(logging.Formatter):
+    """
+    Custom logging formatter with colored text.
+    See: https://stackoverflow.com/a/56944256
+    """
+
+    RED = "\x1b[31m"
+    BOLD_RED = "\x1b[31;1m"
+    GREEN = "\x1b[32m"
+    YELLOW = "\x1b[33m"
+    PURPLE = "\x1b[35m"
+    RESET = "\x1b[0m"
+
+    FORMAT = f"%(asctime)s.%(msecs)03d [{{color}}%(levelname)s{RESET}] (%(name)s) %(message)s"
+    DATETIME = "%H:%M:%S"
+
+    FORMATS = {
+        logging.NOTSET: FORMAT.format(color=""),
+        logging.DEBUG: FORMAT.format(color=PURPLE),
+        logging.INFO: FORMAT.format(color=GREEN),
+        logging.WARNING: FORMAT.format(color=YELLOW),
+        logging.ERROR: FORMAT.format(color=BOLD_RED),
+        logging.CRITICAL: FORMAT.format(color=RED),
+    }
+
+    def format(self, record):
+        format = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(format, self.DATETIME)
+        return formatter.format(record)
