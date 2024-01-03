@@ -11,7 +11,11 @@ from eodag import EODataAccessGateway, EOProduct, setup_logging
 from eodag.utils import uri_to_path
 from fastapi import APIRouter
 
-from rs_server.s3_storage_handler.s3_storage_handler import files_to_be_uploaded, get_secrets, prefect_put_files_to_s3
+from rs_server.s3_storage_handler.s3_storage_handler import (
+    PrefectPutFilesToS3Config,
+    S3StorageHandler,
+    prefect_put_files_to_s3,
+)
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
@@ -24,8 +28,12 @@ def update_db(id, status):
     """Docstring will be here."""
     print(
         "{} : {} : {}: Fake update of table dwn_status with : {} | {}".format(
-            os.getpid(), threading.get_ident(), datetime.now(), id, status
-        )
+            os.getpid(),
+            threading.get_ident(),
+            datetime.now(),
+            id,
+            status,
+        ),
     )
 
 
@@ -81,7 +89,7 @@ def start_eodag_download(station, id, name, local, obs):
         end = datetime.now()
         print("{} : {} : {}: init_eop time: {}".format(os.getpid(), threading.get_ident(), end, end - init))
 
-        # insert into database the filename with status set to progress
+        # insert into database the filename with status set to "downloading"
 
         thread_started.set()
         print("{} : {} : {}: set event !".format(os.getpid(), threading.get_ident(), datetime.now()))
@@ -94,8 +102,12 @@ def start_eodag_download(station, id, name, local, obs):
         # print("{} : {} : {}: download time: {}".format(os.getpid(), threading.get_ident(), end, ))
         print(
             "{} : {} : {}: Downloaded file: {}   in {}".format(
-                os.getpid(), threading.get_ident(), end, eop.location, end - init
-            )
+                os.getpid(),
+                threading.get_ident(),
+                end,
+                eop.location,
+                end - init,
+            ),
         )
     except Exception as e:
         print("{} : {} : {}: Exception caught: {}".format(os.getpid(), threading.get_ident(), datetime.now(), e))
@@ -109,23 +121,24 @@ def start_eodag_download(station, id, name, local, obs):
             "accesskey": None,
             "secretkey": None,
         }
-        get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+        S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
         print(f"secrets = {secrets}")
-        os.environ["S3_ENDPOINT"] = secrets["s3endpoint"] if secrets["s3endpoint"] is not None else ""
-        os.environ["S3_ACCESS_KEY_ID"] = secrets["accesskey"] if secrets["accesskey"] is not None else ""
-        os.environ["S3_SECRET_ACCESS_KEY"] = secrets["secretkey"] if secrets["secretkey"] is not None else ""
-        os.environ["S3_REGION"] = "sbg"
+        s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
+
         filename = uri_to_path(eop.location)
         obs_array = obs.split("/")
         print(
             "filename = {} | obs_array = {} | join = {} | filename {}".format(
-                filename, obs_array, "/".join(obs_array[2:]), "/".join(obs_array[2:]) + name
-            )
+                filename,
+                obs_array,
+                "/".join(obs_array[2:]),
+                "/".join(obs_array[2:]) + name,
+            ),
         )
 
         # TODO check the length
-        collection = files_to_be_uploaded([filename])
-        asyncio.run(prefect_put_files_to_s3.fn(collection, obs_array[2], "/".join(obs_array[3:]), 0))
+        s3_config = PrefectPutFilesToS3Config(s3_handler, [filename], obs_array[2], "/".join(obs_array[3:]), 0)
+        asyncio.run(prefect_put_files_to_s3.fn(s3_config))
 
         os.remove(filename)
 
@@ -182,8 +195,11 @@ def download(station: str, id: str, name: str, local: str = "", obs: str = ""):
 
     print(
         "{} : {} : {}: MAIN THREAD: Starting thread, local = {}".format(
-            os.getpid(), threading.get_ident(), datetime.now(), locals()
-        )
+            os.getpid(),
+            threading.get_ident(),
+            datetime.now(),
+            locals(),
+        ),
     )
     thread = threading.Thread(
         target=start_eodag_download,
