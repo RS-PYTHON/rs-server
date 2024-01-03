@@ -41,6 +41,8 @@ bandit = "^1.7.5"
 safety = "^2.3.5"
 pylint = "^3.0.3"
 flake8-pyproject = "^1.2.3"
+sphinx = "^7.2.6"
+sphinx-rtd-theme = "^2.0.0"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
