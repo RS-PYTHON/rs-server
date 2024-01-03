@@ -96,8 +96,7 @@ class S3StorageHandler:
         self.endpoint_url = endpoint_url
         self.region_name = region_name
         self.s3_client: boto3.client = None
-        if not self.connect_s3():
-            raise RuntimeError("The connection to s3 storage could not be made")
+        self.connect_s3()
 
     # get the s3 handler
     def __get_s3_client(self, access_key_id, secret_access_key, endpoint_url, region_name):
@@ -121,7 +120,7 @@ class S3StorageHandler:
                 retries={"total_max_attempts": 10},
             )
             try:
-                s3_client = boto3.client(
+                return boto3.client(
                     "s3",
                     aws_access_key_id=access_key_id,
                     aws_secret_access_key=secret_access_key,
@@ -131,19 +130,12 @@ class S3StorageHandler:
                 )
             except ClientError as e:
                 if e.response["Error"]["Code"] == "EntityAlreadyExists":
-                    self.logger.error("This clent already exists")
+                    raise RuntimeError("This clent already exists") from e
                 else:
-                    self.logger.error("Unexpected error")
-                return None
-
-        return s3_client
+                    raise e
 
     def connect_s3(self):
-        """Establishe a connection to the S3 service.
-
-        Returns:
-            bool: True if the connection is successful, False otherwise.
-        """
+        """Establishe a connection to the S3 service."""
         if self.s3_client is None:
             self.s3_client = self.__get_s3_client(
                 self.access_key_id,
@@ -151,9 +143,6 @@ class S3StorageHandler:
                 self.endpoint_url,
                 self.region_name,
             )
-        if self.s3_client is None:
-            return False
-        return True
 
     def disconnect_s3(self):
         """Close the connection to the S3 service."""
@@ -399,8 +388,7 @@ class S3StorageHandler:
         Raises:
             RuntimeError: If an error occurs during the bucket access check.
         """
-        if not self.connect_s3() or self.logger is None:
-            raise RuntimeError(f"Error in checking bucket {bucket} access")
+        self.connect_s3()
         try:
             with self.s3_client_mutex:
                 self.s3_client.head_bucket(Bucket=bucket)
@@ -548,8 +536,7 @@ bucket %s does not exist or is not accessible. Aborting",
             failed_files.append(collection_file[1])
             continue
         # get the s3 client
-        if not config.s3_storage_handler.connect_s3():
-            return failed_files
+        config.s3_storage_handler.connect_s3()
         keep_trying = 0
         local_path = os.path.join(config.local_prefix, collection_file[0].strip("/"))
         s3_file = collection_file[1]
@@ -675,8 +662,7 @@ bucket %s does not exist or is not accessible. Aborting",
             failed_files.append(collection_file[1])
             continue
         # get the s3 client
-        if not config.s3_storage_handler.connect_s3():
-            return failed_files
+        config.s3_storage_handler.connect_s3()
 
         keep_trying = 0
         file_to_be_uploaded = collection_file[1]
