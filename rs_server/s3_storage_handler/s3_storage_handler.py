@@ -1,10 +1,7 @@
 """Docstring to be added."""
-import logging
 import ntpath
 import os
-import sys
 import time
-import traceback
 from dataclasses import dataclass
 from datetime import datetime
 from threading import Lock
@@ -131,8 +128,7 @@ class S3StorageHandler:
             except ClientError as e:
                 if e.response["Error"]["Code"] == "EntityAlreadyExists":
                     raise RuntimeError("This clent already exists") from e
-                else:
-                    raise e
+                raise e  # for other errors, juste re-raise the exception
 
     def connect_s3(self):
         """Establishe a connection to the S3 service."""
@@ -171,7 +167,7 @@ class S3StorageHandler:
     # helper functions
     # function to read the secrets from .s3cfg or aws credentials files
     @staticmethod
-    def get_secrets(secrets, secret_file, logger=None):
+    def get_secrets(secrets, secret_file):
         """Read secrets from a specified file.
 
         Args:
@@ -195,7 +191,7 @@ class S3StorageHandler:
                     dict_filled += 1
                     secrets["secretkey"] = line.strip().split("=")[1].strip()
         if secrets["accesskey"] is None or secrets["secretkey"] is None:
-            raise Exception("Secret fields not found")
+            raise RuntimeError("Secret fields not found")
 
     # get the filename only from a full path to it
     @staticmethod
@@ -370,7 +366,7 @@ class S3StorageHandler:
             error_code = int(error.response["Error"]["Code"])
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
-            elif error_code == S3_ERR_NOT_FOUND:
+            if error_code == S3_ERR_NOT_FOUND:
                 raise RuntimeError(f"{bucket} bucket does not exist!") from error
 
 
@@ -491,7 +487,7 @@ async def prefect_get_keys_from_s3(config: PrefectGetKeysFromS3Config) -> list:
 
     try:
         config.s3_storage_handler.check_bucket_access(config.bucket)
-    except Exception:
+    except RuntimeError:
         logger.error(
             "Downloading task %s: Could not download any of the received files because the \
 bucket %s does not exist or is not accessible. Aborting",
@@ -618,7 +614,7 @@ async def prefect_put_files_to_s3(config: PrefectPutFilesToS3Config) -> list:
 
     try:
         config.s3_storage_handler.check_bucket_access(config.bucket)
-    except Exception:
+    except RuntimeError:
         logger.error(
             "Uploading task %s: Could not upload any of the received files because the \
 bucket %s does not exist or is not accessible. Aborting",

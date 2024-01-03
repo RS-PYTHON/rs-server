@@ -4,7 +4,6 @@ import filecmp
 import os
 import os.path as osp
 import shutil
-import sys
 import tempfile
 from collections import Counter
 
@@ -118,17 +117,16 @@ def test_get_s3_client(endpoint: str):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "s3cfg_file, expected_res",
-    [(("./USER/credentials_location/.s3cfg", True)), (("/path/to/none/.s3cfg", False))],
+    "s3cfg_file",
+    [(("./USER/credentials_location/.s3cfg")), (("/path/to/none/.s3cfg"))],
 )
-def test_get_secrets(s3cfg_file: str, expected_res: bool):
+def test_get_secrets(s3cfg_file: str):
     """Docstring to be added."""
     secrets = {
         "s3endpoint": None,
         "accesskey": None,
         "secretkey": None,
     }
-    logger = Logging.default(__name__)
 
     if "USER" in s3cfg_file:
         tmp_s3cfg_file, tmp_path = tempfile.mkstemp()
@@ -138,12 +136,12 @@ def test_get_secrets(s3cfg_file: str, expected_res: bool):
                 tmp.write("secret_key = test_secret_key\n")
                 tmp.write("host_bucket = https://test_endpoint.com\n")
                 tmp.flush()
-            S3StorageHandler.get_secrets(secrets, tmp_path, logger)
+            S3StorageHandler.get_secrets(secrets, tmp_path)
         finally:
             os.remove(tmp_path)
     else:
         with pytest.raises(FileNotFoundError):
-            S3StorageHandler.get_secrets(secrets, s3cfg_file, logger)
+            S3StorageHandler.get_secrets(secrets, s3cfg_file)
 
 
 @pytest.mark.unit
@@ -264,7 +262,7 @@ def test_check_bucket_access(endpoint: str, bucket: str):
             s3_handler.check_bucket_access(bucket)
         else:
             with pytest.raises(Exception):
-                not s3_handler.check_bucket_access(bucket)
+                s3_handler.check_bucket_access(bucket)
     finally:
         server.stop()
 

@@ -4,7 +4,7 @@ import logging
 from threading import Lock
 
 
-class Logging:
+class Logging:  # pylint: disable=fixme, too-few-public-methods
     """Logging utility."""
 
     lock = Lock()
