@@ -1,9 +1,9 @@
 """Database session implementation."""
 
-import logging
 import os
 
 from fastapi import HTTPException
+from rs_server_common.utils.logging import Logging
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -50,7 +50,7 @@ def get_db():
     try:
         yield db
     except:
-        logging.getLogger().warning(f"Exception caught, rollback database transactions")
+        Logging.default().warning(f"Exception caught, rollback database transactions")
         db.rollback()
         raise
     finally:
