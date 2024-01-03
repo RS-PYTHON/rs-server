@@ -157,24 +157,16 @@ class S3StorageHandler:
         Args:
             bucket (str): The S3 bucket name.
             s3_obj (str): The S3 object key.
-
-        Returns:
-            bool: True if the file is successfully deleted, False otherwise.
         """
         if self.s3_client is None or bucket is None or s3_obj is None:
-            print("Input error for deleting the file")
-            return False
+            raise RuntimeError("Input error for deleting the file")
         try:
             with self.s3_client_mutex:
                 self.logger.debug("{%s} | {%s}", bucket, s3_obj)
                 self.logger.info("Delete file s3://{%s}/{%s}", bucket, s3_obj)
                 self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
         except ClientError as e:
-            tb = traceback.format_exc()
-            self.logger.error("Failed to delete file s3://{%s}/{%s}", bucket, s3_obj)
-            self.logger.error("Exception: {%s} | {%s}", e, tb)
-            return False
-        return True
+            raise RuntimeError(f"Failed to delete file s3://{bucket}/{s3_obj}") from e
 
     # helper functions
     # function to read the secrets from .s3cfg or aws credentials files
@@ -186,35 +178,24 @@ class S3StorageHandler:
             secrets (dict): Dictionary to store retrieved secrets.
             secret_file (str): Path to the file containing secrets.
             logger (Logger, optional): Logger instance for error logging.
-
-        Returns:
-            bool: True if secrets are successfully retrieved, False otherwise.
         """
-        try:
-            dict_filled = 0
-            with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
-                lines = aws_credentials_file.readlines()
-                for line in lines:
-                    if dict_filled == len(secrets):
-                        break
-                    if secrets["s3endpoint"] is None and "host_bucket" in line:
-                        dict_filled += 1
-                        secrets["s3endpoint"] = line.strip().split("=")[1].strip()
-                    elif secrets["accesskey"] is None and "access_key" in line:
-                        dict_filled += 1
-                        secrets["accesskey"] = line.strip().split("=")[1].strip()
-                    elif secrets["secretkey"] is None and "secret_" in line and "_key" in line:
-                        dict_filled += 1
-                        secrets["secretkey"] = line.strip().split("=")[1].strip()
-        except (OSError, IndexError) as e:
-            if logger:
-                logger.error(f"Could not get the secrets, exception: {e}")
-            else:
-                print(f"Could not get the secrets, exception: {e}")
-            return False
+        dict_filled = 0
+        with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
+            lines = aws_credentials_file.readlines()
+            for line in lines:
+                if dict_filled == len(secrets):
+                    break
+                if secrets["s3endpoint"] is None and "host_bucket" in line:
+                    dict_filled += 1
+                    secrets["s3endpoint"] = line.strip().split("=")[1].strip()
+                elif secrets["accesskey"] is None and "access_key" in line:
+                    dict_filled += 1
+                    secrets["accesskey"] = line.strip().split("=")[1].strip()
+                elif secrets["secretkey"] is None and "secret_" in line and "_key" in line:
+                    dict_filled += 1
+                    secrets["secretkey"] = line.strip().split("=")[1].strip()
         if secrets["accesskey"] is None or secrets["secretkey"] is None:
-            return False
-        return True
+            raise Exception("Secret fields not found")
 
     # get the filename only from a full path to it
     @staticmethod
@@ -243,11 +224,6 @@ class S3StorageHandler:
         Returns:
             list: List of tuples (local_prefix, full_s3_key_path).
         """
-
-        if self.s3_client is None:
-            self.logger.error("Could not get the s3 handler")
-            return False
-
         # declaration of the list
         list_with_files = []
         # for each key, identify it as a file or a folder
@@ -346,12 +322,8 @@ class S3StorageHandler:
                 for item in page.get("Contents", ()):
                     if item is not None:
                         s3_files.append(item["Key"])
-        except botocore.exceptions.ClientError as error:
-            self.logger.error("Listing files from s3://%s/%s failed (client error):%s", bucket, prefix, error)
-        except TypeError as type_err:
-            self.logger.error("Listing files from s3://%s/%s failed (type error):%s", bucket, prefix, type_err)
-        except KeyError as key_err:
-            self.logger.error("Listing files from s3://%s/%s failed (key error):%s", bucket, prefix, key_err)
+        except Exception as error:
+            raise RuntimeError(f"Listing files from s3://{bucket}/{prefix}") from error
 
         return s3_files
 
@@ -397,12 +369,9 @@ class S3StorageHandler:
             # If it was a 404 error, then the bucket does not exist.
             error_code = int(error.response["Error"]["Code"])
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
-                self.logger.error("%s is a private bucket. Forbidden access!", bucket)
+                raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
             elif error_code == S3_ERR_NOT_FOUND:
-                self.logger.error("%s bucket does not exist!", bucket)
-            return False
-
-        return True
+                raise RuntimeError(f"{bucket} bucket does not exist!") from error
 
 
 def check_file_overwriting(local_file, overwrite, logger, idx):
@@ -520,7 +489,9 @@ async def prefect_get_keys_from_s3(config: PrefectGetKeysFromS3Config) -> list:
     logger.debug("collection_files = %s | bucket = %s", collection_files, config.bucket)
     failed_files = []
 
-    if not config.s3_storage_handler.check_bucket_access(config.bucket):
+    try:
+        config.s3_storage_handler.check_bucket_access(config.bucket)
+    except Exception:
         logger.error(
             "Downloading task %s: Could not download any of the received files because the \
 bucket %s does not exist or is not accessible. Aborting",
@@ -645,7 +616,9 @@ async def prefect_put_files_to_s3(config: PrefectPutFilesToS3Config) -> list:
 
     collection_files = config.s3_storage_handler.files_to_be_uploaded(config.files)
 
-    if not config.s3_storage_handler.check_bucket_access(config.bucket):
+    try:
+        config.s3_storage_handler.check_bucket_access(config.bucket)
+    except Exception:
         logger.error(
             "Uploading task %s: Could not upload any of the received files because the \
 bucket %s does not exist or is not accessible. Aborting",
