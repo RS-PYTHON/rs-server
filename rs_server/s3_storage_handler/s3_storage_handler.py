@@ -14,6 +14,7 @@ import boto3
 import botocore
 from botocore.exceptions import ClientError
 from prefect import exceptions, get_run_logger, task
+from rs_server_common.utils.logging import Logging
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6
@@ -86,10 +87,7 @@ class S3StorageHandler:
         Raises:
             RuntimeError: If the connection to the S3 storage cannot be established.
         """
-        self.logger = logging.getLogger("s3_storage_handler_test")
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.handlers = []
-        self.logger.addHandler(logging.StreamHandler(sys.stdout))
+        self.logger = Logging.default(__name__)
         self.logger.info("S3StorageHandler created !")
 
         self.s3_client_mutex = Lock()

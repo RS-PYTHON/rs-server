@@ -1,7 +1,6 @@
 """Docstring to be added."""
 # pylint: disable=R0913,R0914 # Too many arguments, Too many local variables
 import filecmp
-import logging
 import os
 import os.path as osp
 import shutil
@@ -14,6 +13,7 @@ import requests
 import yaml
 from moto.server import ThreadedMotoServer
 from prefect import flow
+from rs_server_common.utils.logging import Logging
 
 from rs_server.s3_storage_handler.s3_storage_handler import (
     PrefectGetKeysFromS3Config,
@@ -103,12 +103,6 @@ def test_get_s3_client(endpoint: str):
     server = ThreadedMotoServer()
     server.start()
     secrets = {"s3endpoint": endpoint, "accesskey": "", "secretkey": "", "region": "sbg"}
-
-    logger = logging.getLogger("s3_storage_handler_test")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers = []
-    logger.addHandler(logging.StreamHandler(sys.stdout))
-
     server.stop()
     if endpoint == "http://localhost:5000":
         assert S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
@@ -134,10 +128,7 @@ def test_get_secrets(s3cfg_file: str, expected_res: bool):
         "accesskey": None,
         "secretkey": None,
     }
-    logger = logging.getLogger("s3_storage_handler_test")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers = []
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger = Logging.default(__name__)
 
     if "USER" in s3cfg_file:
         tmp_s3cfg_file, tmp_path = tempfile.mkstemp()
@@ -201,10 +192,7 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     """
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    logger = logging.getLogger("s3_storage_handler_test")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers = []
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger = Logging.default(__name__)
 
     # create the test bucket
     server = ThreadedMotoServer()
@@ -256,10 +244,6 @@ def test_check_bucket_access(endpoint: str, bucket: str):
     """
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    logger = logging.getLogger("s3_storage_handler_test")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers = []
-    logger.addHandler(logging.StreamHandler(sys.stdout))
 
     server = ThreadedMotoServer()
     server.start()
@@ -350,10 +334,7 @@ def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list
 
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    logger = logging.getLogger("s3_storage_handler_test")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers = []
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger = Logging.default(__name__)
 
     server = ThreadedMotoServer()
     server.start()
@@ -480,10 +461,7 @@ async def test_prefect_download_files_from_s3(
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
 
     short_s3_storage_handler_test_nb_of_files = 3
-    logger = logging.getLogger("s3_storage_handler_test")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers = []
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger = Logging.default(__name__)
 
     # create the test bucket
     server = ThreadedMotoServer()
@@ -597,10 +575,7 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
     """Docstring to be added."""
     export_aws_credentials()
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
-    logger = logging.getLogger("s3_storage_handler_test")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers = []
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger = Logging.default(__name__)
 
     server = ThreadedMotoServer()
     server.start()
@@ -732,10 +707,7 @@ async def test_prefect_upload_files_to_s3(
 
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    logger = logging.getLogger("s3_storage_handler_test")
-    logger.setLevel(logging.DEBUG)
-    logger.handlers = []
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger = Logging.default(__name__)
 
     # create the test bucket
     server = ThreadedMotoServer()
