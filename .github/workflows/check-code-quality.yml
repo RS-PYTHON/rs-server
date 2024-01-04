@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
       - name: Run mypy
-        run: poetry run mypy --explicit-package-bases .
+        run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
         shell: bash
 
   check-security:
@@ -75,7 +75,10 @@ jobs:
       - id: bandit
         name: Run bandit
         if: always() # even if previous steps returned a non-zero exit code
-        run: poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
+        run: |
+          set -x
+          poetry run bandit -c bandit.yml -r . || true # run next line even if fails
+          poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
         shell: bash
 
       - id: safety
@@ -204,6 +207,17 @@ jobs:
         with:
           name:
             run-unit-tests
+
+        # The sonarqube step will run a container docker with volume mounting: -v $(pwd):/github/workspace
+        # The coverage report files contain the hard-coded path to the current directory $(pwd).
+        # So we change $(pwd) for /github/workspace in these files.
+      - name: Fix paths in coverage report files
+        run: |
+          set -x
+          for f in ./cov-report.xml ./junit-xml-report.xml; do
+            sed -i "s|$(pwd)|/github/workspace|g" "$f"
+          done
+        shell: bash
 
       - name: Run sonarqube
         uses: sonarsource/sonarqube-scan-action@master

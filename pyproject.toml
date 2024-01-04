@@ -11,8 +11,8 @@ readme = "README.adoc"
 
 packages = [
     { include = "rs_server" },
-    { include = "services/common/rs_server_common" },
-    { include = "services/cadip/rs_server_cadip" },
+    { include = "rs_server_common", from = "services/common"},
+    { include = "rs_server_cadip", from = "services/cadip" },
     { include = "tests", format = "sdist" },
     { include = "services/common/tests", format = "sdist" },
     { include = "services/cadip/tests", format = "sdist" },
@@ -24,6 +24,7 @@ python = ">=3.11.0,<4.0"
 moto = "==4.2.8"
 boto3 = "==1.28.85"
 botocore = "==1.31.85"
+prefect = "^2.14.11"
 
 [tool.poetry.group.dev]
 optional = true
@@ -41,6 +42,9 @@ bandit = "^1.7.5"
 safety = "^2.3.5"
 pylint = "^3.0.3"
 flake8-pyproject = "^1.2.3"
+flask = "^3.0.0"
+flask-cors = "^4.0.0"
+pytest-asyncio = "^0.23.2"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
@@ -63,10 +67,6 @@ markers = [
 warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
-
-# TODO add the plugin if possible (request for example)
-[[tool.mypy.overrides]]
-module = "boto3,botocore,prefect_dask,ruamel"
 ignore_missing_imports = true
 
 [tool.flake8]
