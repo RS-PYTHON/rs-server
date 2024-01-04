@@ -172,7 +172,6 @@ class S3StorageHandler:
         path, filename = ntpath.split(input_path)
         return filename or ntpath.basename(path)
 
-    #
     def files_to_be_downloaded(self, bucket, paths):
         """Create a list of S3 keys to be downloaded.
 
