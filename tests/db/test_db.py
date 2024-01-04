@@ -7,6 +7,7 @@ import pytest
 from fastapi import Depends
 
 import rs_server.db.crud.cadu_product_crud as crud
+from rs_server.db import startup
 from rs_server.db.models.cadu_product_model import CaduProduct
 from rs_server.db.models.download_status import DownloadStatus
 from rs_server.db.schemas.cadu_product_schema import (
@@ -21,7 +22,10 @@ from rs_server.db.startup import main_app
 
 
 # Test all CADU product HTTP operations
-def test_cadu_products():
+def test_cadu_products(docker_ip, docker_services):
+    # Create all tables
+    startup.create_all()
+
     # Define a few values for our tests
     NAME1 = "product 1"
     NAME2 = "product 2"

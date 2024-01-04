@@ -6,6 +6,8 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
+import os
+
 import pytest
 from rs_server_common.utils.logging import Logging
 
@@ -18,3 +20,9 @@ def read_cli(request):
     option = request.config.getoption("--log-cli-level", None) or request.config.getoption("--log-level", None)
     if option:
         Logging.level = option.upper()
+
+
+@pytest.fixture(scope="session")
+def docker_compose_file(pytestconfig):
+    """Return the path to the docker-compose.yml file to run before tests."""
+    return os.path.join(str(pytestconfig.rootdir), "tests", "resources", "db", "docker-compose.yml")

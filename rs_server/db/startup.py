@@ -8,10 +8,13 @@ from rs_server.db.session import Base, engine
 # We need to import all the model modules before calling Base.metadata.create_all
 import rs_server.db.models.cadu_product_model
 
+
 #
 # Note: Base.metadata.tables contains all the models that were imported from python with 'import ...'
 # Create the corresponding SQL tables.
-Base.metadata.create_all(bind=engine)
+def create_all():
+    Base.metadata.create_all(bind=engine)
+
 
 # isort: on
 
