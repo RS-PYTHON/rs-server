@@ -48,7 +48,7 @@ class S3StorageHandler:
             RuntimeError: If the connection to the S3 storage cannot be established.
         """
         self.logger = Logging.default(__name__)
-        self.logger.info("S3StorageHandler created !")
+        self.logger.debug("S3StorageHandler created !")
 
         self.s3_client_mutex = Lock()
         self.access_key_id = access_key_id
