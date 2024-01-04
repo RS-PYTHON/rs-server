@@ -4,7 +4,7 @@ import logging
 from threading import Lock
 
 
-class Logging:  # pylint: too-few-public-methods
+class Logging:  # pylint: disable=too-few-public-methods
     """
     Logging utility.
 
@@ -70,6 +70,6 @@ class CustomFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        format = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(format, self.DATETIME)
+        level_format = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(level_format, self.DATETIME)
         return formatter.format(record)
