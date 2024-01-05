@@ -15,7 +15,14 @@ from tests.data_retrieval.storage.fake_storage import (
 
 @pytest.fixture
 def a_file(tmp_path) -> Path:
-    return tmp_path / "a_file.txt"
+    file = tmp_path / "a_file.txt"
+    file.touch()
+    return file
+
+
+@pytest.fixture
+def not_found_file(tmp_path) -> Path:
+    return tmp_path / "not_found.txt"
 
 
 @pytest.fixture
@@ -61,6 +68,12 @@ class TestAFakeStorage:
         with pytest.raises(NotLogged) as exc_info:
             storage.store(a_file, a_location)
         assert str(exc_info.value) == "Not logged."
+
+    def test_store_fails_if_file_doesnt_exists(self, not_found_file, a_location):
+        storage = FakeStorage()
+        storage.login()
+        with pytest.raises(FileNotFoundError):
+            storage.store(not_found_file, a_location)
 
     def test_records_the_last_store_made(self, a_file, a_location):
         storage = FakeStorage()

@@ -73,4 +73,6 @@ class FakeStorage(Storage):
         """
         if not self.logged:
             raise NotLogged()
+        if not file.exists():
+            raise FileNotFoundError()
         self.last_upload = StorageRecord(file, location)
