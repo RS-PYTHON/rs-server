@@ -17,7 +17,8 @@ from rs_server.db.schemas.cadu_product_schema import (
     CaduProductRead,
 )
 from rs_server.db.session import get_db
-from rs_server.db.startup import main_app
+
+# from rs_server.db.startup import main_app
 
 
 # Test all CADU product HTTP operations
@@ -29,6 +30,8 @@ def test_cadu_products(database):
     """
 
     # Define a few values for our tests
+    FILE_ID1 = "file_id_1"
+    FILE_ID2 = "file_id_2"
     NAME1 = "product 1"
     NAME2 = "product 2"
     DATE1 = datetime(2024, 1, 1)
@@ -48,8 +51,14 @@ def test_cadu_products(database):
         db.commit()
 
         # Add two new CADU products to database
-        created1 = crud.create_product(db=db, product=CaduProductCreate(name=NAME1, available_at_station=DATE1))
-        created2 = crud.create_product(db=db, product=CaduProductCreate(name=NAME2, available_at_station=DATE2))
+        created1 = crud.create_product(
+            db=db,
+            product=CaduProductCreate(file_id=FILE_ID1, name=NAME1, available_at_station=DATE1),
+        )
+        created2 = crud.create_product(
+            db=db,
+            product=CaduProductCreate(file_id=FILE_ID2, name=NAME2, available_at_station=DATE2),
+        )
 
         # The returned products are Python instances
         assert isinstance(created1, CaduProduct)
@@ -64,7 +73,10 @@ def test_cadu_products(database):
             Exception,
             match="duplicate key value violates unique constraint",
         ):
-            crud.create_product(db=db_exception, product=CaduProductCreate(name=NAME1, available_at_station=DATE1))
+            crud.create_product(
+                db=db_exception,
+                product=CaduProductCreate(file_id=FILE_ID1, name=NAME1, available_at_station=DATE1),
+            )
 
         # Get all products from database
         products = crud.get_all_products(db=db)

@@ -1,11 +1,17 @@
 """Database session implementation."""
 
+import os.path as osp
+from threading import Lock
+
+from dotenv import load_dotenv
 from fastapi import HTTPException
 from rs_server_common.utils.logging import Logging
 from sqlalchemy.ext.declarative import declarative_base
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 SessionLocal = None
+
+lock = Lock()
 
 Base = declarative_base()
 
@@ -22,8 +28,15 @@ def add_commit_refresh(db, instance):
 ############################
 
 
-# Use manually with with contextmanager(get_db)() as db:
+# Use manually with "with contextmanager(get_db)() as db:"
 def get_db():
+    # TODO: refactor this code
+    with Lock():
+        if SessionLocal is None:
+            from rs_server.db import startup
+
+            startup.init()
+
     db = SessionLocal()
     try:
         yield db
@@ -45,7 +58,8 @@ def reraise_http():
         yield
 
     # Do nothing if the raised exception is already an HTTP exception.
+    # TODO: handle in get_db ?
     except Exception as exception:
         if isinstance(exception, StarletteHTTPException):
             raise
-        raise HTTPException(status_code=400, detail=exception.__repr__())  # string representation of the exception
+        raise HTTPException(status_code=400, detail=repr(exception))

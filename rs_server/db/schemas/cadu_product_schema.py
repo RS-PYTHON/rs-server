@@ -8,6 +8,7 @@ from rs_server.db.models.download_status import DownloadStatus
 
 # Base schema = fields that are known when both reading and creating the object.
 class CaduProductBase(BaseModel):
+    file_id: str
     name: str
     available_at_station: datetime
 

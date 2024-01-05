@@ -16,9 +16,9 @@ class CaduProduct(Base):
     # Do we also need the file path on the CADU station (download from) and S3 server or local disk (uploaded to) ?
 
     id = Column(Integer, primary_key=True, index=True)
-    # TODO: add a CADU identifier ?
 
-    name = Column(String, unique=True, index=True)  # CADU name
+    file_id = Column(String, unique=True, index=True)  # CADU ID
+    name = Column(String, unique=False, index=False)  # CADU name
     available_at_station = Column(DateTime)  # When the product is available for download at the CADU station
 
     # TODO: downlink start and stop datetimes from satellite to CADU station ?

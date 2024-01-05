@@ -38,5 +38,5 @@ def init():
     Base.metadata.create_all(bind=engine)
 
 
-main_app = FastAPI()
-main_app.include_router(cadu_product_crud.router)
+# main_app = FastAPI()
+# main_app.include_router(cadu_product_crud.router)
