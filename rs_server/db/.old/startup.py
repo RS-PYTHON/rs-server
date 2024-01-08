@@ -24,14 +24,14 @@ def init():
     host = os.environ["POSTGRES_HOST"]
     port = os.environ["POSTGRES_PORT"]
     dbname = os.environ["POSTGRES_DB"]
-    SQLALCHEMY_DATABASE_URL = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
+    SQLALCHEMY_DATABASE_URL = f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{dbname}"
 
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
     session.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     # We need to import all the model modules before calling Base.metadata.create_all
-    import rs_server.db.models.cadu_product_model
+    import rs_server.CADIP.models.cadu_download_status
 
     # Note: Base.metadata.tables contains all the models that were imported from python with 'import ...'
     # Create the corresponding SQL tables.

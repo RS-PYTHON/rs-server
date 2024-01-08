@@ -6,7 +6,7 @@ from threading import Lock
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from rs_server_common.utils.logging import Logging
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 SessionLocal = None
@@ -31,6 +31,7 @@ def add_commit_refresh(db, instance):
 # Use manually with "with contextmanager(get_db)() as db:"
 def get_db():
     # TODO: refactor this code
+    # TODO: call init elsewhere automatically, test that it also works from the pytests
     with Lock():
         if SessionLocal is None:
             from rs_server.db import startup

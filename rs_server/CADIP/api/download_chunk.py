@@ -12,8 +12,7 @@ from eodag import EODataAccessGateway, EOProduct, setup_logging
 from eodag.utils import uri_to_path
 from fastapi import APIRouter, Depends
 
-from rs_server.db.models.cadu_product_model import CaduProduct
-from rs_server.db.models.download_status import DownloadStatus
+from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus
 from rs_server.db.session import get_db
 from rs_server.s3_storage_handler.s3_storage_handler import (
     PrefectPutFilesToS3Config,
@@ -23,7 +22,7 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
-router = APIRouter()
+router = APIRouter(tags=["cadu"])
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" / "library"
 
@@ -35,14 +34,14 @@ def update_db(db, product, status, status_fail_message=None):
             os.getpid(),
             threading.get_ident(),
             datetime.now(),
-            product.file_id,
+            product.cadu_id,
             status,
         ),
     )
 
     product.status = status
     product.status_fail_message = status_fail_message
-    db.commit()
+    db.commit()  # TODO: attempt 3 times and stop
 
 
 def start_eodag_download(station, product_id, local, obs):
@@ -55,7 +54,7 @@ def start_eodag_download(station, product_id, local, obs):
     ----------
     station : str
         The name of the satellite station.
-    product_id: CaduProduct
+    product_id: CaduDownloadStatus
         Database entry ID for the product download status
     local : str
         The local path where the file should be downloaded. If None, the default
@@ -86,7 +85,7 @@ def start_eodag_download(station, product_id, local, obs):
     with contextmanager(get_db)() as db:
         # Get the product download status from database. It was created before running this thread.
         # TODO: should we recreate it if it was deleted for any reason ?
-        product = db.query(CaduProduct).where(CaduProduct.id == product_id).first()
+        product = db.query(CaduDownloadStatus).where(CaduDownloadStatus.id == product_id).one()
 
         # init eodag object
         try:
@@ -125,7 +124,7 @@ def start_eodag_download(station, product_id, local, obs):
             )
         except Exception as e:
             print("{} : {} : {}: Exception caught: {}".format(os.getpid(), threading.get_ident(), datetime.now(), e))
-            update_db(db, product, DownloadStatus.FAILED, repr(e))
+            update_db(db, product, EDownloadStatus.FAILED, repr(e))
             return
 
         if obs is not None and len(obs) > 0:
@@ -156,18 +155,18 @@ def start_eodag_download(station, product_id, local, obs):
 
             os.remove(filename)
 
-        update_db(db, product, DownloadStatus.DONE)
+        update_db(db, product, EDownloadStatus.DONE)
 
 
 @router.get("/cadip/{station}/cadu")
-def download(station: str, file_id: str, name: str, local: str = "", obs: str = "", db=Depends(get_db)):
+def download(station: str, cadu_id: str, name: str, local: str = "", obs: str = "", db=Depends(get_db)):
     """Initiate an asynchronous download process using EODAG (Earth Observation Data Access Gateway).
 
     Parameters
     ----------
     station : str
         Identifier of the Earth Observation station.
-    file_id : str
+    cadu_id : str
         Unique ID of the Earth Observation Product (EOP) to be downloaded.
     name : str
         Name of the Earth Observation Product (EOP) to be downloaded.
@@ -192,16 +191,16 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
     """
 
     # Does the product download status already exist in database ? Filter on the EOP ID.
-    query = db.query(CaduProduct).where(CaduProduct.file_id == file_id)
+    query = db.query(CaduDownloadStatus).where(CaduDownloadStatus.cadu_id == cadu_id)
     if query.count():
         # Get the existing product and overwrite the download status.
         # TODO: should we keep download history in a distinct table and init a new download entry ?
-        product = query.first()
-        update_db(db, product, DownloadStatus.NOT_STARTED)
+        product = query.one()
+        update_db(db, product, EDownloadStatus.NOT_STARTED)
 
     # Else init a new entry from the input arguments
     else:
-        product = CaduProduct(file_id=file_id, name=name, status=DownloadStatus.NOT_STARTED)
+        product = CaduDownloadStatus(cadu_id=cadu_id, name=name, status=EDownloadStatus.NOT_STARTED)
         db.add(product)
         db.commit()
 
@@ -229,11 +228,11 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
         print("Download thread did not start !")
         # update the status in database
-        update_db(db, product, DownloadStatus.FAILED, "Download thread did not start !")
+        update_db(db, product, EDownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
 
     # update the status in database
-    update_db(db, product, DownloadStatus.IN_PROGRESS)
+    update_db(db, product, EDownloadStatus.IN_PROGRESS)
 
     return {"started": "true"}
 
@@ -263,14 +262,14 @@ def init_eodag(station):
     return eodag
 
 
-def init_eop(product: CaduProduct) -> EOProduct:
+def init_eop(product: CaduDownloadStatus) -> EOProduct:
     """Initialize EOP.
 
     Initializes an Earth Observation Package (EOP) with the specified parameters.
 
     Parameters
     ----------
-    product: CaduProduct
+    product: CaduDownloadStatus
         Database entry for the product download status
     path : str
         The local path where the file associated with the EOP should be stored.
@@ -287,9 +286,9 @@ def init_eop(product: CaduProduct) -> EOProduct:
     """
     properties = {
         "title": product.name,
-        "id": product.file_id,
+        "id": product.cadu_id,
         "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
-        "downloadLink": f"http://127.0.0.1:5000/Files({product.file_id})/$value",
+        "downloadLink": f"http://127.0.0.1:5000/Files({product.cadu_id})/$value",
     }
     product = EOProduct("CADIP", properties)
     # product.register_downloader()

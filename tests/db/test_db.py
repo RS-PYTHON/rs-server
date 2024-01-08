@@ -7,8 +7,7 @@ import pytest
 from fastapi import Depends
 
 import rs_server.db.crud.cadu_product_crud as crud
-from rs_server.db.models.cadu_product_model import CaduProduct
-from rs_server.db.models.download_status import DownloadStatus
+from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus
 from rs_server.db.schemas.cadu_product_schema import (
     CaduProductCreate,
     CaduProductDownloadDone,
@@ -30,8 +29,8 @@ def test_cadu_products(database):
     """
 
     # Define a few values for our tests
-    FILE_ID1 = "file_id_1"
-    FILE_ID2 = "file_id_2"
+    cadu_id1 = "cadu_id_1"
+    cadu_id2 = "cadu_id_2"
     NAME1 = "product 1"
     NAME2 = "product 2"
     DATE1 = datetime(2024, 1, 1)
@@ -47,25 +46,25 @@ def test_cadu_products(database):
     #     client.post(...
     with contextmanager(get_db)() as db:
         # Clear table records
-        db.query(CaduProduct).delete()
+        db.query(CaduDownloadStatus).delete()
         db.commit()
 
         # Add two new CADU products to database
         created1 = crud.create_product(
             db=db,
-            product=CaduProductCreate(file_id=FILE_ID1, name=NAME1, available_at_station=DATE1),
+            product=CaduProductCreate(cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1),
         )
         created2 = crud.create_product(
             db=db,
-            product=CaduProductCreate(file_id=FILE_ID2, name=NAME2, available_at_station=DATE2),
+            product=CaduProductCreate(cadu_id=cadu_id2, name=NAME2, available_at_station=DATE2),
         )
 
         # The returned products are Python instances
-        assert isinstance(created1, CaduProduct)
-        assert isinstance(created2, CaduProduct)
+        assert isinstance(created1, CaduDownloadStatus)
+        assert isinstance(created2, CaduDownloadStatus)
 
         # Check the download status is not started by default
-        assert created1.status == DownloadStatus.NOT_STARTED
+        assert created1.status == CaduDownloadStatus.NOT_STARTED
 
         # Check that creating a new product with the same name will raise an exception.
         # Do it in a specific database session because it will trigger a rollback and corrupt the old session.
@@ -75,7 +74,7 @@ def test_cadu_products(database):
         ):
             crud.create_product(
                 db=db_exception,
-                product=CaduProductCreate(file_id=FILE_ID1, name=NAME1, available_at_station=DATE1),
+                product=CaduProductCreate(cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1),
             )
 
         # Get all products from database
@@ -99,9 +98,9 @@ def test_cadu_products(database):
         )
 
         # All the Python variables linking on the same SQL instance have been updated
-        assert created1.status == DownloadStatus.IN_PROGRESS
-        assert read1.status == DownloadStatus.IN_PROGRESS
-        assert updated1.status == DownloadStatus.IN_PROGRESS
+        assert created1.status == CaduDownloadStatus.IN_PROGRESS
+        assert read1.status == CaduDownloadStatus.IN_PROGRESS
+        assert updated1.status == CaduDownloadStatus.IN_PROGRESS
         assert created1.downlink_start == DATE3
 
         # Download done
@@ -110,7 +109,7 @@ def test_cadu_products(database):
             product_id=created1.id,
             info=CaduProductDownloadDone(downlink_stop=DATE4),
         )
-        assert created1.status == DownloadStatus.DONE
+        assert created1.status == CaduDownloadStatus.DONE
         assert created1.downlink_stop == DATE4
 
         # Download failed
@@ -120,7 +119,7 @@ def test_cadu_products(database):
             product_id=created1.id,
             info=CaduProductDownloadFail(downlink_stop=DATE5, status_fail_message=fail_message),
         )
-        assert created1.status == DownloadStatus.FAILED
+        assert created1.status == CaduDownloadStatus.FAILED
         assert created1.downlink_stop == DATE5
         assert created1.status_fail_message == fail_message
 
