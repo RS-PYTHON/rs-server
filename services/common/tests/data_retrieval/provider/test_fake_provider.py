@@ -75,7 +75,9 @@ class TestAFakeProvider:
         assert provider.last_download is None
 
         provider.download("1", downloaded_file)
-        assert provider.last_download == "1"
+        assert provider.last_download.product_id == "1"
+        assert provider.last_download.location == downloaded_file
 
         provider.download("2", downloaded_file)
-        assert provider.last_download == "2"
+        assert provider.last_download.product_id == "2"
+        assert provider.last_download.location == downloaded_file

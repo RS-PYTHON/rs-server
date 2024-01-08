@@ -1,4 +1,5 @@
 """Fake provider."""
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -11,6 +12,14 @@ from rs_server_common.data_retrieval.provider import (
 )
 
 
+@dataclass
+class DownloadRecord:
+    """A download record."""
+
+    product_id: str
+    location: Path
+
+
 class FakeProvider(Provider):
     """Fake implementation of a provider for test purpose."""
 
@@ -21,7 +30,7 @@ class FakeProvider(Provider):
         """
         self.products: dict[str, Product] = {product.id_: product for product in products}
         self.last_search: TimeRange | None = None
-        self.last_download: str | None = None
+        self.last_download: DownloadRecord | None = None
 
     def _specific_search(self, between: TimeRange) -> dict[str, Product]:
         """Search product for fake.
@@ -49,7 +58,7 @@ class FakeProvider(Provider):
         :param to_file: the location where to download.
         :return: None
         """
-        self.last_download = product_id
+        self.last_download = DownloadRecord(product_id, to_file)
         if product_id not in self.products:
             raise DownloadProductFailed(f"Product with id '{product_id}' doesn't exist.")
         to_file.touch()
