@@ -11,16 +11,14 @@ from eodag import EODataAccessGateway, EOProduct, setup_logging
 from eodag.utils import uri_to_path
 from fastapi import APIRouter
 
-from services.common.rs_server_common.data_retrieval.eodag_provider import (
-    EodagProvider,
-    EodagConfiguration,
-)
-
-
 from rs_server.s3_storage_handler.s3_storage_handler import (
     PrefectPutFilesToS3Config,
     S3StorageHandler,
     prefect_put_files_to_s3,
+)
+from services.common.rs_server_common.data_retrieval.eodag_provider import (
+    EodagConfiguration,
+    EodagProvider,
 )
 
 DWN_THREAD_START_TIMEOUT = 1.8
@@ -33,15 +31,16 @@ CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" 
 def update_db(id, status):
     """Docstring will be here."""
     print(
-        "%s : %s : %s: Fake update of table dwn_status with : %s | %s", 
-            os.getpid(),
-            threading.get_ident(),
-            datetime.now(),
-            id,
-            status,        
+        "%s : %s : %s: Fake update of table dwn_status with : %s | %s",
+        os.getpid(),
+        threading.get_ident(),
+        datetime.now(),
+        id,
+        status,
     )
 
-def start_eodag_download(station, id, name, local, obs: str = "", secrets = {}):
+
+def start_eodag_download(station, id, name, local, obs: str = "", secrets={}):
     """Download a chunk file.
 
     Initiates a download using EODAG (Earth Observation Data Access Gateway) for a specific
@@ -79,42 +78,40 @@ def start_eodag_download(station, id, name, local, obs: str = "", secrets = {}):
     >>> start_eodag_download("Sentinel-1", "12345", "Download_1", "/path/to/local", "s3://bucket/data")
     """
     # init eodag object
-    try:        
-        
-        print("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())        
+    try:
+        print("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
         config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
 
         setup_logging(3, no_progress_bar=True)
 
         eodag_config = EodagConfiguration(station, Path(config_file_path))
-        eodag_client = EodagProvider(eodag_config)        
+        eodag_client = EodagProvider(eodag_config)
 
         thread_started.set()
 
         local_file = osp.join(local, name)
         init = datetime.now()
         eodag_client.download(id, Path(local_file))
-        end = datetime.now()        
+        end = datetime.now()
         print(
-            "%s : %s : %s: Downloaded file: %s   in %s", 
-                os.getpid(),
-                threading.get_ident(),
-                end,
-                name,
-                end - init,
+            "%s : %s : %s: Downloaded file: %s   in %s",
+            os.getpid(),
+            threading.get_ident(),
+            end,
+            name,
+            end - init,
         )
     except Exception as e:
         print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
         update_db(id, "failed")
         return
 
-    if obs is not None and len(obs) > 0:           
-        try:     
-            print(f"secrets = {secrets}")
+    if obs is not None and len(obs) > 0:
+        try:
+            
             s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
-            
+
             obs_array = obs.split("/")
-            
 
             # TODO check the length
             s3_config = PrefectPutFilesToS3Config(s3_handler, [local_file], obs_array[2], "/".join(obs_array[3:]), 0)
@@ -176,11 +173,11 @@ def download(station: str, id: str, name: str, local: str = "", obs: str = ""):
     # start a thread to run the action in background
 
     print(
-        "%s : %s : %s: MAIN THREAD: Starting thread, local = %s", 
-            os.getpid(),
-            threading.get_ident(),
-            datetime.now(),
-            locals(),        
+        "%s : %s : %s: MAIN THREAD: Starting thread, local = %s",
+        os.getpid(),
+        threading.get_ident(),
+        datetime.now(),
+        locals(),
     )
     # TODO: the secrets should be set through env vars
     secrets = {
@@ -202,14 +199,14 @@ def download(station: str, id: str, name: str, local: str = "", obs: str = ""):
     )
     thread.start()
     thread.join()
-    '''
+    """
     # check the start of the thread
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
         print("Download thread did not start !")
         # update the status in database
         update_db(id, "failed")
         return {"started": "false"}
-    '''
+    """
     # update the status in database
     update_db(id, "progress")
 
