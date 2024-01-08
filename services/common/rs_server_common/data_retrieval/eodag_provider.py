@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from eodag import EODataAccessGateway, EOProduct
+
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
     Product,

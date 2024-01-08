@@ -47,7 +47,7 @@ def update_db(db, product, status, status_fail_message=None):
     product.status_fail_message = status_fail_message
     db.commit()
 
-def start_eodag_download(station, id, name, local, obs: str = "", secrets={}):
+def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", secrets={}):
     """Download a chunk file.
 
     Initiates a download using EODAG (Earth Observation Data Access Gateway) for a specific
@@ -83,11 +83,11 @@ def start_eodag_download(station, id, name, local, obs: str = "", secrets={}):
     >>> start_eodag_download("Sentinel-1", "12345", "Download_1", "/path/to/local", "s3://bucket/data")
     """
     # Get a database connection in this thread, because the connection from the
-    # main thread does not seem to be working in sub-thread (was it closed ?)
+    # main thread does not seem to be working in sub-thread (was it closed ?)    
     with contextmanager(get_db)() as db:
         # Get the product download status from database. It was created before running this thread.
         # TODO: should we recreate it if it was deleted for any reason ?
-        product = db.query(CaduProduct).where(CaduProduct.id == product_id).first()
+        product = db.query(CaduProduct).where(CaduProduct.id == db_id).first()
 
         # init eodag object
         try:
@@ -100,10 +100,11 @@ def start_eodag_download(station, id, name, local, obs: str = "", secrets={}):
             eodag_client = EodagProvider(eodag_config)
 
             thread_started.set()
-
+            if len(local) == 0:
+                local = "/tmp"
             local_file = osp.join(local, name)
             init = datetime.now()
-            eodag_client.download(id, Path(local_file))
+            eodag_client.download(file_id, Path(local_file))
             end = datetime.now()
             print(
                 "%s : %s : %s: Downloaded file: %s   in %s",
@@ -132,12 +133,6 @@ def start_eodag_download(station, id, name, local, obs: str = "", secrets={}):
                 print("Could not connect to the s3 storage")
             finally:
                 os.remove(local_file)
-
-                # TODO check the length
-                s3_config = PrefectPutFilesToS3Config(s3_handler, [filename], obs_array[2], "/".join(obs_array[3:]), 0)
-                asyncio.run(prefect_put_files_to_s3.fn(s3_config))
-
-                os.remove(filename)
 
             update_db(db, product, DownloadStatus.DONE)
 
@@ -206,24 +201,27 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
     S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
     thread = threading.Thread(
         target=start_eodag_download,
+        #station, product_id, name, local, obs: str = "", secrets={}
         args=(
             station,
             product.id,
+            file_id,
+            name,
             local,
             obs,
             secrets,
         ),
     )
     thread.start()
-    thread.join()
-    """
+    #thread.join()
+    
     # check the start of the thread
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
         print("Download thread did not start !")
         # update the status in database
         update_db(db, product, DownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
-    """
+    
     # update the status in database
     update_db(db, product, DownloadStatus.IN_PROGRESS)
 
