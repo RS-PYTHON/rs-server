@@ -3,14 +3,18 @@ import asyncio
 import os
 import os.path as osp
 import threading
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from threading import Event
 
 from eodag import EODataAccessGateway, EOProduct, setup_logging
 from eodag.utils import uri_to_path
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from rs_server.db.models.cadu_product_model import CaduProduct
+from rs_server.db.models.download_status import DownloadStatus
+from rs_server.db.session import get_db
 from rs_server.s3_storage_handler.s3_storage_handler import (
     PrefectPutFilesToS3Config,
     S3StorageHandler,
@@ -28,7 +32,7 @@ router = APIRouter()
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" / "library"
 
 
-def update_db(id, status):
+def update_db(db, product, status, status_fail_message=None):
     """Docstring will be here."""
     print(
         "%s : %s : %s: Fake update of table dwn_status with : %s | %s",
@@ -39,6 +43,9 @@ def update_db(id, status):
         status,
     )
 
+    product.status = status
+    product.status_fail_message = status_fail_message
+    db.commit()
 
 def start_eodag_download(station, id, name, local, obs: str = "", secrets={}):
     """Download a chunk file.
@@ -50,10 +57,8 @@ def start_eodag_download(station, id, name, local, obs: str = "", secrets={}):
     ----------
     station : str
         The name of the satellite station.
-    id : str
-        Identifier for the download operation.
-    name : str
-        Name associated with the download operation.
+    product_id: CaduProduct
+        Database entry ID for the product download status
     local : str
         The local path where the file should be downloaded. If None, the default
         path is used.
@@ -77,65 +82,78 @@ def start_eodag_download(station, id, name, local, obs: str = "", secrets={}):
     -------
     >>> start_eodag_download("Sentinel-1", "12345", "Download_1", "/path/to/local", "s3://bucket/data")
     """
-    # init eodag object
-    try:
-        print("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
-        config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
+    # Get a database connection in this thread, because the connection from the
+    # main thread does not seem to be working in sub-thread (was it closed ?)
+    with contextmanager(get_db)() as db:
+        # Get the product download status from database. It was created before running this thread.
+        # TODO: should we recreate it if it was deleted for any reason ?
+        product = db.query(CaduProduct).where(CaduProduct.id == product_id).first()
 
-        setup_logging(3, no_progress_bar=True)
-
-        eodag_config = EodagConfiguration(station, Path(config_file_path))
-        eodag_client = EodagProvider(eodag_config)
-
-        thread_started.set()
-
-        local_file = osp.join(local, name)
-        init = datetime.now()
-        eodag_client.download(id, Path(local_file))
-        end = datetime.now()
-        print(
-            "%s : %s : %s: Downloaded file: %s   in %s",
-            os.getpid(),
-            threading.get_ident(),
-            end,
-            name,
-            end - init,
-        )
-    except Exception as e:
-        print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
-        update_db(id, "failed")
-        return
-
-    if obs is not None and len(obs) > 0:
+        # init eodag object
         try:
-            
-            s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
+            print("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
+            config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
 
-            obs_array = obs.split("/")
+            setup_logging(3, no_progress_bar=True)
 
-            # TODO check the length
-            s3_config = PrefectPutFilesToS3Config(s3_handler, [local_file], obs_array[2], "/".join(obs_array[3:]), 0)
-            asyncio.run(prefect_put_files_to_s3.fn(s3_config))
-        except RuntimeError:
-            print("Could not connect to the s3 storage")
-        finally:
-            os.remove(local_file)
+            eodag_config = EodagConfiguration(station, Path(config_file_path))
+            eodag_client = EodagProvider(eodag_config)
 
-    update_db(id, "succeeded")
+            thread_started.set()
+
+            local_file = osp.join(local, name)
+            init = datetime.now()
+            eodag_client.download(id, Path(local_file))
+            end = datetime.now()
+            print(
+                "%s : %s : %s: Downloaded file: %s   in %s",
+                os.getpid(),
+                threading.get_ident(),
+                end,
+                name,
+                end - init,
+            )
+        except Exception as e:
+            print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
+            update_db(id, "failed")
+            return
+
+        if obs is not None and len(obs) > 0:
+            try:
+                
+                s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
+
+                obs_array = obs.split("/")
+
+                # TODO check the length
+                s3_config = PrefectPutFilesToS3Config(s3_handler, [local_file], obs_array[2], "/".join(obs_array[3:]), 0)
+                asyncio.run(prefect_put_files_to_s3.fn(s3_config))
+            except RuntimeError:
+                print("Could not connect to the s3 storage")
+            finally:
+                os.remove(local_file)
+
+                # TODO check the length
+                s3_config = PrefectPutFilesToS3Config(s3_handler, [filename], obs_array[2], "/".join(obs_array[3:]), 0)
+                asyncio.run(prefect_put_files_to_s3.fn(s3_config))
+
+                os.remove(filename)
+
+            update_db(db, product, DownloadStatus.DONE)
 
 
 @router.get("/cadip/{station}/cadu")
-def download(station: str, id: str, name: str, local: str = "", obs: str = ""):
+def download(station: str, file_id: str, name: str, local: str = "", obs: str = "", db=Depends(get_db)):
     """Initiate an asynchronous download process using EODAG (Earth Observation Data Access Gateway).
 
     Parameters
     ----------
     station : str
         Identifier of the Earth Observation station.
-    id : str, optional
-        Unique identifier associated with the data to be downloaded.
-    name : str, optional
-        Name of the data product to be downloaded.
+    file_id : str
+        Unique ID of the Earth Observation Product (EOP) to be downloaded.
+    name : str
+        Name of the Earth Observation Product (EOP) to be downloaded.
     local : str, optional
         Local path where the downloaded data will be stored.
     obs : str, optional
@@ -154,22 +172,22 @@ def download(station: str, id: str, name: str, local: str = "", obs: str = ""):
 
     The actual download progress can be monitored separately, and the function returns a
     dictionary with the key "started" set to "true" to indicate that the download process has begun.
+    """
 
-    Example
-    -------
-    >>> result = download("Sentinel-1", id="12345", name="Download_1", local="/path/to/local", obs="s3://bucket/data")
-    >>> print(result)
-    {'started': True}
-    """
-    """
-    start_eodag_download(station,
-            id,
-            name,
-            local,
-            obs)
-    update_db(id, "succeeded")
-    return {"downloaded": "true"}
-    """
+    # Does the product download status already exist in database ? Filter on the EOP ID.
+    query = db.query(CaduProduct).where(CaduProduct.file_id == file_id)
+    if query.count():
+        # Get the existing product and overwrite the download status.
+        # TODO: should we keep download history in a distinct table and init a new download entry ?
+        product = query.first()
+        update_db(db, product, DownloadStatus.NOT_STARTED)
+
+    # Else init a new entry from the input arguments
+    else:
+        product = CaduProduct(file_id=file_id, name=name, status=DownloadStatus.NOT_STARTED)
+        db.add(product)
+        db.commit()
+
     # start a thread to run the action in background
 
     print(
@@ -190,8 +208,7 @@ def download(station: str, id: str, name: str, local: str = "", obs: str = ""):
         target=start_eodag_download,
         args=(
             station,
-            id,
-            name,
+            product.id,
             local,
             obs,
             secrets,
@@ -204,10 +221,10 @@ def download(station: str, id: str, name: str, local: str = "", obs: str = ""):
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
         print("Download thread did not start !")
         # update the status in database
-        update_db(id, "failed")
+        update_db(db, product, DownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
     """
     # update the status in database
-    update_db(id, "progress")
+    update_db(db, product, DownloadStatus.IN_PROGRESS)
 
     return {"started": "true"}
