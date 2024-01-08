@@ -1,22 +1,9 @@
 """EODAG Provider."""
-from dataclasses import dataclass
 from pathlib import Path
 
 from eodag import EODataAccessGateway, EOProduct
-from rs_server_common.data_retrieval.provider import (
-    CreateProviderFailed,
-    Product,
-    Provider,
-    TimeRange,
-)
 
-
-@dataclass
-class EodagConfiguration:
-    """Eodag configuration."""
-
-    provider: str
-    file: Path
+from .provider import CreateProviderFailed, Product, Provider, TimeRange
 
 
 class EodagProvider(Provider):
@@ -25,13 +12,14 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    def __init__(self, config: EodagConfiguration):
+    def __init__(self, config_file: str, provider: str):
         """Create a EODAG provider.
 
         :param config: the eodag configuration
         """
-        self.provider: str = config.provider
-        self.client: EODataAccessGateway = self.init_eodag_client(config.file)
+        self.provider: str = provider
+        self.client: EODataAccessGateway = self.init_eodag_client(config_file)
+        self.client.set_preferred_provider(self.provider)
 
     def init_eodag_client(self, config_file: Path):
         """Initialize the eodag client.
@@ -47,12 +35,9 @@ class EodagProvider(Provider):
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
     def _specific_search(self, between: TimeRange) -> dict[str, Product]:
-        """TODO To be implemented.
-
-        :param between: the time range
-        :return: to be impl
-        """
-        raise NotImplementedError()
+        """TODO Check/Update "between" time format."""
+        products, _ = self.client.search(start=str(between.start), end=str(between.end), provider=self.provider)
+        return products
 
     def download(self, product_id: str, to_file: Path) -> None:
         """Download the expected product at the given local location.

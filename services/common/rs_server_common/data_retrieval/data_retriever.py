@@ -2,9 +2,9 @@
 from datetime import datetime
 from pathlib import Path
 
-from rs_server_common.data_retrieval.download_monitor import DownloadMonitor
-from rs_server_common.data_retrieval.provider import Product, Provider, TimeRange
-from rs_server_common.data_retrieval.storage import Storage
+from .download_monitor import DownloadMonitor
+from .provider import Product, Provider, TimeRange
+from .storage import Storage
 
 
 class DataRetriever:
@@ -31,11 +31,12 @@ class DataRetriever:
         """
         self.provider = provider
         self.storage = storage
-        self.storage.login()
+        if self.storage:
+            self.storage.login()
         self.monitor = download_monitor
         self.work_folder = working_folder
 
-    def search(self, within: TimeRange) -> list[Product]:
+    def search(self, start, stop) -> list[Product]:
         """Search for products within the given timerange.
 
         Search for products using the provider.
@@ -43,7 +44,8 @@ class DataRetriever:
         :param within: the timerange criteria
         :return: the products found
         """
-        return []
+        within = TimeRange(datetime.fromisoformat(start), datetime.fromisoformat(stop))
+        return self.provider.search(within)
 
     def download(self, product_id: str, product_name: str) -> None:
         """Download the given product and store it.

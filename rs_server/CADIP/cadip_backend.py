@@ -1,11 +1,11 @@
 """Docstring will be here."""
 from fastapi import FastAPI
 
-from .api import download_chunk, list_cadu
+from .api import cadu_download, cadu_list
 
 app = FastAPI()
-app.include_router(list_cadu.router)
-app.include_router(download_chunk.router)
+app.include_router(cadu_download.router)
+app.include_router(cadu_list.router)
 
 
 @app.get("/")
