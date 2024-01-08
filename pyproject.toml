@@ -24,11 +24,7 @@ python = ">=3.11.0,<4.0"
 moto = "==4.2.8"
 boto3 = "==1.28.85"
 botocore = "==1.31.85"
-fastapi = "^0.104.1"
-uvicorn = "^0.24.0.post1"
-eodag = "^2.11.0"
-flask = "^3.0.0"
-httpx = "^0.25.2"
+prefect = "^2.14.11"
 
 [tool.poetry.group.dev]
 optional = true
@@ -41,11 +37,15 @@ pytest-error-for-skips = "^2.0.2"
 black = "^23.10.1"
 mypy = "^1.6.1"
 pre-commit = "^3.5.0"
+types-requests = "^2.31.0.10"
 flake8 = "^6.1.0"
 bandit = "^1.7.5"
 safety = "^2.3.5"
 pylint = "^3.0.3"
 flake8-pyproject = "^1.2.3"
+flask = "^3.0.0"
+flask-cors = "^4.0.0"
+pytest-asyncio = "^0.23.2"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
@@ -68,10 +68,6 @@ markers = [
 warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
-
-# TODO add the plugin if possible (request for example)
-[[tool.mypy.overrides]]
-module = "boto3,botocore,prefect_dask,ruamel"
 ignore_missing_imports = true
 
 [tool.flake8]

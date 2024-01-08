@@ -15,6 +15,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
+eodag = "^2.11.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -23,6 +24,7 @@ optional = true
 pytest = "^7.4.3"
 black = "^23.11.0"
 mypy = "^1.7.1"
+responses = "^0.24.1"
 
 [tool.black]
 line-length = 120
