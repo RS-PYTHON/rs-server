@@ -1,8 +1,10 @@
 """CADU Product model implementation."""
 
 import enum
+from datetime import datetime
+from threading import Lock
 
-from sqlalchemy import Column, DateTime, Enum, Integer, String
+from sqlalchemy import Column, DateTime, Enum, Integer, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rs_server.db.database import Base
@@ -44,15 +46,50 @@ class CaduDownloadStatus(Base):
     status: EDownloadStatus = Column(Enum(EDownloadStatus), default=EDownloadStatus.NOT_STARTED)
     status_fail_message = Column(String)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lock = Lock()
+
+    def in_progress(self, db: AsyncSession, download_start: datetime = datetime.now()):
+        """Update database entry to start download."""
+        with self.lock:
+            self.status = EDownloadStatus.IN_PROGRESS
+            self.download_start = download_start
+            db.commit()
+
+    def done(self, db: AsyncSession, download_stop: datetime = datetime.now()):
+        """Update database entry to done."""
+        with self.lock:
+            self.status = EDownloadStatus.DONE
+            self.download_stop = download_stop
+            db.commit()
+
+    def failed(self, db: AsyncSession, status_fail_message: str, download_stop: datetime = datetime.now()):
+        """Update database entry to failed."""
+        with self.lock:
+            self.status = EDownloadStatus.FAILED
+            self.download_stop = download_stop
+            self.status_fail_message = status_fail_message
+            db.commit()
+
     #######################
     # DATABASE OPERATIONS #
     #######################
 
     @classmethod
-    async def create(cls, db: AsyncSession, **kwargs):
+    def get_all(cls, db: AsyncSession, **kwargs):
+        """Get all entries in database table."""
+        return db.execute(select(cls)).scalars().all()
+
+    @classmethod
+    def get(cls, cadu_id: str, name: str, db: AsyncSession):
+        """Get by CADU ID and name"""
+        return db.execute(select(cls).where(cls.cadu_id == cadu_id).where(cls.name == name)).scalars().one()
+
+    @classmethod
+    def create(cls, db: AsyncSession, **kwargs):
         """Create entry in database table."""
         entry = cls(**kwargs)
         db.add(entry)
-        await db.commit()
-        await db.refresh(entry)
+        db.commit()
         return entry

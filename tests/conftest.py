@@ -35,7 +35,7 @@ def docker_compose_file(pytestconfig):
 
 
 @pytest.fixture(scope="session")
-async def database(docker_ip, docker_services, docker_compose_file):
+def database(docker_ip, docker_services, docker_compose_file):
     """
     Init database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
@@ -54,46 +54,25 @@ async def database(docker_ip, docker_services, docker_compose_file):
     load_dotenv(osp.join(osp.dirname(docker_compose_file), ".env"))
 
     # Check if database connection is OK
-    async def try_init() -> Exception | None:
+    def try_init() -> bool:
         try:
             # Open session
-            await sessionmanager.open_session()
+            sessionmanager.open_session()
 
             # Drop/create all database tables
-            async with sessionmanager.connect() as connection:
-                await sessionmanager.drop_all(connection)
-                await sessionmanager.create_all(connection)
+            with sessionmanager.connect() as connection:
+                sessionmanager.drop_all(connection)
+                sessionmanager.create_all(connection)
 
-            # All is OK
-            return None
+            return True
 
-        except ConnectionError as exception:
-            return exception
-        except sqlalchemy.exc.OperationalError as exception:
-            return exception
+        except ConnectionError:
+            return False
+        except sqlalchemy.exc.OperationalError:
+            return False
 
     # Try to init database until OK
-    await wait_until_responsive_async(timeout=30, pause=3, check=try_init)
+    docker_services.wait_until_responsive(timeout=30, pause=3, check=try_init)
 
     # TODO: open a new database session for each test ?
     # See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
-
-
-async def wait_until_responsive_async(check, timeout, pause, clock=timeit.default_timer):
-    """
-    Wait until a service is responsive.
-
-    async reimplementation from docker_services.wait_until_responsive.
-    """
-
-    exception = None
-    ref = clock()
-    now = ref
-    while (now - ref) < timeout:
-        exception = await check()
-        if exception is None:
-            return
-        time.sleep(pause)
-        now = clock()
-
-    raise RuntimeError("Timeout reached while waiting on service!") from exception

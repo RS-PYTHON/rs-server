@@ -2,11 +2,12 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus as CDS
-from rs_server.CADIP.models.cadu_download_status import EDownloadStatus
+from rs_server.CADIP.models.cadu_download_status import (
+    CaduDownloadStatus,
+    EDownloadStatus,
+)
 from rs_server.db.database import get_db
 
 router = APIRouter(tags=["Cadu products"])
@@ -47,8 +48,8 @@ class CaduProductRead(CaduProductBase):
 
 
 @router.get("/cadip/{station}/cadu/status", response_model=CaduProductRead)
-async def get_status(cadu_id: str, name: str, db: AsyncSession = Depends(get_db)):
+def get_status(cadu_id: str, name: str, db: AsyncSession = Depends(get_db)):
     """
     Get a product download status from its ID and name.
     """
-    return (await db.execute(select(CDS).where(CDS.cadu_id == cadu_id).where(CDS.name == name))).one()
+    return CaduDownloadStatus.get(cadu_id=cadu_id, name=name, db=db)
