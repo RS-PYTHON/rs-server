@@ -193,6 +193,7 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
         "secretkey": None,
     }
     S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+    thread_started.clear()
     thread = threading.Thread(
         target=start_eodag_download,
         args=(
@@ -209,11 +210,12 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
 
     # check the start of the thread
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
+        thread_started.clear()
         print("Download thread did not start !")
         # update the status in database
         update_db(db, product, DownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
-
+    thread_started.clear()
     # update the status in database
     update_db(db, product, DownloadStatus.IN_PROGRESS)
 

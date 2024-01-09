@@ -50,21 +50,17 @@ async def start_download(station, files_info, local_path, obs, idx):
         payload = {"file_id": file_id, "name": filename}
         response = ""
         timeout = 10
-        while response != "download_ok" and timeout > 0:
-            status_response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu/status".format(station), params=payload)
-            # TODO: get properly the status !
-            if timeout < 3:
-                response = "download_ok"
-            time.sleep(0.2)
-            timeout -= 0.2
+        while response != "done" and timeout > 0:
+            response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu/status".format(station), params=payload).text.strip("\"")       
+            time.sleep(1)
+            timeout -= 1          
+        logger.info("Get status is: %s", response)
         if timeout <= 0:
             logger.error(
                 "Timeout for receiving the downloaded status from server passed. \
 The file %s wasn't downloaded properly",
                 filename,
-            )
-        # time.sleep(3)
-        # break
+            )        
         """
         # tests: for parallel search
         payload = {"start_date": "2023-01-01T12:00:00.000Z", "stop_date": "2033-02-20T12:00:00.000Z"}
