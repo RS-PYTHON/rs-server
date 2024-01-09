@@ -49,7 +49,8 @@ async def start_download(station, files_info, local_path, obs, idx):
         while response != "download_ok" and timeout > 0:
             status_response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu/status".format(station), params = payload)
             # TODO: get properly the status !
-            response = "download_ok"
+            if timeout < 3:
+                response = "download_ok"
             time.sleep(0.2)
             timeout -= 0.2
         if timeout <= 0:

@@ -45,6 +45,10 @@ def update_db(db, product, status, status_fail_message=None):
 
     product.status = status
     product.status_fail_message = status_fail_message
+    if status == DownloadStatus.IN_PROGRESS:
+        product.downlink_start = datetime.now()
+    if status == DownloadStatus.DONE:
+        product.downlink_stop = datetime.now()
     db.commit()
 
 def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", secrets={}):
@@ -116,7 +120,7 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
             )
         except Exception as e:
             print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
-            update_db(id, "failed")
+            update_db(db, product, DownloadStatus.FAILED)
             return
 
         if obs is not None and len(obs) > 0:
@@ -134,7 +138,7 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
             finally:
                 os.remove(local_file)
 
-            update_db(db, product, DownloadStatus.DONE)
+        update_db(db, product, DownloadStatus.DONE)
 
 
 @router.get("/cadip/{station}/cadu")
