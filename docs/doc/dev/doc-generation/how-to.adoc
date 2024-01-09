@@ -1,0 +1,59 @@
+= Generate rs-server technical documentation
+
+This procedure is run automatically in the CI by the 'generate documentation' workflow.
+It can be executed locally to verify the generated documentation (before publishing it for example).
+
+See ${include("description.adoc")} for more details on the process and technical stuff.
+
+. Pre-requises
+
+The local developer environment has been setup.
+The global python project is setup.
+The python sub-project for doc generation is also setup.
+
+. Generate the technical documentation
+
+From the rs-server/docs folder, execute the command:
+[source, bash]
+----
+poetry run asciidoxy --base-dir doc --build-dir ../dist/doc/ --multipage doc/index.adoc
+----
+
+This command generates the html pages of all the technical documentation
+and write them in the rs-server/dist/doc folder.
+
+. Generate the python api documentation
+
+From the root folder, run the following command :
+[source, bash]
+----
+poetry run sphinx-apidoc -o docs/doc/api/python/generated rs_server
+----
+It generates rst files from the python doc-strings
+and write them in a generated folder (excluded of git conf).
+
+Then, execute the following command :
+[source, bash]
+----
+poetry run sphinx-build -M html docs/doc/api/python/ dist/doc/output/api/python/
+----
+It generates the html pages for the python api of the rs-server.
+The generated api is accessible locally at 'dist/doc/api/html/index.html'.
+
+. Generate the rest api documentation
+
+NOTE: To be defined. This procedure will use native FastAPI functionalities.
+
+. Verify the generated documentation
+
+The main page of the technical documentation is accessible
+http://localhost:63342/rs-server/dist/doc/output/index.html[locally].
+You can verify the generated documentation before publishing it.
+
+Important elements to check :
+
+* the python api is accessible in the technical documentation
+* the python api is well formatted
+* the rest api is accessible in the technical documentation
+* the rest api is well formatted
+* ...

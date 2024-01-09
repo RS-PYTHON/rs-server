@@ -14,7 +14,7 @@ The documentation is organized in 4 sections :
 ** ${include("dev/environment/installation.adoc")}
 
 * How to guides to provide practical common procedures
-** ${include("dev/how-to/generate-documentation.adoc")}
+** ${include("dev/doc-generation/how-to.adoc")}
 
 * Reference guides give you technical information about the code and software API :
 ** ${include("dev/code-style.adoc")}
@@ -29,3 +29,4 @@ NOTE: TODO include a link to the python API
 ** ${include("dev/background/workflow.adoc")}
 ** ${include("dev/background/ci.adoc")}
 ** ${include("dev/design/design.adoc")}
+** ${include("dev/doc-generation/description.adoc")}
