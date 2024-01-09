@@ -18,6 +18,8 @@ DWN_S3FILE_RETRY_TIMEOUT = 6
 DWN_S3FILE_RETRIES = 20
 UP_S3FILE_RETRY_TIMEOUT = 6
 UP_S3FILE_RETRIES = 20
+global aws_terminating_node_notice
+aws_terminating_node_notice = False
 SET_PREFECT_LOGGING_LEVEL = "DEBUG"
 S3_ERR_FORBIDDEN_ACCESS = 403
 S3_ERR_NOT_FOUND = 404
@@ -484,7 +486,6 @@ bucket %s does not exist or is not accessible. Aborting",
         for collection_file in collection_files:
             failed_files.append(collection_file[1])
         return failed_files
-
     for collection_file in collection_files:
         if collection_file[0] is None:
             failed_files.append(collection_file[1])
