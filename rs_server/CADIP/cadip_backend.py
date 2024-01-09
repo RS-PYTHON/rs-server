@@ -1,9 +1,9 @@
 """Docstring will be here."""
 from fastapi import FastAPI
 
-from .api import cadu_download, cadu_list
 from rs_server.db.crud import cadu_product_crud
 
+from .api import cadu_download, cadu_list
 
 app = FastAPI()
 app.include_router(cadu_download.router)

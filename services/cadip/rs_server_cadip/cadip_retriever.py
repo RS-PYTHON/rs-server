@@ -9,7 +9,7 @@ from services.common.rs_server_common.data_retrieval.download_monitor import (
 )
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
-    Provider
+    Provider,
 )
 from services.common.rs_server_common.data_retrieval.storage import Storage
 
@@ -51,12 +51,13 @@ def station_to_server_url(station: str) -> str | None:
         return None
 
 
-def init_cadip_data_retriever(cadip_provider: Provider, 
-                              station: str, 
-                              storage: Storage = None, 
-                              download_monitor: DownloadMonitor = None,
-                              path: Path = None
-                              ):
+def init_cadip_data_retriever(
+    cadip_provider: Provider,
+    station: str,
+    storage: Storage | None = None,
+    download_monitor: DownloadMonitor | None = None,
+    path: Path | None = None,
+):
     """
     Initializes a DataRetriever instance for CADIP data retrieval.
 

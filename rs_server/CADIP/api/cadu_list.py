@@ -9,6 +9,7 @@ from typing import List
 from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from services.common.rs_server_common.data_retrieval.provider import (

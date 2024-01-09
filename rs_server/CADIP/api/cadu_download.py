@@ -21,9 +21,7 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
     prefect_put_files_to_s3,
 )
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
-from services.common.rs_server_common.data_retrieval.eodag_provider import (    
-    EodagProvider,
-)
+from services.common.rs_server_common.data_retrieval.eodag_provider import EodagProvider
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
@@ -31,16 +29,27 @@ router = APIRouter()
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
 
+
 def update_db(db, product, status, status_fail_message=None):
-    """Docstring will be here."""
-    print(
-        "%s : %s : %s: Fake update of table dwn_status with : %s | %s",
-        os.getpid(),
-        threading.get_ident(),
-        datetime.now(),
-        id,
-        status,
-    )
+    """Update the database with the status of a product.
+
+    This function performs a fake update of the 'dwn_status' table with the provided
+    product status information. It updates the status, status_fail_message, and timestamps
+    based on the specified status. If the status is 'IN_PROGRESS', it sets the downlink_start
+    timestamp; if the status is 'DONE', it sets the downlink_stop timestamp.
+
+    Args:
+        db (Database): The database connection object.
+        product (Product): The product to be updated in the database.
+        status (DownloadStatus): The new status of the product.
+        status_fail_message (str, optional): The failure message associated with the status.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
 
     product.status = status
     product.status_fail_message = status_fail_message
@@ -50,43 +59,30 @@ def update_db(db, product, status, status_fail_message=None):
         product.downlink_stop = datetime.now()
     db.commit()
 
+
 def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", secrets={}):
-    """Download a chunk file.
+    """Start an EODAG download process for a specified product.
 
-    Initiates a download using EODAG (Earth Observation Data Access Gateway) for a specific
-    satellite station with the given parameters.
+    This function initiates a download process using EODAG to retrieve a product with the given
+    parameters. It also updates the product's status in the database based on the download result.
 
-    Parameters
-    ----------
-    station : str
-        The name of the satellite station.
-    product_id: CaduProduct
-        Database entry ID for the product download status
-    local : str
-        The local path where the file should be downloaded. If None, the default
-        path is used.
-    obs : str
-        The observation details, including the destination path for uploading the file
-        after download. If None, the file is not uploaded.
+    Args:
+        station (str): The EODAG station identifier.
+        db_id (int): The database identifier of the product.
+        file_id (str): The file identifier of the product.
+        name (str): The name of the product.
+        local (str): The local path where the product will be downloaded.
+        obs (str, optional): The observation identifier associated with the product.
+        secrets (dict, optional): Dictionary containing access key, secret key, and S3 endpoint for authentication.
 
-    Returns
-    -------
-    None
+    Returns:
+        None
 
-    Notes
-    -----
-    - The function initializes EODAG, sets the download path if provided, initializes an
-      Earth Observation Package (EOP), and then downloads the data using EODAG.
-    - After a successful download, it updates the database with a "succeeded" status.
-    - If an observation path is provided, it uploads the file to the specified destination
-      and deletes the local file after uploading.
-
-    Example
-    -------
-    >>> start_eodag_download("Sentinel-1", "12345", "Download_1", "/path/to/local", "s3://bucket/data")
+    Raises:
+        None
     """
     # Get a database connection in this thread, because the connection from the
-    # main thread does not seem to be working in sub-thread (was it closed ?)    
+    # main thread does not seem to be working in sub-thread (was it closed ?)
     status = DownloadStatus.FAILED
     with contextmanager(get_db)() as db:
         # Get the product download status from database. It was created before running this thread.
@@ -96,19 +92,17 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
         # init eodag object
         try:
             print("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
-            #config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
+            # config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
 
             setup_logging(3, no_progress_bar=True)
-            
-            #eodag_provider = EodagProvider(Path(config_file_path), station)
+
+            # eodag_provider = EodagProvider(Path(config_file_path), station)
             if len(local) == 0:
                 local = "/tmp"
-            
-            data_retriever = init_cadip_data_retriever(EodagProvider, 
-                                                       station, None, None, 
-                                                       Path(local))
 
-            thread_started.set()            
+            data_retriever = init_cadip_data_retriever(EodagProvider, station, None, None, Path(local))
+
+            thread_started.set()
             init = datetime.now()
             data_retriever.download(file_id, name)
             end = datetime.now()
@@ -126,15 +120,21 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
             return
 
         if obs is not None and len(obs) > 0:
-            try:                
+            try:
                 s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
                 obs_array = obs.split("/")
                 # TODO check the length
-                s3_config = PrefectPutFilesToS3Config(s3_handler, [str(data_retriever.filename)], obs_array[2], "/".join(obs_array[3:]), 0)
+                s3_config = PrefectPutFilesToS3Config(
+                    s3_handler,
+                    [str(data_retriever.filename)],
+                    obs_array[2],
+                    "/".join(obs_array[3:]),
+                    0,
+                )
                 asyncio.run(prefect_put_files_to_s3.fn(s3_config))
                 status = DownloadStatus.DONE
             except RuntimeError:
-                print("Could not connect to the s3 storage")                
+                print("Could not connect to the s3 storage")
             finally:
                 os.remove(data_retriever.filename)
 
@@ -143,34 +143,25 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
 
 @router.get("/cadip/{station}/cadu")
 def download(station: str, file_id: str, name: str, local: str = "", obs: str = "", db=Depends(get_db)):
-    """Initiate an asynchronous download process using EODAG (Earth Observation Data Access Gateway).
+    """Initiate an asynchronous download process for a CADU product using EODAG.
 
-    Parameters
-    ----------
-    station : str
-        Identifier of the Earth Observation station.
-    file_id : str
-        Unique ID of the Earth Observation Product (EOP) to be downloaded.
-    name : str
-        Name of the Earth Observation Product (EOP) to be downloaded.
-    local : str, optional
-        Local path where the downloaded data will be stored.
-    obs : str, optional
-        Additional observation-related information.
+    This endpoint triggers the download of a CADU product identified by the given file_id,
+    name, and observation identifier. It starts the download process in a separate thread
+    using the start_eodag_download function and updates the product's status in the database.
 
-    Returns
-    -------
-    dict
-        A dictionary indicating that the download process has been started.
+    Args:
+        station (str): The EODAG station identifier.
+        file_id (str): The file identifier of the CADU product.
+        name (str): The name of the CADU product.
+        local (str, optional): The local path where the CADU product will be downloaded.
+        obs (str, optional): The observation identifier associated with the CADU product.
+        db (Database): The database connection object.
 
-    Notes
-    -----
-    The function initiates an asynchronous download process by starting a new thread to execute
-    the 'start_eodag_download' function. It prints information before and after starting the thread,
-    checks the start of the thread, and updates the database with the download start status.
+    Returns:
+        dict: A dictionary indicating whether the download process has started.
 
-    The actual download progress can be monitored separately, and the function returns a
-    dictionary with the key "started" set to "true" to indicate that the download process has begun.
+    Raises:
+        None
     """
 
     # Does the product download status already exist in database ? Filter on the EOP ID.
@@ -188,7 +179,6 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
         db.commit()
 
     # start a thread to run the action in background
-
     print(
         "%s : %s : %s: MAIN THREAD: Starting thread, local = %s",
         os.getpid(),
@@ -205,7 +195,6 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
     S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
     thread = threading.Thread(
         target=start_eodag_download,
-        #station, product_id, name, local, obs: str = "", secrets={}
         args=(
             station,
             product.id,
@@ -217,15 +206,14 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
         ),
     )
     thread.start()
-    #thread.join()
-    
+
     # check the start of the thread
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
         print("Download thread did not start !")
         # update the status in database
         update_db(db, product, DownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
-    
+
     # update the status in database
     update_db(db, product, DownloadStatus.IN_PROGRESS)
 
