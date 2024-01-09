@@ -10,7 +10,7 @@ from rs_server_common.data_retrieval.provider import (
 )
 
 from tests.data_retrieval.provider.conftest import a_product
-from tests.data_retrieval.provider.fake_provider import FakeProvider
+from tests.data_retrieval.provider.fake_provider import DownloadRecord, FakeProvider
 
 
 class TestAFakeProvider:
@@ -75,9 +75,11 @@ class TestAFakeProvider:
         assert provider.last_download is None
 
         provider.download("1", downloaded_file)
+        assert isinstance(provider.last_download, DownloadRecord)
         assert provider.last_download.product_id == "1"
         assert provider.last_download.location == downloaded_file
 
         provider.download("2", downloaded_file)
+        assert isinstance(provider.last_download, DownloadRecord)
         assert provider.last_download.product_id == "2"
         assert provider.last_download.location == downloaded_file
