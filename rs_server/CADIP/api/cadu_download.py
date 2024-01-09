@@ -100,7 +100,7 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
             if len(local) == 0:
                 local = "/tmp"
 
-            data_retriever = init_cadip_data_retriever(EodagProvider, station, None, None, Path(local))
+            data_retriever = init_cadip_data_retriever(station, None, None, Path(local))
 
             thread_started.set()
             init = datetime.now()
