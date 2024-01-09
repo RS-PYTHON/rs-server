@@ -51,7 +51,12 @@ def station_to_server_url(station: str) -> str | None:
         return None
 
 
-def init_cadip_data_retriever(cadip_provider: Provider, station: str):
+def init_cadip_data_retriever(cadip_provider: Provider, 
+                              station: str, 
+                              storage: Storage = None, 
+                              download_monitor: DownloadMonitor = None,
+                              path: Path = None
+                              ):
     """
     Initializes a DataRetriever instance for CADIP data retrieval.
 
@@ -72,8 +77,8 @@ def init_cadip_data_retriever(cadip_provider: Provider, station: str):
         raise CreateProviderFailed("Invalid station")
     provider = cadip_provider(EODAG_CONFIG, station)  # default to eodag, just init here
     # WIP, will be implemented with download
-    cadip_storage: Storage = None
-    cadip_monitor: DownloadMonitor = None
-    cadip_working_dir: Path = None
+    cadip_storage: Storage = storage
+    cadip_monitor: DownloadMonitor = download_monitor
+    cadip_working_dir: Path = path
     # End WIP
     return DataRetriever(provider, cadip_storage, cadip_monitor, cadip_working_dir)

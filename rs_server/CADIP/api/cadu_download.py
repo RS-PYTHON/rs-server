@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from threading import Event
 
-from eodag import EODataAccessGateway, EOProduct, setup_logging
+from eodag import setup_logging
 from eodag.utils import uri_to_path
 from fastapi import APIRouter, Depends
 
@@ -20,8 +20,8 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     prefect_put_files_to_s3,
 )
-from services.common.rs_server_common.data_retrieval.eodag_provider import (
-    EodagConfiguration,
+from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
+from services.common.rs_server_common.data_retrieval.eodag_provider import (    
     EodagProvider,
 )
 
@@ -29,8 +29,7 @@ DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
 router = APIRouter()
 
-CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" / "library"
-
+CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
 
 def update_db(db, product, status, status_fail_message=None):
     """Docstring will be here."""
@@ -88,6 +87,7 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
     """
     # Get a database connection in this thread, because the connection from the
     # main thread does not seem to be working in sub-thread (was it closed ?)    
+    status = DownloadStatus.FAILED
     with contextmanager(get_db)() as db:
         # Get the product download status from database. It was created before running this thread.
         # TODO: should we recreate it if it was deleted for any reason ?
@@ -96,19 +96,21 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
         # init eodag object
         try:
             print("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
-            config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
+            #config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
 
             setup_logging(3, no_progress_bar=True)
-
-            eodag_config = EodagConfiguration(station, Path(config_file_path))
-            eodag_client = EodagProvider(eodag_config)
-
-            thread_started.set()
+            
+            #eodag_provider = EodagProvider(Path(config_file_path), station)
             if len(local) == 0:
                 local = "/tmp"
-            local_file = osp.join(local, name)
+            
+            data_retriever = init_cadip_data_retriever(EodagProvider, 
+                                                       station, None, None, 
+                                                       Path(local))
+
+            thread_started.set()            
             init = datetime.now()
-            eodag_client.download(file_id, Path(local_file))
+            data_retriever.download(file_id, name)
             end = datetime.now()
             print(
                 "%s : %s : %s: Downloaded file: %s   in %s",
@@ -120,25 +122,23 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
             )
         except Exception as e:
             print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
-            update_db(db, product, DownloadStatus.FAILED)
+            update_db(db, product, status)
             return
 
         if obs is not None and len(obs) > 0:
-            try:
-                
+            try:                
                 s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
-
                 obs_array = obs.split("/")
-
                 # TODO check the length
-                s3_config = PrefectPutFilesToS3Config(s3_handler, [local_file], obs_array[2], "/".join(obs_array[3:]), 0)
+                s3_config = PrefectPutFilesToS3Config(s3_handler, [str(data_retriever.filename)], obs_array[2], "/".join(obs_array[3:]), 0)
                 asyncio.run(prefect_put_files_to_s3.fn(s3_config))
+                status = DownloadStatus.DONE
             except RuntimeError:
-                print("Could not connect to the s3 storage")
+                print("Could not connect to the s3 storage")                
             finally:
-                os.remove(local_file)
+                os.remove(data_retriever.filename)
 
-        update_db(db, product, DownloadStatus.DONE)
+        update_db(db, product, status)
 
 
 @router.get("/cadip/{station}/cadu")
