@@ -9,8 +9,8 @@ from typing import List
 from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
-from services.common.rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
 )
@@ -60,7 +60,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     if is_valid_format(start_date) and is_valid_format(stop_date):
         # Init dataretriever / get products / return
         try:
-            data_retriever = init_cadip_data_retriever(EodagProvider, station)
+            data_retriever = init_cadip_data_retriever(station)
             products = data_retriever.search(start_date, stop_date)
             return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
         except CreateProviderFailed:

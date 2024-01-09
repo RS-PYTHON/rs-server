@@ -1,8 +1,19 @@
 """Common fixtures for provider tests."""
 
+from dataclasses import dataclass
+from pathlib import Path
+
 import pytest
 from rs_server_common.data_retrieval.eodag_provider import EodagConfiguration
 from rs_server_common.data_retrieval.provider import Product
+
+
+@dataclass
+class EodagConfiguration:
+    """Eodag configuration - For test purpose only"""
+
+    provider: str
+    file: Path
 
 
 def a_product(with_id: str) -> Product:

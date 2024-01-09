@@ -7,9 +7,9 @@ from services.common.rs_server_common.data_retrieval.data_retriever import DataR
 from services.common.rs_server_common.data_retrieval.download_monitor import (
     DownloadMonitor,
 )
+from services.common.rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
-    Provider
 )
 from services.common.rs_server_common.data_retrieval.storage import Storage
 
@@ -48,10 +48,10 @@ def station_to_server_url(station: str) -> str | None:
             return stations_data.get(station.upper(), None)
     except (FileNotFoundError, json.JSONDecodeError):
         # logger to be added.
-        return None
+        raise ValueError
 
 
-def init_cadip_data_retriever(cadip_provider: Provider, station: str):
+def init_cadip_data_retriever(station: str):
     """
     Initializes a DataRetriever instance for CADIP data retrieval.
 
@@ -68,9 +68,13 @@ def init_cadip_data_retriever(cadip_provider: Provider, station: str):
     directory are currently placeholders (set to None) and will be implemented with download functionality
     in future updates.
     """
-    if not station_to_server_url(station):
-        raise CreateProviderFailed("Invalid station")
-    provider = cadip_provider(EODAG_CONFIG, station)  # default to eodag, just init here
+    try:
+        if not station_to_server_url(station):
+            raise CreateProviderFailed("Invalid station")
+    except ValueError:
+        raise CreateProviderFailed("Invalid station configuration")
+
+    provider = EodagProvider(EODAG_CONFIG, station)  # default to eodag, just init here
     # WIP, will be implemented with download
     cadip_storage: Storage = None
     cadip_monitor: DownloadMonitor = None
