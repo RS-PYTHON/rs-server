@@ -12,8 +12,11 @@ from eodag import EODataAccessGateway, EOProduct, setup_logging
 from eodag.utils import uri_to_path
 from fastapi import APIRouter, Depends
 
-from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus
-from rs_server.db.session import get_db
+from rs_server.CADIP.models.cadu_download_status import (
+    CaduDownloadStatus,
+    EDownloadStatus,
+)
+from rs_server.db.database import get_db
 from rs_server.s3_storage_handler.s3_storage_handler import (
     PrefectPutFilesToS3Config,
     S3StorageHandler,
@@ -22,7 +25,7 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
-router = APIRouter(tags=["cadu"])
+router = APIRouter(tags=["Cadu products"])
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" / "library"
 

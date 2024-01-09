@@ -1,11 +1,14 @@
 """CADU Product model implementation."""
 
+import enum
+
 from sqlalchemy import Column, DateTime, Enum, Integer, String
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from rs_server.db.session import Base
+from rs_server.db.database import Base
 
 
-class EDownloadStatus(Enum):
+class EDownloadStatus(enum.Enum):
     """
     Download status enumeration.
     """
@@ -32,11 +35,24 @@ class CaduDownloadStatus(Base):
 
     __tablename__ = "cadu_download_status"
 
-    db_id = Column(Integer, primary_key=True, index=True)
-    cadu_id = Column(String, primary_key=True, index=True)
+    db_id = Column(Integer, primary_key=True, index=True, nullable=True)
+    cadu_id = Column(String, unique=True, index=True)
     name = Column(String, unique=True, index=True)
     available_at_station = Column(DateTime)
     download_start = Column(DateTime)
     download_stop = Column(DateTime)
     status: EDownloadStatus = Column(Enum(EDownloadStatus), default=EDownloadStatus.NOT_STARTED)
     status_fail_message = Column(String)
+
+    #######################
+    # DATABASE OPERATIONS #
+    #######################
+
+    @classmethod
+    async def create(cls, db: AsyncSession, **kwargs):
+        """Create entry in database table."""
+        entry = cls(**kwargs)
+        db.add(entry)
+        await db.commit()
+        await db.refresh(entry)
+        return entry

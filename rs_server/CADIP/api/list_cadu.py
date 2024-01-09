@@ -13,7 +13,7 @@ from eodag import EODataAccessGateway, EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
-router = APIRouter(tags=["cadu"])
+router = APIRouter(tags=["Cadu products"])
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" / "library"
 

@@ -1,29 +1,17 @@
 """Test database implementation"""
 
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from datetime import datetime
 
 import pytest
-from fastapi import Depends
 
-import rs_server.db.crud.cadu_product_crud as crud
 from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus
-from rs_server.db.schemas.cadu_product_schema import (
-    CaduProductCreate,
-    CaduProductDownloadDone,
-    CaduProductDownloadFail,
-    CaduProductDownloadStart,
-    CaduProductRead,
-)
-from rs_server.db.session import get_db
-
-# from rs_server.db.startup import main_app
+from rs_server.db.database import get_db
 
 
-# Test all CADU product HTTP operations
-def test_cadu_products(database):
+async def test_cadu_download_status(database):
     """
-    Test CADU products table in database.
+    Test CADU product download status database operations.
 
     :param database: database fixture set in conftest.py
     """
@@ -39,43 +27,23 @@ def test_cadu_products(database):
     DATE4 = datetime(2024, 1, 4)
     DATE5 = datetime(2024, 1, 5)
 
-    # We need a database session when calling HTTP operations outside an HTTP client.
-    # TODO: call instead ?
-    # with TestClient(main_app) as client:
-    #     client.get(...
-    #     client.post(...
-    with contextmanager(get_db)() as db:
-        # Clear table records
-        db.query(CaduDownloadStatus).delete()
-        db.commit()
+    # Open a database connection
+    async with asynccontextmanager(get_db)() as db:
+        # Add two new download status to database
+        created1 = await CaduDownloadStatus.create(db=db, cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1)
+        created2 = await CaduDownloadStatus.create(db=db, cadu_id=cadu_id2, name=NAME2, available_at_station=DATE2)
 
-        # Add two new CADU products to database
-        created1 = crud.create_product(
-            db=db,
-            product=CaduProductCreate(cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1),
-        )
-        created2 = crud.create_product(
-            db=db,
-            product=CaduProductCreate(cadu_id=cadu_id2, name=NAME2, available_at_station=DATE2),
-        )
-
-        # The returned products are Python instances
-        assert isinstance(created1, CaduDownloadStatus)
-        assert isinstance(created2, CaduDownloadStatus)
-
-        # Check the download status is not started by default
-        assert created1.status == CaduDownloadStatus.NOT_STARTED
+        # Check that e auto-incremented database IDs were given
+        assert created1.db_id == 1
+        assert created2.db_id == 2
 
         # Check that creating a new product with the same name will raise an exception.
-        # Do it in a specific database session because it will trigger a rollback and corrupt the old session.
-        with contextmanager(get_db)() as db_exception, pytest.raises(
+        # Do it in a specific database session because the exception will close the session.
+        async with asynccontextmanager(get_db)() as db_exception, pytest.raises(
             Exception,
             match="duplicate key value violates unique constraint",
         ):
-            crud.create_product(
-                db=db_exception,
-                product=CaduProductCreate(cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1),
-            )
+            await CaduDownloadStatus.create(db=db_exception, cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1)
 
         # Get all products from database
         products = crud.get_all_products(db=db)
@@ -124,8 +92,6 @@ def test_cadu_products(database):
         assert created1.status_fail_message == fail_message
 
         bp = 0
-
-    bp = 0
 
 
 # from sqlalchemy.sql import text
