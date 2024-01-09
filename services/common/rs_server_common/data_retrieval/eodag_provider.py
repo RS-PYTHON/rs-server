@@ -1,23 +1,9 @@
 """EODAG Provider."""
-from dataclasses import dataclass
 from pathlib import Path
 
 from eodag import EODataAccessGateway, EOProduct
 
-from services.common.rs_server_common.data_retrieval.provider import (
-    CreateProviderFailed,
-    Product,
-    Provider,
-    TimeRange,
-)
-
-
-@dataclass
-class EodagConfiguration:
-    """Eodag configuration."""
-
-    provider: str
-    file: Path
+from .provider import CreateProviderFailed, Provider, TimeRange
 
 
 class EodagProvider(Provider):
@@ -26,13 +12,14 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    def __init__(self, config: EodagConfiguration):
+    def __init__(self, config_file: Path, provider: str):
         """Create a EODAG provider.
 
         :param config: the eodag configuration
         """
-        self.provider: str = config.provider
-        self.client: EODataAccessGateway = self.init_eodag_client(config.file)
+        self.provider: str = provider
+        self.client: EODataAccessGateway = self.init_eodag_client(config_file)
+        self.client.set_preferred_provider(self.provider)
 
     def init_eodag_client(self, config_file: Path):
         """Initialize the eodag client.
@@ -47,13 +34,35 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
-    def _specific_search(self, between: TimeRange) -> dict[str, Product]:
-        """TODO To be implemented.
-
-        :param between: the time range
-        :return: to be impl
+    def _specific_search(self, between: TimeRange) -> dict[str, EOProduct]:
         """
-        raise NotImplementedError()
+        Conducts a search for products within a specified time range.
+
+        This private method interfaces with the client's search functionality, 
+        retrieving products that fall within the given time range. The 'between' 
+        parameter is expected to be a TimeRange object, encompassing start and end 
+        timestamps. The method returns a dictionary of products keyed by their 
+        respective identifiers.
+
+        Args:
+            between (TimeRange): An object representing the start and end timestamps 
+                                for the search range.
+
+        Returns:
+            dict[str, EOProduct]: A dictionary where keys are product identifiers and 
+                                values are EOProduct instances.
+
+        Note:
+            The time format of the 'between' parameter should be verified or formatted 
+            appropriately before invoking this method. The method also assumes that the 
+            client's search function is correctly set up to handle the provided time 
+            range format.
+
+        Raises:
+            Exception: If the search encounters an error or fails, an exception is raised.
+        """
+        products, _ = self.client.search(start=str(between.start), end=str(between.end), provider=self.provider, raise_errors=True)
+        return products
 
     def download(self, product_id: str, to_file: Path) -> None:
         """Download the expected product at the given local location.
