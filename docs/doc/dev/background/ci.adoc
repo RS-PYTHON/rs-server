@@ -96,7 +96,7 @@ This workflow is run either automatically after adding a git tag to a commit, or
 It builds the documentation using the command :
 [,console,indent=0]
 ----
-include::../../../.github/workflows/generate-documentation.yml[tag=adoc-cmd]
+include::../../../../.github/workflows/generate-documentation.yml[tag=adoc-cmd]
 ----
 
 And then publishes the results to the GitHub Pages: https://rs-python.github.io/rs-server

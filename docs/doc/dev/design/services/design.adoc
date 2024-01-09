@@ -18,7 +18,7 @@ These common elements are provided by the rs-server-common package.
 // TODO the catalog service isn't following these rule since it is reused.
 
 
-=== Sources organisation
+== Sources organisation
 
 NOTE: TODO insert the servie tree structure here
 
@@ -31,7 +31,7 @@ The sources of each layer is separated in a specific package.
 The shared elements are provided by the rs-server-common package.
 It is handled as a python project as if it is a rs-server service.
 
-=== Services
+== Services
 
 :leveloffset: +3
 

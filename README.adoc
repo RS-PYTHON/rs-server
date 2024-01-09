@@ -8,9 +8,9 @@ This repository contains all the python libraries allowing to build Copernicus p
 == Use the rs-server
 
 :leveloffset: +2
-include::docs/users/installation.adoc[]
-include::docs/users/functionalities.adoc[]
-include::docs/users/configuration.adoc[]
+include::docs/doc/users/installation.adoc[]
+include::docs/doc/users/functionalities.adoc[]
+include::docs/doc/users/configuration.adoc[]
 :leveloffset: -2
 
 == Develop the rs-server
@@ -28,7 +28,7 @@ The documentation is organized in 4 sections :
 
 :leveloffset: 3
 
-include::docs/dev/environment/installation.adoc[]
+include::docs/doc/dev/environment/installation.adoc[]
 
 :leveloffset: 0
 
@@ -49,7 +49,7 @@ NOTE: Some other reference guides will be added (api, specific guidelines,...)
 
 :leveloffset: 3
 
-include::docs/dev/code-style.adoc[]
+include::docs/doc/dev/code-style.adoc[]
 
 :leveloffset: 0
 
@@ -57,15 +57,15 @@ include::docs/dev/code-style.adoc[]
 
 :leveloffset: +3
 
-include::docs/dev/background/tree-structure.adoc[]
+include::docs/doc/dev/background/tree-structure.adoc[]
 
-include::docs/dev/environment/description.adoc[]
+include::docs/doc/dev/environment/description.adoc[]
 
-include::docs/dev/background/workflow.adoc[]
+include::docs/doc/dev/background/workflow.adoc[]
 
-include::docs/dev/background/ci.adoc[]
+include::docs/doc/dev/background/ci.adoc[]
 
-include::docs/dev/design/design.adoc[]
+include::docs/doc/dev/design/design.adoc[]
 
 :leveloffset: -3
 
