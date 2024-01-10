@@ -5,10 +5,14 @@ The conftest.py file serves as a means of providing fixtures for an entire direc
 Fixtures defined in a conftest.py can be used by any test in that package without needing to import them
 (pytest will automatically discover them).
 """
+# isort: off
+# Don't automatically open database session. We'll do it in a pytest fixture and check it status.
+import rs_server
+
+rs_server.OPEN_DB_SESSION = False
+# isort: on
 
 import os.path as osp
-import time
-import timeit
 
 import pytest
 import sqlalchemy
@@ -66,9 +70,7 @@ def database(docker_ip, docker_services, docker_compose_file):
 
             return True
 
-        except ConnectionError:
-            return False
-        except sqlalchemy.exc.OperationalError:
+        except (ConnectionError, sqlalchemy.exc.OperationalError):
             return False
 
     # Try to init database until OK

@@ -76,12 +76,6 @@ class DatabaseSessionManager:
 
     @contextlib.contextmanager
     def connect(self) -> Iterator[Connection]:
-        # Open session and create tables on first use.
-        # TODO: do it elsewhere ?
-        # I've followed https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
-        # but it doesn't say how to open session from running the uvicorn app.
-        self.open_session()
-
         if self._engine is None:
             raise Exception("DatabaseSessionManager is not initialized")
 
@@ -94,12 +88,6 @@ class DatabaseSessionManager:
 
     @contextlib.contextmanager
     def session(self) -> Iterator[Session]:
-        # Open session and create tables on first use.
-        # TODO: do it elsewhere ?
-        # I've followed https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
-        # but it doesn't say how to open session from running the uvicorn app.
-        self.open_session()
-
         if self._sessionmaker is None:
             raise Exception("DatabaseSessionManager is not initialized")
 

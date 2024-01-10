@@ -12,9 +12,11 @@ from eodag import setup_logging
 from eodag.utils import uri_to_path
 from fastapi import APIRouter, Depends
 
-from rs_server.db.models.cadu_product_model import CaduProduct
-from rs_server.db.models.download_status import DownloadStatus
-from rs_server.db.session import get_db
+from rs_server.CADIP.models.cadu_download_status import (
+    CaduDownloadStatus,
+    EDownloadStatus,
+)
+from rs_server.db.database import get_db
 from rs_server.s3_storage_handler.s3_storage_handler import (
     PrefectPutFilesToS3Config,
     S3StorageHandler,
@@ -22,45 +24,40 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
 )
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.eodag_provider import EodagProvider
+from sqlalchemy.exc import NoResultFound
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
-router = APIRouter()
+router = APIRouter(tags=["Cadu products"])
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
 
 
 def update_db(db, product, status, status_fail_message=None):
-    """Update the database with the status of a product.
+    """Update the database with the status of a product."""
 
-    This function performs a fake update of the 'dwn_status' table with the provided
-    product status information. It updates the status, status_fail_message, and timestamps
-    based on the specified status. If the status is 'IN_PROGRESS', it sets the downlink_start
-    timestamp; if the status is 'DONE', it sets the downlink_stop timestamp.
+    # Try n times to update the status.
+    # TODO: we should handle this better, e.g. if IN_PROGRESS fails, we wait n seconds.
+    # then DONE works, but then IN_PROGRESS tries again and works; then the final status 
+    # will be set to IN_PROGRESS instead of DONE.
 
-    Args:
-        db (Database): The database connection object.
-        product (Product): The product to be updated in the database.
-        status (DownloadStatus): The new status of the product.
-        status_fail_message (str, optional): The failure message associated with the status.
+    for _ in range(3):
+        try:
+            if status == EDownloadStatus.NOT_STARTED:
+                product.not_started(db)
+            elif status == EDownloadStatus.IN_PROGRESS:
+                product.in_progress(db)
+            elif status == EDownloadStatus.FAILED:
+                product.failed(db, status_fail_message)
+            elif status == EDownloadStatus.DONE:
+                product.done(db, status_fail_message)
+        except Exception as exception:
+            pass
 
-    Returns:
-        None
+    # If all attemps failed, raise the last Exception
+    raise exception
 
-    Raises:
-        None
-    """
-
-    product.status = status
-    product.status_fail_message = status_fail_message
-    if status == DownloadStatus.IN_PROGRESS:
-        product.downlink_start = datetime.now()
-    if status == DownloadStatus.DONE:
-        product.downlink_stop = datetime.now()
-    db.commit()
-
-
-def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", secrets={}):
+def start_eodag_download(station, db_id, cadu_id, name, local, obs: str = "", secrets={}):
     """Start an EODAG download process for a specified product.
 
     This function initiates a download process using EODAG to retrieve a product with the given
@@ -69,7 +66,7 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
     Args:
         station (str): The EODAG station identifier.
         db_id (int): The database identifier of the product.
-        file_id (str): The file identifier of the product.
+        cadu_id (str): The CADU identifier of the product.
         name (str): The name of the product.
         local (str): The local path where the product will be downloaded.
         obs (str, optional): The observation identifier associated with the product.
@@ -104,7 +101,7 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
 
             thread_started.set()
             init = datetime.now()
-            data_retriever.download(file_id, name)
+            data_retriever.download(cadu_id, name)
             end = datetime.now()
             print(
                 "%s : %s : %s: Downloaded file: %s   in %s",
@@ -142,16 +139,16 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
 
 
 @router.get("/cadip/{station}/cadu")
-def download(station: str, file_id: str, name: str, local: str = "", obs: str = "", db=Depends(get_db)):
+def download(station: str, cadu_id: str, name: str, local: str = "", obs: str = "", db=Depends(get_db)):
     """Initiate an asynchronous download process for a CADU product using EODAG.
 
-    This endpoint triggers the download of a CADU product identified by the given file_id,
+    This endpoint triggers the download of a CADU product identified by the given cadu_id,
     name, and observation identifier. It starts the download process in a separate thread
     using the start_eodag_download function and updates the product's status in the database.
 
     Args:
         station (str): The EODAG station identifier.
-        file_id (str): The file identifier of the CADU product.
+        cadu_id (str): The CADU product identifier.
         name (str): The name of the CADU product.
         local (str, optional): The local path where the CADU product will be downloaded.
         obs (str, optional): The observation identifier associated with the CADU product.
@@ -163,20 +160,17 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
     Raises:
         None
     """
+    
+    try:
+        # Does the product download status already exist in database ?
+        product = CaduDownloadStatus.get(db, cadu_id, name)
 
-    # Does the product download status already exist in database ? Filter on the EOP ID.
-    query = db.query(CaduProduct).where(CaduProduct.file_id == file_id)
-    if query.count():
-        # Get the existing product and overwrite the download status.
-        # TODO: should we keep download history in a distinct table and init a new download entry ?
-        product = query.first()
-        update_db(db, product, DownloadStatus.NOT_STARTED)
+        # Update status to not started
+        update_db (db, product, EDownloadStatus.NOT_STARTED)
 
     # Else init a new entry from the input arguments
-    else:
-        product = CaduProduct(file_id=file_id, name=name, status=DownloadStatus.NOT_STARTED)
-        db.add(product)
-        db.commit()
+    except NoResultFound:
+        product = CaduDownloadStatus.create(db, cadu_id=cadu_id, name=name, status=EDownloadStatus.NOT_STARTED)
 
     # start a thread to run the action in background
     print(
@@ -199,7 +193,7 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
         args=(
             station,
             product.id,
-            file_id,
+            cadu_id,
             name,
             local,
             obs,
