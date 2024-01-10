@@ -7,9 +7,9 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from threading import Event
+import time
 
 from eodag import setup_logging
-from eodag.utils import uri_to_path
 from fastapi import APIRouter, Depends
 
 from rs_server.db.models.cadu_product_model import CaduProduct
@@ -21,14 +21,15 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
     prefect_put_files_to_s3,
 )
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
-from services.common.rs_server_common.data_retrieval.eodag_provider import EodagProvider
+from rs_server_common.utils.logging import Logging
 
 DWN_THREAD_START_TIMEOUT = 1.8
-thread_started = Event()
+tt = 0
 router = APIRouter()
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
 
+logger = Logging.default(__name__)
 
 def update_db(db, product, status, status_fail_message=None):
     """Update the database with the status of a product.
@@ -60,7 +61,7 @@ def update_db(db, product, status, status_fail_message=None):
     db.commit()
 
 
-def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", secrets={}):
+def start_eodag_download(thread_started, station, db_id, file_id, name, local, obs: str = "", secrets={}):
     """Start an EODAG download process for a specified product.
 
     This function initiates a download process using EODAG to retrieve a product with the given
@@ -85,13 +86,14 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
     # main thread does not seem to be working in sub-thread (was it closed ?)
     status = DownloadStatus.FAILED
     with contextmanager(get_db)() as db:
+        global tt
         # Get the product download status from database. It was created before running this thread.
         # TODO: should we recreate it if it was deleted for any reason ?
         product = db.query(CaduProduct).where(CaduProduct.id == db_id).first()
 
         # init eodag object
         try:
-            print("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
+            logger.debug("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
             # config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
 
             setup_logging(3, no_progress_bar=True)
@@ -101,13 +103,17 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
                 local = "/tmp"
 
             data_retriever = init_cadip_data_retriever(station, None, None, Path(local))
-
+            """
+            tt += 1
+            if tt > 3:
+                return
+            """
             thread_started.set()
             init = datetime.now()
             data_retriever.download(file_id, name)
             end = datetime.now()
-            print(
-                "%s : %s : %s: Downloaded file: %s   in %s",
+            logger.info(
+                "%s : %s : %s: File: %s downloaded in %s",
                 os.getpid(),
                 threading.get_ident(),
                 end,
@@ -115,7 +121,7 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
                 end - init,
             )
         except Exception as e:
-            print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
+            logger.error("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
             update_db(db, product, status)
             return
 
@@ -134,9 +140,12 @@ def start_eodag_download(station, db_id, file_id, name, local, obs: str = "", se
                 asyncio.run(prefect_put_files_to_s3.fn(s3_config))
                 status = DownloadStatus.DONE
             except RuntimeError:
-                print("Could not connect to the s3 storage")
+                logger.error("Could not connect to the s3 storage")
             finally:
                 os.remove(data_retriever.filename)
+        else:
+            status = DownloadStatus.DONE
+            #time.sleep(8)
 
         update_db(db, product, status)
 
@@ -179,7 +188,7 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
         db.commit()
 
     # start a thread to run the action in background
-    print(
+    logger.debug(
         "%s : %s : %s: MAIN THREAD: Starting thread, local = %s",
         os.getpid(),
         threading.get_ident(),
@@ -193,10 +202,11 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
         "secretkey": None,
     }
     S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
-    thread_started.clear()
+    thread_started = Event()
     thread = threading.Thread(
         target=start_eodag_download,
         args=(
+            thread_started,
             station,
             product.id,
             file_id,
@@ -211,7 +221,7 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
     # check the start of the thread
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
         thread_started.clear()
-        print("Download thread did not start !")
+        logger.error("Download thread did not start !")
         # update the status in database
         update_db(db, product, DownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
