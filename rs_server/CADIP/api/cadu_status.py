@@ -57,8 +57,6 @@ def get_status(station: str, file_id: str, name: str, db=Depends(get_db)):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="invalid input parameters")
     
     if query.count():
-        # Get the existing product and overwrite the download status.
-        # TODO: should we keep download history in a distinct table and init a new download entry ?
         product = query.first()     
         logger.debug("GET_STATUS: %s | Returning: %s ", product, dwn_status_to_string[product.status])   
         return JSONResponse(status_code=status.HTTP_200_OK, content = dwn_status_to_string[product.status])
