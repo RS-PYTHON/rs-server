@@ -9,8 +9,8 @@ from rs_server_common.data_retrieval.provider import (
     TimeRange,
 )
 
-from tests.data_retrieval.provider.conftest import a_product
-from tests.data_retrieval.provider.fake_provider import FakeProvider
+from .conftest import a_product
+from .fake_provider import FakeProvider
 
 
 class TestAFakeProvider:

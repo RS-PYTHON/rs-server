@@ -7,10 +7,9 @@ from rs_server_common.data_retrieval.data_retriever import DataRetriever
 from rs_server_common.data_retrieval.download_monitor import DownloadStatus
 from rs_server_common.data_retrieval.provider import DownloadProductFailed, Product
 
-from tests.data_retrieval.provider.fake_provider import FakeProvider
-from tests.data_retrieval.storage.fake_storage import FakeStorage, NotLogged
-
 from .download_monitor.fake_download_monitor import FakeDownloadMonitor
+from .provider.fake_provider import FakeProvider
+from .storage.fake_storage import FakeStorage, NotLogged
 
 
 @pytest.fixture
