@@ -60,7 +60,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     if is_valid_format(start_date) and is_valid_format(stop_date):
         # Init dataretriever / get products / return
         try:
-            data_retriever = init_cadip_data_retriever(station)
+            data_retriever = init_cadip_data_retriever(station, None, None, None)
             products = data_retriever.search(start_date, stop_date)
             return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
         except CreateProviderFailed:
