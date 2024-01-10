@@ -41,5 +41,5 @@ class TestAProviderSearch:
         # TODO parameterize for EodagProvider and FakeProvider
         provider = FakeProvider([a_product("1"), a_product("2")])
         with pytest.raises(SearchProductFailed) as exc_info:
-            provider.search(TimeRange(end, start))
+            provider.search(TimeRange(end, start))  # pylint: disable=arguments-out-of-order
         assert str(exc_info.value) == f"Search timerange is inverted : ({end} -> {start})"

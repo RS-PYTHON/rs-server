@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from rs_server_common.data_retrieval.storage import Storage
 
-from tests.data_retrieval.storage.fake_storage import (
+from .fake_storage import (
     AlreadyLogin,
     AlreadyLogout,
     FakeStorage,
