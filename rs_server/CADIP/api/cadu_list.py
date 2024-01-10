@@ -3,19 +3,19 @@
 This module provides functionality to retrieve a list of products from the CADU system for a specified station.
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
-import json
-import os.path as osp
 from datetime import datetime
-from pathlib import Path
 from typing import List
 
-from eodag import EODataAccessGateway, EOProduct
+from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
-router = APIRouter(tags=["Cadu products"])
+from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
+from services.common.rs_server_common.data_retrieval.provider import (
+    CreateProviderFailed,
+)
 
-CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "CADIP" / "library"
+router = APIRouter(tags=["Cadu products"])
 
 
 @router.get("/cadip/{station}/cadu/list")
@@ -57,79 +57,15 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     - The response includes a JSON representation of the list of products for the specified station.
     - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
-    if not station_to_server_url(station):
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
     if is_valid_format(start_date) and is_valid_format(stop_date):
-        # prepare start_stop
-        dag_client = init_eodag(station)
-        products, number = dag_client.search(start=start_date, end=stop_date, provider=station)
-        return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
+        # Init dataretriever / get products / return
+        try:
+            data_retriever = init_cadip_data_retriever(station, None, None, None)
+            products = data_retriever.search(start_date, stop_date)
+            return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
+        except CreateProviderFailed:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
     return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
-
-
-def station_to_server_url(station: str) -> str | None:
-    """Retrieve the configuration data (webserver address) for a CADU station based on its identifier.
-
-    Parameters
-    ----------
-    station : str
-        Identifier for the CADU station.
-
-    Returns
-    -------
-    str or None
-        A str containing the webserver address for the specified station,
-        or None if the station identifier is not found.
-
-    Example
-    -------
-    >>> station_to_server_url("station123")
-    'https://station123.example.com'
-
-    Notes
-    -----
-    - The station identifier is case-insensitive and is converted to uppercase for matching.
-    - The function reads the station configuration data from a JSON file.
-    - If the station identifier is not found in the configuration data, the function returns None.
-    """
-    try:
-        with open(CONF_FOLDER / "stations_cfg.json") as jfile:
-            stations_data = json.load(jfile)
-            return stations_data.get(station.upper(), None)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        # logger to be added.
-        raise FileNotFoundError(f"Error reading JSON file: {e}")
-
-
-def init_eodag(station: str) -> EODataAccessGateway:
-    """Initialize an instance of the EODataAccessGateway for a specified CADU station.
-
-    Parameters
-    ----------
-    station : str
-        Identifier for the CADU station.
-
-    Returns
-    -------
-    EODataAccessGateway
-        An instance of the EODataAccessGateway configured for the specified station.
-
-    Example
-    -------
-    >>> cadu_instance = init_eodag("station123")
-    >>> isinstance(cadu_instance, EODataAccessGateway)
-    True
-
-    Notes
-    -----
-    - The function initializes an EODataAccessGateway instance using a configuration file.
-    - The CADU station is set as the preferred provider for the EODataAccessGateway.
-    - The returned instance is ready to be used for searching and accessing Earth observation data.
-    """
-    config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
-    eodag = EODataAccessGateway(config_file_path.as_posix())
-    eodag.set_preferred_provider(station)
-    return eodag
 
 
 def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:

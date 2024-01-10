@@ -25,9 +25,10 @@ boto3 = "==1.28.85"
 botocore = "==1.31.85"
 prefect = "^2.14.11"
 sqlalchemy = "^2.0.25"
+eodag = "^2.11.0"
+prefect-dask = "^0.2.6"
 pydantic = ">=2.0.0"
 markdown = "^3.5.1"
-eodag = "^2.11.0"
 python-dotenv = "^1.0.0"
 psycopg2 = "^2.9.9"
 
@@ -89,3 +90,6 @@ max-line-length = 120
 
 [tool.pylint.messages_control]
 max-line-length=120
+
+[tool.pylint.MISCELLANEOUS]
+notes = ["XXX"] # no errors on TODO and FIXME

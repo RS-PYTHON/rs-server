@@ -1,24 +1,18 @@
 """Common fixtures for provider tests."""
-from datetime import datetime
+
+from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
-from rs_server_common.data_retrieval.eodag_provider import EodagConfiguration
 from rs_server_common.data_retrieval.provider import Product
 
 
-@pytest.fixture(scope="session")
-def start() -> datetime:
-    return datetime(2022, 1, 1)
+@dataclass
+class EodagConfiguration:
+    """Eodag configuration - For test purpose only"""
 
-
-@pytest.fixture(scope="session")
-def end() -> datetime:
-    return datetime(2022, 2, 2)
-
-
-@pytest.fixture(scope="session")
-def in_the_future() -> datetime:
-    return datetime(2222, 1, 1)
+    provider: str
+    file: Path
 
 
 def a_product(with_id: str) -> Product:

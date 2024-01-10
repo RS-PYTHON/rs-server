@@ -50,7 +50,7 @@ class Provider(ABC):
     and download them locally.
     """
 
-    def search(self, between: TimeRange) -> dict[str, Product]:
+    def search(self, between: TimeRange) -> list[Product]:
         """Search for products with the given time range.
 
         The search result is a dictionary of products found indexed by id.
@@ -59,13 +59,13 @@ class Provider(ABC):
         :return: the files found indexed by file id.
         """
         if between.duration() == timedelta(0):
-            return {}
+            return []
         if between.duration() < timedelta(0):
             raise SearchProductFailed(f"Search timerange is inverted : ({between.start} -> {between.end})")
         return self._specific_search(between)
 
     @abstractmethod
-    def _specific_search(self, between: TimeRange) -> dict[str, Product]:
+    def _specific_search(self, between: TimeRange) -> list[Product]:
         """Search for products with the given time range.
 
         Specific search for products after common verification.
