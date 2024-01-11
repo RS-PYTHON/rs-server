@@ -10,7 +10,6 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from rs_server.CADIP.cadip_backend import app
-from rs_server.db.session import get_db
 
 
 def create_rs_dwn_cadu(station: str, id: str, name: str, local: str):  # noqa: D417
