@@ -1,3 +1,5 @@
+"""CADU status HTTP endpoints."""
+
 from datetime import datetime
 
 from fastapi import APIRouter, Depends

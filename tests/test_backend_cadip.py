@@ -36,18 +36,18 @@ async def start_download(station, files_info, local_path, obs, idx):
         obs = ""
 
     logger.info("Task {} start time: {}".format(idx, datetime.now()))
-    for file_id, filename in files_info.items():
+    for cadu_id, filename in files_info.items():
         if len(obs) == 0:
-            payload = {"file_id": file_id, "name": filename, "local": local_path}
+            payload = {"cadu_id": cadu_id, "name": filename, "local": local_path}
         else:
-            payload = {"file_id": file_id, "name": filename, "obs": obs}
+            payload = {"cadu_id": cadu_id, "name": filename, "obs": obs}
         logger.info("Task {}: payload: {}".format(idx, payload))
         response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu".format(station), params=payload)
         logger.info("Task {}: Url: {}".format(idx, response.url))
         logger.info("Task {}: Response got: {}".format(idx, response.json()))
         # TODO ! Get download status from the server !!
         #
-        payload = {"file_id": file_id, "name": filename}
+        payload = {"cadu_id": cadu_id, "name": filename}
         response = ""
         timeout = 10
         while response != "done" and timeout > 0:

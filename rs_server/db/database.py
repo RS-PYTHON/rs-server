@@ -30,7 +30,9 @@ class DatabaseSessionManager:
 
     @classmethod
     def url(cls):
+        """Get database connection URL."""
         try:
+            # pylint: disable=consider-using-f-string
             return os.getenv(
                 "POSTGRES_URL",
                 "postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}".format(
@@ -48,6 +50,8 @@ class DatabaseSessionManager:
             ) from key_error
 
     def open_session(self, host: str = None):
+        """Open database session."""
+
         with self.lock:
             if (self._engine is None) or (self._sessionmaker is None):
                 self._engine = create_engine(host or self.url(), poolclass=NullPool)
@@ -56,10 +60,11 @@ class DatabaseSessionManager:
                 try:
                     # Create all tables.
                     # First we make sure that we've imported all our model modules.
+                    # pylint: disable=unused-import, import-outside-toplevel
+                    # noqa: F401
                     import rs_server.CADIP.models.cadu_download_status
 
-                    with self._engine.begin() as connection:
-                        self.create_all(connection)
+                    self.create_all()
 
                 # It fails if the database is unreachable, but even in this case the engine and session are not None.
                 # Set them to None so we will try to create all tables again on the next try.
@@ -68,49 +73,65 @@ class DatabaseSessionManager:
                     raise
 
     def close(self):
-        if self._engine is None:
-            raise Exception("DatabaseSessionManager is not initialized")
-        self._engine.dispose()
-        self._engine = None
+        """Close database session."""
+        if self._engine is not None:
+            self._engine.dispose()
+            self._engine = None
         self._sessionmaker = None
 
     @contextlib.contextmanager
     def connect(self) -> Iterator[Connection]:
+        """Open new database connection instance."""
+
         if self._engine is None:
-            raise Exception("DatabaseSessionManager is not initialized")
+            raise RuntimeError("DatabaseSessionManager is not initialized")
 
         with self._engine.begin() as connection:
             try:
                 yield connection
-            except Exception:
-                connection.rollback()
-                raise
+
+            # In case of any exception, rollback connection and re-raise into HTTP exception
+            except Exception as exception:  # pylint: disable=broad-exception-caught
+                try:
+                    connection.rollback()
+                finally:
+                    pass
+                self.reraise_http_exception(exception)
 
     @contextlib.contextmanager
     def session(self) -> Iterator[Session]:
+        """Open new database session instance."""
+
         if self._sessionmaker is None:
-            raise Exception("DatabaseSessionManager is not initialized")
+            raise RuntimeError("DatabaseSessionManager is not initialized")
 
         session = self._sessionmaker()
         try:
             yield session
-        except Exception as exception:
+
+        # In case of any exception, rollback session and re-raise into HTTP exception
+        except Exception as exception:  # pylint: disable=broad-exception-caught
             try:
                 session.rollback()
             finally:
                 pass
             self.reraise_http_exception(exception)
+
+        # Close session when deleting instance.
         finally:
             session.close()
 
-    def create_all(self, connection: Connection):
+    def create_all(self):
+        """Create all database tables."""
         Base.metadata.create_all(bind=self._engine)
 
-    def drop_all(self, connection: Connection):
+    def drop_all(self):
+        """Drop all database tables."""
         Base.metadata.drop_all(bind=self._engine)
 
     @classmethod
     def reraise_http_exception(cls, exception: Exception):
+        """Re-raise all exceptions into HTTP exceptions."""
         if isinstance(exception, StarletteHTTPException):
             raise exception
         raise HTTPException(status_code=400, detail=repr(exception))
@@ -120,10 +141,13 @@ sessionmanager = DatabaseSessionManager()
 
 
 def get_db():
+    """Return a database session for FastAPI dependency injection."""
     try:
         with sessionmanager.session() as session:
             yield session
-    except Exception as exception:
+
+    # Re-raise all exceptions into HTTP exceptions
+    except Exception as exception:  # pylint: disable=broad-exception-caught
         DatabaseSessionManager.reraise_http_exception(exception)
 
 

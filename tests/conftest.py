@@ -5,6 +5,10 @@ The conftest.py file serves as a means of providing fixtures for an entire direc
 Fixtures defined in a conftest.py can be used by any test in that package without needing to import them
 (pytest will automatically discover them).
 """
+
+# pylint: disable=wrong-import-position, wrong-import-order
+# flake8: noqa
+
 # isort: off
 # First thing: don't automatically open database session.
 # We'll do it in a pytest fixture and check it status.
@@ -43,14 +47,14 @@ def read_cli(request):
         Logging.level = option.upper()
 
 
-@pytest.fixture(scope="session")
-def docker_compose_file(pytestconfig):
+@pytest.fixture(scope="session", name="docker_compose_file")
+def docker_compose_file_(pytestconfig):
     """Return the path to the docker-compose.yml file to run before tests."""
     return osp.join(str(pytestconfig.rootdir), "tests", "resources", "db", "docker-compose.yml")
 
 
 @pytest.fixture(scope="session")
-def database(docker_ip, docker_services, docker_compose_file):
+def database(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
     """
     Init database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
@@ -75,9 +79,8 @@ def database(docker_ip, docker_services, docker_compose_file):
             sessionmanager.open_session()
 
             # Drop/create all database tables
-            with sessionmanager.connect() as connection:
-                sessionmanager.drop_all(connection)
-                sessionmanager.create_all(connection)
+            sessionmanager.drop_all()
+            sessionmanager.create_all()
 
             return True
 

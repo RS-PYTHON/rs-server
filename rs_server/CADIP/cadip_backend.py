@@ -10,16 +10,25 @@ from rs_server.db.database import sessionmanager
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
+    """Automatically executed when starting and stopping the FastAPI server."""
+
+    ############
+    # STARTING #
+    ############
+
     # Open database session
     if OPEN_DB_SESSION:
         sessionmanager.open_session()
 
     yield
 
-    # Close database session when the FastAPI server closes.
-    if sessionmanager._engine is not None:
-        await sessionmanager.close()
+    ############
+    # STOPPING #
+    ############
+
+    # Close database session
+    await sessionmanager.close()
 
 
 app = FastAPI(title="RS FastAPI server", lifespan=lifespan)

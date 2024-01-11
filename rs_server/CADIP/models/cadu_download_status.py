@@ -8,7 +8,6 @@ from threading import Lock
 
 from fastapi import HTTPException
 from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 
 from rs_server.db.database import Base
@@ -51,11 +50,13 @@ class CaduDownloadStatus(Base):
     status_fail_message = Column(String)
 
     def __init__(self, *args, **kwargs):
+        """Invoked when creating a new record in the database table."""
         super().__init__(*args, **kwargs)
         self.lock = Lock()
 
     @orm.reconstructor
     def init_on_load(self):
+        """Invoked when retrieving an existing record from the database table."""
         self.lock = Lock()
 
     def not_started(self, db: Session):
@@ -101,7 +102,7 @@ class CaduDownloadStatus(Base):
     #######################
 
     @classmethod
-    def get_all(cls, db: Session, **kwargs) -> list[CaduDownloadStatus]:
+    def get_all(cls, db: Session) -> list[CaduDownloadStatus]:
         """Get all entries in database table."""
         return db.query(cls).all()
 
@@ -115,7 +116,7 @@ class CaduDownloadStatus(Base):
             return query.first()
 
         # Else raise and Exception if asked
-        elif raise_if_missing:
+        if raise_if_missing:
             raise HTTPException(
                 status_code=404,
                 detail=f"No {cls.__name__} entry found for cadu_id={cadu_id!r} or name={name!r}",

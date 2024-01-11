@@ -118,7 +118,7 @@ def start_eodag_download(station, cadu_id, name, local, obs: str = "", secrets={
                 end - init,
             )
         except Exception as exception:
-            print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
+            print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), exception)
             update_db(db, status, EDownloadStatus.FAILED, repr(exception))
             return
 
