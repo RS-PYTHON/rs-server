@@ -12,18 +12,22 @@ import requests
 from prefect import exceptions, flow, get_run_logger, task
 from prefect_dask.task_runners import DaskTaskRunner
 
+from rs_server.CADIP.models.cadu_download_status import EDownloadStatus
+
 SET_PREFECT_LOGGING_LEVEL = "DEBUG"
 global gen_logger
+
 
 def dictionary_files(data, size_of_chunk=10):
     it = iter(data)
     for i in range(0, len(data), size_of_chunk):
         yield {k: data[k] for k in islice(it, size_of_chunk)}
 
+
 class CADIPProduct:
     def __init__(self, file_info):
-        self.file_id, self.filename, self.publication_date = file_info
-        
+        self.cadu_id, self.filename, self.publication_date = file_info
+
 
 @task
 async def start_download(station, files_info, local_path, obs, idx):
@@ -38,35 +42,45 @@ async def start_download(station, files_info, local_path, obs, idx):
     if obs is None:
         obs = ""
     logger.info("List with files found in CADIP station = {}\n\n".format(files_info))
-    #logger.info("Task {} start time: {}".format(idx, datetime.now()))
+    # logger.info("Task {} start time: {}".format(idx, datetime.now()))
     for cadu_product in files_info:
         if len(obs) == 0:
-            payload = {"file_id": cadu_product.file_id, 
-                       "name": cadu_product.filename, 
-                       "publication_date": cadu_product.publication_date, 
-                       "local": local_path}
+            payload = {
+                "cadu_id": cadu_product.cadu_id,
+                "name": cadu_product.filename,
+                "publication_date": cadu_product.publication_date,
+                "local": local_path,
+            }
         else:
-            payload = {"file_id": cadu_product.file_id, 
-                       "name": cadu_product.filename, 
-                       "publication_date": cadu_product.publication_date,
-                       "obs": obs}
-        #logger.info("Task {}: payload: {}".format(idx, payload))
+            payload = {
+                "cadu_id": cadu_product.cadu_id,
+                "name": cadu_product.filename,
+                "publication_date": cadu_product.publication_date,
+                "obs": obs,
+            }
+        # logger.info("Task {}: payload: {}".format(idx, payload))
         response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu".format(station), params=payload)
-        #logger.info("Task {}: Url: {}".format(idx, response.url))
-        #logger.info("Task {}: Download endpoint response: {}".format(idx, response.json()))        
-        payload = {"file_id": cadu_product.file_id, "name": cadu_product.filename}
-        response = ""
+        # logger.info("Task {}: Url: {}".format(idx, response.url))
+        # logger.info("Task {}: Download endpoint response: {}".format(idx, response.json()))
+        payload = {"cadu_id": cadu_product.cadu_id, "name": cadu_product.filename}
+        status = None
         # just for demo, the timeout should be otherwise defined by config
         timeout = 90
-        while (response != "done" and response != "failed") and timeout > 0:
-            response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu/status".format(station), params=payload).text.strip("\"")
-            logger.info("Task %s: The download progress for file %s is %s", idx, cadu_product.filename, response)   
+        while (status != EDownloadStatus.DONE and response != EDownloadStatus.FAILED) and timeout > 0:
+            response = requests.get(
+                "http://127.0.0.1:8000/cadip/{}/cadu/status".format(station),
+                params=payload,
+            ).json()
+
+            status = EDownloadStatus(response["status"])
+
+            logger.info("Task %s: The download progress for file %s is %s", idx, cadu_product.filename, status.name)
             time.sleep(1)
-            timeout -= 1                              
-        
-        if response == "done":
+            timeout -= 1
+
+        if status == EDownloadStatus.DONE:
             logger.info("File %s has been properly downloaded...\n", cadu_product.filename)
-        elif response == "failed":
+        elif status == EDownloadStatus.FAILED:
             logger.info("Error in downloading the file %s...\n", cadu_product.filename)
         elif timeout <= 0:
             logger.error(
@@ -178,7 +192,7 @@ if __name__ == "__main__":
     payload = {"start_date": args.start_date, "stop_date": args.stop_date}
     response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu/list".format(args.station), params=payload)
     data = eval(response.content.decode())
-    #logger.debug("data = {}".format(data))
+    # logger.debug("data = {}".format(data))
     files = []
     for file_info in data["{}".format(args.station)]:
         files.append(CADIPProduct(file_info))
@@ -186,7 +200,7 @@ if __name__ == "__main__":
 
     if args.max_tasks <= 1:
         asyncio.run(start_download.fn(args.station, files, args.location, args.s3_storage, 0))
-        #logger.debug("start_download finished")
+        # logger.debug("start_download finished")
     else:
         dwn_flow = download_flow(args.station, files, args.location, args.s3_storage)
 

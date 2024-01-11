@@ -1,15 +1,15 @@
 """Docstring to be added."""
-import pytest
-import responses
-import os
 import filecmp
+import os
 import pdb
 import time
+
+import pytest
+import responses
 from fastapi import status
 from fastapi.testclient import TestClient
 
 from rs_server.CADIP.cadip_backend import app
-
 from rs_server.db.session import get_db
 
 
@@ -33,11 +33,13 @@ def create_rs_dwn_cadu(station: str, id: str, name: str, local: str):  # noqa: D
     return f"{rs_url}?id={id}&name={name}&local={local}"
 
 
-'''
-TC-001 : User1 sends a CURL request to a CADIP backend Server on 
-URL /cadip/{station}/cadu?name=”xxx”&local="pathXXXX". He receives a download start status. 
+"""
+TC-001 : User1 sends a CURL request to a CADIP backend Server on
+URL /cadip/{station}/cadu?name=”xxx”&local="pathXXXX". He receives a download start status.
 The download continues in background. After few minutes, the file is stored on the local disk.'
-'''
+"""
+
+
 @pytest.mark.unit
 @responses.activate
 def test_valid_endpoint_request(database):
@@ -49,19 +51,15 @@ def test_valid_endpoint_request(database):
     """
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files(2b17b57d-fff4-4645-b539-91f305c27c65)/$value',                
+        "http://127.0.0.1:5000/Files(2b17b57d-fff4-4645-b539-91f305c27c65)/$value",
         body="some byte-array data",
         status=200,
     )
-    
-    #download_dir = os.path.dirname(os.path.realpath(__file__))
+
+    # download_dir = os.path.dirname(os.path.realpath(__file__))
     download_dir = "/tmp"
     download_file = "CADIP_test_file_eodag.raw"
-    endpoint = create_rs_dwn_cadu( \
-        "CADIP", \
-        "2b17b57d-fff4-4645-b539-91f305c27c65", \
-            download_file, \
-            download_dir)
+    endpoint = create_rs_dwn_cadu("CADIP", "2b17b57d-fff4-4645-b539-91f305c27c65", download_file, download_dir)
 
     client = TestClient(app)
     # send request
@@ -76,4 +74,3 @@ def test_valid_endpoint_request(database):
     )
     # clean downloaded file
     os.remove(os.path.join(download_dir, download_file))
-

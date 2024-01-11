@@ -9,12 +9,13 @@ from typing import List
 from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Cadu products"])
 
 
 @router.get("/cadip/{station}/cadu/list")

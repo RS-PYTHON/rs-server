@@ -24,9 +24,9 @@ fastapi = "^0.108.0"
 boto3 = "==1.28.85"
 botocore = "==1.31.85"
 prefect = "^2.14.11"
+sqlalchemy = "^2.0.25"
 eodag = "^2.11.0"
 prefect-dask = "^0.2.6"
-sqlalchemy = "<2.0.0"
 pydantic = ">=2.0.0"
 markdown = "^3.5.1"
 python-dotenv = "^1.0.0"
@@ -74,6 +74,7 @@ markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
+asyncio_mode = "auto"
 
 [tool.mypy]
 warn_redundant_casts = true
@@ -91,4 +92,4 @@ max-line-length = 120
 max-line-length=120
 
 [tool.pylint.MISCELLANEOUS]
-notes = ["XXX"]  # no errors on TODO and FIXME
+notes = ["XXX"] # no errors on TODO and FIXME

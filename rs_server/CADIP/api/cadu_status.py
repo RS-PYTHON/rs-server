@@ -1,65 +1,61 @@
-"""Docstring will be here."""
-import os.path as osp
-from pathlib import Path
-from threading import Event
+"""CADU status HTTP endpoints."""
+
+from datetime import datetime
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy.orm import Session
+
+from rs_server.CADIP.models.cadu_download_status import (
+    CaduDownloadStatus,
+    EDownloadStatus,
+)
+from rs_server.db.database import get_db
+
+router = APIRouter(tags=["Cadu products"])
+
+####################
+# DATABASE SCHEMAS #
+####################
 
 
-from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
-
-from rs_server.db.models.cadu_product_model import CaduProduct
-from rs_server.db.models.download_status import DownloadStatus
-from rs_server.db.session import get_db
-
-from rs_server_common.utils.logging import Logging
-
-DWN_THREAD_START_TIMEOUT = 1.8
-thread_started = Event()
-router = APIRouter()
-
-CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
-
-logger = Logging.default(__name__)
- 
-dwn_status_to_string = {DownloadStatus.NOT_STARTED: "not_started",
-                         DownloadStatus.IN_PROGRESS: "in_progress",
-                         DownloadStatus.FAILED: "failed",
-                         DownloadStatus.DONE: "done",} 
-
-
-@router.get("/cadip/{station}/cadu/status")
-def get_status(station: str, file_id: str, name: str, db=Depends(get_db)):    
-    """Retrieve the download status of a CADU product.
-
-    This endpoint retrieves and returns the download status of a CADU product identified by either
-    the file_id or the name. It checks the database for the product's status and responds with the
-    corresponding status string.
-
-    Args:
-        station (str): The EODAG station identifier.
-        file_id (str): The file identifier of the CADU product.
-        name (str): The name of the CADU product.
-        db (Database): The database connection object.
-
-    Returns:
-        JSONResponse: A JSON response containing the download status of the CADU product.
-
-    Raises:
-        JSONResponse: A JSON response with a 400 status code if the input parameters are invalid or
-                      if the product is not found in the database.
+class CaduProductBase(BaseModel):
     """
-    # Does the product download status already exist in database ? Filter on the EOP ID.
-    if len(file_id) > 0:
-        query = db.query(CaduProduct).where(CaduProduct.file_id == file_id)
-    elif len(name) > 0:
-        query = db.query(CaduProduct).where(CaduProduct.name == name)
-    else:
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="invalid input parameters")
-    
-    if query.count():
-        product = query.first()     
-        logger.debug("GET_STATUS: %s | Returning: %s ", product, dwn_status_to_string[product.status])   
-        return JSONResponse(status_code=status.HTTP_200_OK, content = dwn_status_to_string[product.status])
-    else:
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Product not found")
+    CaduDownloadStatus fields that are known when both reading and creating the object.
+    """
 
+    cadu_id: str
+    name: str
+    available_at_station: datetime | None
+
+
+# Read schema = fields that are known when reading but not creating the object.
+class CaduProductRead(CaduProductBase):
+    """
+    CaduDownloadStatus fields that are known when reading but not when creating the object.
+    """
+
+    db_id: int
+    download_start: datetime | None = None
+    download_stop: datetime | None = None
+    status: EDownloadStatus
+    status_fail_message: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)  # build models using python object attributes
+
+
+##################
+# HTTP ENDPOINTS #
+##################
+
+
+@router.get("/cadip/{station}/cadu/status", response_model=CaduProductRead)
+def get_status(cadu_id: str = None, name: str = None, db: Session = Depends(get_db)):
+    """
+    Get a product download status from its ID or name.
+
+    :param str cadu_id: CADU ID e.g. "2b17b57d-fff4-4645-b539-91f305c27c69"
+    :param str name: CADU name e.g. "DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw"
+    :param Session db: database session
+    """
+    return CaduDownloadStatus.get(cadu_id=cadu_id, name=name, db=db)
