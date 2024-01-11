@@ -11,7 +11,7 @@ import os.path as osp
 import pytest
 import sqlalchemy
 from dotenv import load_dotenv
-from rs_server_common.utils.logging import Logging
+from services.common.rs_server_common.utils.logging import Logging
 
 from rs_server.db import startup
 

@@ -148,7 +148,7 @@ def start_eodag_download(thread_started, station, db_id, file_id, name, local, o
 def download(station: str, 
              file_id: str, 
              name: str, 
-             plubication_date: str, 
+             publication_date: str, 
              local: str = "", 
              obs: str = "", 
              db=Depends(get_db)):
@@ -174,17 +174,20 @@ def download(station: str,
     """
 
     # Does the product download status already exist in database ? Filter on the EOP ID.
+    logger.debug("!!!!!")
     query = db.query(CaduProduct).where(CaduProduct.file_id == file_id)
     if query.count():
         # Get the existing product and overwrite the download status.
         # TODO: should we keep download history in a distinct table and init a new download entry ?
         product = query.first()
-        product.available_at_station = datetime.fromisoformat("2023-11-26T17:01:39.528Z")
+        product.available_at_station = datetime.fromisoformat(publication_date)
         update_db(db, product, DownloadStatus.NOT_STARTED)
 
     # Else init a new entry from the input arguments
     else:
-        product = CaduProduct(file_id=file_id, name=name, status=DownloadStatus.NOT_STARTED)
+        product = CaduProduct(file_id=file_id, name=name, 
+                              available_at_station = datetime.fromisoformat(publication_date), 
+                              status=DownloadStatus.NOT_STARTED)
         db.add(product)
         db.commit()
 

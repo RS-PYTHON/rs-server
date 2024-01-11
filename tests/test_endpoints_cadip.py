@@ -20,6 +20,10 @@ def dictionary_files(data, size_of_chunk=10):
     for i in range(0, len(data), size_of_chunk):
         yield {k: data[k] for k in islice(it, size_of_chunk)}
 
+class CADIPProduct:
+    def __init__(self, file_info):
+        self.file_id, self.filename, self.publication_date = file_info
+        
 
 @task
 async def start_download(station, files_info, local_path, obs, idx):
@@ -35,34 +39,40 @@ async def start_download(station, files_info, local_path, obs, idx):
         obs = ""
     logger.info("List with files found in CADIP station = {}\n\n".format(files_info))
     #logger.info("Task {} start time: {}".format(idx, datetime.now()))
-    for file_id, filename in files_info.items():
+    for cadu_product in files_info:
         if len(obs) == 0:
-            payload = {"file_id": file_id, "name": filename, "local": local_path}
+            payload = {"file_id": cadu_product.file_id, 
+                       "name": cadu_product.filename, 
+                       "publication_date": cadu_product.publication_date, 
+                       "local": local_path}
         else:
-            payload = {"file_id": file_id, "name": filename, "obs": obs}
+            payload = {"file_id": cadu_product.file_id, 
+                       "name": cadu_product.filename, 
+                       "publication_date": cadu_product.publication_date,
+                       "obs": obs}
         #logger.info("Task {}: payload: {}".format(idx, payload))
         response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu".format(station), params=payload)
         #logger.info("Task {}: Url: {}".format(idx, response.url))
         #logger.info("Task {}: Download endpoint response: {}".format(idx, response.json()))        
-        payload = {"file_id": file_id, "name": filename}
+        payload = {"file_id": cadu_product.file_id, "name": cadu_product.filename}
         response = ""
         # just for demo, the timeout should be otherwise defined by config
         timeout = 90
         while (response != "done" and response != "failed") and timeout > 0:
             response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu/status".format(station), params=payload).text.strip("\"")
-            logger.info("Task %s: The download progress for file %s is %s", idx, filename, response)   
+            logger.info("Task %s: The download progress for file %s is %s", idx, cadu_product.filename, response)   
             time.sleep(1)
             timeout -= 1                              
         
         if response == "done":
-            logger.info("File %s has been properly downloaded...\n", filename)
+            logger.info("File %s has been properly downloaded...\n", cadu_product.filename)
         elif response == "failed":
-            logger.info("Error in downloading the file %s...\n", filename)
+            logger.info("Error in downloading the file %s...\n", cadu_product.filename)
         elif timeout <= 0:
             logger.error(
                 "Timeout for receiving the downloaded status from server passed. \
 The file %s wasn't downloaded properly",
-                filename,
+                cadu_product.filename,
             )
         """
         # tests: for parallel search
@@ -169,9 +179,9 @@ if __name__ == "__main__":
     response = requests.get("http://127.0.0.1:8000/cadip/{}/cadu/list".format(args.station), params=payload)
     data = eval(response.content.decode())
     #logger.debug("data = {}".format(data))
-    files = {}
+    files = []
     for file_info in data["{}".format(args.station)]:
-        files[file_info[0]] = file_info[1]
+        files.append(CADIPProduct(file_info))
     # logger.debug(locals())
 
     if args.max_tasks <= 1:
