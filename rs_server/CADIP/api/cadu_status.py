@@ -50,7 +50,7 @@ class CaduProductRead(CaduProductBase):
 
 
 @router.get("/cadip/{station}/cadu/status", response_model=CaduProductRead)
-def get_status(cadu_id: str = None, name: str = None, db: Session = Depends(get_db)):
+def get_status(cadu_id: str = "", name: str = "", db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
 

@@ -49,7 +49,7 @@ class DatabaseSessionManager:
                 "POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB",
             ) from key_error
 
-    def open_session(self, host: str = None):
+    def open_session(self, host: str = ""):
         """Open database session."""
 
         with self.lock:

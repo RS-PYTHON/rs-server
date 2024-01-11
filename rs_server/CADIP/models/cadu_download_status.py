@@ -24,6 +24,10 @@ class EDownloadStatus(enum.Enum):
     DONE = 4
 
 
+# mypy: ignore-errors
+# Ignore mypy false positive errors on sqlalchemy
+
+
 class CaduDownloadStatus(Base):
     """
     Download status model implemnetation.
