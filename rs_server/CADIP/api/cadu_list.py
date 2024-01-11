@@ -9,6 +9,7 @@ from typing import List
 from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
@@ -76,7 +77,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     )
 
 
-def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
+def prepare_products(products: list[EOProduct]) -> List[tuple[str, str, str]] | None:
     """Prepare a list of products by extracting their ID, Name and PublicationDate properties.
 
     Parameters
@@ -93,12 +94,16 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
     Example
     -------
     >>> products = [
-    ...     EOProduct(properties={"id": 1, "Name": "Product A", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
-    ...     EOProduct(properties={"id": 2, "Name": "Product B", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
-    ...     EOProduct(properties={"id": 3, "Name": "Product C", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
+    ...  EOProduct(properties={"id": 1, "Name": "Product A", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
+    ...  EOProduct(properties={"id": 2, "Name": "Product B", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
+    ...  EOProduct(properties={"id": 3, "Name": "Product C", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
     ... ]
     >>> prepare_products(products)
-    [(1, 'Product A', 'YYYY-MM DDThh:mm:ss.sssZ'), (2, 'Product B', 'YYYY-MM DDThh:mm:ss.sssZ'), (3, 'Product C', 'YYYY-MM DDThh:mm:ss.sssZ')]
+    [
+        (1, 'Product A', 'YYYY-MM DDThh:mm:ss.sssZ'),
+        (2, 'Product B', 'YYYY-MM DDThh:mm:ss.sssZ'),
+        (3, 'Product C', 'YYYY-MM DDThh:mm:ss.sssZ')
+    ]
     """
 
     return (
