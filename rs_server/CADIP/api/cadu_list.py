@@ -33,7 +33,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     Returns
     -------
     JSONResponse
-        A JSON response containing the list of products (ID, Name) for the specified station.
+        A JSON response containing the list of products (ID, Name, PublicationDate) for the specified station.
         If the station identifier is invalid, a 400 Bad Request response is returned.
         If no products were found in the mentioned time range, output is an empty list.
 
@@ -44,8 +44,8 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     - Response:
         {
             "station123": [
-                (1, 'Product A'),
-                (2, 'Product B'),
+                (1, 'Product A', 'YYYY-MM DDThh:mm:ss.sssZ'),
+                (2, 'Product B', 'YYYY-MM DDThh:mm:ss.sssZ'),
                 ...
             ]
         }
@@ -77,7 +77,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
 
 
 def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
-    """Prepare a list of products by extracting their ID and Name properties.
+    """Prepare a list of products by extracting their ID, Name and PublicationDate properties.
 
     Parameters
     ----------
