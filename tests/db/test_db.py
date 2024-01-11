@@ -4,7 +4,10 @@ from contextlib import contextmanager
 from datetime import datetime
 
 import pytest
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
+from rs_server.CADIP.cadip_backend import app
 from rs_server.CADIP.models.cadu_download_status import (
     CaduDownloadStatus,
     EDownloadStatus,
@@ -22,8 +25,10 @@ def test_cadu_download_status(database):
     # Define a few values for our tests
     cadu_id1 = "cadu_id_1"
     cadu_id2 = "cadu_id_2"
+    cadu_id3 = "cadu_id_3"
     NAME1 = "product 1"
     NAME2 = "product 2"
+    NAME3 = "product 3"
     DATE1 = datetime(2024, 1, 1)
     DATE2 = datetime(2024, 1, 2)
     DATE3 = datetime(2024, 1, 3)
@@ -33,25 +38,54 @@ def test_cadu_download_status(database):
     # Open a database connection
     with contextmanager(get_db)() as db:
         # Add two new download status to database
-        created1 = CaduDownloadStatus.create(db=db, cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1)
-        created2 = CaduDownloadStatus.create(db=db, cadu_id=cadu_id2, name=NAME2, available_at_station=DATE2)
+        created1 = CaduDownloadStatus.get_or_create(db=db, cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1)
+        created2 = CaduDownloadStatus.get_or_create(db=db, cadu_id=cadu_id2, name=NAME2, available_at_station=DATE2)
 
         # Check that e auto-incremented database IDs were given
         assert created1.db_id == 1
         assert created2.db_id == 2
 
-        # Check that creating a new product with the same name will raise an exception.
-        # Do it in a specific database session because the exception will close the session.
+        # They have different Lock instances
+        assert created1.lock != created2.lock
+
+        # Check that creating a new product with the same values will return the existing entry.
+        created3 = CaduDownloadStatus.get_or_create(db, cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1)
+        assert created1.db_id == created3.db_id
+
+        # The entry returned by the same database session has the same Lock instance
+        assert created1.lock == created3.lock
+
+        # But the entry returned by a different session has a different Lock instance
+        with contextmanager(get_db)() as db2:
+            created4 = CaduDownloadStatus.get_or_create(db2, cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1)
+            assert created1.db_id == created4.db_id
+            assert created1.lock != created4.lock
+
+        # Test error when entry is missing. Use a distinct database session because it will be closed after exception.
         with contextmanager(get_db)() as db_exception, pytest.raises(
-            Exception,
-            match="duplicate key value violates unique constraint",
+            HTTPException,
+            match="404: No CaduDownloadStatus entry found",
         ):
-            CaduDownloadStatus.create(db=db_exception, cadu_id=cadu_id1, name=NAME1, available_at_station=DATE1)
+            CaduDownloadStatus.get(db_exception, cadu_id=cadu_id3, name=NAME3)
+
+        # Test the http endpoint
+        client = TestClient(app)
+        url = "/cadip/CADIP/cadu/status?cadu_id={cadu_id}&name={name}"
+
+        # Read an existing entry
+        response = client.get(url.format(cadu_id=cadu_id1, name=NAME1))
+        response.status_code == 200
+        response.json()["db_id"] == created1.db_id
+
+        # Read a missing entry
+        response = client.get(url.format(cadu_id=cadu_id3, name=NAME3))
+        response.status_code == 404
+        response.json()["detail"].startswith("No CaduDownloadStatus entry found")
 
         # Get all products from database
         products = CaduDownloadStatus.get_all(db=db)
 
-        # Check they have same values than those returned by the create operation
+        # Check they have same values than those returned by the create operations
         assert len(products) == 2
         for created, read1 in zip([created1, created2], products):
             assert created.cadu_id == read1.cadu_id

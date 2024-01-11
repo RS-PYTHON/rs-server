@@ -3,11 +3,13 @@ import asyncio
 import os
 import os.path as osp
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from threading import Event
 
+import sqlalchemy
 from eodag import setup_logging
 from eodag.utils import uri_to_path
 from fastapi import APIRouter, Depends
@@ -24,7 +26,6 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
 )
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.eodag_provider import EodagProvider
-from sqlalchemy.exc import NoResultFound
 
 DWN_THREAD_START_TIMEOUT = 1.8
 thread_started = Event()
@@ -33,31 +34,40 @@ router = APIRouter(tags=["Cadu products"])
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
 
 
-def update_db(db, product, status, status_fail_message=None):
+def update_db(db, status: CaduDownloadStatus, estatus: EDownloadStatus, status_fail_message=None):
     """Update the database with the status of a product."""
 
     # Try n times to update the status.
-    # TODO: we should handle this better, e.g. if IN_PROGRESS fails, we wait n seconds.
-    # then DONE works, but then IN_PROGRESS tries again and works; then the final status 
-    # will be set to IN_PROGRESS instead of DONE.
+    # TODO: we should handle this better, e.g. if NOT_STARTED from the root thread fails, we wait n seconds.
+    # Then if DONE works, but NOT_STARTED tries again and works, then the final status will be NOT_STARTED
+    # instead of DONE.
+
+    last_exception = None
 
     for _ in range(3):
         try:
-            if status == EDownloadStatus.NOT_STARTED:
-                product.not_started(db)
-            elif status == EDownloadStatus.IN_PROGRESS:
-                product.in_progress(db)
-            elif status == EDownloadStatus.FAILED:
-                product.failed(db, status_fail_message)
-            elif status == EDownloadStatus.DONE:
-                product.done(db, status_fail_message)
-        except Exception as exception:
-            pass
+            if estatus == EDownloadStatus.NOT_STARTED:
+                status.not_started(db)
+            elif estatus == EDownloadStatus.IN_PROGRESS:
+                status.in_progress(db)
+            elif estatus == EDownloadStatus.FAILED:
+                status.failed(db, status_fail_message)
+            elif estatus == EDownloadStatus.DONE:
+                status.done(db)
+
+            # The database update worked, exit function
+            return
+
+        # The database update failed, wait n seconds and retry
+        except (ConnectionError, sqlalchemy.exc.OperationalError) as exception:
+            last_exception = exception
+            time.sleep(1)
 
     # If all attemps failed, raise the last Exception
-    raise exception
+    raise last_exception
 
-def start_eodag_download(station, db_id, cadu_id, name, local, obs: str = "", secrets={}):
+
+def start_eodag_download(station, cadu_id, name, local, obs: str = "", secrets={}):
     """Start an EODAG download process for a specified product.
 
     This function initiates a download process using EODAG to retrieve a product with the given
@@ -65,7 +75,6 @@ def start_eodag_download(station, db_id, cadu_id, name, local, obs: str = "", se
 
     Args:
         station (str): The EODAG station identifier.
-        db_id (int): The database identifier of the product.
         cadu_id (str): The CADU identifier of the product.
         name (str): The name of the product.
         local (str): The local path where the product will be downloaded.
@@ -78,13 +87,10 @@ def start_eodag_download(station, db_id, cadu_id, name, local, obs: str = "", se
     Raises:
         None
     """
-    # Get a database connection in this thread, because the connection from the
-    # main thread does not seem to be working in sub-thread (was it closed ?)
-    status = DownloadStatus.FAILED
+    # Open a database sessions in this thread, because the session from the root thread may have closed.
     with contextmanager(get_db)() as db:
-        # Get the product download status from database. It was created before running this thread.
-        # TODO: should we recreate it if it was deleted for any reason ?
-        product = db.query(CaduProduct).where(CaduProduct.id == db_id).first()
+        # Get the product download status
+        status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)
 
         # init eodag object
         try:
@@ -111,9 +117,9 @@ def start_eodag_download(station, db_id, cadu_id, name, local, obs: str = "", se
                 name,
                 end - init,
             )
-        except Exception as e:
+        except Exception as exception:
             print("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
-            update_db(db, product, status)
+            update_db(db, status, EDownloadStatus.FAILED, repr(exception))
             return
 
         if obs is not None and len(obs) > 0:
@@ -129,13 +135,14 @@ def start_eodag_download(station, db_id, cadu_id, name, local, obs: str = "", se
                     0,
                 )
                 asyncio.run(prefect_put_files_to_s3.fn(s3_config))
-                status = DownloadStatus.DONE
             except RuntimeError:
                 print("Could not connect to the s3 storage")
+                update_db(db, status, EDownloadStatus.FAILED, "Could not connect to the s3 storage")
+                return
             finally:
                 os.remove(data_retriever.filename)
 
-        update_db(db, product, status)
+        update_db(db, status, EDownloadStatus.DONE)
 
 
 @router.get("/cadip/{station}/cadu")
@@ -160,17 +167,13 @@ def download(station: str, cadu_id: str, name: str, local: str = "", obs: str = 
     Raises:
         None
     """
-    
-    try:
-        # Does the product download status already exist in database ?
-        product = CaduDownloadStatus.get(db, cadu_id, name)
 
-        # Update status to not started
-        update_db (db, product, EDownloadStatus.NOT_STARTED)
+    # Get or create the product download status in database
+    status = CaduDownloadStatus.get_or_create(db, cadu_id, name)
 
-    # Else init a new entry from the input arguments
-    except NoResultFound:
-        product = CaduDownloadStatus.create(db, cadu_id=cadu_id, name=name, status=EDownloadStatus.NOT_STARTED)
+    # Update the status to not started
+    if status.status != EDownloadStatus.NOT_STARTED:
+        update_db(db, status, EDownloadStatus.NOT_STARTED)
 
     # start a thread to run the action in background
     print(
@@ -192,7 +195,6 @@ def download(station: str, cadu_id: str, name: str, local: str = "", obs: str = 
         target=start_eodag_download,
         args=(
             station,
-            product.id,
             cadu_id,
             name,
             local,
@@ -207,10 +209,10 @@ def download(station: str, cadu_id: str, name: str, local: str = "", obs: str = 
         thread_started.clear()
         print("Download thread did not start !")
         # update the status in database
-        update_db(db, product, DownloadStatus.FAILED, "Download thread did not start !")
+        update_db(db, status, EDownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
     thread_started.clear()
     # update the status in database
-    update_db(db, product, DownloadStatus.IN_PROGRESS)
+    update_db(db, status, EDownloadStatus.IN_PROGRESS)
 
     return {"started": "true"}

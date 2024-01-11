@@ -7,12 +7,11 @@ from datetime import datetime
 from threading import Lock
 
 from fastapi import HTTPException
-from sqlalchemy import Column, DateTime, Enum, Integer, String
+from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from rs_server.db.database import Base
-
 
 
 class EDownloadStatus(enum.Enum):
@@ -55,61 +54,89 @@ class CaduDownloadStatus(Base):
         super().__init__(*args, **kwargs)
         self.lock = Lock()
 
-    def not_started(self, db: AsyncSession):
+    @orm.reconstructor
+    def init_on_load(self):
+        self.lock = Lock()
+
+    def not_started(self, db: Session):
         """Update database entry to not started."""
         with self.lock:
-            self.status = EDownloadStatus.IN_PROGRESS
+            self.status = EDownloadStatus.NOT_STARTED
             self.download_start = None
             self.download_stop = None
             self.status_fail_message = None
             db.commit()
+            db.refresh(self)
 
-    def in_progress(self, db: AsyncSession, download_start: datetime = datetime.now()):
+    def in_progress(self, db: Session, download_start: datetime = None):
         """Update database entry to progress."""
         with self.lock:
             self.status = EDownloadStatus.IN_PROGRESS
-            self.download_start = download_start
+            self.download_start = download_start or datetime.now()
             self.download_stop = None
             self.status_fail_message = None
             db.commit()
+            db.refresh(self)
 
-    def failed(self, db: AsyncSession, status_fail_message: str, download_stop: datetime = datetime.now()):
+    def failed(self, db: Session, status_fail_message: str, download_stop: datetime = None):
         """Update database entry to failed."""
         with self.lock:
             self.status = EDownloadStatus.FAILED
-            self.download_stop = download_stop
+            self.download_stop = download_stop or datetime.now()
             self.status_fail_message = status_fail_message
             db.commit()
+            db.refresh(self)
 
-    def done(self, db: AsyncSession, download_stop: datetime = datetime.now()):
+    def done(self, db: Session, download_stop: datetime = None):
         """Update database entry to done."""
         with self.lock:
             self.status = EDownloadStatus.DONE
-            self.download_stop = download_stop
+            self.download_stop = download_stop or datetime.now()
             self.status_fail_message = None
             db.commit()
+            db.refresh(self)
 
     #######################
     # DATABASE OPERATIONS #
     #######################
 
     @classmethod
-    def get_all(cls, db: AsyncSession, **kwargs) -> list[CaduDownloadStatus]:
+    def get_all(cls, db: Session, **kwargs) -> list[CaduDownloadStatus]:
         """Get all entries in database table."""
         return db.query(cls).all()
 
     @classmethod
-    def get(cls, db: AsyncSession, cadu_id: str, name: str) -> CaduDownloadStatus:
+    def get(cls, db: Session, cadu_id: str, name: str, raise_if_missing=True) -> CaduDownloadStatus:
         """Get single entry by CADU ID or name."""
-        try:
-            return db.query(cls).where((cls.cadu_id == cadu_id) | (cls.name == name)).one()
-        except NoResultFound as exception:
-            raise NoResultFound(f"No {cls.__name__} found for cadu_id={cadu_id!r} or name={name!r}") from exception
+
+        # Check if entry exists
+        query = db.query(cls).where((cls.cadu_id == cadu_id) | (cls.name == name))
+        if query.count():
+            return query.first()
+
+        # Else raise and Exception if asked
+        elif raise_if_missing:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No {cls.__name__} entry found for cadu_id={cadu_id!r} or name={name!r}",
+            )
+
+        # Else return None result
+        return None
 
     @classmethod
-    def create(cls, db: AsyncSession, **kwargs) -> CaduDownloadStatus:
-        """Create entry in database table."""
-        entry = cls(**kwargs)
+    def get_or_create(cls, db: Session, cadu_id: str, name: str, **kwargs) -> CaduDownloadStatus:
+        """Get single entry by CADU ID or name, or create it if missing."""
+
+        entry = cls.get(db, cadu_id=cadu_id, name=name, raise_if_missing=False)
+
+        # Return entry if it exists
+        if entry:
+            return entry
+
+        # Else create and return it
+        entry = cls(cadu_id=cadu_id, name=name, **kwargs)
         db.add(entry)
         db.commit()
+        db.refresh(entry)
         return entry

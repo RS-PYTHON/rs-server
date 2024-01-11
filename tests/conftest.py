@@ -6,12 +6,14 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 # isort: off
-# Don't automatically open database session. We'll do it in a pytest fixture and check it status.
+# First thing: don't automatically open database session.
+# We'll do it in a pytest fixture and check it status.
 import rs_server
 
 rs_server.OPEN_DB_SESSION = False
 # isort: on
 
+import os
 import os.path as osp
 
 import pytest
@@ -20,6 +22,15 @@ from dotenv import load_dotenv
 from rs_server_common.utils.logging import Logging
 
 from rs_server.db.database import sessionmanager
+
+# Try to kill the existing postgres docker container if it exists
+# and prune docker networks to clean the IPv4 address pool
+os.system(
+    """
+docker rm -f $(docker ps -aqf name=postgres_rspy-pytest) >/dev/null 2>&1
+docker network prune -f >/dev/null 2>&1
+""",
+)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -48,7 +59,7 @@ def database(docker_ip, docker_services, docker_compose_file):
     `Bind for 0.0.0.0:5432 failed: port is already allocated`
 
     Run this to remove all postgres docker containers:
-    `docker rm -f $(docker ps -aqf name=postgres)`
+    `docker rm -f $(docker ps -aqf name=postgres_rspy-pytest)`
 
     Then you can also try:
     `docker system prune`

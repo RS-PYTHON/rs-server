@@ -112,7 +112,7 @@ class DatabaseSessionManager:
     @classmethod
     def reraise_http_exception(cls, exception: Exception):
         if isinstance(exception, StarletteHTTPException):
-            raise
+            raise exception
         raise HTTPException(status_code=400, detail=repr(exception))
 
 
