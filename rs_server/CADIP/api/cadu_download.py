@@ -84,7 +84,7 @@ def start_eodag_download(thread_started, station, db_id, file_id, name, local, o
     """
     # Get a database connection in this thread, because the connection from the
     # main thread does not seem to be working in sub-thread (was it closed ?)
-    status = DownloadStatus.FAILED
+    status = DownloadStatus.DONE
     with contextmanager(get_db)() as db:
         global tt
         # Get the product download status from database. It was created before running this thread.
@@ -103,25 +103,21 @@ def start_eodag_download(thread_started, station, db_id, file_id, name, local, o
                 local = "/tmp"
 
             data_retriever = init_cadip_data_retriever(station, None, None, Path(local))
-            """
-            tt += 1
-            if tt > 3:
-                return
-            """
-            thread_started.set()
+            # notify the main thread that the download will be started
+            update_db(db, product, DownloadStatus.IN_PROGRESS)
+            thread_started.set()            
             init = datetime.now()
-            data_retriever.download(file_id, name)
-            end = datetime.now()
+            data_retriever.download(file_id, name)            
             logger.info(
-                "%s : %s : %s: File: %s downloaded in %s",
+                "%s : %s : File: %s downloaded in %s",
                 os.getpid(),
-                threading.get_ident(),
-                end,
+                threading.get_ident(),                
                 name,
-                end - init,
+                datetime.now() - init,
             )
         except Exception as e:
             logger.error("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), e)
+            status = DownloadStatus.FAILED
             update_db(db, product, status)
             return
 
@@ -138,20 +134,24 @@ def start_eodag_download(thread_started, station, db_id, file_id, name, local, o
                     0,
                 )
                 asyncio.run(prefect_put_files_to_s3.fn(s3_config))
-                status = DownloadStatus.DONE
+                
             except RuntimeError:
+                status = DownloadStatus.FAILED
                 logger.error("Could not connect to the s3 storage")
             finally:
-                os.remove(data_retriever.filename)
-        else:
-            status = DownloadStatus.DONE
-            #time.sleep(8)
+                os.remove(data_retriever.filename)        
 
         update_db(db, product, status)
 
 
 @router.get("/cadip/{station}/cadu")
-def download(station: str, file_id: str, name: str, local: str = "", obs: str = "", db=Depends(get_db)):
+def download(station: str, 
+             file_id: str, 
+             name: str, 
+             plubication_date: str, 
+             local: str = "", 
+             obs: str = "", 
+             db=Depends(get_db)):
     """Initiate an asynchronous download process for a CADU product using EODAG.
 
     This endpoint triggers the download of a CADU product identified by the given file_id,
@@ -179,6 +179,7 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
         # Get the existing product and overwrite the download status.
         # TODO: should we keep download history in a distinct table and init a new download entry ?
         product = query.first()
+        product.available_at_station = datetime.fromisoformat("2023-11-26T17:01:39.528Z")
         update_db(db, product, DownloadStatus.NOT_STARTED)
 
     # Else init a new entry from the input arguments
@@ -220,13 +221,11 @@ def download(station: str, file_id: str, name: str, local: str = "", obs: str = 
 
     # check the start of the thread
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
-        thread_started.clear()
+        #thread_started.clear()
         logger.error("Download thread did not start !")
         # update the status in database
         update_db(db, product, DownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
-    thread_started.clear()
+    # thread_started.clear()
     # update the status in database
-    update_db(db, product, DownloadStatus.IN_PROGRESS)
-
     return {"started": "true"}

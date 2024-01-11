@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient
 
 from rs_server.CADIP.cadip_backend import app
 
+from rs_server.db.session import get_db
+
 
 def create_rs_dwn_cadu(station: str, id: str, name: str, local: str):  # noqa: D417
     """Create an rs-server endpoint for download a CADU product.
@@ -38,7 +40,7 @@ The download continues in background. After few minutes, the file is stored on t
 '''
 @pytest.mark.unit
 @responses.activate
-def test_valid_endpoint_request():
+def test_valid_endpoint_request(database):
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
