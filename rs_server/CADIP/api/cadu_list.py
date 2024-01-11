@@ -9,7 +9,6 @@ from typing import List
 from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
-
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
@@ -62,10 +61,19 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
         try:
             data_retriever = init_cadip_data_retriever(station, None, None, None)
             products = data_retriever.search(start_date, stop_date)
-            return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={station: prepare_products(products)},
+            )
         except CreateProviderFailed:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
-    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content="Bad station identifier",
+            )
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content="Invalid request, invalid start/stop format",
+    )
 
 
 def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
@@ -85,14 +93,26 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
     Example
     -------
     >>> products = [
-    ...     EOProduct(properties={"id": 1, "Name": "Product A"}),
-    ...     EOProduct(properties={"id": 2, "Name": "Product B"}),
-    ...     EOProduct(properties={"id": 3, "Name": "Product C"}),
+    ...     EOProduct(properties={"id": 1, "Name": "Product A", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
+    ...     EOProduct(properties={"id": 2, "Name": "Product B", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
+    ...     EOProduct(properties={"id": 3, "Name": "Product C", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
     ... ]
     >>> prepare_products(products)
-    [(1, 'Product A'), (2, 'Product B'), (3, 'Product C')]
+    [(1, 'Product A', 'YYYY-MM DDThh:mm:ss.sssZ'), (2, 'Product B', 'YYYY-MM DDThh:mm:ss.sssZ'), (3, 'Product C', 'YYYY-MM DDThh:mm:ss.sssZ')]
     """
-    return [(product.properties["id"], product.properties["Name"]) for product in products] if products else []
+
+    return (
+        [
+            (
+                product.properties["id"],
+                product.properties["Name"],
+                product.properties["startTimeFromAscendingNode"],
+            )
+            for product in products
+        ]
+        if products
+        else []
+    )
 
 
 def is_valid_format(date: str) -> bool:
