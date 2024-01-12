@@ -18,7 +18,7 @@ from rs_server.CADIP.models.cadu_download_status import (
 from rs_server.db.database import get_db
 
 
-def create_rs_dwn_cadu(station: str, id: str, name: str, publication_date: str, local: str, obs: str):  # noqa: D417
+def create_rs_dwn_cadu(station: str, id: str, name: str, publication_date: str, local: str = "", obs: str = ""):  # noqa: D417
     """Create an rs-server endpoint for download a CADU product.
 
     Parameters
@@ -33,8 +33,7 @@ def create_rs_dwn_cadu(station: str, id: str, name: str, publication_date: str, 
     """    
     rs_url = f"/cadip/{station}/cadu"
     # Create rs-server endpoint
-    print(f"{rs_url}?id={id}&name={name}&local={local}&publication_date={publication_date}")
-    return f"{rs_url}?id={id}&name={name}&local={local}"
+    return f"{rs_url}?id={id}&name={name}&publication_date={publication_date}"
 
 
 """
@@ -47,15 +46,10 @@ The download continues in background. After few minutes, the file is stored on t
 @pytest.mark.unit
 @responses.activate
 def test_valid_endpoint_request(database):
-    """Test case for retrieving products from the CADIP station between 2014 and 2023.
-
-    This test sends a request to the CADIP station's endpoint for products within the specified date range.
-    It checks if the response contains more than one element and verifies that the IDs and names match
-    with the expected parameters.
-    """
+    
     responses.add(
         responses.GET,
-        "http://127.0.0.1:5000/Files(2b17b57d-fff4-4645-b539-91f305c27c65)/$value",
+        "http://127.0.0.1:5000/Files(id_1)/$value",
         body="some byte-array data",
         status=200,
     )
@@ -63,15 +57,18 @@ def test_valid_endpoint_request(database):
     # download_dir = os.path.dirname(os.path.realpath(__file__))
     download_dir = "/tmp"
     download_file = "CADIP_test_file_eodag.raw"
-    endpoint = create_rs_dwn_cadu("CADIP", "2b17b57d-fff4-4645-b539-91f305c27c65", 
+    endpoint = create_rs_dwn_cadu("CADIP", "id_1", 
                                   download_file, 
-                                  download_dir,
                                   "2023-10-10T00:00:00.111Z",
+                                  download_dir,                                  
                                   "s3://test-data/cadip/")
+    endpoint = f"/cadip/CADIP/cadu?id=id_1&name={download_file}&publication_date=2023-10-10T00:00:00.111Z"
     # Open a database connection
     with contextmanager(get_db)() as db:
         client = TestClient(app)
         # send request
+        #import pdb
+        #pdb.set_trace()
         data = client.get(endpoint)
         # let the file to be copied onto local
         time.sleep(1)

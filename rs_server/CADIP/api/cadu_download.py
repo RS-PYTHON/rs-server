@@ -93,9 +93,7 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
         global tt
 
         # Get the product download status
-        status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)
-        if not status:
-            print("ppp")
+        status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)        
 
         # init eodag object
         try:
@@ -108,9 +106,9 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
             if len(local) == 0:
                 local = "/tmp"
 
-            data_retriever = init_cadip_data_retriever(station, None, None, Path(local))
-            # notify the main thread that the download will be started
+            data_retriever = init_cadip_data_retriever(station, None, None, Path(local))            
             update_db(db, status, EDownloadStatus.IN_PROGRESS)
+            # notify the main thread that the download will be started
             thread_started.set()
             init = datetime.now()
             data_retriever.download(cadu_id, name)
@@ -181,12 +179,15 @@ def download(
     """
 
     # Get or create the product download status in database
-    logger.debug("!!!!!")
-    status = CaduDownloadStatus.get_or_create(db, cadu_id, name)
-
+    print("ENDPOINT START !")    
+    #status = CaduDownloadStatus.get_or_create(db, cadu_id, name)
+    status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)
+    if not status:        
+        logger.error("Product id %s with name %s could not be found in the database.", cadu_id, name)                
+        return {"started": "false"}
     # Update the publication date and set the status to not started
-    status.available_at_station = datetime.fromisoformat(publication_date)
-    update_db(db, status, EDownloadStatus.NOT_STARTED)
+    #status.available_at_station = datetime.fromisoformat(publication_date)
+    #update_db(db, status, EDownloadStatus.NOT_STARTED)
 
     # start a thread to run the action in background
     logger.debug(
@@ -227,5 +228,5 @@ def download(
         return {"started": "false"}
     # thread_started.clear()
     # update the status in database
-    update_db(db, status, EDownloadStatus.IN_PROGRESS)
+    # update_db(db, status, EDownloadStatus.IN_PROGRESS)
     return {"started": "true"}
