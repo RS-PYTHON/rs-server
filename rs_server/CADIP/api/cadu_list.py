@@ -34,7 +34,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     Returns
     -------
     JSONResponse
-        A JSON response containing the list of products (ID, Name, PublicationDate) for the specified station.
+        A JSON response containing the list of products (ID, Name) for the specified station.
         If the station identifier is invalid, a 400 Bad Request response is returned.
         If no products were found in the mentioned time range, output is an empty list.
 
@@ -45,8 +45,8 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     - Response:
         {
             "station123": [
-                (1, 'Product A', 'YYYY-MM DDThh:mm:ss.sssZ'),
-                (2, 'Product B', 'YYYY-MM DDThh:mm:ss.sssZ'),
+                (1, 'Product A'),
+                (2, 'Product B'),
                 ...
             ]
         }
@@ -62,23 +62,14 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
         try:
             data_retriever = init_cadip_data_retriever(station, None, None, None)
             products = data_retriever.search(start_date, stop_date)
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={station: prepare_products(products)},
-            )
+            return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
         except CreateProviderFailed:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content="Bad station identifier",
-            )
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content="Invalid request, invalid start/stop format",
-    )
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
 
 
-def prepare_products(products: list[EOProduct]) -> List[tuple[str, str, str]] | None:
-    """Prepare a list of products by extracting their ID, Name and PublicationDate properties.
+def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
+    """Prepare a list of products by extracting their ID and Name properties.
 
     Parameters
     ----------
@@ -94,30 +85,14 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str, str]] | 
     Example
     -------
     >>> products = [
-    ...  EOProduct(properties={"id": 1, "Name": "Product A", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
-    ...  EOProduct(properties={"id": 2, "Name": "Product B", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
-    ...  EOProduct(properties={"id": 3, "Name": "Product C", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
+    ...     EOProduct(properties={"id": 1, "Name": "Product A"}),
+    ...     EOProduct(properties={"id": 2, "Name": "Product B"}),
+    ...     EOProduct(properties={"id": 3, "Name": "Product C"}),
     ... ]
     >>> prepare_products(products)
-    [
-        (1, 'Product A', 'YYYY-MM DDThh:mm:ss.sssZ'),
-        (2, 'Product B', 'YYYY-MM DDThh:mm:ss.sssZ'),
-        (3, 'Product C', 'YYYY-MM DDThh:mm:ss.sssZ')
-    ]
+    [(1, 'Product A'), (2, 'Product B'), (3, 'Product C')]
     """
-
-    return (
-        [
-            (
-                product.properties["id"],
-                product.properties["Name"],
-                product.properties["startTimeFromAscendingNode"],
-            )
-            for product in products
-        ]
-        if products
-        else []
-    )
+    return [(product.properties["id"], product.properties["Name"]) for product in products] if products else []
 
 
 def is_valid_format(date: str) -> bool:
