@@ -39,19 +39,14 @@ def update_db(db, status: CaduDownloadStatus, estatus: EDownloadStatus, status_f
     """Update the database with the status of a product."""
 
     # Try n times to update the status.
-    # TODO: we should handle this better, e.g. if NOT_STARTED from the root thread fails, we wait n seconds.
-    # Then if DONE works, but NOT_STARTED tries again and works, then the final status will be NOT_STARTED
-    # instead of DONE.
+    # Don't do it for NOT_STARTED and IN_PROGRESS (call directly status.not_started or status.in_progress)
+    # because it will anyway be overwritten later by DONE or FAILED.
 
     last_exception = None
 
     for _ in range(3):
         try:
-            if estatus == EDownloadStatus.NOT_STARTED:
-                status.not_started(db)
-            elif estatus == EDownloadStatus.IN_PROGRESS:
-                status.in_progress(db)
-            elif estatus == EDownloadStatus.FAILED:
+            if estatus == EDownloadStatus.FAILED:
                 status.failed(db, status_fail_message)
             elif estatus == EDownloadStatus.DONE:
                 status.done(db)
@@ -88,12 +83,12 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
     Raises:
         None
     """
-    # Open a database sessions in this thread, because the session from the root thread may have closed.    
+    # Open a database sessions in this thread, because the session from the root thread may have closed.
     with contextmanager(get_db)() as db:
         global tt
 
         # Get the product download status
-        status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)        
+        status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)
 
         # init eodag object
         try:
@@ -106,8 +101,8 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
             if len(local) == 0:
                 local = "/tmp"
 
-            data_retriever = init_cadip_data_retriever(station, None, None, Path(local))            
-            update_db(db, status, EDownloadStatus.IN_PROGRESS)
+            data_retriever = init_cadip_data_retriever(station, None, None, Path(local))
+            status.in_progress(db)  # updates the database
             # notify the main thread that the download will be started
             thread_started.set()
             init = datetime.now()
@@ -120,7 +115,13 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
                 datetime.now() - init,
             )
         except Exception as exception:
-            logger.error("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), exception)
+            logger.error(
+                "%s : %s : %s: Exception caught: %s",
+                os.getpid(),
+                threading.get_ident(),
+                datetime.now(),
+                exception,
+            )
             update_db(db, status, EDownloadStatus.FAILED, repr(exception))
             return
 
@@ -179,15 +180,15 @@ def download(
     """
 
     # Get or create the product download status in database
-    print("ENDPOINT START !")    
-    #status = CaduDownloadStatus.get_or_create(db, cadu_id, name)
+    print("ENDPOINT START !")
+    # status = CaduDownloadStatus.get_or_create(db, cadu_id, name)
     status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)
-    if not status:        
-        logger.error("Product id %s with name %s could not be found in the database.", cadu_id, name)                
+    if not status:
+        logger.error("Product id %s with name %s could not be found in the database.", cadu_id, name)
         return {"started": "false"}
     # Update the publication date and set the status to not started
-    #status.available_at_station = datetime.fromisoformat(publication_date)
-    #update_db(db, status, EDownloadStatus.NOT_STARTED)
+    # status.available_at_station = datetime.fromisoformat(publication_date)
+    # status.not_started(db)  # updates the database
 
     # start a thread to run the action in background
     logger.debug(
@@ -228,5 +229,5 @@ def download(
         return {"started": "false"}
     # thread_started.clear()
     # update the status in database
-    # update_db(db, status, EDownloadStatus.IN_PROGRESS)
+    # status.in_progress(db)  # updates the database
     return {"started": "true"}
