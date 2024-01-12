@@ -60,8 +60,8 @@ class CaduDownloadStatus(Base):
 
     def __setitem__(self, item, value):
         """Used to set members at runtime."""
-        if hasattr(item, value):
-            setattr(item, value)
+        if hasattr(self, item):
+            setattr(self, item, value)
         else:
             raise KeyError()
 

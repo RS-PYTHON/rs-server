@@ -1,10 +1,13 @@
 """Unittests for cadip list endpoint."""
+from contextlib import contextmanager
+
 import pytest
 import responses
 from fastapi import status
 from fastapi.testclient import TestClient
 
 from rs_server.CADIP.cadip_backend import app
+from rs_server.db.database import get_db
 
 
 def create_rs_list_cadu(station: str, start: str, stop: str):
@@ -44,7 +47,12 @@ def a_product_fixture():
         :param at_date: the time of the product.
         :return: the cadip product.
         """
-        return {"Id": id_, "Name": name, "PublicationDate": at_date, "Size": "dummy_value"}
+        return {
+            "Id": id_,
+            "Name": name,
+            "PublicationDate": at_date,
+            "Size": "dummy_value",
+        }
 
     return build
 
@@ -71,7 +79,7 @@ def expected_products_fixture(a_product) -> list[dict]:
 # He receives the list of CADU in the interval.
 @pytest.mark.unit
 @responses.activate
-def test_valid_endpoint_request(expected_products):
+def test_valid_endpoint_request(expected_products, database):  # pylint: disable=unused-argument
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
@@ -87,20 +95,22 @@ def test_valid_endpoint_request(expected_products):
     )
     # Get all products between 2014 - 2023 from "CADIP" station
     endpoint = create_rs_list_cadu("CADIP", "2014-01-01T12:00:00.000Z", "2023-12-30T12:00:00.000Z")
+    with contextmanager(get_db)():
+        # TODO, query and test db status
+        client = TestClient(app)
+        # send request and convert output to python dict
+        data = client.get(endpoint).json()
 
-    client = TestClient(app)
-    # send request and convert output to python dict
-    data = client.get(endpoint).json()
-    # check that request returned more than 1 element
-    assert len(data["CADIP"]) == len(expected_products)
-    # Check if ids and names are matching with given parameters
-    assert any("some_id_2" in product for product in data["CADIP"])
-    assert any("some_id_3" in product for product in data["CADIP"])
+        # check that request returned more than 1 element
+        assert len(data["CADIP"]) == len(expected_products)
+        # Check if ids and names are matching with given parameters
+        assert any("some_id_2" in product for product in data["CADIP"])
+        assert any("some_id_3" in product for product in data["CADIP"])
 
 
 @pytest.mark.unit
 @responses.activate
-def test_invalid_endpoint_request():
+def test_invalid_endpoint_request(database):  # pylint: disable=unused-argument
     """Test case for validating the behavior of the endpoint when an invalid request is made.
 
     This test activates the 'responses' library to mock a successful response with an empty list.
@@ -116,11 +126,12 @@ def test_invalid_endpoint_request():
     )
     # Get all products from 2023 to 2024, this request should result in a empty list since there are no matches
     endpoint = create_rs_list_cadu("CADIP", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z")
-    client = TestClient(app)
-    # convert output to python dict
-    data = client.get(endpoint).json()
-    # check that request returned no elements
-    assert len(data["CADIP"]) == 0
+    with contextmanager(get_db)():
+        client = TestClient(app)
+        # convert output to python dict
+        data = client.get(endpoint).json()
+        # check that request returned no elements
+        assert len(data["CADIP"]) == 0
 
 
 @pytest.mark.unit
