@@ -8,7 +8,6 @@ on:
 
 env:
   PYTHON_VERSION: 3.11
-  TESTS: ./tests
   SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
 jobs:
@@ -131,7 +130,8 @@ jobs:
 
       - name: Run unit tests
         run: |
-          set -x && poetry run pytest ${TESTS} \
+          set -x && poetry run pytest \
+            ./tests ./services/common/tests ./services/cadip/tests \
             -m unit \
             --durations=0 \
             --error-for-skips \
@@ -168,7 +168,8 @@ jobs:
 
       - name: Run integration tests
         run: |
-          set -x && poetry run pytest ${TESTS} \
+          set -x && poetry run pytest \
+            ./tests ./services/common/tests ./services/cadip/tests \
             -m integration \
             --durations=0 \
             --error-for-skips \
@@ -235,7 +236,7 @@ jobs:
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.projectBaseDir=.
             -Dsonar.sources=./rs_server,./services
-            -Dsonar.tests=${{ env.TESTS }}
+            -Dsonar.tests=./tests,./services/common/tests,./services/cadip/tests
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
