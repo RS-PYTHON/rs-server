@@ -113,12 +113,16 @@ jobs:
           sarif_file: trivy-results-fs.sarif
           category: git repository
 
-      # Display link to Trivy results in the github security tab.
-      # This linke doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
-      - if: github.event_name != 'pull_request'
-        run: >
-          echo "Trivy scan results:
-          https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${{ github.ref_name }}"
+      - name: "Display link to Trivy results"
+        if: always()
+        run: |
+          set -x
+          # This name doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
+          # TO BE TESTED
+          ref_name=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+
+          echo "Trivy scan results:" \
+          "https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${ref_name}" \
           >> $GITHUB_STEP_SUMMARY
 
   run-unit-tests:
