@@ -28,8 +28,8 @@ def create_rs_list_cadu(station: str, start: str, stop: str):
     return f"{rs_url}?start_date={start}&stop_date={stop}"
 
 
-@pytest.fixture(scope="module")
-def _product():
+@pytest.fixture(scope="module", name="a_product")
+def a_product_fixture():
     """Fixture factory to build a dummy cadip product.
 
     The cadip product is configured from an id and a datetime-like str.
@@ -49,21 +49,21 @@ def _product():
     return build
 
 
-@pytest.fixture
-def _expected_products(_product) -> list[dict]:
+@pytest.fixture(name="expected_products")
+def expected_products_fixture(a_product) -> list[dict]:
     """Fixture that gives the default products returned by cadip.
 
     :param a_product: factory fixture to build a cadip product
     :return: the cadip product list
     """
     return [
-        _product(
+        a_product(
             "2b17b57d-fff4-4645-b539-91f305c27c69",
             "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
             "2019-02-16T12:00:00.000Z",
         ),
-        _product("some_id_2", "S1A.raw", "2021-02-16T12:00:00.000Z"),
-        _product("some_id_3", "S2L1C.raw", "2023-02-16T12:00:00.000Z"),
+        a_product("some_id_2", "S1A.raw", "2021-02-16T12:00:00.000Z"),
+        a_product("some_id_3", "S2L1C.raw", "2023-02-16T12:00:00.000Z"),
     ]
 
 
@@ -71,7 +71,7 @@ def _expected_products(_product) -> list[dict]:
 # He receives the list of CADU in the interval.
 @pytest.mark.unit
 @responses.activate
-def test_valid_endpoint_request(_expected_products):
+def test_valid_endpoint_request(expected_products):
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
@@ -82,7 +82,7 @@ def test_valid_endpoint_request(_expected_products):
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
         '2023-12-30T12:00:00.000Z"',
-        json={"responses": _expected_products},
+        json={"responses": expected_products},
         status=200,
     )
     # Get all products between 2014 - 2023 from "CADIP" station
@@ -92,7 +92,7 @@ def test_valid_endpoint_request(_expected_products):
     # send request and convert output to python dict
     data = client.get(endpoint).json()
     # check that request returned more than 1 element
-    assert len(data["CADIP"]) == len(_expected_products)
+    assert len(data["CADIP"]) == len(expected_products)
     # Check if ids and names are matching with given parameters
     assert any("some_id_2" in product for product in data["CADIP"])
     assert any("some_id_3" in product for product in data["CADIP"])

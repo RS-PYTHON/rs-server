@@ -13,20 +13,23 @@ from .fake_storage import (
 )
 
 
-@pytest.fixture
-def _file(tmp_path) -> Path:
+@pytest.fixture(name="a_file")
+def a_file_fixture(tmp_path) -> Path:
+    """Create and return an empty file under a given directory."""
     file = tmp_path / "a_file.txt"
     file.touch()
     return file
 
 
-@pytest.fixture
-def _not_found_file(tmp_path) -> Path:
+@pytest.fixture(name="not_found_file")
+def not_found_file_fixture(tmp_path) -> Path:
+    """Return a non-existing file under a given directory."""
     return tmp_path / "not_found.txt"
 
 
-@pytest.fixture
-def _location(tmp_path) -> Path:
+@pytest.fixture(name="a_location")
+def a_location_fixture(tmp_path) -> Path:
+    """Return a location under a given directory."""
     return tmp_path / "uploaded"
 
 
@@ -103,7 +106,7 @@ class TestAFakeStorage:
             storage.logout()
         assert str(exc_info.value) == "Already logout."
 
-    def test_cant_store_if_not_logged(self, _file, _location):
+    def test_cant_store_if_not_logged(self, a_file, a_location):
         """
         Verifies that FakeStorage raises NotLogged exception when trying to store while not logged.
 
@@ -113,10 +116,10 @@ class TestAFakeStorage:
         """
         storage = FakeStorage()
         with pytest.raises(NotLogged) as exc_info:
-            storage.store(_file, _location)
+            storage.store(a_file, a_location)
         assert str(exc_info.value) == "Not logged."
 
-    def test_store_fails_if_file_doesnt_exists(self, _not_found_file, _location):
+    def test_store_fails_if_file_doesnt_exists(self, not_found_file, a_location):
         """
         Verifies that FakeStorage raises FileNotFoundError when trying to store a non-existent file.
 
@@ -127,9 +130,9 @@ class TestAFakeStorage:
         storage = FakeStorage()
         storage.login()
         with pytest.raises(FileNotFoundError):
-            storage.store(_not_found_file, _location)
+            storage.store(not_found_file, a_location)
 
-    def test_records_the_last_store_made(self, _file, _location):
+    def test_records_the_last_store_made(self, a_file, a_location):
         """
         Verifies that FakeStorage records the last store operation made.
 
@@ -142,6 +145,6 @@ class TestAFakeStorage:
 
         assert storage.last_upload is None
 
-        storage.store(_file, _location)
+        storage.store(a_file, a_location)
 
-        assert storage.last_upload == StorageRecord(_file, _location)
+        assert storage.last_upload == StorageRecord(a_file, a_location)

@@ -50,26 +50,26 @@ class CustomFormatter(logging.Formatter):
     See: https://stackoverflow.com/a/56944256
     """
 
-    RED = "\x1b[31m"
-    BOLD_RED = "\x1b[31;1m"
-    GREEN = "\x1b[32m"
-    YELLOW = "\x1b[33m"
-    PURPLE = "\x1b[35m"
-    RESET = "\x1b[0m"
+    _RED = "\x1b[31m"
+    _BOLD_RED = "\x1b[31;1m"
+    _GREEN = "\x1b[32m"
+    _YELLOW = "\x1b[33m"
+    _PURPLE = "\x1b[35m"
+    _RESET = "\x1b[0m"
 
-    COLOR_FORMAT = f"%(asctime)s.%(msecs)03d [{{color}}%(levelname)s{RESET}] (%(name)s) %(message)s"
-    DATETIME = "%H:%M:%S"
+    _FORMAT = f"%(asctime)s.%(msecs)03d [{{color}}%(levelname)s{_RESET}] (%(name)s) %(message)s"
+    _DATETIME = "%H:%M:%S"
 
-    FORMATS = {
-        logging.NOTSET: COLOR_FORMAT.format(color=""),
-        logging.DEBUG: COLOR_FORMAT.format(color=PURPLE),
-        logging.INFO: COLOR_FORMAT.format(color=GREEN),
-        logging.WARNING: COLOR_FORMAT.format(color=YELLOW),
-        logging.ERROR: COLOR_FORMAT.format(color=BOLD_RED),
-        logging.CRITICAL: COLOR_FORMAT.format(color=RED),
+    _FORMATS = {
+        logging.NOTSET: _FORMAT.format(color=""),
+        logging.DEBUG: _FORMAT.format(color=_PURPLE),
+        logging.INFO: _FORMAT.format(color=_GREEN),
+        logging.WARNING: _FORMAT.format(color=_YELLOW),
+        logging.ERROR: _FORMAT.format(color=_BOLD_RED),
+        logging.CRITICAL: _FORMAT.format(color=_RED),
     }
 
     def format(self, record):
-        level_format = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(level_format, self.DATETIME)
+        level_format = self._FORMATS.get(record.levelno)
+        formatter = logging.Formatter(level_format, self._DATETIME)
         return formatter.format(record)
