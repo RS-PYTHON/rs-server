@@ -23,9 +23,9 @@ import os.path as osp
 import pytest
 import sqlalchemy
 from dotenv import load_dotenv
-from rs_server_common.utils.logging import Logging
 
 from rs_server.db.database import sessionmanager
+from services.common.rs_server_common.utils.logging import Logging
 
 # Try to kill the existing postgres docker container if it exists
 # and prune docker networks to clean the IPv4 address pool
