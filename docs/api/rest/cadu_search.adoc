@@ -1,0 +1,34 @@
+= CADU List Endpoint Documentation
+
+== Endpoint: `/cadip/{station}/cadu/list`
+
+=== Overview
+This endpoint retrieves a list of products from the CADU system for a specified station within a given time range.
+
+=== Parameters
+- `station` (str): Identifier for the CADIP station (e.g., MTI, SGS, MPU, INU, etc).
+- `start_date` (str, optional): Start date for time series filter (format: "YYYY-MM-DDThh:mm:sssZ").
+- `stop_date` (str, optional): Stop date for time series filter (format: "YYYY-MM-DDThh:mm:sssZ").
+
+=== Response
+- `JSONResponse`: A JSON response containing the list of products (ID, Name, PublicationDate) for the specified station.
+  - If the station identifier is invalid, a 400 Bad Request response is returned.
+  - If no products were found in the mentioned time range, output is an empty list.
+
+=== Example
+
+==== Request
+----
+GET /cadip/station123/cadu/list?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
+----
+
+==== Response
+----
+{
+    "station123": [
+        (1, 'Product A', 'YYYY-MM-DDThh:mm:ss.sssZ'),
+        (2, 'Product B', 'YYYY-MM-DDThh:mm:ss.sssZ'),
+        ...
+    ]
+}
+----

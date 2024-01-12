@@ -28,8 +28,8 @@ def create_rs_list_cadu(station: str, start: str, stop: str):
     return f"{rs_url}?start_date={start}&stop_date={stop}"
 
 
-@pytest.fixture(scope="module")
-def a_product():
+@pytest.fixture(scope="module", name="a_product")
+def a_product_fixture():
     """Fixture factory to build a dummy cadip product.
 
     The cadip product is configured from an id and a datetime-like str.
@@ -49,8 +49,8 @@ def a_product():
     return build
 
 
-@pytest.fixture
-def expected_products(a_product) -> list[dict]:
+@pytest.fixture(name="expected_products")
+def expected_products_fixture(a_product) -> list[dict]:
     """Fixture that gives the default products returned by cadip.
 
     :param a_product: factory fixture to build a cadip product

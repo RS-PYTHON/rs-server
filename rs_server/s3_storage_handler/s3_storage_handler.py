@@ -11,15 +11,14 @@ import boto3
 import botocore
 from botocore.exceptions import ClientError
 from prefect import exceptions, get_run_logger, task
-from rs_server_common.utils.logging import Logging
+
+from services.common.rs_server_common.utils.logging import Logging
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6
 DWN_S3FILE_RETRIES = 20
 UP_S3FILE_RETRY_TIMEOUT = 6
 UP_S3FILE_RETRIES = 20
-global aws_terminating_node_notice
-aws_terminating_node_notice = False
 SET_PREFECT_LOGGING_LEVEL = "DEBUG"
 S3_ERR_FORBIDDEN_ACCESS = 403
 S3_ERR_NOT_FOUND = 404

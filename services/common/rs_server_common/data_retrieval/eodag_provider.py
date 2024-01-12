@@ -21,7 +21,7 @@ class EodagProvider(Provider):
         self.client: EODataAccessGateway = self.init_eodag_client(config_file)
         self.client.set_preferred_provider(self.provider)
 
-    def init_eodag_client(self, config_file: Path):
+    def init_eodag_client(self, config_file: Path) -> EODataAccessGateway:
         """Initialize the eodag client.
 
         The EODAG client is initialized for the given provider.
@@ -34,7 +34,7 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
-    def _specific_search(self, between: TimeRange) -> dict[str, EOProduct]:
+    def _specific_search(self, between: TimeRange) -> list[EOProduct]:
         """
         Conducts a search for products within a specified time range.
 

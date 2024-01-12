@@ -7,7 +7,8 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 """
 
 import pytest
-from rs_server_common.utils.logging import Logging
+
+from services.common.rs_server_common.utils.logging import Logging
 
 
 @pytest.fixture(scope="session", autouse=True)

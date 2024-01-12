@@ -2,6 +2,7 @@
 import json
 import os.path as osp
 from pathlib import Path
+from typing import Any
 
 from services.common.rs_server_common.data_retrieval.data_retriever import DataRetriever
 from services.common.rs_server_common.data_retrieval.download_monitor import (
@@ -46,12 +47,17 @@ def station_to_server_url(station: str) -> str | None:
         with open(CONF_FOLDER / "stations_cfg.json", encoding="utf-8") as jfile:
             stations_data = json.load(jfile)
             return stations_data.get(station.upper(), None)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
         # logger to be added.
-        raise ValueError
+        raise ValueError from exc
 
 
-def init_cadip_data_retriever(station: str):
+def init_cadip_data_retriever(
+    station: str,
+    storage: Any,
+    download_monitor: Any,
+    path: Any,
+):
     """
     Initializes a DataRetriever instance for CADIP data retrieval.
 
@@ -71,13 +77,13 @@ def init_cadip_data_retriever(station: str):
     try:
         if not station_to_server_url(station):
             raise CreateProviderFailed("Invalid station")
-    except ValueError:
-        raise CreateProviderFailed("Invalid station configuration")
+    except ValueError as exc:
+        raise CreateProviderFailed("Invalid station configuration") from exc
 
     provider = EodagProvider(EODAG_CONFIG, station)  # default to eodag, just init here
     # WIP, will be implemented with download
-    cadip_storage: Storage = None
-    cadip_monitor: DownloadMonitor = None
-    cadip_working_dir: Path = None
+    cadip_storage: Storage = storage
+    cadip_monitor: DownloadMonitor = download_monitor
+    cadip_working_dir: Path = path
     # End WIP
     return DataRetriever(provider, cadip_storage, cadip_monitor, cadip_working_dir)
