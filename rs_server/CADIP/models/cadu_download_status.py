@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
 from sqlalchemy.orm import Session
 
-from rs_server.db.database import Base
+from rs_server.db import Base
 
 
 class EDownloadStatus(enum.Enum):
@@ -22,6 +22,10 @@ class EDownloadStatus(enum.Enum):
     IN_PROGRESS = 2
     FAILED = 3
     DONE = 4
+
+
+# mypy: ignore-errors
+# Ignore mypy false positive errors on sqlalchemy
 
 
 class CaduDownloadStatus(Base):
@@ -107,7 +111,13 @@ class CaduDownloadStatus(Base):
         return db.query(cls).all()
 
     @classmethod
-    def get(cls, db: Session, cadu_id: str, name: str, raise_if_missing=True) -> CaduDownloadStatus:
+    def get(
+        cls,
+        db: Session,
+        cadu_id: str | Column[str],
+        name: str | Column[str],
+        raise_if_missing=True,
+    ) -> CaduDownloadStatus:
         """Get single entry by CADU ID or name."""
 
         # Check if entry exists
@@ -119,14 +129,21 @@ class CaduDownloadStatus(Base):
         if raise_if_missing:
             raise HTTPException(
                 status_code=404,
-                detail=f"No {cls.__name__} entry found for cadu_id={cadu_id!r} or name={name!r}",
+                detail=f"No {cls.__name__} entry found in table {cls.__tablename__!r} "
+                f"for cadu_id={cadu_id!r} or name={name!r}",
             )
 
         # Else return None result
         return None
 
     @classmethod
-    def get_or_create(cls, db: Session, cadu_id: str, name: str, **kwargs) -> CaduDownloadStatus:
+    def get_or_create(
+        cls,
+        db: Session,
+        cadu_id: str | Column[str],
+        name: str | Column[str],
+        **kwargs,
+    ) -> CaduDownloadStatus:
         """Get single entry by CADU ID or name, or create it if missing."""
 
         entry = cls.get(db, cadu_id=cadu_id, name=name, raise_if_missing=False)
