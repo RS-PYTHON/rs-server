@@ -108,9 +108,11 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
     [(1, 'Product A'), (2, 'Product B'), (3, 'Product C')]
     """
     # TODO, move all this logic to dataretriever.provider::search after db moved.
+    jsonify_state_products = []
     with contextmanager(get_db)() as db:
         try:
             for product in products:
+                jsonify_state_products.append((product.properties["id"], product.properties["Name"]))
                 db_product = CaduDownloadStatus.get(
                     db,
                     cadu_id=product.properties["id"],
@@ -133,11 +135,7 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
         except (ConnectionError, sqlalchemy.exc.OperationalError) as exception:
             logger.error("Failed to connect with DB during listing procedure")
             raise ConnectionError from exception
-    return (
-        [(product.properties["id"], product.properties["Name"]) for product in products]
-        if products
-        else []
-    )
+    return jsonify_state_products
 
 
 def is_valid_format(date: str) -> bool:
