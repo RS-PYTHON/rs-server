@@ -239,7 +239,7 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.projectBaseDir=.
-            -Dsonar.sources=./rs_server,./services
+            -Dsonar.sources=./rs_server,./services/common/rs_server_common,./services/cadip/rs_server_cadip
             -Dsonar.tests=./tests,./services/common/tests,./services/cadip/tests
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8

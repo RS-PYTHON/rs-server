@@ -8,9 +8,9 @@ name: Publish wheels and Docker images
 # Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
   push:
-    tags:
-      - '**'
-  workflow_dispatch:
+  #   tags:
+  #     - '**'
+  # workflow_dispatch:
 
 env:
   PYTHON_VERSION: 3.11
@@ -22,6 +22,7 @@ jobs:
   # Publish wheels #
   ##################
 
+  # TODO: remove. No source code in the root project.
   rs-server-whl:
     runs-on: ubuntu-latest
     name: "'rs-server' wheel"
@@ -71,10 +72,10 @@ jobs:
   # Publish Docker images #
   #########################
 
-  rs-server-img:
+  services-cadip-img:
     runs-on: ubuntu-latest
-    name: "'rs-server' Docker image"
-    needs: [rs-server-whl]
+    name: "'services/cadip' Docker image"
+    needs: [rs-server-whl, services-common-whl, services-cadip-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
@@ -87,35 +88,6 @@ jobs:
         with:
           name: ${{ needs.rs-server-whl.outputs.package_name }}
           path: ./whl
-
-      - id: publish-docker
-        uses: ./.github/actions/publish-docker
-        with:
-          dockerfile: Dockerfile.POC
-          build_context_path: ./whl
-          image_suffix: # no suffix
-          version_name: ${{ needs.rs-server-whl.outputs.version_name }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  test-pull-rs-server-img:
-    runs-on: ubuntu-latest
-    name: Test pulling the 'rs-server' Docker image and run 'pip list'
-    needs: [rs-server-img]
-    container: ${{ needs.rs-server-img.outputs.docker_image }}
-    steps:
-      - run: pip list
-
-  services-cadip-img:
-    runs-on: ubuntu-latest
-    name: "'services/cadip' Docker image"
-    needs: [services-common-whl, services-cadip-whl]
-    permissions: write-all
-    outputs:
-      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
-    steps:
-      - uses: actions/checkout@v4
-
-      # Download .whl files into ./whl/
       - name: Download .whl dependencies
         uses: actions/download-artifact@v3
         with:
@@ -130,7 +102,7 @@ jobs:
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
-          dockerfile: ./services/cadip/Dockerfile.POC
+          dockerfile: ./services/cadip/.github/Dockerfile
           build_context_path: ./whl
           image_suffix: _services-cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
@@ -142,7 +114,7 @@ jobs:
     needs: [services-cadip-img]
     container: ${{ needs.services-cadip-img.outputs.docker_image }}
     steps:
-      - run: pip list
+      - run: pip list && whoami && pwd
 
   ##########
   # Others #
@@ -151,7 +123,7 @@ jobs:
   message:
     runs-on: ubuntu-latest
     name: Information
-    needs: [rs-server-img, services-cadip-img]
+    needs: [services-cadip-img]
     steps:
 
       - name: "Display link to Trivy results"
