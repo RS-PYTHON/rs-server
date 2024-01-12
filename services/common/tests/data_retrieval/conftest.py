@@ -7,8 +7,6 @@ import pytest
 @pytest.fixture(scope="session")
 def start() -> datetime:
     """
-    Fixture providing a datetime representing the start time for testing purposes.
-
     This fixture returns a datetime object representing the start time for testing scenarios.
 
     Returns:
@@ -21,8 +19,6 @@ def start() -> datetime:
 @pytest.fixture(scope="session")
 def end() -> datetime:
     """
-    Fixture providing a datetime representing the end time for testing purposes.
-
     This fixture returns a datetime object representing the end time for testing scenarios.
 
     Returns:
@@ -35,8 +31,6 @@ def end() -> datetime:
 @pytest.fixture(scope="session")
 def in_the_future() -> datetime:
     """
-    Fixture providing a datetime representing a future date for testing purposes.
-
     This fixture returns a datetime object representing a date in the future for testing scenarios.
 
     Returns:
