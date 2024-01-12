@@ -12,13 +12,13 @@ from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
+
+from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus
+from rs_server.db.database import get_db
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
 )
-
-from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus
-from rs_server.db.database import get_db
 
 router = APIRouter()
 logger = Logging.default(__name__)
@@ -68,19 +68,17 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
         try:
             data_retriever = init_cadip_data_retriever(station, None, None, None)
             products = data_retriever.search(start_date, stop_date)
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={station: prepare_products(products)},
-            )
+            processed_products = prepare_products(products)
         except CreateProviderFailed:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content="Bad station identifier",
-            )
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content="Invalid request, invalid start/stop format",
-    )
+            logger.error("Failed to create EODAG provider!")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
+        except ConnectionError:
+            logger.error("Failed to connect to database!")
+            return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
+        logger.info("Succesfully listed and processed products from cadu station")
+        return JSONResponse(status_code=status.HTTP_200_OK, content={station: processed_products})
+    logger.error("Invalid start/stop in endpoint call!")
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
 
 
 def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
@@ -125,9 +123,7 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
                         product.properties["Name"],
                     )
                     continue
-                db_product = CaduDownloadStatus.get_or_create(
-                    db, product.properties["id"], product.properties["Name"]
-                )
+                db_product = CaduDownloadStatus.get_or_create(db, product.properties["id"], product.properties["Name"])
                 db_product.available_at_station = datetime.fromisoformat(
                     product.properties["startTimeFromAscendingNode"],
                 )
