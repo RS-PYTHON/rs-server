@@ -1,14 +1,14 @@
 """Docstring to be added."""
 import filecmp
 import os
-import pdb
+import os.path as osp
 import time
 from contextlib import contextmanager
 
 import pytest
 import responses
-from fastapi import status
 from fastapi.testclient import TestClient
+from rs_server_common.utils.logging import Logging
 
 from rs_server.CADIP.cadip_backend import app
 from rs_server.CADIP.models.cadu_download_status import (
@@ -17,31 +17,10 @@ from rs_server.CADIP.models.cadu_download_status import (
 )
 from rs_server.db.database import get_db
 
-
-def create_rs_dwn_cadu(
-    station: str,
-    id: str,
-    name: str,
-    publication_date: str,
-    local: str = "",
-    obs: str = "",
-):  # noqa: D417
-    """Create an rs-server endpoint for download a CADU product.
-
-    Parameters
-    ----------
-    station (str): The station name used in the request.
-    start_date (str): The start date for the request.
-    stop_date (str): The stop date for the request.
-
-    Returns
-    -------
-    str: The generated rs-server endpoint.
-    """
-    rs_url = f"/cadip/{station}/cadu"
-    # Create rs-server endpoint
-    return f"{rs_url}?id={id}&name={name}&publication_date={publication_date}"
-
+# Resource folders specified from the parent directory of this current script
+RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
+S3_FOLDER = osp.join(RSC_FOLDER, "s3")
+ENDPOINTS_FOLDER = osp.join(RSC_FOLDER, "endpoints")
 
 """
 TC-001 : User1 sends a CURL request to a CADIP backend Server on
@@ -53,39 +32,55 @@ The download continues in background. After few minutes, the file is stored on t
 @pytest.mark.unit
 @responses.activate
 def test_valid_endpoint_request(database):
-    responses.add(
-        responses.GET,
-        "http://127.0.0.1:5000/Files(id_1)/$value",
-        body="some byte-array data",
-        status=200,
-    )
+    """Test the behavior of a valid endpoint request for CADIP CADU download.
 
-    # download_dir = os.path.dirname(os.path.realpath(__file__))
+    This unit test checks the behavior of the CADIP CADU download endpoint when provided with
+    valid parameters. It simulates the download process, verifies the status code, and checks
+    the content of the downloaded file.
+
+    Args:
+        database: The database fixture for the test.
+
+    Returns:
+        None
+
+    Raises:
+        AssertionError: If the test fails to assert the expected outcomes.
+    """
     download_dir = "/tmp"
-    download_file = "CADIP_test_file_eodag.raw"
-    endpoint = create_rs_dwn_cadu(
-        "CADIP",
-        "id_1",
-        download_file,
-        "2023-10-10T00:00:00.111Z",
-        download_dir,
-        "s3://test-data/cadip/",
-    )
-    endpoint = f"/cadip/CADIP/cadu?id=id_1&name={download_file}&publication_date=2023-10-10T00:00:00.111Z"
-    # Open a database connection
+    filename = "CADIP_test_file_eodag.raw"
+    cadu_id = "id_1"
+    publication_date = "2023-10-10T00:00:00.111Z"
+
+    endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}"
+
     with contextmanager(get_db)() as db:
-        client = TestClient(app)
-        # send request
-        # import pdb
-        # pdb.set_trace()
-        data = client.get(endpoint)
-        # let the file to be copied onto local
-        time.sleep(1)
-        assert data.status_code == 200
-        # test file content
-        assert filecmp.cmp(
-            os.path.join(download_dir, download_file),
-            os.path.join("./data", "CADIP_test_file.raw"),
+        # Add a download status to database
+        CaduDownloadStatus.get_or_create(
+            db=db,
+            cadu_id=cadu_id,
+            name=filename,
+            available_at_station=publication_date,
+            status=EDownloadStatus.IN_PROGRESS,
         )
-        # clean downloaded file
-        os.remove(os.path.join(download_dir, download_file))
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Files(id_1)/$value",
+            body="some byte-array data\n",
+            status=200,
+        )
+        client = TestClient(app)
+        # send the request
+        data = client.get(endpoint)
+        # let the file to be copied local
+        time.sleep(1)
+        try:
+            assert data.status_code == 200
+            # test file content
+            assert filecmp.cmp(
+                os.path.join(download_dir, filename),
+                os.path.join(ENDPOINTS_FOLDER, "CADIP_test_file.raw"),
+            )
+            # clean downloaded file
+        finally:
+            os.remove(os.path.join(download_dir, filename))

@@ -63,7 +63,7 @@ def update_db(db, status: CaduDownloadStatus, estatus: EDownloadStatus, status_f
     raise last_exception
 
 
-def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str = "", secrets={}):
+def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str = ""):
     """Start an EODAG download process for a specified product.
 
     This function initiates a download process using EODAG to retrieve a product with the given
@@ -75,7 +75,6 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
         name (str): The name of the product.
         local (str): The local path where the product will be downloaded.
         obs (str, optional): The observation identifier associated with the product.
-        secrets (dict, optional): Dictionary containing access key, secret key, and S3 endpoint for authentication.
 
     Returns:
         None
@@ -127,6 +126,11 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
 
         if obs is not None and len(obs) > 0:
             try:
+                secrets = {
+                    "s3endpoint": os.environ["S3_ENDPOINT"],
+                    "accesskey": os.environ["S3_ACCESSKEY"],
+                    "secretkey": os.environ["S3_SECRETKEY"],
+                }
                 s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
                 obs_array = obs.split("/")
                 # TODO check the length
@@ -153,7 +157,6 @@ def download(
     station: str,
     cadu_id: str,
     name: str,
-    publication_date: str,
     local: str = "",
     obs: str = "",
     db=Depends(get_db),
@@ -180,9 +183,7 @@ def download(
     """
 
     # Get or create the product download status in database
-    print("ENDPOINT START !")
-    # status = CaduDownloadStatus.get_or_create(db, cadu_id, name)
-    status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)
+    status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name, raise_if_missing=False)
     if not status:
         logger.error("Product id %s with name %s could not be found in the database.", cadu_id, name)
         return {"started": "false"}
@@ -199,12 +200,14 @@ def download(
         locals(),
     )
     # TODO: the secrets should be set through env vars
+    """
     secrets = {
         "s3endpoint": None,
         "accesskey": None,
         "secretkey": None,
     }
     S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+    """
     thread_started = Event()
     thread = threading.Thread(
         target=start_eodag_download,
@@ -215,19 +218,16 @@ def download(
             name,
             local,
             obs,
-            secrets,
+            # secrets,
         ),
     )
     thread.start()
 
     # check the start of the thread
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
-        # thread_started.clear()
         logger.error("Download thread did not start !")
         # update the status in database
         update_db(db, status, EDownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
-    # thread_started.clear()
-    # update the status in database
-    # status.in_progress(db)  # updates the database
+
     return {"started": "true"}
