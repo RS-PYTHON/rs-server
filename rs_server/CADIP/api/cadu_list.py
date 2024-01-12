@@ -10,13 +10,21 @@ from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
+from rs_server_common.utils.logging import Logging
+
+from contextlib import contextmanager
+import sqlalchemy
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
 )
-
-router = APIRouter(tags=["Cadu products"])
-
+from rs_server.CADIP.models.cadu_download_status import (
+    CaduDownloadStatus,
+    EDownloadStatus,
+)
+from rs_server.db.database import get_db
+router = APIRouter()
+logger = Logging.default(__name__)
 
 @router.get("/cadip/{station}/cadu/list")
 async def list_cadu_handler(station: str, start_date: str, stop_date: str):
@@ -62,19 +70,10 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
         try:
             data_retriever = init_cadip_data_retriever(station, None, None, None)
             products = data_retriever.search(start_date, stop_date)
-            return JSONResponse(
-                status_code=status.HTTP_200_OK,
-                content={station: prepare_products(products)},
-            )
+            return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
         except CreateProviderFailed:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content="Bad station identifier",
-            )
-    return JSONResponse(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        content="Invalid request, invalid start/stop format",
-    )
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
 
 
 def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
@@ -94,26 +93,28 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
     Example
     -------
     >>> products = [
-    ...     EOProduct(properties={"id": 1, "Name": "Product A", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
-    ...     EOProduct(properties={"id": 2, "Name": "Product B", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
-    ...     EOProduct(properties={"id": 3, "Name": "Product C", "startTimeFromAscendingNode": "2021-02-16T12:00:00.000Z"}),
+    ...     EOProduct(properties={"id": 1, "Name": "Product A"}),
+    ...     EOProduct(properties={"id": 2, "Name": "Product B"}),
+    ...     EOProduct(properties={"id": 3, "Name": "Product C"}),
     ... ]
     >>> prepare_products(products)
-    [(1, 'Product A', 'YYYY-MM DDThh:mm:ss.sssZ'), (2, 'Product B', 'YYYY-MM DDThh:mm:ss.sssZ'), (3, 'Product C', 'YYYY-MM DDThh:mm:ss.sssZ')]
+    [(1, 'Product A'), (2, 'Product B'), (3, 'Product C')]
     """
-
-    return (
-        [
-            (
-                product.properties["id"],
-                product.properties["Name"],
-                product.properties["startTimeFromAscendingNode"],
-            )
-            for product in products
-        ]
-        if products
-        else []
-    )
+    # TODO, move all this logic to dataretriever.provider::search after db moved.
+    with contextmanager(get_db)() as db:
+        try:
+            for product in products:
+                status = CaduDownloadStatus.get(db, cadu_id=product.properties["id"], name=product.properties["Name"], raise_if_missing=False)
+                if status:
+                    logger.info("Product %s is already registered in database, skipping", product.properties["Name"])
+                    continue
+                status = CaduDownloadStatus.get_or_create(db, product.properties["id"], product.properties["Name"])
+                status.available_at_station = datetime.fromisoformat(product.properties["startTimeFromAscendingNode"])
+                status.not_started(db)
+        except (ConnectionError, sqlalchemy.exc.OperationalError) as exception:
+            logger.error("Failed to connect with DB during listing procedure")
+            raise ConnectionError from exception  
+    return [(product.properties["id"], product.properties["Name"]) for product in products] if products else []
 
 
 def is_valid_format(date: str) -> bool:
