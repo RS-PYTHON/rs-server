@@ -34,8 +34,8 @@ def a_product(with_id: str) -> Product:
     )
 
 
-@pytest.fixture(scope="package")
-def _eodag_config_folder(resource_path_root):
+@pytest.fixture(scope="package", name="eodag_config_folder")
+def eodag_config_folder_fixture(resource_path_root):
     """
     Pytest fixture to provide the path to the EODAG configuration folder.
 
@@ -60,7 +60,7 @@ def _eodag_config_folder(resource_path_root):
 
 
 @pytest.fixture(scope="package")
-def cadip_config(_eodag_config_folder) -> EodagConfiguration:
+def cadip_config(eodag_config_folder) -> EodagConfiguration:
     """
     Pytest fixture to provide an EodagConfiguration object for CADIP.
 
@@ -77,11 +77,11 @@ def cadip_config(_eodag_config_folder) -> EodagConfiguration:
         EodagConfiguration: An instance of EodagConfiguration configured for CADIP,
                             initialized with the path to the 'cadip.yaml' configuration file.
     """
-    return EodagConfiguration("CADIP", _eodag_config_folder / "cadip.yaml")
+    return EodagConfiguration("CADIP", eodag_config_folder / "cadip.yaml")
 
 
 @pytest.fixture(scope="package")
-def not_found_config(_eodag_config_folder) -> EodagConfiguration:
+def not_found_config(eodag_config_folder) -> EodagConfiguration:
     """
     Pytest fixture to provide a deliberately misconfigured EodagConfiguration object.
 
@@ -100,4 +100,4 @@ def not_found_config(_eodag_config_folder) -> EodagConfiguration:
                             initialized with a non-existent 'not_found.yml' file and
                             a wrong configuration name.
     """
-    return EodagConfiguration("WRONG", _eodag_config_folder / "not_found.yml")
+    return EodagConfiguration("WRONG", eodag_config_folder / "not_found.yml")
