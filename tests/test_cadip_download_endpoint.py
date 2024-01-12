@@ -8,7 +8,6 @@ from contextlib import contextmanager
 import pytest
 import responses
 from fastapi.testclient import TestClient
-from rs_server_common.utils.logging import Logging
 
 from rs_server.CADIP.cadip_backend import app
 from rs_server.CADIP.models.cadu_download_status import (
@@ -31,7 +30,7 @@ The download continues in background. After few minutes, the file is stored on t
 
 @pytest.mark.unit
 @responses.activate
-def test_valid_endpoint_request(database):
+def test_valid_endpoint_request(database):  # pylint: disable=unused-argument
     """Test the behavior of a valid endpoint request for CADIP CADU download.
 
     This unit test checks the behavior of the CADIP CADU download endpoint when provided with

@@ -124,7 +124,7 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
                     )
                     continue
                 db_product = CaduDownloadStatus.get_or_create(db, product.properties["id"], product.properties["Name"])
-                db_product.available_at_station = datetime.fromisoformat(
+                db_product["available_at_station"] = datetime.fromisoformat(
                     product.properties["startTimeFromAscendingNode"],
                 )
                 db_product.not_started(db)

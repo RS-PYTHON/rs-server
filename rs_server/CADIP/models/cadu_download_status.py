@@ -58,6 +58,13 @@ class CaduDownloadStatus(Base):
         super().__init__(*args, **kwargs)
         self.lock = Lock()
 
+    def __setitem__(self, item, value):
+        """Used to set members at runtime."""
+        if hasattr(item, value):
+            setattr(item, value)
+        else:
+            raise KeyError()
+
     @orm.reconstructor
     def init_on_load(self):
         """Invoked when retrieving an existing record from the database table."""

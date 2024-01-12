@@ -5,6 +5,7 @@ import os.path as osp
 import threading
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from threading import Event
@@ -42,7 +43,7 @@ def update_db(db, status: CaduDownloadStatus, estatus: EDownloadStatus, status_f
     # Don't do it for NOT_STARTED and IN_PROGRESS (call directly status.not_started or status.in_progress)
     # because it will anyway be overwritten later by DONE or FAILED.
 
-    last_exception = None
+    last_exception: Exception = Exception()
 
     for _ in range(3):
         try:
@@ -63,7 +64,19 @@ def update_db(db, status: CaduDownloadStatus, estatus: EDownloadStatus, status_f
     raise last_exception
 
 
-def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str = ""):
+@dataclass
+class EoDAGDownloadHandler:
+    """This dataclass is used to create the collection of arguments needed for eodag download."""
+
+    thread_started: Event
+    station: str
+    cadu_id: str
+    name: str
+    local: str
+    obs: str
+
+
+def start_eodag_download(argument: EoDAGDownloadHandler):
     """Start an EODAG download process for a specified product.
 
     This function initiates a download process using EODAG to retrieve a product with the given
@@ -85,31 +98,37 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
     # Open a database sessions in this thread, because the session from the root thread may have closed.
     with contextmanager(get_db)() as db:
         # Get the product download status
-        status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)
+        status = CaduDownloadStatus.get(db, cadu_id=argument.cadu_id, name=argument.name)
 
         # init eodag object
         try:
-            logger.debug("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
+            logger.debug(
+                "%s : %s : %s: Thread started !",
+                os.getpid(),
+                threading.get_ident(),
+                datetime.now(),
+            )
 
             setup_logging(3, no_progress_bar=True)
-            
-            if len(local) == 0:
+
+            if len(argument.local) == 0:
                 local = "/tmp"
 
-            data_retriever = init_cadip_data_retriever(station, None, None, Path(local))
+            data_retriever = init_cadip_data_retriever(argument.station, None, None, Path(local))
             status.in_progress(db)  # updates the database
             # notify the main thread that the download will be started
-            thread_started.set()
+            argument.thread_started.set()
             init = datetime.now()
-            data_retriever.download(cadu_id, name)
+            data_retriever.download(argument.cadu_id, argument.name)
             logger.info(
                 "%s : %s : File: %s downloaded in %s",
                 os.getpid(),
                 threading.get_ident(),
-                name,
+                argument.name,
                 datetime.now() - init,
             )
-        except Exception as exception:
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            # Pylint disabled since error is logged here.
             logger.error(
                 "%s : %s : %s: Exception caught: %s",
                 os.getpid(),
@@ -120,7 +139,7 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
             update_db(db, status, EDownloadStatus.FAILED, repr(exception))
             return
 
-        if obs is not None and len(obs) > 0:
+        if argument.obs is not None and len(argument.obs) > 0:
             try:
                 # NOTE: The environment variables have to be set from outside
                 # otherwise the connection with s3 endpoint fails
@@ -129,8 +148,13 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
                     "accesskey": os.environ["S3_ACCESSKEY"],
                     "secretkey": os.environ["S3_SECRETKEY"],
                 }
-                s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
-                obs_array = obs.split("/")                
+                s3_handler = S3StorageHandler(
+                    secrets["accesskey"],
+                    secrets["secretkey"],
+                    secrets["s3endpoint"],
+                    "sbg",
+                )
+                obs_array = argument.obs.split("/")
                 s3_config = PrefectPutFilesToS3Config(
                     s3_handler,
                     [str(data_retriever.filename)],
@@ -141,7 +165,12 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
                 asyncio.run(prefect_put_files_to_s3.fn(s3_config))
             except RuntimeError:
                 logger.error("Could not connect to the s3 storage")
-                update_db(db, status, EDownloadStatus.FAILED, "Could not connect to the s3 storage")
+                update_db(
+                    db,
+                    status,
+                    EDownloadStatus.FAILED,
+                    "Could not connect to the s3 storage",
+                )
                 return
             finally:
                 os.remove(data_retriever.filename)
@@ -157,7 +186,7 @@ def download(
     local: str = "",
     obs: str = "",
     db=Depends(get_db),
-):
+):  # pylint: disable=too-many-arguments
     """Initiate an asynchronous download process for a CADU product using EODAG.
 
     This endpoint triggers the download of a CADU product identified by the given cadu_id,
@@ -182,7 +211,11 @@ def download(
     # Get or create the product download status in database
     status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name, raise_if_missing=False)
     if not status:
-        logger.error("Product id %s with name %s could not be found in the database.", cadu_id, name)
+        logger.error(
+            "Product id %s with name %s could not be found in the database.",
+            cadu_id,
+            name,
+        )
         return {"started": "false"}
     # Update the publication date and set the status to not started
     # status.available_at_station = datetime.fromisoformat(publication_date)
@@ -197,24 +230,20 @@ def download(
         locals(),
     )
     # TODO: the secrets should be set through env vars
-    """
-    secrets = {
-        "s3endpoint": None,
-        "accesskey": None,
-        "secretkey": None,
-    }
-    S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
-    """
+
+    # secrets = {
+    #     "s3endpoint": None,
+    #     "accesskey": None,
+    #     "secretkey": None,
+    # }
+    # S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+
     thread_started = Event()
+    eodag_download_args = EoDAGDownloadHandler(thread_started, station, cadu_id, name, local, obs)
     thread = threading.Thread(
         target=start_eodag_download,
         args=(
-            thread_started,
-            station,
-            cadu_id,
-            name,
-            local,
-            obs,
+            eodag_download_args,
             # secrets,
         ),
     )

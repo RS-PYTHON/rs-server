@@ -54,7 +54,7 @@ def docker_compose_file_(pytestconfig):
 
 
 @pytest.fixture(scope="session")
-def database(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
+def fixture_database(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
     """
     Init database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
