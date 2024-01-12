@@ -27,7 +27,7 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 
 DWN_THREAD_START_TIMEOUT = 1.8
-tt = 0
+
 router = APIRouter(tags=["Cadu products"])
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
@@ -84,8 +84,6 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
     """
     # Open a database sessions in this thread, because the session from the root thread may have closed.
     with contextmanager(get_db)() as db:
-        global tt
-
         # Get the product download status
         status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name)
 
