@@ -88,7 +88,7 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
     Raises:
         None
     """
-    # Open a database sessions in this thread, because the session from the root thread may have closed.    
+    # Open a database sessions in this thread, because the session from the root thread may have closed.
     with contextmanager(get_db)() as db:
         global tt
 
@@ -122,7 +122,13 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
                 datetime.now() - init,
             )
         except Exception as exception:
-            logger.error("%s : %s : %s: Exception caught: %s", os.getpid(), threading.get_ident(), datetime.now(), exception)
+            logger.error(
+                "%s : %s : %s: Exception caught: %s",
+                os.getpid(),
+                threading.get_ident(),
+                datetime.now(),
+                exception,
+            )
             update_db(db, status, EDownloadStatus.FAILED, repr(exception))
             return
 

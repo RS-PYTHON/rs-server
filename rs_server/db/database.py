@@ -11,12 +11,13 @@ from threading import Lock
 from typing import Iterator
 
 from fastapi import HTTPException
+from rs_server_common.utils.logging import Logging
 from sqlalchemy import Connection, Engine, create_engine
-from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-Base = declarative_base()
+from rs_server.db import Base
 
 
 class DatabaseSessionManager:
@@ -61,7 +62,7 @@ class DatabaseSessionManager:
                     # Create all tables.
                     # First we make sure that we've imported all our model modules.
                     # pylint: disable=unused-import, import-outside-toplevel
-                    # noqa: F401
+                    # flake8: noqa
                     import rs_server.CADIP.models.cadu_download_status
 
                     self.create_all()
@@ -132,6 +133,10 @@ class DatabaseSessionManager:
     @classmethod
     def reraise_http_exception(cls, exception: Exception):
         """Re-raise all exceptions into HTTP exceptions."""
+
+        # Raised exceptions are not always printed in the console, so do it manually.
+        Logging.default().error(repr(exception))
+
         if isinstance(exception, StarletteHTTPException):
             raise exception
         raise HTTPException(status_code=400, detail=repr(exception))

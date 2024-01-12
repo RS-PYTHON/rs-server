@@ -98,7 +98,7 @@ def test_cadu_download_status(database):
             assert created.name == read1.name
 
         # Get product by CADU ID and name, check that the database ID is consistent
-        read1 = CaduDownloadStatus.get(cadu_id=created1.cadu_id, name=created1.name, db=db)  # type: ignore
+        read1 = CaduDownloadStatus.get(cadu_id=created1.cadu_id, name=created1.name, db=db)
         assert created1.db_id == read1.db_id
 
         # Start download
