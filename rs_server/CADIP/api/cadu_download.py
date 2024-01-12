@@ -39,19 +39,14 @@ def update_db(db, status: CaduDownloadStatus, estatus: EDownloadStatus, status_f
     """Update the database with the status of a product."""
 
     # Try n times to update the status.
-    # TODO: we should handle this better, e.g. if NOT_STARTED from the root thread fails, we wait n seconds.
-    # Then if DONE works, but NOT_STARTED tries again and works, then the final status will be NOT_STARTED
-    # instead of DONE.
+    # Don't do it for NOT_STARTED and IN_PROGRESS (call directly status.not_started or status.in_progress)
+    # because it will anyway be overwritten later by DONE or FAILED.
 
     last_exception = None
 
     for _ in range(3):
         try:
-            if estatus == EDownloadStatus.NOT_STARTED:
-                status.not_started(db)
-            elif estatus == EDownloadStatus.IN_PROGRESS:
-                status.in_progress(db)
-            elif estatus == EDownloadStatus.FAILED:
+            if estatus == EDownloadStatus.FAILED:
                 status.failed(db, status_fail_message)
             elif estatus == EDownloadStatus.DONE:
                 status.done(db)
@@ -110,7 +105,7 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
 
             data_retriever = init_cadip_data_retriever(station, None, None, Path(local))
             # notify the main thread that the download will be started
-            update_db(db, status, EDownloadStatus.IN_PROGRESS)
+            status.in_progress(db)  # updates the database
             thread_started.set()
             init = datetime.now()
             data_retriever.download(cadu_id, name)
@@ -192,7 +187,7 @@ def download(
 
     # Update the publication date and set the status to not started
     status.available_at_station = datetime.fromisoformat(publication_date)
-    update_db(db, status, EDownloadStatus.NOT_STARTED)
+    status.not_started(db)  # updates the database
 
     # start a thread to run the action in background
     logger.debug(
@@ -233,5 +228,5 @@ def download(
         return {"started": "false"}
     # thread_started.clear()
     # update the status in database
-    update_db(db, status, EDownloadStatus.IN_PROGRESS)
+    update_db(db, status, EDownloadStatus.IN_PROGRESS)  # updates the database
     return {"started": "true"}
