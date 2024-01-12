@@ -90,11 +90,9 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
         # init eodag object
         try:
             logger.debug("%s : %s : %s: Thread started !", os.getpid(), threading.get_ident(), datetime.now())
-            # config_file_path = CONF_FOLDER / "cadip_ws_config.yaml"
 
             setup_logging(3, no_progress_bar=True)
-
-            # eodag_provider = EodagProvider(Path(config_file_path), station)
+            
             if len(local) == 0:
                 local = "/tmp"
 
@@ -124,14 +122,15 @@ def start_eodag_download(thread_started, station, cadu_id, name, local, obs: str
 
         if obs is not None and len(obs) > 0:
             try:
+                # NOTE: The environment variables have to be set from outside
+                # otherwise the connection with s3 endpoint fails
                 secrets = {
                     "s3endpoint": os.environ["S3_ENDPOINT"],
                     "accesskey": os.environ["S3_ACCESSKEY"],
                     "secretkey": os.environ["S3_SECRETKEY"],
                 }
                 s3_handler = S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], "sbg")
-                obs_array = obs.split("/")
-                # TODO check the length
+                obs_array = obs.split("/")                
                 s3_config = PrefectPutFilesToS3Config(
                     s3_handler,
                     [str(data_retriever.filename)],
