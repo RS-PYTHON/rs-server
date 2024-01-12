@@ -3,28 +3,26 @@
 This module provides functionality to retrieve a list of products from the CADU system for a specified station.
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
+from contextlib import contextmanager
 from datetime import datetime
 from typing import List
 
+import sqlalchemy
 from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
-
 from rs_server_common.utils.logging import Logging
-
-from contextlib import contextmanager
-import sqlalchemy
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
 )
-from rs_server.CADIP.models.cadu_download_status import (
-    CaduDownloadStatus,
-    EDownloadStatus,
-)
+
+from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus
 from rs_server.db.database import get_db
+
 router = APIRouter()
 logger = Logging.default(__name__)
+
 
 @router.get("/cadip/{station}/cadu/list")
 async def list_cadu_handler(station: str, start_date: str, stop_date: str):
@@ -70,10 +68,19 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
         try:
             data_retriever = init_cadip_data_retriever(station, None, None, None)
             products = data_retriever.search(start_date, stop_date)
-            return JSONResponse(status_code=status.HTTP_200_OK, content={station: prepare_products(products)})
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={station: prepare_products(products)},
+            )
         except CreateProviderFailed:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
-    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content="Bad station identifier",
+            )
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content="Invalid request, invalid start/stop format",
+    )
 
 
 def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
@@ -104,17 +111,33 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
     with contextmanager(get_db)() as db:
         try:
             for product in products:
-                status = CaduDownloadStatus.get(db, cadu_id=product.properties["id"], name=product.properties["Name"], raise_if_missing=False)
-                if status:
-                    logger.info("Product %s is already registered in database, skipping", product.properties["Name"])
+                db_product = CaduDownloadStatus.get(
+                    db,
+                    cadu_id=product.properties["id"],
+                    name=product.properties["Name"],
+                    raise_if_missing=False,
+                )
+                if db_product:
+                    logger.info(
+                        "Product %s is already registered in database, skipping",
+                        product.properties["Name"],
+                    )
                     continue
-                status = CaduDownloadStatus.get_or_create(db, product.properties["id"], product.properties["Name"])
-                status.available_at_station = datetime.fromisoformat(product.properties["startTimeFromAscendingNode"])
-                status.not_started(db)
+                db_product = CaduDownloadStatus.get_or_create(
+                    db, product.properties["id"], product.properties["Name"]
+                )
+                db_product.available_at_station = datetime.fromisoformat(
+                    product.properties["startTimeFromAscendingNode"],
+                )
+                db_product.not_started(db)
         except (ConnectionError, sqlalchemy.exc.OperationalError) as exception:
             logger.error("Failed to connect with DB during listing procedure")
-            raise ConnectionError from exception  
-    return [(product.properties["id"], product.properties["Name"]) for product in products] if products else []
+            raise ConnectionError from exception
+    return (
+        [(product.properties["id"], product.properties["Name"]) for product in products]
+        if products
+        else []
+    )
 
 
 def is_valid_format(date: str) -> bool:
