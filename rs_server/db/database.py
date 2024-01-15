@@ -50,12 +50,12 @@ class DatabaseSessionManager:
                 "POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB",
             ) from key_error
 
-    def open_session(self, host: str = ""):
+    def open_session(self, url: str = ""):
         """Open database session."""
 
         with self.lock:
             if (self._engine is None) or (self._sessionmaker is None):
-                self._engine = create_engine(host or self.url(), poolclass=NullPool)
+                self._engine = create_engine(url or self.url(), poolclass=NullPool)
                 self._sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
 
                 try:

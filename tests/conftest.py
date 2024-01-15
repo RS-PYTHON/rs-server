@@ -6,35 +6,22 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
-# pylint: disable=wrong-import-position, wrong-import-order
-# flake8: noqa
-
-# isort: off
-# First thing: don't automatically open database session.
-# We'll do it in a pytest fixture and check it status.
-import rs_server
-
-rs_server.OPEN_DB_SESSION = False
-# isort: on
-
 import os
 import os.path as osp
+from contextlib import ExitStack
 
 import pytest
 import sqlalchemy
 from dotenv import load_dotenv
+from fastapi.testclient import TestClient
+from pytest_postgresql import factories
+from pytest_postgresql.janitor import DatabaseJanitor
 
-from rs_server.db.database import sessionmanager
+from rs_server.db.database import get_db, sessionmanager
+from rs_server.fastapi_app import init_app
 from services.common.rs_server_common.utils.logging import Logging
 
-# Try to kill the existing postgres docker container if it exists
-# and prune docker networks to clean the IPv4 address pool
-os.system(
-    """
-docker rm -f $(docker ps -aqf name=postgres_rspy-pytest) >/dev/null 2>&1
-docker network prune -f >/dev/null 2>&1
-""",
-)
+RESOURCES_DIR = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -47,39 +34,60 @@ def read_cli(request):
         Logging.level = option.upper()
 
 
-@pytest.fixture(scope="session", name="docker_compose_file")
-def docker_compose_file_(pytestconfig):
-    """Return the path to the docker-compose.yml file to run before tests."""
-    return osp.join(str(pytestconfig.rootdir), "tests", "resources", "db", "docker-compose.yml")
+# Init the FastAPI application and database
+# See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
 
 
-@pytest.fixture(scope="session")
-def database(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
-    """
-    Init database connection from the docker-compose.yml file.
-    docker_ip, docker_services are used by pytest-docker that runs docker compose.
-    """
+@pytest.fixture(autouse=True)
+def app():
+    """Init the FastAPI application."""
+    with ExitStack():
+        yield init_app(init_db=False)
 
-    # Read the .env file that comes with docker-compose.yml
-    load_dotenv(osp.join(osp.dirname(docker_compose_file), ".env"))
 
-    # Check if database connection is OK
-    def try_init() -> bool:
-        try:
-            # Open session
-            sessionmanager.open_session()
+@pytest.fixture
+def client(app):
+    """Test the FastAPI application."""
+    with TestClient(app) as client:
+        yield client
 
-            # Drop/create all database tables
-            sessionmanager.drop_all()
-            sessionmanager.create_all()
 
-            return True
+# Read the .env environment variables file
+load_dotenv(osp.join(RESOURCES_DIR, "db", ".env"))
+test_db = factories.postgresql_proc(port=None, dbname=os.environ["POSTGRES_DB"])
 
-        except sqlalchemy.exc.OperationalError:
-            return False
 
-    # Try to init database until OK
-    docker_services.wait_until_responsive(timeout=30, pause=3, check=try_init)
+@pytest.fixture(scope="session", autouse=True)
+async def connection_test(test_db):
+    """Open a postgres database session."""
 
-    # TODO: open a new database session for each test ?
-    # See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
+    user = os.environ["POSTGRES_USER"]
+    password = os.environ["POSTGRES_PASSWORD"]
+    host = os.environ["POSTGRES_HOST"]
+    port = os.environ["POSTGRES_PORT"]
+    dbname = os.environ["POSTGRES_DB"]
+
+    with DatabaseJanitor(user, host, port, dbname, test_db.version, password):
+        url = f"postgresql+psycopg2://{user}:@{host}:{port}/{dbname}"
+        sessionmanager.open_session(url=url)
+        yield
+        await sessionmanager.close()
+
+
+@pytest.fixture(scope="function", autouse=True)
+async def create_tables(connection_test):
+    """Drop and create all tables."""
+    async with sessionmanager.connect() as connection:
+        await sessionmanager.drop_all(connection)
+        await sessionmanager.create_all(connection)
+
+
+@pytest.fixture(scope="function", autouse=True)
+async def session_override(app, connection_test):
+    """Override the default database session."""
+
+    async def get_db_override():
+        async with sessionmanager.session() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = get_db_override
