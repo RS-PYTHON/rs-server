@@ -40,9 +40,31 @@ poetry run sphinx-build -M html docs/doc/api/python/ dist/doc/output/api/python/
 It generates the html pages for the python api of the rs-server.
 The generated api is accessible locally at 'dist/doc/api/html/index.html'.
 
-. Generate the rest api documentation
+. Generate the REST API documentation
 
-NOTE: To be defined. This procedure will use native FastAPI functionalities.
+From the root folder, run the following command :
+[source, bash]
+----
+mkdir -p dist/doc/output/api/rest/
+cp docs/doc/api/rest/index.html dist/doc/output/api/rest/
+----
+
+The previous command copies the entry document of the REST API
+to the folder in which the documentation is generated.
+It's important to keep it like that for integration with the technical documentation.
+
+From the root folder, run the following command :
+
+[source, bash]
+----
+poetry run python -m rs_server.CADIP.openapi dist/doc/output/api/rest/
+----
+
+The previous command uses FastAPI to extract the openapi specification of the rs-server CADIP service and write it on the expected folder.
+The output folder is the one expected for integration with the main document of the rest api previously copied.
+
+NOTE: This is a POC waiting for the frontend to be implemented.
+The documented REST API will be the one of the frontend at the end.
 
 . Verify the generated documentation
 

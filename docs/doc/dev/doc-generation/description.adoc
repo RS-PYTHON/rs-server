@@ -29,8 +29,17 @@ The generation of the python api replaces the html file with the true api refere
 
 NOTE: It's important to do the python api generation after the technical documentation generation.
 
-NOTE: It's important to verify this link in the generated docuementation.
+NOTE: It's important to verify this link in the generated documentation.
 
 == Rest api reference guide
 
-TODO
+The REST API is provided by FastAPI on a dynamic way on the /docs endpoint,  using SwaggerUI functionalities.
+We also want to provide it on a static way in the technical documentation.
+FastAPI enables us to export the openapi specification in a json format.
+Using Swagger UI functionalities, we can generate a static REST API documentation.
+
+It takes the form of an HTML index file using swagger for the rendering
+and the exported openapi file for the content.
+
+To provide a link to this REST API from the technical documentation,
+the same trick is used than the one used for the python API.

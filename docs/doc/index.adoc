@@ -19,6 +19,7 @@ The documentation is organized in 4 sections :
 * Reference guides give you technical information about the code and software API :
 ** ${include("dev/code-style.adoc")}
 ** ${include("api/python/html/index.adoc")}
+** ${include("api/rest/index.adoc")}
 
 NOTE: TODO include a link to the python API
 
