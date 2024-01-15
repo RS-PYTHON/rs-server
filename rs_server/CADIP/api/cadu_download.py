@@ -28,7 +28,8 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
 )
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 
-DWN_THREAD_START_TIMEOUT = 1.8
+# TODO: the value was set to 1.8s but it sometimes doesn't pass the CI in github.
+DWN_THREAD_START_TIMEOUT = 5
 
 router = APIRouter(tags=["Cadu products"])
 
