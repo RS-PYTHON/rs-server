@@ -17,7 +17,7 @@ from rs_server.db.database import get_db
 
 
 # pylint: disable=unused-argument,too-many-locals,too-many-statements
-def test_cadu_download_status(database):
+def test_cadu_download_status(client):
     """
     Test CADU product download status database operations.
 
@@ -79,7 +79,6 @@ def test_cadu_download_status(database):
             CaduDownloadStatus.get(db_exception, name=_name3)
 
         # Test the http endpoint
-        client = TestClient(app)
         url = "/cadip/CADIP/cadu/status?cadu_id={cadu_id}&name={name}"
 
         # Read an existing entry

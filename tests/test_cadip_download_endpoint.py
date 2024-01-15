@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 import pytest
 import responses
-from fastapi.testclient import TestClient
 
 from rs_server.CADIP.cadip_backend import app
 from rs_server.CADIP.models.cadu_download_status import (
@@ -34,7 +33,7 @@ The download continues in background. After few minutes, the file is stored on t
 
 @pytest.mark.unit
 @responses.activate
-def test_valid_endpoint_request(database):  # pylint: disable=unused-argument
+def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argument
     """Test the behavior of a valid endpoint request for CADIP CADU download.
 
     This unit test checks the behavior of the CADIP CADU download endpoint when provided with
@@ -42,7 +41,7 @@ def test_valid_endpoint_request(database):  # pylint: disable=unused-argument
     the content of the downloaded file.
 
     Args:
-        database: The database fixture for the test.
+        client: The client fixture for the test.
 
     Returns:
         None
@@ -72,7 +71,6 @@ def test_valid_endpoint_request(database):  # pylint: disable=unused-argument
             body="some byte-array data\n",
             status=200,
         )
-        client = TestClient(app)
         # send the request
         data = client.get(endpoint)
         # let the file to be copied local
@@ -91,7 +89,7 @@ def test_valid_endpoint_request(database):  # pylint: disable=unused-argument
 
 
 @pytest.mark.unit
-def test_invalid_endpoint_request(database):  # pylint: disable=unused-argument
+def test_invalid_endpoint_request(client):  # pylint: disable=unused-argument
     """
     Test the behavior of the system when an invalid request is made to the endpoint.
 
@@ -111,7 +109,7 @@ def test_invalid_endpoint_request(database):  # pylint: disable=unused-argument
        database issues.
 
     Args:
-        database (fixture): A pytest fixture to provide database access.
+        client (fixture): A pytest fixture to provide a FastAPI client.
 
     Returns:
         None: The test does not return anything but asserts conditions related to the system's
@@ -138,7 +136,6 @@ def test_invalid_endpoint_request(database):  # pylint: disable=unused-argument
         )
         # Check patch
         assert result is None
-        client = TestClient(app)
         # send the request
         data = client.get(endpoint)
         # Verify that download has not started.
@@ -148,7 +145,7 @@ def test_invalid_endpoint_request(database):  # pylint: disable=unused-argument
 
 
 @pytest.mark.unit
-def test_eodag_provider_failure_while_creating_provider(database):  # pylint: disable=unused-argument
+def test_eodag_provider_failure_while_creating_provider(client):  # pylint: disable=unused-argument
     """
     Test the behavior of the system when an error occurs while creating the EODAG provider.
 
@@ -168,7 +165,7 @@ def test_eodag_provider_failure_while_creating_provider(database):  # pylint: di
        provider creation failure.
 
     Args:
-        database (fixture): A pytest fixture to provide database access.
+        client (fixture): A pytest fixture to provide a FastAPI client.
 
     Returns:
         None: The test does not return anything but asserts conditions related to the system's
@@ -190,7 +187,6 @@ def test_eodag_provider_failure_while_creating_provider(database):  # pylint: di
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
         )
-        client = TestClient(app)
         # Mock function rs_server.CADIP.api.cadu_download.init_cadip_data_retriever to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         init_cadip_data_retriever.side_effect = CreateProviderFailed("Invalid station")
@@ -204,7 +200,7 @@ def test_eodag_provider_failure_while_creating_provider(database):  # pylint: di
 
 
 @pytest.mark.unit
-def test_eodag_provider_failure_while_downloading(database):  # pylint: disable=unused-argument
+def test_eodag_provider_failure_while_downloading(client):  # pylint: disable=unused-argument
     """
     Test the handling of an error during the download process in the EODAG provider.
 
@@ -222,7 +218,7 @@ def test_eodag_provider_failure_while_downloading(database):  # pylint: disable=
     6. Check that the failure reason is correctly logged in the database.
 
     Args:
-        database (fixture): A pytest fixture to provide database access.
+        client (fixture): A pytest fixture to provide a FastAPI client.
 
     Returns:
         None: The test does not return anything but asserts several conditions related to the
@@ -243,7 +239,6 @@ def test_eodag_provider_failure_while_downloading(database):  # pylint: disable=
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
         )
-        client = TestClient(app)
         # Mock function data_retriever.download to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         data_retriever_downloader.side_effect = Exception("Some Runtime Error occured here.")

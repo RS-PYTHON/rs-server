@@ -79,7 +79,7 @@ def expected_products_fixture(a_product) -> list[dict]:
 # He receives the list of CADU in the interval.
 @pytest.mark.unit
 @responses.activate
-def test_valid_endpoint_request(expected_products, database):  # pylint: disable=unused-argument
+def test_valid_endpoint_request_list(expected_products, client):
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
@@ -97,7 +97,6 @@ def test_valid_endpoint_request(expected_products, database):  # pylint: disable
     endpoint = create_rs_list_cadu("CADIP", "2014-01-01T12:00:00.000Z", "2023-12-30T12:00:00.000Z")
     with contextmanager(get_db)():
         # TODO, query and test db status
-        client = TestClient(app)
         # send request and convert output to python dict
         data = client.get(endpoint).json()
 
@@ -110,7 +109,7 @@ def test_valid_endpoint_request(expected_products, database):  # pylint: disable
 
 @pytest.mark.unit
 @responses.activate
-def test_invalid_endpoint_request(database):  # pylint: disable=unused-argument
+def test_invalid_endpoint_request(client):
     """Test case for validating the behavior of the endpoint when an invalid request is made.
 
     This test activates the 'responses' library to mock a successful response with an empty list.
@@ -127,7 +126,6 @@ def test_invalid_endpoint_request(database):  # pylint: disable=unused-argument
     # Get all products from 2023 to 2024, this request should result in a empty list since there are no matches
     endpoint = create_rs_list_cadu("CADIP", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z")
     with contextmanager(get_db)():
-        client = TestClient(app)
         # convert output to python dict
         data = client.get(endpoint).json()
         # check that request returned no elements
@@ -135,7 +133,7 @@ def test_invalid_endpoint_request(database):  # pylint: disable=unused-argument
 
 
 @pytest.mark.unit
-def test_invalid_endpoint_param_missing_start_stop():
+def test_invalid_endpoint_param_missing_start_stop(client):
     """Test case for validating the behavior of the endpoint when the stop date is missing.
 
     This test sends a request to the specified endpoint without providing a stop date,
@@ -146,7 +144,6 @@ def test_invalid_endpoint_param_missing_start_stop():
     cadip_test_station = "CADIP"
     rs_url = f"/cadip/{cadip_test_station}/cadu/list"
     endpoint = f"{rs_url}?start_date={start_date}"
-    client = TestClient(app)
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     # Test with a start / stop date that is not matching format.
@@ -159,7 +156,7 @@ def test_invalid_endpoint_param_missing_start_stop():
 
 
 @pytest.mark.unit
-def test_invalid_endpoint_param_station():
+def test_invalid_endpoint_param_station(client):
     """Test case for validating the behavior of the endpoint when an incorrect station name is provided.
 
     This test sends a request to the specified endpoint with an incorrect station name,
@@ -167,6 +164,5 @@ def test_invalid_endpoint_param_station():
     """
     # Test with and inccorect station name, this should result in a 400 bad request response.
     endpoint = create_rs_list_cadu("incorrect_station", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z")
-    client = TestClient(app)
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST

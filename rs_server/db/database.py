@@ -154,6 +154,3 @@ def get_db():
     # Re-raise all exceptions into HTTP exceptions
     except Exception as exception:  # pylint: disable=broad-exception-caught
         DatabaseSessionManager.reraise_http_exception(exception)
-
-
-# TODO: raise HttpException

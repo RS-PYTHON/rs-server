@@ -14,14 +14,10 @@ import pytest
 import sqlalchemy
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
-from pytest_postgresql import factories
-from pytest_postgresql.janitor import DatabaseJanitor
 
-from rs_server.db.database import get_db, sessionmanager
+from rs_server.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server.fastapi_app import init_app
 from services.common.rs_server_common.utils.logging import Logging
-
-RESOURCES_DIR = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -36,58 +32,64 @@ def read_cli(request):
 
 # Init the FastAPI application and database
 # See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
+# But I have error
+#     pytest_postgresql.exceptions.ExecutableMissingException: Could not found /usr/lib/postgresql/14/bin/pg_ctl.
+#     Is PostgreSQL server installed?
+#     Alternatively pg_config installed might be from different version that postgresql-server.
+# See commit bbc6290df7c92fd306908830cbade8975e1eea6c
+
+# Try to kill the existing postgres docker container if it exists
+# and prune docker networks to clean the IPv4 address pool
+os.system(
+    """
+docker rm -f $(docker ps -aqf name=postgres_rspy-pytest) >/dev/null 2>&1
+docker network prune -f >/dev/null 2>&1
+""",
+)
+
+
+@pytest.fixture(scope="session", name="docker_compose_file")
+def docker_compose_file_(pytestconfig):
+    """Return the path to the docker-compose.yml file to run before tests."""
+    return osp.join(str(pytestconfig.rootdir), "tests", "resources", "db", "docker-compose.yml")
 
 
 @pytest.fixture(autouse=True)
-def app():
-    """Init the FastAPI application."""
+def fastapi_app(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
+    """Init the FastAPI application and the database connection from the docker-compose.yml file.
+    docker_ip, docker_services are used by pytest-docker that runs docker compose.
+    """
+
+    # Read the .env file that comes with docker-compose.yml
+    load_dotenv(osp.join(osp.dirname(docker_compose_file), ".env"))
+
     with ExitStack():
-        yield init_app(init_db=False)
+        yield init_app(init_db=True, pause=3, timeout=6)
 
 
 @pytest.fixture
-def client(app):
+def client(fastapi_app):
     """Test the FastAPI application."""
-    with TestClient(app) as client:
+    with TestClient(fastapi_app) as client:
         yield client
 
 
-# Read the .env environment variables file
-load_dotenv(osp.join(RESOURCES_DIR, "db", ".env"))
-test_db = factories.postgresql_proc(port=None, dbname=os.environ["POSTGRES_DB"])
-
-
-@pytest.fixture(scope="session", autouse=True)
-async def connection_test(test_db):
-    """Open a postgres database session."""
-
-    user = os.environ["POSTGRES_USER"]
-    password = os.environ["POSTGRES_PASSWORD"]
-    host = os.environ["POSTGRES_HOST"]
-    port = os.environ["POSTGRES_PORT"]
-    dbname = os.environ["POSTGRES_DB"]
-
-    with DatabaseJanitor(user, host, port, dbname, test_db.version, password):
-        url = f"postgresql+psycopg2://{user}:@{host}:{port}/{dbname}"
-        sessionmanager.open_session(url=url)
-        yield
-        await sessionmanager.close()
-
-
 @pytest.fixture(scope="function", autouse=True)
-async def create_tables(connection_test):
+def create_tables(client):
     """Drop and create all tables."""
-    async with sessionmanager.connect() as connection:
-        await sessionmanager.drop_all(connection)
-        await sessionmanager.create_all(connection)
+    sessionmanager.drop_all()
+    sessionmanager.create_all()
 
 
 @pytest.fixture(scope="function", autouse=True)
-async def session_override(app, connection_test):
-    """Override the default database session."""
+def session_override(client, fastapi_app):
+    """Override the default database session"""
 
-    async def get_db_override():
-        async with sessionmanager.session() as session:
-            yield session
+    def get_db_override():
+        try:
+            with sessionmanager.session() as session:
+                yield session
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            DatabaseSessionManager.reraise_http_exception(exception)
 
-    app.dependency_overrides[get_db] = get_db_override
+    fastapi_app.dependency_overrides[get_db] = get_db_override

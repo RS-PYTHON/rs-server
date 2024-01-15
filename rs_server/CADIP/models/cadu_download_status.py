@@ -137,9 +137,9 @@ class CaduDownloadStatus(Base):
         return None
 
     @classmethod
-    def get_if_exists(cls, **kwargs) -> CaduDownloadStatus | None:
+    def get_if_exists(cls, *args, **kwargs) -> CaduDownloadStatus | None:
         """Get single entry by name if it exists, else None"""
-        return cls.get(**kwargs, raise_if_missing=False)
+        return cls.get(*args, **kwargs, raise_if_missing=False)
 
     @classmethod
     def create(
