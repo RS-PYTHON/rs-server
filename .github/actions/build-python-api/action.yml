@@ -1,0 +1,17 @@
+name: build-technical-doc
+description: "Generate the technical documentation using asciidoxy"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/poetry-install
+
+    - name: Generate Python API rst files from docstring
+      run: |
+        poetry run sphinx-apidoc -o docs/doc/api/python/generated rs_server
+      shell: bash
+
+    - name: Generate Python API html from rst files
+      run: |
+        poetry run sphinx-build -M html docs/doc/api/python/ dist/doc/output/api/python/
+      shell: bash

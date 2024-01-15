@@ -8,28 +8,31 @@ on:
         - '**'
     workflow_dispatch:
 
+env:
+  PYTHON_VERSION: 3.11
+
 jobs:
-  generate-documentation:
+  generate-technical-documentation:
+    name: Generate technical documentation
     runs-on: ubuntu-latest
-    name: Generate documentation
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
-      - uses: tonynv/asciidoctor-action@v2
-        with:
-          program:
-            # tag::adoc-cmd[]
-            asciidoctor -a toc=left -a toclevels=3 -a hardbreaks -D dist/doc -o index.html README.adoc
-            # end::adoc-cmd[]
+      # The order of these steps is important
+      # The technical documentation has to be first
+      # because some fake documentation are then replaced
+      # by the following steps for link purpose.
+      - uses:  ./.github/actions/build-technical-doc
+      - uses:  ./.github/actions/build-python-api
+      - uses:  ./.github/actions/build-rest-api
 
       - name: Deploy docs to ghpages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: ./dist/doc
+          publish_dir: ./dist/doc/output
 
       - run: >
           echo "Documentation published to: https://rs-python.github.io/rs-server" >> $GITHUB_STEP_SUMMARY

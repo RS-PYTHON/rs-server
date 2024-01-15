@@ -89,14 +89,10 @@ e.g. `0.0.0.post1.dev0+216f7fa` and `0.0.0.post1.dev0.216f7fa`.
 
 But running manually the workflow is discouraged, it is preferred to generate the wheels and Docker images by creating a new git tag (to be discussed).
 
-== *Generate documentation* workflow
+== Generate documentation workflow
 
 This workflow is run either automatically after adding a git tag to a commit, or manually.
 
-It builds the documentation using the command :
-[,console,indent=0]
-----
-include::../../../../.github/workflows/generate-documentation.yml[tag=adoc-cmd]
-----
+It builds the documentation following the how-to procedure to generate the documentation.
 
-And then publishes the results to the GitHub Pages: https://rs-python.github.io/rs-server
+Then, the result is published as the link:https://rs-python.github.io/rs-server[GitHub Pages of the rs-server].
