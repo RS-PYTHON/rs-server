@@ -1,6 +1,7 @@
-"""FastAPI"""
+"""Init the FastAPI application."""
 
 import time
+import typing
 from contextlib import asynccontextmanager
 from os import environ as env
 
@@ -8,11 +9,11 @@ import sqlalchemy
 from fastapi import FastAPI
 from rs_server_common.utils.logging import Logging
 
-from rs_server import OPEN_DB_SESSION
 from rs_server.CADIP.api import cadu_download, cadu_list, cadu_status
 from rs_server.db.database import sessionmanager
 
 
+@typing.no_type_check
 def init_app(init_db=True, pause=3, timeout=None):
     """
     Init the FastAPI application.
@@ -29,7 +30,7 @@ def init_app(init_db=True, pause=3, timeout=None):
     if init_db:
 
         @asynccontextmanager
-        async def lifespan(app: FastAPI):
+        async def lifespan(app: FastAPI):  # pylint: disable=function-redefined # noqa
             """Automatically executed when starting and stopping the FastAPI server."""
 
             ############

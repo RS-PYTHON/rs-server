@@ -8,7 +8,6 @@ from contextlib import contextmanager
 import pytest
 import responses
 
-from rs_server.CADIP.cadip_backend import app
 from rs_server.CADIP.models.cadu_download_status import (
     CaduDownloadStatus,
     EDownloadStatus,

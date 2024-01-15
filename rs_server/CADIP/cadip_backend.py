@@ -1,3 +1,5 @@
+"""Init the FastAPI application."""
+
 from rs_server.fastapi_app import init_app
 
 # Init the FastAPI application.

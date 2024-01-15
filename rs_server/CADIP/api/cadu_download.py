@@ -45,8 +45,8 @@ def update_db(db, db_product: CaduDownloadStatus, estatus: EDownloadStatus, stat
     # Don't do it for NOT_STARTED and IN_PROGRESS (call directly db_product.not_started
     # or db_product.in_progress) because it will anyway be overwritten later by DONE or FAILED.
 
-    # Init last exception to None. It will take the last raised exception.
-    last_exception: Exception = None
+    # Init last exception to empty value.
+    last_exception: Exception = Exception()
 
     for _ in range(3):
         try:

@@ -11,7 +11,6 @@ import os.path as osp
 from contextlib import ExitStack
 
 import pytest
-import sqlalchemy
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 
@@ -54,8 +53,8 @@ def docker_compose_file_(pytestconfig):
     return osp.join(str(pytestconfig.rootdir), "tests", "resources", "db", "docker-compose.yml")
 
 
-@pytest.fixture(autouse=True)
-def fastapi_app(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
+@pytest.fixture(autouse=True, name="fastapi_app")
+def fastapi_app_(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
     """Init the FastAPI application and the database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
     """
@@ -67,24 +66,26 @@ def fastapi_app(docker_ip, docker_services, docker_compose_file):  # pylint: dis
         yield init_app(init_db=True, pause=3, timeout=6)
 
 
-@pytest.fixture
-def client(fastapi_app):
-    """Test the FastAPI application."""
+@pytest.fixture(name="client")
+def client_(fastapi_app):
+    """Test the FastAPI application, opens the database session."""
     with TestClient(fastapi_app) as client:
         yield client
 
 
 @pytest.fixture(scope="function", autouse=True)
-def create_tables(client):
+def create_tables(client):  # pylint: disable=unused-argument
     """Drop and create all tables."""
     sessionmanager.drop_all()
     sessionmanager.create_all()
 
 
 @pytest.fixture(scope="function", autouse=True)
-def session_override(client, fastapi_app):
+def session_override(client, fastapi_app):  # pylint: disable=unused-argument
     """Override the default database session"""
 
+    # pylint: disable=duplicate-code
+    # NOTE: don't understand why we must duplicate this code.
     def get_db_override():
         try:
             with sessionmanager.session() as session:

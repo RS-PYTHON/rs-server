@@ -4,9 +4,7 @@ from contextlib import contextmanager
 import pytest
 import responses
 from fastapi import status
-from fastapi.testclient import TestClient
 
-from rs_server.CADIP.cadip_backend import app
 from rs_server.db.database import get_db
 
 

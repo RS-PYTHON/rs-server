@@ -6,9 +6,7 @@ from datetime import datetime
 import pytest
 import sqlalchemy
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 
-from rs_server.CADIP.cadip_backend import app
 from rs_server.CADIP.models.cadu_download_status import (
     CaduDownloadStatus,
     EDownloadStatus,
