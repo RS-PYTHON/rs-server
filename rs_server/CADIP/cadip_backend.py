@@ -1,12 +1,18 @@
 """FastAPI"""
 
+import time
 from contextlib import asynccontextmanager
+from os import environ as env
 
+import sqlalchemy
 from fastapi import FastAPI
+from rs_server_common.utils.logging import Logging
 
 from rs_server import OPEN_DB_SESSION
 from rs_server.CADIP.api import cadu_download, cadu_list, cadu_status
 from rs_server.db.database import sessionmanager
+
+logger = Logging.default(__name__)
 
 
 @asynccontextmanager
@@ -17,9 +23,17 @@ async def lifespan(_: FastAPI):
     # STARTING #
     ############
 
-    # Open database session
+    # Open database session. Loop until the connection works.
     if OPEN_DB_SESSION:
-        sessionmanager.open_session()
+        db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
+        while True:
+            try:
+                sessionmanager.open_session()
+                logger.info(f"Reached {env['POSTGRES_DB']!r} database on {db_info}")
+                break
+            except sqlalchemy.exc.OperationalError:
+                logger.warning(f"Trying to reach {env['POSTGRES_DB']!r} database on {db_info}")
+                time.sleep(3)
 
     yield
 

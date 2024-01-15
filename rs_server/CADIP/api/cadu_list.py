@@ -13,14 +13,17 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
-from rs_server.CADIP.models.cadu_download_status import CaduDownloadStatus
+from rs_server.CADIP.models.cadu_download_status import (
+    CaduDownloadStatus,
+    EDownloadStatus,
+)
 from rs_server.db.database import get_db
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Cadu products"])
 logger = Logging.default(__name__)
 
 
@@ -63,22 +66,29 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     - The response includes a JSON representation of the list of products for the specified station.
     - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
-    if is_valid_format(start_date) and is_valid_format(stop_date):
-        # Init dataretriever / get products / return
-        try:
-            data_retriever = init_cadip_data_retriever(station, None, None, None)
-            products = data_retriever.search(start_date, stop_date)
-            processed_products = prepare_products(products)
-        except CreateProviderFailed:
-            logger.error("Failed to create EODAG provider!")
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
-        except ConnectionError:
-            logger.error("Failed to connect to database!")
-            return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
+    if (not is_valid_format(start_date)) or (not is_valid_format(stop_date)):
+        logger.error("Invalid start/stop in endpoint call!")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content="Invalid request, invalid start/stop format",
+        )
+
+    # Init dataretriever / get products / return
+    try:
+        data_retriever = init_cadip_data_retriever(station, None, None, None)
+        products = data_retriever.search(start_date, stop_date)
+        processed_products = prepare_products(products)
+
         logger.info("Succesfully listed and processed products from cadu station")
         return JSONResponse(status_code=status.HTTP_200_OK, content={station: processed_products})
-    logger.error("Invalid start/stop in endpoint call!")
-    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Invalid request, invalid start/stop format")
+
+    except CreateProviderFailed:
+        logger.error("Failed to create EODAG provider!")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
+
+    except sqlalchemy.exc.OperationalError:
+        logger.error("Failed to connect to database!")
+        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
 
 
 def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
@@ -111,26 +121,25 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
         try:
             for product in products:
                 jsonify_state_products.append((product.properties["id"], product.properties["Name"]))
-                db_product = CaduDownloadStatus.get(
-                    db,
-                    cadu_id=product.properties["id"],
-                    name=product.properties["Name"],
-                    raise_if_missing=False,
-                )
-                if db_product:
+
+                if CaduDownloadStatus.get_if_exists(db, product.properties["Name"]) is not None:
                     logger.info(
                         "Product %s is already registered in database, skipping",
                         product.properties["Name"],
                     )
                     continue
-                db_product = CaduDownloadStatus.get_or_create(db, product.properties["id"], product.properties["Name"])
-                db_product["available_at_station"] = datetime.fromisoformat(
-                    product.properties["startTimeFromAscendingNode"],
+
+                CaduDownloadStatus.create(
+                    db,
+                    cadu_id=product.properties["id"],
+                    name=product.properties["Name"],
+                    available_at_station=datetime.fromisoformat(product.properties["startTimeFromAscendingNode"]),
+                    status=EDownloadStatus.NOT_STARTED,
                 )
-                db_product.not_started(db)
-        except (ConnectionError, sqlalchemy.exc.OperationalError) as exception:
+
+        except sqlalchemy.exc.OperationalError:
             logger.error("Failed to connect with DB during listing procedure")
-            raise ConnectionError from exception
+            raise
     return jsonify_state_products
 
 

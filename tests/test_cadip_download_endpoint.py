@@ -55,7 +55,7 @@ def test_valid_endpoint_request(database):  # pylint: disable=unused-argument
 
     with contextmanager(get_db)() as db:
         # Add a download status to database
-        CaduDownloadStatus.get_or_create(
+        CaduDownloadStatus.create(
             db=db,
             cadu_id=cadu_id,
             name=filename,

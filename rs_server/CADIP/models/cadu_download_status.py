@@ -118,17 +118,11 @@ class CaduDownloadStatus(Base):
         return db.query(cls).all()
 
     @classmethod
-    def get(
-        cls,
-        db: Session,
-        cadu_id: str | Column[str],
-        name: str | Column[str],
-        raise_if_missing=True,
-    ) -> CaduDownloadStatus:
-        """Get single entry by CADU ID or name."""
+    def get(cls, db: Session, name: str | Column[str], raise_if_missing=True) -> CaduDownloadStatus:
+        """Get single entry by name."""
 
         # Check if entry exists
-        query = db.query(cls).where((cls.cadu_id == cadu_id) | (cls.name == name))
+        query = db.query(cls).where(cls.name == name)
         if query.count():
             return query.first()
 
@@ -136,31 +130,25 @@ class CaduDownloadStatus(Base):
         if raise_if_missing:
             raise HTTPException(
                 status_code=404,
-                detail=f"No {cls.__name__} entry found in table {cls.__tablename__!r} "
-                f"for cadu_id={cadu_id!r} or name={name!r}",
+                detail=f"No {cls.__name__} entry found in table {cls.__tablename__!r} for name={name!r}",
             )
 
         # Else return None result
         return None
 
     @classmethod
-    def get_or_create(
+    def get_if_exists(cls, **kwargs) -> CaduDownloadStatus | None:
+        """Get single entry by name if it exists, else None"""
+        return cls.get(**kwargs, raise_if_missing=False)
+
+    @classmethod
+    def create(
         cls,
         db: Session,
-        cadu_id: str | Column[str],
-        name: str | Column[str],
         **kwargs,
     ) -> CaduDownloadStatus:
-        """Get single entry by CADU ID or name, or create it if missing."""
-
-        entry = cls.get(db, cadu_id=cadu_id, name=name, raise_if_missing=False)
-
-        # Return entry if it exists
-        if entry:
-            return entry
-
-        # Else create and return it
-        entry = cls(cadu_id=cadu_id, name=name, **kwargs)
+        """Create and return entry"""
+        entry = cls(**kwargs)
         db.add(entry)
         db.commit()
         db.refresh(entry)

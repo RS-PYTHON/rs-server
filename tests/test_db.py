@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from datetime import datetime
 
 import pytest
+import sqlalchemy
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
@@ -39,8 +40,8 @@ def test_cadu_download_status(database):
     # Open a database connection
     with contextmanager(get_db)() as db:
         # Add two new download status to database
-        created1 = CaduDownloadStatus.get_or_create(db=db, cadu_id=_cadu_id1, name=_name1, available_at_station=_date1)
-        created2 = CaduDownloadStatus.get_or_create(db=db, cadu_id=_cadu_id2, name=_name2, available_at_station=_date2)
+        created1 = CaduDownloadStatus.create(db=db, cadu_id=_cadu_id1, name=_name1, available_at_station=_date1)
+        created2 = CaduDownloadStatus.create(db=db, cadu_id=_cadu_id2, name=_name2, available_at_station=_date2)
 
         # Check that e auto-incremented database IDs were given
         assert created1.db_id == 1
@@ -49,30 +50,33 @@ def test_cadu_download_status(database):
         # They have different Lock instances
         assert created1.lock != created2.lock
 
-        # Check that creating a new product with the same values will return the existing entry.
-        created3 = CaduDownloadStatus.get_or_create(db, cadu_id=_cadu_id1, name=_name1, available_at_station=_date1)
-        assert created1.db_id == created3.db_id
+        # Check that getting the product from database with the same values will return the existing entry.
+        read1 = CaduDownloadStatus.get(db, name=_name1)
+        assert created1.db_id == read1.db_id
 
         # The entry returned by the same database session has the same Lock instance
-        assert created1.lock == created3.lock
+        assert created1.lock == read1.lock
 
         # But the entry returned by a different session has a different Lock instance
         with contextmanager(get_db)() as db2:
-            created4 = CaduDownloadStatus.get_or_create(
-                db2,
-                cadu_id=_cadu_id1,
-                name=_name1,
-                available_at_station=_date1,
-            )
-            assert created1.db_id == created4.db_id
-            assert created1.lock != created4.lock
+            read2 = CaduDownloadStatus.get(db2, name=_name1)
+            assert created1.db_id == read2.db_id
+            assert created1.lock != read2.lock
 
-        # Test error when entry is missing. Use a distinct database session because it will be closed after exception.
+        # Check that creating a new product with the same values will raise an exception.
+        # Use a distinct database session because it will be closed after exception.
+        with contextmanager(get_db)() as db_exception, pytest.raises(
+            sqlalchemy.exc.IntegrityError,
+            match="duplicate key value violates unique constraint",
+        ):
+            CaduDownloadStatus.create(db_exception, cadu_id=_cadu_id1, name=_name1, available_at_station=_date1)
+
+        # Test error when entry is missing.
         with contextmanager(get_db)() as db_exception, pytest.raises(
             HTTPException,
             match="404: No CaduDownloadStatus entry found",
         ):
-            CaduDownloadStatus.get(db_exception, cadu_id=_cadu_id3, name=_name3)
+            CaduDownloadStatus.get(db_exception, name=_name3)
 
         # Test the http endpoint
         client = TestClient(app)
@@ -98,7 +102,7 @@ def test_cadu_download_status(database):
             assert created.name == read1.name
 
         # Get product by CADU ID and name, check that the database ID is consistent
-        read1 = CaduDownloadStatus.get(cadu_id=created1.cadu_id, name=created1.name, db=db)
+        read1 = CaduDownloadStatus.get(name=created1.name, db=db)
         assert created1.db_id == read1.db_id
 
         # Start download

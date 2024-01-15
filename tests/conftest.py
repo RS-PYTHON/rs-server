@@ -58,15 +58,6 @@ def database(docker_ip, docker_services, docker_compose_file):  # pylint: disabl
     """
     Init database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
-
-    In case of error:
-    `Bind for 0.0.0.0:5432 failed: port is already allocated`
-
-    Run this to remove all postgres docker containers:
-    `docker rm -f $(docker ps -aqf name=postgres_rspy-pytest)`
-
-    Then you can also try:
-    `docker system prune`
     """
 
     # Read the .env file that comes with docker-compose.yml
@@ -84,7 +75,7 @@ def database(docker_ip, docker_services, docker_compose_file):  # pylint: disabl
 
             return True
 
-        except (ConnectionError, sqlalchemy.exc.OperationalError):
+        except sqlalchemy.exc.OperationalError:
             return False
 
     # Try to init database until OK
