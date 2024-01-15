@@ -12,7 +12,8 @@ from threading import Event
 
 import sqlalchemy
 from eodag import setup_logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
 from rs_server.CADIP.models.cadu_download_status import (
@@ -36,7 +37,7 @@ CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "
 logger = Logging.default(__name__)
 
 
-def update_db(db, status: CaduDownloadStatus, estatus: EDownloadStatus, status_fail_message=None):
+def update_db(db, db_product: CaduDownloadStatus, estatus: EDownloadStatus, status_fail_message=None):
     """Update the database with the status of a product."""
 
     # Try n times to update the status.
@@ -48,9 +49,9 @@ def update_db(db, status: CaduDownloadStatus, estatus: EDownloadStatus, status_f
     for _ in range(3):
         try:
             if estatus == EDownloadStatus.FAILED:
-                status.failed(db, status_fail_message)
+                db_product.failed(db, status_fail_message)
             elif estatus == EDownloadStatus.DONE:
-                status.done(db)
+                db_product.done(db)
 
             # The database update worked, exit function
             return
@@ -98,7 +99,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
     # Open a database sessions in this thread, because the session from the root thread may have closed.
     with contextmanager(get_db)() as db:
         # Get the product download status
-        status = CaduDownloadStatus.get(db, cadu_id=argument.cadu_id, name=argument.name)
+        db_product = CaduDownloadStatus.get(db, cadu_id=argument.cadu_id, name=argument.name)
 
         # init eodag object
         try:
@@ -115,7 +116,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
                 local = "/tmp"
 
             data_retriever = init_cadip_data_retriever(argument.station, None, None, Path(local))
-            status.in_progress(db)  # updates the database
+            db_product.in_progress(db)  # updates the database
             # notify the main thread that the download will be started
             argument.thread_started.set()
             init = datetime.now()
@@ -136,7 +137,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
                 datetime.now(),
                 exception,
             )
-            update_db(db, status, EDownloadStatus.FAILED, repr(exception))
+            update_db(db, db_product, EDownloadStatus.FAILED, repr(exception))
             return
 
         if argument.obs is not None and len(argument.obs) > 0:
@@ -167,7 +168,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
                 logger.error("Could not connect to the s3 storage")
                 update_db(
                     db,
-                    status,
+                    db_product,
                     EDownloadStatus.FAILED,
                     "Could not connect to the s3 storage",
                 )
@@ -175,7 +176,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
             finally:
                 os.remove(data_retriever.filename)
 
-        update_db(db, status, EDownloadStatus.DONE)
+        update_db(db, db_product, EDownloadStatus.DONE)
 
 
 @router.get("/cadip/{station}/cadu")
@@ -209,14 +210,14 @@ def download(
     """
 
     # Get or create the product download status in database
-    status = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name, raise_if_missing=False)
-    if not status:
+    db_product = CaduDownloadStatus.get(db, cadu_id=cadu_id, name=name, raise_if_missing=False)
+    if not db_product:
         logger.error(
-            "Product id %s with name %s could not be found in the database.",
+            "Product id %s with name %s could not be found/created in the database.",
             cadu_id,
             name,
         )
-        return {"started": "false"}
+        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"started": "false"})
     # Update the publication date and set the status to not started
     # status.available_at_station = datetime.fromisoformat(publication_date)
     # status.not_started(db)  # updates the database
@@ -240,6 +241,9 @@ def download(
 
     thread_started = Event()
     eodag_download_args = EoDAGDownloadHandler(thread_started, station, cadu_id, name, local, obs)
+    # Big note / TODO here
+    # Is there a mechanism to catch / capture return value from a function running inside a thread?
+    # If start_eodag_download throws an error, there is no simple solution to return it with FastAPI
     thread = threading.Thread(
         target=start_eodag_download,
         args=(
@@ -252,8 +256,8 @@ def download(
     # check the start of the thread
     if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
         logger.error("Download thread did not start !")
-        # update the status in database
-        update_db(db, status, EDownloadStatus.FAILED, "Download thread did not start !")
+        # update the product in database
+        update_db(db, db_product, EDownloadStatus.FAILED, "Download thread did not start !")
         return {"started": "false"}
 
     return {"started": "true"}
