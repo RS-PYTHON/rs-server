@@ -4,7 +4,6 @@ import os
 import os.path as osp
 import time
 from contextlib import contextmanager
-from unittest.mock import patch
 
 import pytest
 import responses
@@ -89,30 +88,31 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
 
 
 @pytest.mark.unit
-def test_invalid_endpoint_request(client):  # pylint: disable=unused-argument
+def test_invalid_endpoint_request(mocker, client):
     """
-    Test the behavior of the system when an invalid request is made to the endpoint.
+    Test the system's response to an invalid request made to the CADIP download endpoint.
 
-    This unit test checks how the system responds when an invalid request is made to the CADIP
-    download endpoint. It specifically tests the scenario where the database operation to retrieve
-    or create a CADU download status entry fails, simulating a database access issue. The test
-    ensures that in such cases, the system responds with the appropriate HTTP status code and
-    message indicating that the download process has not started.
+    This unit test examines how the system responds when an invalid request is made to the CADIP
+    download endpoint. It specifically addresses the scenario where the database operation to
+    retrieve or create a CADU download status entry fails, simulating a database access issue.
+    The test ensures that in such cases, the system responds appropriately with the correct HTTP
+    status code and message, indicating that the download process has not started.
 
-    Steps:
+    Test Steps:
     1. Mock the `CaduDownloadStatus.create` method to return None, simulating a failure in
        database operations.
-    2. Make a GET request to the endpoint with invalid CADU ID and filename.
+    2. Make a GET request to the endpoint with an invalid CADU ID and filename.
     3. Verify that the mocked database operation is called and returns None.
-    4. Check that the HTTP response indicates that the download has not started.
+    4. Check that the HTTP response correctly indicates that the download has not started.
     5. Confirm that the HTTP status code is 503, indicating a service unavailable error due to
        database issues.
 
     Args:
+        mocker (fixture): A pytest-mock fixture used for mocking dependencies.
         client (fixture): A pytest fixture to provide a FastAPI client.
 
     Returns:
-        None: The test does not return anything but asserts conditions related to the system's
+        None: This test does not return anything but asserts conditions related to the system's
               response to invalid endpoint requests.
     """
     filename = "Invalid_name"
@@ -121,12 +121,13 @@ def test_invalid_endpoint_request(client):  # pylint: disable=unused-argument
 
     endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}"
 
-    with contextmanager(get_db)() as db, patch(
-        "rs_server.CADIP.models.cadu_download_status.CaduDownloadStatus.create",
-    ) as create_db:
+    with contextmanager(get_db)() as db:
         # Add a download status to database
         # Mock a problem while getting / creating db entry
-        create_db.return_value = None
+        mocker.patch(
+            "rs_server.CADIP.models.cadu_download_status.CaduDownloadStatus.create",
+            return_value=None,
+        )
         result = CaduDownloadStatus.create(
             db=db,
             cadu_id=cadu_id,
@@ -145,30 +146,31 @@ def test_invalid_endpoint_request(client):  # pylint: disable=unused-argument
 
 
 @pytest.mark.unit
-def test_eodag_provider_failure_while_creating_provider(client):  # pylint: disable=unused-argument
+def test_eodag_provider_failure_while_creating_provider(mocker, client):
     """
-    Test the behavior of the system when an error occurs while creating the EODAG provider.
+    Test the system response to an error during EODAG provider creation.
 
-    This unit test checks how the system responds when an error occurs during the creation of the
-    EODAG provider in the CADU download endpoint. It specifically tests the scenario where the
-    `init_cadip_data_retriever` function raises a `CreateProviderFailed` exception. The test ensures
-    that in such cases, the system responds with the appropriate HTTP status code and message
-    indicating that the download process has not started.
+    This unit test evaluates the behavior of the system when an error occurs during the creation of
+    the EODAG provider in the CADU download endpoint. It specifically tests the scenario where the
+    `init_cadip_data_retriever` function raises a `CreateProviderFailed` exception. The test aims
+    to ensure that, in such cases, the system responds appropriately with the correct HTTP status
+    code and message, indicating that the download process has not started.
 
-    Steps:
+    Test Steps:
     1. Mock the `init_cadip_data_retriever` function to raise a `CreateProviderFailed` exception,
        simulating an error during the creation of the EODAG provider.
-    2. Make a GET request to the endpoint with valid CADU ID and filename.
+    2. Make a GET request to the endpoint with a valid CADU ID and filename.
     3. Verify that the mocked provider creation function is called and raises the expected exception.
-    4. Check that the HTTP response indicates that the download has not started.
+    4. Check that the HTTP response correctly indicates that the download has not started.
     5. Confirm that the HTTP status code is 503, indicating a service unavailable error due to the
        provider creation failure.
 
     Args:
+        mocker (fixture): A pytest-mock fixture used for mocking dependencies.
         client (fixture): A pytest fixture to provide a FastAPI client.
 
     Returns:
-        None: The test does not return anything but asserts conditions related to the system's
+        None: This test does not return anything but asserts conditions related to the system's
               response to EODAG provider creation failure.
     """
     filename = "CADIP_test_file_eodag.raw"
@@ -176,9 +178,7 @@ def test_eodag_provider_failure_while_creating_provider(client):  # pylint: disa
     publication_date = "2023-10-10T00:00:00.111Z"
 
     endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}"
-    with contextmanager(get_db)() as db, patch(
-        "rs_server.CADIP.api.cadu_download.init_cadip_data_retriever",
-    ) as init_cadip_data_retriever:
+    with contextmanager(get_db)() as db:
         # Init this product into db, set the status to NOT_STARTED
         CaduDownloadStatus.create(
             db=db,
@@ -189,7 +189,10 @@ def test_eodag_provider_failure_while_creating_provider(client):  # pylint: disa
         )
         # Mock function rs_server.CADIP.api.cadu_download.init_cadip_data_retriever to raise an error
         # In order to verify that download status is not set to in progress and set to false.
-        init_cadip_data_retriever.side_effect = CreateProviderFailed("Invalid station")
+        mocker.patch(
+            "rs_server.CADIP.api.cadu_download.init_cadip_data_retriever",
+            side_effect=CreateProviderFailed("Invalid station"),
+        )
         # send the request
         data = client.get(endpoint)
         # After endpoint process this download request, check the db status
@@ -200,37 +203,40 @@ def test_eodag_provider_failure_while_creating_provider(client):  # pylint: disa
 
 
 @pytest.mark.unit
-def test_eodag_provider_failure_while_downloading(client):  # pylint: disable=unused-argument
+def test_eodag_provider_failure_while_downloading(mocker, client):
     """
-    Test the handling of an error during the download process in the EODAG provider.
+    Test the EODAG providers error handling during a download failure.
 
-    This test simulates a failure in the EODAG provider's download process by mocking a runtime
-    exception in the DataRetriever.download method. It verifies that the system correctly handles
-    the failure by updating the CADU download status to FAILED in the database and by ensuring
-    the correct HTTP response is returned.
+    This unit test aims to validate the robustness of the EODAG provider's download mechanism.
+    It specifically tests the system's response when an unexpected error occurs during the file download process.
+    The test ensures that in the event of such a failure, the system correctly updates the CADU download status
+    to FAILED in the database.
+    Additionally, it checks that the appropriate HTTP response is returned to indicate the initiation of the download
+    process despite the encountered error.
 
-    Steps:
-    1. Initialize the CADU product in the database with a NOT_STARTED status.
-    2. Mock the `DataRetriever.download` method to raise a runtime exception.
-    3. Send a GET request to the download endpoint.
-    4. Verify that the CADU download status in the database is updated to FAILED.
-    5. Confirm that the response indicates that the download process was started despite the failure.
-    6. Check that the failure reason is correctly logged in the database.
+    The test scenario is as follows:
+    1. A CADU product is initialized in the database with a status of NOT_STARTED.
+    2. The `DataRetriever.download` method is mocked to trigger a runtime exception, simulating a download failure.
+    3. A GET request is sent to the download endpoint, invoking the download process.
+    4. The test verifies that the CADU download status in the database is updated to FAILED as a result of the
+        simulated error.
+    5. The test confirms that the HTTP response correctly indicates the initiation of the download process,
+        despite the error.
+    6. Finally, it checks that the database correctly logs the reason for the download failure.
 
     Args:
+        mocker (fixture): A pytest-mock fixture used for mocking dependencies.
         client (fixture): A pytest fixture to provide a FastAPI client.
 
     Returns:
-        None: The test does not return anything but asserts several conditions related to the
-              error handling of the download process.
+        None: This function does not return a value. It asserts various conditions to ensure proper error
+        handling in the download process.
     """
     filename = "CADIP_test_file_eodag.raw"
     cadu_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
     endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}"
-    with contextmanager(get_db)() as db, patch(
-        "services.common.rs_server_common.data_retrieval.data_retriever.DataRetriever.download",
-    ) as data_retriever_downloader:
+    with contextmanager(get_db)() as db:
         # Init this product into db, set the status to NOT_STARTED
         CaduDownloadStatus.create(
             db=db,
@@ -241,7 +247,10 @@ def test_eodag_provider_failure_while_downloading(client):  # pylint: disable=un
         )
         # Mock function data_retriever.download to raise an error
         # In order to verify that download status is not set to in progress and set to false.
-        data_retriever_downloader.side_effect = Exception("Some Runtime Error occured here.")
+        mocker.patch(
+            "services.common.rs_server_common.data_retrieval.data_retriever.DataRetriever.download",
+            side_effect=Exception("Some Runtime Error occured here."),
+        )
         # send the request
         data = client.get(endpoint)
         # After endpoint process this download request, check the db status

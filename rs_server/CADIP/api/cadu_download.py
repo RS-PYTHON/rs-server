@@ -264,6 +264,6 @@ def download(
         logger.error("Download thread did not start !")
         # Try n times to update the status to FAILED in the database
         update_db(db, db_product, EDownloadStatus.FAILED, "Download thread did not start !")
-        return {"started": "false"}
+        return JSONResponse(status_code=status.HTTP_408_REQUEST_TIMEOUT, content={"started": "false"})
 
-    return {"started": "true"}
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"started": "true"})
