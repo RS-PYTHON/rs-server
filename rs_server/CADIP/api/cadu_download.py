@@ -12,7 +12,8 @@ from threading import Event
 
 import sqlalchemy
 from eodag import setup_logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
 from rs_server.CADIP.models.cadu_download_status import (
@@ -221,7 +222,7 @@ def download(
         db_product = CaduDownloadStatus.get(db, name=name)
     except HTTPException as exception:
         logger.error(exception)
-        return {"started": "false"}
+        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"started": "false"})
     # Update the publication date and set the status to not started
     # db_product.available_at_station = datetime.fromisoformat(publication_date)
     # db_product.not_started(db)  # updates the database
@@ -245,6 +246,9 @@ def download(
 
     thread_started = Event()
     eodag_download_args = EoDAGDownloadHandler(thread_started, station, cadu_id, name, local, obs)
+    # Big note / TODO here
+    # Is there a mechanism to catch / capture return value from a function running inside a thread?
+    # If start_eodag_download throws an error, there is no simple solution to return it with FastAPI
     thread = threading.Thread(
         target=start_eodag_download,
         args=(
