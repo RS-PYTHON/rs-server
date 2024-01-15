@@ -65,6 +65,7 @@ runs:
         image-ref: ${{ env.docker_image }}
         format: sarif
         output: trivy-results-docker.sarif
+        exit-code: 1
         #severity: HIGH,CRITICAL
         #timeout: '30m'
 

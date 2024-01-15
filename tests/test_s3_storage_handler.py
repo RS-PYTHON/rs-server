@@ -201,8 +201,6 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
             secrets["s3endpoint"],
             secrets["region"],
         )
-        # import pdb
-        # pdb.set_trace()
 
         with pytest.raises(Exception):
             s3_handler.check_bucket_access(bucket)

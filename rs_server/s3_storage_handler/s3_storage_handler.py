@@ -11,8 +11,7 @@ import boto3
 import botocore
 from botocore.exceptions import ClientError
 from prefect import exceptions, get_run_logger, task
-
-from services.common.rs_server_common.utils.logging import Logging
+from rs_server_common.utils.logging import Logging
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6

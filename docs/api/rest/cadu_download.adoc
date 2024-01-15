@@ -1,0 +1,39 @@
+= CADU Download Endpoint Documentation
+
+== Endpoint
+`/cadip/{station}/cadu`
+
+=== Overview
+This endpoint initiates an asynchronous download process for a CADU product using EODAG.
+
+== Parameters
+* `station` (str): The EODAG station identifier.
+* `cadu_id` (str): The CADU product identifier.
+* `name` (str): The name of the CADU product.
+* `local` (str, optional): The local path where the CADU product will be downloaded.
+* `obs` (str, optional): The observation identifier associated with the CADU product.
+* `db` (Database): The database connection object.
+
+== Returns
+* `dict`: A dictionary indicating whether the download process has started.
+
+== Example
+
+=== Request
+[source,http]
+----
+GET /cadip/station123/cadu?cadu_id=2b17b57d-fff4-4645-b539-91f305c27c69&name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw
+----
+
+=== Response
+[source,http]
+----
+{
+  "started": "true"
+}
+----
+
+== Notes
+* This endpoint triggers the download of a CADU product identified by the given `cadu_id`, `name`, and `obs` (observation identifier).
+* It starts the download process in a separate thread using the `start_eodag_download` function and updates the product's status in the database.
+* The response includes a dictionary indicating whether the download process has started (`"true"` or `"false"`).
