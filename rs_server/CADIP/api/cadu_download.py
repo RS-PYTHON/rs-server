@@ -38,7 +38,12 @@ CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "
 logger = Logging.default(__name__)
 
 
-def update_db(db, db_product: CaduDownloadStatus, estatus: EDownloadStatus, status_fail_message=None):
+def update_db(
+    db,
+    db_product: CaduDownloadStatus,
+    estatus: EDownloadStatus,
+    status_fail_message=None,
+):
     """Update the database with the status of a product."""
 
     # Try n times to update the status.
@@ -115,10 +120,9 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
 
             setup_logging(3, no_progress_bar=True)
 
-            if len(argument.local) == 0:
-                local = "/tmp"
+            local = Path("/tmp" if not argument.local else argument.local)
 
-            data_retriever = init_cadip_data_retriever(argument.station, None, None, Path(local))
+            data_retriever = init_cadip_data_retriever(argument.station, None, None, local)
 
             # Update the status to IN_PROGRESS in the database
             db_product.in_progress(db)
@@ -147,7 +151,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
             update_db(db, db_product, EDownloadStatus.FAILED, repr(exception))
             return
 
-        if argument.obs is not None and len(argument.obs) > 0:
+        if argument.obs:
             try:
                 # NOTE: The environment variables have to be set from outside
                 # otherwise the connection with s3 endpoint fails
@@ -186,12 +190,12 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
 
         # Try n times to update the status to DONE in the database
         update_db(db, db_product, EDownloadStatus.DONE)
+        logger.debug("Download finished succesfully for %s", db_product.name)
 
 
 @router.get("/cadip/{station}/cadu")
 def download(
     station: str,
-    cadu_id: str,
     name: str,
     local: str = "",
     obs: str = "",
@@ -199,13 +203,12 @@ def download(
 ):  # pylint: disable=too-many-arguments
     """Initiate an asynchronous download process for a CADU product using EODAG.
 
-    This endpoint triggers the download of a CADU product identified by the given cadu_id,
+    This endpoint triggers the download of a CADU product identified by the given
     name, and observation identifier. It starts the download process in a separate thread
     using the start_eodag_download function and updates the product's status in the database.
 
     Args:
         station (str): The EODAG station identifier.
-        cadu_id (str): The CADU product identifier.
         name (str): The name of the CADU product.
         local (str, optional): The local path where the CADU product will be downloaded.
         obs (str, optional): The observation identifier associated with the CADU product.
@@ -223,10 +226,10 @@ def download(
         db_product = CaduDownloadStatus.get(db, name=name)
     except HTTPException as exception:
         logger.error(exception)
-        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"started": "false"})
-    # Update the publication date and set the status to not started
-    # db_product.available_at_station = datetime.fromisoformat(publication_date)
-    # db_product.not_started(db)  # updates the database
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"started": "false"},
+        )
 
     # start a thread to run the action in background
     logger.debug(
@@ -236,26 +239,15 @@ def download(
         datetime.now(),
         locals(),
     )
-    # TODO: the secrets should be set through env vars
-
-    # secrets = {
-    #     "s3endpoint": None,
-    #     "accesskey": None,
-    #     "secretkey": None,
-    # }
-    # S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
 
     thread_started = Event()
-    eodag_download_args = EoDAGDownloadHandler(thread_started, station, cadu_id, name, local, obs)
+    eodag_args = EoDAGDownloadHandler(thread_started, station, str(db_product.cadu_id), name, local, obs)
     # Big note / TODO here
     # Is there a mechanism to catch / capture return value from a function running inside a thread?
     # If start_eodag_download throws an error, there is no simple solution to return it with FastAPI
     thread = threading.Thread(
         target=start_eodag_download,
-        args=(
-            eodag_download_args,
-            # secrets,
-        ),
+        args=(eodag_args,),
     )
     thread.start()
 
