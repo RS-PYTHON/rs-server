@@ -8,7 +8,6 @@ This endpoint initiates an asynchronous download process for a CADU product usin
 
 == Parameters
 * `station` (str): The EODAG station identifier.
-* `cadu_id` (str): The CADU product identifier.
 * `name` (str): The name of the CADU product.
 * `local` (str, optional): The local path where the CADU product will be downloaded.
 * `obs` (str, optional): The observation identifier associated with the CADU product.
@@ -22,7 +21,7 @@ This endpoint initiates an asynchronous download process for a CADU product usin
 === Request
 [source,http]
 ----
-GET /cadip/station123/cadu?cadu_id=2b17b57d-fff4-4645-b539-91f305c27c69&name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw
+GET /cadip/station123/cadu?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw
 ----
 
 === Response
