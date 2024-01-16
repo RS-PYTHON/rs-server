@@ -1,6 +1,6 @@
 = CADU List Endpoint Documentation
 
-== Endpoint: `/cadip/{station}/cadu/list`
+== Endpoint: `/cadip/{station}/cadu/search`
 
 === Overview
 This endpoint retrieves a list of products from the CADU system for a specified station within a given time range.
@@ -19,7 +19,7 @@ This endpoint retrieves a list of products from the CADU system for a specified 
 
 ==== Request
 ----
-GET /cadip/station123/cadu/list?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
+GET /cadip/station123/cadu/search?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
 ----
 
 ==== Response

@@ -2,13 +2,13 @@
 
 // TODO Main functionalities presentation
 
-[[cadu-list]]
-== CADU List
+[[cadu-search]]
+== CADU search
 
 This endpoint retrieves a list of products from the CADU system for a specified station within a given time range.
 
 === Endpoint
-`/cadip/{station}/cadu/list`
+`/cadip/{station}/cadu/search`
 
 === Parameters
 * `station` (str): Identifier for the CADIP station (e.g., MTI, SGS, MPU, INU, etc).
@@ -20,7 +20,7 @@ This endpoint retrieves a list of products from the CADU system for a specified 
 ==== Request
 [source,http]
 ----
-GET /cadip/station123/cadu/list?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
+GET /cadip/station123/cadu/search?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
 ----
 
 [[cadu-download]]
