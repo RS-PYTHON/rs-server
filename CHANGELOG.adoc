@@ -26,4 +26,11 @@ None
 
 None
 
-//== [x.y.z] - 2023-MM-dd
+== [1.0a3] - 2024-01-16
+
+=== Added
+
+* RSPY-14: Add endpoint "download cadu" to CADIP backend server
+* RSPY-16: Develop CADIP backend server with first endpoint "get cadu"
+* RSPY-53: Develop Catalog backend server
+* RSPY-72: Add endpoint "CADU status" to CADIP backend server
