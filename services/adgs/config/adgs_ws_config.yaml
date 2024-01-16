@@ -1,0 +1,56 @@
+ADGS:
+  auth:
+    type: GenericAuth
+    method: basic
+    credentials:
+        username: test
+        password: test
+  products:
+    GENERIC_PRODUCT_TYPE:
+      productType: '{productType}'
+
+  search:
+    type: ODataV4Search
+    api_endpoint: 'http://127.0.0.1:5001/Products'
+    need_auth: true
+    results_entry: responses
+    metadata_mapping:
+        id:
+            - null
+            - '$.Id'
+        startTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        completionTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
+        Name:
+            - null
+            - '$.Name'
+        size:
+            - null
+            - '$.Size'
+        downloadLink: 'http://127.0.0.1:5001/Products({id})/$value'
+        title: '$.Name'
+
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '"{}"'
+        operations:
+            and:
+              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
+              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
+
+    pagination:
+      next_page_url_tpl: '{url}?{search}'
+      max_items_per_page: 20
+      total_items_nb_key_path: '$.total'
+
+  download:
+    type: HTTPDownload
+    base_uri: 'https://127.0.0.1:5001/Products'
+    metadata_mapping:
+        uid: '$.Id'
+        downloadLink: 'http://127.0.0.1:5001/Products({uid})/$value'

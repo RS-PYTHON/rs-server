@@ -13,6 +13,7 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
+from rs_server.api_common.utils import validate_inputs_format
 from rs_server.CADIP.models.cadu_download_status import (
     CaduDownloadStatus,
     EDownloadStatus,
@@ -66,12 +67,9 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     - The response includes a JSON representation of the list of products for the specified station.
     - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
-    if (not is_valid_format(start_date)) or (not is_valid_format(stop_date)):
-        logger.error("Invalid start/stop in endpoint call!")
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content="Invalid request, invalid start/stop format",
-        )
+    is_valid, exception = validate_inputs_format(start_date, stop_date)
+    if not is_valid:
+        return exception
 
     # Init dataretriever / get products / return
     try:
@@ -141,31 +139,3 @@ def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
             logger.error("Failed to connect with DB during listing procedure")
             raise
     return jsonify_state_products
-
-
-def is_valid_format(date: str) -> bool:
-    """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS.sssZ".
-
-    Parameters
-    ----------
-    date : str
-        The string to be validated for the specified date format.
-
-    Returns
-    -------
-    bool
-        True if the input string adheres to the expected date format, otherwise False.
-
-    Example
-    -------
-    >>> is_valid_format("2023-01-01T12:00:00.000Z")
-    True
-
-    >>> is_valid_format("2023-01-01 12:00:00")
-    False
-    """
-    try:
-        datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
-        return True
-    except ValueError:
-        return False
