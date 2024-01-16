@@ -32,5 +32,8 @@ None
 
 * RSPY-14: Add endpoint "download cadu" to CADIP backend server
 * RSPY-16: Develop CADIP backend server with first endpoint "get cadu"
+* RSPY-31: Initiate Developer Guide
+* RSPY-39: Implement a CADIP station mockup
+* RSPY-41: Implement an ADGS station mockup
 * RSPY-53: Develop Catalog backend server
 * RSPY-72: Add endpoint "CADU status" to CADIP backend server
