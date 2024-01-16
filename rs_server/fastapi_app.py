@@ -9,7 +9,7 @@ import sqlalchemy
 from fastapi import FastAPI
 from rs_server_common.utils.logging import Logging
 
-from rs_server.ADGS.api import adgs_search
+from rs_server.ADGS.api import adgs_download, adgs_search
 from rs_server.CADIP.api import cadu_download, cadu_search, cadu_status
 from rs_server.db.database import sessionmanager
 
@@ -77,6 +77,7 @@ def init_app(init_db=True, pause=3, timeout=None):
     app.include_router(cadu_search.router)
     app.include_router(cadu_status.router)
     app.include_router(adgs_search.router)
+    app.include_router(adgs_download.router)
 
     @app.get("/")
     async def home():

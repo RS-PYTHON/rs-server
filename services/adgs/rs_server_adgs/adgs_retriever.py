@@ -13,7 +13,6 @@ from services.common.rs_server_common.data_retrieval.provider import (
 )
 from services.common.rs_server_common.data_retrieval.storage import Storage
 
-CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "adgs_ws_config.yaml"
 
 
@@ -23,8 +22,8 @@ def init_adgs_retriever(storage: Any, download_monitor: Any, path: Any):
         provider = EodagProvider(EODAG_CONFIG, "ADGS")  # default to eodag, default station "ADGS"
     except Exception as exception:
         raise CreateProviderFailed("Failed to setup eodag") from exception
-    cadip_storage: Storage = storage
-    cadip_monitor: DownloadMonitor = download_monitor
-    cadip_working_dir: Path = path
+    adgs_storage: Storage = storage
+    adgs_monitor: DownloadMonitor = download_monitor
+    adgs_working_dir: Path = path
     # End WIP
-    return DataRetriever(provider, cadip_storage, cadip_monitor, cadip_working_dir)
+    return DataRetriever(provider, adgs_storage, adgs_monitor, adgs_working_dir)

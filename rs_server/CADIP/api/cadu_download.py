@@ -5,7 +5,6 @@ import os.path as osp
 import threading
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from threading import Event
@@ -16,6 +15,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
+from rs_server.api_common.utils import EoDAGDownloadHandler
 from rs_server.CADIP.models.cadu_download_status import (
     CaduDownloadStatus,
     EDownloadStatus,
@@ -73,18 +73,6 @@ def update_db(
     raise last_exception
 
 
-@dataclass
-class EoDAGDownloadHandler:
-    """This dataclass is used to create the collection of arguments needed for eodag download."""
-
-    thread_started: Event
-    station: str
-    cadu_id: str
-    name: str
-    local: str
-    obs: str
-
-
 def start_eodag_download(argument: EoDAGDownloadHandler):
     """Start an EODAG download process for a specified product.
 
@@ -129,7 +117,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
             # notify the main thread that the download will be started
             argument.thread_started.set()
             init = datetime.now()
-            data_retriever.download(argument.cadu_id, argument.name)
+            data_retriever.download(argument.product_id, argument.name)
             logger.info(
                 "%s : %s : File: %s downloaded in %s",
                 os.getpid(),

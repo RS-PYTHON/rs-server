@@ -1,4 +1,6 @@
 """This module is used to share common functions between apis endpoints"""
+import threading
+from dataclasses import dataclass
 from datetime import datetime
 
 from fastapi import status
@@ -45,3 +47,15 @@ def validate_inputs_format(start_date, stop_date):
             content="Invalid request, invalid start/stop format",
         )
     return True, None
+
+
+@dataclass
+class EoDAGDownloadHandler:
+    """This dataclass is used to create the collection of arguments needed for eodag download."""
+
+    thread_started: threading.Event
+    station: str  # needed only for CADIP
+    product_id: str
+    name: str
+    local: str | None
+    obs: str | None

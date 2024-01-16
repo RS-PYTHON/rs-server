@@ -3,6 +3,10 @@ from pathlib import Path
 
 from eodag import EODataAccessGateway, EOProduct
 
+from services.common.rs_server_common.utils.provider_ws_address import (
+    station_to_server_url,
+)
+
 from .provider import CreateProviderFailed, Provider, TimeRange
 
 
@@ -80,31 +84,30 @@ class EodagProvider(Provider):
         :param to_file: the path where the product has to be download
         :return: None
         """
-        product = init_eodag_product(product_id, to_file.name)
+        product = self.create_eodag_product(product_id, to_file.name)
         # download_plugin = self.client._plugins_manager.get_download_plugin(product)
         # authent_plugin = self.client._plugins_manager.get_auth_plugin(product.provider)
         # product.register_downloader(download_plugin, authent_plugin)
         self.client.download(product, outputs_prefix=to_file.parent)
 
+    def create_eodag_product(self, product_id, filename):
+        """Initialize an EO product with minimal properties.
 
-def init_eodag_product(file_id: str, download_filename: str) -> EOProduct:
-    """Initialize an EO product with minimal properties.
+        The title is used by EODAG as the name of the downloaded file.
+        The download link is used by EODAG as http request url for download.
+        The geometry is mandatory in an EO Product so we add the all earth as geometry.
 
-    The title is used by EODAG as the name of the downloaded file.
-    The download link is used by EODAG as http request url for download.
-    The geometry is mandatory in an EO Product so we add the all earth as geometry.
-
-    :param file_id: the id of EO Product
-    :param download_filename: the name of the downloaded file
-    :return the initialized EO Product
-    """
-    return EOProduct(
-        "CADIP",
-        {
-            "id": file_id,
-            "title": download_filename,
-            "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
-            # TODO build from configuration (but how ?)
-            "downloadLink": f"http://127.0.0.1:5000/Files({file_id})/$value",
-        },
-    )
+        :param product_id: the id of EO Product
+        :param filename: the name of the downloaded file
+        :return the initialized EO Product
+        """
+        return EOProduct(
+            self.provider,
+            {
+                "id": product_id,
+                "title": filename,
+                "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
+                # TODO build from configuration (but how ?)
+                "downloadLink": f"{station_to_server_url(self.provider)}({product_id})/$value",
+            },
+        )
