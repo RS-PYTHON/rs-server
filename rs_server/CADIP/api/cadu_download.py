@@ -14,6 +14,7 @@ import sqlalchemy
 from eodag import setup_logging
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
+from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from rs_server_common.utils.logging import Logging
 
 from rs_server.CADIP.models.cadu_download_status import (
@@ -26,7 +27,6 @@ from rs_server.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     prefect_put_files_to_s3,
 )
-from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 
 # TODO: the value was set to 1.8s but it sometimes doesn't pass the CI in github.
 DWN_THREAD_START_TIMEOUT = 5

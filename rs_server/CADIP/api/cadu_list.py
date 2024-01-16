@@ -11,6 +11,8 @@ import sqlalchemy
 from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
+from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
 
 from rs_server.CADIP.models.cadu_download_status import (
@@ -18,10 +20,6 @@ from rs_server.CADIP.models.cadu_download_status import (
     EDownloadStatus,
 )
 from rs_server.db.database import get_db
-from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
-from services.common.rs_server_common.data_retrieval.provider import (
-    CreateProviderFailed,
-)
 
 router = APIRouter(tags=["Cadu products"])
 logger = Logging.default(__name__)

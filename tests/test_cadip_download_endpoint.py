@@ -7,15 +7,13 @@ from contextlib import contextmanager
 
 import pytest
 import responses
+from rs_server_common.data_retrieval.provider import CreateProviderFailed
 
 from rs_server.CADIP.models.cadu_download_status import (
     CaduDownloadStatus,
     EDownloadStatus,
 )
 from rs_server.db.database import get_db
-from services.common.rs_server_common.data_retrieval.provider import (
-    CreateProviderFailed,
-)
 
 # Resource folders specified from the parent directory of this current script
 RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))

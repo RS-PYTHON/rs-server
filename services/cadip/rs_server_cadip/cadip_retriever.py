@@ -4,15 +4,11 @@ import os.path as osp
 from pathlib import Path
 from typing import Any
 
-from services.common.rs_server_common.data_retrieval.data_retriever import DataRetriever
-from services.common.rs_server_common.data_retrieval.download_monitor import (
-    DownloadMonitor,
-)
-from services.common.rs_server_common.data_retrieval.eodag_provider import EodagProvider
-from services.common.rs_server_common.data_retrieval.provider import (
-    CreateProviderFailed,
-)
-from services.common.rs_server_common.data_retrieval.storage import Storage
+from rs_server_common.data_retrieval.data_retriever import DataRetriever
+from rs_server_common.data_retrieval.download_monitor import DownloadMonitor
+from rs_server_common.data_retrieval.eodag_provider import EodagProvider
+from rs_server_common.data_retrieval.provider import CreateProviderFailed
+from rs_server_common.data_retrieval.storage import Storage
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "cadip_ws_config.yaml"
