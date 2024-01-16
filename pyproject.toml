@@ -91,6 +91,9 @@ max-line-length = 120
 max-line-length=120
 disable = "logging-fstring-interpolation"
 
+[tool.pylint.MASTER]
+ignore-paths = '^docs/.*$'
+
 [tool.pylint.MISCELLANEOUS]
 notes = ["XXX"] # no errors on TODO and FIXME
 

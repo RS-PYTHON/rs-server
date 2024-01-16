@@ -17,7 +17,7 @@ def extract_openapi_specification(to_folder: Path) -> None:
     :param to_folder: the folder where the specification is written
     :return: None
     """
-    with open(to_folder / "openapi.json", "w") as f:
+    with open(to_folder / "openapi.json", "w", encoding="utf-8") as f:
         json.dump(
             get_openapi(
                 title=app.title,
@@ -47,5 +47,5 @@ def _parse_output_folder() -> Path:
 
 
 if __name__ == "__main__":
-    to_folder = _parse_output_folder()
-    extract_openapi_specification(to_folder)
+    output_folder = _parse_output_folder()
+    extract_openapi_specification(output_folder)
