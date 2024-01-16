@@ -1,0 +1,21 @@
+flowchart
+
+    START
+
+    verify[verify request]
+    is-valid{is valid ?}
+    bad-request[build bad request response]
+    process[delegate process]
+    has-failed{is exception raised ?}
+    error-response[build error response]
+    nominal-response[build nominal response]
+    return[return response to user]
+
+    START --> verify --> is-valid
+    is-valid -->|no| bad-request --> return
+    is-valid -->|yes| process --> has-failed
+
+    has-failed -->|yes| error-response --> return
+    has-failed -->|yes| nominal-response --> return
+
+    return --> END

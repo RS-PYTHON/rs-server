@@ -1,0 +1,36 @@
+= Design & concepts
+
+The rs-servcer is divided into two main elements :
+
+* the rs-server frontend
+* the rs-server backend
+
+The rs-server frontend is a facade for users that verify the user privileges before accessing to the services provided by the rs-server backend.
+
+:leveloffset: +1
+
+include::uac/design.adoc[]
+
+include::services/design.adoc[]
+
+:leveloffset: -1
+
+ifdef::backend-html5[]
+++++
+<div id="navigation">
+++++
+endif::[]
+[frame=none, grid=none, cols="<.^,^.^,>.^"]
+|===
+|<<../background/ci.adoc#,Prev>>
+
+|<<../../index.adoc#,Up>> +
+<<../../index.adoc#,Home>>
+
+|<<../doc-generation/description.adoc#,Next>>
+|===
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::[]

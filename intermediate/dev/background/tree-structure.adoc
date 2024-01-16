@@ -1,0 +1,50 @@
+= Project tree structure
+
+The rs-server repository tree structure is given in the following graph
+
+[plantuml, format=svg, opts="inline"]
+----
+skinparam Legend {
+	BorderColor transparent
+}
+
+legend
+rs-server
+|_ docs/
+|_ rs_server/
+|_ tests/
+|_ .gitignore
+|_ .pre-commit-config.yaml
+|_ CHANGELOG.adoc
+|_ LICENSE
+|_ poetry.lock
+|_ pyproject.toml
+|_ README.adoc
+
+end legend
+
+----
+
+* 'rs_server' folder contains all the production code
+* 'tests' folder contains all the unit and integration tests
+* 'docs' folder contains all the technical documentation
+
+ifdef::backend-html5[]
+++++
+<div id="navigation">
+++++
+endif::[]
+[frame=none, grid=none, cols="<.^,^.^,>.^"]
+|===
+|<<../../api/rest/index.adoc#,Prev>>
+
+|<<../../index.adoc#,Up>> +
+<<../../index.adoc#,Home>>
+
+|<<../environment/description.adoc#,Next>>
+|===
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::[]

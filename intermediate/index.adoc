@@ -1,0 +1,52 @@
+= RS server's technical documentation
+
+== User manual
+
+TODO TBD
+
+== Developer manual
+
+All you want to know when you are a rs-server developer.
+
+The documentation is organized in 4 sections :
+
+* Tutorials to help you start coding on rs-server :
+** <<dev/environment/installation.adoc#,Install your environment>>
+
+* How to guides to provide practical common procedures
+** <<dev/doc-generation/how-to.adoc#,Generate rs-server technical documentation>>
+
+* Reference guides give you technical information about the code and software API :
+** <<dev/code-style.adoc#,Coding style>>
+** <<api/python/html/index.adoc#,Python reference api>>
+** <<api/rest/index.adoc#,REST reference api>>
+
+NOTE: TODO include a link to the python API
+
+* Additional information about the software, the team, the design,...
+
+** <<dev/background/tree-structure.adoc#,Project tree structure>>
+** <<dev/environment/description.adoc#,Development environment description>>
+** <<dev/background/workflow.adoc#,Team workflow>>
+** <<dev/background/ci.adoc#,CI/CD workflows>>
+** <<dev/design/design.adoc#,Design & concepts>>
+** <<dev/doc-generation/description.adoc#,Documentation generation process>>
+
+ifdef::backend-html5[]
+++++
+<div id="navigation">
+++++
+endif::[]
+[frame=none, grid=none, cols="<.^,^.^,>.^"]
+|===
+|
+
+|
+
+|<<dev/environment/installation.adoc#,Next>>
+|===
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::[]
