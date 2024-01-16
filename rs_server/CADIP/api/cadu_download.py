@@ -12,7 +12,7 @@ from threading import Event
 
 import sqlalchemy
 from eodag import setup_logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
@@ -224,7 +224,7 @@ def download(
     # Get the product download status from database
     try:
         db_product = CaduDownloadStatus.get(db, name=name)
-    except HTTPException as exception:
+    except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(exception)
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
