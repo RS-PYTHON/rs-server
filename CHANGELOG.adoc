@@ -5,11 +5,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on https://keepachangelog.com/[Keep a Changelog].
 
-The RS-SERVER is delivered with a version using 3 digits: X.Y.Z
-
-* X is increased when the global scope is impacted. For example, if the message brocker is changed.
-* Y is increased when a major feature is added/impacted (and X is not increased). For example, XBIP ingeqtion is remplaced by CADIP.
-* Z is increased when a minor feature is added/impacted (and X and Y are not increased) . For example, the request timeout is changed.
+The RS-SERVER is delivered with a version using 2 digits ("major.minor"), following the https://packaging.python.org/en/latest/specifications/version-specifiers/#version-scheme[Version specifiers for Python].
 
 == [Unreleased]
 
