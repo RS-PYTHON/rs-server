@@ -89,15 +89,6 @@ def test_cadu_download_status(client):
         assert response.status_code == 404
         assert response.json()["detail"].startswith("No CaduDownloadStatus entry found")
 
-        # Get all products from database
-        products = CaduDownloadStatus.get_all(db=db)
-
-        # Check they have same values than those returned by the create operations
-        assert len(products) == 2
-        for created, read1 in zip([created1, created2], products):
-            assert created.cadu_id == read1.cadu_id
-            assert created.name == read1.name
-
         # Get product by CADU ID and name, check that the database ID is consistent
         read1 = CaduDownloadStatus.get(name=created1.name, db=db)
         assert created1.db_id == read1.db_id
@@ -120,7 +111,3 @@ def test_cadu_download_status(client):
         assert created1.status == read1.status == EDownloadStatus.FAILED
         assert created1.status_fail_message == read1.status_fail_message == fail_message
         assert created1.download_stop == read1.download_stop == _date5
-
-
-# from sqlalchemy.sql import text
-# db.execute(text("select * from cadu_products"))

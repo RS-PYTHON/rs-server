@@ -113,17 +113,13 @@ class CaduDownloadStatus(Base):
     #######################
 
     @classmethod
-    def get_all(cls, db: Session) -> list[CaduDownloadStatus]:
-        """Get all entries in database table."""
-        return db.query(cls).all()
-
-    @classmethod
     def get(cls, db: Session, name: str | Column[str], raise_if_missing=True) -> CaduDownloadStatus:
         """Get single entry by name."""
 
         # Check if entry exists
         query = db.query(cls).where(cls.name == name)
         if query.count():
+            db.refresh(query.first())
             return query.first()
 
         # Else raise and Exception if asked
