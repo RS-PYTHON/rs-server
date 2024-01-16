@@ -2,7 +2,9 @@
 
 == User manual
 
-TODO TBD
+The main functionalities are explained here :
+${include("users/functionalities.adoc")}
+
 
 == Developer manual
 
