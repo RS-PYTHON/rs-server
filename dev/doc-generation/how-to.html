@@ -94,7 +94,7 @@ The python sub-project for doc generation is also setup.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-bash" data-lang="bash">Unresolved directive in how-to.adoc - include::../../../../.github/actions/build-technical-doc/action.yml[tag=asciidoxy-cmd]</code></pre>
+<pre class="highlight"><code class="language-bash" data-lang="bash">poetry run asciidoxy --base-dir doc --build-dir ../dist/doc/ --multipage doc/index.adoc</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -113,7 +113,7 @@ and write them in the rs-server/dist/doc folder.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-bash" data-lang="bash">Unresolved directive in how-to.adoc - include::../../../../.github/actions/build-python-api/action.yml[tag=sphinx-apidoc-cmd]</code></pre>
+<pre class="highlight"><code class="language-bash" data-lang="bash">poetry run sphinx-apidoc -o docs/doc/api/python/generated rs_server</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -125,7 +125,7 @@ and write them in a generated folder (excluded of git conf).</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-bash" data-lang="bash">Unresolved directive in how-to.adoc - include::../../../../.github/actions/build-python-api/action.yml[tag=sphinx-build-cmd]</code></pre>
+<pre class="highlight"><code class="language-bash" data-lang="bash">poetry run sphinx-build -M html docs/doc/api/python/ dist/doc/output/api/python/</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -144,7 +144,8 @@ The generated api is accessible locally at 'dist/doc/api/html/index.html'.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-bash" data-lang="bash">Unresolved directive in how-to.adoc - include::../../../../.github/actions/build-rest-api/action.yml[tag=rest-api-root-cmd]</code></pre>
+<pre class="highlight"><code class="language-bash" data-lang="bash">mkdir -p dist/doc/output/api/rest/
+cp docs/doc/api/rest/index.html dist/doc/output/api/rest/</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -157,7 +158,7 @@ It&#8217;s important to keep it like that for integration with the technical doc
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlight"><code class="language-bash" data-lang="bash">Unresolved directive in how-to.adoc - include::../../../../.github/actions/build-rest-api/action.yml[tag=rest-openapi-cmd]</code></pre>
+<pre class="highlight"><code class="language-bash" data-lang="bash">poetry run python -m rs_server.CADIP.openapi dist/doc/output/api/rest/</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -231,7 +232,7 @@ You can verify the generated documentation before publishing it.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-01-16 11:27:30 UTC
+Last updated 2024-01-16 12:17:48 UTC
 </div>
 </div>
 </body>
