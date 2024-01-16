@@ -44,4 +44,4 @@ def validate_inputs_format(start_date, stop_date):
             status_code=status.HTTP_400_BAD_REQUEST,
             content="Invalid request, invalid start/stop format",
         )
-    return True
+    return True, None

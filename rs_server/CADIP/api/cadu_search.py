@@ -28,7 +28,7 @@ router = APIRouter(tags=["Cadu products"])
 logger = Logging.default(__name__)
 
 
-@router.get("/cadip/{station}/cadu/list")
+@router.get("/cadip/{station}/cadu/search")
 async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
@@ -51,7 +51,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     Example
     -------
     - Request:
-        GET /cadip/station123/cadu/list?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
+        GET /cadip/station123/cadu/search?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
     - Response:
         {
             "station123": [
