@@ -24,6 +24,35 @@ GET /cadip/station123/cadu/list?start_date="1999-01-01T12:00:00.000Z"&stop_date=
 ----
 
 [[cadu-download]]
-// To be added
+== CADU Download
+
+This endpoint initiates an asynchronous download process for a CADU product using EODAG.
+
+=== Endpoint
+`/cadip/{station}/cadu`
+
+=== Parameters
+* `station` (str): The EODAG station identifier.
+* `name` (str): The name of the CADU product.
+* `local` (str, optional): The local path where the CADU product will be downloaded.
+* `obs` (str, optional): The observation identifier associated with the CADU product.
+* `db` (Database): The database connection object.
+
+=== Returns
+* `dict`: A dictionary indicating whether the download process has started.
+
+=== Example
+
+==== Request
+[source,http]
+----
+GET /cadip/station123/cadu?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw
+----
+[source,http]
+----
+{
+  "started": "true"
+}
+----
 [[cadu-status]]
 // To be added

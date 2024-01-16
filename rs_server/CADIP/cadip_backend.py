@@ -1,14 +1,6 @@
-"""Docstring will be here."""
-from fastapi import FastAPI
+"""Init the FastAPI application."""
 
-from .api import cadu_download, cadu_list
+from rs_server.fastapi_app import init_app
 
-app = FastAPI()
-app.include_router(cadu_download.router)
-app.include_router(cadu_list.router)
-
-
-@app.get("/")
-async def home():
-    """Docstring will be here."""
-    return {"message": "Hello World"}
+# Init the FastAPI application.
+app = init_app(init_db=True)

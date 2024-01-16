@@ -39,7 +39,10 @@ jobs:
 
       - name: Run flake8
         if: always()
-        run: poetry run flake8 . --output-file ./flake8-report.txt
+        run: |
+            set -x
+            poetry run flake8 . || true # run next line even if fails
+            poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
         uses: actions/upload-artifact@v3
@@ -94,6 +97,7 @@ jobs:
           ignore-unfixed: true
           format: sarif
           output: trivy-results-fs.sarif
+          exit-code: 1
           #severity: 'CRITICAL'
 
       - name: Save reports as artifacts

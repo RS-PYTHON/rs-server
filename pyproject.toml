@@ -20,13 +20,18 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.11.0,<4.0"
-# Are all these dependencies mandatory ?
-moto = "==4.2.8"
+fastapi = "^0.108.0"
 boto3 = "==1.28.85"
 botocore = "==1.31.85"
 prefect = "^2.14.11"
-fastapi = "^0.108.0"
+sqlalchemy = "^2.0.25"
 eodag = "^2.11.0"
+prefect-dask = "^0.2.6"
+pydantic = ">=2.0.0"
+markdown = "^3.5.1"
+python-dotenv = "^1.0.0"
+psycopg2 = "^2.9.9"
+
 
 [tool.poetry.group.dev]
 optional = true
@@ -45,9 +50,13 @@ bandit = "^1.7.5"
 safety = "^2.3.5"
 pylint = "^3.0.3"
 flake8-pyproject = "^1.2.3"
+httpx = "^0.25.2"
+uvicorn = "^0.25.0"
+moto = "==4.2.8"
 flask = "^3.0.0"
 flask-cors = "^4.0.0"
 pytest-asyncio = "^0.23.2"
+pytest-docker = "^2.0.1"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
@@ -65,6 +74,7 @@ markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
+asyncio_mode = "auto"
 
 [tool.mypy]
 warn_redundant_casts = true
@@ -80,6 +90,7 @@ max-line-length = 120
 
 [tool.pylint.messages_control]
 max-line-length=120
+disable = "logging-fstring-interpolation"
 
 [tool.pylint.MISCELLANEOUS]
-notes = ["XXX"]  # no errors on TODO and FIXME
+notes = ["XXX"] # no errors on TODO and FIXME
