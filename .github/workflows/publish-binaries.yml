@@ -8,9 +8,9 @@ name: Publish wheels and Docker images
 # Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
 on:
   push:
-  #   tags:
-  #     - '**'
-  # workflow_dispatch:
+    tags:
+      - '**'
+  workflow_dispatch:
 
 env:
   PYTHON_VERSION: 3.11
@@ -115,26 +115,3 @@ jobs:
     container: ${{ needs.services-cadip-img.outputs.docker_image }}
     steps:
       - run: pip list && whoami && pwd
-
-  ##########
-  # Others #
-  ##########
-
-  message:
-    runs-on: ubuntu-latest
-    name: Information
-    needs: [services-cadip-img]
-    steps:
-
-      - name: "Display link to Trivy results"
-        if: always()
-        run: |
-          set -x
-          # This name doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
-          # TO BE TESTED
-          ref_name=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
-
-          echo "Trivy scan results:" \
-          "https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${ref_name}" \
-          >> $GITHUB_STEP_SUMMARY
-        shell: bash

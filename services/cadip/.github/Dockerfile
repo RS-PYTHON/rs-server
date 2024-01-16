@@ -22,7 +22,10 @@ RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server-*
 FROM python:3.11-slim-bookworm
 
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
-RUN apt update && apt install -y libpq-dev
+RUN \
+    apt update && \
+    apt install -y libpq-dev && \
+    rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
 # Copy the python installation from the build stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
