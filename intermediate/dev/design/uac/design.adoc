@@ -1,5 +1,0 @@
-= rs-server frontend
-
-NOTE: TODO To Be Defined
-
-// TODO UAC and api gateway

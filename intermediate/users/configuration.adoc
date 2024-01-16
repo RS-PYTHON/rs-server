@@ -1,5 +1,0 @@
-= Configuration
-
-NOTE: The rs-server configuration will be described here
-
-// TODO all the elements for rs server configuration.
