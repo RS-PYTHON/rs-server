@@ -1,0 +1,10 @@
+rs\_server.ingestion package
+============================
+
+Module contents
+---------------
+
+.. automodule:: rs_server.ingestion
+   :members:
+   :undoc-members:
+   :show-inheritance:

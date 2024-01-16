@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>rs_server.s3_storage_handler package &mdash; rs-server  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="rs_server.ingestion package" href="rs_server.ingestion.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            rs-server
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">RS Server API reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="rs_server.html">rs_server package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="rs_server.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="rs_server.ingestion.html">rs_server.ingestion package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">rs_server.s3_storage_handler package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rs_server.html#module-rs_server">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">rs-server</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">rs_server</a></li>
+          <li class="breadcrumb-item"><a href="rs_server.html">rs_server package</a></li>
+      <li class="breadcrumb-item active">rs_server.s3_storage_handler package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/generated/rs_server.s3_storage_handler.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="rs-server-s3-storage-handler-package">
+<h1>rs_server.s3_storage_handler package<a class="headerlink" href="#rs-server-s3-storage-handler-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-rs_server.s3_storage_handler.s3_storage_handler">
+<span id="rs-server-s3-storage-handler-s3-storage-handler-module"></span><h2>rs_server.s3_storage_handler.s3_storage_handler module<a class="headerlink" href="#module-rs_server.s3_storage_handler.s3_storage_handler" title="Link to this heading"></a></h2>
+<p>Docstring to be added.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server.s3_storage_handler.s3_storage_handler.</span></span><span class="sig-name descname"><span class="pre">PrefectGetKeysFromS3Config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s3_storage_handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler" title="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler"><span class="pre">S3StorageHandler</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3_files</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_prefix</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_retries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>S3 configuration for download</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>s3_storage_handler (S3StorageHandler): An instance of S3StorageHandler for S3 interactions.
+s3_files (list): A list of S3 object keys.
+bucket (str): The S3 bucket name.
+local_prefix (str): The local prefix where files will be downloaded.
+idx (int): An index used for debug. This is the index of the task launched from a prefect flow
+overwrite (bool, optional): Flag indicating whether to overwrite existing files. Default is False.
+max_retries (int, optional): The maximum number of download retries. Default is DWN_S3FILE_RETRIES.</p>
+</dd>
+<dt>Methods:</dt><dd><p>None</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.bucket">
+<span class="sig-name descname"><span class="pre">bucket</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.bucket" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.idx">
+<span class="sig-name descname"><span class="pre">idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.local_prefix">
+<span class="sig-name descname"><span class="pre">local_prefix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.local_prefix" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.max_retries">
+<span class="sig-name descname"><span class="pre">max_retries</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">20</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.max_retries" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.overwrite">
+<span class="sig-name descname"><span class="pre">overwrite</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.overwrite" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.s3_files">
+<span class="sig-name descname"><span class="pre">s3_files</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.s3_files" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.s3_storage_handler">
+<span class="sig-name descname"><span class="pre">s3_storage_handler</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler" title="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler"><span class="pre">S3StorageHandler</span></a></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectGetKeysFromS3Config.s3_storage_handler" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server.s3_storage_handler.s3_storage_handler.</span></span><span class="sig-name descname"><span class="pre">PrefectPutFilesToS3Config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s3_storage_handler</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler" title="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler"><span class="pre">S3StorageHandler</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">files</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_retries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Configuration for uploading files to S3.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>s3_storage_handler (S3StorageHandler): An instance of S3StorageHandler for S3 interactions.
+files (List): A list of local file paths to be uploaded.
+bucket (str): The S3 bucket name.
+s3_path (str): The S3 path where files will be uploaded.
+idx (int): An index used for debug. This is the index of the task launched from a Prefect flow.
+max_retries (int, optional): The maximum number of upload retries. Default is UP_S3FILE_RETRIES.</p>
+</dd>
+<dt>Methods:</dt><dd><p>None</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.bucket">
+<span class="sig-name descname"><span class="pre">bucket</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.bucket" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.files">
+<span class="sig-name descname"><span class="pre">files</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.files" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.idx">
+<span class="sig-name descname"><span class="pre">idx</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.max_retries">
+<span class="sig-name descname"><span class="pre">max_retries</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">20</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.max_retries" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.s3_path">
+<span class="sig-name descname"><span class="pre">s3_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.s3_path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.s3_storage_handler">
+<span class="sig-name descname"><span class="pre">s3_storage_handler</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler" title="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler"><span class="pre">S3StorageHandler</span></a></em><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.PrefectPutFilesToS3Config.s3_storage_handler" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server.s3_storage_handler.s3_storage_handler.</span></span><span class="sig-name descname"><span class="pre">S3StorageHandler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">access_key_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secret_access_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">endpoint_url</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Interact with an S3 storage</p>
+<p>S3StorageHandler for interacting with an S3 storage service.</p>
+<dl class="simple">
+<dt>Attributes:</dt><dd><p>access_key_id (str): The access key ID for S3 authentication.
+secret_access_key (str): The secret access key for S3 authentication.
+endpoint_url (str): The endpoint URL for the S3 service.
+region_name (str): The region name.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.check_bucket_access">
+<span class="sig-name descname"><span class="pre">check_bucket_access</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.check_bucket_access" title="Link to this definition"></a></dt>
+<dd><p>Check the accessibility of an S3 bucket.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>bucket (str): The S3 bucket name.</p>
+</dd>
+<dt>Raises:</dt><dd><p>RuntimeError: If an error occurs during the bucket access check.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.connect_s3">
+<span class="sig-name descname"><span class="pre">connect_s3</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.connect_s3" title="Link to this definition"></a></dt>
+<dd><p>Establish a connection to the S3 service.</p>
+<p>If the S3 client is not already instantiated, this method calls the private __get_s3_client
+method to create an S3 client instance using the provided credentials and configuration (see __init__).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_file_from_s3">
+<span class="sig-name descname"><span class="pre">delete_file_from_s3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3_obj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_file_from_s3" title="Link to this definition"></a></dt>
+<dd><p>Delete a file from S3.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>bucket (str): The S3 bucket name.
+s3_obj (str): The S3 object key.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.disconnect_s3">
+<span class="sig-name descname"><span class="pre">disconnect_s3</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.disconnect_s3" title="Link to this definition"></a></dt>
+<dd><p>Close the connection to the S3 service.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_downloaded">
+<span class="sig-name descname"><span class="pre">files_to_be_downloaded</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">paths</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_downloaded" title="Link to this definition"></a></dt>
+<dd><p>Create a list of S3 keys to be downloaded.</p>
+<p>The list will have the s3 keys to be downloaded from the bucket.
+It contains pairs (local_prefix_where_the_file_will_be_downloaded, full_s3_key_path)
+If a s3 key doesn’t exist, the pair will be (None, requested_s3_key_path)</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>bucket (str): The S3 bucket name.
+paths (list): List of S3 object keys.</p>
+</dd>
+<dt>Returns:</dt><dd><p>list: List of tuples (local_prefix, full_s3_key_path).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_uploaded">
+<span class="sig-name descname"><span class="pre">files_to_be_uploaded</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">paths</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_uploaded" title="Link to this definition"></a></dt>
+<dd><p>Creates a list of local files to be uploaded.</p>
+<p>The list contains pairs (s3_path, absolute_local_file_path)
+If the local file doesn’t exist, the pair will be (None, requested_file_to_upload)</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>paths (list): List of local file paths.</p>
+</dd>
+<dt>Returns:</dt><dd><p>list: List of tuples (s3_path, absolute_local_file_path).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_basename">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_basename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_basename" title="Link to this definition"></a></dt>
+<dd><p>Get the filename from a full path.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>int_path (str): The full path.</p>
+</dd>
+<dt>Returns:</dt><dd><p>str: The filename.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_s3_data">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_s3_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s3_url</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_s3_data" title="Link to this definition"></a></dt>
+<dd><p>Parses S3 URL to extract bucket, prefix, and file.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>s3_url (str): The S3 URL.</p>
+</dd>
+<dt>Returns:</dt><dd><p>tuple: Tuple containing bucket, prefix, and file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_secrets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">secrets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secret_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets" title="Link to this definition"></a></dt>
+<dd><p>Read secrets from a specified file.</p>
+<p>Usually it read the secrets from .s3cfg or aws credentials files
+Args:</p>
+<blockquote>
+<div><p>secrets (dict): Dictionary to store retrieved secrets.
+secret_file (str): Path to the file containing secrets.
+logger (Logger, optional): Logger instance for error logging.</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.list_s3_files_obj">
+<span class="sig-name descname"><span class="pre">list_s3_files_obj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.list_s3_files_obj" title="Link to this definition"></a></dt>
+<dd><p>Retrieve the content of an S3 directory.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>bucket (str): The S3 bucket name.
+prefix (str): The S3 object key prefix.
+max_timestamp (datetime, optional): Maximum timestamp for file filtering.
+pattern (str, optional): Pattern to filter file names.</p>
+</dd>
+<dt>Returns:</dt><dd><p>list: List containing S3 object keys.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.check_file_overwriting">
+<span class="sig-prename descclassname"><span class="pre">rs_server.s3_storage_handler.s3_storage_handler.</span></span><span class="sig-name descname"><span class="pre">check_file_overwriting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">idx</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.check_file_overwriting" title="Link to this definition"></a></dt>
+<dd><p>Check whether a file already exists at the specified local path and handles overwriting.</p>
+<p>Parameters:
+- local_file (str): The local file path to check.
+- overwrite (bool): A flag indicating whether to overwrite the existing file if found.
+- logger (Logger): The logger object for logging messages.
+- idx (int): An index or identifier associated with the file.</p>
+<p>Returns:
+bool: True if overwriting is allowed or if the file doesn’t exist, False otherwise.</p>
+<p>Raises:
+FileNotFoundError: If the specified local file does not exist.</p>
+<p>Example:
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+from logging import getLogger</p>
+<p># Example usage
+logger = getLogger(__name__)
+file_path = “path/to/myfile.txt”
+can_overwrite = check_file_overwriting(file_path, True, logger, 1)
+if can_overwrite:</p>
+<blockquote>
+<div><p># Proceed with file download or other operations
+pass</p>
+</div></blockquote>
+<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+<p>Note:
+- If the file already exists and the overwrite flag is set to True, the function will log a message,</p>
+<blockquote>
+<div><p>delete the existing file, and return True.</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>If the file already exists and the overwrite flag is set to False, the function will log a warning
+message, and return False. In this case, the existing file won’t be deleted.</p></li>
+<li><p>If the file doesn’t exist, the function will return True.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="rs_server.s3_storage_handler.s3_storage_handler.wait_timeout">
+<span class="sig-prename descclassname"><span class="pre">rs_server.s3_storage_handler.s3_storage_handler.</span></span><span class="sig-name descname"><span class="pre">wait_timeout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server.s3_storage_handler.s3_storage_handler.wait_timeout" title="Link to this definition"></a></dt>
+<dd><p>Wait for a specified timeout duration.</p>
+<p>This function implements a simple timeout mechanism, where it sleeps for 0.2 seconds
+in each iteration until the cumulative sleep time reaches the specified timeout duration.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>timeout (float): The total duration to wait in seconds.</p>
+</dd>
+<dt>Returns:</dt><dd><p>None</p>
+</dd>
+<dt>Raises:</dt><dd><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-rs_server.s3_storage_handler">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-rs_server.s3_storage_handler" title="Link to this heading"></a></h2>
+<p>S3 interface.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="rs_server.ingestion.html" class="btn btn-neutral float-left" title="rs_server.ingestion package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, CS Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
