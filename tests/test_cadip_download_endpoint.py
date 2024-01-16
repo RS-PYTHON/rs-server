@@ -259,3 +259,81 @@ def test_eodag_provider_failure_while_downloading(mocker, client):
         assert result.status == EDownloadStatus.FAILED
         assert data.json() == {"started": "true"}
         assert result.status_fail_message == "Exception('Some Runtime Error occured here.')"
+
+
+@pytest.mark.unit
+@responses.activate
+def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
+    """
+    Test the systems behavior when there is a failure during the upload process to the S3 bucket.
+
+    This unit test simulates a scenario where a runtime error occurs during the initialization of
+    the S3StorageHandler, which is responsible for handling the upload process to an S3 bucket. The
+    test ensures that in such cases, the system correctly updates the CADU download status to FAILED
+    in the database and responds with an HTTP status code of 200, indicating that the request was
+    processed but the upload failed.
+
+    Steps:
+    1. Mock environment variables related to S3 connection details.
+    2. Simulate the retrieval of a CADIP file-stream from a mock endpoint.
+    3. Insert a product into the database with a status of NOT_STARTED.
+    4. Verify the inserted product's status is NOT_STARTED.
+    5. Mock S3StorageHandler to raise a RuntimeError upon initialization.
+    6. Make a GET request to the specified endpoint.
+    7. Allow time for the byte-stream to start and attempt a write locally.
+    8. Retrieve the product status from the database after the endpoint call.
+    9. Verify that the product status in the database is updated to FAILED.
+    10. Assert that the response's HTTP status code is 200.
+
+    Args:
+        mocker (pytest.Mock): Pytest mock object to mock certain behaviors.
+        monkeypatch (pytest.MonkeyPatch): Pytest object for patching module and environment variables.
+        client (TestClient): Test client for making API requests.
+
+    Returns:
+        None: The function asserts conditions but does not return any value.
+    """
+    filename = "CADIP_test_file_eodag.raw"
+    cadu_id = "id_1"
+    publication_date = "2023-10-10T00:00:00.111Z"
+    obs = "s3://some_bucket_info"
+    endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}&obs={obs}"
+    # Mock os environ s3 connection details
+    monkeypatch.setenv("S3_ENDPOINT", "mock_endpoint")
+    monkeypatch.setenv("S3_ACCESSKEY", "mock_accesskey")
+    monkeypatch.setenv("S3_SECRETKEY", "mock_secretkey")
+
+    with contextmanager(get_db)() as db:
+        # Simulate CADIP file-stream download
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Files(id_1)/$value",
+            body="some byte-array data\n",
+            status=200,
+        )
+        # Init this product into db, set the status to NOT_STARTED
+        CaduDownloadStatus.create(
+            db=db,
+            cadu_id=cadu_id,
+            name=filename,
+            available_at_station=publication_date,
+            status=EDownloadStatus.NOT_STARTED,
+        )
+        # Check that product we just inserted into db is not_started
+        result = CaduDownloadStatus.get(db=db, name=filename)
+        assert result.status == EDownloadStatus.NOT_STARTED
+        # bypass S3StorageHandler object by raising a RunTimeError
+        mocker.patch(
+            "rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.__init__",
+            return_value=None,
+            side_effect=RuntimeError,
+        )
+        # call the endpoint
+        data = client.get(endpoint)
+        # Wait in order to start byte-stream and write local
+        time.sleep(1)
+        # get the product status from db (It should be updated by the endpoint call)
+        result = CaduDownloadStatus.get(db=db, name=filename)
+        # Check that update_db function set the status to FAILED
+        assert result.status == EDownloadStatus.FAILED
+        assert data.status_code == 200
