@@ -62,7 +62,8 @@ class DatabaseSessionManager:
                     # First we make sure that we've imported all our model modules.
                     # pylint: disable=unused-import, import-outside-toplevel
                     # flake8: noqa
-                    import rs_server_cadip.cadu_download_status
+                    import services.cadip.rs_server_cadip.cadu_download_status
+                    import services.adgs.rs_server_adgs.adgs_download_status
 
                     self.create_all()
 

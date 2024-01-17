@@ -82,7 +82,7 @@ def write_search_products_to_db(db_handler_class, products):
 
                 db_handler_class.create(
                     db,
-                    cadu_id=product.properties["id"],
+                    product_id=product.properties["id"],
                     name=product.properties["Name"],
                     available_at_station=datetime.fromisoformat(product.properties["startTimeFromAscendingNode"]),
                     status=EDownloadStatus.NOT_STARTED,

@@ -11,7 +11,6 @@ class AdgsDownloadStatus(ProductDownloadStatus):
     __table_args__ = {"extend_existing": True}
     status: EDownloadStatus = Column(Enum(EDownloadStatus), default=EDownloadStatus.NOT_STARTED)
 
-    def __init__(self, status):
+    def __init__(self, *args, **kwargs):
         """Invoked when creating a new record in the database table."""
-        self.status = status
-        super().__init__()
+        super().__init__(*args, **kwargs)

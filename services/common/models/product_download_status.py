@@ -6,7 +6,6 @@ from fastapi import HTTPException
 from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
 from sqlalchemy.orm import Session
 
-
 class EDownloadStatus(enum.Enum):
     """
     Download status enumeration.
@@ -16,21 +15,18 @@ class EDownloadStatus(enum.Enum):
     IN_PROGRESS = 2
     FAILED = 3
     DONE = 4
+from sqlalchemy.orm import declarative_base
 
-
-from services.common.db import Base
-
-
-class ProductDownloadStatus(Base):
+class ProductDownloadStatus():
     __abstract__ = True
 
     db_id = Column(Integer, primary_key=True, index=True, nullable=True)
-    cadu_id = Column(String, unique=True, index=True)
+    product_id = Column(String, unique=True, index=True)
     name = Column(String, unique=True, index=True)
     available_at_station = Column(DateTime)
     download_start = Column(DateTime)
     download_stop = Column(DateTime)
-    # status: EDownloadStatus = Column(Enum(EDownloadStatus), default=EDownloadStatus.NOT_STARTED)
+    status = Column(String)
     status_fail_message = Column(String)
 
     def __init__(self, *args, **kwargs):
@@ -53,7 +49,7 @@ class ProductDownloadStatus(Base):
     def not_started(self, db: Session):
         """Update database entry to not started."""
         with self.lock:
-            # self.status = EDownloadStatus.NOT_STARTED
+            self.status = str(EDownloadStatus.NOT_STARTED)
             self.download_start = None
             self.download_stop = None
             self.status_fail_message = None
@@ -63,7 +59,7 @@ class ProductDownloadStatus(Base):
     def in_progress(self, db: Session, download_start: datetime = None):
         """Update database entry to progress."""
         with self.lock:
-            # self.status = EDownloadStatus.IN_PROGRESS
+            self.status = str(EDownloadStatus.IN_PROGRESS)
             self.download_start = download_start or datetime.now()
             self.download_stop = None
             self.status_fail_message = None
@@ -73,7 +69,7 @@ class ProductDownloadStatus(Base):
     def failed(self, db: Session, status_fail_message: str, download_stop: datetime = None):
         """Update database entry to failed."""
         with self.lock:
-            # self.status = EDownloadStatus.FAILED
+            self.status = str(EDownloadStatus.FAILED)
             self.download_stop = download_stop or datetime.now()
             self.status_fail_message = status_fail_message
             db.commit()
@@ -82,7 +78,7 @@ class ProductDownloadStatus(Base):
     def done(self, db: Session, download_stop: datetime = None):
         """Update database entry to done."""
         with self.lock:
-            # self.status = EDownloadStatus.DONE
+            self.status = str(EDownloadStatus.DONE)
             self.download_stop = download_stop or datetime.now()
             self.status_fail_message = None
             db.commit()

@@ -34,8 +34,8 @@ def test_cadu_download_status(client):
     # Open a database connection
     with contextmanager(get_db)() as db:
         # Add two new download status to database
-        created1 = CaduDownloadStatus.create(db=db, cadu_id=_cadu_id1, name=_name1, available_at_station=_date1)
-        created2 = CaduDownloadStatus.create(db=db, cadu_id=_cadu_id2, name=_name2, available_at_station=_date2)
+        created1 = CaduDownloadStatus.create(db=db, product_id=_cadu_id1, name=_name1, available_at_station=_date1)
+        created2 = CaduDownloadStatus.create(db=db, product_id=_cadu_id2, name=_name2, available_at_station=_date2)
 
         # Check that e auto-incremented database IDs were given
         assert created1.db_id == 1
@@ -63,7 +63,7 @@ def test_cadu_download_status(client):
             sqlalchemy.exc.IntegrityError,
             match="duplicate key value violates unique constraint",
         ):
-            CaduDownloadStatus.create(db_exception, cadu_id=_cadu_id1, name=_name1, available_at_station=_date1)
+            CaduDownloadStatus.create(db_exception, product_id=_cadu_id1, name=_name1, available_at_station=_date1)
 
         # Test error when entry is missing.
         with contextmanager(get_db)() as db_exception, pytest.raises(
@@ -76,12 +76,12 @@ def test_cadu_download_status(client):
         url = "/cadip/CADIP/cadu/status?cadu_id={cadu_id}&name={name}"
 
         # Read an existing entry
-        response = client.get(url.format(cadu_id=_cadu_id1, name=_name1))
+        response = client.get(url.format(product_id=_cadu_id1, name=_name1))
         assert response.status_code == 200
         assert response.json()["db_id"] == created1.db_id
 
         # Read a missing entry
-        response = client.get(url.format(cadu_id=_cadu_id3, name=_name3))
+        response = client.get(url.format(product_id=_cadu_id3, name=_name3))
         assert response.status_code == 404
         assert response.json()["detail"].startswith("No CaduDownloadStatus entry found")
 
