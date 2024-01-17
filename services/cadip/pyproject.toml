@@ -13,6 +13,11 @@ packages = [
     { include = "tests", format = "sdist" },
 ]
 
+# Add configuration files to the .whl package
+include = [
+    { path = "config", format = ["wheel"] }
+]
+
 [tool.poetry.dependencies]
 python = "^3.11"
 rs-server-common = {path = "../common", develop = true}
