@@ -1,7 +1,3 @@
-"""CADU Product model implementation."""
-
-from __future__ import annotations
-
 import enum
 from datetime import datetime
 from threading import Lock
@@ -9,8 +5,6 @@ from threading import Lock
 from fastapi import HTTPException
 from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
 from sqlalchemy.orm import Session
-
-from rs_server.db import Base
 
 
 class EDownloadStatus(enum.Enum):
@@ -24,25 +18,11 @@ class EDownloadStatus(enum.Enum):
     DONE = 4
 
 
-# mypy: ignore-errors
-# Ignore mypy false positive errors on sqlalchemy
+from services.common.db import Base
 
 
-class CaduDownloadStatus(Base):
-    """
-    Download status model implemnetation.
-
-    :param int db_id: auto-incremented database ID.
-    :param str cadu_id: CADU ID e.g. "2b17b57d-fff4-4645-b539-91f305c27c69"
-    :param str name: CADU name e.g. "DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw"
-    :param DateTime available_at_station: available datetime for download. T0 for the timeliness.
-    :param DateTime download_start: rs-server download start time from CADIP station into local then S3 bucket.
-    :param DateTime download_stop: download stop time, idem.
-    :param EDownloadStatus status: download status value, idem.
-    :param str status_fail_message: explanation message if the download failed.
-    """
-
-    __tablename__ = "cadu_download_status"
+class ProductDownloadStatus(Base):
+    __abstract__ = True
 
     db_id = Column(Integer, primary_key=True, index=True, nullable=True)
     cadu_id = Column(String, unique=True, index=True)
@@ -50,7 +30,7 @@ class CaduDownloadStatus(Base):
     available_at_station = Column(DateTime)
     download_start = Column(DateTime)
     download_stop = Column(DateTime)
-    status: EDownloadStatus = Column(Enum(EDownloadStatus), default=EDownloadStatus.NOT_STARTED)
+    # status: EDownloadStatus = Column(Enum(EDownloadStatus), default=EDownloadStatus.NOT_STARTED)
     status_fail_message = Column(String)
 
     def __init__(self, *args, **kwargs):
@@ -73,7 +53,7 @@ class CaduDownloadStatus(Base):
     def not_started(self, db: Session):
         """Update database entry to not started."""
         with self.lock:
-            self.status = EDownloadStatus.NOT_STARTED
+            # self.status = EDownloadStatus.NOT_STARTED
             self.download_start = None
             self.download_stop = None
             self.status_fail_message = None
@@ -83,7 +63,7 @@ class CaduDownloadStatus(Base):
     def in_progress(self, db: Session, download_start: datetime = None):
         """Update database entry to progress."""
         with self.lock:
-            self.status = EDownloadStatus.IN_PROGRESS
+            # self.status = EDownloadStatus.IN_PROGRESS
             self.download_start = download_start or datetime.now()
             self.download_stop = None
             self.status_fail_message = None
@@ -93,7 +73,7 @@ class CaduDownloadStatus(Base):
     def failed(self, db: Session, status_fail_message: str, download_stop: datetime = None):
         """Update database entry to failed."""
         with self.lock:
-            self.status = EDownloadStatus.FAILED
+            # self.status = EDownloadStatus.FAILED
             self.download_stop = download_stop or datetime.now()
             self.status_fail_message = status_fail_message
             db.commit()
@@ -102,7 +82,7 @@ class CaduDownloadStatus(Base):
     def done(self, db: Session, download_stop: datetime = None):
         """Update database entry to done."""
         with self.lock:
-            self.status = EDownloadStatus.DONE
+            # self.status = EDownloadStatus.DONE
             self.download_stop = download_stop or datetime.now()
             self.status_fail_message = None
             db.commit()
@@ -113,7 +93,7 @@ class CaduDownloadStatus(Base):
     #######################
 
     @classmethod
-    def get(cls, db: Session, name: str | Column[str], raise_if_missing=True) -> CaduDownloadStatus:
+    def get(cls, db: Session, name: str | Column[str], raise_if_missing=True):
         """Get single entry by name."""
 
         # Check if entry exists
@@ -133,7 +113,7 @@ class CaduDownloadStatus(Base):
         return None
 
     @classmethod
-    def get_if_exists(cls, *args, **kwargs) -> CaduDownloadStatus | None:
+    def get_if_exists(cls, *args, **kwargs):
         """Get single entry by name if it exists, else None"""
         return cls.get(*args, **kwargs, raise_if_missing=False)
 
@@ -142,7 +122,7 @@ class CaduDownloadStatus(Base):
         cls,
         db: Session,
         **kwargs,
-    ) -> CaduDownloadStatus:
+    ):
         """Create and return entry"""
         entry = cls(**kwargs)
         db.add(entry)

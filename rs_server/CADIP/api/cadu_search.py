@@ -8,18 +8,19 @@ from datetime import datetime
 from typing import List
 
 import sqlalchemy
+from db.database import get_db
 from eodag import EOProduct
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
-from rs_server.api_common.utils import validate_inputs_format
-from rs_server.CADIP.models.cadu_download_status import (
-    CaduDownloadStatus,
-    EDownloadStatus,
+from rs_server.api_common.utils import (
+    validate_inputs_format,
+    write_search_products_to_db,
 )
-from rs_server.db.database import get_db
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
+from services.cadip.rs_server_cadip.cadu_download_status import CaduDownloadStatus
+from services.common.models.product_download_status import EDownloadStatus
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
 )
@@ -89,53 +90,9 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
         return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
 
 
-def prepare_products(products: list[EOProduct]) -> List[tuple[str, str]] | None:
-    """Prepare a list of products by extracting their ID and Name properties.
-
-    Parameters
-    ----------
-    products : list
-        A list of product objects, each containing properties.
-
-    Returns
-    -------
-    list
-        A list of tuples, where each tuple contains the ID and Name of a product.
-        If the input products is empty, an empty list is returned.
-
-    Example
-    -------
-    >>> products = [
-    ...     EOProduct(properties={"id": 1, "Name": "Product A"}),
-    ...     EOProduct(properties={"id": 2, "Name": "Product B"}),
-    ...     EOProduct(properties={"id": 3, "Name": "Product C"}),
-    ... ]
-    >>> prepare_products(products)
-    [(1, 'Product A'), (2, 'Product B'), (3, 'Product C')]
-    """
-    # TODO, move all this logic to dataretriever.provider::search after db moved.
-    jsonify_state_products = []
-    with contextmanager(get_db)() as db:
-        try:
-            for product in products:
-                jsonify_state_products.append((product.properties["id"], product.properties["Name"]))
-
-                if CaduDownloadStatus.get_if_exists(db, product.properties["Name"]) is not None:
-                    logger.info(
-                        "Product %s is already registered in database, skipping",
-                        product.properties["Name"],
-                    )
-                    continue
-
-                CaduDownloadStatus.create(
-                    db,
-                    cadu_id=product.properties["id"],
-                    name=product.properties["Name"],
-                    available_at_station=datetime.fromisoformat(product.properties["startTimeFromAscendingNode"]),
-                    status=EDownloadStatus.NOT_STARTED,
-                )
-
-        except sqlalchemy.exc.OperationalError:
-            logger.error("Failed to connect with DB during listing procedure")
-            raise
-    return jsonify_state_products
+def prepare_products(products):
+    try:
+        output = write_search_products_to_db(CaduDownloadStatus, products)
+    except Exception:
+        return []
+    return output

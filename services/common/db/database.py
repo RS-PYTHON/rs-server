@@ -10,14 +10,13 @@ import os
 from threading import Lock
 from typing import Iterator
 
+from db import Base
 from fastapi import HTTPException
 from rs_server_common.utils.logging import Logging
 from sqlalchemy import Connection, Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
-from rs_server.db import Base
 
 
 class DatabaseSessionManager:
@@ -63,7 +62,7 @@ class DatabaseSessionManager:
                     # First we make sure that we've imported all our model modules.
                     # pylint: disable=unused-import, import-outside-toplevel
                     # flake8: noqa
-                    import rs_server.CADIP.models.cadu_download_status
+                    import rs_server_cadip.cadu_download_status
 
                     self.create_all()
 

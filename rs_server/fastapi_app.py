@@ -6,12 +6,12 @@ from contextlib import asynccontextmanager
 from os import environ as env
 
 import sqlalchemy
+from db.database import sessionmanager
 from fastapi import FastAPI
 from rs_server_common.utils.logging import Logging
 
 from rs_server.ADGS.api import adgs_download, adgs_search
 from rs_server.CADIP.api import cadu_download, cadu_search, cadu_status
-from rs_server.db.database import sessionmanager
 
 
 @typing.no_type_check

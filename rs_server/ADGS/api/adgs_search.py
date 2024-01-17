@@ -1,9 +1,16 @@
 """Docstring will be here."""
+from contextlib import contextmanager
+
+from db.database import get_db
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
-from rs_server.api_common.utils import validate_inputs_format
+from rs_server.api_common.utils import (
+    validate_inputs_format,
+    write_search_products_to_db,
+)
+from services.adgs.rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from services.adgs.rs_server_adgs.adgs_retriever import init_adgs_retriever
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
@@ -32,6 +39,8 @@ async def search_aux_handler(start_date: str, stop_date: str):
 
 
 def prepare_products(products):
-    """Docstring will be here."""
-    # DB write to be added here
-    return [product.properties["Name"] for product in products]
+    try:
+        output = write_search_products_to_db(AdgsDownloadStatus, products)
+    except Exception:
+        return []
+    return output

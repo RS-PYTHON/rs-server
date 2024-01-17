@@ -11,10 +11,10 @@ import os.path as osp
 from contextlib import ExitStack
 
 import pytest
+from db.database import DatabaseSessionManager, get_db, sessionmanager
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 
-from rs_server.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server.fastapi_app import init_app
 from services.common.rs_server_common.utils.logging import Logging
 

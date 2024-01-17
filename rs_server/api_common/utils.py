@@ -1,11 +1,16 @@
 """This module is used to share common functions between apis endpoints"""
 import threading
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 
+import sqlalchemy
+from db.database import get_db
 from fastapi import status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
+
+from services.common.models.product_download_status import EDownloadStatus
 
 logger = Logging.default(__name__)
 
@@ -59,3 +64,30 @@ class EoDAGDownloadHandler:
     name: str
     local: str | None
     obs: str | None
+
+
+def write_search_products_to_db(db_handler_class, products):
+    jsonify_state_products = []
+    with contextmanager(get_db)() as db:
+        try:
+            for product in products:
+                jsonify_state_products.append((product.properties["id"], product.properties["Name"]))
+
+                if db_handler_class.get_if_exists(db, product.properties["Name"]) is not None:
+                    logger.info(
+                        "Product %s is already registered in database, skipping",
+                        product.properties["Name"],
+                    )
+                    continue
+
+                db_handler_class.create(
+                    db,
+                    cadu_id=product.properties["id"],
+                    name=product.properties["Name"],
+                    available_at_station=datetime.fromisoformat(product.properties["startTimeFromAscendingNode"]),
+                    status=EDownloadStatus.NOT_STARTED,
+                )
+
+        except sqlalchemy.exc.OperationalError:
+            logger.error("Failed to connect with DB during listing procedure")
+            raise

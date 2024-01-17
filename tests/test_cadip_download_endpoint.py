@@ -7,12 +7,9 @@ from contextlib import contextmanager
 
 import pytest
 import responses
+from db.database import get_db
+from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
 
-from rs_server.CADIP.models.cadu_download_status import (
-    CaduDownloadStatus,
-    EDownloadStatus,
-)
-from rs_server.db.database import get_db
 from services.common.rs_server_common.data_retrieval.provider import (
     CreateProviderFailed,
 )
