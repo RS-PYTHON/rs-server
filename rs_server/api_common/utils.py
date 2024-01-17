@@ -1,5 +1,6 @@
 """This module is used to share common functions between apis endpoints"""
 import threading
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -10,6 +11,8 @@ from fastapi import status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
 
+from services.adgs.rs_server_adgs.adgs_download_status import AdgsDownloadStatus
+from services.cadip.rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from services.common.models.product_download_status import EDownloadStatus
 
 logger = Logging.default(__name__)
@@ -91,3 +94,38 @@ def write_search_products_to_db(db_handler_class, products):
         except sqlalchemy.exc.OperationalError:
             logger.error("Failed to connect with DB during listing procedure")
             raise
+
+
+def update_db(
+    db,
+    db_product: CaduDownloadStatus | AdgsDownloadStatus,
+    estatus: EDownloadStatus,
+    status_fail_message=None,
+):
+    """Update the database with the status of a product."""
+
+    # Try n times to update the status.
+    # Don't do it for NOT_STARTED and IN_PROGRESS (call directly db_product.not_started
+    # or db_product.in_progress) because it will anyway be overwritten later by DONE or FAILED.
+
+    # Init last exception to empty value.
+    last_exception: Exception = Exception()
+
+    for _ in range(3):
+        try:
+            if estatus == EDownloadStatus.FAILED:
+                db_product.failed(db, status_fail_message)
+            elif estatus == EDownloadStatus.DONE:
+                db_product.done(db)
+
+            # The database update worked, exit function
+            return
+
+        # The database update failed, wait n seconds and retry
+        except sqlalchemy.exc.OperationalError as exception:
+            logger.error(f"Error updating status in database:\n{exception}")
+            last_exception = exception
+            time.sleep(1)
+
+    # If all attemps failed, raise the last Exception
+    raise last_exception

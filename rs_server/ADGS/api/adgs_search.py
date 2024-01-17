@@ -1,7 +1,5 @@
 """Docstring will be here."""
-from contextlib import contextmanager
-
-from db.database import get_db
+import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_common.utils.logging import Logging
@@ -36,11 +34,17 @@ async def search_aux_handler(start_date: str, stop_date: str):
     except CreateProviderFailed:
         logger.error("Failed to create EODAG provider!")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
+    except sqlalchemy.exc.OperationalError:
+        logger.error("Failed to connect to database!")
+        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
 
 
 def prepare_products(products):
     try:
         output = write_search_products_to_db(AdgsDownloadStatus, products)
-    except Exception:
+    except sqlalchemy.exc.OperationalError:
+        logger.error("Failed to connect with DB during listing procedure")
+        return []
+    except Exception as exc:
         return []
     return output

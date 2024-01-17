@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
 from sqlalchemy.orm import Session
 
+
 class EDownloadStatus(enum.Enum):
     """
     Download status enumeration.
@@ -15,9 +16,12 @@ class EDownloadStatus(enum.Enum):
     IN_PROGRESS = 2
     FAILED = 3
     DONE = 4
+
+
 from sqlalchemy.orm import declarative_base
 
-class ProductDownloadStatus():
+
+class ProductDownloadStatus:
     __abstract__ = True
 
     db_id = Column(Integer, primary_key=True, index=True, nullable=True)

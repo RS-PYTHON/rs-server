@@ -3,13 +3,11 @@ import asyncio
 import os
 import os.path as osp
 import threading
-import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from threading import Event
 
-import sqlalchemy
 from db.database import get_db
 from eodag import setup_logging
 from fastapi import APIRouter, Depends, status
@@ -21,7 +19,7 @@ from s3_storage_handler.s3_storage_handler import (
     prefect_put_files_to_s3,
 )
 
-from rs_server.api_common.utils import EoDAGDownloadHandler
+from rs_server.api_common.utils import EoDAGDownloadHandler, update_db
 from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from services.cadip.rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from services.common.models.product_download_status import EDownloadStatus
@@ -34,41 +32,6 @@ router = APIRouter(tags=["Cadu products"])
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
 
 logger = Logging.default(__name__)
-
-
-def update_db(
-    db,
-    db_product: CaduDownloadStatus,
-    estatus: EDownloadStatus,
-    status_fail_message=None,
-):
-    """Update the database with the status of a product."""
-
-    # Try n times to update the status.
-    # Don't do it for NOT_STARTED and IN_PROGRESS (call directly db_product.not_started
-    # or db_product.in_progress) because it will anyway be overwritten later by DONE or FAILED.
-
-    # Init last exception to empty value.
-    last_exception: Exception = Exception()
-
-    for _ in range(3):
-        try:
-            if estatus == EDownloadStatus.FAILED:
-                db_product.failed(db, status_fail_message)
-            elif estatus == EDownloadStatus.DONE:
-                db_product.done(db)
-
-            # The database update worked, exit function
-            return
-
-        # The database update failed, wait n seconds and retry
-        except sqlalchemy.exc.OperationalError as exception:
-            logger.error(f"Error updating status in database:\n{exception}")
-            last_exception = exception
-            time.sleep(1)
-
-    # If all attemps failed, raise the last Exception
-    raise last_exception
 
 
 def start_eodag_download(argument: EoDAGDownloadHandler):
