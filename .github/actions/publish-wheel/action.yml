@@ -49,6 +49,7 @@ runs:
     # TODO: use the good values
     - name: Publish wheel package
       uses: pypa/gh-action-pypi-publish@release/v1
+      if: ${{ false }}
       with:
         skip-existing: false
         packages-dir: ${{ inputs.package_directory }}/dist
