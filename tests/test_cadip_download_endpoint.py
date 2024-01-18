@@ -126,7 +126,7 @@ def test_invalid_endpoint_request(mocker, client):
         )
         result = CaduDownloadStatus.create(
             db=db,
-            cadu_id=cadu_id,
+            product_id=cadu_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.IN_PROGRESS,
@@ -178,7 +178,7 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client):
         # Init this product into db, set the status to NOT_STARTED
         CaduDownloadStatus.create(
             db=db,
-            cadu_id=cadu_id,
+            product_id=cadu_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
@@ -236,7 +236,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client):
         # Init this product into db, set the status to NOT_STARTED
         CaduDownloadStatus.create(
             db=db,
-            cadu_id=cadu_id,
+            product_id=cadu_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
@@ -311,7 +311,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
         # Init this product into db, set the status to NOT_STARTED
         CaduDownloadStatus.create(
             db=db,
-            cadu_id=cadu_id,
+            product_id=cadu_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
