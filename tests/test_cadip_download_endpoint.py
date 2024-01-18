@@ -55,7 +55,7 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
         # Add a download status to database
         CaduDownloadStatus.create(
             db=db,
-            cadu_id=cadu_id,
+            product_id=cadu_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.IN_PROGRESS,
@@ -121,7 +121,7 @@ def test_invalid_endpoint_request(mocker, client):
         # Add a download status to database
         # Mock a problem while getting / creating db entry
         mocker.patch(
-            "rs_server.CADIP.models.cadu_download_status.CaduDownloadStatus.create",
+            "services.cadip.rs_server_cadip.cadu_download_status.CaduDownloadStatus.create",
             return_value=None,
         )
         result = CaduDownloadStatus.create(

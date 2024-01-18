@@ -83,9 +83,10 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
         return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
 
 
-def prepare_products(products):
+def prepare_products(products) -> list:
+    """Function used to write EOProducts to db and serialize them to JSON content."""
     try:
         output = write_search_products_to_db(CaduDownloadStatus, products)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         return []
     return output

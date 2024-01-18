@@ -20,7 +20,24 @@ router = APIRouter(tags=["AUX products"])
 
 @router.get("/adgs/aux/search")
 async def search_aux_handler(start_date: str, stop_date: str):
-    """Docstring will be here."""
+    """
+    Searches for AUX products within a specified date range.
+
+    This endpoint initiates a search for AUX products between the given start and stop dates.
+
+    @param start_date: The start date of the search range.
+    @param stop_date: The stop date of the search range.
+
+    - Validates the input date formats, and if invalid, returns an appropriate JSONResponse.
+    - Initializes the ADGS data retriever.
+    - Performs a search for products within the specified date range.
+    - Processes the retrieved products using 'prepare_products' function.
+    - Logs a success message if the listing and processing of products are successful.
+
+    @return: A JSONResponse with the search results. In case of errors:
+             - Returns a 400 Bad Request response if there is an issue creating the EODAG provider.
+             - Returns a 503 Service Unavailable response if there is an operational error connecting to the database.
+    """
     is_valid, exception = validate_inputs_format(start_date, stop_date)
     if not is_valid:
         return exception
@@ -40,11 +57,13 @@ async def search_aux_handler(start_date: str, stop_date: str):
 
 
 def prepare_products(products):
+    """Function used to write EOProducts to db and serialize them to JSON content."""
+    # Same as cadu_search, will be moved to api_common
     try:
         output = write_search_products_to_db(AdgsDownloadStatus, products)
     except sqlalchemy.exc.OperationalError:
         logger.error("Failed to connect with DB during listing procedure")
         return []
-    except Exception as exc:
+    except Exception:  # pylint: disable=broad-exception-caught
         return []
     return output

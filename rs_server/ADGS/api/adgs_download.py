@@ -1,7 +1,6 @@
-"""Docstring will be written here."""
+"""Module used to download AUX files from ADGS station."""
 import threading
 from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -21,7 +20,24 @@ logger = Logging.default(__name__)
 
 
 def local_start_eodag_download(argument: EoDAGDownloadHandler):
-    """Docstring will be written here."""
+    """
+    @param argument: Object with properties 'name', 'local', 'thread_started', 'product_id', etc.
+
+    This function downloads an AUX product and updates its status in the database.
+
+    - Retrieves the product from the database based on the provided 'name'.
+    - Initializes a data retriever for ADGS with the specified local path.
+    - Updates the product's status to IN_PROGRESS in the database.
+    - Signals that the download thread has started.
+    - Initiates the product download.
+    - Attempts to update the product's status to DONE in the database multiple times.
+    - Logs a debug message upon successful download completion.
+    - In case of any exception during the process, updates the product's status to FAILED in the database.
+    - If the download is successful, updates the product's status to DONE in the database.
+    - Logs a debug message upon successful download completion.
+
+    @return: None
+    """
     with contextmanager(get_db)() as db:
         try:
             db_product = AdgsDownloadStatus.get(db, name=argument.name)
@@ -43,10 +59,27 @@ def local_start_eodag_download(argument: EoDAGDownloadHandler):
 
 @router.get("/adgs/aux")
 def download(name: str, local: Optional[str] = None, obs: Optional[str] = None, db=Depends(get_db)):
-    """Docstring will be written here."""
+    """
+    Initiates the download of an ADGS product by name.
+
+    This endpoint starts a background thread to download an ADGS product and updates its status in the database.
+
+    @param name: The name of the ADGS product to download.
+    @param local: Optional; the local path where the downloaded product should be saved.
+    @param obs: Optional; observation parameter for the download.
+    @param db: Dependency; the database session.
+
+    - Retrieves the product details from the database using the provided 'name'.
+    - In case of any exceptions during retrieval, logs the error and returns a service unavailable response.
+    - Starts a new thread to handle the download process in the background.
+    - The thread uses 'EoDAGDownloadHandler' to manage the download process.
+
+    @return: A JSON response indicating whether the download process started successfully.
+             In case of an error, returns a service unavailable response.
+    """
     try:
         db_product = AdgsDownloadStatus.get(db, name=name)
-        product_id = db_product.product_id
+        product_id = str(db_product.product_id)
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(exception)
         return JSONResponse(
@@ -63,3 +96,4 @@ def download(name: str, local: Optional[str] = None, obs: Optional[str] = None, 
         args=(eodag_args,),
     )
     thread.start()
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"started": "true"})

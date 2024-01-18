@@ -1,4 +1,4 @@
-"""Docstring will be here."""
+"""Module used to download CADU files."""
 import asyncio
 import os
 import os.path as osp

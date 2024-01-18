@@ -47,7 +47,19 @@ def is_valid_date_format(date: str) -> bool:
 
 
 def validate_inputs_format(start_date, stop_date):
-    """Docstring will be here."""
+    """
+    Validate the date format of start_date and stop_date.
+
+    Parameters:
+    - start_date (str): The start date to be validated.
+    - stop_date (str): The stop date to be validated.
+
+    Returns:
+    tuple[bool, JSONResponse]: A tuple containing a boolean indicating the validity of the date format
+    and a JSONResponse instance. If the date format is invalid, the boolean is False, and the JSONResponse
+    contains a 400 Bad Request response with an appropriate error message. If the date format is valid,
+    the boolean is True, and the JSONResponse is None.
+    """
     if (not is_valid_date_format(start_date)) or (not is_valid_date_format(stop_date)):
         logger.error("Invalid start/stop in endpoint call!")
         return False, JSONResponse(
@@ -69,7 +81,30 @@ class EoDAGDownloadHandler:
     obs: str | None
 
 
-def write_search_products_to_db(db_handler_class, products):
+def write_search_products_to_db(db_handler_class, products) -> list:
+    """
+    Process a list of products by adding them to the database if not already present.
+
+    This function iterates over a list of products. For each product, it checks whether the product
+    is already registered in the database. If the product is not in the database, it is added with
+    its relevant details. The function collects a list of product IDs and names for further processing.
+
+    Parameters:
+    - products (List[Product]): A list of product objects to be processed.
+    - db_handler_class: The database handler class used for database operations.
+
+    Returns:
+    List[Tuple]: A list of tuples, each containing the 'id' and 'Name' properties of a product.
+
+    Raises:
+    - sqlalchemy.exc.OperationalError: If there's an issue connecting to the database.
+
+    Note:
+    - The function assumes that 'products' is a list of objects with a 'properties' attribute,
+      which is a dictionary containing keys 'id', 'Name', and 'startTimeFromAscendingNode'.
+    - 'get_db' is a context manager that provides a database session.
+    - 'EDownloadStatus' is an enumeration representing download status.
+    """
     jsonify_state_products = []
     with contextmanager(get_db)() as db:
         try:
@@ -94,6 +129,7 @@ def write_search_products_to_db(db_handler_class, products):
         except sqlalchemy.exc.OperationalError:
             logger.error("Failed to connect with DB during listing procedure")
             raise
+    return jsonify_state_products
 
 
 def update_db(
