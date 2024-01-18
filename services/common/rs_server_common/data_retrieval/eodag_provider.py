@@ -1,4 +1,5 @@
 """EODAG Provider."""
+import os
 from pathlib import Path
 
 from eodag import EODataAccessGateway, EOProduct
@@ -98,6 +99,10 @@ def init_eodag_product(file_id: str, download_filename: str) -> EOProduct:
     :param download_filename: the name of the downloaded file
     :return the initialized EO Product
     """
+
+    # CADIP station host is defined as an environment variable, or 127.0.0.1 by default
+    cadip_station_host = os.environ.get("CADIP_STATION_HOST", "127.0.0.1")
+
     return EOProduct(
         "CADIP",
         {
@@ -105,6 +110,6 @@ def init_eodag_product(file_id: str, download_filename: str) -> EOProduct:
             "title": download_filename,
             "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
             # TODO build from configuration (but how ?)
-            "downloadLink": f"http://127.0.0.1:5000/Files({file_id})/$value",
+            "downloadLink": f"http://{cadip_station_host}:5000/Files({file_id})/$value",
         },
     )
