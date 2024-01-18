@@ -37,3 +37,5 @@ RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/
 RUN useradd -m user
 USER user
 WORKDIR /home/user
+
+ENTRYPOINT [ "python", "-m", "uvicorn", "rs_server.CADIP.cadip_backend:app", "--host", "0.0.0.0", "--port", "8000" ]
