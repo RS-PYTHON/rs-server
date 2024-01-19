@@ -232,6 +232,9 @@ def download(
             content={"started": "false"},
         )
 
+    # Reset status to not_started
+    db_product.not_started(db)
+
     # start a thread to run the action in background
     logger.debug(
         "%s : %s : %s: MAIN THREAD: Starting thread, local = %s",
