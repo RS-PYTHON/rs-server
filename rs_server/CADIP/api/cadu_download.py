@@ -12,6 +12,8 @@ from db.database import get_db
 from eodag import setup_logging
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
+from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
+from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.utils.logging import Logging
 from s3_storage_handler.s3_storage_handler import (
     PrefectPutFilesToS3Config,
@@ -20,8 +22,6 @@ from s3_storage_handler.s3_storage_handler import (
 )
 
 from rs_server.api_common.utils import EoDAGDownloadHandler, update_db
-from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
-from services.cadip.rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from services.common.models.product_download_status import EDownloadStatus
 
 # TODO: the value was set to 1.8s but it sometimes doesn't pass the CI in github.

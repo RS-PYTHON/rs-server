@@ -9,10 +9,7 @@ import pytest
 import responses
 from db.database import get_db
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
-
-from services.common.rs_server_common.data_retrieval.provider import (
-    CreateProviderFailed,
-)
+from rs_server_common.data_retrieval.provider import CreateProviderFailed
 
 # Resource folders specified from the parent directory of this current script
 RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
@@ -121,7 +118,7 @@ def test_invalid_endpoint_request(mocker, client):
         # Add a download status to database
         # Mock a problem while getting / creating db entry
         mocker.patch(
-            "services.cadip.rs_server_cadip.cadu_download_status.CaduDownloadStatus.create",
+            "rs_server_cadip.cadu_download_status.CaduDownloadStatus.create",
             return_value=None,
         )
         result = CaduDownloadStatus.create(
@@ -244,7 +241,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client):
         # Mock function data_retriever.download to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         mocker.patch(
-            "services.common.rs_server_common.data_retrieval.data_retriever.DataRetriever.download",
+            "rs_server_common.data_retrieval.data_retriever.DataRetriever.download",
             side_effect=Exception("Some Runtime Error occured here."),
         )
         # send the request

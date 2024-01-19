@@ -6,16 +6,14 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
+from rs_server_cadip.cadu_download_status import CaduDownloadStatus
+from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
 
 from rs_server.api_common.utils import (
     validate_inputs_format,
     write_search_products_to_db,
-)
-from services.cadip.rs_server_cadip.cadip_retriever import init_cadip_data_retriever
-from services.cadip.rs_server_cadip.cadu_download_status import CaduDownloadStatus
-from services.common.rs_server_common.data_retrieval.provider import (
-    CreateProviderFailed,
 )
 
 router = APIRouter(tags=["Cadu products"])

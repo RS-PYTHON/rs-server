@@ -14,9 +14,9 @@ import pytest
 from db.database import DatabaseSessionManager, get_db, sessionmanager
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from rs_server_common.utils.logging import Logging
 
 from rs_server.fastapi_app import init_app
-from services.common.rs_server_common.utils.logging import Logging
 
 
 @pytest.fixture(scope="session", autouse=True)

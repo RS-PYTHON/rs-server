@@ -2,16 +2,14 @@
 import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
+from rs_server_adgs.adgs_retriever import init_adgs_retriever
+from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
 
 from rs_server.api_common.utils import (
     validate_inputs_format,
     write_search_products_to_db,
-)
-from services.adgs.rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from services.adgs.rs_server_adgs.adgs_retriever import init_adgs_retriever
-from services.common.rs_server_common.data_retrieval.provider import (
-    CreateProviderFailed,
 )
 
 logger = Logging.default(__name__)

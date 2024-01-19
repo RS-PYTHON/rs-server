@@ -5,9 +5,9 @@ from datetime import datetime
 from db.database import get_db
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
+from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from sqlalchemy.orm import Session
 
-from services.cadip.rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from services.common.models.product_download_status import EDownloadStatus
 
 router = APIRouter(tags=["Cadu products"])
@@ -52,7 +52,6 @@ def get_status(name: str, db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
 
-    :param str cadu_id: CADU ID e.g. "2b17b57d-fff4-4645-b539-91f305c27c69"
     :param str name: CADU name e.g. "DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw"
     :param Session db: database session
     """

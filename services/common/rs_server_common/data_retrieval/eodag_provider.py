@@ -2,10 +2,7 @@
 from pathlib import Path
 
 from eodag import EODataAccessGateway, EOProduct
-
-from services.common.rs_server_common.utils.provider_ws_address import (
-    station_to_server_url,
-)
+from rs_server_common.utils.provider_ws_address import station_to_server_url
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
