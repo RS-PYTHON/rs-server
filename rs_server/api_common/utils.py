@@ -6,14 +6,14 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import sqlalchemy
-from db.database import get_db
+from rs_server_common.db.database import get_db
 from fastapi import status
 from fastapi.responses import JSONResponse
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.utils.logging import Logging
 
-from services.common.models.product_download_status import EDownloadStatus
+from rs_server_common.models.product_download_status import EDownloadStatus
 
 logger = Logging.default(__name__)
 

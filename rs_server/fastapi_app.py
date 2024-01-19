@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from os import environ as env
 
 import sqlalchemy
-from db.database import sessionmanager
+from rs_server_common.db.database import sessionmanager
 from fastapi import FastAPI
 from rs_server_common.utils.logging import Logging
 

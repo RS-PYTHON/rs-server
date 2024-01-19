@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 import pytest
 import responses
-from db.database import get_db
+from rs_server_common.db.database import get_db
 from fastapi import status
 
 

@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pytest
 import sqlalchemy
-from db.database import get_db
+from rs_server_common.db.database import get_db
 from fastapi import HTTPException
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
 
@@ -73,7 +73,7 @@ def test_cadu_download_status(client):
             CaduDownloadStatus.get(db_exception, name=_name3)
 
         # Test the http endpoint
-        url = "/cadip/CADIP/cadu/status?cadu_id={cadu_id}&name={name}"
+        url = "/cadip/CADIP/cadu/status?product_id={product_id}&name={name}"
 
         # Read an existing entry
         response = client.get(url.format(product_id=_cadu_id1, name=_name1))

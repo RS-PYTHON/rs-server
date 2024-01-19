@@ -43,16 +43,17 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
     """
     download_dir = "/tmp"
     filename = "CADIP_test_file_eodag.raw"
-    cadu_id = "id_1"
+    product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
 
-    endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}"
+    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}"
 
     with contextmanager(get_db)() as db:
         # Add a download status to database
+
         CaduDownloadStatus.create(
             db=db,
-            product_id=cadu_id,
+            product_id=product_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.IN_PROGRESS,
@@ -65,6 +66,7 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
         )
         # send the request
         data = client.get(endpoint)
+
         # let the file to be copied local
         time.sleep(1)
         try:
@@ -109,10 +111,10 @@ def test_invalid_endpoint_request(mocker, client):
               response to invalid endpoint requests.
     """
     filename = "Invalid_name"
-    cadu_id = "invalid_ID"
+    product_id = "invalid_ID"
     publication_date = "2023-10-10T00:00:00.111Z"
 
-    endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}"
+    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}"
 
     with contextmanager(get_db)() as db:
         # Add a download status to database
@@ -123,7 +125,7 @@ def test_invalid_endpoint_request(mocker, client):
         )
         result = CaduDownloadStatus.create(
             db=db,
-            product_id=cadu_id,
+            product_id=product_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.IN_PROGRESS,
@@ -167,15 +169,15 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client):
               response to EODAG provider creation failure.
     """
     filename = "CADIP_test_file_eodag.raw"
-    cadu_id = "id_1"
+    product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
 
-    endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}"
+    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}"
     with contextmanager(get_db)() as db:
         # Init this product into db, set the status to NOT_STARTED
         CaduDownloadStatus.create(
             db=db,
-            product_id=cadu_id,
+            product_id=product_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
@@ -226,14 +228,14 @@ def test_eodag_provider_failure_while_downloading(mocker, client):
         handling in the download process.
     """
     filename = "CADIP_test_file_eodag.raw"
-    cadu_id = "id_1"
+    product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
-    endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}"
+    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}"
     with contextmanager(get_db)() as db:
         # Init this product into db, set the status to NOT_STARTED
         CaduDownloadStatus.create(
             db=db,
-            product_id=cadu_id,
+            product_id=product_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
@@ -288,10 +290,10 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
         None: The function asserts conditions but does not return any value.
     """
     filename = "CADIP_test_file_eodag.raw"
-    cadu_id = "id_1"
+    product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
     obs = "s3://some_bucket_info"
-    endpoint = f"/cadip/CADIP/cadu?cadu_id=id_1&name={filename}&obs={obs}"
+    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}&obs={obs}"
     # Mock os environ s3 connection details
     monkeypatch.setenv("S3_ENDPOINT", "mock_endpoint")
     monkeypatch.setenv("S3_ACCESSKEY", "mock_accesskey")
@@ -308,7 +310,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
         # Init this product into db, set the status to NOT_STARTED
         CaduDownloadStatus.create(
             db=db,
-            product_id=cadu_id,
+            product_id=product_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,

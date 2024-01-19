@@ -2,13 +2,13 @@
 
 from datetime import datetime
 
-from db.database import get_db
+from rs_server_common.db.database import get_db
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from sqlalchemy.orm import Session
 
-from services.common.models.product_download_status import EDownloadStatus
+from rs_server_common.models.product_download_status import EDownloadStatus
 
 router = APIRouter(tags=["Cadu products"])
 
@@ -22,7 +22,7 @@ class CaduProductBase(BaseModel):
     CaduDownloadStatus fields that are known when both reading and creating the object.
     """
 
-    cadu_id: str
+    product_id: str
     name: str
     available_at_station: datetime | None
 
@@ -55,4 +55,6 @@ def get_status(name: str, db: Session = Depends(get_db)):
     :param str name: CADU name e.g. "DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw"
     :param Session db: database session
     """
+    import pdb
+    pdb.set_trace()
     return CaduDownloadStatus.get(name=name, db=db)
