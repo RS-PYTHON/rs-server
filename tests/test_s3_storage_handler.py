@@ -13,7 +13,7 @@ import yaml
 from moto.server import ThreadedMotoServer
 from prefect import flow
 from rs_server_common.utils.logging import Logging
-from s3_storage_handler.s3_storage_handler import (
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
     PrefectGetKeysFromS3Config,
     PrefectPutFilesToS3Config,
     S3StorageHandler,
