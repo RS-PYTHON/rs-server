@@ -95,3 +95,7 @@ disable = "logging-fstring-interpolation"
 
 [tool.pylint.MISCELLANEOUS]
 notes = ["XXX"] # no errors on TODO and FIXME
+
+[tool.pylint.SIMILARITIES]
+# Minimum lines number of a similarity FIXME.
+min-similarity-lines=10

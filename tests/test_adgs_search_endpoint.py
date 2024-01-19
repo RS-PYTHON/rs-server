@@ -85,8 +85,7 @@ def test_invalid_endpoint_param_missing_start_stop(client):
     """
     # Test without a stop date, this should result in a 400 bad request response.
     start_date = "2023-01-01T12:00:00.000Z"
-    cadip_test_station = "CADIP"
-    rs_url = f"/cadip/{cadip_test_station}/cadu/search"
+    rs_url = "/adgs/aux/search"
     endpoint = f"{rs_url}?start_date={start_date}"
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

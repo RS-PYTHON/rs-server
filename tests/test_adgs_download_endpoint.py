@@ -8,8 +8,8 @@ from contextlib import contextmanager
 import pytest
 import responses
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_common.models.product_download_status import EDownloadStatus
 from rs_server_common.db.database import get_db
+from rs_server_common.models.product_download_status import EDownloadStatus
 
 # Resource folders specified from the parent directory of this current script
 RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
@@ -51,7 +51,7 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
             name=filename,
             available_at_station=publication_date,
             # FIXME
-            status="IN_PROGRESS",
+            status=EDownloadStatus.IN_PROGRESS,
         )
         responses.add(
             responses.GET,
@@ -80,6 +80,27 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
 @pytest.mark.unit
 @responses.activate
 def test_exception_while_valid_download(mocker, client):
+    """
+    Tests the handling of an exception during the download of an ADGS product.
+
+    This unit test simulates a scenario where an exception occurs during the download of an ADGS product,
+    specifically when the 'DataRetriever.download' method is called. It ensures that the application handles
+    the exception appropriately, updates the database status accordingly, and captures the exception message.
+
+    @param mocker: The pytest-mock fixture for mocking dependencies.
+    @param client: The FastAPI test client for making HTTP requests.
+
+    - Sets up the initial state in the database by creating an ADGS download entry with 'IN_PROGRESS' status.
+    - Adds a mocked response for a GET request to an external service with a predefined product data.
+    - Mocks the 'DataRetriever.download' method to raise an exception during the download process.
+    - Asserts the initial status of the download in the database is 'IN_PROGRESS'.
+    - Sends a GET request to the '/adgs/aux' endpoint for the download.
+    - Asserts that the download status in the database changes to 'FAILED' after encountering the exception.
+    - Captures the exception message in the 'status_fail_message' field in the database.
+
+    Note:
+    - The mock responses and patches are used to simulate the external service and control the behavior of the download.
+    """
     filename = "AUX_test_file_eodag.raw"
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
@@ -92,8 +113,7 @@ def test_exception_while_valid_download(mocker, client):
             product_id=product_id,
             name=filename,
             available_at_station=publication_date,
-            # FIXME
-            status="IN_PROGRESS",
+            status=EDownloadStatus.IN_PROGRESS,
         )
         responses.add(
             responses.GET,
