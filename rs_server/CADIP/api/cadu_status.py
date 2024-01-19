@@ -2,13 +2,12 @@
 
 from datetime import datetime
 
-from rs_server_common.db.database import get_db
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
-from sqlalchemy.orm import Session
-
+from rs_server_common.db.database import get_db
 from rs_server_common.models.product_download_status import EDownloadStatus
+from sqlalchemy.orm import Session
 
 router = APIRouter(tags=["Cadu products"])
 
@@ -56,5 +55,6 @@ def get_status(name: str, db: Session = Depends(get_db)):
     :param Session db: database session
     """
     import pdb
+
     pdb.set_trace()
     return CaduDownloadStatus.get(name=name, db=db)

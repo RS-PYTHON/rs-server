@@ -3,7 +3,7 @@ from datetime import datetime
 from threading import Lock
 
 from fastapi import HTTPException
-from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
+from sqlalchemy import Column, DateTime, Integer, String, orm
 from sqlalchemy.orm import Session
 
 
@@ -16,9 +16,6 @@ class EDownloadStatus(enum.Enum):
     IN_PROGRESS = 2
     FAILED = 3
     DONE = 4
-
-
-from sqlalchemy.orm import declarative_base
 
 
 class ProductDownloadStatus:

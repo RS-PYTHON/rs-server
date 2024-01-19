@@ -7,9 +7,9 @@ from contextlib import contextmanager
 
 import pytest
 import responses
-from rs_server_common.db.database import get_db
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
+from rs_server_common.db.database import get_db
 
 # Resource folders specified from the parent directory of this current script
 RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
@@ -320,7 +320,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
         assert result.status == EDownloadStatus.NOT_STARTED
         # bypass S3StorageHandler object by raising a RunTimeError
         mocker.patch(
-            "rs_server.s3_storage_handler.s3_storage_handler.S3StorageHandler.__init__",
+            "rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.__init__",
             return_value=None,
             side_effect=RuntimeError,
         )

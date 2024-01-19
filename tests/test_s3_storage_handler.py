@@ -12,7 +12,6 @@ import requests
 import yaml
 from moto.server import ThreadedMotoServer
 from prefect import flow
-from rs_server_common.utils.logging import Logging
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     PrefectGetKeysFromS3Config,
     PrefectPutFilesToS3Config,
@@ -20,6 +19,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     prefect_get_keys_from_s3,
     prefect_put_files_to_s3,
 )
+from rs_server_common.utils.logging import Logging
 
 # Resource folders specified from the parent directory of this current script
 RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))

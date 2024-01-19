@@ -4,15 +4,15 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
-from rs_server_common.db.database import get_db
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_retriever
+from rs_server_common.db.database import get_db
+from rs_server_common.models.product_download_status import EDownloadStatus
 from rs_server_common.utils.logging import Logging
 
 from rs_server.api_common.utils import EoDAGDownloadHandler, update_db
-from rs_server_common.models.product_download_status import EDownloadStatus
 
 router = APIRouter(tags=["AUX products"])
 

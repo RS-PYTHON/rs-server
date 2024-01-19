@@ -11,9 +11,9 @@ import os.path as osp
 from contextlib import ExitStack
 
 import pytest
-from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
 from rs_server.fastapi_app import init_app

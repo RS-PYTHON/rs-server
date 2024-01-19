@@ -10,8 +10,8 @@ import os
 from threading import Lock
 from typing import Iterator
 
-from rs_server_common.db import Base
 from fastapi import HTTPException
+from rs_server_common.db import Base
 from rs_server_common.utils.logging import Logging
 from sqlalchemy import Connection, Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker

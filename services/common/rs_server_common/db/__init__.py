@@ -8,5 +8,6 @@ https://medium.com/@tclaitken/setting-up-a-fastapi-app-with-async-sqlalchemy-2-0
 """
 
 from sqlalchemy.orm import declarative_base
+
 # Construct a sqlalchemy base class for declarative class definitions.
 Base = declarative_base()

@@ -5,9 +5,9 @@ from datetime import datetime
 
 import pytest
 import sqlalchemy
-from rs_server_common.db.database import get_db
 from fastapi import HTTPException
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
+from rs_server_common.db.database import get_db
 
 
 # pylint: disable=unused-argument,too-many-locals,too-many-statements

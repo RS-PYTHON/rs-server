@@ -3,8 +3,8 @@ from contextlib import contextmanager
 
 import pytest
 import responses
-from rs_server_common.db.database import get_db
 from fastapi import status
+from rs_server_common.db.database import get_db
 
 
 def create_rs_list_cadu(station: str, start: str, stop: str):

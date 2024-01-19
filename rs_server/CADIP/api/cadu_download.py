@@ -8,21 +8,21 @@ from datetime import datetime
 from pathlib import Path
 from threading import Event
 
-from rs_server_common.db.database import get_db
 from eodag import setup_logging
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
-from rs_server_common.utils.logging import Logging
+from rs_server_common.db.database import get_db
+from rs_server_common.models.product_download_status import EDownloadStatus
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     PrefectPutFilesToS3Config,
     S3StorageHandler,
     prefect_put_files_to_s3,
 )
+from rs_server_common.utils.logging import Logging
 
 from rs_server.api_common.utils import EoDAGDownloadHandler, update_db
-from rs_server_common.models.product_download_status import EDownloadStatus
 
 # TODO: the value was set to 1.8s but it sometimes doesn't pass the CI in github.
 DWN_THREAD_START_TIMEOUT = 5

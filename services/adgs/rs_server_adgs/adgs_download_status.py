@@ -6,8 +6,8 @@ import enum
 from datetime import datetime
 from threading import Lock
 
-from rs_server_common.db import Base
 from fastapi import HTTPException
+from rs_server_common.db import Base
 from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
 from sqlalchemy.orm import Session
 
