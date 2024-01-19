@@ -1,6 +1,8 @@
 """Module used to download AUX files from ADGS station."""
+import os
 import threading
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -12,7 +14,11 @@ from rs_server_common.db.database import get_db
 from rs_server_common.models.product_download_status import EDownloadStatus
 from rs_server_common.utils.logging import Logging
 
-from rs_server.api_common.utils import EoDAGDownloadHandler, update_db
+from rs_server.api_common.utils import (
+    DWN_THREAD_START_TIMEOUT,
+    EoDAGDownloadHandler,
+    update_db,
+)
 
 router = APIRouter(tags=["AUX products"])
 
@@ -46,7 +52,12 @@ def local_start_eodag_download(argument: EoDAGDownloadHandler):
             # Update the status to IN_PROGRESS in the database
             db_product.in_progress(db)
             argument.thread_started.set()
+            init = datetime.now()
             data_retriever.download(argument.product_id, argument.name)
+            logger.info(
+                f"{os.getpid()} : {threading.get_ident()} : File: {argument.name} downloaded in \
+                {datetime.now() - init}",
+            )
             # Try n times to update the status to DONE in the database
             update_db(db, db_product, EDownloadStatus.DONE)
             logger.debug("Download finished succesfully for %s", db_product.name)
@@ -96,4 +107,12 @@ def download(name: str, local: Optional[str] = None, obs: Optional[str] = None, 
         args=(eodag_args,),
     )
     thread.start()
+
+    # check the start of the thread
+    if not thread_started.wait(timeout=DWN_THREAD_START_TIMEOUT):
+        logger.error("Download thread did not start !")
+        # Try n times to update the status to FAILED in the database
+        update_db(db, db_product, EDownloadStatus.FAILED, "Download thread did not start !")
+        return JSONResponse(status_code=status.HTTP_408_REQUEST_TIMEOUT, content={"started": "false"})
+
     return JSONResponse(status_code=status.HTTP_200_OK, content={"started": "true"})

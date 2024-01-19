@@ -1,4 +1,4 @@
-"""Docstring to be added."""
+"""Module used to test CADIP download endpoint"""
 import filecmp
 import os
 import os.path as osp

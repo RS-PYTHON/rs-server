@@ -11,10 +11,7 @@ from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
 
-from rs_server.api_common.utils import (
-    validate_inputs_format,
-    write_search_products_to_db,
-)
+from rs_server.api_common.utils import prepare_products, validate_inputs_format
 
 router = APIRouter(tags=["Cadu products"])
 logger = Logging.default(__name__)
@@ -67,7 +64,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     try:
         data_retriever = init_cadip_data_retriever(station, None, None, None)
         products = data_retriever.search(start_date, stop_date)
-        processed_products = prepare_products(products)
+        processed_products = prepare_products(CaduDownloadStatus, products)
 
         logger.info("Succesfully listed and processed products from cadu station")
         return JSONResponse(status_code=status.HTTP_200_OK, content={station: processed_products})
@@ -79,12 +76,3 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     except sqlalchemy.exc.OperationalError:
         logger.error("Failed to connect to database!")
         return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
-
-
-def prepare_products(products) -> list:
-    """Function used to write EOProducts to db and serialize them to JSON content."""
-    try:
-        output = write_search_products_to_db(CaduDownloadStatus, products)
-    except Exception:  # pylint: disable=broad-exception-caught
-        return []
-    return output

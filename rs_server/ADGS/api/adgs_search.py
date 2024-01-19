@@ -7,10 +7,7 @@ from rs_server_adgs.adgs_retriever import init_adgs_retriever
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
 
-from rs_server.api_common.utils import (
-    validate_inputs_format,
-    write_search_products_to_db,
-)
+from rs_server.api_common.utils import prepare_products, validate_inputs_format
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=["AUX products"])
@@ -43,7 +40,7 @@ async def search_aux_handler(start_date: str, stop_date: str):
     try:
         data_retriever = init_adgs_retriever(None, None, None)
         products = data_retriever.search(start_date, stop_date)
-        processed_products = prepare_products(products)
+        processed_products = prepare_products(AdgsDownloadStatus, products)
         logger.info("Succesfully listed and processed products from AUX station")
         return JSONResponse(status_code=status.HTTP_200_OK, content={"AUX": processed_products})
     except CreateProviderFailed:
@@ -52,16 +49,3 @@ async def search_aux_handler(start_date: str, stop_date: str):
     except sqlalchemy.exc.OperationalError:
         logger.error("Failed to connect to database!")
         return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
-
-
-def prepare_products(products):
-    """Function used to write EOProducts to db and serialize them to JSON content."""
-    # Same as cadu_search, will be moved to api_common
-    try:
-        output = write_search_products_to_db(AdgsDownloadStatus, products)
-    except sqlalchemy.exc.OperationalError:
-        logger.error("Failed to connect with DB during listing procedure")
-        return []
-    except Exception:  # pylint: disable=broad-exception-caught
-        return []
-    return output

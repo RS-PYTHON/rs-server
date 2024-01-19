@@ -94,3 +94,48 @@ def session_override(client, fastapi_app):  # pylint: disable=unused-argument
             DatabaseSessionManager.reraise_http_exception(exception)
 
     fastapi_app.dependency_overrides[get_db] = get_db_override
+
+
+@pytest.fixture(scope="module", name="a_product")
+def a_product_fixture():
+    """Fixture factory to build a dummy cadip/aux product.
+    The structure of this fake product is similar for CADIP and ADGS.
+    The cadip/aux product is configured from an id and a datetime-like str.
+
+    :return: the factory function to build a cadip/aux product.
+    """
+
+    def build(id_: str, name: str, at_date: str):
+        """Build a dummy cadip/adgs product.
+
+        :param id_: the id of the product
+        :param name: the name of the product
+        :param at_date: the time of the product.
+        :return: the cadip/ags product.
+        """
+        return {
+            "Id": id_,
+            "Name": name,
+            "PublicationDate": at_date,
+            "Size": "dummy_value",
+        }
+
+    return build
+
+
+@pytest.fixture(name="expected_products")
+def expected_products_fixture(a_product) -> list[dict]:
+    """Fixture that gives the default products returned by cadip/adgs.
+
+    :param a_product: factory fixture to build a cadip/adgs product
+    :return: the cadip/adgs product list
+    """
+    return [
+        a_product(
+            "2b17b57d-fff4-4645-b539-91f305c27c69",
+            "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+            "2019-02-16T12:00:00.000Z",
+        ),
+        a_product("some_id_2", "S1A.raw", "2021-02-16T12:00:00.000Z"),
+        a_product("some_id_3", "S2L1C.raw", "2023-02-16T12:00:00.000Z"),
+    ]

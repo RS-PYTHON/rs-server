@@ -22,10 +22,11 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 
-from rs_server.api_common.utils import EoDAGDownloadHandler, update_db
-
-# TODO: the value was set to 1.8s but it sometimes doesn't pass the CI in github.
-DWN_THREAD_START_TIMEOUT = 5
+from rs_server.api_common.utils import (
+    DWN_THREAD_START_TIMEOUT,
+    EoDAGDownloadHandler,
+    update_db,
+)
 
 router = APIRouter(tags=["Cadu products"])
 

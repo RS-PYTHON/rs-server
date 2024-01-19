@@ -16,6 +16,9 @@ from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
 
+# TODO: the value was set to 1.8s but it sometimes doesn't pass the CI in github.
+DWN_THREAD_START_TIMEOUT = 5
+
 
 def is_valid_date_format(date: str) -> bool:
     """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS.sssZ".
@@ -122,7 +125,10 @@ def write_search_products_to_db(db_handler_class, products) -> list:
                     product_id=product.properties["id"],
                     name=product.properties["Name"],
                     available_at_station=datetime.fromisoformat(product.properties["startTimeFromAscendingNode"]),
-                    status=EDownloadStatus.NOT_STARTED,
+                    # FIXME, StatementError("(builtins.LookupError) 'EDownloadStatus.NOT_STARTED' is not among the
+                    #  defined enum values. Enum name: edownloadstatus. Possible values: NOT_STARTED, IN_PROGRESS,
+                    #  FAILED, DONE")
+                    status="NOT_STARTED",
                 )
 
         except sqlalchemy.exc.OperationalError:
@@ -164,3 +170,12 @@ def update_db(
 
     # If all attemps failed, raise the last Exception
     raise last_exception
+
+
+def prepare_products(db_handler, products) -> list:
+    """Function used to write EOProducts to db and serialize them to JSON content."""
+    try:
+        output = write_search_products_to_db(db_handler, products)
+    except Exception:  # pylint: disable=broad-exception-caught
+        return []
+    return output

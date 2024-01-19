@@ -54,7 +54,4 @@ def get_status(name: str, db: Session = Depends(get_db)):
     :param str name: CADU name e.g. "DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw"
     :param Session db: database session
     """
-    import pdb
-
-    pdb.set_trace()
     return CaduDownloadStatus.get(name=name, db=db)
