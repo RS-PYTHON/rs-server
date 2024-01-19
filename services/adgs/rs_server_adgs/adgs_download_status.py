@@ -6,11 +6,10 @@ import enum
 from datetime import datetime
 from threading import Lock
 
+from db import Base
 from fastapi import HTTPException
 from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
-from sqlalchemy.orm import Session, declarative_base
-
-Base = declarative_base()
+from sqlalchemy.orm import Session
 
 
 class EDownloadStatus(enum.Enum):

@@ -12,4 +12,4 @@ from sqlalchemy.orm import declarative_base
 from services.common.models.product_download_status import ProductDownloadStatus
 
 # Construct a sqlalchemy base class for declarative class definitions.
-Base = declarative_base(cls=ProductDownloadStatus)
+Base = declarative_base()
