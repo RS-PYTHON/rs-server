@@ -27,7 +27,7 @@ class ProductDownloadStatus(Base):
     """Abstract implementation of SQLAlchemy Base"""
 
     __abstract__ = True
-    __allow_unmapped__ = True # Test if needed.
+    __allow_unmapped__ = True  # Test if needed.
 
     db_id = Column(Integer, primary_key=True, index=True, nullable=True)
     product_id = Column(String, unique=True, index=True)
