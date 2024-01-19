@@ -125,10 +125,7 @@ def write_search_products_to_db(db_handler_class, products) -> list:
                     product_id=product.properties["id"],
                     name=product.properties["Name"],
                     available_at_station=datetime.fromisoformat(product.properties["startTimeFromAscendingNode"]),
-                    # FIXME, StatementError("(builtins.LookupError) 'EDownloadStatus.NOT_STARTED' is not among the
-                    #  defined enum values. Enum name: edownloadstatus. Possible values: NOT_STARTED, IN_PROGRESS,
-                    #  FAILED, DONE")
-                    status="NOT_STARTED",
+                    status=EDownloadStatus.NOT_STARTED,
                 )
 
         except sqlalchemy.exc.OperationalError:

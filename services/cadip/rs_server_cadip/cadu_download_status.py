@@ -9,18 +9,8 @@ from threading import Lock
 from fastapi import HTTPException
 from rs_server_common.db import Base
 from sqlalchemy import Column, DateTime, Enum, Integer, String, orm
+from rs_server_common.models.product_download_status import EDownloadStatus
 from sqlalchemy.orm import Session
-
-
-class EDownloadStatus(enum.Enum):
-    """
-    Download status enumeration.
-    """
-
-    NOT_STARTED = 1
-    IN_PROGRESS = 2
-    FAILED = 3
-    DONE = 4
 
 
 # mypy: ignore-errors
