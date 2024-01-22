@@ -2,6 +2,7 @@
 import asyncio
 import os
 import os.path as osp
+import tempfile
 import threading
 from contextlib import contextmanager
 from datetime import datetime
@@ -55,7 +56,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
         None
     """
     # Open a database sessions in this thread, because the session from the root thread may have closed.
-    with contextmanager(get_db)() as db:
+    with tempfile.TemporaryDirectory() as default_temp_path, contextmanager(get_db)() as db:
         # Get the product download status
         db_product = CaduDownloadStatus.get(db, name=argument.name)
 
@@ -69,8 +70,8 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
             )
 
             setup_logging(3, no_progress_bar=True)
-
-            local = Path("/tmp" if not argument.local else argument.local)
+            # tempfile to be used here
+            local = default_temp_path if not argument.local else Path(argument.local)
 
             data_retriever = init_cadip_data_retriever(argument.station, None, None, local)
 

@@ -1,5 +1,6 @@
 """Module used to download AUX files from ADGS station."""
 import os
+import tempfile
 import threading
 from contextlib import contextmanager
 from datetime import datetime
@@ -44,10 +45,10 @@ def local_start_eodag_download(argument: EoDAGDownloadHandler):
 
     @return: None
     """
-    with contextmanager(get_db)() as db:
+    with tempfile.TemporaryDirectory() as default_temp_path, contextmanager(get_db)() as db:
         try:
             db_product = AdgsDownloadStatus.get(db, name=argument.name)
-            local = Path("/tmp" if not argument.local else argument.local)
+            local = default_temp_path if not argument.local else Path(argument.local)
             data_retriever = init_adgs_retriever(None, None, local)
             # Update the status to IN_PROGRESS in the database
             db_product.in_progress(db)

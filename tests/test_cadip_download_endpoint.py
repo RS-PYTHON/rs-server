@@ -177,6 +177,8 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client):
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
         )
+        result = CaduDownloadStatus.get(db=db, name=filename)
+        assert result.status == EDownloadStatus.NOT_STARTED
         # Mock function rs_server.CADIP.api.cadu_download.init_cadip_data_retriever to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         mocker.patch(
