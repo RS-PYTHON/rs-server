@@ -39,12 +39,13 @@ def read_cli(request):
 
 # Try to kill the existing postgres docker container if it exists
 # and prune docker networks to clean the IPv4 address pool
+# TODO and FIXME -> Fix nosec
 os.system(
     """
 docker rm -f $(docker ps -aqf name=postgres_rspy-pytest) >/dev/null 2>&1
 docker network prune -f >/dev/null 2>&1
 """,
-)
+)  # nosec
 
 
 @pytest.fixture(scope="session", name="docker_compose_file")
