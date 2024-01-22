@@ -99,3 +99,6 @@ notes = ["XXX"] # no errors on TODO and FIXME
 [tool.pylint.SIMILARITIES]
 # Minimum lines number of a similarity FIXME.
 min-similarity-lines=10
+
+[tool.bandit.assert_used]
+skips = ['*/test_*.py']

@@ -12,15 +12,15 @@ from sqlalchemy.orm import Session
 # Ignore mypy false positive errors on sqlalchemy
 
 
-class EDownloadStatus(enum.Enum):
+class EDownloadStatus(str, enum.Enum):
     """
     Download status enumeration.
     """
 
-    NOT_STARTED = 1
-    IN_PROGRESS = 2
-    FAILED = 3
-    DONE = 4
+    NOT_STARTED = "NOT_STARTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    FAILED = "FAILED"
+    DONE = "DONE"
 
 
 class ProductDownloadStatus(Base):

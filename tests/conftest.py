@@ -6,9 +6,10 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
-import os
 import os.path as osp
+import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
+from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
@@ -17,6 +18,8 @@ from rs_server_common.db.database import DatabaseSessionManager, get_db, session
 from rs_server_common.utils.logging import Logging
 
 from rs_server.fastapi_app import init_app
+
+RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -37,21 +40,15 @@ def read_cli(request):
 #     Alternatively pg_config installed might be from different version that postgresql-server.
 # See commit bbc6290df7c92fd306908830cbade8975e1eea6c
 
-# Try to kill the existing postgres docker container if it exists
-# and prune docker networks to clean the IPv4 address pool
-# TODO and FIXME -> Fix nosec
-os.system(
-    """
-docker rm -f $(docker ps -aqf name=postgres_rspy-pytest) >/dev/null 2>&1
-docker network prune -f >/dev/null 2>&1
-""",
-)  # nosec
+# Clean before running.
+# No security risks since this file is not released into production.
+subprocess.run([RESOURCES_FOLDER / "clean.sh"], check=False, shell=False)  # nosec ignore security issue
 
 
 @pytest.fixture(scope="session", name="docker_compose_file")
-def docker_compose_file_(pytestconfig):
+def docker_compose_file_():
     """Return the path to the docker-compose.yml file to run before tests."""
-    return osp.join(str(pytestconfig.rootdir), "tests", "resources", "db", "docker-compose.yml")
+    return RESOURCES_FOLDER / "db" / "docker-compose.yml"
 
 
 @pytest.fixture(autouse=True, name="fastapi_app")
@@ -61,7 +58,7 @@ def fastapi_app_(docker_ip, docker_services, docker_compose_file):  # pylint: di
     """
 
     # Read the .env file that comes with docker-compose.yml
-    load_dotenv(osp.join(osp.dirname(docker_compose_file), ".env"))
+    load_dotenv(RESOURCES_FOLDER / "db" / ".env")
 
     with ExitStack():
         yield init_app(init_db=True, pause=3, timeout=6)

@@ -4,6 +4,7 @@ import os
 import os.path as osp
 import tempfile
 import threading
+import traceback
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -127,7 +128,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
                 )
                 asyncio.run(prefect_put_files_to_s3.fn(s3_config))
             except RuntimeError:
-                logger.error("Could not connect to the s3 storage")
+                logger.error(f"Could not connect to the s3 storage\n{traceback.format_exc()}")
                 # Try n times to update the status to FAILED in the database
                 update_db(
                     db,
@@ -181,6 +182,9 @@ def download(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"started": "false"},
         )
+
+    # Reset status to not_started
+    db_product.not_started(db)
 
     # start a thread to run the action in background
     logger.debug(

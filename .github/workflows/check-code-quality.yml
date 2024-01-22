@@ -8,7 +8,6 @@ on:
 
 env:
   PYTHON_VERSION: 3.11
-  TESTS: ./tests
   SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
 jobs:
@@ -80,8 +79,8 @@ jobs:
         if: always() # even if previous steps returned a non-zero exit code
         run: |
           set -x
-          poetry run bandit -c bandit.yml -r . || true # run next line even if fails
-          poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
+          poetry run bandit -c pyproject.toml -r . || true # run next line even if fails
+          poetry run bandit -c pyproject.toml -r . -f json -o ./bandit-report.json
         shell: bash
 
       - id: safety
@@ -118,12 +117,16 @@ jobs:
           sarif_file: trivy-results-fs.sarif
           category: git repository
 
-      # Display link to Trivy results in the github security tab.
-      # This linke doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
-      - if: github.event_name != 'pull_request'
-        run: >
-          echo "Trivy scan results:
-          https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${{ github.ref_name }}"
+      - name: "Display link to Trivy results"
+        if: always()
+        run: |
+          set -x
+          # This name doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
+          # TO BE TESTED
+          ref_name=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+
+          echo "Trivy scan results:" \
+          "https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${ref_name}" \
           >> $GITHUB_STEP_SUMMARY
 
   run-unit-tests:
@@ -135,7 +138,8 @@ jobs:
 
       - name: Run unit tests
         run: |
-          set -x && poetry run pytest ${TESTS} \
+          set -x && poetry run pytest \
+            ./tests ./services/common/tests ./services/cadip/tests \
             -m unit \
             --durations=0 \
             --error-for-skips \
@@ -172,7 +176,8 @@ jobs:
 
       - name: Run integration tests
         run: |
-          set -x && poetry run pytest ${TESTS} \
+          set -x && poetry run pytest \
+            ./tests ./services/common/tests ./services/cadip/tests \
             -m integration \
             --durations=0 \
             --error-for-skips \
@@ -238,8 +243,8 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.projectBaseDir=.
-            -Dsonar.sources=./rs_server,./services
-            -Dsonar.tests=${{ env.TESTS }}
+            -Dsonar.sources=./rs_server,./services/common/rs_server_common,./services/cadip/rs_server_cadip
+            -Dsonar.tests=./tests,./services/common/tests,./services/cadip/tests
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py

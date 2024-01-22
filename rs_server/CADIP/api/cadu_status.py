@@ -38,7 +38,11 @@ class CaduProductRead(CaduProductBase):
     status: EDownloadStatus
     status_fail_message: str | None = None
 
-    model_config = ConfigDict(from_attributes=True)  # build models using python object attributes
+    model_config = ConfigDict(
+        from_attributes=True,
+        validate_default=True,
+        use_enum_values=True,
+    )
 
 
 ##################

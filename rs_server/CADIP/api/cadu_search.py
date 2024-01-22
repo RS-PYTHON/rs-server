@@ -3,6 +3,8 @@
 This module provides functionality to retrieve a list of products from the CADU system for a specified station.
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
+import traceback
+
 import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
@@ -69,9 +71,9 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
         logger.info("Succesfully listed and processed products from cadu station")
         return JSONResponse(status_code=status.HTTP_200_OK, content={station: processed_products})
 
-    except CreateProviderFailed:
-        logger.error("Failed to create EODAG provider!")
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
+    except CreateProviderFailed as exception:
+        logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Bad station identifier: {exception}")
 
     except sqlalchemy.exc.OperationalError:
         logger.error("Failed to connect to database!")
