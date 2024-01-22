@@ -2,6 +2,7 @@
 import filecmp
 import os
 import os.path as osp
+import tempfile
 import time
 from contextlib import contextmanager
 
@@ -41,14 +42,12 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
     Raises:
         AssertionError: If the test fails to assert the expected outcomes.
     """
-    download_dir = "/tmp"
     filename = "CADIP_test_file_eodag.raw"
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
 
-    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}"
-
-    with contextmanager(get_db)() as db:
+    with tempfile.TemporaryDirectory() as download_dir, contextmanager(get_db)() as db:
+        endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}&local={download_dir}"
         # Add a download status to database
 
         CaduDownloadStatus.create(
@@ -69,17 +68,13 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
 
         # let the file to be copied local
         time.sleep(1)
-        try:
-            assert data.status_code == 200
-            assert data.json() == {"started": "true"}
-            # test file content
-            assert filecmp.cmp(
-                os.path.join(download_dir, filename),
-                os.path.join(ENDPOINTS_FOLDER, "CADIP_test_file.raw"),
-            )
-            # clean downloaded file
-        finally:
-            os.remove(os.path.join(download_dir, filename))
+        assert data.status_code == 200
+        assert data.json() == {"started": "true"}
+        # test file content
+        assert filecmp.cmp(
+            os.path.join(download_dir, filename),
+            os.path.join(ENDPOINTS_FOLDER, "CADIP_test_file.raw"),
+        )
 
 
 @pytest.mark.unit
