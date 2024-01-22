@@ -8,8 +8,9 @@ from rs_server_common.db import Base
 from sqlalchemy import Column, DateTime, Integer, String, orm
 from sqlalchemy.orm import Session
 
+# pylint: disable=attribute-defined-outside-init
 # mypy: ignore-errors
-# Ignore mypy false positive errors on sqlalchemy
+# Ignore pylint and mypy false positive errors on sqlalchemy
 
 
 class EDownloadStatus(str, enum.Enum):

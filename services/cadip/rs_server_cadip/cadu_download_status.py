@@ -15,7 +15,7 @@ class CaduDownloadStatus(ProductDownloadStatus):
     __tablename__ = "cadu_download_status"
     status: EDownloadStatus = Column(Enum(EDownloadStatus), default=EDownloadStatus.NOT_STARTED)
 
-    def __init__(self, status: EDownloadStatus = EDownloadStatus.NOT_STARTED, *args, **kwargs):
+    def __init__(self, *args, status: EDownloadStatus = EDownloadStatus.NOT_STARTED, **kwargs):
         """Invoked when creating a new record in the database table."""
         super().__init__(*args, **kwargs)
         self.status = status

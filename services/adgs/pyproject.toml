@@ -9,7 +9,7 @@ description = ""
 authors = ["Your Name <you@example.com>"]
 
 packages = [
-    { include = "rs_server_adgsc" },
+    { include = "rs_server_adgs" },
     { include = "tests", format = "sdist" },
 ]
 
