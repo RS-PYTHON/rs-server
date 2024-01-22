@@ -26,7 +26,7 @@ class EDownloadStatus(str, enum.Enum):
 class ProductDownloadStatus(Base):
     """Abstract implementation of SQLAlchemy Base"""
 
-    __abstract__ = True
+    __abstract__ = True  # this class must be inherited
 
     db_id = Column(Integer, primary_key=True, index=True, nullable=True)
     product_id = Column(String, unique=True, index=True)
