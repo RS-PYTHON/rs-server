@@ -73,7 +73,16 @@ def validate_inputs_format(start_date, stop_date):
 
 @dataclass
 class EoDAGDownloadHandler:
-    """This dataclass is used to create the collection of arguments needed for eodag download."""
+    """Dataclass to store arguments needed for eodag download.
+
+    Attributes:
+        thread_started (threading.Event): Event to signal the start of the download thread.
+        station (str): CADIP station identifier (needed only for CADIP).
+        product_id (str): Identifier of the product to be downloaded.
+        name (str): Filename of the file to be downloaded.
+        local (str | None): Local path where the product will be stored
+        obs (str | None): Path to the S3 storage where the file will be uploaded
+    """
 
     thread_started: threading.Event
     station: str  # needed only for CADIP

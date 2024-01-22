@@ -1,5 +1,4 @@
 """Module used to download CADU files."""
-import asyncio
 import os
 import os.path as osp
 import tempfile
@@ -13,13 +12,11 @@ from eodag import setup_logging
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus
+from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
 from rs_server_common.db.database import get_db
-from rs_server_common.models.product_download_status import EDownloadStatus
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
-    PrefectPutFilesToS3Config,
+    PutFilesToS3Config,
     S3StorageHandler,
-    prefect_put_files_to_s3,
 )
 from rs_server_common.utils.logging import Logging
 
@@ -37,24 +34,28 @@ logger = Logging.default(__name__)
 
 
 def start_eodag_download(argument: EoDAGDownloadHandler):
-    """Start an EODAG download process for a specified product.
+    """Start the eodag download process.
 
-    This function initiates a download process using EODAG to retrieve a product with the given
-    parameters. It also updates the product's status in the database based on the download result.
+    This function initiates the eodag download process using the provided arguments. It sets up
+    the necessary configurations, starts the download thread, and updates the download status in the
+    database based on the outcome of the download.
 
     Args:
-        station (str): The EODAG station identifier.
-        product_id (str): The CADU identifier of the product.
-        name (str): The name of the product.
-        local (str): The local path where the product will be downloaded.
-        obs (str, optional): The observation identifier associated with the product.
+        argument (EoDAGDownloadHandler): An instance of EoDAGDownloadHandler containing
+         the arguments used in the downloading process
+    NOTE: The local and obs parameters are optionals:
+    - local (str | None): Local path where the product will be stored. If this
+        parameter is not given, the local path where the file is stored will be set to a temporary one
+    - obs (str | None): Path to S3 storage where the file will be uploaded, after a successfull download from CADIP
+        server. If this parameter is not given, the file will not be uploaded to the s3 storage.
 
     Returns:
         None
 
     Raises:
-        None
+        RuntimeError: If there is an issue connecting to the S3 storage during the download.
     """
+
     # Open a database sessions in this thread, because the session from the root thread may have closed.
     with tempfile.TemporaryDirectory() as default_temp_path, contextmanager(get_db)() as db:
         # Get the product download status
@@ -118,14 +119,13 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
                     "sbg",
                 )
                 obs_array = argument.obs.split("/")
-                s3_config = PrefectPutFilesToS3Config(
-                    s3_handler,
+                s3_config = PutFilesToS3Config(
                     [str(data_retriever.filename)],
                     obs_array[2],
                     "/".join(obs_array[3:]),
                     0,
                 )
-                asyncio.run(prefect_put_files_to_s3.fn(s3_config))
+                s3_handler.put_files_to_s3(s3_config)
             except RuntimeError:
                 logger.error("Could not connect to the s3 storage")
                 # Try n times to update the status to FAILED in the database
@@ -161,8 +161,8 @@ def download(
     Args:
         station (str): The EODAG station identifier.
         name (str): The name of the CADU product.
-        local (str, optional): The local path where the CADU product will be downloaded.
-        obs (str, optional): The observation identifier associated with the CADU product.
+        local (str, optional): The local path where the CADU file will be downloaded.
+        obs (str, optional): S3 storage path where the CADU file will be uploaded
         db (Database): The database connection object.
 
     Returns:

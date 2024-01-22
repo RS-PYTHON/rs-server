@@ -11,15 +11,13 @@ import pytest
 import requests
 import yaml
 from moto.server import ThreadedMotoServer
-from prefect import flow
-from rs_server_common.s3_storage_handler.s3_storage_handler import (
-    PrefectGetKeysFromS3Config,
-    PrefectPutFilesToS3Config,
-    S3StorageHandler,
-    prefect_get_keys_from_s3,
-    prefect_put_files_to_s3,
-)
 from rs_server_common.utils.logging import Logging
+
+from services.common.rs_server_common.s3_storage_handler.s3_storage_handler import (
+    GetKeysFromS3Config,
+    PutFilesToS3Config,
+    S3StorageHandler,
+)
 
 # Resource folders specified from the parent directory of this current script
 RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
@@ -433,7 +431,7 @@ def cmp_dirs(dir1, dir2):
         ),
     ],
 )
-async def test_prefect_download_files_from_s3(
+def test_prefect_download_files_from_s3(
     endpoint: str,
     bucket: str,
     lst_with_files: list,
@@ -484,23 +482,16 @@ async def test_prefect_download_files_from_s3(
             collection = []
         local_path = tempfile.mkdtemp()
 
-        @flow
-        async def test_flow():
-            config = PrefectGetKeysFromS3Config(
-                s3_handler,
-                lst_with_files,
-                bucket,
-                local_path,
-                0,
-                True,
-                1,
-            )  # type: ignore
-            state = await prefect_get_keys_from_s3(config, return_state=True)  # type: ignore
-            result = await state.result(fetch=True)  # type: ignore
-            return result
+        config = GetKeysFromS3Config(
+            lst_with_files,
+            bucket,
+            local_path,
+            True,
+            1,
+        )
 
-        res = await test_flow()  # type: ignore
-        logger.debug("Task returns: %s", res)
+        res = s3_handler.get_keys_from_s3(config)
+        logger.debug("get_keys_from_s3 returns: %s", res)
     except RuntimeError:
         res = []
     finally:
@@ -731,14 +722,9 @@ async def test_prefect_upload_files_to_s3(
         logger.debug("collection              = {%s}", collection)
         logger.debug("lst_with_files_to_be_up = %s", lst_with_files_to_be_up)
 
-        @flow
-        async def test_flow():
-            config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, 1)
-            state = await prefect_put_files_to_s3(config, return_state=True)  # type: ignore
-            result = await state.result(fetch=True)  # type: ignore
-            return result
+        config = PutFilesToS3Config(lst_with_files, bucket, s3_prefix, 1)
+        res = s3_handler.put_files_to_s3(config)
 
-        res = await test_flow()  # type: ignore
         test_bucket_files = []  # type: list[str]
         for key in lst_with_files:
             try:
@@ -746,8 +732,6 @@ async def test_prefect_upload_files_to_s3(
                 test_bucket_files = test_bucket_files + s3_files
             except RuntimeError:
                 pass
-            # if total == 0:
-            #    break
     finally:
         server.stop()
 
