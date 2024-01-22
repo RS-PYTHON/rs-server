@@ -26,7 +26,7 @@ def get_eodag_provider(station) -> str:
     """
 
     # Read the generic configuration file
-    with open(EODAG_CONFIG, "r") as generic_file:
+    with open(EODAG_CONFIG, "r", encoding="utf-8") as generic_file:
         generic_data = generic_file.read()
 
         # env variables to replace and default values

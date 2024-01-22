@@ -94,3 +94,6 @@ disable = "logging-fstring-interpolation"
 
 [tool.pylint.MISCELLANEOUS]
 notes = ["XXX"] # no errors on TODO and FIXME
+
+[tool.bandit.assert_used]
+skips = ['*/test_*.py']

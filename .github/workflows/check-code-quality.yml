@@ -79,8 +79,8 @@ jobs:
         if: always() # even if previous steps returned a non-zero exit code
         run: |
           set -x
-          poetry run bandit -c bandit.yml -r . || true # run next line even if fails
-          poetry run bandit -c bandit.yml -r . -f json -o ./bandit-report.json
+          poetry run bandit -c pyproject.toml -r . || true # run next line even if fails
+          poetry run bandit -c pyproject.toml -r . -f json -o ./bandit-report.json
         shell: bash
 
       - id: safety

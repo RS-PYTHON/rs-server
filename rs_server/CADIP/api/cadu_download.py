@@ -176,7 +176,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
                     0,
                 )
                 asyncio.run(prefect_put_files_to_s3.fn(s3_config))
-            except RuntimeError as exception:
+            except RuntimeError:
                 logger.error(f"Could not connect to the s3 storage\n{traceback.format_exc()}")
                 # Try n times to update the status to FAILED in the database
                 update_db(

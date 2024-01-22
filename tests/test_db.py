@@ -13,8 +13,6 @@ from rs_server.CADIP.models.cadu_download_status import (
 )
 from rs_server.db.database import get_db
 
-# TODO check the status values returned as as string by the endpoint
-
 
 # pylint: disable=unused-argument,too-many-locals,too-many-statements
 def test_cadu_download_status(client):
