@@ -118,9 +118,9 @@ def test_adgs_download_status(client):
     """
 
     # Define a few values for our tests
-    _aux_id1 = "cadu_id_1"
-    _aux_id2 = "cadu_id_2"
-    _aux_id3 = "cadu_id_3"
+    _aux_id1 = "adgs_id_1"
+    _aux_id2 = "adgs_id_2"
+    _aux_id3 = "adgs_id_3"
     _name1 = "product 1"
     _name2 = "product 2"
     _name3 = "product 3"
@@ -172,7 +172,7 @@ def test_adgs_download_status(client):
             AdgsDownloadStatus.get(db_exception, name=_name3)
 
         # Test the http endpoint
-        url = "/cadip/CADIP/cadu/status?product_id={product_id}&name={name}"
+        url = "/adgs/aux/status?product_id={product_id}&name={name}"
 
         # Read an existing entry
         response = client.get(url.format(product_id=_aux_id1, name=_name1))

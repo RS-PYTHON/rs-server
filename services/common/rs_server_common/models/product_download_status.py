@@ -27,7 +27,6 @@ class ProductDownloadStatus(Base):
     """Abstract implementation of SQLAlchemy Base"""
 
     __abstract__ = True
-    __allow_unmapped__ = True  # Test if needed.
 
     db_id = Column(Integer, primary_key=True, index=True, nullable=True)
     product_id = Column(String, unique=True, index=True)
@@ -38,17 +37,9 @@ class ProductDownloadStatus(Base):
     status_fail_message = Column(String)
 
     def __init__(self, *args, **kwargs):
-        self.status = kwargs.get("status", Column(String))
         """Invoked when creating a new record in the database table."""
         super().__init__(*args, **kwargs)
         self.lock = Lock()
-
-    def __setitem__(self, item, value):
-        """Used to set members at runtime."""
-        if hasattr(self, item):
-            setattr(self, item, value)
-        else:
-            raise KeyError()
 
     @orm.reconstructor
     def init_on_load(self):
