@@ -58,7 +58,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     """
     is_valid, exception = validate_inputs_format(start_date, stop_date)
     if not is_valid:
-        return exception
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Invalid start/stop format, {exception}")
 
     # Init dataretriever / get products / return
     try:
