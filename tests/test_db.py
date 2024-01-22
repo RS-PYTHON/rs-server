@@ -50,9 +50,13 @@ def test_download_status(client, cls, type_, url_prefix):
         # They have different Lock instances
         assert created1.lock != created2.lock
 
+        # Change download status to in_progress and update the database
+        created1.in_progress(db=db)
+
         # Check that getting the product from database with the same values will return the existing entry.
         read1 = cls.get(db, name=_name1)
         assert created1.db_id == read1.db_id
+        assert created1.status == EDownloadStatus.IN_PROGRESS
 
         # The entry returned by the same database session has the same Lock instance
         assert created1.lock == read1.lock
@@ -62,6 +66,13 @@ def test_download_status(client, cls, type_, url_prefix):
             read2 = cls.get(db2, name=_name1)
             assert created1.db_id == read2.db_id
             assert created1.lock != read2.lock
+
+            # Also change the download status again from this database session
+            assert created1.status == read2.status
+            read2.done(db=db2)
+
+        # And check that it was updated from this other session
+        assert cls.get(db, name=_name1).status == EDownloadStatus.DONE
 
         # Check that creating a new product with the same values will raise an exception.
         # Use a distinct database session because it will be closed after exception.
