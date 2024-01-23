@@ -38,7 +38,7 @@ async def search_aux_handler(start_date: str, stop_date: str):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Invalid start/stop format, {exception}")
 
     try:
-        data_retriever = init_adgs_retriever(None, None, None)
+        data_retriever = init_adgs_retriever("ADGS", None, None, None)
         products = data_retriever.search(start_date, stop_date)
         processed_products = prepare_products(AdgsDownloadStatus, products)
         logger.info("Succesfully listed and processed products from AUX station")

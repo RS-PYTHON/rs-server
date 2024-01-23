@@ -1,17 +1,28 @@
 """This module is used to share common functions between apis endpoints"""
+import os
 import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 import sqlalchemy
+from eodag import setup_logging
 from fastapi import status
 from fastapi.responses import JSONResponse
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
+from rs_server_common.data_retrieval.data_retriever import DataRetriever
 from rs_server_common.db.database import get_db
-from rs_server_common.models.product_download_status import EDownloadStatus
+from rs_server_common.models.product_download_status import (
+    EDownloadStatus,
+    ProductDownloadStatus,
+)
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    PutFilesToS3Config,
+    S3StorageHandler,
+)
 from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
@@ -72,18 +83,22 @@ def validate_inputs_format(start_date, stop_date):
 
 
 @dataclass
-class EoDAGDownloadHandler:
+class EoDAGDownloadHandler:  # type: ignore[too-many-instance-attributes]
     """Dataclass to store arguments needed for eodag download.
 
     Attributes:
+        db_handler (ProductDownloadStatus): An instance used to access the database.
+        data_retriever (DataRetriever): An instance used to download the file from different sources.
         thread_started (threading.Event): Event to signal the start of the download thread.
-        station (str): CADIP station identifier (needed only for CADIP).
+        station (str): Station identifier (needed only for CADIP).
         product_id (str): Identifier of the product to be downloaded.
         name (str): Filename of the file to be downloaded.
         local (str | None): Local path where the product will be stored
         obs (str | None): Path to the S3 storage where the file will be uploaded
     """
 
+    db_handler: ProductDownloadStatus
+    data_retriever: DataRetriever
     thread_started: threading.Event
     station: str  # needed only for CADIP
     product_id: str
@@ -185,3 +200,107 @@ def prepare_products(db_handler, products) -> list:
     except Exception:  # pylint: disable=broad-exception-caught
         return []
     return output
+
+
+def eodag_download(argument: EoDAGDownloadHandler, db, init_data_retriever, **kwargs):
+    """Start the eodag download process.
+
+    This function initiates the eodag download process using the provided arguments. It sets up
+    the necessary configurations, starts the download thread, and updates the download status in the
+    database based on the outcome of the download.
+
+    Args:
+        argument (EoDAGDownloadHandler): An instance of EoDAGDownloadHandler containing
+         the arguments used in the downloading process
+    NOTE: The local and obs parameters are optionals:
+    - local (str | None): Local path where the product will be stored. If this
+        parameter is not given, the local path where the file is stored will be set to a temporary one
+    - obs (str | None): Path to S3 storage where the file will be uploaded, after a successfull download from CADIP
+        server. If this parameter is not given, the file will not be uploaded to the s3 storage.
+
+    Returns:
+        None
+
+    Raises:
+        RuntimeError: If there is an issue connecting to the S3 storage during the download.
+    """
+
+    # Open a database sessions in this thread, because the session from the root thread may have closed.
+    # Get the product download status
+
+    db_product = argument.db_handler.get(db, name=argument.name)
+    # init eodag object
+    try:
+        logger.debug(
+            "%s : %s : %s: Thread started !",
+            os.getpid(),
+            threading.get_ident(),
+            datetime.now(),
+        )
+
+        setup_logging(3, no_progress_bar=True)
+        # tempfile to be used here
+
+        # Update the status to IN_PROGRESS in the database
+        db_product.in_progress(db)
+        local = kwargs["default_path"] if not argument.local else Path(argument.local)
+        data_retriever = init_data_retriever(argument.station, kwargs["storage"], kwargs["download_monitor"], local)
+        # notify the main thread that the download will be started
+        argument.thread_started.set()
+        init = datetime.now()
+        data_retriever.download(argument.product_id, argument.name)
+        logger.info(
+            "%s : %s : File: %s downloaded in %s",
+            os.getpid(),
+            threading.get_ident(),
+            argument.name,
+            datetime.now() - init,
+        )
+    except Exception as exception:  # pylint: disable=broad-exception-caught
+        # Pylint disabled since error is logged here.
+        logger.error(
+            "%s : %s : %s: Exception caught: %s",
+            os.getpid(),
+            threading.get_ident(),
+            datetime.now(),
+            exception,
+        )
+
+        # Try n times to update the status to FAILED in the database
+        update_db(db, db_product, EDownloadStatus.FAILED, repr(exception))
+        return
+
+    if argument.obs:
+        try:
+            # NOTE: The environment variables have to be set from outside
+            # otherwise the connection with the s3 endpoint fails
+            s3_handler = S3StorageHandler(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],  # "sbg",
+            )
+            obs_array = argument.obs.split("/")
+            s3_config = PutFilesToS3Config(
+                [str(argument.data_retriever.filename)],
+                obs_array[2],
+                "/".join(obs_array[3:]),
+                0,
+            )
+            s3_handler.put_files_to_s3(s3_config)
+        except RuntimeError:
+            logger.error("Could not connect to the s3 storage")
+            # Try n times to update the status to FAILED in the database
+            update_db(
+                db,
+                db_product,
+                EDownloadStatus.FAILED,
+                "Could not connect to the s3 storage",
+            )
+            return
+        finally:
+            os.remove(argument.data_retriever.filename)
+
+    # Try n times to update the status to DONE in the database
+    update_db(db, db_product, EDownloadStatus.DONE)
+    logger.debug("Download finished succesfully for %s", db_product.name)
