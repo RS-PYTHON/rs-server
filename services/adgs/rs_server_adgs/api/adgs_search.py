@@ -6,8 +6,7 @@ from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_retriever
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
-
-from rs_server.api_common.utils import prepare_products, validate_inputs_format
+from rs_server_common.utils.utils import prepare_products, validate_inputs_format
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=["AUX products"])

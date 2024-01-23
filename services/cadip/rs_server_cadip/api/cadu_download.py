@@ -14,8 +14,7 @@ from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
 from rs_server_common.db.database import get_db
 from rs_server_common.utils.logging import Logging
-
-from rs_server.api_common.utils import (
+from rs_server_common.utils.utils import (
     DWN_THREAD_START_TIMEOUT,
     EoDAGDownloadHandler,
     eodag_download,

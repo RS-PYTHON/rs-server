@@ -186,11 +186,11 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
     """
     # Mock this function to raise an error
     mocker.patch(
-        "rs_server.ADGS.api.adgs_search.init_adgs_retriever",
+        "services.adgs.rs_server_adgs.api.adgs_search.init_adgs_retriever",
         side_effect=CreateProviderFailed("Invalid station"),
     )
     mocker.patch(
-        "rs_server.CADIP.api.cadu_search.init_cadip_data_retriever",
+        "services.cadip.rs_server_cadip.api.cadu_search.init_cadip_data_retriever",
         side_effect=CreateProviderFailed("Invalid station"),
     )
     test_endpoint = f"{endpoint}?start_date={start}&stop_date={stop}"
@@ -198,7 +198,10 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
     data = client.get(test_endpoint)
     assert data.status_code == 400
     # Mock a sql connection error
-    mocker.patch("rs_server.api_common.utils.prepare_products", side_effect=sqlalchemy.exc.OperationalError)
+    mocker.patch(
+        "services.common.rs_server_common.utils.utils.prepare_products",
+        side_effect=sqlalchemy.exc.OperationalError,
+    )
     # Check that request status is 400
     data = client.get(test_endpoint)
     assert data.status_code == 400
