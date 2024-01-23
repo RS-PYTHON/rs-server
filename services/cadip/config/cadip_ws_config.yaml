@@ -1,24 +1,17 @@
-
-# Variables replaced at runtime:
-# CADIP_STATION_USER (default=test)
-# CADIP_STATION_PASSWORD (default=test)
-# CADIP_STATION_HOST (default=127.0.0.1)
-
-
 CADIP:
   auth:
     type: GenericAuth
     method: basic
     credentials:
-        username: ${CADIP_STATION_USER}
-        password: ${CADIP_STATION_PASSWORD}
+        username: test
+        password: test
   products:
     GENERIC_PRODUCT_TYPE:
       productType: '{productType}'
 
   search:
     type: ODataV4Search
-    api_endpoint: 'http://${CADIP_STATION_HOST}:5000/Files'
+    api_endpoint: 'http://127.0.0.1:5000/Files'
     need_auth: true
     results_entry: responses
     metadata_mapping:
@@ -38,7 +31,7 @@ CADIP:
         size:
             - null
             - '$.Size'
-        downloadLink: 'http://${CADIP_STATION_HOST}:5000/Files({id})/$value'
+        downloadLink: 'http://127.0.0.1:5000/Files({id})/$value'
         title: '$.Name'
 
     free_text_search_operations:
@@ -58,7 +51,7 @@ CADIP:
 
   download:
     type: HTTPDownload
-    base_uri: 'https://${CADIP_STATION_HOST}:5000/Files'
+    base_uri: 'https://127.0.0.1:5000/Files'
     metadata_mapping:
         uid: '$.Id'
-        downloadLink: 'http://${CADIP_STATION_HOST}:5000/Files({uid})/$value'
+        downloadLink: 'http://127.0.0.1:5000/Files({uid})/$value'

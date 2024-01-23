@@ -1,9 +1,10 @@
 """Docstring will be added here"""
 import json
+import os
 import os.path as osp
 from pathlib import Path
 
-CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent
+DEFAULT_STATION_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config" / "stations_cfg.json"
 
 
 def station_to_server_url(station: str) -> str | None:
@@ -31,8 +32,15 @@ def station_to_server_url(station: str) -> str | None:
     - The function reads the station configuration data from a JSON file.
     - If the station identifier is not found in the configuration data, the function returns None.
     """
+
+    # Check if the config file path is overriden in the environment variables
     try:
-        with open(CONF_FOLDER / "stations_cfg.json", encoding="utf-8") as jfile:
+        station_config = os.environ["RSPY_STATION_CONFIG"]
+    except KeyError:
+        station_config = DEFAULT_STATION_CONFIG
+
+    try:
+        with open(station_config, encoding="utf-8") as jfile:
             stations_data = json.load(jfile)
             return stations_data.get(station.upper(), None)
     except (FileNotFoundError, json.JSONDecodeError) as exc:
