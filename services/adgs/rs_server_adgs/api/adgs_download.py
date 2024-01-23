@@ -83,16 +83,12 @@ def download(name: str, local: Optional[str] = None, obs: Optional[str] = None, 
 
     # start a thread to run the action in background
     thread_started = threading.Event()
+    # fmt: off
     eodag_args = EoDAGDownloadHandler(
-        AdgsDownloadStatus,
-        thread_started,
-        "ADGS",
-        str(db_product.product_id),
-        name,
-        local,
-        obs,
+        AdgsDownloadStatus, thread_started, "ADGS", str(db_product.product_id),
+        name, local, obs,
     )
-
+    # fmt: on
     thread = threading.Thread(
         target=start_eodag_download,
         args=(eodag_args,),
