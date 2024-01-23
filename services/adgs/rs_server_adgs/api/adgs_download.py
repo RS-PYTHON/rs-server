@@ -82,7 +82,6 @@ def download(name: str, local: Optional[str] = None, obs: Optional[str] = None, 
     thread_started = threading.Event()
     eodag_args = EoDAGDownloadHandler(
         AdgsDownloadStatus,
-        None,
         thread_started,
         "ADGS",
         str(db_product.product_id),

@@ -13,7 +13,6 @@ from fastapi import status
 from fastapi.responses import JSONResponse
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
-from rs_server_common.data_retrieval.data_retriever import DataRetriever
 from rs_server_common.db.database import get_db
 from rs_server_common.models.product_download_status import (
     EDownloadStatus,
@@ -83,12 +82,11 @@ def validate_inputs_format(start_date, stop_date):
 
 
 @dataclass
-class EoDAGDownloadHandler:  # type: ignore[too-many-instance-attributes]
+class EoDAGDownloadHandler:
     """Dataclass to store arguments needed for eodag download.
 
     Attributes:
         db_handler (ProductDownloadStatus): An instance used to access the database.
-        data_retriever (DataRetriever): An instance used to download the file from different sources.
         thread_started (threading.Event): Event to signal the start of the download thread.
         station (str): Station identifier (needed only for CADIP).
         product_id (str): Identifier of the product to be downloaded.
@@ -98,7 +96,6 @@ class EoDAGDownloadHandler:  # type: ignore[too-many-instance-attributes]
     """
 
     db_handler: ProductDownloadStatus
-    data_retriever: DataRetriever
     thread_started: threading.Event
     station: str  # needed only for CADIP
     product_id: str
@@ -282,7 +279,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_data_retriever, **kw
             )
             obs_array = argument.obs.split("/")
             s3_config = PutFilesToS3Config(
-                [str(argument.data_retriever.filename)],
+                [str(data_retriever.filename)],
                 obs_array[2],
                 "/".join(obs_array[3:]),
                 0,
@@ -299,7 +296,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_data_retriever, **kw
             )
             return
         finally:
-            os.remove(argument.data_retriever.filename)
+            os.remove(data_retriever.filename)
 
     # Try n times to update the status to DONE in the database
     update_db(db, db_product, EDownloadStatus.DONE)

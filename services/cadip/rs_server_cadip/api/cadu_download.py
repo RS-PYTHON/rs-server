@@ -105,7 +105,6 @@ def download(
     thread_started = Event()
     eodag_args = EoDAGDownloadHandler(
         CaduDownloadStatus,
-        None,
         thread_started,
         station,
         str(db_product.product_id),
