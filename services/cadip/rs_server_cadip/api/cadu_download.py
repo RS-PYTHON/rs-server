@@ -103,15 +103,13 @@ def download(
     )
 
     thread_started = Event()
+    # fmt: off
+    # Skip this function call formatting to avoid the following error: pylint R0801: Similar lines in 2 files
     eodag_args = EoDAGDownloadHandler(
-        CaduDownloadStatus,
-        thread_started,
-        station,
-        str(db_product.product_id),
-        name,
-        local,
-        obs,
+        CaduDownloadStatus, thread_started, station, str(db_product.product_id),
+        name, local, obs,
     )
+    # fmt: on
     # Big note / TODO here
     # Is there a mechanism to catch / capture return value from a function running inside a thread?
     # If start_eodag_download throws an error, there is no simple solution to return it with FastAPI
