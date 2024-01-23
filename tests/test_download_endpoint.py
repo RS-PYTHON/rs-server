@@ -1,4 +1,4 @@
-"""Module used to test CADIP download endpoint"""
+"""Module used to test ADGS download endpoint"""
 import filecmp
 import os
 import os.path as osp
@@ -8,28 +8,38 @@ from contextlib import contextmanager
 
 import pytest
 import responses
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
+from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
+from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
+from rs_server_common.models.product_download_status import EDownloadStatus
 
 # Resource folders specified from the parent directory of this current script
 RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
 S3_FOLDER = osp.join(RSC_FOLDER, "s3")
 ENDPOINTS_FOLDER = osp.join(RSC_FOLDER, "endpoints")
 
-"""
-TC-001 : User1 sends a CURL request to a CADIP backend Server on
-URL /cadip/{station}/cadu?name=”xxx”&local="pathXXXX". He receives a download start status.
-The download continues in background. After few minutes, the file is stored on the local disk.'
-"""
 
-
+# pylint: disable=too-many-arguments
 @pytest.mark.unit
 @responses.activate
-def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argument
-    """Test the behavior of a valid endpoint request for CADIP CADU download.
+@pytest.mark.parametrize(
+    "endpoint, filename, target_filename, db_handler",
+    [
+        ("/adgs/aux", "AUX_test_file_eodag.raw", "AUX_test_file.raw", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", "CADIP_test_file.raw", CaduDownloadStatus),
+    ],
+)
+def test_valid_endpoint_request_download(
+    client,
+    endpoint,
+    filename,
+    target_filename,
+    db_handler,
+):  # pylint: disable=unused-argument
+    """Test the behavior of a valid endpoint request for ADGS AUX / CADIP CADU download.
 
-    This unit test checks the behavior of the CADIP CADU download endpoint when provided with
+    This unit test checks the behavior of the ADGS / CADIP download endpoint when provided with
     valid parameters. It simulates the download process, verifies the status code, and checks
     the content of the downloaded file.
 
@@ -42,26 +52,33 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
     Raises:
         AssertionError: If the test fails to assert the expected outcomes.
     """
-    filename = "CADIP_test_file_eodag.raw"
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
+    # Add cadip mock server response to eodag download request
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5000/Files(id_1)/$value",
+        body="some byte-array data\n",
+        status=200,
+    )
+    # Add adgs mock server response to eodag download request
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5001/Products(id_1)/$value",
+        body="some byte-array data\n",
+        status=200,
+    )
 
     with tempfile.TemporaryDirectory() as download_dir, contextmanager(get_db)() as db:
-        endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}&local={download_dir}"
         # Add a download status to database
-
-        CaduDownloadStatus.create(
+        endpoint = f"{endpoint}?name={filename}&local={download_dir}"
+        db_handler.create(
             db=db,
             product_id=product_id,
             name=filename,
             available_at_station=publication_date,
+            # FIXME
             status=EDownloadStatus.IN_PROGRESS,
-        )
-        responses.add(
-            responses.GET,
-            "http://127.0.0.1:5000/Files(id_1)/$value",
-            body="some byte-array data\n",
-            status=200,
         )
         # send the request
         data = client.get(endpoint)
@@ -73,14 +90,95 @@ def test_valid_endpoint_request_download(client):  # pylint: disable=unused-argu
         # test file content
         assert filecmp.cmp(
             os.path.join(download_dir, filename),
-            os.path.join(ENDPOINTS_FOLDER, "CADIP_test_file.raw"),
+            os.path.join(ENDPOINTS_FOLDER, target_filename),
         )
 
 
 @pytest.mark.unit
-def test_invalid_endpoint_request(mocker, client):
+@responses.activate
+@pytest.mark.parametrize(
+    "endpoint, filename, db_handler",
+    [
+        ("/adgs/aux", "AUX_test_file_eodag.raw", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CaduDownloadStatus),
+    ],
+)
+def test_exception_while_valid_download(
+    mocker,
+    client,
+    endpoint,
+    filename,
+    db_handler,
+):  # pylint: disable=unused-argument
     """
-    Test the system's response to an invalid request made to the CADIP download endpoint.
+    Tests the handling of an exception during the download of an ADGS / CADIP product.
+
+    This unit test simulates a scenario where an exception occurs during the download of an ADGS product,
+    specifically when the 'DataRetriever.download' method is called. It ensures that the application handles
+    the exception appropriately, updates the database status accordingly, and captures the exception message.
+
+    @param mocker: The pytest-mock fixture for mocking dependencies.
+    @param client: The FastAPI test client for making HTTP requests.
+
+    - Sets up the initial state in the database by creating an ADGS download entry with 'IN_PROGRESS' status.
+    - Adds a mocked response for a GET request to an external service with a predefined product data.
+    - Mocks the 'DataRetriever.download' method to raise an exception during the download process.
+    - Asserts the initial status of the download in the database is 'IN_PROGRESS'.
+    - Sends a GET request to the '/adgs/aux' endpoint for the download.
+    - Asserts that the download status in the database changes to 'FAILED' after encountering the exception.
+    - Captures the exception message in the 'status_fail_message' field in the database.
+
+    Note:
+    - The mock responses and patches are used to simulate the external service and control the behavior of the download.
+    """
+    product_id = "id_1"
+    publication_date = "2023-10-10T00:00:00.111Z"
+
+    endpoint = f"{endpoint}?name={filename}"
+
+    with contextmanager(get_db)() as db:
+        db_handler.create(
+            db=db,
+            product_id=product_id,
+            name=filename,
+            available_at_station=publication_date,
+            status=EDownloadStatus.IN_PROGRESS,
+        )
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5001/Products(id_1)/$value",
+            body="some byte-array data\n",
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Files(id_1)/$value",
+            body="some byte-array data\n",
+            status=200,
+        )
+        # Raise an exception while downloading
+        mocker.patch(
+            "rs_server_common.data_retrieval.data_retriever.DataRetriever.download",
+            side_effect=Exception("Error while downloading"),
+        )
+        # send the request
+        assert db_handler.get(db, name=filename).status == EDownloadStatus.IN_PROGRESS
+        client.get(endpoint)
+        assert db_handler.get(db, name=filename).status == EDownloadStatus.FAILED
+        assert db_handler.get(db, name=filename).status_fail_message == "Exception('Error while downloading')"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint, db_handler",
+    [
+        ("/adgs/aux", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", CaduDownloadStatus),
+    ],
+)
+def test_invalid_endpoint_request(mocker, client, endpoint, db_handler):
+    """
+    Test the system's response to an invalid request made to the ADGS/CADIP download endpoint.
 
     This unit test examines how the system responds when an invalid request is made to the CADIP
     download endpoint. It specifically addresses the scenario where the database operation to
@@ -109,7 +207,7 @@ def test_invalid_endpoint_request(mocker, client):
     product_id = "invalid_ID"
     publication_date = "2023-10-10T00:00:00.111Z"
 
-    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}"
+    endpoint = f"{endpoint}?product_id=id_1&name={filename}"
 
     with contextmanager(get_db)() as db:
         # Add a download status to database
@@ -118,7 +216,11 @@ def test_invalid_endpoint_request(mocker, client):
             "rs_server_cadip.cadu_download_status.CaduDownloadStatus.create",
             return_value=None,
         )
-        result = CaduDownloadStatus.create(
+        mocker.patch(
+            "rs_server_adgs.adgs_download_status.AdgsDownloadStatus.create",
+            return_value=None,
+        )
+        result = db_handler.create(
             db=db,
             product_id=product_id,
             name=filename,
@@ -136,7 +238,14 @@ def test_invalid_endpoint_request(mocker, client):
 
 
 @pytest.mark.unit
-def test_eodag_provider_failure_while_creating_provider(mocker, client):
+@pytest.mark.parametrize(
+    "endpoint, filename, db_handler",
+    [
+        ("/adgs/aux", "ADGS_test_file_eodag.raw", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CaduDownloadStatus),
+    ],
+)
+def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint, filename, db_handler):
     """
     Test the system response to an error during EODAG provider creation.
 
@@ -163,39 +272,49 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client):
         None: This test does not return anything but asserts conditions related to the system's
               response to EODAG provider creation failure.
     """
-    filename = "CADIP_test_file_eodag.raw"
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
 
-    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}"
+    endpoint = f"{endpoint}?product_id=id_1&name={filename}"
     with contextmanager(get_db)() as db:
         # Init this product into db, set the status to NOT_STARTED
-        CaduDownloadStatus.create(
+        db_handler.create(
             db=db,
             product_id=product_id,
             name=filename,
             available_at_station=publication_date,
             status=EDownloadStatus.NOT_STARTED,
         )
-        result = CaduDownloadStatus.get(db=db, name=filename)
+        result = db_handler.get(db=db, name=filename)
         assert result.status == EDownloadStatus.NOT_STARTED
         # Mock function rs_server.CADIP.api.cadu_download.init_cadip_data_retriever to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         mocker.patch(
-            "rs_server.CADIP.api.cadu_download.init_cadip_data_retriever",
+            "services.cadip.rs_server_cadip.api.cadu_download.init_cadip_data_retriever",
+            side_effect=CreateProviderFailed("Invalid station"),
+        )
+        mocker.patch(
+            "services.adgs.rs_server_adgs.api.adgs_download.init_adgs_retriever",
             side_effect=CreateProviderFailed("Invalid station"),
         )
         # send the request
         data = client.get(endpoint)
         # After endpoint process this download request, check the db status
-        result = CaduDownloadStatus.get(db=db, name=filename)
+        result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed
         assert result.status == EDownloadStatus.FAILED
         assert data.json() == {"started": "false"}
 
 
 @pytest.mark.unit
-def test_eodag_provider_failure_while_downloading(mocker, client):
+@pytest.mark.parametrize(
+    "endpoint, filename, db_handler",
+    [
+        ("/adgs/aux", "ADGS_test_file_eodag.raw", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CaduDownloadStatus),
+    ],
+)
+def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, filename, db_handler):
     """
     Test the EODAG providers error handling during a download failure.
 
@@ -224,13 +343,12 @@ def test_eodag_provider_failure_while_downloading(mocker, client):
         None: This function does not return a value. It asserts various conditions to ensure proper error
         handling in the download process.
     """
-    filename = "CADIP_test_file_eodag.raw"
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
-    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}"
+    endpoint = f"{endpoint}?product_id=id_1&name={filename}"
     with contextmanager(get_db)() as db:
         # Init this product into db, set the status to NOT_STARTED
-        CaduDownloadStatus.create(
+        db_handler.create(
             db=db,
             product_id=product_id,
             name=filename,
@@ -246,7 +364,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client):
         # send the request
         data = client.get(endpoint)
         # After endpoint process this download request, check the db status
-        result = CaduDownloadStatus.get(db=db, name=filename)
+        result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed and download started
         # Error message is written into db
         assert result.status == EDownloadStatus.FAILED
@@ -256,7 +374,14 @@ def test_eodag_provider_failure_while_downloading(mocker, client):
 
 @pytest.mark.unit
 @responses.activate
-def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
+@pytest.mark.parametrize(
+    "endpoint, filename, db_handler",
+    [
+        ("/adgs/aux", "ADGS_test_file_eodag.raw", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CaduDownloadStatus),
+    ],
+)
+def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint, filename, db_handler):
     """
     Test the systems behavior when there is a failure during the upload process to the S3 bucket.
 
@@ -286,11 +411,10 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
     Returns:
         None: The function asserts conditions but does not return any value.
     """
-    filename = "CADIP_test_file_eodag.raw"
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
     obs = "s3://some_bucket_info"
-    endpoint = f"/cadip/CADIP/cadu?product_id=id_1&name={filename}&obs={obs}"
+    endpoint = f"{endpoint}?product_id=id_1&name={filename}&obs={obs}"
     # Mock os environ s3 connection details
     monkeypatch.setenv("S3_ENDPOINT", "mock_endpoint")
     monkeypatch.setenv("S3_ACCESSKEY", "mock_accesskey")
@@ -304,8 +428,15 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
             body="some byte-array data\n",
             status=200,
         )
+        # Simulate ADGS file-stream download
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5001/Products(id_1)/$value",
+            body="some byte-array data\n",
+            status=200,
+        )
         # Init this product into db, set the status to NOT_STARTED
-        CaduDownloadStatus.create(
+        db_handler.create(
             db=db,
             product_id=product_id,
             name=filename,
@@ -313,7 +444,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
             status=EDownloadStatus.NOT_STARTED,
         )
         # Check that product we just inserted into db is not_started
-        result = CaduDownloadStatus.get(db=db, name=filename)
+        result = db_handler.get(db=db, name=filename)
         assert result.status == EDownloadStatus.NOT_STARTED
         # bypass S3StorageHandler object by raising a RunTimeError
         mocker.patch(
@@ -326,7 +457,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client):
         # Wait in order to start byte-stream and write local
         time.sleep(1)
         # get the product status from db (It should be updated by the endpoint call)
-        result = CaduDownloadStatus.get(db=db, name=filename)
+        result = db_handler.get(db=db, name=filename)
         # Check that update_db function set the status to FAILED
         assert result.status == EDownloadStatus.FAILED
         assert data.status_code == 200

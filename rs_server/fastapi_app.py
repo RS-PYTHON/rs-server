@@ -10,8 +10,8 @@ from fastapi import FastAPI
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.utils.logging import Logging
 
-from rs_server.ADGS.api import adgs_download, adgs_search, adgs_status
-from rs_server.CADIP.api import cadu_download, cadu_search, cadu_status
+from services.adgs.rs_server_adgs.api import adgs_download, adgs_search, adgs_status
+from services.cadip.rs_server_cadip.api import cadu_download, cadu_search, cadu_status
 
 
 @typing.no_type_check

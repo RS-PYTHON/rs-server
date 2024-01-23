@@ -13,7 +13,7 @@ from rs_server_common.data_retrieval.storage import Storage
 DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "adgs_ws_config.yaml"
 
 
-def init_adgs_retriever(storage: Any, download_monitor: Any, path: Any):
+def init_adgs_retriever(station: str, storage: Any, download_monitor: Any, path: Any):
     """Docstring will be here."""
 
     # Check if the config file path is overriden in the environment variables
@@ -23,7 +23,7 @@ def init_adgs_retriever(storage: Any, download_monitor: Any, path: Any):
         eodag_config = DEFAULT_EODAG_CONFIG
 
     try:
-        provider = EodagProvider(eodag_config, "ADGS")  # default to eodag, default station "ADGS"
+        provider = EodagProvider(eodag_config, station)  # default to eodag, default station "ADGS"
     except Exception as exception:
         raise CreateProviderFailed("Failed to setup eodag") from exception
     adgs_storage: Storage = storage

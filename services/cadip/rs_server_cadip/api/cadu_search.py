@@ -12,8 +12,7 @@ from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
-
-from rs_server.api_common.utils import prepare_products, validate_inputs_format
+from rs_server_common.utils.utils import prepare_products, validate_inputs_format
 
 router = APIRouter(tags=["Cadu products"])
 logger = Logging.default(__name__)

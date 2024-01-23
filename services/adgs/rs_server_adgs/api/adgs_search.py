@@ -6,8 +6,7 @@ from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_retriever
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
-
-from rs_server.api_common.utils import prepare_products, validate_inputs_format
+from rs_server_common.utils.utils import prepare_products, validate_inputs_format
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=["AUX products"])
@@ -38,7 +37,7 @@ async def search_aux_handler(start_date: str, stop_date: str):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Invalid start/stop format, {exception}")
 
     try:
-        data_retriever = init_adgs_retriever(None, None, None)
+        data_retriever = init_adgs_retriever("ADGS", None, None, None)
         products = data_retriever.search(start_date, stop_date)
         processed_products = prepare_products(AdgsDownloadStatus, products)
         logger.info("Succesfully listed and processed products from AUX station")
