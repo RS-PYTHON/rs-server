@@ -19,24 +19,20 @@ packages = [
     { include = "services/cadip/tests", format = "sdist" },
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.11.0,<4.0"
-fastapi = "^0.108.0"
-boto3 = "==1.28.85"
-botocore = "==1.31.85"
-prefect = "^2.14.11"
-sqlalchemy = "^2.0.25"
-eodag = "^2.11.0"
-prefect-dask = "^0.2.6"
-pydantic = ">=2.0.0"
-markdown = "^3.5.1"
-python-dotenv = "^1.0.0"
-psycopg2 = "^2.9.9"
+# This root project is not used in release production.
+# It's only used by the CI/CD to run pytest, pylint, mypy etc... on the whole github project.
 
+# All the dependencies for release are set in the sub-projects
+[tool.poetry.dependencies]
+python = "^3.11"
+rs-server-adgs = {path = "services/adgs", develop = true}
+rs-server-cadip = {path = "services/cadip", develop = true}
+rs-server-common = {path = "services/common", develop = true}
 
 [tool.poetry.group.dev]
 optional = true
 
+# All the dev dependencies are set here so they can be used by the CI.
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
