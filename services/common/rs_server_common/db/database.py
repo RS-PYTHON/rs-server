@@ -59,12 +59,8 @@ class DatabaseSessionManager:
 
                 try:
                     # Create all tables.
-                    # First we make sure that we've imported all our model modules.
-                    # pylint: disable=unused-import, import-outside-toplevel
-                    # flake8: noqa
-                    import rs_server_adgs.adgs_download_status
-                    import rs_server_cadip.cadu_download_status
-
+                    # Warning: this only works if the database table modules have been imported
+                    # e.g. import rs_server_adgs.adgs_download_status
                     self.create_all()
 
                 # It fails if the database is unreachable, but even in this case the engine and session are not None.

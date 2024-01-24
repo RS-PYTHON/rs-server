@@ -17,7 +17,7 @@ def init_adgs_retriever(station: str, storage: Any, download_monitor: Any, path:
     """Docstring will be here."""
 
     # Check if the config file path is overriden in the environment variables
-    eodag_config = os.environ.get("EODAG_ADGS_CONFIG", DEFAULT_EODAG_CONFIG)
+    eodag_config = Path(os.environ.get("EODAG_ADGS_CONFIG", DEFAULT_EODAG_CONFIG))
 
     try:
         provider = EodagProvider(eodag_config, station)  # default to eodag, default station "ADGS"

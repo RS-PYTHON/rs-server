@@ -15,7 +15,7 @@ class DownloadStatusBase(BaseModel):
     available_at_station: datetime | None
 
 
-class DownloadStatusRead(DownloadStatusBase):
+class ReadDownloadStatus(DownloadStatusBase):
     """DownloadStatus fields that are known when reading but not when creating the object."""
 
     db_id: int
