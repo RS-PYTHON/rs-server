@@ -8,13 +8,14 @@ import traceback
 import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import prepare_products, validate_inputs_format
 
-router = APIRouter(tags=["Cadu products"])
+router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
 
 

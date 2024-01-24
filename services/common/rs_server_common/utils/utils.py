@@ -11,8 +11,6 @@ import sqlalchemy
 from eodag import setup_logging
 from fastapi import status
 from fastapi.responses import JSONResponse
-from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.db.database import get_db
 from rs_server_common.models.product_download_status import (
     EDownloadStatus,
@@ -157,7 +155,7 @@ def write_search_products_to_db(db_handler_class, products) -> list:
 
 def update_db(
     db,
-    db_product: CaduDownloadStatus | AdgsDownloadStatus,
+    db_product: ProductDownloadStatus,
     estatus: EDownloadStatus,
     status_fail_message=None,
 ):

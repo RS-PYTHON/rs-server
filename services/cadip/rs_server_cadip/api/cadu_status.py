@@ -4,12 +4,13 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
+from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.db.database import get_db
 from rs_server_common.models.product_download_status import EDownloadStatus
 from sqlalchemy.orm import Session
 
-router = APIRouter(tags=["Cadu products"])
+router = APIRouter(tags=cadip_tags)
 
 ####################
 # DATABASE SCHEMAS #

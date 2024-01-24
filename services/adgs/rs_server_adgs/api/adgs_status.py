@@ -4,12 +4,13 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
+from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_common.db.database import get_db
 from rs_server_common.models.product_download_status import EDownloadStatus
 from sqlalchemy.orm import Session
 
-router = APIRouter(tags=["Aux products"])
+router = APIRouter(tags=adgs_tags)
 
 ####################
 # DATABASE SCHEMAS #

@@ -97,6 +97,9 @@ def test_download_status(client, cls, type_, url_prefix):
         assert response.status_code == 200
         assert response.json()["db_id"] == created1.db_id
 
+        # Check that the status is returned as a string in the JSON response
+        assert response.json()["status"] == "DONE"
+
         # Read a missing entry
         response = client.get(url, params={"product_id": _pid3, "name": _name3})
         assert response.status_code == 404

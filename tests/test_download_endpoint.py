@@ -290,11 +290,11 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
         # Mock function rs_server.CADIP.api.cadu_download.init_cadip_data_retriever to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         mocker.patch(
-            "services.cadip.rs_server_cadip.api.cadu_download.init_cadip_data_retriever",
+            "rs_server_cadip.api.cadu_download.init_cadip_data_retriever",
             side_effect=CreateProviderFailed("Invalid station"),
         )
         mocker.patch(
-            "services.adgs.rs_server_adgs.api.adgs_download.init_adgs_retriever",
+            "rs_server_adgs.api.adgs_download.init_adgs_retriever",
             side_effect=CreateProviderFailed("Invalid station"),
         )
         # send the request

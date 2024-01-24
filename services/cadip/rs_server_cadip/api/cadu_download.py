@@ -10,6 +10,7 @@ from threading import Event
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
+from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
 from rs_server_common.db.database import get_db
@@ -21,7 +22,7 @@ from rs_server_common.utils.utils import (
     update_db,
 )
 
-router = APIRouter(tags=["Cadu products"])
+router = APIRouter(tags=cadip_tags)
 
 CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "services" / "cadip" / "config"
 

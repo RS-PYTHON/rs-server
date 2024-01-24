@@ -6,6 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
+from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_retriever
 from rs_server_common.db.database import get_db
@@ -18,7 +19,7 @@ from rs_server_common.utils.utils import (
     update_db,
 )
 
-router = APIRouter(tags=["AUX products"])
+router = APIRouter(tags=adgs_tags)
 
 logger = Logging.default(__name__)
 

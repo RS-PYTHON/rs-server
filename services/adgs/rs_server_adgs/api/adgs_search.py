@@ -2,6 +2,7 @@
 import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
+from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_retriever
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
@@ -9,7 +10,7 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import prepare_products, validate_inputs_format
 
 logger = Logging.default(__name__)
-router = APIRouter(tags=["AUX products"])
+router = APIRouter(tags=adgs_tags)
 
 
 @router.get("/adgs/aux/search")

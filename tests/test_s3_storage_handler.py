@@ -11,13 +11,12 @@ import pytest
 import requests
 import yaml
 from moto.server import ThreadedMotoServer
-from rs_server_common.utils.logging import Logging
-
-from services.common.rs_server_common.s3_storage_handler.s3_storage_handler import (
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
     GetKeysFromS3Config,
     PutFilesToS3Config,
     S3StorageHandler,
 )
+from rs_server_common.utils.logging import Logging
 
 # Resource folders specified from the parent directory of this current script
 RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))

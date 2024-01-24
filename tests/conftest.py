@@ -14,12 +14,17 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from rs_server_adgs.fastapi.adgs_routers import adgs_routers
+from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
+from rs_server_common.fastapi_app import init_app
 from rs_server_common.utils.logging import Logging
 
-from rs_server.fastapi_app import init_app
-
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+
+###############################
+# READ COMMAND LINE ARGUMENTS #
+###############################
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -31,6 +36,10 @@ def read_cli(request):
     if option:
         Logging.level = option.upper()
 
+
+########################
+# FASTAPI AND DATABASE #
+########################
 
 # Init the FastAPI application and database
 # See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
@@ -53,15 +62,18 @@ def docker_compose_file_():
 
 @pytest.fixture(autouse=True, name="fastapi_app")
 def fastapi_app_(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
-    """Init the FastAPI application and the database connection from the docker-compose.yml file.
+    """
+    Init the FastAPI application and the database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
     """
 
     # Read the .env file that comes with docker-compose.yml
     load_dotenv(RESOURCES_FOLDER / "db" / ".env")
 
+    # Run all routers for the pytests
+    routers = adgs_routers + cadip_routers
     with ExitStack():
-        yield init_app(init_db=True, pause=3, timeout=6)
+        yield init_app(routers, init_db=True, pause=3, timeout=6)
 
 
 @pytest.fixture(name="client")
@@ -92,6 +104,11 @@ def session_override(client, fastapi_app):  # pylint: disable=unused-argument
             DatabaseSessionManager.reraise_http_exception(exception)
 
     fastapi_app.dependency_overrides[get_db] = get_db_override
+
+
+##################
+# OTHER FIXTURES #
+##################
 
 
 @pytest.fixture(scope="module", name="a_product")

@@ -6,20 +6,19 @@ from contextlib import asynccontextmanager
 from os import environ as env
 
 import sqlalchemy
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.utils.logging import Logging
 
-from services.adgs.rs_server_adgs.api import adgs_download, adgs_search, adgs_status
-from services.cadip.rs_server_cadip.api import cadu_download, cadu_search, cadu_status
-
 
 @typing.no_type_check
-def init_app(init_db=True, pause=3, timeout=None):
+def init_app(routers: list[APIRouter], init_db: bool = True, pause: int = 3, timeout: int = None):
     """
     Init the FastAPI application.
     See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
 
+    :param list[APIRouter] routers: list of FastAPI routers to add to the application.
+    :param bool init_db: should we init the database session ?
     :param int timeout: timeout in seconds to wait for the database connection.
     :param int pause: pause in seconds to wait for the database connection.
     """
@@ -69,16 +68,14 @@ def init_app(init_db=True, pause=3, timeout=None):
 
     app = FastAPI(title="RS FastAPI server", lifespan=lifespan)
 
-    # Pass postgres arguments to the app (maybe there is a cleaner way to do this)
+    # Pass postgres arguments to the app so they can be used in the lifespan function above
+    # (maybe there is a cleaner way to do this)
     app.pg_pause = pause
     app.pg_timeout = timeout
 
-    app.include_router(cadu_download.router)
-    app.include_router(cadu_search.router)
-    app.include_router(cadu_status.router)
-    app.include_router(adgs_search.router)
-    app.include_router(adgs_download.router)
-    app.include_router(adgs_status.router)
+    # Add routers to the FastAPI app
+    for router in routers:
+        app.include_router(router)
 
     @app.get("/")
     async def home():
