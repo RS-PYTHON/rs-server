@@ -22,19 +22,6 @@ jobs:
   # Publish wheels #
   ##################
 
-  # TODO: remove. No source code in the root project.
-  rs-server-whl:
-    runs-on: ubuntu-latest
-    name: "'rs-server' wheel"
-    outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
-    steps:
-      - uses: actions/checkout@v4
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
-
   services-common-whl:
     runs-on: ubuntu-latest
     name: "'services/common' wheel"
@@ -48,6 +35,25 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/common
+
+  services-adgs-whl:
+    runs-on: ubuntu-latest
+    name: "'services/adgs' wheel"
+    outputs:
+      version_name: ${{ steps.publish-wheel.outputs.version_name }}
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+
+      # Hack the pyproject.toml. TODO: find a cleaner to do this.
+      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+      - run: sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/adgs/pyproject.toml
+
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/adgs
 
   services-cadip-whl:
     runs-on: ubuntu-latest
@@ -72,10 +78,10 @@ jobs:
   # Publish Docker images #
   #########################
 
-  services-cadip-img:
+  services-adgs-img:
     runs-on: ubuntu-latest
-    name: "'services/cadip' Docker image"
-    needs: [rs-server-whl, services-common-whl, services-cadip-whl]
+    name: "'services/adgs' Docker image"
+    needs: [services-common-whl, services-adgs-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
@@ -86,8 +92,34 @@ jobs:
       - name: Download .whl dependencies
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.rs-server-whl.outputs.package_name }}
+          name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./whl
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.services-adgs-whl.outputs.package_name }}
+          path: ./whl
+
+      - id: publish-docker
+        uses: ./.github/actions/publish-docker
+        with:
+          dockerfile: ./services/adgs/.github/Dockerfile
+          build_context_path: ./whl
+          image_suffix: -adgs
+          version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  services-cadip-img:
+    runs-on: ubuntu-latest
+    name: "'services/cadip' Docker image"
+    needs: [services-common-whl, services-cadip-whl]
+    permissions: write-all
+    outputs:
+      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download .whl files into ./whl/
       - name: Download .whl dependencies
         uses: actions/download-artifact@v3
         with:
@@ -104,14 +136,6 @@ jobs:
         with:
           dockerfile: ./services/cadip/.github/Dockerfile
           build_context_path: ./whl
-          image_suffix: _services-cadip
+          image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  test-pull-services-cadip-img:
-    runs-on: ubuntu-latest
-    name: Test pulling the 'services/cadip' Docker image and run 'pip list'
-    needs: [services-cadip-img]
-    container: ${{ needs.services-cadip-img.outputs.docker_image }}
-    steps:
-      - run: pip list && whoami && pwd

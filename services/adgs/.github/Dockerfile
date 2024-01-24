@@ -16,7 +16,7 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi ect ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_cadip-*.whl
+RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_adgs-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM python:3.11-slim-bookworm
@@ -38,4 +38,4 @@ RUN useradd -m user
 USER user
 WORKDIR /home/user
 
-ENTRYPOINT [ "python", "-m", "uvicorn", "rs_server_cadip.fastapi.cadip_app:app", "--host", "0.0.0.0", "--port", "8000" ]
+ENTRYPOINT [ "python", "-m", "uvicorn", "rs_server_adgs.fastapi.adgs_app:app", "--host", "0.0.0.0", "--port", "8000" ]
