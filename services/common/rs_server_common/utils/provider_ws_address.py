@@ -34,10 +34,7 @@ def station_to_server_url(station: str) -> str | None:
     """
 
     # Check if the config file path is overriden in the environment variables
-    try:
-        station_config = os.environ["RSPY_STATION_CONFIG"]
-    except KeyError:
-        station_config = DEFAULT_STATION_CONFIG
+    station_config = os.environ.get("RSPY_STATION_CONFIG", DEFAULT_STATION_CONFIG)
 
     try:
         with open(station_config, encoding="utf-8") as jfile:

@@ -24,7 +24,7 @@ class EDownloadStatus(str, enum.Enum):
     DONE = "DONE"
 
 
-class ProductDownloadStatus(Base):
+class DownloadStatus(Base):
     """Abstract implementation of SQLAlchemy Base"""
 
     __abstract__ = True  # this class must be inherited

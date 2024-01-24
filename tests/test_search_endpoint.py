@@ -9,7 +9,7 @@ from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
-from rs_server_common.models.product_download_status import EDownloadStatus
+from rs_server_common.db.models.download_status import EDownloadStatus
 
 
 # TC-001 : User1 send a CURL request to a CADIP-Server on URL /cadip/{station}/cadu/list .

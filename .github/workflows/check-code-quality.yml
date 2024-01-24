@@ -139,8 +139,7 @@ jobs:
       - name: Run unit tests
         run: |
           set -x && poetry run pytest \
-            ./tests ./services/common/tests ./services/cadip/tests \
-            -m unit \
+            ./tests ./services/adgs/tests ./services/common/tests ./services/cadip/tests \
             --durations=0 \
             --error-for-skips \
             --cov=./rs_server --cov=./services \
@@ -170,6 +169,7 @@ jobs:
   run-integration-tests:
     runs-on: ubuntu-latest
     name: Run integration tests (pytest)
+    if: ${{ false }} # don't run until implemented
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
@@ -177,7 +177,7 @@ jobs:
       - name: Run integration tests
         run: |
           set -x && poetry run pytest \
-            ./tests ./services/common/tests ./services/cadip/tests \
+            ./tests ./services/adgs/tests ./services/common/tests ./services/cadip/tests \
             -m integration \
             --durations=0 \
             --error-for-skips \
@@ -243,8 +243,8 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.projectBaseDir=.
-            -Dsonar.sources=./rs_server,./services/common/rs_server_common,./services/cadip/rs_server_cadip
-            -Dsonar.tests=./tests,./services/common/tests,./services/cadip/tests
+            -Dsonar.sources=./rs_server,./services/adgs/rs_server_adgs,./services/common/rs_server_common,./services/cadip/rs_server_cadip
+            -Dsonar.tests=./tests,./services/adgs/tests,./services/common/tests,./services/cadip/tests
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py

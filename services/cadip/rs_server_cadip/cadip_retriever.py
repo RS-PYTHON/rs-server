@@ -43,10 +43,7 @@ def init_cadip_data_retriever(
         raise CreateProviderFailed("Invalid station configuration") from exc
 
     # Check if the config file path is overriden in the environment variables
-    try:
-        eodag_config = os.environ["EODAG_CADIP_CONFIG"]
-    except KeyError:
-        eodag_config = DEFAULT_EODAG_CONFIG
+    eodag_config = os.environ.get("EODAG_CADIP_CONFIG", DEFAULT_EODAG_CONFIG)
 
     provider = EodagProvider(eodag_config, station)  # default to eodag, just init here
     # WIP, will be implemented with download

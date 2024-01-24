@@ -12,10 +12,7 @@ from eodag import setup_logging
 from fastapi import status
 from fastapi.responses import JSONResponse
 from rs_server_common.db.database import get_db
-from rs_server_common.models.product_download_status import (
-    EDownloadStatus,
-    ProductDownloadStatus,
-)
+from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     PutFilesToS3Config,
     S3StorageHandler,
@@ -84,7 +81,7 @@ class EoDAGDownloadHandler:
     """Dataclass to store arguments needed for eodag download.
 
     Attributes:
-        db_handler (ProductDownloadStatus): An instance used to access the database.
+        db_handler (DownloadStatus): An instance used to access the database.
         thread_started (threading.Event): Event to signal the start of the download thread.
         station (str): Station identifier (needed only for CADIP).
         product_id (str): Identifier of the product to be downloaded.
@@ -93,7 +90,7 @@ class EoDAGDownloadHandler:
         obs (str | None): Path to the S3 storage where the file will be uploaded
     """
 
-    db_handler: ProductDownloadStatus
+    db_handler: DownloadStatus
     thread_started: threading.Event
     station: str  # needed only for CADIP
     product_id: str
@@ -155,7 +152,7 @@ def write_search_products_to_db(db_handler_class, products) -> list:
 
 def update_db(
     db,
-    db_product: ProductDownloadStatus,
+    db_product: DownloadStatus,
     estatus: EDownloadStatus,
     status_fail_message=None,
 ):

@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from rs_server_common.models.product_download_status import (
-    EDownloadStatus,
-    ProductDownloadStatus,
-)
+from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
 from sqlalchemy import Column, Enum
 
 
-class AdgsDownloadStatus(ProductDownloadStatus):
+class AdgsDownloadStatus(DownloadStatus):
     """Class used to implement DB CRUD ops for AUX products."""
 
     __tablename__ = "adgs_download_status"
