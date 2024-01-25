@@ -46,7 +46,7 @@ def test_resources_folder() -> Path:
 
 
 @pytest.fixture(scope="package", name="eodag_config_folder")
-def eodag_config_folder_fixture(test_resources_folder):
+def eodag_config_folder_fixture(test_resources_folder):  # pylint: disable=W0621
     """
     Pytest fixture to provide the path to the EODAG configuration folder.
 

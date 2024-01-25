@@ -362,7 +362,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
         # Mock function data_retriever.download to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         mocker.patch(
-            "rs_server_common.data_retrieval.data_retriever.DataRetriever.download",
+            "rs_server_common.data_retrieval.eodag_provider.EodagProvider.download",
             side_effect=Exception("Some Runtime Error occured here."),
         )
         # send the request
