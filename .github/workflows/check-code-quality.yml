@@ -138,8 +138,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          set -x && poetry run pytest \
-            ./tests ./services/adgs/tests ./services/common/tests ./services/cadip/tests \
+          set -x && poetry run pytest $(find . -name tests) \
             --durations=0 \
             --error-for-skips \
             --cov=./rs_server --cov=./services \
@@ -243,8 +242,8 @@ jobs:
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.branch.name=${{ github.ref_name }}
             -Dsonar.projectBaseDir=.
-            -Dsonar.sources=./rs_server,./services/adgs/rs_server_adgs,./services/common/rs_server_common,./services/cadip/rs_server_cadip
-            -Dsonar.tests=./tests,./services/adgs/tests,./services/common/tests,./services/cadip/tests
+            -Dsonar.sources=$(find . -type d -name "rs_server*" | paste -sd ",")
+            -Dsonar.tests=$(find . -type d -name "tests" | paste -sd ",")
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py
