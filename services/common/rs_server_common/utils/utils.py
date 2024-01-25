@@ -237,13 +237,13 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
 
         # Update the status to IN_PROGRESS in the database
         db_product.in_progress(db)
-        local = kwargs["default_path"] if not argument.local else argument.local
+        local = kwargs["default_path"] if not argument.local else Path(argument.local)
         provider = init_provider(argument.station)
         # notify the main thread that the download will be started
         argument.thread_started.set()
         init = datetime.now()
 
-        provider.download(argument.product_id, Path(local) / argument.name)
+        provider.download(argument.product_id, local / argument.name)
         logger.info(
             "%s : %s : File: %s downloaded in %s",
             os.getpid(),
