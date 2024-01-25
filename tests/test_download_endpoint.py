@@ -162,7 +162,7 @@ def test_exception_while_valid_download(
         )
         # Raise an exception while downloading
         mocker.patch(
-            "rs_server_common.data_retrieval.data_retriever.DataRetriever.download",
+            "rs_server_common.data_retrieval.eodag_provider.EodagProvider.download",
             side_effect=Exception("Error while downloading"),
         )
         # send the request
@@ -294,11 +294,11 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
         # Mock function rs_server.CADIP.api.cadu_download.init_cadip_data_retriever to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         mocker.patch(
-            "rs_server_cadip.api.cadu_download.init_cadip_data_retriever",
+            "rs_server_cadip.api.cadu_download.init_cadip_provider",
             side_effect=CreateProviderFailed("Invalid station"),
         )
         mocker.patch(
-            "rs_server_adgs.api.adgs_download.init_adgs_retriever",
+            "rs_server_adgs.api.adgs_download.init_adgs_provider",
             side_effect=CreateProviderFailed("Invalid station"),
         )
         # send the request
