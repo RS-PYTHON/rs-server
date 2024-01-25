@@ -2,39 +2,26 @@
 import os
 import os.path as osp
 from pathlib import Path
-from typing import Any
 
-from rs_server_common.data_retrieval.data_retriever import DataRetriever
-from rs_server_common.data_retrieval.download_monitor import DownloadMonitor
 from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
-from rs_server_common.data_retrieval.storage import Storage
 from rs_server_common.utils.provider_ws_address import station_to_server_url
 
 DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "cadip_ws_config.yaml"
 
 
-def init_cadip_data_retriever(
-    station: str,
-    storage: Any,
-    download_monitor: Any,
-    path: Any,
-):
-    """
-    Initializes a DataRetriever instance for CADIP data retrieval.
+def init_cadip_provider(station: str) -> EodagProvider:
+    """Initialize the cadip provider for the given station.
 
-    Parameters:
-    - cadip_provider (callable): A callable that creates a CADIP provider instance.
-    - station (str): The station identifier for which data retrieval is intended.
+    It initializes an eodag provider for the given station.
+    The EODAG configuration file is read from the path given in the EODAG_CADIP_CONFIG var env if set.
+    It is read from the path config/cadip_ws_config.yaml otherwise.
 
-    Raises:
-    - CreateProviderFailed: If the station does not have a valid server URL.
+    If the station is unknown or if the cadip station configuration reading fails,
+    a specific exception is raised to inform the caller of the issue.
 
-    Returns:
-    DataRetriever: An instance of the DataRetriever class configured with the specified CADIP provider,
-    storage, download monitor, and working directory. Note that the storage, download monitor, and working
-    directory are currently placeholders (set to None) and will be implemented with download functionality
-    in future updates.
+    :param station: the station to interact with.
+    :return: the EodagProvider initialized
     """
     try:
         if not station_to_server_url(station):
@@ -44,11 +31,4 @@ def init_cadip_data_retriever(
 
     # Check if the config file path is overriden in the environment variables
     eodag_config = Path(os.environ.get("EODAG_CADIP_CONFIG", DEFAULT_EODAG_CONFIG))
-
-    provider = EodagProvider(eodag_config, station)  # default to eodag, just init here
-    # WIP, will be implemented with download
-    cadip_storage: Storage = storage
-    cadip_monitor: DownloadMonitor = download_monitor
-    cadip_working_dir: Path = path
-    # End WIP
-    return DataRetriever(provider, cadip_storage, cadip_monitor, cadip_working_dir)
+    return EodagProvider(eodag_config, station)  # default to eodag, just init here

@@ -11,7 +11,7 @@ from threading import Event
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from rs_server_cadip import cadip_tags
-from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
+from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
 from rs_server_common.db.database import get_db
 from rs_server_common.utils.logging import Logging
@@ -49,9 +49,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
         eodag_download(
             argument,
             db,
-            init_cadip_data_retriever,
-            storage=None,
-            download_monitor=None,
+            init_cadip_provider,
             default_path=default_temp_path,
         )
 

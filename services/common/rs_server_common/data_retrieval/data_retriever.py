@@ -2,9 +2,9 @@
 from datetime import datetime
 from pathlib import Path
 
-from .download_monitor import DownloadMonitor
-from .provider import Product, Provider, TimeRange
-from .storage import Storage
+from rs_server_common.data_retrieval.download_monitor import DownloadMonitor
+from rs_server_common.data_retrieval.provider import Product, Provider, TimeRange
+from rs_server_common.data_retrieval.storage import Storage
 
 
 class DataRetriever:
@@ -31,13 +31,11 @@ class DataRetriever:
         """
         self.provider = provider
         self.storage = storage
-        if self.storage:
-            self.storage.login()
+        self.storage.login()
         self.monitor = download_monitor
         self.work_folder = working_folder
-        self.filename = Path("")
 
-    def search(self, start, stop) -> list[Product]:
+    def search(self, within: TimeRange) -> list[Product]:
         """Search for products within the given timerange.
 
         Search for products using the provider.
@@ -45,7 +43,6 @@ class DataRetriever:
         :param within: the timerange criteria
         :return: the products found
         """
-        within = TimeRange(datetime.fromisoformat(start), datetime.fromisoformat(stop))
         return self.provider.search(within)
 
     def download(self, product_id: str, product_name: str) -> None:
@@ -59,15 +56,15 @@ class DataRetriever:
         :param product_name: the name of the uploaded product
         :return: None
         """
-        # self.monitor.requested(product_id)
-        # self.monitor.started(product_id, datetime.now())
-        self.filename = self.work_folder / product_name
+        self.monitor.requested(product_id)
+        self.monitor.started(product_id, datetime.now())
+        tmp_path = self.work_folder / product_name
         try:
-            self.provider.download(product_id, self.filename)
-            # self.storage.store(tmp_path, Path(product_name))
-            # self.monitor.completed(product_id, datetime.now())
+            self.provider.download(product_id, tmp_path)
+            self.storage.store(tmp_path, Path(product_name))
+            self.monitor.completed(product_id, datetime.now())
         except Exception as e:
-            # self.monitor.failed(product_id, datetime.now(), str(e))
+            self.monitor.failed(product_id, datetime.now(), str(e))
             raise e
-        # finally:
-        # tmp_path.unlink(missing_ok=True)
+        finally:
+            tmp_path.unlink(missing_ok=True)

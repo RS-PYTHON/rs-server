@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_adgs.adgs_retriever import init_adgs_retriever
+from rs_server_adgs.adgs_retriever import init_adgs_provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
 from rs_server_common.utils.logging import Logging
@@ -43,9 +43,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
         eodag_download(
             argument,
             db,
-            init_adgs_retriever,
-            storage=None,
-            download_monitor=None,
+            init_adgs_provider,
             default_path=default_temp_path,
         )
 

@@ -1,11 +1,13 @@
 """Docstring will be here."""
+from datetime import datetime
+
 import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_adgs.adgs_retriever import init_adgs_retriever
-from rs_server_common.data_retrieval.provider import CreateProviderFailed
+from rs_server_adgs.adgs_retriever import init_adgs_provider
+from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import prepare_products, validate_inputs_format
 
@@ -38,8 +40,8 @@ async def search_aux_handler(start_date: str, stop_date: str):
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Invalid start/stop format, {exception}")
 
     try:
-        data_retriever = init_adgs_retriever("ADGS", None, None, None)
-        products = data_retriever.search(start_date, stop_date)
+        time_range = TimeRange(datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date))
+        products = init_adgs_provider("ADGS").search(time_range)
         processed_products = prepare_products(AdgsDownloadStatus, products)
         logger.info("Succesfully listed and processed products from AUX station")
         return JSONResponse(status_code=status.HTTP_200_OK, content={"AUX": processed_products})

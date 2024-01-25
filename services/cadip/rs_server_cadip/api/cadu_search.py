@@ -4,14 +4,15 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 import traceback
+from datetime import datetime
 
 import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_cadip import cadip_tags
-from rs_server_cadip.cadip_retriever import init_cadip_data_retriever
+from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
-from rs_server_common.data_retrieval.provider import CreateProviderFailed
+from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import prepare_products, validate_inputs_format
 
@@ -64,8 +65,8 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
 
     # Init dataretriever / get products / return
     try:
-        data_retriever = init_cadip_data_retriever(station, None, None, None)
-        products = data_retriever.search(start_date, stop_date)
+        time_range = TimeRange(datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date))
+        products = init_cadip_provider(station).search(time_range)
         processed_products = prepare_products(CaduDownloadStatus, products)
 
         logger.info("Succesfully listed and processed products from cadu station")

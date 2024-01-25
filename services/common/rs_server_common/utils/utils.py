@@ -6,11 +6,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 import sqlalchemy
 from eodag import setup_logging
 from fastapi import status
 from fastapi.responses import JSONResponse
+from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
@@ -194,7 +196,7 @@ def prepare_products(db_handler, products) -> list:
     return output
 
 
-def eodag_download(argument: EoDAGDownloadHandler, db, init_data_retriever, **kwargs):
+def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[str], Provider], **kwargs):
     """Start the eodag download process.
 
     This function initiates the eodag download process using the provided arguments. It sets up
@@ -236,11 +238,12 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_data_retriever, **kw
         # Update the status to IN_PROGRESS in the database
         db_product.in_progress(db)
         local = kwargs["default_path"] if not argument.local else Path(argument.local)
-        data_retriever = init_data_retriever(argument.station, kwargs["storage"], kwargs["download_monitor"], local)
+        provider = init_provider(argument.station)
         # notify the main thread that the download will be started
         argument.thread_started.set()
         init = datetime.now()
-        data_retriever.download(argument.product_id, argument.name)
+
+        provider.download(argument.product_id, local / argument.name)
         logger.info(
             "%s : %s : File: %s downloaded in %s",
             os.getpid(),
@@ -274,7 +277,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_data_retriever, **kw
             )
             obs_array = argument.obs.split("/")  # s3://bucket/path/to
             s3_config = PutFilesToS3Config(
-                [str(data_retriever.filename)],
+                [argument.name],
                 obs_array[2],
                 "/".join(obs_array[3:]),
             )
@@ -290,7 +293,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_data_retriever, **kw
             )
             return
         finally:
-            os.remove(data_retriever.filename)
+            os.remove(argument.name)
 
     # Try n times to update the status to DONE in the database
     update_db(db, db_product, EDownloadStatus.DONE)
