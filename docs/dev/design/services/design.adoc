@@ -17,14 +17,6 @@ These common elements are provided by the rs-server-common package.
 
 // TODO the catalog service isn't following these rule since it is reused.
 
-== Structure
-
-A rs-server service is divided in 3 layers :
-
-* the api layer provides the http endpoints to call the service
-* the event layer provides the kafka interface (read / write)
-* the library layer provides the business logic
-
 
 === Sources organisation
 
@@ -39,26 +31,6 @@ The sources of each layer is separated in a specific package.
 The shared elements are provided by the rs-server-common package.
 It is handled as a python project as if it is a rs-server service.
 
-=== Layers
-
-In each service, the api is separated from the library.
-The api is responsible for providing the given http endpoints.
-The library is composed of several modules providing the business logic.
-
-The api doesn't provide functionalities itself.
-It uses the library to provide the functionality.
-
-:leveloffset: +3
-
-include::api.adoc[]
-
-include::library.adoc[]
-
-include::event.adoc[]
-
-:leveloffset: -3
-
-
 === Services
 
 :leveloffset: +3
@@ -66,42 +38,3 @@ include::event.adoc[]
 include::cadip.adoc[]
 
 :leveloffset: -3
-
-
-== Deploy mode
-
-A service can be started in several modes :
-
-* laptop : monolithic for a local use
-* cluster-api : provide the http endpoint for a cluster use
-* cluster-service : provide the scalable functional service for a cluster use
-
-This mode is a starting parameter of the service
-and it changes how the service will work.
-
-=== laptop
-
-If the service is started locally, the "laptop" mode is used.
-In this mode, the api delegates the process of the request direcly to the library.
-
-WARN: In this mode, only a request can be handled at a time
-
-NOTE : TODO insert the api/component_laptop
-
-=== cluster
-
-When deploying in a cluster, each service is divided in two part :
-
-* A unique "cluster-api" that provides the http endpoint
-and delegate the process of the request to an event message bus.
-
-* A scalable "cluster-service" that consumes the event messages
-and uses the library to process the request.
-Each instance of this service handles an avent at a time.
-
-NOTE : TODO insert the api/component_cluster
-
-
-// TODO == Configuration
-
-// TODO == Build and Deployment
