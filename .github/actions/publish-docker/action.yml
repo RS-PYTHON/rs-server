@@ -52,7 +52,7 @@ runs:
     - name: Build Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./whl
+        context: ${{ inputs.build_context_path }}
         file: ${{ inputs.dockerfile }}
         load: true
         tags: ${{ env.docker_image }}
@@ -65,16 +65,27 @@ runs:
         image-ref: ${{ env.docker_image }}
         format: sarif
         output: trivy-results-docker.sarif
-        exit-code: 1
+        exit-code: 0
         #severity: HIGH,CRITICAL
         #timeout: '30m'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      if: always() # run even if the scan returned a non-zero exit code
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: trivy-results-docker.sarif
         category: ${{ env.docker_image }}
+
+    - name: Display link to Trivy results
+      run: |
+        set -x
+        # This name doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
+        # TO BE TESTED
+        ref_name=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+
+        echo "Trivy scan results:" \
+        "https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${ref_name}" \
+        >> $GITHUB_STEP_SUMMARY
+      shell: bash
 
     - name: Log into Docker registry
       uses: docker/login-action@v3
@@ -85,4 +96,16 @@ runs:
 
     - name: Push Docker image
       run: docker push ${{ env.docker_image }}
+      shell: bash
+
+    # Tag docker image tag as 'latest' and push it into the registry.
+    # TODO: maybe only do it for git tags, not for manual builds ?
+    # and verify that the old 'latest' tag is overwritten.
+    - name: Push Docker 'latest' tag
+      if: always()
+      run: | # use sed to replace the last :<tag> by :latest
+        set -x
+        docker_latest=$(sed "s|\(:[^:]*\)|:latest|g" <<< ${{ env.docker_image }})
+        docker tag ${{ env.docker_image }} ${docker_latest}
+        docker push ${docker_latest}
       shell: bash

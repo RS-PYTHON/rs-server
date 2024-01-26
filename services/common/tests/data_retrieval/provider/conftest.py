@@ -1,5 +1,5 @@
 """Common fixtures for provider tests."""
-
+import pathlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -34,8 +34,19 @@ def a_product(with_id: str) -> Product:
     )
 
 
+@pytest.fixture(scope="package")
+def test_resources_folder() -> Path:
+    """Folder containing all the test resources.
+
+    :return: the path containing all the test resources.
+    """
+    # We don't use test resources here
+    # because they want to launch the unit tests from another python project.
+    return pathlib.Path(__file__).parent.parent.parent / "testresources"
+
+
 @pytest.fixture(scope="package", name="eodag_config_folder")
-def eodag_config_folder_fixture(resource_path_root):
+def eodag_config_folder_fixture(test_resources_folder):  # pylint: disable=W0621
     """
     Pytest fixture to provide the path to the EODAG configuration folder.
 
@@ -56,7 +67,8 @@ def eodag_config_folder_fixture(resource_path_root):
         This fixture is intended to be used in pytest test functions or other fixtures
         that require access to the EODAG configuration files during testing.
     """
-    return resource_path_root / "eodag"
+
+    return test_resources_folder / "eodag"
 
 
 @pytest.fixture(scope="package")

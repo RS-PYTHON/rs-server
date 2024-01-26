@@ -3,4 +3,4 @@
 #skips: ['B314', 'B405', 'B320', 'B410']
 
 assert_used:
-  skips: ['./tests/*']
+  skips: ['*_test.py', '*test_*.py']

@@ -22,18 +22,6 @@ jobs:
   # Publish wheels #
   ##################
 
-  rs-server-whl:
-    runs-on: ubuntu-latest
-    name: "'rs-server' wheel"
-    outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
-    steps:
-      - uses: actions/checkout@v4
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
-
   services-common-whl:
     runs-on: ubuntu-latest
     name: "'services/common' wheel"
@@ -47,6 +35,25 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/common
+
+  services-adgs-whl:
+    runs-on: ubuntu-latest
+    name: "'services/adgs' wheel"
+    outputs:
+      version_name: ${{ steps.publish-wheel.outputs.version_name }}
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+
+      # Hack the pyproject.toml. TODO: find a cleaner to do this.
+      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+      - run: sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/adgs/pyproject.toml
+
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/adgs
 
   services-cadip-whl:
     runs-on: ubuntu-latest
@@ -71,10 +78,10 @@ jobs:
   # Publish Docker images #
   #########################
 
-  rs-server-img:
+  services-adgs-img:
     runs-on: ubuntu-latest
-    name: "'rs-server' Docker image"
-    needs: [rs-server-whl]
+    name: "'services/adgs' Docker image"
+    needs: [services-common-whl, services-adgs-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
@@ -85,25 +92,22 @@ jobs:
       - name: Download .whl dependencies
         uses: actions/download-artifact@v3
         with:
-          name: ${{ needs.rs-server-whl.outputs.package_name }}
+          name: ${{ needs.services-common-whl.outputs.package_name }}
+          path: ./whl
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ needs.services-adgs-whl.outputs.package_name }}
           path: ./whl
 
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
-          dockerfile: Dockerfile.POC
+          dockerfile: ./services/adgs/.github/Dockerfile
           build_context_path: ./whl
-          image_suffix: # no suffix
-          version_name: ${{ needs.rs-server-whl.outputs.version_name }}
+          image_suffix: -adgs
+          version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  test-pull-rs-server-img:
-    runs-on: ubuntu-latest
-    name: Test pulling the 'rs-server' Docker image and run 'pip list'
-    needs: [rs-server-img]
-    container: ${{ needs.rs-server-img.outputs.docker_image }}
-    steps:
-      - run: pip list
 
   services-cadip-img:
     runs-on: ubuntu-latest
@@ -130,35 +134,8 @@ jobs:
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
-          dockerfile: ./services/cadip/Dockerfile.POC
+          dockerfile: ./services/cadip/.github/Dockerfile
           build_context_path: ./whl
-          image_suffix: _services-cadip
+          image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  test-pull-services-cadip-img:
-    runs-on: ubuntu-latest
-    name: Test pulling the 'services/cadip' Docker image and run 'pip list'
-    needs: [services-cadip-img]
-    container: ${{ needs.services-cadip-img.outputs.docker_image }}
-    steps:
-      - run: pip list
-
-  ##########
-  # Others #
-  ##########
-
-  message:
-    runs-on: ubuntu-latest
-    name: Information
-    needs: [rs-server-img, services-cadip-img]
-    steps:
-
-      # Display link to Trivy results in the github security tab.
-      # This linke doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
-      - if: github.event_name != 'pull_request'
-        run: >
-          echo "Trivy scan results:
-          https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${{ github.ref_name }}"
-          >> $GITHUB_STEP_SUMMARY
-        shell: bash

@@ -11,31 +11,28 @@ readme = "README.adoc"
 
 packages = [
     { include = "rs_server" },
-    { include = "rs_server_common", from = "services/common"},
+    { include = "rs_server_adgs", from = "services/adgs"},
     { include = "rs_server_cadip", from = "services/cadip" },
+    { include = "rs_server_common", from = "services/common"},
     { include = "tests", format = "sdist" },
     { include = "services/common/tests", format = "sdist" },
     { include = "services/cadip/tests", format = "sdist" },
 ]
 
-[tool.poetry.dependencies]
-python = ">=3.11.0,<4.0"
-fastapi = "^0.108.0"
-boto3 = "==1.28.85"
-botocore = "==1.31.85"
-prefect = "^2.14.11"
-sqlalchemy = "^2.0.25"
-eodag = "^2.11.0"
-prefect-dask = "^0.2.6"
-pydantic = ">=2.0.0"
-markdown = "^3.5.1"
-python-dotenv = "^1.0.0"
-psycopg2 = "^2.9.9"
+# This root project is not used in release production.
+# It's only used by the CI/CD to run pytest, pylint, mypy etc... on the whole github project.
 
+# All the dependencies for release are set in the sub-projects
+[tool.poetry.dependencies]
+python = "^3.11"
+rs-server-adgs = {path = "services/adgs", develop = true}
+rs-server-cadip = {path = "services/cadip", develop = true}
+rs-server-common = {path = "services/common", develop = true}
 
 [tool.poetry.group.dev]
 optional = true
 
+# All the dev dependencies are set here so they can be used by the CI.
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
@@ -94,3 +91,10 @@ disable = "logging-fstring-interpolation"
 
 [tool.pylint.MISCELLANEOUS]
 notes = ["XXX"] # no errors on TODO and FIXME
+
+[tool.pylint.SIMILARITIES]
+# Minimum lines number of a similarity FIXME.
+min-similarity-lines=10
+
+[tool.bandit.assert_used]
+skips = ['*/test_*.py']

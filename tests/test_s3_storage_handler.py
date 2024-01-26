@@ -7,48 +7,21 @@ import shutil
 import tempfile
 from collections import Counter
 
+# import yaml
 import pytest
 import requests
-import yaml
 from moto.server import ThreadedMotoServer
-from prefect import flow
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    GetKeysFromS3Config,
+    PutFilesToS3Config,
+    S3StorageHandler,
+)
 from rs_server_common.utils.logging import Logging
 
-from rs_server.s3_storage_handler.s3_storage_handler import (
-    PrefectGetKeysFromS3Config,
-    PrefectPutFilesToS3Config,
-    S3StorageHandler,
-    prefect_get_keys_from_s3,
-    prefect_put_files_to_s3,
-)
+from .conftest import S3_RSC_FOLDER, export_aws_credentials
 
-# Resource folders specified from the parent directory of this current script
-RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
-FULL_FOLDER = osp.join(RSC_FOLDER, "full_s3_storage_handler_test")
-SHORT_FOLDER = osp.join(RSC_FOLDER, "short_s3_storage_handler_test")
-
-
-def export_aws_credentials():
-    """Export AWS credentials as environment variables for testing purposes.
-
-    This function sets the following environment variables with dummy values for AWS credentials:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - AWS_SECURITY_TOKEN
-    - AWS_SESSION_TOKEN
-    - AWS_DEFAULT_REGION
-
-    Note: This function is intended for testing purposes only, and it should not be used in production.
-
-    Returns:
-        None
-
-    Raises:
-        None
-    """
-    with open(osp.join(RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
-        s3_config = yaml.safe_load(f)
-        os.environ.update(s3_config["s3"])
+FULL_FOLDER = osp.join(S3_RSC_FOLDER, "full_s3_storage_handler_test")
+SHORT_FOLDER = osp.join(S3_RSC_FOLDER, "short_s3_storage_handler_test")
 
 
 @pytest.mark.unit
@@ -57,47 +30,27 @@ def export_aws_credentials():
     [("false"), ("http://localhost:5000")],
 )
 def test_get_s3_client(endpoint: str):
-    """test_get_s3_client Function Documentation
+    """Test the 'get_s3_client' method of the S3StorageHandler class.
 
-    This module provides unit tests for the `S3StorageHandler` class, focusing on the
-    `test_get_s3_client` function.
+    This unit test evaluates the 'get_s3_client' method of the S3StorageHandler class.
+    It uses the pytest.mark.parametrize decorator to run the test with different 'endpoint' values.
+    The method is expected to create an instance of the S3StorageHandler class when the
+    endpoint is 'http://localhost:5000', and it should raise an exception otherwise.
 
-    Usage:
-        - To execute the unit tests, run the associated test module.
-        - The tests cover the initialization of the `S3StorageHandler` class with different
-          S3 endpoints.
+    Args:
+        endpoint (str): The endpoint to be used for testing.
 
-    Dependencies:
-        - pytest
-        - ThreadedMotoServer (from your implementation or external source)
-        - S3StorageHandler (class to be tested)
-
-    Test Parameters:
-        - Two sets of parameters are used for testing, each representing a test case:
-            - ("false", False): Testing with a false endpoint.
-            - ("http://localhost:5000", True): Testing with a valid endpoint.
-
-    Test Execution:
-        - For each test case, a threaded Moto server is started to simulate an S3 server environment.
-        - A logger is set up to capture logs during the test execution.
-        - The `S3StorageHandler` is instantiated with the provided parameters.
-        - Assertions are made based on the expected result for each test case.
-            - If the endpoint is "http://localhost:5000", the instantiation should not raise an exception.
-            - If the endpoint is "false" or any other value, an exception is expected.
-
-    Function Signature:
-        def test_get_s3_client(endpoint: str, expected_res: bool)
-
-    Parameters:
-        - endpoint (str): S3 endpoint to be tested.
-        - expected_res (bool): Expected result of the test case.
+    Returns:
+        None
 
     Raises:
-        - AssertionError: If the test case fails.
+        AssertionError: If the test fails to create an instance of S3StorageHandler when the endpoint is valid,
+        or if it fails to raise an exception when the endpoint is not valid.
 
     Note:
-        - Ensure that the necessary dependencies (pytest, ThreadedMotoServer, S3StorageHandler) are installed.
-        - The Moto server and logger setup are common to both test cases.
+        The test requires a temporary Moto S3 server for running. It exports temporary AWS credentials,
+        initializes an S3StorageHandler instance, and checks if the method behaves as expected.
+
     """
     server = ThreadedMotoServer()
     server.start()
@@ -312,7 +265,12 @@ def test_check_bucket_access(endpoint: str, bucket: str):
         ),
     ],
 )
-def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list, expected_res: list):
+def test_files_to_be_downloaded(
+    endpoint: str,
+    bucket: str,
+    lst_with_files: list,
+    expected_res: list,
+):
     """test_files_to_be_downloaded Function Documentation
 
     Test the files_to_be_downloaded method of the S3StorageHandler class.
@@ -386,7 +344,6 @@ def cmp_dirs(dir1, dir2):
 
 
 @pytest.mark.unit
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "endpoint, bucket, lst_with_files, lst_with_files_to_be_dwn, expected_res",
     [
@@ -434,16 +391,16 @@ def cmp_dirs(dir1, dir2):
         ),
     ],
 )
-async def test_prefect_download_files_from_s3(
+def test_get_keys_from_s3(
     endpoint: str,
     bucket: str,
     lst_with_files: list,
     lst_with_files_to_be_dwn: list,
     expected_res: list,
 ):
-    """test_prefect_download_files_from_s3 Function Documentation
+    """test_get_keys_from_s3 Function Documentation
 
-    Test the prefect_download_files_from_s3 function.
+    Test the get_keys_from_s3 function.
 
     Parameters:
     - endpoint (str): The S3 endpoint for testing.
@@ -485,23 +442,16 @@ async def test_prefect_download_files_from_s3(
             collection = []
         local_path = tempfile.mkdtemp()
 
-        @flow
-        async def test_flow():
-            config = PrefectGetKeysFromS3Config(
-                s3_handler,
-                lst_with_files,
-                bucket,
-                local_path,
-                0,
-                True,
-                1,
-            )  # type: ignore
-            state = await prefect_get_keys_from_s3(config, return_state=True)  # type: ignore
-            result = await state.result(fetch=True)  # type: ignore
-            return result
+        config = GetKeysFromS3Config(
+            lst_with_files,
+            bucket,
+            local_path,
+            True,
+            1,
+        )
 
-        res = await test_flow()  # type: ignore
-        logger.debug("Task returns: %s", res)
+        res = s3_handler.get_keys_from_s3(config)
+        logger.debug("get_keys_from_s3 returns: %s", res)
     except RuntimeError:
         res = []
     finally:
@@ -576,7 +526,27 @@ async def test_prefect_download_files_from_s3(
     ],
 )
 def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
-    """Docstring to be added."""
+    """Test the 'files_to_be_uploaded' method of the S3StorageHandler class.
+
+    This unit test function evaluates the 'files_to_be_uploaded' method of the S3StorageHandler class.
+    It sets up a temporary Moto S3 server, initializes an S3StorageHandler instance, and compares the
+    result of the method with the expected result.
+
+    Args:
+        lst_with_files (list): The list of local files to be uploaded.
+        expected_res (list): The expected result of the 'files_to_be_uploaded' method.
+
+    Returns:
+        None
+
+    Raises:
+        AssertionError: If the actual result differs from the expected result.
+
+    Note:
+        The test requires a temporary Moto S3 server for running. It exports temporary AWS credentials,
+        initializes an S3StorageHandler instance, and checks if the method produces the expected result.
+
+    """
     export_aws_credentials()
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     logger = Logging.default(__name__)
@@ -601,9 +571,8 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
 
 
 @pytest.mark.unit
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "endpoint, bucket, s3_prefix, lst_with_files, lst_with_files_to_be_up, keys_in_bucket, expected_res",
+    "endpoint, bucket, s3_prefix, lst_with_files, keys_in_bucket, expected_res",
     [
         (
             (
@@ -615,29 +584,6 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
                     f"{FULL_FOLDER}/no_root_file2",
                     f"{FULL_FOLDER}/subdir_1",
                     f"{FULL_FOLDER}/subdir_2",
-                ],
-                [
-                    ("", f"{FULL_FOLDER}/no_root_file1"),
-                    ("", f"{FULL_FOLDER}/no_root_file2"),
-                    ("subdir_1", f"{FULL_FOLDER}/subdir_1/subdir_file"),
-                    (
-                        "subdir_1/subsubdir_1",
-                        f"{FULL_FOLDER}/subdir_1/subsubdir_1/subsubdir_file1",
-                    ),
-                    (
-                        "subdir_1/subsubdir_1",
-                        f"{FULL_FOLDER}/subdir_1/subsubdir_1/subsubdir_file2",
-                    ),
-                    (
-                        "subdir_1/subsubdir_2",
-                        f"{FULL_FOLDER}/subdir_1/subsubdir_2/subsubdir_2_file1",
-                    ),
-                    (
-                        "subdir_1/subsubdir_2",
-                        f"{FULL_FOLDER}/subdir_1/subsubdir_2/subsubdir_2_file2",
-                    ),
-                    ("subdir_2", f"{FULL_FOLDER}/subdir_2/subdir_2_file1"),
-                    ("subdir_2", f"{FULL_FOLDER}/subdir_2/subdir_2_file2"),
                 ],
                 [
                     f"{FULL_FOLDER}/no_root_file1",
@@ -663,9 +609,6 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
                     "nonexistent_2/file1",
                     f"{SHORT_FOLDER}/no_root_file1",
                 ],
-                [
-                    ("", f"{SHORT_FOLDER}/no_root_file1"),
-                ],
                 [f"{SHORT_FOLDER}/no_root_file1"],
                 [],
             )
@@ -680,33 +623,44 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
                     "nonexistent_2/file1",
                     f"{SHORT_FOLDER}/no_root_file1",
                 ],
-                [("", f"{SHORT_FOLDER}/no_root_file1")],
                 [],
                 [f"{SHORT_FOLDER}/no_root_file1"],
             )
         ),
     ],
 )
-async def test_prefect_upload_files_to_s3(
+def test_put_files_to_s3(
     endpoint: str,
     bucket: str,
     s3_prefix: str,
     lst_with_files: list,
-    lst_with_files_to_be_up: list,
     keys_in_bucket: list,
     expected_res: list,
 ):
-    """test_prefect_upload_files_to_s3 Function Documentation
+    """Test the 'put_files_to_s3' method of the S3StorageHandler class.
 
-    Test the files_to_be_uploaded method of the S3StorageHandler class.
+    This test function evaluates the 'put_files_to_s3' method of the S3StorageHandler class. It sets up a temporary
+    Moto S3 server, initializes an S3StorageHandler instance, and checks if the method produces the expected result.
 
-    Parameters:
-    - lst_with_files (list): List of local files to be checked for upload.
-    - expected_res (list): List of tuples representing the expected files to be
-    uploaded. Each tuple consists of a prefix and a file path.
+    Args:
+        endpoint (str): The endpoint for the temporary Moto S3 server.
+        bucket (str): The name of the S3 bucket to be used for testing.
+        s3_prefix (str): The S3 prefix for the test files.
+        lst_with_files (list): List of local files to be checked for upload.
+        keys_in_bucket (list): List of keys expected to be present in the S3 bucket.
+        expected_res (list): List of tuples representing the expected files to be uploaded.
+            Each tuple consists of a prefix and a file path.
+
+    Returns:
+        None
 
     Raises:
-    - AssertionError: If the result of S3StorageHandler.files_to_be_uploaded does not match expected_res.
+        AssertionError: If the result of S3StorageHandler.files_to_be_uploaded does not match expected_res.
+
+    Note:
+        The test requires a temporary Moto S3 server for running. It exports temporary AWS credentials,
+        initializes an S3StorageHandler instance, and checks if the method produces the expected result.
+
     """
 
     export_aws_credentials()
@@ -728,18 +682,9 @@ async def test_prefect_upload_files_to_s3(
             s3_handler.s3_client.create_bucket(Bucket=bucket)
         # end of create
 
-        collection = s3_handler.files_to_be_uploaded(lst_with_files)
-        logger.debug("collection              = {%s}", collection)
-        logger.debug("lst_with_files_to_be_up = %s", lst_with_files_to_be_up)
+        config = PutFilesToS3Config(lst_with_files, bucket, s3_prefix, 1)
+        res = s3_handler.put_files_to_s3(config)
 
-        @flow
-        async def test_flow():
-            config = PrefectPutFilesToS3Config(s3_handler, lst_with_files, bucket, s3_prefix, 0, 1)
-            state = await prefect_put_files_to_s3(config, return_state=True)  # type: ignore
-            result = await state.result(fetch=True)  # type: ignore
-            return result
-
-        res = await test_flow()  # type: ignore
         test_bucket_files = []  # type: list[str]
         for key in lst_with_files:
             try:
@@ -747,16 +692,12 @@ async def test_prefect_upload_files_to_s3(
                 test_bucket_files = test_bucket_files + s3_files
             except RuntimeError:
                 pass
-            # if total == 0:
-            #    break
     finally:
         server.stop()
 
     logger.debug("test_bucket_files  = %s", test_bucket_files)
 
     logger.debug("Task returns: %s", res)
-    assert len(Counter(collection) - Counter(lst_with_files_to_be_up)) == 0
-    assert len(Counter(lst_with_files_to_be_up) - Counter(collection)) == 0
     assert len(Counter(keys_in_bucket) - Counter(test_bucket_files)) == 0
     assert len(Counter(test_bucket_files) - Counter(keys_in_bucket)) == 0
     assert len(Counter(expected_res) - Counter(res)) == 0
