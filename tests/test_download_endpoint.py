@@ -8,15 +8,11 @@ from contextlib import contextmanager
 
 import pytest
 import responses
-from moto.server import ThreadedMotoServer
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
-
-from .conftest import export_aws_credentials
 
 # Resource folders specified from the parent directory of this current script
 RES_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
