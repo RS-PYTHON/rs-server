@@ -423,6 +423,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint
     monkeypatch.setenv("S3_ENDPOINT", "mock_endpoint")
     monkeypatch.setenv("S3_ACCESSKEY", "mock_accesskey")
     monkeypatch.setenv("S3_SECRETKEY", "mock_secretkey")
+    monkeypatch.setenv("S3_REGION", "mock_region")
 
     with contextmanager(get_db)() as db:
         # Simulate CADIP file-stream download
