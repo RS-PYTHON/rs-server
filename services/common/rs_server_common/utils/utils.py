@@ -270,6 +270,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
             # NOTE: The environment variables have to be set from outside
             # otherwise the connection with the s3 endpoint fails
             # TODO: the secrets should be set through env vars
+            # pylint: disable=pointless-string-statement
             """
             secrets = {
                 "s3endpoint": None,

@@ -293,7 +293,7 @@ class S3StorageHandler:
 
         s3_files = []
 
-        self.logger.warning("prefix = %s", prefix)
+        self.logger.debug("prefix = %s", prefix)
         try:
             paginator: Any = self.s3_client.get_paginator("list_objects_v2")
             pages = paginator.paginate(Bucket=bucket, Prefix=prefix)

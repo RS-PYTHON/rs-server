@@ -8,11 +8,15 @@ from contextlib import contextmanager
 
 import pytest
 import responses
+from moto.server import ThreadedMotoServer
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
+from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+
+from .conftest import export_aws_credentials
 
 # Resource folders specified from the parent directory of this current script
 RES_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
@@ -464,94 +468,99 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint
         assert data.status_code == 200
 
 
-# # pylint: disable=too-many-arguments
-# @responses.activate
-# @pytest.mark.parametrize(
-#     "endpoint, filename, target_filename, db_handler",
-#     [
-#         ("/adgs/aux", "AUX_test_file_eodag.raw", "AUX_test_file.raw", AdgsDownloadStatus),
-#         ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", "CADIP_test_file.raw", CaduDownloadStatus),
-#     ],
-# )
-# def test_upload_to_s3(
-#     client,
-#     endpoint,
-#     filename,
-#     target_filename,
-#     db_handler,
-# ):  # pylint: disable=unused-argument
-#     """Test the behavior of a valid endpoint request for ADGS AUX / CADIP CADU download.
+# pylint: disable=too-many-arguments
+@responses.activate
+@pytest.mark.parametrize(
+    "endpoint, filename, db_handler",
+    [
+        ("/adgs/aux", "AUX_test_file.raw", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file.raw", CaduDownloadStatus),
+    ],
+)
+def test_upload_to_s3(
+    client,
+    endpoint,
+    filename,
+    db_handler,
+):  # pylint: disable=unused-argument
+    """Test the behavior of a valid endpoint request for ADGS AUX / CADIP CADU download.
 
-#     This unit test checks the behavior of the ADGS / CADIP download endpoint when provided with
-#     valid parameters. It simulates the download process, verifies the status code, and checks
-#     the content of the downloaded file.
+    This unit test checks the behavior of the ADGS / CADIP download endpoint. It simulates
+    the download process and the upload to an s3 bucket path. It verifies if the name of the
+    downloaded file (thourgh eodag) is the same with files found in the path s3://test-bucket/test-dir
 
-#     Args:
-#         client: The client fixture for the test.
+    Args:
+        client: The client fixture for the test.
 
-#     Returns:
-#         None
+    Returns:
+        None
 
-#     Raises:
-#         AssertionError: If the test fails to assert the expected outcomes.
-#     """
-#     export_aws_credentials()
-#     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
-#     product_id = "id_1"
-#     publication_date = "2023-10-10T00:00:00.111Z"
-#     # Add cadip mock server response to eodag download request
-#     responses.add(
-#         responses.GET,
-#         "http://127.0.0.1:5000/Files(id_1)/$value",
-#         body="some byte-array data\n",
-#         status=200,
-#     )
-#     # Add adgs mock server response to eodag download request
-#     responses.add(
-#         responses.GET,
-#         "http://127.0.0.1:5001/Products(id_1)/$value",
-#         body="some byte-array data\n",
-#         status=200,
-#     )
+    Raises:
+        AssertionError: If the test fails to assert the expected outcomes.
+    """
+    export_aws_credentials()
+    s3endpoint = "http://localhost:5010"
+    secrets = {"s3endpoint": s3endpoint, "accesskey": None, "secretkey": None, "region": ""}
+    os.environ["S3_ACCESSKEY"] = ""
+    os.environ["S3_SECRETKEY"] = ""
+    os.environ["S3_ENDPOINT"] = s3endpoint
+    os.environ["S3_REGION"] = ""
 
-#     # create the test bucket
-#     moto_server_endpoint = ThreadedMotoServer()
+    # Add cadip mock server response to eodag download request
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5000/Files(id_1)/$value",
+        body="some byte-array data\n",
+        status=200,
+    )
+    # Add adgs mock server response to eodag download request
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5001/Products(id_1)/$value",
+        body="some byte-array data\n",
+        status=200,
+    )
 
-#     moto_server_endpoint.start()
-#     responses.post("http://localhost:5000/moto-api/reset", timeout=5)
-#     with tempfile.TemporaryDirectory() as download_dir, contextmanager(get_db)() as db:
-#         # Add a download status to database
+    # create the test bucket
+    moto_server_endpoint = ThreadedMotoServer(port=5010)
 
-#         endpoint = f"{endpoint}?name={filename}&local={download_dir}&obs=\"s3://test-bucket/test_dir/\""
-#         db_handler.create(
-#             db=db,
-#             product_id=product_id,
-#             name=filename,
-#             available_at_station=publication_date,
-#             # FIXME
-#             status=EDownloadStatus.IN_PROGRESS,
-#         )
-#         s3_handler = S3StorageHandler(
-#             secrets["accesskey"],
-#             secrets["secretkey"],
-#             secrets["s3endpoint"],
-#             secrets["region"],
-#         )
-#         s3_handler.s3_client.create_bucket(Bucket="test-bucket")
-#         # send the request
-#         data = client.get(endpoint)
+    moto_server_endpoint.start()
 
-#         # let the file to be copied local
-#         time.sleep(2)
-#         assert data.status_code == 200
-#         assert data.json() == {"started": "true"}
+    with tempfile.TemporaryDirectory() as download_dir, contextmanager(get_db)() as db:
+        # Add a download status to database
+        try:
+            endpoint = f"{endpoint}?name={filename}&local={download_dir}&obs=s3://test-bucket/test-dir/"
+            db_handler.create(
+                db=db,
+                product_id="id_1",
+                name=filename,
+                available_at_station="2023-10-10T00:00:00.111Z",
+                # FIXME
+                status=EDownloadStatus.IN_PROGRESS,
+            )
+            responses.post(s3endpoint + "/moto-api/reset")
+            s3_handler = S3StorageHandler(
+                secrets["accesskey"],
+                secrets["secretkey"],
+                secrets["s3endpoint"],
+                secrets["region"],
+            )
+            s3_handler.s3_client.create_bucket(Bucket="test-bucket")
+            # send the request
+            data = client.get(endpoint)
 
-#         # test file content
-#         s3_files = s3_handler.list_s3_files_obj("test-bucket", os.path.join("test_dir", filename))
-#         print("s3_files = %s", s3_files)
-#         """
-#         assert filecmp.cmp(
-#             os.path.join(download_dir, filename),
-#             os.path.join(ENDPOINTS_FOLDER, target_filename),
-#         )
-#         """
+            # let the file to be copied local
+            time.sleep(2)
+            assert data.status_code == 200
+            assert data.json() == {"started": "true"}
+
+            # test file content
+            s3_files = s3_handler.list_s3_files_obj("test-bucket", "test-dir")
+            found = False
+            for s3_file in s3_files:
+                if filename in s3_file:
+                    found = True
+                    break
+            assert found
+        finally:
+            moto_server_endpoint.stop()

@@ -30,47 +30,27 @@ SHORT_FOLDER = osp.join(S3_RSC_FOLDER, "short_s3_storage_handler_test")
     [("false"), ("http://localhost:5000")],
 )
 def test_get_s3_client(endpoint: str):
-    """test_get_s3_client Function Documentation
+    """Test the 'get_s3_client' method of the S3StorageHandler class.
 
-    This module provides unit tests for the `S3StorageHandler` class, focusing on the
-    `test_get_s3_client` function.
+    This unit test evaluates the 'get_s3_client' method of the S3StorageHandler class.
+    It uses the pytest.mark.parametrize decorator to run the test with different 'endpoint' values.
+    The method is expected to create an instance of the S3StorageHandler class when the
+    endpoint is 'http://localhost:5000', and it should raise an exception otherwise.
 
-    Usage:
-        - To execute the unit tests, run the associated test module.
-        - The tests cover the initialization of the `S3StorageHandler` class with different
-          S3 endpoints.
+    Args:
+        endpoint (str): The endpoint to be used for testing.
 
-    Dependencies:
-        - pytest
-        - ThreadedMotoServer (from your implementation or external source)
-        - S3StorageHandler (class to be tested)
-
-    Test Parameters:
-        - Two sets of parameters are used for testing, each representing a test case:
-            - ("false", False): Testing with a false endpoint.
-            - ("http://localhost:5000", True): Testing with a valid endpoint.
-
-    Test Execution:
-        - For each test case, a threaded Moto server is started to simulate an S3 server environment.
-        - A logger is set up to capture logs during the test execution.
-        - The `S3StorageHandler` is instantiated with the provided parameters.
-        - Assertions are made based on the expected result for each test case.
-            - If the endpoint is "http://localhost:5000", the instantiation should not raise an exception.
-            - If the endpoint is "false" or any other value, an exception is expected.
-
-    Function Signature:
-        def test_get_s3_client(endpoint: str, expected_res: bool)
-
-    Parameters:
-        - endpoint (str): S3 endpoint to be tested.
-        - expected_res (bool): Expected result of the test case.
+    Returns:
+        None
 
     Raises:
-        - AssertionError: If the test case fails.
+        AssertionError: If the test fails to create an instance of S3StorageHandler when the endpoint is valid,
+        or if it fails to raise an exception when the endpoint is not valid.
 
     Note:
-        - Ensure that the necessary dependencies (pytest, ThreadedMotoServer, S3StorageHandler) are installed.
-        - The Moto server and logger setup are common to both test cases.
+        The test requires a temporary Moto S3 server for running. It exports temporary AWS credentials,
+        initializes an S3StorageHandler instance, and checks if the method behaves as expected.
+
     """
     server = ThreadedMotoServer()
     server.start()
@@ -364,7 +344,6 @@ def cmp_dirs(dir1, dir2):
 
 
 @pytest.mark.unit
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "endpoint, bucket, lst_with_files, lst_with_files_to_be_dwn, expected_res",
     [
@@ -547,7 +526,27 @@ def test_get_keys_from_s3(
     ],
 )
 def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
-    """Docstring to be added."""
+    """Test the 'files_to_be_uploaded' method of the S3StorageHandler class.
+
+    This unit test function evaluates the 'files_to_be_uploaded' method of the S3StorageHandler class.
+    It sets up a temporary Moto S3 server, initializes an S3StorageHandler instance, and compares the
+    result of the method with the expected result.
+
+    Args:
+        lst_with_files (list): The list of local files to be uploaded.
+        expected_res (list): The expected result of the 'files_to_be_uploaded' method.
+
+    Returns:
+        None
+
+    Raises:
+        AssertionError: If the actual result differs from the expected result.
+
+    Note:
+        The test requires a temporary Moto S3 server for running. It exports temporary AWS credentials,
+        initializes an S3StorageHandler instance, and checks if the method produces the expected result.
+
+    """
     export_aws_credentials()
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     logger = Logging.default(__name__)
@@ -572,7 +571,6 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
 
 
 @pytest.mark.unit
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "endpoint, bucket, s3_prefix, lst_with_files, keys_in_bucket, expected_res",
     [
@@ -631,7 +629,7 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
         ),
     ],
 )
-async def test_put_files_to_s3(
+def test_put_files_to_s3(
     endpoint: str,
     bucket: str,
     s3_prefix: str,
@@ -639,17 +637,30 @@ async def test_put_files_to_s3(
     keys_in_bucket: list,
     expected_res: list,
 ):
-    """test_put_files_to_s3 Function Documentation
+    """Test the 'put_files_to_s3' method of the S3StorageHandler class.
 
-    Test the put_files_to_s3 method of the S3StorageHandler class.
+    This test function evaluates the 'put_files_to_s3' method of the S3StorageHandler class. It sets up a temporary
+    Moto S3 server, initializes an S3StorageHandler instance, and checks if the method produces the expected result.
 
-    Parameters:
-    - lst_with_files (list): List of local files to be checked for upload.
-    - expected_res (list): List of tuples representing the expected files to be
-    uploaded. Each tuple consists of a prefix and a file path.
+    Args:
+        endpoint (str): The endpoint for the temporary Moto S3 server.
+        bucket (str): The name of the S3 bucket to be used for testing.
+        s3_prefix (str): The S3 prefix for the test files.
+        lst_with_files (list): List of local files to be checked for upload.
+        keys_in_bucket (list): List of keys expected to be present in the S3 bucket.
+        expected_res (list): List of tuples representing the expected files to be uploaded.
+            Each tuple consists of a prefix and a file path.
+
+    Returns:
+        None
 
     Raises:
-    - AssertionError: If the result of S3StorageHandler.files_to_be_uploaded does not match expected_res.
+        AssertionError: If the result of S3StorageHandler.files_to_be_uploaded does not match expected_res.
+
+    Note:
+        The test requires a temporary Moto S3 server for running. It exports temporary AWS credentials,
+        initializes an S3StorageHandler instance, and checks if the method produces the expected result.
+
     """
 
     export_aws_credentials()
