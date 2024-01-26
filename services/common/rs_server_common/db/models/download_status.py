@@ -1,4 +1,7 @@
 """Module used to implement abstract model of an SQLAlchemy table."""
+
+from __future__ import annotations
+
 import enum
 from datetime import datetime
 from threading import Lock
@@ -90,8 +93,13 @@ class DownloadStatus(Base):
     #######################
 
     @classmethod
-    def get(cls, db: Session, name: str | Column[str], raise_if_missing=True):
-        """Get single entry by name."""
+    def get(cls, db: Session, name: str | Column[str], raise_if_missing=True) -> DownloadStatus:
+        """
+        Get single database entry by name.
+
+        :param str name: Product name.
+        :param bool raise_if_missing: if product is missing, raise Exception or return None.
+        """
 
         # Check if entry exists
         query = db.query(cls).where(cls.name == name)
@@ -110,17 +118,17 @@ class DownloadStatus(Base):
         return None
 
     @classmethod
-    def get_if_exists(cls, *args, **kwargs):
-        """Get single entry by name if it exists, else None"""
+    def get_if_exists(cls, *args, **kwargs) -> DownloadStatus:
+        """
+        Get single database entry by name if it exists, else None.
+
+        :param str name: Product name.
+        """
         return cls.get(*args, **kwargs, raise_if_missing=False)
 
     @classmethod
-    def create(
-        cls,
-        db: Session,
-        **kwargs,
-    ):
-        """Create and return entry"""
+    def create(cls, db: Session, **kwargs) -> DownloadStatus:
+        """Create and return database entry"""
         entry = cls(**kwargs)
         db.add(entry)
         db.commit()
