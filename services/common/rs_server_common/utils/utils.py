@@ -242,8 +242,8 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
         # notify the main thread that the download will be started
         argument.thread_started.set()
         init = datetime.now()
-
-        provider.download(argument.product_id, Path(local) / argument.name)
+        filename = Path(local) / argument.name
+        provider.download(argument.product_id, filename)
         logger.info(
             "%s : %s : File: %s downloaded in %s",
             os.getpid(),
@@ -269,6 +269,19 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
         try:
             # NOTE: The environment variables have to be set from outside
             # otherwise the connection with the s3 endpoint fails
+            # TODO: the secrets should be set through env vars
+            """
+            secrets = {
+                "s3endpoint": None,
+                "accesskey": None,
+                "secretkey": None,
+            }
+            S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+            os.environ["S3_ACCESSKEY"] = secrets["accesskey"]
+            os.environ["S3_SECRETKEY"] = secrets["secretkey"]
+            os.environ["S3_ENDPOINT"] = secrets["s3endpoint"]
+            os.environ["S3_REGION"] = "sbg"
+            """
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
                 os.environ["S3_SECRETKEY"],
@@ -277,7 +290,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
             )
             obs_array = argument.obs.split("/")  # s3://bucket/path/to
             s3_config = PutFilesToS3Config(
-                [argument.name],
+                [str(filename)],
                 obs_array[2],
                 "/".join(obs_array[3:]),
             )
@@ -293,7 +306,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
             )
             return
         finally:
-            os.remove(argument.name)
+            os.remove(filename)
 
     # Try n times to update the status to DONE in the database
     update_db(db, db_product, EDownloadStatus.DONE)
