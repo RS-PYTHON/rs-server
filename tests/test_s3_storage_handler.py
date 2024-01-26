@@ -7,9 +7,9 @@ import shutil
 import tempfile
 from collections import Counter
 
+# import yaml
 import pytest
 import requests
-import yaml
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     GetKeysFromS3Config,
@@ -18,33 +18,10 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 
-# Resource folders specified from the parent directory of this current script
-RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
-FULL_FOLDER = osp.join(RSC_FOLDER, "full_s3_storage_handler_test")
-SHORT_FOLDER = osp.join(RSC_FOLDER, "short_s3_storage_handler_test")
+from .conftest import S3_RSC_FOLDER, export_aws_credentials
 
-
-def export_aws_credentials():
-    """Export AWS credentials as environment variables for testing purposes.
-
-    This function sets the following environment variables with dummy values for AWS credentials:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - AWS_SECURITY_TOKEN
-    - AWS_SESSION_TOKEN
-    - AWS_DEFAULT_REGION
-
-    Note: This function is intended for testing purposes only, and it should not be used in production.
-
-    Returns:
-        None
-
-    Raises:
-        None
-    """
-    with open(osp.join(RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
-        s3_config = yaml.safe_load(f)
-        os.environ.update(s3_config["s3"])
+FULL_FOLDER = osp.join(S3_RSC_FOLDER, "full_s3_storage_handler_test")
+SHORT_FOLDER = osp.join(S3_RSC_FOLDER, "short_s3_storage_handler_test")
 
 
 @pytest.mark.unit
@@ -308,7 +285,12 @@ def test_check_bucket_access(endpoint: str, bucket: str):
         ),
     ],
 )
-def test_files_to_be_downloaded(endpoint: str, bucket: str, lst_with_files: list, expected_res: list):
+def test_files_to_be_downloaded(
+    endpoint: str,
+    bucket: str,
+    lst_with_files: list,
+    expected_res: list,
+):
     """test_files_to_be_downloaded Function Documentation
 
     Test the files_to_be_downloaded method of the S3StorageHandler class.
@@ -430,16 +412,16 @@ def cmp_dirs(dir1, dir2):
         ),
     ],
 )
-def test_prefect_download_files_from_s3(
+def test_get_keys_from_s3(
     endpoint: str,
     bucket: str,
     lst_with_files: list,
     lst_with_files_to_be_dwn: list,
     expected_res: list,
 ):
-    """test_prefect_download_files_from_s3 Function Documentation
+    """test_get_keys_from_s3 Function Documentation
 
-    Test the prefect_download_files_from_s3 function.
+    Test the get_keys_from_s3 function.
 
     Parameters:
     - endpoint (str): The S3 endpoint for testing.
@@ -592,7 +574,7 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
 @pytest.mark.unit
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "endpoint, bucket, s3_prefix, lst_with_files, lst_with_files_to_be_up, keys_in_bucket, expected_res",
+    "endpoint, bucket, s3_prefix, lst_with_files, keys_in_bucket, expected_res",
     [
         (
             (
@@ -604,29 +586,6 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
                     f"{FULL_FOLDER}/no_root_file2",
                     f"{FULL_FOLDER}/subdir_1",
                     f"{FULL_FOLDER}/subdir_2",
-                ],
-                [
-                    ("", f"{FULL_FOLDER}/no_root_file1"),
-                    ("", f"{FULL_FOLDER}/no_root_file2"),
-                    ("subdir_1", f"{FULL_FOLDER}/subdir_1/subdir_file"),
-                    (
-                        "subdir_1/subsubdir_1",
-                        f"{FULL_FOLDER}/subdir_1/subsubdir_1/subsubdir_file1",
-                    ),
-                    (
-                        "subdir_1/subsubdir_1",
-                        f"{FULL_FOLDER}/subdir_1/subsubdir_1/subsubdir_file2",
-                    ),
-                    (
-                        "subdir_1/subsubdir_2",
-                        f"{FULL_FOLDER}/subdir_1/subsubdir_2/subsubdir_2_file1",
-                    ),
-                    (
-                        "subdir_1/subsubdir_2",
-                        f"{FULL_FOLDER}/subdir_1/subsubdir_2/subsubdir_2_file2",
-                    ),
-                    ("subdir_2", f"{FULL_FOLDER}/subdir_2/subdir_2_file1"),
-                    ("subdir_2", f"{FULL_FOLDER}/subdir_2/subdir_2_file2"),
                 ],
                 [
                     f"{FULL_FOLDER}/no_root_file1",
@@ -652,9 +611,6 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
                     "nonexistent_2/file1",
                     f"{SHORT_FOLDER}/no_root_file1",
                 ],
-                [
-                    ("", f"{SHORT_FOLDER}/no_root_file1"),
-                ],
                 [f"{SHORT_FOLDER}/no_root_file1"],
                 [],
             )
@@ -669,25 +625,23 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
                     "nonexistent_2/file1",
                     f"{SHORT_FOLDER}/no_root_file1",
                 ],
-                [("", f"{SHORT_FOLDER}/no_root_file1")],
                 [],
                 [f"{SHORT_FOLDER}/no_root_file1"],
             )
         ),
     ],
 )
-async def test_prefect_upload_files_to_s3(
+async def test_put_files_to_s3(
     endpoint: str,
     bucket: str,
     s3_prefix: str,
     lst_with_files: list,
-    lst_with_files_to_be_up: list,
     keys_in_bucket: list,
     expected_res: list,
 ):
-    """test_prefect_upload_files_to_s3 Function Documentation
+    """test_put_files_to_s3 Function Documentation
 
-    Test the files_to_be_uploaded method of the S3StorageHandler class.
+    Test the put_files_to_s3 method of the S3StorageHandler class.
 
     Parameters:
     - lst_with_files (list): List of local files to be checked for upload.
@@ -717,10 +671,6 @@ async def test_prefect_upload_files_to_s3(
             s3_handler.s3_client.create_bucket(Bucket=bucket)
         # end of create
 
-        collection = s3_handler.files_to_be_uploaded(lst_with_files)
-        logger.debug("collection              = {%s}", collection)
-        logger.debug("lst_with_files_to_be_up = %s", lst_with_files_to_be_up)
-
         config = PutFilesToS3Config(lst_with_files, bucket, s3_prefix, 1)
         res = s3_handler.put_files_to_s3(config)
 
@@ -737,8 +687,6 @@ async def test_prefect_upload_files_to_s3(
     logger.debug("test_bucket_files  = %s", test_bucket_files)
 
     logger.debug("Task returns: %s", res)
-    assert len(Counter(collection) - Counter(lst_with_files_to_be_up)) == 0
-    assert len(Counter(lst_with_files_to_be_up) - Counter(collection)) == 0
     assert len(Counter(keys_in_bucket) - Counter(test_bucket_files)) == 0
     assert len(Counter(test_bucket_files) - Counter(keys_in_bucket)) == 0
     assert len(Counter(expected_res) - Counter(res)) == 0

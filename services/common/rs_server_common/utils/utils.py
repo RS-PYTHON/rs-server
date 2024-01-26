@@ -272,12 +272,11 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_data_retriever, **kw
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],  # "sbg",
             )
-            obs_array = argument.obs.split("/")
+            obs_array = argument.obs.split("/")  # s3://bucket/path/to
             s3_config = PutFilesToS3Config(
                 [str(data_retriever.filename)],
                 obs_array[2],
                 "/".join(obs_array[3:]),
-                0,
             )
             s3_handler.put_files_to_s3(s3_config)
         except RuntimeError:

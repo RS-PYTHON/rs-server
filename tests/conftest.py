@@ -5,13 +5,14 @@ The conftest.py file serves as a means of providing fixtures for an entire direc
 Fixtures defined in a conftest.py can be used by any test in that package without needing to import them
 (pytest will automatically discover them).
 """
-
+import os
 import os.path as osp
 import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
+import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
@@ -25,6 +26,32 @@ RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 ###############################
 # READ COMMAND LINE ARGUMENTS #
 ###############################
+
+# Resource folders specified from the parent directory of this current script
+S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
+
+
+def export_aws_credentials():
+    """Export AWS credentials as environment variables for testing purposes.
+
+    This function sets the following environment variables with dummy values for AWS credentials:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - AWS_SECURITY_TOKEN
+    - AWS_SESSION_TOKEN
+    - AWS_DEFAULT_REGION
+
+    Note: This function is intended for testing purposes only, and it should not be used in production.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
+        s3_config = yaml.safe_load(f)
+        os.environ.update(s3_config["s3"])
 
 
 @pytest.fixture(scope="session", autouse=True)
