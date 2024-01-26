@@ -1,0 +1,12 @@
+{
+    "id": "Name",
+    "cadip:id": "Id",
+    "cadip:retransfer": "Retransfer",
+    "cadip:final_block": "FinalBlock",
+    "cadip:block_number": "BlockNumber",
+    "cadip:channel": "Channel",
+    "cadip:session_id": "SessionID",
+    "datetime": "PublicationDate",
+    "eviction_datetime": "EvictionDate",
+    "file:size": "Size"
+}

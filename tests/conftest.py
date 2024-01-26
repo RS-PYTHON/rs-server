@@ -159,7 +159,13 @@ def a_product_fixture():
             "Id": id_,
             "Name": name,
             "PublicationDate": at_date,
-            "Size": "dummy_value",
+            "Size": "size_test_value",
+            "SessionID": "session_id_test_value",
+            "Retransfer": False,
+            "FinalBlock": True,
+            "EvictionDate": "eviction_date_test_value",
+            "Channel": "Channel_test_value",
+            "BlockNumber": "BlockNumber_test_value",
         }
 
     return build

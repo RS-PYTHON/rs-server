@@ -1,4 +1,5 @@
 """This module is used to share common functions between apis endpoints"""
+import copy
 import os
 import threading
 import time
@@ -6,10 +7,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, Dict
 
 import sqlalchemy
-from eodag import setup_logging
+from eodag import EOProduct, setup_logging
 from fastapi import status
 from fastapi.responses import JSONResponse
 from rs_server_common.data_retrieval.provider import Provider
@@ -101,7 +102,7 @@ class EoDAGDownloadHandler:
     obs: str | None
 
 
-def write_search_products_to_db(db_handler_class, products) -> list:
+def write_search_products_to_db(db_handler_class, products) -> None:
     """
     Process a list of products by adding them to the database if not already present.
 
@@ -125,12 +126,9 @@ def write_search_products_to_db(db_handler_class, products) -> list:
     - 'get_db' is a context manager that provides a database session.
     - 'EDownloadStatus' is an enumeration representing download status.
     """
-    jsonify_state_products = []
     with contextmanager(get_db)() as db:
         try:
             for product in products:
-                jsonify_state_products.append((product.properties["id"], product.properties["Name"]))
-
                 if db_handler_class.get_if_exists(db, product.properties["Name"]) is not None:
                     logger.info(
                         "Product %s is already registered in database, skipping",
@@ -149,7 +147,6 @@ def write_search_products_to_db(db_handler_class, products) -> list:
         except sqlalchemy.exc.OperationalError:
             logger.error("Failed to connect with DB during listing procedure")
             raise
-    return jsonify_state_products
 
 
 def update_db(
@@ -185,15 +182,6 @@ def update_db(
 
     # If all attemps failed, raise the last Exception
     raise last_exception
-
-
-def prepare_products(db_handler, products) -> list:
-    """Function used to write EOProducts to db and serialize them to JSON content."""
-    try:
-        output = write_search_products_to_db(db_handler, products)
-    except Exception:  # pylint: disable=broad-exception-caught
-        return []
-    return output
 
 
 def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[str], Provider], **kwargs):
@@ -312,3 +300,40 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
     # Try n times to update the status to DONE in the database
     update_db(db, db_product, EDownloadStatus.DONE)
     logger.debug("Download finished succesfully for %s", db_product.name)
+
+
+def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: dict):
+    """This function is used to map odata values to a given STAC template"""
+    if not all(item in feature_template.keys() for item in ["properties", "id", "assets"]):
+        raise ValueError("Invalid stac feature template")
+    for stac_key, eodag_key in odata_stac_mapper.items():
+        if eodag_key in odata_dict:
+            if stac_key in feature_template["properties"]:
+                feature_template["properties"][stac_key] = odata_dict[eodag_key]
+            elif stac_key == "Id":  # eodag only works with Id, STAC requires id !!!
+                feature_template["id"] = odata_dict[eodag_key]
+            elif stac_key == "file:size":
+                feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
+    return feature_template
+
+
+def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
+    """This function is creating key:value pairs from an EOProduct properties"""
+    return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
+
+
+def create_stac_collection(products, feature_template, stac_mapper):
+    """This function create a STAC feature for each EOProduct based on a given template"""
+    stac_template: Dict[Any, Any] = {
+        "type": "FeatureCollection",
+        "numberMatched": 0,
+        "numberReturned": 0,
+        "features": [],
+    }
+    for product in products:
+        product_data = extract_eo_product(product, stac_mapper)
+        feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
+        stac_template["numberMatched"] += 1
+        stac_template["numberReturned"] += 1
+        stac_template["features"].append(feature_tmp)
+    return stac_template

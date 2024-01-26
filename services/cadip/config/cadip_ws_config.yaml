@@ -18,6 +18,34 @@ CADIP:
         id:
             - null
             - '$.Id'
+        Name:
+            - null
+            - '$.Name'
+        SessionID:
+            - null
+            - '$.SessionID'
+        Channel:
+            - null
+            - '$.Channel'
+        BlockNumber:
+            - null
+            - '$.BlockNumber'
+        FinalBlock:
+            - null
+            - '$.FinalBlock'
+        PublicationDate:
+            - null
+            - '$.PublicationDate'
+        EvictionDate:
+            - null
+            - '$.EvictionDate'
+        Size:
+            - null
+            - '$.Size'
+        Retransfer:
+            - null
+            - '$.Retransfer'
+        # Eodag Specific map
         startTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
@@ -25,12 +53,6 @@ CADIP:
             - null
             - '$.PublicationDate'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
-        Name:
-            - null
-            - '$.Name'
-        size:
-            - null
-            - '$.Size'
         downloadLink: 'http://127.0.0.1:5000/Files({id})/$value'
         title: '$.Name'
 
