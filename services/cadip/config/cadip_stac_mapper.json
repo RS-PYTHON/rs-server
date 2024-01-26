@@ -1,6 +1,6 @@
 {
     "id": "Name",
-    "cadip:id": "Id",
+    "cadip:id": "id",
     "cadip:retransfer": "Retransfer",
     "cadip:final_block": "FinalBlock",
     "cadip:block_number": "BlockNumber",

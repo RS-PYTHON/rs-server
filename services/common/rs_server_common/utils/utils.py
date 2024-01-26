@@ -310,7 +310,7 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
         if eodag_key in odata_dict:
             if stac_key in feature_template["properties"]:
                 feature_template["properties"][stac_key] = odata_dict[eodag_key]
-            elif stac_key == "Id":  # eodag only works with Id, STAC requires id !!!
+            elif stac_key == "id":
                 feature_template["id"] = odata_dict[eodag_key]
             elif stac_key == "file:size":
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
