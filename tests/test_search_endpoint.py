@@ -20,7 +20,7 @@ from rs_server_common.db.models.download_status import EDownloadStatus
     "endpoint, db_handler, expected_feature",
     [
         (
-            "/cadip/CADIP/cadu/search?interval=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
+            "/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             CaduDownloadStatus,
             {
                 "stac_version": "1.0.0",
@@ -43,7 +43,7 @@ from rs_server_common.db.models.download_status import EDownloadStatus
             },
         ),
         (
-            "/adgs/aux/search?interval=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
+            "/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             AdgsDownloadStatus,
             {
                 "stac_version": "1.0.0",
@@ -134,7 +134,7 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
         status=200,
     )
     # Get all products from 2023 to 2024, this request should result in a empty list since there are no matches
-    test_endpoint = f"{endpoint}?interval={start}/{stop}&station={station}"
+    test_endpoint = f"{endpoint}?datetime={start}/{stop}&station={station}"
     with contextmanager(get_db)():
         # convert output to python dict
         data = client.get(test_endpoint).json()
@@ -170,11 +170,11 @@ def test_invalid_endpoint_param_missing_start_stop(client, endpoint, start_date,
         None
     """
     # Test an endpoint with missing stop date, should raise 422, unprocessable
-    unprocessable_endpoint = f"{endpoint}?interval={start_date}"
+    unprocessable_endpoint = f"{endpoint}?datetime={start_date}"
     response = client.get(unprocessable_endpoint)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     # Test an endpoint with an incorrect format for start / stop date, should raise 400 bad request
-    search_endpoint = f"{endpoint}?interval={start_date}/{stop_date}"
+    search_endpoint = f"{endpoint}?datetime={start_date}/{stop_date}"
     response = client.get(search_endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -189,7 +189,7 @@ def test_invalid_endpoint_param_station(client):
     """
     # Test with and inccorect station name, this should result in a 400 bad request response.
     station = "incorrect_station"
-    endpoint = f"/cadip/{station}/cadu/search?interval=2023-01-01T12:00:00Z/2024-12-30T12:00:00Z"
+    endpoint = f"/cadip/{station}/cadu/search?datetime=2023-01-01T12:00:00Z/2024-12-30T12:00:00Z"
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -228,7 +228,7 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
         "rs_server_cadip.api.cadu_search.init_cadip_provider",
         side_effect=CreateProviderFailed("Invalid station"),
     )
-    test_endpoint = f"{endpoint}?interval={start}/{stop}"
+    test_endpoint = f"{endpoint}?datetime={start}/{stop}"
     # Check that request status is 400
     data = client.get(test_endpoint)
     assert data.status_code == 400

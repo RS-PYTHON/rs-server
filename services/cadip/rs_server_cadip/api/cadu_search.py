@@ -28,17 +28,15 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
-async def list_cadu_handler(station: str, interval: str):
+async def list_cadu_handler(station: str, datetime: str):
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Parameters
     ----------
     station : str
         Identifier for the CADIP station (MTI, SGS, MPU, INU, etc).
-    start_date : str, optional
-        Start date for time series filter (format: "YYYY-MM-DDThh:mm:sssZ").
-    stop_date : str, optional
-        Stop date for time series filter (format: "YYYY-MM-DDThh:mm:sssZ").
+    datetime : str
+        Start date and stop date for time series filter (format: "YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ss").
 
     Returns
     -------
@@ -50,7 +48,7 @@ async def list_cadu_handler(station: str, interval: str):
     Example
     -------
     - Request:
-        GET /cadip/station123/cadu/search?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
+        GET /cadip/station123/cadu/search?datetime="1999-01-01T12:00:00.000Z/2033-02-20T12:00:00.000Z"
     - Response:
         {
             "station123": [
@@ -66,7 +64,7 @@ async def list_cadu_handler(station: str, interval: str):
     - The response includes a JSON representation of the list of products for the specified station.
     - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
-    start_date, stop_date, err_code, err_text = validate_inputs_format(interval)
+    start_date, stop_date, err_code, err_text = validate_inputs_format(datetime)
     if err_code and err_text:
         return JSONResponse(status_code=err_code, content=err_text)
 

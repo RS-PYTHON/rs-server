@@ -23,15 +23,14 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 @router.get("/adgs/aux/search")
-async def search_aux_handler(interval: str):
+async def search_aux_handler(datetime: str):
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
 
     This function validates the input 'interval' format, performs a search for products using the ADGS provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
 
     Args:
-        interval (str): A string representing the time interval
-        (e.g., "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z").
+        datetime (str): A string representing the time interval (e.g., "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z").
 
     Returns:
         JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
@@ -51,7 +50,7 @@ async def search_aux_handler(interval: str):
 
     """
 
-    start_date, stop_date, err_code, err_text = validate_inputs_format(interval)
+    start_date, stop_date, err_code, err_text = validate_inputs_format(datetime)
     if err_code and err_text:
         return JSONResponse(status_code=err_code, content=err_text)
 
