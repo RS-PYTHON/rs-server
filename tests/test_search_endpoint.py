@@ -280,5 +280,14 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
             db_handler.get(db, name="S2L1C.raw")
             assert False
         data = client.get(endpoint).json()
-        # check that request returned more than 1 element
+        # check features number, and numberMatched / numberReturned
         assert len(data["features"]) == limit
+        assert data['numberMatched'] == limit
+        assert data['numberReturned'] == limit
+        # Check negative, should raise 422
+        limit = 0
+        endpoint = f"{endpoint}&limit={limit}"
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        limit = -5
+        endpoint = f"{endpoint}&limit={limit}"
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

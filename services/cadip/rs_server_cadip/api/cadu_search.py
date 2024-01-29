@@ -69,7 +69,8 @@ async def list_cadu_handler(station: str, datetime: str, limit: int = 1000):  # 
     start_date, stop_date, err_code, err_text = validate_inputs_format(datetime)
     if err_code and err_text:
         return JSONResponse(status_code=err_code, content=err_text)
-
+    if limit < 1:
+        return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
         products = init_cadip_provider(station).search(TimeRange(start_date, stop_date), items_per_page=limit)
