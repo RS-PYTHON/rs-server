@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, List, Tuple
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
@@ -55,7 +55,7 @@ def is_valid_date_format(date: str) -> bool:
         return False
 
 
-def validate_inputs_format(interval):
+def validate_inputs_format(interval: str) -> Tuple[datetime | None, datetime | None, int | None, str | None]:
     """
     Validate the format of the input time interval.
 
@@ -67,10 +67,10 @@ def validate_inputs_format(interval):
       "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
 
     Returns:
-        Tuple[str, str, Union[int, None], Union[str, None]]:
+        Tuple[datetime | None, datetime | None, int | None, str | None]:
             A tuple containing:
-            - start_date (str): The start date of the interval.
-            - stop_date (str): The stop date of the interval.
+            - start_date (datetime): The start date of the interval.
+            - stop_date (datetime): The stop date of the interval.
             - err_code (Optional[int]): An HTTP status code indicating an error (or None if no error).
             - err_text (Optional[str]): An error message (or None if no error).
 
@@ -89,7 +89,7 @@ def validate_inputs_format(interval):
         logger.error("Invalid start/stop in endpoint call!")
         return None, None, status.HTTP_400_BAD_REQUEST, "Invalid request, invalid start/stop format"
 
-    return start_date, stop_date, None, None
+    return datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date), None, None
 
 
 @dataclass
@@ -115,7 +115,7 @@ class EoDAGDownloadHandler:
     obs: str | None
 
 
-def write_search_products_to_db(db_handler_class, products) -> None:
+def write_search_products_to_db(db_handler_class: DownloadStatus, products: EOProduct) -> None:
     """
     Process a list of products by adding them to the database if not already present.
 
@@ -163,7 +163,7 @@ def write_search_products_to_db(db_handler_class, products) -> None:
 
 
 def update_db(
-    db,
+    db: sqlalchemy.orm.Session,
     db_product: DownloadStatus,
     estatus: EDownloadStatus,
     status_fail_message=None,
@@ -174,7 +174,7 @@ def update_db(
     It retries the update operation for a maximum of three times, waiting 1 second between attempts.
 
     Args:
-        db: The database session.
+        db (sqlalchemy.orm.Session): The database session.
         db_product (DownloadStatus): The product whose status needs to be updated.
         estatus (EDownloadStatus): The new download status.
         status_fail_message (Optional[str]): An optional message associated with the failure status.
@@ -339,7 +339,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
     logger.debug("Download finished succesfully for %s", db_product.name)
 
 
-def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: dict):
+def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: dict) -> dict:
     """This function is used to map odata values to a given STAC template"""
     if not all(item in feature_template.keys() for item in ["properties", "id", "assets"]):
         raise ValueError("Invalid stac feature template")
@@ -359,7 +359,7 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
 
 
-def create_stac_collection(products, feature_template, stac_mapper):
+def create_stac_collection(products: List[EOProduct], feature_template: dict, stac_mapper: dict) -> dict:
     """This function create a STAC feature for each EOProduct based on a given template"""
     stac_template: Dict[Any, Any] = {
         "type": "FeatureCollection",

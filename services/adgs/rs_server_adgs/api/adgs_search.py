@@ -1,7 +1,6 @@
 """Docstring will be here."""
 import json
 import os.path as osp
-from datetime import datetime
 from pathlib import Path
 
 import sqlalchemy
@@ -57,7 +56,7 @@ async def search_aux_handler(interval: str):
         return JSONResponse(status_code=err_code, content=err_text)
 
     try:
-        time_range = TimeRange(datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date))
+        time_range = TimeRange(start_date, stop_date)
         products = init_adgs_provider("ADGS").search(time_range)
         write_search_products_to_db(AdgsDownloadStatus, products)
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"

@@ -17,19 +17,53 @@ from rs_server_common.db.models.download_status import EDownloadStatus
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize(
-    "endpoint, db_handler",
+    "endpoint, db_handler, expected_feature",
     [
         (
             "/cadip/CADIP/cadu/search?interval=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             CaduDownloadStatus,
+            {
+                "stac_version": "1.0.0",
+                "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+                "type": "Feature",
+                "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+                "geometry": "null",
+                "properties": {
+                    "datetime": "2019-02-16T12:00:00.000Z",
+                    "eviction_datetime": "eviction_date_test_value",
+                    "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+                    "cadip:retransfer": False,
+                    "cadip:final_block": True,
+                    "cadip:block_number": "BlockNumber_test_value",
+                    "cadip:channel": "Channel_test_value",
+                    "cadip:session_id": "session_id_test_value",
+                },
+                "links": [],
+                "assets": {"file": {"file:size": "size_test_value"}},
+            },
         ),
         (
             "/adgs/aux/search?interval=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             AdgsDownloadStatus,
+            {
+                "stac_version": "1.0.0",
+                "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+                "type": "Feature",
+                "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+                "geometry": None,
+                "properties": {
+                    "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+                    "datetime": "2019-02-16T12:00:00.000Z",
+                    "start_datetime": "ContentDate_Start_test_value",
+                    "end_datetime": "ContentDate_End_test_value",
+                },
+                "links": [],
+                "assets": {"file": {"file:size": "ContentLength_test_value"}},
+            },
         ),
     ],
 )
-def test_valid_endpoint_request_list(expected_products, client, endpoint, db_handler):
+def test_valid_endpoint_request_list(expected_products, client, endpoint, db_handler, expected_feature):
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
@@ -63,6 +97,7 @@ def test_valid_endpoint_request_list(expected_products, client, endpoint, db_han
         assert any("some_id_2" in product["properties"].values() for product in data["features"])
         assert any("some_id_3" in product["properties"].values() for product in data["features"])
         assert db_handler.get(db, name="S2L1C.raw").status == EDownloadStatus.NOT_STARTED
+        assert data["features"][0] == expected_feature
 
 
 @pytest.mark.unit

@@ -6,7 +6,6 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import os.path as osp
 import traceback
-from datetime import datetime
 from pathlib import Path
 
 import sqlalchemy
@@ -73,9 +72,7 @@ async def list_cadu_handler(station: str, interval: str):
 
     # Init dataretriever / get products / return
     try:
-        products = init_cadip_provider(station).search(
-            TimeRange(datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date)),
-        )
+        products = init_cadip_provider(station).search(TimeRange(start_date, stop_date))
         write_search_products_to_db(CaduDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
