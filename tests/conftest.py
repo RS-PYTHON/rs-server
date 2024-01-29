@@ -166,6 +166,11 @@ def a_product_fixture():
             "EvictionDate": "eviction_date_test_value",
             "Channel": "Channel_test_value",
             "BlockNumber": "BlockNumber_test_value",
+            "ContentDate": {
+                "Start": "ContentDate_Start_test_value",
+                "End": "ContentDate_End_test_value",
+            },
+            "ContentLength": "ContentLength_test_value",
         }
 
     return build

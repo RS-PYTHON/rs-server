@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import pytest
 import responses
 import sqlalchemy
-from fastapi import status
+from fastapi import HTTPException, status
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
@@ -17,21 +17,19 @@ from rs_server_common.db.models.download_status import EDownloadStatus
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize(
-    "station, endpoint, db_handler",
+    "endpoint, db_handler",
     [
         (
-            "CADIP",
-            "/cadip/CADIP/cadu/search?start_date=2014-01-01T12:00:00.000Z&stop_date=2023-12-30T12:00:00.000Z",
+            "/cadip/CADIP/cadu/search?interval=2014-01-01T12:00:00.000Z/2023-12-30T12:00:00.000Z",
             CaduDownloadStatus,
         ),
         (
-            "AUX",
-            "/adgs/aux/search?start_date=2014-01-01T12:00:00.000Z&stop_date=2023-12-30T12:00:00.000Z",
+            "/adgs/aux/search?interval=2014-01-01T12:00:00.000Z/2023-12-30T12:00:00.000Z",
             AdgsDownloadStatus,
         ),
     ],
 )
-def test_valid_endpoint_request_list(expected_products, client, station, endpoint, db_handler):
+def test_valid_endpoint_request_list(expected_products, client, endpoint, db_handler):
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
@@ -47,22 +45,23 @@ def test_valid_endpoint_request_list(expected_products, client, station, endpoin
     )
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5001/Products?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
+        'http://127.0.0.1:5000/Products?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
         '2023-12-30T12:00:00.000Z"',
         json={"responses": expected_products},
         status=200,
     )
     # Get all products between 2014 - 2023 from "CADIP" and "ADGS" station
     with contextmanager(get_db)() as db:
-        # TODO, query and test db status
-        # send request and convert output to python dict
+        with pytest.raises(HTTPException):
+            # Check that product is not in database, this should raise HTTPException
+            db_handler.get(db, name="S2L1C.raw")
+            assert False
         data = client.get(endpoint).json()
-
         # check that request returned more than 1 element
-        assert len(data[station]) == len(expected_products)
+        assert len(data["features"]) == len(expected_products)
         # Check if ids and names are matching with given parameters
-        assert any("some_id_2" in product for product in data[station])
-        assert any("some_id_3" in product for product in data[station])
+        assert any("some_id_2" in product["properties"].values() for product in data["features"])
+        assert any("some_id_3" in product["properties"].values() for product in data["features"])
         assert db_handler.get(db, name="S2L1C.raw").status == EDownloadStatus.NOT_STARTED
 
 
@@ -94,18 +93,19 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
     adgs_json_resp: dict = {"responses": []}
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5001/Products?$filter="PublicationDate gt 2023-01-01T12:00:00.000Z and PublicationDate lt '
+        'http://127.0.0.1:5000/Products?$filter="PublicationDate gt 2023-01-01T12:00:00.000Z and PublicationDate lt '
         '2024-12-30T12:00:00.000Z"',
         json=adgs_json_resp,
         status=200,
     )
     # Get all products from 2023 to 2024, this request should result in a empty list since there are no matches
-    test_endpoint = f"{endpoint}?start_date={start}&stop_date={stop}"
+    test_endpoint = f"{endpoint}?interval={start}/{stop}&station={station}"
     with contextmanager(get_db)():
         # convert output to python dict
         data = client.get(test_endpoint).json()
+        print(data)
         # check that request returned no elements
-        assert len(data[station]) == 0
+        assert len(data["features"]) == 0
 
 
 @pytest.mark.unit
@@ -135,11 +135,11 @@ def test_invalid_endpoint_param_missing_start_stop(client, endpoint, start_date,
         None
     """
     # Test an endpoint with missing stop date, should raise 422, unprocessable
-    unprocessable_endpoint = f"{endpoint}?start_date={start_date}"
+    unprocessable_endpoint = f"{endpoint}?interval={start_date}"
     response = client.get(unprocessable_endpoint)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     # Test an endpoint with an incorrect format for start / stop date, should raise 400 bad request
-    search_endpoint = f"{endpoint}?start_date={start_date}&stop_date={stop_date}"
+    search_endpoint = f"{endpoint}?interval={start_date}/{stop_date}"
     response = client.get(search_endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -154,7 +154,7 @@ def test_invalid_endpoint_param_station(client):
     """
     # Test with and inccorect station name, this should result in a 400 bad request response.
     station = "incorrect_station"
-    endpoint = f"/cadip/{station}/cadu/search?start_date=2023-01-01T12:00:00.000Z&stop_date=2024-12-30T12:00:00.000Z"
+    endpoint = f"/cadip/{station}/cadu/search?interval=2023-01-01T12:00:00.000Z/2024-12-30T12:00:00.000Z"
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -193,13 +193,13 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
         "rs_server_cadip.api.cadu_search.init_cadip_provider",
         side_effect=CreateProviderFailed("Invalid station"),
     )
-    test_endpoint = f"{endpoint}?start_date={start}&stop_date={stop}"
+    test_endpoint = f"{endpoint}?interval={start}/{stop}"
     # Check that request status is 400
     data = client.get(test_endpoint)
     assert data.status_code == 400
     # Mock a sql connection error
     mocker.patch(
-        "rs_server_common.utils.utils.prepare_products",
+        "rs_server_common.utils.utils.write_search_products_to_db",
         side_effect=sqlalchemy.exc.OperationalError,
     )
     # Check that request status is 400

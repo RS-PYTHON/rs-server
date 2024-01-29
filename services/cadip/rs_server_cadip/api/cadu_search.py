@@ -29,7 +29,7 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
-async def list_cadu_handler(station: str, start_date: str, stop_date: str):
+async def list_cadu_handler(station: str, interval: str):
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Parameters
@@ -67,6 +67,13 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     - The response includes a JSON representation of the list of products for the specified station.
     - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
+    try:
+        start_date, stop_date = interval.split("/")
+    except ValueError:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content="Missing start/stop",
+        )
     is_valid, exception = validate_inputs_format(start_date, stop_date)
     if not is_valid:
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Invalid start/stop format, {exception}")

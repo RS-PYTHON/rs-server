@@ -11,13 +11,28 @@ ADGS:
 
   search:
     type: ODataV4Search
-    api_endpoint: 'http://127.0.0.1:5001/Products'
+    api_endpoint: 'http://127.0.0.1:5000/Products'
     need_auth: true
     results_entry: responses
     metadata_mapping:
         id:
             - null
             - '$.Id'
+        Name:
+          - null
+          - '$.Name'
+        ContentLength:
+          - null
+          - '$.ContentLength'
+        PublicationDate:
+          - null
+          - '$.PublicationDate'
+        Start:
+          - null
+          - '$.ContentDate.Start'
+        End:
+          - null
+          - '$.ContentDate.End'
         startTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
@@ -25,13 +40,7 @@ ADGS:
             - null
             - '$.PublicationDate'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
-        Name:
-            - null
-            - '$.Name'
-        size:
-            - null
-            - '$.Size'
-        downloadLink: 'http://127.0.0.1:5001/Products({id})/$value'
+        downloadLink: 'http://127.0.0.1:5000/Products({id})/$value'
         title: '$.Name'
 
     free_text_search_operations:
@@ -50,7 +59,7 @@ ADGS:
 
   download:
     type: HTTPDownload
-    base_uri: 'https://127.0.0.1:5001/Products'
+    base_uri: 'https://127.0.0.1:5000/Products'
     metadata_mapping:
         uid: '$.Id'
-        downloadLink: 'http://127.0.0.1:5001/Products({uid})/$value'
+        downloadLink: 'http://127.0.0.1:5000/Products({uid})/$value'
