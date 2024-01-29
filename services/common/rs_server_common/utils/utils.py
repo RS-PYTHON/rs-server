@@ -12,7 +12,6 @@ from typing import Any, Callable, Dict
 import sqlalchemy
 from eodag import EOProduct, setup_logging
 from fastapi import status
-from fastapi.responses import JSONResponse
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -50,33 +49,47 @@ def is_valid_date_format(date: str) -> bool:
     False
     """
     try:
-        datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")
+        datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
         return True
     except ValueError:
         return False
 
 
-def validate_inputs_format(start_date, stop_date):
+def validate_inputs_format(interval):
     """
-    Validate the date format of start_date and stop_date.
+    Validate the format of the input time interval.
 
-    Parameters:
-    - start_date (str): The start date to be validated.
-    - stop_date (str): The stop date to be validated.
+    This function checks whether the input interval has a valid format (start_date/stop_date) and
+    whether the start and stop dates are in a valid ISO 8601 format.
+
+    Attributes:
+    - interval (str): The time interval to be validated, with the following format:
+      "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
 
     Returns:
-    tuple[bool, JSONResponse]: A tuple containing a boolean indicating the validity of the date format
-    and a JSONResponse instance. If the date format is invalid, the boolean is False, and the JSONResponse
-    contains a 400 Bad Request response with an appropriate error message. If the date format is valid,
-    the boolean is True, and the JSONResponse is None.
+        Tuple[str, str, Union[int, None], Union[str, None]]:
+            A tuple containing:
+            - start_date (str): The start date of the interval.
+            - stop_date (str): The stop date of the interval.
+            - err_code (Optional[int]): An HTTP status code indicating an error (or None if no error).
+            - err_text (Optional[str]): An error message (or None if no error).
+
+    Note:
+        - The input interval should be in the format "start_date/stop_date"
+        (e.g., "2022-01-01T00:00:00Z/2022-01-02T00:00:00Z").
+        - This function checks for missing start/stop and validates the ISO 8601 format of start and stop dates.
+        - If there is an error, err_code and err_text provide information about the issue.
     """
+
+    try:
+        start_date, stop_date = interval.split("/")
+    except ValueError:
+        return None, None, status.HTTP_422_UNPROCESSABLE_ENTITY, "Missing start/stop"
     if (not is_valid_date_format(start_date)) or (not is_valid_date_format(stop_date)):
         logger.error("Invalid start/stop in endpoint call!")
-        return False, JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content="Invalid request, invalid start/stop format",
-        )
-    return True, None
+        return None, None, status.HTTP_400_BAD_REQUEST, "Invalid request, invalid start/stop format"
+
+    return start_date, stop_date, None, None
 
 
 @dataclass
@@ -155,8 +168,32 @@ def update_db(
     estatus: EDownloadStatus,
     status_fail_message=None,
 ):
-    """Update the database with the status of a product."""
+    """Update the download status of a product in the database.
 
+    This function attempts to update the download status of a product in the database.
+    It retries the update operation for a maximum of three times, waiting 1 second between attempts.
+
+    Args:
+        db: The database session.
+        db_product (DownloadStatus): The product whose status needs to be updated.
+        estatus (EDownloadStatus): The new download status.
+        status_fail_message (Optional[str]): An optional message associated with the failure status.
+
+    Returns:
+        None
+
+    Raises:
+        sqlalchemy.exc.OperationalError: If the database update operation fails after multiple attempts.
+
+    Example:
+        >>> update_db(db_session, product_instance, EDownloadStatus.DONE)
+
+    Note:
+        - This function is designed to update the download status in the database.
+        - It retries the update operation for a maximum of three times.
+        - If the update fails, an exception is raised, indicating an issue with the database.
+
+    """
     # Try n times to update the status.
     # Don't do it for NOT_STARTED and IN_PROGRESS (call directly db_product.not_started
     # or db_product.in_progress) because it will anyway be overwritten later by DONE or FAILED.

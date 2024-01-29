@@ -67,21 +67,15 @@ async def list_cadu_handler(station: str, interval: str):
     - The response includes a JSON representation of the list of products for the specified station.
     - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
-    try:
-        start_date, stop_date = interval.split("/")
-    except ValueError:
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content="Missing start/stop",
-        )
-    is_valid, exception = validate_inputs_format(start_date, stop_date)
-    if not is_valid:
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Invalid start/stop format, {exception}")
+    start_date, stop_date, err_code, err_text = validate_inputs_format(interval)
+    if err_code and err_text:
+        return JSONResponse(status_code=err_code, content=err_text)
 
     # Init dataretriever / get products / return
     try:
-        time_range = TimeRange(datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date))
-        products = init_cadip_provider(station).search(time_range)
+        products = init_cadip_provider(station).search(
+            TimeRange(datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date)),
+        )
         write_search_products_to_db(CaduDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"

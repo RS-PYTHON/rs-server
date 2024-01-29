@@ -20,46 +20,48 @@ from rs_server_common.utils.utils import (
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=adgs_tags)
-CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
+ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 @router.get("/adgs/aux/search")
 async def search_aux_handler(interval: str):
+    """Endpoint to handle the search for products in the AUX station within a specified time interval.
+
+    This function validates the input 'interval' format, performs a search for products using the ADGS provider,
+    writes the search results to the database, and generates a STAC Feature Collection from the products.
+
+    Args:
+        interval (str): A string representing the time interval
+        (e.g., "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z").
+
+    Returns:
+        JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
+
+    Raises:
+        JSONResponse: If there is an error in validating the input interval format or connecting to the database.
+
+    Example:
+        >>> response = await search_aux_handler("2022-01-01T00:00:00/2022-01-02T00:00:00")
+        >>> print(response)
+        {"status_code": 200, "content": {"type": "FeatureCollection", "features": [...]}}
+
+    Note:
+        - The 'interval' parameter should be in ISO 8601 format.
+        - The function utilizes the ADGS provider for product search and EODAG for STAC Feature Collection creation.
+        - Errors during the process will result in appropriate HTTP status codes and error messages.
+
     """
-    Searches for AUX products within a specified date range.
 
-    This endpoint initiates a search for AUX products between the given start and stop dates.
-
-    @param start_date: The start date of the search range.
-    @param stop_date: The stop date of the search range.
-
-    - Validates the input date formats, and if invalid, returns an appropriate JSONResponse.
-    - Initializes the ADGS data retriever.
-    - Performs a search for products within the specified date range.
-    - Processes the retrieved products using 'prepare_products' function.
-    - Logs a success message if the listing and processing of products are successful.
-
-    @return: A JSONResponse with the search results. In case of errors:
-             - Returns a 400 Bad Request response if there is an issue creating the EODAG provider.
-             - Returns a 503 Service Unavailable response if there is an operational error connecting to the database.
-    """
-    try:
-        start_date, stop_date = interval.split("/")
-    except ValueError:
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content="Missing start/stop",
-        )
-    is_valid, exception = validate_inputs_format(start_date, stop_date)
-    if not is_valid:
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Invalid start/stop format, {exception}")
+    start_date, stop_date, err_code, err_text = validate_inputs_format(interval)
+    if err_code and err_text:
+        return JSONResponse(status_code=err_code, content=err_text)
 
     try:
         time_range = TimeRange(datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date))
         products = init_adgs_provider("ADGS").search(time_range)
         write_search_products_to_db(AdgsDownloadStatus, products)
-        feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
-        stac_mapper_path = CADIP_CONFIG / "adgs_stac_mapper.json"
+        feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
+        stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
         with (
             open(feature_template_path, encoding="utf-8") as template,
             open(stac_mapper_path, encoding="utf-8") as stac_map,

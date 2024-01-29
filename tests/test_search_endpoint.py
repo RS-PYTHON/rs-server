@@ -20,11 +20,11 @@ from rs_server_common.db.models.download_status import EDownloadStatus
     "endpoint, db_handler",
     [
         (
-            "/cadip/CADIP/cadu/search?interval=2014-01-01T12:00:00.000Z/2023-12-30T12:00:00.000Z",
+            "/cadip/CADIP/cadu/search?interval=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             CaduDownloadStatus,
         ),
         (
-            "/adgs/aux/search?interval=2014-01-01T12:00:00.000Z/2023-12-30T12:00:00.000Z",
+            "/adgs/aux/search?interval=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             AdgsDownloadStatus,
         ),
     ],
@@ -70,8 +70,8 @@ def test_valid_endpoint_request_list(expected_products, client, endpoint, db_han
 @pytest.mark.parametrize(
     "station, endpoint, start, stop",
     [
-        ("CADIP", "/cadip/CADIP/cadu/search", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z"),
-        ("AUX", "/adgs/aux/search", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z"),
+        ("CADIP", "/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
+        ("AUX", "/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
 def test_invalid_endpoint_request(client, station, endpoint, start, stop):
@@ -112,10 +112,10 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
 @pytest.mark.parametrize(
     "endpoint, start_date, stop_date",
     [
-        ("/cadip/CADIP/cadu/search", "2014-01-01", "2023-12-30T12:00:00.000Z"),
-        ("/cadip/CADIP/cadu/search", "2023-01-01T12:00:00.000Z", "2025-12"),
-        ("/adgs/aux/search", "2014-01-01", "2023-12-30T12:00:00.000Z"),
-        ("/adgs/aux/search", "2023-01-01T12:00:00.000Z", "2025-12"),
+        ("/cadip/CADIP/cadu/search", "2014-01-01", "2023-12-30T12:00:00Z"),
+        ("/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2025-12"),
+        ("/adgs/aux/search", "2014-01-01", "2023-12-30T12:00:00Z"),
+        ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2025-12"),
     ],
 )
 def test_invalid_endpoint_param_missing_start_stop(client, endpoint, start_date, stop_date):
@@ -154,7 +154,7 @@ def test_invalid_endpoint_param_station(client):
     """
     # Test with and inccorect station name, this should result in a 400 bad request response.
     station = "incorrect_station"
-    endpoint = f"/cadip/{station}/cadu/search?interval=2023-01-01T12:00:00.000Z/2024-12-30T12:00:00.000Z"
+    endpoint = f"/cadip/{station}/cadu/search?interval=2023-01-01T12:00:00Z/2024-12-30T12:00:00Z"
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -163,8 +163,8 @@ def test_invalid_endpoint_param_station(client):
 @pytest.mark.parametrize(
     "endpoint, start, stop",
     [
-        ("/cadip/CADIP/cadu/search", "2014-01-01T12:00:00.000Z", "2023-12-30T12:00:00.000Z"),
-        ("/adgs/aux/search", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z"),
+        ("/cadip/CADIP/cadu/search", "2014-01-01T12:00:00Z", "2023-12-30T12:00:00Z"),
+        ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
 def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop):
