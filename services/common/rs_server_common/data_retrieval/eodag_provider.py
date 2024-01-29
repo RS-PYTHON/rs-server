@@ -35,7 +35,7 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
-    def _specific_search(self, between: TimeRange) -> list[EOProduct]:
+    def _specific_search(self, between: TimeRange, **kwargs) -> list[EOProduct]:
         """
         Conducts a search for products within a specified time range.
 
@@ -67,6 +67,7 @@ class EodagProvider(Provider):
             end=str(between.end),
             provider=self.provider,
             raise_errors=True,
+            **kwargs,
         )
         return products
 

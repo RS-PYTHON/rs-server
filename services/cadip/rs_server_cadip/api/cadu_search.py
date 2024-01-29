@@ -28,7 +28,7 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
-async def list_cadu_handler(station: str, datetime: str):
+async def list_cadu_handler(station: str, datetime: str, limit: int = 1000):  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Parameters
@@ -37,6 +37,8 @@ async def list_cadu_handler(station: str, datetime: str):
         Identifier for the CADIP station (MTI, SGS, MPU, INU, etc).
     datetime : str
         Start date and stop date for time series filter (format: "YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ss").
+    limit : int
+        Maximum number of products to return.
 
     Returns
     -------
@@ -70,7 +72,7 @@ async def list_cadu_handler(station: str, datetime: str):
 
     # Init dataretriever / get products / return
     try:
-        products = init_cadip_provider(station).search(TimeRange(start_date, stop_date))
+        products = init_cadip_provider(station).search(TimeRange(start_date, stop_date), items_per_page=limit)
         write_search_products_to_db(CaduDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"

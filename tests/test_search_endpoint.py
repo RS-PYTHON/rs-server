@@ -73,14 +73,14 @@ def test_valid_endpoint_request_list(expected_products, client, endpoint, db_han
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
-        '2023-12-30T12:00:00.000Z"',
+        '2023-12-30T12:00:00.000Z"&$top=1000',
         json={"responses": expected_products},
         status=200,
     )
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Products?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
-        '2023-12-30T12:00:00.000Z"',
+        '2023-12-30T12:00:00.000Z"&$top=1000',
         json={"responses": expected_products},
         status=200,
     )
@@ -120,7 +120,7 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2023-01-01T12:00:00.000Z and PublicationDate lt '
-        '2024-12-30T12:00:00.000Z"',
+        '2024-12-30T12:00:00.000Z"&$top=1000',
         json=cadip_json_resp,
         status=200,
     )
@@ -129,7 +129,7 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Products?$filter="PublicationDate gt 2023-01-01T12:00:00.000Z and PublicationDate lt '
-        '2024-12-30T12:00:00.000Z"',
+        '2024-12-30T12:00:00.000Z"&$top=1000',
         json=adgs_json_resp,
         status=200,
     )
@@ -240,3 +240,45 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
     # Check that request status is 400
     data = client.get(test_endpoint)
     assert data.status_code == 400
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize(
+    "endpoint, db_handler, limit",
+    [
+        ("/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", CaduDownloadStatus, 3),
+        ("/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", AdgsDownloadStatus, 1),
+    ],
+)
+def test_valid_pagination_options(expected_products, client, endpoint, db_handler, limit):
+    """Test case for retrieving products from the CADIP station between 2014 and 2023.
+
+    This test sends a request to the CADIP station's endpoint for products within the specified date range.
+    It checks if the response contains more than one element and verifies that the IDs and names match
+    with the expected parameters.
+    """
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
+        '2023-12-30T12:00:00.000Z"&$top=3',
+        json={"responses": expected_products[:limit]},
+        status=200,
+    )
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Products?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
+        '2023-12-30T12:00:00.000Z"&$top=1',
+        json={"responses": expected_products[:limit]},
+        status=200,
+    )
+    # Get all products between 2014 - 2023 from "CADIP" and "ADGS" station
+    endpoint = f"{endpoint}&limit={limit}"
+    with contextmanager(get_db)() as db:
+        with pytest.raises(HTTPException):
+            # Check that product is not in database, this should raise HTTPException
+            db_handler.get(db, name="S2L1C.raw")
+            assert False
+        data = client.get(endpoint).json()
+        # check that request returned more than 1 element
+        assert len(data["features"]) == limit

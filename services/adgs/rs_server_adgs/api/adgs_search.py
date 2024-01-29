@@ -23,7 +23,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 @router.get("/adgs/aux/search")
-async def search_aux_handler(datetime: str):
+async def search_aux_handler(datetime: str, limit: int = 1000):
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
 
     This function validates the input 'interval' format, performs a search for products using the ADGS provider,
@@ -31,6 +31,7 @@ async def search_aux_handler(datetime: str):
 
     Args:
         datetime (str): A string representing the time interval (e.g., "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z").
+        limit (int): Maximum number of products to return.
 
     Returns:
         JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
@@ -56,7 +57,7 @@ async def search_aux_handler(datetime: str):
 
     try:
         time_range = TimeRange(start_date, stop_date)
-        products = init_adgs_provider("ADGS").search(time_range)
+        products = init_adgs_provider("ADGS").search(time_range, items_per_page=limit)
         write_search_products_to_db(AdgsDownloadStatus, products)
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
