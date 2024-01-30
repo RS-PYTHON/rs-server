@@ -273,21 +273,21 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         status=200,
     )
     # Get all products between 2014 - 2023 from "CADIP" and "ADGS" station
-    endpoint = f"{endpoint}&limit={limit}"
     with contextmanager(get_db)() as db:
         with pytest.raises(HTTPException):
             # Check that product is not in database, this should raise HTTPException
             db_handler.get(db, name="S2L1C.raw")
             assert False
-        data = client.get(endpoint).json()
+        test_endpoint = f"{endpoint}&limit={limit}"
+        data = client.get(test_endpoint).json()
         # check features number, and numberMatched / numberReturned
         assert len(data["features"]) == limit
-        assert data['numberMatched'] == limit
-        assert data['numberReturned'] == limit
+        assert data["numberMatched"] == limit
+        assert data["numberReturned"] == limit
         # Check negative, should raise 422
         limit = 0
-        endpoint = f"{endpoint}&limit={limit}"
-        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        test_endpoint = f"{endpoint}&limit={limit}"
+        assert client.get(test_endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         limit = -5
-        endpoint = f"{endpoint}&limit={limit}"
-        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        test_endpoint = f"{endpoint}&limit={limit}"
+        assert client.get(test_endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

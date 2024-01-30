@@ -374,3 +374,17 @@ def create_stac_collection(products: List[EOProduct], feature_template: dict, st
         stac_template["numberReturned"] += 1
         stac_template["features"].append(feature_tmp)
     return stac_template
+
+
+def sort_feature_collection(feature_collection: dict, sortby: str = "+datetime") -> dict:
+    """This function sorts a STAC feature collection based on a given criteria"""
+    # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
+    order = "+" if sortby[0] not in ["+", "-"] else sortby[0]
+    if len(feature_collection["features"]) and hasattr(feature_collection["features"][0], "properties"):
+        by = "datetime" if sortby[:1] not in feature_collection["features"][0]["properties"].keys() else sortby[:1]
+        feature_collection["features"] = sorted(
+            feature_collection["features"],
+            key=lambda feature: feature["properties"][by],
+            reverse=order == "-",
+        )
+    return feature_collection

@@ -18,6 +18,7 @@ from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeR
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     create_stac_collection,
+    sort_feature_collection,
     validate_inputs_format,
     write_search_products_to_db,
 )
@@ -28,7 +29,12 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
-async def list_cadu_handler(station: str, datetime: str, limit: int = 1000):  # pylint: disable=too-many-locals
+async def list_cadu_handler(
+    station: str,
+    datetime: str,
+    limit: int = 1000,
+    sortby: str = "+datetime",
+):  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Parameters
@@ -83,9 +89,12 @@ async def list_cadu_handler(station: str, datetime: str, limit: int = 1000):  # 
         ):
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
-            stac_feature_collection = create_stac_collection(products, feature_template, stac_mapper)
+            cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from cadu station")
-        return JSONResponse(status_code=status.HTTP_200_OK, content=stac_feature_collection)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=sort_feature_collection(cadip_item_collection, sortby),
+        )
 
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")

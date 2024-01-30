@@ -13,6 +13,7 @@ from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeR
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     create_stac_collection,
+    sort_feature_collection,
     validate_inputs_format,
     write_search_products_to_db,
 )
@@ -23,7 +24,11 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 @router.get("/adgs/aux/search")
-async def search_aux_handler(datetime: str, limit: int = 1000):
+async def search_aux_handler(
+    datetime: str,
+    limit: int = 1000,
+    sortby: str = "+datetime",
+):  # pylint: disable=too-many-locals
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
 
     This function validates the input 'interval' format, performs a search for products using the ADGS provider,
@@ -32,6 +37,7 @@ async def search_aux_handler(datetime: str, limit: int = 1000):
     Args:
         datetime (str): A string representing the time interval (e.g., "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z").
         limit (int): Maximum number of products to return.
+        sortby (str): Sorting criteria. +/-fieldName indicates ascending/descending order and field name.
 
     Returns:
         JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
@@ -69,9 +75,12 @@ async def search_aux_handler(datetime: str, limit: int = 1000):
         ):
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
-            stac_feature_collection = create_stac_collection(products, feature_template, stac_mapper)
+            adgs_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from AUX station")
-        return JSONResponse(status_code=status.HTTP_200_OK, content=stac_feature_collection)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=sort_feature_collection(adgs_item_collection, sortby),
+        )
     except CreateProviderFailed:
         logger.error("Failed to create EODAG provider!")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Bad station identifier")
