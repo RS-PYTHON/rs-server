@@ -27,7 +27,7 @@ and write them in the rs-server/dist/doc folder.
 From the root folder, run the following command :
 [source, bash, indent=0]
 ----
-poetry run sphinx-apidoc -o docs/doc/api/python/generated rs_server
+poetry run sphinx-apidoc -o docs/doc/api/python/generated services
 ----
 It generates rst files from the python doc-strings
 and write them in a generated folder (excluded of git conf).
