@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi.openapi.utils import get_openapi
 
-from rs_server_cadip.fastapi.cadip_app import app
+from tests.app import app
 
 
 def extract_openapi_specification(to_folder: Path) -> None:

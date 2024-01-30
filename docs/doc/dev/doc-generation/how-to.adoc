@@ -57,7 +57,7 @@ From the root folder, run the following command :
 
 [source, bash, indent=0]
 ----
-poetry run python -m rs_server.CADIP.openapi dist/doc/output/api/rest/
+poetry run python -m tests.openapi dist/doc/output/api/rest/
 ----
 
 The previous command uses FastAPI to extract the openapi specification of the rs-server CADIP service and write it on the expected folder.
