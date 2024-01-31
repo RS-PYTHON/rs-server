@@ -27,7 +27,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 async def search_aux_handler(
     datetime: str,
     limit: int = 1000,
-    sortby: str = "+datetime",
+    sortby: str = "+doNotSort",
 ):  # pylint: disable=too-many-locals
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
 
@@ -37,7 +37,8 @@ async def search_aux_handler(
     Args:
         datetime (str): A string representing the time interval (e.g., "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z").
         limit (int): Maximum number of products to return.
-        sortby (str): Sorting criteria. +/-fieldName indicates ascending/descending order and field name.
+        sortby (str): Sorting criteria. +/-fieldName indicates ascending/descending order and field name. Default no
+        sorting is applied.
 
     Returns:
         JSONResponse: A JSON response containing the STAC Feature Collection or an error message.

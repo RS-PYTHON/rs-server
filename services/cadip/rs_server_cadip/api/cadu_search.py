@@ -33,7 +33,7 @@ async def list_cadu_handler(
     station: str,
     datetime: str,
     limit: int = 1000,
-    sortby: str = "+datetime",
+    sortby: str = "+doNotSort",
 ):  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
@@ -45,6 +45,9 @@ async def list_cadu_handler(
         Start date and stop date for time series filter (format: "YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ss").
     limit : int
         Maximum number of products to return.
+    sortby : str
+        Sorting criteria. +/-fieldName indicates ascending/descending order and field name. Default no sorting is
+         applied.
 
     Returns
     -------
