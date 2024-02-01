@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, List, Tuple
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
-from fastapi import status
+from fastapi import HTTPException, status
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -55,7 +55,7 @@ def is_valid_date_format(date: str) -> bool:
         return False
 
 
-def validate_inputs_format(interval: str) -> Tuple[datetime | None, datetime | None, int | None, str | None]:
+def validate_inputs_format(interval: str) -> Tuple[datetime, datetime]:
     """
     Validate the format of the input time interval.
 
@@ -67,12 +67,10 @@ def validate_inputs_format(interval: str) -> Tuple[datetime | None, datetime | N
       "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
 
     Returns:
-        Tuple[datetime | None, datetime | None, int | None, str | None]:
+        Tuple[datetime, datetime]:
             A tuple containing:
             - start_date (datetime): The start date of the interval.
             - stop_date (datetime): The stop date of the interval.
-            - err_code (Optional[int]): An HTTP status code indicating an error (or None if no error).
-            - err_text (Optional[str]): An error message (or None if no error).
 
     Note:
         - The input interval should be in the format "start_date/stop_date"
@@ -83,13 +81,14 @@ def validate_inputs_format(interval: str) -> Tuple[datetime | None, datetime | N
 
     try:
         start_date, stop_date = interval.split("/")
-    except ValueError:
-        return None, None, status.HTTP_422_UNPROCESSABLE_ENTITY, "Missing start/stop"
+    except ValueError as exc:
+        logger.error("Missing start or stop in endpoint call!")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
     if (not is_valid_date_format(start_date)) or (not is_valid_date_format(stop_date)):
         logger.error("Invalid start/stop in endpoint call!")
-        return None, None, status.HTTP_400_BAD_REQUEST, "Invalid request, invalid start/stop format"
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
 
-    return datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date), None, None
+    return datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date)
 
 
 @dataclass
@@ -380,7 +379,7 @@ def sort_feature_collection(feature_collection: dict, sortby: str = "+datetime")
     """This function sorts a STAC feature collection based on a given criteria"""
     # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
     order = "+" if sortby[0] not in ["+", "-"] else sortby[0]
-    if len(feature_collection["features"]) and hasattr(feature_collection["features"][0], "properties"):
+    if len(feature_collection["features"]) and "properties" in feature_collection["features"][0]:
         by = "datetime" if sortby[:1] not in feature_collection["features"][0]["properties"].keys() else sortby[:1]
         feature_collection["features"] = sorted(
             feature_collection["features"],

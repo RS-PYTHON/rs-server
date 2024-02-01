@@ -27,7 +27,7 @@ from rs_server_common.db.models.download_status import EDownloadStatus
                 "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
                 "type": "Feature",
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-                "geometry": "null",
+                "geometry": None,
                 "properties": {
                     "datetime": "2019-02-16T12:00:00.000Z",
                     "eviction_datetime": "eviction_date_test_value",

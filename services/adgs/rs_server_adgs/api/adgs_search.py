@@ -58,9 +58,7 @@ async def search_aux_handler(
 
     """
 
-    start_date, stop_date, err_code, err_text = validate_inputs_format(datetime)
-    if err_code and err_text:
-        return JSONResponse(status_code=err_code, content=err_text)
+    start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
         return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Pagination cannot be less 0")
 
