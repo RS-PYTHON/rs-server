@@ -1,4 +1,4 @@
-"""Docstring to be added."""
+"""TODO Docstring to be added."""
 import ntpath
 import os
 import time
@@ -340,8 +340,6 @@ class S3StorageHandler:
         Returns:
             None
 
-        Raises:
-            None
         """
         time_cnt = 0.0
         while time_cnt < timeout:
@@ -581,15 +579,12 @@ class GetKeysFromS3Config:
     """S3 configuration for download
 
     Attributes:
-        s3_storage_handler (S3StorageHandler): An instance of S3StorageHandler for S3 interactions.
         s3_files (list): A list of S3 object keys.
         bucket (str): The S3 bucket name.
         local_prefix (str): The local prefix where files will be downloaded.
         overwrite (bool, optional): Flag indicating whether to overwrite existing files. Default is False.
         max_retries (int, optional): The maximum number of download retries. Default is DWN_S3FILE_RETRIES.
 
-    Methods:
-        None
     """
 
     s3_files: list
@@ -604,14 +599,11 @@ class PutFilesToS3Config:
     """Configuration for uploading files to S3.
 
     Attributes:
-        s3_storage_handler (S3StorageHandler): An instance of S3StorageHandler for S3 interactions.
         files (List): A list of local file paths to be uploaded.
         bucket (str): The S3 bucket name.
         s3_path (str): The S3 path where files will be uploaded.
         max_retries (int, optional): The maximum number of upload retries. Default is UP_S3FILE_RETRIES.
 
-    Methods:
-        None
     """
 
     files: list

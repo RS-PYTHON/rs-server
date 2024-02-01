@@ -30,23 +30,12 @@ DWN_THREAD_START_TIMEOUT = 5
 def is_valid_date_format(date: str) -> bool:
     """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS.sssZ".
 
-    Parameters
-    ----------
-    date : str
-        The string to be validated for the specified date format.
+    Args:
+        date (str): The string to be validated for the specified date format.
 
-    Returns
-    -------
-    bool
-        True if the input string adheres to the expected date format, otherwise False.
+    Returns:
+        bool: True if the input string adheres to the expected date format, otherwise False.
 
-    Example
-    -------
-    >>> is_valid_date_format("2023-01-01T12:00:00.000Z")
-    True
-
-    >>> is_valid_date_format("2023-01-01 12:00:00")
-    False
     """
     try:
         datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
@@ -62,9 +51,9 @@ def validate_inputs_format(interval: str) -> Tuple[datetime, datetime]:
     This function checks whether the input interval has a valid format (start_date/stop_date) and
     whether the start and stop dates are in a valid ISO 8601 format.
 
-    Attributes:
-    - interval (str): The time interval to be validated, with the following format:
-      "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
+    Args:
+        - interval (str): The time interval to be validated, with the following format:
+            "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
 
     Returns:
         Tuple[datetime, datetime]:
@@ -78,7 +67,6 @@ def validate_inputs_format(interval: str) -> Tuple[datetime, datetime]:
         - This function checks for missing start/stop and validates the ISO 8601 format of start and stop dates.
         - If there is an error, err_code and err_text provide information about the issue.
     """
-
     try:
         start_date, stop_date = interval.split("/")
     except ValueError as exc:
@@ -122,21 +110,21 @@ def write_search_products_to_db(db_handler_class: DownloadStatus, products: EOPr
     is already registered in the database. If the product is not in the database, it is added with
     its relevant details. The function collects a list of product IDs and names for further processing.
 
-    Parameters:
-    - products (List[Product]): A list of product objects to be processed.
-    - db_handler_class: The database handler class used for database operations.
+    Args:
+        - products (List[Product]): A list of product objects to be processed.
+        - db_handler_class: The database handler class used for database operations.
 
     Returns:
-    List[Tuple]: A list of tuples, each containing the 'id' and 'Name' properties of a product.
+        List[Tuple]: A list of tuples, each containing the 'id' and 'Name' properties of a product.
 
     Raises:
-    - sqlalchemy.exc.OperationalError: If there's an issue connecting to the database.
+        - sqlalchemy.exc.OperationalError: If there's an issue connecting to the database.
 
     Note:
-    - The function assumes that 'products' is a list of objects with a 'properties' attribute,
-      which is a dictionary containing keys 'id', 'Name', and 'startTimeFromAscendingNode'.
-    - 'get_db' is a context manager that provides a database session.
-    - 'EDownloadStatus' is an enumeration representing download status.
+        - The function assumes that 'products' is a list of objects with a 'properties' attribute,
+          which is a dictionary containing keys 'id', 'Name', and 'startTimeFromAscendingNode'.
+        - 'get_db' is a context manager that provides a database session.
+        - 'EDownloadStatus' is an enumeration representing download status.
     """
     with contextmanager(get_db)() as db:
         try:
@@ -230,11 +218,13 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
     Args:
         argument (EoDAGDownloadHandler): An instance of EoDAGDownloadHandler containing
          the arguments used in the downloading process
-    NOTE: The local and obs parameters are optionals:
-    - local (str | None): Local path where the product will be stored. If this
-        parameter is not given, the local path where the file is stored will be set to a temporary one
-    - obs (str | None): Path to S3 storage where the file will be uploaded, after a successfull download from CADIP
-        server. If this parameter is not given, the file will not be uploaded to the s3 storage.
+
+    Note:
+        The local and obs parameters are optionals:
+        - local (str | None): Local path where the product will be stored. If this
+            parameter is not given, the local path where the file is stored will be set to a temporary one
+        - obs (str | None): Path to S3 storage where the file will be uploaded, after a successfull download from CADIP
+            server. If this parameter is not given, the file will not be uploaded to the s3 storage.
 
     Returns:
         None

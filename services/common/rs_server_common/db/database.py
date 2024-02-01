@@ -32,6 +32,7 @@ class DatabaseSessionManager:
     multiprocessing_lock = multiprocessing.Lock()
 
     def __init__(self):
+        """Create a Database session configuration."""
         self._engine: Engine | None = None
         self._sessionmaker: sessionmaker | None = None
 

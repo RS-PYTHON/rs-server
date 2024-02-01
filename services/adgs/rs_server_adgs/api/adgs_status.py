@@ -16,7 +16,9 @@ def get_status(name: str, db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
 
-    :param str name: AUX name
-    :param Session db: database session
+    Args:
+        name (str): AUX name
+        db (Session): database session
+
     """
     return AdgsDownloadStatus.get(name=name, db=db)

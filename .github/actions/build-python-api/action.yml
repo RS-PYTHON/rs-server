@@ -6,9 +6,19 @@ runs:
   steps:
     - uses: ./.github/actions/poetry-install
 
-    - name: Generate Python API rst files from docstring
+    - name: Generate Python API rst files from docstring for common service
       run: |
-        poetry run sphinx-apidoc -o docs/doc/api/python/generated rs_server
+        poetry run sphinx-apidoc -o docs/doc/api/python/generated/common services/common/rs_server_common/
+      shell: bash
+
+    - name: Generate Python API rst files from docstring for cadip service
+      run: |
+        poetry run sphinx-apidoc -o docs/doc/api/python/generated/cadip services/cadip/rs_server_cadip/
+      shell: bash
+
+    - name: Generate Python API rst files from docstring for adgs service
+      run: |
+        poetry run sphinx-apidoc -o docs/doc/api/python/generated/adgs services/adgs/rs_server_adgs/
       shell: bash
 
     - name: Generate Python API html from rst files

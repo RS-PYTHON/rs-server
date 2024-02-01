@@ -1,0 +1,1 @@
+"""ADGS endpoints package."""

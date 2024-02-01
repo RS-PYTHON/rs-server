@@ -37,43 +37,24 @@ async def list_cadip_handler(
 ):  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
-    Parameters
-    ----------
-    station : str
-        Identifier for the CADIP station (MTI, SGS, MPU, INU, etc).
-    datetime : str
-        Start date and stop date for time series filter (format: "YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ss").
-    limit : int
-        Maximum number of products to return.
-    sortby : str
-        Sorting criteria. +/-fieldName indicates ascending/descending order and field name. Default no sorting is
-         applied.
+    Notes:
+        - If both start_date and stop_date are provided, products within the specified date range are retrieved.
+        - The response includes a JSON representation of the list of products for the specified station.
+        - In case of an invalid station identifier, a 400 Bad Request response is returned.
 
-    Returns
-    -------
-    JSONResponse
-        A JSON response containing the list of products (ID, Name) for the specified station.
-        If the station identifier is invalid, a 400 Bad Request response is returned.
-        If no products were found in the mentioned time range, output is an empty list.
+    Args:
+        station (str): Identifier for the CADIP station (MTI, SGS, MPU, INU, etc).
+        datetime (str): Start date and stop date for time series filter (format: "YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ss").
+        limit (int): Maximum number of products to return.
+        sortby (str): Sorting criteria. +/-fieldName indicates ascending/descending order and field name.
+            Default no sorting is applied.
 
-    Example
-    -------
-    - Request:
-        GET /cadip/station123/cadu/search?datetime="1999-01-01T12:00:00.000Z/2033-02-20T12:00:00.000Z"
-    - Response:
-        {
-            "station123": [
-                (1, 'Product A'),
-                (2, 'Product B'),
-                ...
-            ]
-        }
+    Returns:
+        JSONResponse
+            A JSON response containing the list of products (ID, Name) for the specified station.
+            If the station identifier is invalid, a 400 Bad Request response is returned.
+            If no products were found in the mentioned time range, output is an empty list.
 
-    Notes
-    -----
-    - If both start_date and stop_date are provided, products within the specified date range are retrieved.
-    - The response includes a JSON representation of the list of products for the specified station.
-    - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:

@@ -15,6 +15,7 @@ author = "CS Group Team"
 
 extensions = [
     "sphinx.ext.autodoc",  # for python api generation
+    "sphinx.ext.napoleon",  # google docstring format support
 ]
 
 templates_path = ["_templates"]

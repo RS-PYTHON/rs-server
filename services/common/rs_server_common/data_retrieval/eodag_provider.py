@@ -16,7 +16,9 @@ class EodagProvider(Provider):
     def __init__(self, config_file: Path, provider: str):
         """Create a EODAG provider.
 
-        :param config: the eodag configuration
+        Args:
+            config_file: the path to the eodag configuration file
+            provider: the name of the eodag provider
         """
         self.provider: str = provider
         self.client: EODataAccessGateway = self.init_eodag_client(config_file)
@@ -27,8 +29,11 @@ class EodagProvider(Provider):
 
         The EODAG client is initialized for the given provider.
 
-        :param config_file: the path to the eodag configuration file
-        :return: the initialized eodag client
+        Args:
+            config_file: the path to the eodag configuration file
+
+        Returns:
+             the initialized eodag client
         """
         try:
             return EODataAccessGateway(config_file.as_posix())
@@ -78,9 +83,14 @@ class EodagProvider(Provider):
         We build an EOProduct from the id and download location
         to be able to call EODAG for download.
 
-        :param product_id: the id of the product to download
-        :param to_file: the path where the product has to be download
-        :return: None
+
+        Args:
+            product_id: the id of the product to download
+            to_file: the path where the product has to be download
+
+        Returns:
+            None
+
         """
         product = self.create_eodag_product(product_id, to_file.name)
         # download_plugin = self.client._plugins_manager.get_download_plugin(product)
@@ -95,9 +105,13 @@ class EodagProvider(Provider):
         The download link is used by EODAG as http request url for download.
         The geometry is mandatory in an EO Product so we add the all earth as geometry.
 
-        :param product_id: the id of EO Product
-        :param filename: the name of the downloaded file
-        :return the initialized EO Product
+        Args:
+            product_id: the id of EO Product
+            filename: the name of the downloaded file
+
+        Returns:
+            the initialized EO Product
+
         """
         return EOProduct(
             self.provider,

@@ -15,7 +15,7 @@ class TimeRange:
     def duration(self) -> timedelta:
         """Duration of the timerange.
 
-        :return: duration of the timerange
+        Returns: duration of the timerange
         """
         return self.end - self.start
 
@@ -55,8 +55,12 @@ class Provider(ABC):
 
         The search result is a dictionary of products found indexed by id.
 
-        :param between: the search period
-        :return: the files found indexed by file id.
+        Args:
+            between: the search period
+
+        Returns:
+            the files found indexed by file id.
+
         """
         if between.duration() == timedelta(0):
             return []
@@ -70,15 +74,23 @@ class Provider(ABC):
 
         Specific search for products after common verification.
 
-        :param between: the search period
-        :return: the files found indexed by file id.
+        Args:
+            between: the search period
+
+        Returns:
+            the files found indexed by file id.
+
         """
 
     @abstractmethod
     def download(self, product_id: str, to_file: Path) -> None:
         """Download the given product to the given local path.
 
-        :param product_id: id of the product to download
-        :param to_file: path where the file should be downloaded
-        :return: None
+        Args:
+            product_id: id of the product to download
+            to_file: path where the file should be downloaded
+
+        Returns:
+            None
+
         """

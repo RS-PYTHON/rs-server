@@ -76,7 +76,7 @@ def download(
         db (Database): The database connection object.
 
     Returns:
-        dict: A dictionary indicating whether the download process has started.
+        download_status (dict): A dictionary indicating whether the download process has started.
 
     Raises:
         None
