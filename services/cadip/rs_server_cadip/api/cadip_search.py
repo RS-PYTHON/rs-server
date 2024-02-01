@@ -41,7 +41,7 @@ async def list_cadip_handler(
         - If both start_date and stop_date are provided, products within the specified date range are retrieved.
         - The response includes a JSON representation of the list of products for the specified station.
         - In case of an invalid station identifier, a 400 Bad Request response is returned.
-
+    \f
     Args:
         station (str): Identifier for the CADIP station (MTI, SGS, MPU, INU, etc).
         datetime (str): Start date and stop date for time series filter (format: "YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ss").

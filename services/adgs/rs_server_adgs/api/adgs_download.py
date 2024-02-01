@@ -55,7 +55,7 @@ def download(name: str, local: Optional[str] = None, obs: Optional[str] = None, 
     This endpoint triggers the download of an ADGS product identified by the given
     name of the file. It starts the download process in a separate thread
     using the start_eodag_download function and updates the product's status in the database.
-
+    \f
     Args:
         name (str): The name of the ADGS product.
         local (str, optional): The local path where the ADGS file will be downloaded.

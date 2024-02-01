@@ -34,6 +34,11 @@ async def search_aux_handler(
     This function validates the input 'interval' format, performs a search for products using the ADGS provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
 
+    Note:
+        - The 'interval' parameter should be in ISO 8601 format.
+        - The function utilizes the ADGS provider for product search and EODAG for STAC Feature Collection creation.
+        - Errors during the process will result in appropriate HTTP status codes and error messages.
+    \f
     Args:
         datetime (str): A string representing the time interval (e.g., "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z").
         limit (int): Maximum number of products to return.
@@ -43,21 +48,7 @@ async def search_aux_handler(
     Returns:
         JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
 
-    Raises:
-        JSONResponse: If there is an error in validating the input interval format or connecting to the database.
-
-    Example:
-        >>> response = await search_aux_handler("2022-01-01T00:00:00/2022-01-02T00:00:00")
-        >>> print(response)
-        {"status_code": 200, "content": {"type": "FeatureCollection", "features": [...]}}
-
-    Note:
-        - The 'interval' parameter should be in ISO 8601 format.
-        - The function utilizes the ADGS provider for product search and EODAG for STAC Feature Collection creation.
-        - Errors during the process will result in appropriate HTTP status codes and error messages.
-
     """
-
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
         return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Pagination cannot be less 0")

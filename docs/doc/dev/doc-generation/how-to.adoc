@@ -71,8 +71,13 @@ The documented REST API will be the one of the frontend at the end.
 
 . Verify the generated documentation
 
-The main page of the technical documentation is accessible
-http://localhost:63342/rs-server/dist/doc/output/index.html[locally].
+The technical documentation is generated in the folder "dist/doc/output/".
+The main page is the file "index.html" is this folder.
+It can be open in a web browser for example.
+
+NOTE: The REST API can't be opened like that since it needs to be served.
+You can open the REST API locally starting the rs-server and connecting to the /docs endpoint.
+
 You can verify the generated documentation before publishing it.
 
 Important elements to check :

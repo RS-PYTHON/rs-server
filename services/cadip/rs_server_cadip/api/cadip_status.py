@@ -15,7 +15,7 @@ router = APIRouter(tags=cadip_tags)
 def get_status(name: str, db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
-
+    \f
     Args:
         name (str): CADU name e.g. "DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw"
         db (Session): database session

@@ -15,7 +15,7 @@ router = APIRouter(tags=adgs_tags)
 def get_status(name: str, db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
-
+    \f
     Args:
         name (str): AUX name
         db (Session): database session

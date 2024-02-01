@@ -67,7 +67,7 @@ def download(
     This endpoint triggers the download of a CADU product identified by the given
     name of the file. It starts the download process in a separate thread
     using the start_eodag_download function and updates the product's status in the database.
-
+    \f
     Args:
         station (str): The EODAG station identifier.
         name (str): The name of the CADU product.
