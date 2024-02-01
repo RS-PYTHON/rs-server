@@ -3,40 +3,114 @@
 // TODO Main functionalities presentation
 
 [[cadu-search]]
-== CADU search
+== [.green]#CADU search#
 
-This endpoint retrieves a list of products from the CADU system for a specified station within a given time range.
+This endpoint retrieves a list of products from the CADU system for a specified station within a given time range and return a STAC compatible FeatureCollection response.
 
 === Endpoint
 `/cadip/{station}/cadu/search`
 
 === Parameters
-* `station` (str): Identifier for the CADIP station (e.g., MTI, SGS, MPU, INU, etc).
-* `start_date` (str, optional): Start date for time series filter (format: "YYYY-MM-DDThh:mm:sssZ").
-* `stop_date` (str, optional): Stop date for time series filter (format: "YYYY-MM-DDThh:mm:sssZ").
+* `station` (str): Identifier for the CADIP station [.green]#(e.g., MTI, SGS, MPU, INU, etc)#.
+* `datetime` (str): Interval of date for time series filter joined by a slash ('/'). (format: [.red]#"YYYY-MM-DDThh:mm:sssZ#*/*[.red]#YYYY-MM-DDThh:mm:sssZ"#).
+* `limit` (int, optional): Maximum number of products to return, default set to [.green]#1000#.
+* `sortby` (str, optional): Sorting criteria. +/-fieldName indicates ascending/descending order and field name
+[.green]#(e.g. sortby=+datetime)# Default no sorting is applied.
 
 === Example
 
 ==== Request
 [source,http]
 ----
-GET /cadip/station123/cadu/search?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
+GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=50&sortby=-datetime
 ----
+==== Return
+
+[source,json]
+{
+    "stac_version": "1.0.0",
+    "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+    "type": "Feature",
+    "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+    "geometry": null,
+    "properties": {
+        "datetime": "2019-02-16T12:00:00.000Z",
+        "eviction_datetime": "2019-12-16T12:00:00.000Z",
+        "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+        "cadip:retransfer": false,
+        "cadip:final_block": true,
+        "cadip:block_number": 1,
+        "cadip:channel": 2,
+        "cadip:session_id": "S1A_20170501121534062343",
+    },
+    "links": [],
+    "assets": {
+        "file": {
+            "file:size": 32553
+        }
+    },
+}
+
+[[adgs-search]]
+
+== [.green]#AUX Search#
+
+This endpoint handles the search for products in the AUX station within a specified time interval and return a STAC compatible FeatureCollection response.
+
+=== Endpoint
+`/adgs/aux/search`
+
+=== Parameters
+* `datetime` (str): Interval of date for time series filter joined by a slash ('/'). (format: [.red]#"YYYY-MM-DDThh:mm:sssZ#*/*[.red]#YYYY-MM-DDThh:mm:sssZ"#).
+* `limit` (int, optional): Maximum number of products to return, default set to [.green]#1000#.
+* `sortby` (str, optional): Sorting criteria. +/-fieldName indicates ascending/descending order and field name
+[.green]#(e.g. sortby=+datetime)# Default no sorting is applied.
+
+=== Example
+
+==== Request
+[source,http]
+----
+GET /adgs/aux/search?datetime=2018-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=10&sortby=+properties.adgs:id
+----
+==== Response
+
+[source,json]
+{
+    "stac_version": "1.0.0",
+    "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+    "type": "Feature",
+    "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+    "geometry": null,
+    "properties": {
+        "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+        "datetime": "2019-02-16T12:00:00.000Z",
+        "start_datetime": "2019-02-16T11:59:58.000Z",
+        "end_datetime": "2019-02-16T12:00:00.000Z",
+    },
+    "links": [],
+    "assets": {
+        "file": {
+            "file:size": 29301
+        }
+    }
+}
 
 [[cadu-download]]
-== CADU Download
+== [.green]#CADU Download#
 
-This endpoint initiates an asynchronous download process for a CADU product using EODAG.
+This endpoint initiates an asynchronous download process for a CADU product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.
 
 === Endpoint
 `/cadip/{station}/cadu`
 
 === Parameters
-* `station` (str): The EODAG station identifier.
-* `name` (str): The name of the CADU product.
+* `station` (str): The EODAG station identifier [.green]#(e.g., MTI, SGS, MPU, INU, etc)#.
+* `name` (str): The name of the CADU product to be downloaded.
 * `local` (str, optional): The local path where the CADU product will be downloaded.
-* `obs` (str, optional): The observation identifier associated with the CADU product.
-* `db` (Database): The database connection object.
+* `obs` (str, optional): S3 storage path where the CADU file will be uploaded. [.green]#(e.g. s3://bucket/path/to/file.tif)#.
+Connection to S3 bucket is required, and should be written in the environmental variables, *S3_ACCESSKEY*, *S3_SECRETKEY*,
+*S3_ENDPOINT* and *S3_REGION*.
 
 === Returns
 * `dict`: A dictionary indicating whether the download process has started.
@@ -54,5 +128,49 @@ GET /cadip/station123/cadu?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.r
   "started": "true"
 }
 ----
+
+[[adgs-download]]
+== [.green]#AUX Download#
+
+This endpoint initiates an asynchronous download process for an AUX product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.
+
+=== Endpoint
+`/adgs/aux`
+
+=== Parameters
+* `name` (str): The name of the AUX product to be downloaded
+* `local` (str, optional): The local path where the AUX product will be downloaded.
+* `obs` (str, optional): S3 storage path where the AUX file will be uploaded. [.green]#(e.g. s3://bucket/path/to/file.tgz)#.
+Connection to S3 bucket is required, and should be written in the environmental variables, *S3_ACCESSKEY*, *S3_SECRETKEY*,
+*S3_ENDPOINT* and *S3_REGION*.
+
+=== Returns
+* `dict`: A dictionary indicating whether the download process has started.
+
+=== Example
+
+==== Request
+[source,http]
+----
+GET /adgs/aux?name=S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_20190217T210000.TGZ
+----
+[source,http]
+----
+GET /adgs/aux?name=S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_20190217T210000.TGZ&local=/tmp/aux.tar.gz
+----
+[source,http]
+----
+GET /adgs/aux?name=S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_20190217T210000.TGZ&local=/tmp/aux.tar.gz&obs=s3://bucket/path/to/aux.tar.gz
+----
+==== Response
+[source,text]
+----
+{
+  "started": "true"
+}
+----
+
+
+
 [[cadu-status]]
 // To be added
