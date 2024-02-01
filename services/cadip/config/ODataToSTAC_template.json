@@ -5,7 +5,7 @@
     ],
     "type": "Feature",
     "id": "PLACEHOLDER",
-    "geometry": "null",
+    "geometry": null,
     "properties": {
         "datetime": "PLACEHOLDER",
         "eviction_datetime": "PLACEHOLDER",
