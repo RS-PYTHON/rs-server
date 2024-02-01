@@ -170,7 +170,63 @@ GET /adgs/aux?name=S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_201
 }
 ----
 
+[[adgs-status]]
+== [.green]#AUX Status#
+This endpoint is used to query the download status of an AUX file.
 
+==== Endpoint
+`/adgs/aux/status`
+
+=== Parameters
+* `name` (str): The name of the AUX file to be queried from database.
+
+==== Request
+[source,http]
+----
+GET /adgs/aux/status?name=S2__OPER_AUX_ECMWFD_PDMC_20200216T120000_V20190217T090000_20190217T210000.TGZ
+----
+==== Response
+[source,json]
+----
+{
+  "product_id": "id2",
+  "name": "S2__OPER_AUX_ECMWFD_PDMC_20200216T120000_V20190217T090000_20190217T210000.TGZ",
+  "available_at_station": "2020-02-16T12:00:00",
+  "db_id": 2,
+  "download_start": "2023-02-16T12:00:00",
+  "download_stop": "2023-02-16T12:01:00",
+  "status": "DONE",
+  "status_fail_message": null
+}
+----
 
 [[cadu-status]]
-// To be added
+== [.green]#CADU Status#
+This endpoint is used to query the download status of an CADU file.
+
+==== Endpoint
+`/cadip/{station}/cadu/status`
+
+=== Parameters
+* `station` (str): The EODAG station identifier [.green]#(e.g., MTI, SGS, MPU, INU, etc)#.
+* `name` (str): The name of the CADU file to be queried from database.
+
+==== Request
+[source,http]
+----
+GET /cadip/{station}/cadu/status?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw
+----
+==== Response
+[source,json]
+----
+{
+  "product_id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+  "name": "DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw",
+  "available_at_station": "2019-02-16T12:00:00.000Z",
+  "db_id": 1,
+  "download_start": "2023-02-16T12:00:00.000Z",
+  "download_stop": null,
+  "status": "IN_PROGRESS",
+  "status_fail_message": null
+}
+----
