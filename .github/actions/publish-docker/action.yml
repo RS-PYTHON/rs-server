@@ -70,21 +70,28 @@ runs:
         #timeout: '30m'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: trivy-results-docker.sarif
         category: ${{ env.docker_image }}
 
     - name: Display link to Trivy results
       run: |
-        set -x
-        # This name doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
-        # TO BE TESTED
-        ref_name=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
 
-        echo "Trivy scan results:" \
-        "https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${ref_name}" \
-        >> $GITHUB_STEP_SUMMARY
+          set -x
+
+          # If this is not a pull request, the query is "is:open+branch:branch_name"
+          if [[ "${{ github.ref_name }}" != *merge* ]]; then
+            query="is:open+branch:${{ github.ref_name }}"
+
+          # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
+          else
+            query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+          fi
+
+          echo "Trivy scan results:" \
+          "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
+          >> $GITHUB_STEP_SUMMARY
       shell: bash
 
     - name: Log into Docker registry
