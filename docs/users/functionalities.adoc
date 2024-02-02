@@ -3,6 +3,8 @@
 // TODO Main functionalities presentation
 
 == [.black]#CADIP#
+The CADU Interface delivery Point (CADIP) is a pick-up point for Sentinel CADU data. The CADIP allows
+clients to straightforwardly discover and retrieve available data files through a standard OData RESTful API. The following endpoints have been implemented in RS-Server to interact with CADIP RESTful API
 [[cadu-search]]
 
 == [.green]#Search Endpoint#
@@ -122,6 +124,8 @@ GET /cadip/{station}/cadu/status?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_0
 ----
 
 == [.black]#ADGS#
+The Auxiliary Data Gathering Service (ADGS) is a pick-up point for Sentinel auxiliary files. This service allows
+clients to discover and retrieve available auxiliary data files through a standard OData RESTful API. The following endpoints have been implemented in RS-Server to interact with ADGS RESTful API.
 [[adgs-search]]
 == [.green]#Search Endpoint#
 
