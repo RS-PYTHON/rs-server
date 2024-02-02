@@ -17,7 +17,7 @@ from rs_server_common.db.models.download_status import EDownloadStatus
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize(
-    "endpoint, db_handler, expected_feature",
+    "endpoint, db_handler, expected_feature, fields_to_sort",
     [
         (
             "/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
@@ -29,7 +29,7 @@ from rs_server_common.db.models.download_status import EDownloadStatus
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
                 "geometry": None,
                 "properties": {
-                    "datetime": "2019-02-16T12:00:00.000Z",
+                    "datetime": "2021-02-16T12:00:00.000Z",
                     "eviction_datetime": "eviction_date_test_value",
                     "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
                     "cadip:retransfer": False,
@@ -41,6 +41,7 @@ from rs_server_common.db.models.download_status import EDownloadStatus
                 "links": [],
                 "assets": {"file": {"file:size": "size_test_value"}},
             },
+            ["datetime", "cadip:id"],
         ),
         (
             "/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
@@ -53,17 +54,18 @@ from rs_server_common.db.models.download_status import EDownloadStatus
                 "geometry": None,
                 "properties": {
                     "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
-                    "datetime": "2019-02-16T12:00:00.000Z",
+                    "datetime": "2021-02-16T12:00:00.000Z",
                     "start_datetime": "ContentDate_Start_test_value",
                     "end_datetime": "ContentDate_End_test_value",
                 },
                 "links": [],
                 "assets": {"file": {"file:size": "ContentLength_test_value"}},
             },
+            ["datetime", "adgs:id"],
         ),
     ],
 )
-def test_valid_endpoint_request_list(expected_products, client, endpoint, db_handler, expected_feature):
+def test_valid_endpoint_request_list(expected_products, client, endpoint, db_handler, expected_feature, fields_to_sort):
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
@@ -98,6 +100,20 @@ def test_valid_endpoint_request_list(expected_products, client, endpoint, db_han
         assert any("some_id_3" in product["properties"].values() for product in data["features"])
         assert db_handler.get(db, name="S2L1C.raw").status == EDownloadStatus.NOT_STARTED
         assert data["features"][0] == expected_feature
+
+        # For each field on which to sort
+        for field_to_sort in fields_to_sort:
+            # Sort in ascending and descending order
+            for reverse in [False, True]:
+                # Call the endpoint again, but this time by sorting results
+                sign = "-" if reverse else "+"
+                data = client.get(endpoint, params={"sortby": f"{sign}{field_to_sort}"}).json()
+
+                # Get only the requested fields from the result
+                fields = [feature["properties"][field_to_sort] for feature in data["features"]]
+
+                # Check that the list is equal to the sorted list
+                assert fields == sorted(fields, reverse=reverse)
 
 
 @pytest.mark.unit

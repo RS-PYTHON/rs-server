@@ -187,8 +187,8 @@ def expected_products_fixture(a_product) -> list[dict]:
         a_product(
             "2b17b57d-fff4-4645-b539-91f305c27c69",
             "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-            "2019-02-16T12:00:00.000Z",
+            "2021-02-16T12:00:00.000Z",
         ),
-        a_product("some_id_2", "S1A.raw", "2021-02-16T12:00:00.000Z"),
-        a_product("some_id_3", "S2L1C.raw", "2023-02-16T12:00:00.000Z"),
+        a_product("some_id_2", "S1A.raw", "2023-02-16T12:00:00.000Z"),
+        a_product("some_id_3", "S2L1C.raw", "2019-02-16T12:00:00.000Z"),
     ]

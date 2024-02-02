@@ -379,9 +379,13 @@ def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
     """This function sorts a STAC feature collection based on a given criteria"""
     # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
     if sortby != "+doNotSort":
-        order = "+" if sortby[0] not in ["+", "-"] else sortby[0]
+        order = sortby[0]
+        if order not in ["+", "-"]:
+            order = "+"
+
         if len(feature_collection["features"]) and "properties" in feature_collection["features"][0]:
-            by = "datetime" if sortby[:1] not in feature_collection["features"][0]["properties"].keys() else sortby[:1]
+            field = sortby[1:]
+            by = "datetime" if field not in feature_collection["features"][0]["properties"].keys() else field
             feature_collection["features"] = sorted(
                 feature_collection["features"],
                 key=lambda feature: feature["properties"][by],
