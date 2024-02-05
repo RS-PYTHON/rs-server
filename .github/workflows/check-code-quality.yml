@@ -45,7 +45,7 @@ jobs:
             poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: check-linting
@@ -102,7 +102,7 @@ jobs:
 
       - name: Save reports as artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: check-security
           path: |
@@ -112,7 +112,7 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: trivy-results-fs.sarif
           category: git repository
@@ -120,14 +120,22 @@ jobs:
       - name: "Display link to Trivy results"
         if: always()
         run: |
+
           set -x
-          # This name doesn't work for pull requests, it should be e.g. 'pr:13' not '13/merge'
-          # TO BE TESTED
-          ref_name=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+
+          # If this is not a pull request, the query is "is:open+branch:branch_name"
+          if [[ "${{ github.ref_name }}" != *merge* ]]; then
+            query="is:open+branch:${{ github.ref_name }}"
+
+          # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
+          else
+            query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+          fi
 
           echo "Trivy scan results:" \
-          "https://github.com/${{ github.repository }}/security/code-scanning?query=is:open+branch:${ref_name}" \
+          "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
           >> $GITHUB_STEP_SUMMARY
+        shell: bash
 
   run-unit-tests:
     runs-on: ubuntu-latest
@@ -153,7 +161,7 @@ jobs:
           filename: ./cov-report.xml
 
       - name: Save reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: run-unit-tests
           path: |
@@ -201,17 +209,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download linting reports
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name:
             check-linting
       - name: Download vulnerability reports
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name:
             check-security
       - name: Download unit test reports
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name:
             run-unit-tests
@@ -227,6 +235,13 @@ jobs:
           done
         shell: bash
 
+      - name: Get directory names
+        id: dir_names
+        run: |
+          echo sources=$(find . -type d -name "rs_server*" | paste -sd ",") >> $GITHUB_OUTPUT
+          echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Run sonarqube
         uses: sonarsource/sonarqube-scan-action@master
         env:
@@ -238,12 +253,12 @@ jobs:
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/importing-external-issues/importing-third-party-issues/
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-execution-parameters/
           # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-coverage-parameters/
+          projectBaseDir: .
           args: >
             -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
             -Dsonar.branch.name=${{ github.ref_name }}
-            -Dsonar.projectBaseDir=.
-            -Dsonar.sources=$(find . -type d -name "rs_server*" | paste -sd ",")
-            -Dsonar.tests=$(find . -type d -name "tests" | paste -sd ",")
+            -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
+            -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
             -Dsonar.exclusions=
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.language=py

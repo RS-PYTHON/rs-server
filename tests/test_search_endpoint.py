@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import pytest
 import responses
 import sqlalchemy
-from fastapi import status
+from fastapi import HTTPException, status
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
@@ -17,21 +17,55 @@ from rs_server_common.db.models.download_status import EDownloadStatus
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize(
-    "station, endpoint, db_handler",
+    "endpoint, db_handler, expected_feature, fields_to_sort",
     [
         (
-            "CADIP",
-            "/cadip/CADIP/cadu/search?start_date=2014-01-01T12:00:00.000Z&stop_date=2023-12-30T12:00:00.000Z",
+            "/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             CaduDownloadStatus,
+            {
+                "stac_version": "1.0.0",
+                "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+                "type": "Feature",
+                "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+                "geometry": None,
+                "properties": {
+                    "datetime": "2021-02-16T12:00:00.000Z",
+                    "eviction_datetime": "eviction_date_test_value",
+                    "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+                    "cadip:retransfer": False,
+                    "cadip:final_block": True,
+                    "cadip:block_number": "BlockNumber_test_value",
+                    "cadip:channel": "Channel_test_value",
+                    "cadip:session_id": "session_id_test_value",
+                },
+                "links": [],
+                "assets": {"file": {"file:size": "size_test_value"}},
+            },
+            ["datetime", "cadip:id"],
         ),
         (
-            "AUX",
-            "/adgs/aux/search?start_date=2014-01-01T12:00:00.000Z&stop_date=2023-12-30T12:00:00.000Z",
+            "/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             AdgsDownloadStatus,
+            {
+                "stac_version": "1.0.0",
+                "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+                "type": "Feature",
+                "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+                "geometry": None,
+                "properties": {
+                    "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+                    "datetime": "2021-02-16T12:00:00.000Z",
+                    "start_datetime": "ContentDate_Start_test_value",
+                    "end_datetime": "ContentDate_End_test_value",
+                },
+                "links": [],
+                "assets": {"file": {"file:size": "ContentLength_test_value"}},
+            },
+            ["datetime", "adgs:id"],
         ),
     ],
 )
-def test_valid_endpoint_request_list(expected_products, client, station, endpoint, db_handler):
+def test_valid_endpoint_request_list(expected_products, client, endpoint, db_handler, expected_feature, fields_to_sort):
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
@@ -41,29 +75,45 @@ def test_valid_endpoint_request_list(expected_products, client, station, endpoin
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
-        '2023-12-30T12:00:00.000Z"',
+        '2023-12-30T12:00:00.000Z"&$top=1000',
         json={"responses": expected_products},
         status=200,
     )
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5001/Products?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
-        '2023-12-30T12:00:00.000Z"',
+        'http://127.0.0.1:5000/Products?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
+        '2023-12-30T12:00:00.000Z"&$top=1000',
         json={"responses": expected_products},
         status=200,
     )
     # Get all products between 2014 - 2023 from "CADIP" and "ADGS" station
     with contextmanager(get_db)() as db:
-        # TODO, query and test db status
-        # send request and convert output to python dict
+        with pytest.raises(HTTPException):
+            # Check that product is not in database, this should raise HTTPException
+            db_handler.get(db, name="S2L1C.raw")
+            assert False
         data = client.get(endpoint).json()
-
         # check that request returned more than 1 element
-        assert len(data[station]) == len(expected_products)
+        assert len(data["features"]) == len(expected_products)
         # Check if ids and names are matching with given parameters
-        assert any("some_id_2" in product for product in data[station])
-        assert any("some_id_3" in product for product in data[station])
+        assert any("some_id_2" in product["properties"].values() for product in data["features"])
+        assert any("some_id_3" in product["properties"].values() for product in data["features"])
         assert db_handler.get(db, name="S2L1C.raw").status == EDownloadStatus.NOT_STARTED
+        assert data["features"][0] == expected_feature
+
+        # For each field on which to sort
+        for field_to_sort in fields_to_sort:
+            # Sort in ascending and descending order
+            for reverse in [False, True]:
+                # Call the endpoint again, but this time by sorting results
+                sign = "-" if reverse else "+"
+                data = client.get(endpoint, params={"sortby": f"{sign}{field_to_sort}"}).json()
+
+                # Get only the requested fields from the result
+                fields = [feature["properties"][field_to_sort] for feature in data["features"]]
+
+                # Check that the list is equal to the sorted list
+                assert fields == sorted(fields, reverse=reverse)
 
 
 @pytest.mark.unit
@@ -71,8 +121,8 @@ def test_valid_endpoint_request_list(expected_products, client, station, endpoin
 @pytest.mark.parametrize(
     "station, endpoint, start, stop",
     [
-        ("CADIP", "/cadip/CADIP/cadu/search", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z"),
-        ("AUX", "/adgs/aux/search", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z"),
+        ("CADIP", "/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
+        ("AUX", "/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
 def test_invalid_endpoint_request(client, station, endpoint, start, stop):
@@ -86,7 +136,7 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2023-01-01T12:00:00.000Z and PublicationDate lt '
-        '2024-12-30T12:00:00.000Z"',
+        '2024-12-30T12:00:00.000Z"&$top=1000',
         json=cadip_json_resp,
         status=200,
     )
@@ -94,28 +144,29 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
     adgs_json_resp: dict = {"responses": []}
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5001/Products?$filter="PublicationDate gt 2023-01-01T12:00:00.000Z and PublicationDate lt '
-        '2024-12-30T12:00:00.000Z"',
+        'http://127.0.0.1:5000/Products?$filter="PublicationDate gt 2023-01-01T12:00:00.000Z and PublicationDate lt '
+        '2024-12-30T12:00:00.000Z"&$top=1000',
         json=adgs_json_resp,
         status=200,
     )
     # Get all products from 2023 to 2024, this request should result in a empty list since there are no matches
-    test_endpoint = f"{endpoint}?start_date={start}&stop_date={stop}"
+    test_endpoint = f"{endpoint}?datetime={start}/{stop}&station={station}"
     with contextmanager(get_db)():
         # convert output to python dict
         data = client.get(test_endpoint).json()
+        print(data)
         # check that request returned no elements
-        assert len(data[station]) == 0
+        assert len(data["features"]) == 0
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "endpoint, start_date, stop_date",
     [
-        ("/cadip/CADIP/cadu/search", "2014-01-01", "2023-12-30T12:00:00.000Z"),
-        ("/cadip/CADIP/cadu/search", "2023-01-01T12:00:00.000Z", "2025-12"),
-        ("/adgs/aux/search", "2014-01-01", "2023-12-30T12:00:00.000Z"),
-        ("/adgs/aux/search", "2023-01-01T12:00:00.000Z", "2025-12"),
+        ("/cadip/CADIP/cadu/search", "2014-01-01", "2023-12-30T12:00:00Z"),
+        ("/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2025-12"),
+        ("/adgs/aux/search", "2014-01-01", "2023-12-30T12:00:00Z"),
+        ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2025-12"),
     ],
 )
 def test_invalid_endpoint_param_missing_start_stop(client, endpoint, start_date, stop_date):
@@ -135,11 +186,11 @@ def test_invalid_endpoint_param_missing_start_stop(client, endpoint, start_date,
         None
     """
     # Test an endpoint with missing stop date, should raise 422, unprocessable
-    unprocessable_endpoint = f"{endpoint}?start_date={start_date}"
+    unprocessable_endpoint = f"{endpoint}?datetime={start_date}"
     response = client.get(unprocessable_endpoint)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     # Test an endpoint with an incorrect format for start / stop date, should raise 400 bad request
-    search_endpoint = f"{endpoint}?start_date={start_date}&stop_date={stop_date}"
+    search_endpoint = f"{endpoint}?datetime={start_date}/{stop_date}"
     response = client.get(search_endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -154,7 +205,7 @@ def test_invalid_endpoint_param_station(client):
     """
     # Test with and inccorect station name, this should result in a 400 bad request response.
     station = "incorrect_station"
-    endpoint = f"/cadip/{station}/cadu/search?start_date=2023-01-01T12:00:00.000Z&stop_date=2024-12-30T12:00:00.000Z"
+    endpoint = f"/cadip/{station}/cadu/search?datetime=2023-01-01T12:00:00Z/2024-12-30T12:00:00Z"
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -163,8 +214,8 @@ def test_invalid_endpoint_param_station(client):
 @pytest.mark.parametrize(
     "endpoint, start, stop",
     [
-        ("/cadip/CADIP/cadu/search", "2014-01-01T12:00:00.000Z", "2023-12-30T12:00:00.000Z"),
-        ("/adgs/aux/search", "2023-01-01T12:00:00.000Z", "2024-12-30T12:00:00.000Z"),
+        ("/cadip/CADIP/cadu/search", "2014-01-01T12:00:00Z", "2023-12-30T12:00:00Z"),
+        ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
 def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop):
@@ -193,15 +244,66 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
         "rs_server_cadip.api.cadu_search.init_cadip_provider",
         side_effect=CreateProviderFailed("Invalid station"),
     )
-    test_endpoint = f"{endpoint}?start_date={start}&stop_date={stop}"
+    test_endpoint = f"{endpoint}?datetime={start}/{stop}"
     # Check that request status is 400
     data = client.get(test_endpoint)
     assert data.status_code == 400
     # Mock a sql connection error
     mocker.patch(
-        "rs_server_common.utils.utils.prepare_products",
+        "rs_server_common.utils.utils.write_search_products_to_db",
         side_effect=sqlalchemy.exc.OperationalError,
     )
     # Check that request status is 400
     data = client.get(test_endpoint)
     assert data.status_code == 400
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize(
+    "endpoint, db_handler, limit",
+    [
+        ("/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", CaduDownloadStatus, 3),
+        ("/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", AdgsDownloadStatus, 1),
+    ],
+)
+def test_valid_pagination_options(expected_products, client, endpoint, db_handler, limit):
+    """Test case for retrieving products from the CADIP station between 2014 and 2023.
+
+    This test sends a request to the CADIP station's endpoint for products within the specified date range.
+    It checks if the response contains more than one element and verifies that the IDs and names match
+    with the expected parameters.
+    """
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
+        '2023-12-30T12:00:00.000Z"&$top=3',
+        json={"responses": expected_products[:limit]},
+        status=200,
+    )
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Products?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
+        '2023-12-30T12:00:00.000Z"&$top=1',
+        json={"responses": expected_products[:limit]},
+        status=200,
+    )
+    # Get all products between 2014 - 2023 from "CADIP" and "ADGS" station
+    with contextmanager(get_db)() as db:
+        with pytest.raises(HTTPException):
+            # Check that product is not in database, this should raise HTTPException
+            db_handler.get(db, name="S2L1C.raw")
+            assert False
+        test_endpoint = f"{endpoint}&limit={limit}"
+        data = client.get(test_endpoint).json()
+        # check features number, and numberMatched / numberReturned
+        assert len(data["features"]) == limit
+        assert data["numberMatched"] == limit
+        assert data["numberReturned"] == limit
+        # Check negative, should raise 422
+        limit = 0
+        test_endpoint = f"{endpoint}&limit={limit}"
+        assert client.get(test_endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        limit = -5
+        test_endpoint = f"{endpoint}&limit={limit}"
+        assert client.get(test_endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

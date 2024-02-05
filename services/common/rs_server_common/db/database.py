@@ -6,6 +6,7 @@ Taken from: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-
 
 
 import contextlib
+import multiprocessing
 import os
 from threading import Lock
 from typing import Iterator
@@ -23,6 +24,7 @@ class DatabaseSessionManager:
     """Database session configuration."""
 
     lock = Lock()
+    multiprocessing_lock = multiprocessing.Lock()
 
     def __init__(self):
         self._engine: Engine | None = None
@@ -52,7 +54,9 @@ class DatabaseSessionManager:
     def open_session(self, url: str = ""):
         """Open database session."""
 
-        with self.lock:
+        # If the 'self' object is used by several threads in the same process,
+        # make sure to initialize the session only once.
+        with DatabaseSessionManager.lock:
             if (self._engine is None) or (self._sessionmaker is None):
                 self._engine = create_engine(url or self.url(), poolclass=NullPool)
                 self._sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
@@ -120,11 +124,13 @@ class DatabaseSessionManager:
 
     def create_all(self):
         """Create all database tables."""
-        Base.metadata.create_all(bind=self._engine)
+        with DatabaseSessionManager.multiprocessing_lock:  # Handle concurrent table creation by different processes
+            Base.metadata.create_all(bind=self._engine)
 
     def drop_all(self):
         """Drop all database tables."""
-        Base.metadata.drop_all(bind=self._engine)
+        with DatabaseSessionManager.multiprocessing_lock:  # Handle concurrent table creation by different processes
+            Base.metadata.drop_all(bind=self._engine)
 
     @classmethod
     def reraise_http_exception(cls, exception: Exception):

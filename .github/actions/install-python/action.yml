@@ -3,6 +3,6 @@ description: Install python with hardcoded version
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: ${{ env.PYTHON_VERSION }}

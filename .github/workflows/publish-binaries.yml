@@ -90,12 +90,12 @@ jobs:
 
       # Download .whl files into ./whl/
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./whl
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-adgs-whl.outputs.package_name }}
           path: ./whl
@@ -121,12 +121,12 @@ jobs:
 
       # Download .whl files into ./whl/
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
           path: ./whl
       - name: Download .whl dependencies
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-cadip-whl.outputs.package_name }}
           path: ./whl
