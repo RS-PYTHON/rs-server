@@ -65,7 +65,14 @@ from rs_server_common.db.models.download_status import EDownloadStatus
         ),
     ],
 )
-def test_valid_endpoint_request_list(expected_products, client, endpoint, db_handler, expected_feature, fields_to_sort):
+def test_valid_endpoint_request_list(
+    expected_products,
+    client,
+    endpoint,
+    db_handler,
+    expected_feature,
+    fields_to_sort,
+):  # pylint: disable=too-many-arguments
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
