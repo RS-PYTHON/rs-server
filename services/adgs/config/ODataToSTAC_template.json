@@ -1,0 +1,21 @@
+{
+    "stac_version": "1.0.0",
+    "stac_extensions": [
+        "https://stac-extensions.github.io/file/v2.1.0/schema.json"
+    ],
+    "type": "Feature",
+    "id": "PLACEHOLDER",
+    "geometry": null,
+    "properties": {
+        "adgs:id": "PLACEHOLDER",
+        "datetime": "PLACEHOLDER",
+        "start_datetime": "PLACEHOLDER",
+        "end_datetime": "PLACEHOLDER"
+    },
+    "links": [],
+    "assets": {
+        "file": {
+            "file:size": "PLACEHOLDER"
+        }
+    }
+}

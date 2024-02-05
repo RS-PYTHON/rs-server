@@ -3,8 +3,10 @@
 This module provides functionality to retrieve a list of products from the CADU system for a specified station.
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
+import json
+import os.path as osp
 import traceback
-from datetime import datetime
+from pathlib import Path
 
 import sqlalchemy
 from fastapi import APIRouter, status
@@ -14,24 +16,38 @@ from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import prepare_products, validate_inputs_format
+from rs_server_common.utils.utils import (
+    create_stac_collection,
+    sort_feature_collection,
+    validate_inputs_format,
+    write_search_products_to_db,
+)
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
+CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 @router.get("/cadip/{station}/cadu/search")
-async def list_cadu_handler(station: str, start_date: str, stop_date: str):
+async def list_cadu_handler(
+    station: str,
+    datetime: str,
+    limit: int = 1000,
+    sortby: str = "+doNotSort",
+):  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Parameters
     ----------
     station : str
         Identifier for the CADIP station (MTI, SGS, MPU, INU, etc).
-    start_date : str, optional
-        Start date for time series filter (format: "YYYY-MM-DDThh:mm:sssZ").
-    stop_date : str, optional
-        Stop date for time series filter (format: "YYYY-MM-DDThh:mm:sssZ").
+    datetime : str
+        Start date and stop date for time series filter (format: "YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ss").
+    limit : int
+        Maximum number of products to return.
+    sortby : str
+        Sorting criteria. +/-fieldName indicates ascending/descending order and field name. Default no sorting is
+         applied.
 
     Returns
     -------
@@ -43,7 +59,7 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     Example
     -------
     - Request:
-        GET /cadip/station123/cadu/search?start_date="1999-01-01T12:00:00.000Z"&stop_date="2033-02-20T12:00:00.000Z"
+        GET /cadip/station123/cadu/search?datetime="1999-01-01T12:00:00.000Z/2033-02-20T12:00:00.000Z"
     - Response:
         {
             "station123": [
@@ -59,18 +75,27 @@ async def list_cadu_handler(station: str, start_date: str, stop_date: str):
     - The response includes a JSON representation of the list of products for the specified station.
     - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
-    is_valid, exception = validate_inputs_format(start_date, stop_date)
-    if not is_valid:
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Invalid start/stop format, {exception}")
-
+    start_date, stop_date = validate_inputs_format(datetime)
+    if limit < 1:
+        return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
-        time_range = TimeRange(datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date))
-        products = init_cadip_provider(station).search(time_range)
-        processed_products = prepare_products(CaduDownloadStatus, products)
-
+        products = init_cadip_provider(station).search(TimeRange(start_date, stop_date), items_per_page=limit)
+        write_search_products_to_db(CaduDownloadStatus, products)
+        feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
+        stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
+        with (
+            open(feature_template_path, encoding="utf-8") as template,
+            open(stac_mapper_path, encoding="utf-8") as stac_map,
+        ):
+            feature_template = json.loads(template.read())
+            stac_mapper = json.loads(stac_map.read())
+            cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from cadu station")
-        return JSONResponse(status_code=status.HTTP_200_OK, content={station: processed_products})
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=sort_feature_collection(cadip_item_collection, sortby),
+        )
 
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")

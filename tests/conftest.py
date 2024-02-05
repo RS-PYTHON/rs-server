@@ -159,7 +159,18 @@ def a_product_fixture():
             "Id": id_,
             "Name": name,
             "PublicationDate": at_date,
-            "Size": "dummy_value",
+            "Size": "size_test_value",
+            "SessionID": "session_id_test_value",
+            "Retransfer": False,
+            "FinalBlock": True,
+            "EvictionDate": "eviction_date_test_value",
+            "Channel": "Channel_test_value",
+            "BlockNumber": "BlockNumber_test_value",
+            "ContentDate": {
+                "Start": "ContentDate_Start_test_value",
+                "End": "ContentDate_End_test_value",
+            },
+            "ContentLength": "ContentLength_test_value",
         }
 
     return build
@@ -176,8 +187,8 @@ def expected_products_fixture(a_product) -> list[dict]:
         a_product(
             "2b17b57d-fff4-4645-b539-91f305c27c69",
             "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-            "2019-02-16T12:00:00.000Z",
+            "2021-02-16T12:00:00.000Z",
         ),
-        a_product("some_id_2", "S1A.raw", "2021-02-16T12:00:00.000Z"),
-        a_product("some_id_3", "S2L1C.raw", "2023-02-16T12:00:00.000Z"),
+        a_product("some_id_2", "S1A.raw", "2023-02-16T12:00:00.000Z"),
+        a_product("some_id_3", "S2L1C.raw", "2019-02-16T12:00:00.000Z"),
     ]

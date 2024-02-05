@@ -50,7 +50,7 @@ class Provider(ABC):
     and download them locally.
     """
 
-    def search(self, between: TimeRange) -> list[Product]:
+    def search(self, between: TimeRange, **kwargs) -> list[Product]:
         """Search for products with the given time range.
 
         The search result is a dictionary of products found indexed by id.
@@ -62,7 +62,7 @@ class Provider(ABC):
             return []
         if between.duration() < timedelta(0):
             raise SearchProductFailed(f"Search timerange is inverted : ({between.start} -> {between.end})")
-        return self._specific_search(between)
+        return self._specific_search(between, **kwargs)
 
     @abstractmethod
     def _specific_search(self, between: TimeRange) -> list[Product]:
