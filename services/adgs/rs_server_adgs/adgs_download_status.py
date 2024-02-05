@@ -1,4 +1,4 @@
-"""ADGS Product model implementation."""
+"""AdgsDownloadStatus implementation."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from sqlalchemy import Column, Enum
 
 
 class AdgsDownloadStatus(DownloadStatus):
-    """Class used to implement DB CRUD ops for AUX products."""
+    """Database model implementation for AUX products download status from ADGS stations."""
 
     __tablename__ = "adgs_download_status"
 

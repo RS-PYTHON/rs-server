@@ -1,9 +1,9 @@
 """FastAPI routers definition."""
 
-from rs_server_cadip.api import cadu_download, cadu_search, cadu_status
+from rs_server_cadip.api import cadip_download, cadip_search, cadip_status
 
 cadip_routers = [
-    cadu_download.router,
-    cadu_search.router,
-    cadu_status.router,
+    cadip_download.router,
+    cadip_search.router,
+    cadip_status.router,
 ]

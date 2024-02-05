@@ -7,15 +7,15 @@ import pytest
 import sqlalchemy
 from fastapi import HTTPException
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus, EDownloadStatus
 from rs_server_common.db.database import get_db
 
 
 # pylint: disable=unused-argument,too-many-locals,too-many-statements
 @pytest.mark.parametrize(
     "cls, type_, url_prefix",
-    [[CaduDownloadStatus, "cadu", "/cadip/CADIP/cadu"], [AdgsDownloadStatus, "adgs", "/adgs/aux"]],
-    ids=[CaduDownloadStatus, AdgsDownloadStatus],
+    [[CadipDownloadStatus, "cadip", "/cadip/CADIP/cadu"], [AdgsDownloadStatus, "adgs", "/adgs/aux"]],
+    ids=[CadipDownloadStatus, AdgsDownloadStatus],
 )
 def test_download_status(client, cls, type_, url_prefix):
     """

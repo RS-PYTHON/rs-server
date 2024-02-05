@@ -10,7 +10,7 @@ import pytest
 import responses
 from moto.server import ThreadedMotoServer
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
@@ -31,7 +31,7 @@ ENDPOINTS_FOLDER = osp.join(RES_FOLDER, "endpoints")
     "endpoint, filename, target_filename, db_handler",
     [
         ("/adgs/aux", "AUX_test_file_eodag.raw", "AUX_test_file.raw", AdgsDownloadStatus),
-        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", "CADIP_test_file.raw", CaduDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", "CADIP_test_file.raw", CadipDownloadStatus),
     ],
 )
 def test_valid_endpoint_request_download(
@@ -104,7 +104,7 @@ def test_valid_endpoint_request_download(
     "endpoint, filename, db_handler",
     [
         ("/adgs/aux", "AUX_test_file_eodag.raw", AdgsDownloadStatus),
-        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CaduDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CadipDownloadStatus),
     ],
 )
 def test_exception_while_valid_download(
@@ -177,7 +177,7 @@ def test_exception_while_valid_download(
     "endpoint, db_handler",
     [
         ("/adgs/aux", AdgsDownloadStatus),
-        ("/cadip/CADIP/cadu", CaduDownloadStatus),
+        ("/cadip/CADIP/cadu", CadipDownloadStatus),
     ],
 )
 def test_invalid_endpoint_request(mocker, client, endpoint, db_handler):
@@ -186,12 +186,12 @@ def test_invalid_endpoint_request(mocker, client, endpoint, db_handler):
 
     This unit test examines how the system responds when an invalid request is made to the CADIP
     download endpoint. It specifically addresses the scenario where the database operation to
-    retrieve or create a CADU download status entry fails, simulating a database access issue.
+    retrieve or create a CADIP download status entry fails, simulating a database access issue.
     The test ensures that in such cases, the system responds appropriately with the correct HTTP
     status code and message, indicating that the download process has not started.
 
     Test Steps:
-    1. Mock the `CaduDownloadStatus.create` method to return None, simulating a failure in
+    1. Mock the `CadipDownloadStatus.create` method to return None, simulating a failure in
        database operations.
     2. Make a GET request to the endpoint with an invalid CADU ID and filename.
     3. Verify that the mocked database operation is called and returns None.
@@ -217,7 +217,7 @@ def test_invalid_endpoint_request(mocker, client, endpoint, db_handler):
         # Add a download status to database
         # Mock a problem while getting / creating db entry
         mocker.patch(
-            "rs_server_cadip.cadu_download_status.CaduDownloadStatus.create",
+            "rs_server_cadip.cadip_download_status.CadipDownloadStatus.create",
             return_value=None,
         )
         mocker.patch(
@@ -246,7 +246,7 @@ def test_invalid_endpoint_request(mocker, client, endpoint, db_handler):
     "endpoint, filename, db_handler",
     [
         ("/adgs/aux", "ADGS_test_file_eodag.raw", AdgsDownloadStatus),
-        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CaduDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CadipDownloadStatus),
     ],
 )
 def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint, filename, db_handler):
@@ -254,7 +254,7 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
     Test the system response to an error during EODAG provider creation.
 
     This unit test evaluates the behavior of the system when an error occurs during the creation of
-    the EODAG provider in the CADU download endpoint. It specifically tests the scenario where the
+    the EODAG provider in the CADIP download endpoint. It specifically tests the scenario where the
     `init_cadip_data_retriever` function raises a `CreateProviderFailed` exception. The test aims
     to ensure that, in such cases, the system responds appropriately with the correct HTTP status
     code and message, indicating that the download process has not started.
@@ -291,10 +291,10 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
         )
         result = db_handler.get(db=db, name=filename)
         assert result.status == EDownloadStatus.NOT_STARTED
-        # Mock function rs_server.CADIP.api.cadu_download.init_cadip_data_retriever to raise an error
+        # Mock function rs_server.CADIP.api.cadip_download.init_cadip_data_retriever to raise an error
         # In order to verify that download status is not set to in progress and set to false.
         mocker.patch(
-            "rs_server_cadip.api.cadu_download.init_cadip_provider",
+            "rs_server_cadip.api.cadip_download.init_cadip_provider",
             side_effect=CreateProviderFailed("Invalid station"),
         )
         mocker.patch(
@@ -315,7 +315,7 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
     "endpoint, filename, db_handler",
     [
         ("/adgs/aux", "ADGS_test_file_eodag.raw", AdgsDownloadStatus),
-        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CaduDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CadipDownloadStatus),
     ],
 )
 def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, filename, db_handler):
@@ -324,7 +324,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
 
     This unit test aims to validate the robustness of the EODAG provider's download mechanism.
     It specifically tests the system's response when an unexpected error occurs during the file download process.
-    The test ensures that in the event of such a failure, the system correctly updates the CADU download status
+    The test ensures that in the event of such a failure, the system correctly updates the CADIP download status
     to FAILED in the database.
     Additionally, it checks that the appropriate HTTP response is returned to indicate the initiation of the download
     process despite the encountered error.
@@ -333,7 +333,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
     1. A CADU product is initialized in the database with a status of NOT_STARTED.
     2. The `DataRetriever.download` method is mocked to trigger a runtime exception, simulating a download failure.
     3. A GET request is sent to the download endpoint, invoking the download process.
-    4. The test verifies that the CADU download status in the database is updated to FAILED as a result of the
+    4. The test verifies that the CADIP download status in the database is updated to FAILED as a result of the
         simulated error.
     5. The test confirms that the HTTP response correctly indicates the initiation of the download process,
         despite the error.
@@ -382,7 +382,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
     "endpoint, filename, db_handler",
     [
         ("/adgs/aux", "ADGS_test_file_eodag.raw", AdgsDownloadStatus),
-        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CaduDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CadipDownloadStatus),
     ],
 )
 def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint, filename, db_handler):
@@ -391,7 +391,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint
 
     This unit test simulates a scenario where a runtime error occurs during the initialization of
     the S3StorageHandler, which is responsible for handling the upload process to an S3 bucket. The
-    test ensures that in such cases, the system correctly updates the CADU download status to FAILED
+    test ensures that in such cases, the system correctly updates the IP download status to FAILED
     in the database and responds with an HTTP status code of 200, indicating that the request was
     processed but the upload failed.
 
@@ -474,7 +474,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint
     "endpoint, filename, db_handler",
     [
         ("/adgs/aux", "AUX_test_file.raw", AdgsDownloadStatus),
-        ("/cadip/CADIP/cadu", "CADIP_test_file.raw", CaduDownloadStatus),
+        ("/cadip/CADIP/cadu", "CADIP_test_file.raw", CadipDownloadStatus),
     ],
 )
 def test_upload_to_s3(

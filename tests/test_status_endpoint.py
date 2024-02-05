@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 import pytest
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
 
@@ -13,7 +13,7 @@ from rs_server_common.db.models.download_status import EDownloadStatus
     "product_name, endpoint, db_handler",
     [
         ("some_aux_name", "/adgs/aux/status?name=some_aux_name", AdgsDownloadStatus),
-        ("some_cadu_name", "/cadip/CADIP/cadu/status?name=some_cadu_name", CaduDownloadStatus),
+        ("some_cadu_name", "/cadip/CADIP/cadu/status?name=some_cadu_name", CadipDownloadStatus),
     ],
 )
 def test_valid_status_request(client, product_name, endpoint, db_handler):

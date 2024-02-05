@@ -1,4 +1,4 @@
-"""Module used to download CADU files."""
+"""Module used to download CADU files from CADIP stations."""
 import os
 import os.path as osp
 import tempfile
@@ -11,8 +11,8 @@ from threading import Event
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from rs_server_cadip import cadip_tags
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus, EDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus, EDownloadStatus
 from rs_server_common.db.database import get_db
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -84,7 +84,7 @@ def download(
 
     # Get the product download status from database
     try:
-        db_product = CaduDownloadStatus.get(db, name=name)
+        db_product = CadipDownloadStatus.get(db, name=name)
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(exception)
         return JSONResponse(
@@ -108,7 +108,7 @@ def download(
     # fmt: off
     # Skip this function call formatting to avoid the following error: pylint R0801: Similar lines in 2 files
     eodag_args = EoDAGDownloadHandler(
-        CaduDownloadStatus, thread_started, station, str(db_product.product_id),
+        CadipDownloadStatus, thread_started, station, str(db_product.product_id),
         name, local, obs,
     )
     # fmt: on

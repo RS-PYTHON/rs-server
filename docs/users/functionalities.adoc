@@ -5,7 +5,7 @@
 == [.black]#CADIP#
 The CADU Interface delivery Point (CADIP) is a pick-up point for Sentinel CADU data. The CADIP allows
 clients to straightforwardly discover and retrieve available data files through a standard OData RESTful API. The following endpoints have been implemented in RS-Server to interact with CADIP RESTful API
-[[cadu-search]]
+[[cadip-search]]
 
 == [.green]#Search Endpoint#
 This endpoint retrieves a list of products from the CADU system for a specified station within a given time range and return a STAC compatible FeatureCollection response.
@@ -52,7 +52,7 @@ GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59
     },
 }
 
-[[cadu-download]]
+[[cadip-download]]
 == [.green]#Download Endpoint#
 
 This endpoint initiates an asynchronous download process for a CADU product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.
@@ -92,7 +92,7 @@ GET /cadip/station123/cadu?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.r
 }
 ----
 
-[[cadu-status]]
+[[cadip-status]]
 == [.green]#Status Endpoint#
 This endpoint is used to query the download status of an CADU file.
 

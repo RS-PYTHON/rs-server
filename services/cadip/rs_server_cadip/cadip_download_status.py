@@ -1,4 +1,4 @@
-"""CADU Product model implementation."""
+"""CadipDownloadStatus implementation."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ from rs_server_common.db.models.download_status import DownloadStatus, EDownload
 from sqlalchemy import Column, Enum
 
 
-class CaduDownloadStatus(DownloadStatus):
-    """Class used to implement DB CRUD ops for CADU products."""
+class CadipDownloadStatus(DownloadStatus):
+    """Database model implementation for CADU products download status from CADIP stations."""
 
-    __tablename__ = "cadu_download_status"
+    __tablename__ = "cadip_download_status"
 
     # I have errors when implementing the enum field in the parent class, I don't know why
     status: EDownloadStatus = Column(Enum(EDownloadStatus), default=EDownloadStatus.NOT_STARTED)

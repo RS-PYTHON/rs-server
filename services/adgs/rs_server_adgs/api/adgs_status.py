@@ -1,4 +1,4 @@
-"""AUX status HTTP endpoints."""
+"""HTTP endpoints to get the downloading status from ADGS stations."""
 
 
 from fastapi import APIRouter, Depends
