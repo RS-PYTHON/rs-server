@@ -95,10 +95,20 @@ def test_download_status(client, cls, type_, url_prefix):
         # Read an existing entry
         response = client.get(url, params={"product_id": _pid1, "name": _name1})
         assert response.status_code == 200
-        assert response.json()["db_id"] == created1.db_id
+        data = response.json()
+        assert data["db_id"] == created1.db_id
 
         # Check that the status is returned as a string in the JSON response
-        assert response.json()["status"] == "DONE"
+        assert data["status"] == "DONE"
+
+        # Check the dates format
+        date_format = "%Y-%m-%dT%H:%M:%S.%f"
+        for date in "available_at_station", "download_start", "download_stop":
+            datetime.strptime(data[date], date_format)
+
+        # If e.g. the microseconds were missing, it would raise an Exception
+        with pytest.raises(ValueError, match="does not match format"):
+            datetime.strptime("2024-01-01T00:00:00", date_format)
 
         # Read a missing entry
         response = client.get(url, params={"product_id": _pid3, "name": _name3})
