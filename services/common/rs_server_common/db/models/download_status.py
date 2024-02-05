@@ -93,7 +93,7 @@ class DownloadStatus(Base):
     #######################
 
     @classmethod
-    def get(cls, db: Session, name: str | Column[str], raise_if_missing=True) -> DownloadStatus:
+    def get(cls, db: Session, name: str | Column[str], raise_if_missing=True) -> DownloadStatus | None:
         """
         Get single database entry by name.
 

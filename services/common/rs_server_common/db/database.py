@@ -98,10 +98,7 @@ class DatabaseSessionManager:
 
             # In case of any exception, rollback connection and re-raise into HTTP exception
             except Exception as exception:  # pylint: disable=broad-exception-caught
-                try:
-                    connection.rollback()
-                finally:
-                    pass
+                connection.rollback()
                 self.reraise_http_exception(exception)
 
     @contextlib.contextmanager
@@ -117,10 +114,7 @@ class DatabaseSessionManager:
 
         # In case of any exception, rollback session and re-raise into HTTP exception
         except Exception as exception:  # pylint: disable=broad-exception-caught
-            try:
-                session.rollback()
-            finally:
-                pass
+            session.rollback()
             self.reraise_http_exception(exception)
 
         # Close session when deleting instance.
