@@ -6,7 +6,7 @@ import responses
 import sqlalchemy
 from fastapi import HTTPException, status
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
@@ -21,7 +21,7 @@ from rs_server_common.db.models.download_status import EDownloadStatus
     [
         (
             "/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
-            CaduDownloadStatus,
+            CadipDownloadStatus,
             {
                 "stac_version": "1.0.0",
                 "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
@@ -65,7 +65,14 @@ from rs_server_common.db.models.download_status import EDownloadStatus
         ),
     ],
 )
-def test_valid_endpoint_request_list(expected_products, client, endpoint, db_handler, expected_feature, fields_to_sort):
+def test_valid_endpoint_request_list(
+    expected_products,
+    client,
+    endpoint,
+    db_handler,
+    expected_feature,
+    fields_to_sort,
+):  # pylint: disable=too-many-arguments
     """Test case for retrieving products from the CADIP station between 2014 and 2023.
 
     This test sends a request to the CADIP station's endpoint for products within the specified date range.
@@ -241,7 +248,7 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
         side_effect=CreateProviderFailed("Invalid station"),
     )
     mocker.patch(
-        "rs_server_cadip.api.cadu_search.init_cadip_provider",
+        "rs_server_cadip.api.cadip_search.init_cadip_provider",
         side_effect=CreateProviderFailed("Invalid station"),
     )
     test_endpoint = f"{endpoint}?datetime={start}/{stop}"
@@ -263,7 +270,7 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
 @pytest.mark.parametrize(
     "endpoint, db_handler, limit",
     [
-        ("/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", CaduDownloadStatus, 3),
+        ("/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", CadipDownloadStatus, 3),
         ("/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", AdgsDownloadStatus, 1),
     ],
 )

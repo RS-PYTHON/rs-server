@@ -8,16 +8,21 @@ Taken from: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-
 import contextlib
 import multiprocessing
 import os
+from functools import wraps
+from pathlib import Path
 from threading import Lock
 from typing import Iterator
 
 from fastapi import HTTPException
+from filelock import FileLock
 from rs_server_common.db import Base
 from rs_server_common.utils.logging import Logging
 from sqlalchemy import Connection, Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+logger = Logging.default(__name__)
 
 
 class DatabaseSessionManager:
@@ -93,10 +98,7 @@ class DatabaseSessionManager:
 
             # In case of any exception, rollback connection and re-raise into HTTP exception
             except Exception as exception:  # pylint: disable=broad-exception-caught
-                try:
-                    connection.rollback()
-                finally:
-                    pass
+                connection.rollback()
                 self.reraise_http_exception(exception)
 
     @contextlib.contextmanager
@@ -112,21 +114,40 @@ class DatabaseSessionManager:
 
         # In case of any exception, rollback session and re-raise into HTTP exception
         except Exception as exception:  # pylint: disable=broad-exception-caught
-            try:
-                session.rollback()
-            finally:
-                pass
+            session.rollback()
             self.reraise_http_exception(exception)
 
         # Close session when deleting instance.
         finally:
             session.close()
 
+    @staticmethod
+    def __filelock(func):
+        """Avoid concurrent writing to the database using a file locK."""
+
+        @wraps(func)
+        def with_filelock(*args, **kwargs):
+            """Wrap the the call to 'func' inside the lock."""
+
+            # Let's do this only if the RSPY_WORKING_DIR environment variable is defined.
+            # Write a .lock file inside this directory.
+            try:
+                with FileLock(Path(os.environ["RSPY_WORKING_DIR"]) / f"{__name__}.lock"):
+                    return func(*args, **kwargs)
+
+            # Else just call the function without a lock
+            except KeyError:
+                return func(*args, **kwargs)
+
+        return with_filelock
+
+    @__filelock
     def create_all(self):
         """Create all database tables."""
         with DatabaseSessionManager.multiprocessing_lock:  # Handle concurrent table creation by different processes
             Base.metadata.create_all(bind=self._engine)
 
+    @__filelock
     def drop_all(self):
         """Drop all database tables."""
         with DatabaseSessionManager.multiprocessing_lock:  # Handle concurrent table creation by different processes
@@ -137,7 +158,7 @@ class DatabaseSessionManager:
         """Re-raise all exceptions into HTTP exceptions."""
 
         # Raised exceptions are not always printed in the console, so do it manually.
-        Logging.default().error(repr(exception))
+        logger.error(repr(exception))
 
         if isinstance(exception, StarletteHTTPException):
             raise exception

@@ -3,7 +3,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 from rs_server_common.db.models.download_status import EDownloadStatus
 
 
@@ -29,3 +29,10 @@ class ReadDownloadStatus(DownloadStatusBase):
         validate_default=True,
         use_enum_values=True,
     )
+
+    @field_serializer("available_at_station", "download_start", "download_stop")
+    def serialize_dt(self, dt: datetime | None, _info):
+        """
+        Called by the HTTP endpoint to convert a datetime into a JSON string.
+        """
+        return dt.strftime("%Y-%m-%dT%H:%M:%S.%f") if dt else None

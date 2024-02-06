@@ -12,8 +12,8 @@ import sqlalchemy
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 from rs_server_cadip import cadip_tags
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
-from rs_server_cadip.cadu_download_status import CaduDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -29,7 +29,7 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
-async def list_cadu_handler(
+async def list_cadip_handler(
     station: str,
     datetime: str,
     limit: int = 1000,
@@ -81,7 +81,7 @@ async def list_cadu_handler(
     # Init dataretriever / get products / return
     try:
         products = init_cadip_provider(station).search(TimeRange(start_date, stop_date), items_per_page=limit)
-        write_search_products_to_db(CaduDownloadStatus, products)
+        write_search_products_to_db(CadipDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
         with (
@@ -91,7 +91,7 @@ async def list_cadu_handler(
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
-        logger.info("Succesfully listed and processed products from cadu station")
+        logger.info("Succesfully listed and processed products from CADIP station")
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content=sort_feature_collection(cadip_item_collection, sortby),

@@ -22,6 +22,17 @@ None
 
 None
 
+== [1.0a4] - 2024-01-31
+
+* RSPY-29: Deploy Kubernetes
+* RSPY-33: Generate CI/CD documentation from Github
+* RSPY-87: Develop ADGS backend server with first endpoint "GET /adgs/aux/search"
+* RSPY-88: Add endpoint GET "/adgs/aux" to ADGS backend server
+* RSPY-90: Add endpoint GET "/adgs/aux/status" to ADGS backend server
+* RSPY-117: Create a Jupyter demo for local target
+
+=== Added
+
 == [1.0a3] - 2024-01-16
 
 === Added

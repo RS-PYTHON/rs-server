@@ -8,12 +8,12 @@ DEFAULT_STATION_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent
 
 
 def station_to_server_url(station: str) -> str | None:
-    """Retrieve the configuration data (webserver address) for a CADU station based on its identifier.
+    """Retrieve the configuration data (webserver address) for a CADIP station based on its identifier.
 
     Parameters
     ----------
     station : str
-        Identifier for the CADU station.
+        Identifier for the CADIP station.
 
     Returns
     -------
