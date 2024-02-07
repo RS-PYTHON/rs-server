@@ -2,9 +2,10 @@
 import json
 import os.path as osp
 from pathlib import Path
+from typing import Annotated
 
 import sqlalchemy
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
@@ -25,39 +26,34 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 @router.get("/adgs/aux/search")
 async def search_aux_handler(
-    datetime: str,
-    limit: int = 1000,
-    sortby: str = "+doNotSort",
-):  # pylint: disable=too-many-locals
+    datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
+    limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
+    sortby: Annotated[
+        str,
+        Query(
+            description="Sorting criteria. +/-fieldName indicates ascending/descending order and field name. "
+            "By default no sorting is applied.",
+        ),
+    ] = "+doNotSort",
+) -> list[dict]:  # pylint: disable=too-many-locals
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
 
     This function validates the input 'interval' format, performs a search for products using the ADGS provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
 
-    Args:
-        datetime (str): A string representing the time interval (e.g., "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z").
-        limit (int): Maximum number of products to return.
-        sortby (str): Sorting criteria. +/-fieldName indicates ascending/descending order and field name. Default no
-        sorting is applied.
-
-    Returns:
-        JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
-
-    Raises:
-        JSONResponse: If there is an error in validating the input interval format or connecting to the database.
-
-    Example:
-        >>> response = await search_aux_handler("2022-01-01T00:00:00/2022-01-02T00:00:00")
-        >>> print(response)
-        {"status_code": 200, "content": {"type": "FeatureCollection", "features": [...]}}
-
     Note:
         - The 'interval' parameter should be in ISO 8601 format.
         - The function utilizes the ADGS provider for product search and EODAG for STAC Feature Collection creation.
         - Errors during the process will result in appropriate HTTP status codes and error messages.
+    \f
+    Args:
+        db (Database): The database connection object.
+
+    Returns:
+        JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
+        If no products were found in the mentioned time range, output is an empty list.
 
     """
-
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
         return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Pagination cannot be less 0")

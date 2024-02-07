@@ -19,8 +19,12 @@ def init_adgs_provider(station: str) -> EodagProvider:
     If the station is unknown or if the adgs station configuration reading fails,
     a specific exception is raised to inform the caller of the issue.
 
-    :param station: the station to interact with.
-    :return: the EodagProvider initialized
+    Args:
+        station (str): the station to interact with.
+
+    Returns:
+         the EodagProvider initialized
+
     """
     try:
         # Check if the config file path is overriden in the environment variables

@@ -7,9 +7,12 @@ import json
 import os.path as osp
 import traceback
 from pathlib import Path
+from typing import Annotated
 
 import sqlalchemy
-from fastapi import APIRouter, status
+from fastapi import APIRouter
+from fastapi import Path as FPath
+from fastapi import Query, status
 from fastapi.responses import JSONResponse
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
@@ -30,50 +33,32 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 @router.get("/cadip/{station}/cadu/search")
 async def list_cadip_handler(
-    station: str,
-    datetime: str,
-    limit: int = 1000,
-    sortby: str = "+doNotSort",
-):  # pylint: disable=too-many-locals
+    datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
+    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
+    sortby: Annotated[
+        str,
+        Query(
+            description="Sorting criteria. +/-fieldName indicates ascending/descending order and field name. "
+            "By default no sorting is applied.",
+        ),
+    ] = "+doNotSort",
+) -> list[dict]:  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
-    Parameters
-    ----------
-    station : str
-        Identifier for the CADIP station (MTI, SGS, MPU, INU, etc).
-    datetime : str
-        Start date and stop date for time series filter (format: "YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ss").
-    limit : int
-        Maximum number of products to return.
-    sortby : str
-        Sorting criteria. +/-fieldName indicates ascending/descending order and field name. Default no sorting is
-         applied.
+    Notes:
+        - The 'interval' parameter should be in ISO 8601 format.
+        - The response includes a JSON representation of the list of products for the specified station.
+        - In case of an invalid station identifier, a 400 Bad Request response is returned.
+    \f
+    Args:
+        db (Database): The database connection object.
 
-    Returns
-    -------
-    JSONResponse
-        A JSON response containing the list of products (ID, Name) for the specified station.
+    Returns:
+        JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
         If the station identifier is invalid, a 400 Bad Request response is returned.
         If no products were found in the mentioned time range, output is an empty list.
 
-    Example
-    -------
-    - Request:
-        GET /cadip/station123/cadu/search?datetime="1999-01-01T12:00:00.000Z/2033-02-20T12:00:00.000Z"
-    - Response:
-        {
-            "station123": [
-                (1, 'Product A'),
-                (2, 'Product B'),
-                ...
-            ]
-        }
-
-    Notes
-    -----
-    - If both start_date and stop_date are provided, products within the specified date range are retrieved.
-    - The response includes a JSON representation of the list of products for the specified station.
-    - In case of an invalid station identifier, a 400 Bad Request response is returned.
     """
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:

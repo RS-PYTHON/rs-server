@@ -8,9 +8,9 @@ class Logging:  # pylint: disable=too-few-public-methods
     """
     Logging utility.
 
-    Static variables:
-    :param lock: For code synchronization
-    :param level: Minimal log level to use for all new logging instances.
+    Attributes:
+        lock: For code synchronization
+        level: Minimal log level to use for all new logging instances.
     """
 
     lock = Lock()
@@ -21,7 +21,8 @@ class Logging:  # pylint: disable=too-few-public-methods
         """
         Return a default Logger class instance.
 
-        :param str name: Logger name. You can pass __name__ to use your current module name.
+        Args:
+            name: Logger name. You can pass __name__ to use your current module name.
         """
         logger = logging.getLogger(name=name)
 

@@ -7,9 +7,13 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from threading import Event
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
+from fastapi import Path as FPath
+from fastapi import Query, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus, EDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
@@ -21,6 +25,7 @@ from rs_server_common.utils.utils import (
     eodag_download,
     update_db,
 )
+from sqlalchemy.orm import Session
 
 router = APIRouter(tags=cadip_tags)
 
@@ -54,32 +59,28 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
         )
 
 
-@router.get("/cadip/{station}/cadu")
+class CadipDownloadResponse(BaseModel):
+    """Endpoint response"""
+
+    started: bool
+
+
+@router.get("/cadip/{station}/cadu", response_model=CadipDownloadResponse)
 def download(
-    station: str,
-    name: str,
-    local: str = "",
-    obs: str = "",
-    db=Depends(get_db),
+    name: Annotated[str, Query(description="CADU product name")],
+    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    local: Annotated[str | None, Query(description="Local download directory")] = None,
+    obs: Annotated[str | None, Query(description="S3 storage path e.g. 's3://bucket-name/sub/dir'")] = None,
+    db: Session = Depends(get_db),
 ):  # pylint: disable=too-many-arguments
     """Initiate an asynchronous download process for a CADU product using EODAG.
 
     This endpoint triggers the download of a CADU product identified by the given
     name of the file. It starts the download process in a separate thread
     using the start_eodag_download function and updates the product's status in the database.
-
+    \f
     Args:
-        station (str): The EODAG station identifier.
-        name (str): The name of the CADU product.
-        local (str, optional): The local path where the CADU file will be downloaded.
-        obs (str, optional): S3 storage path where the CADU file will be uploaded
         db (Database): The database connection object.
-
-    Returns:
-        dict: A dictionary indicating whether the download process has started.
-
-    Raises:
-        None
     """
 
     # Get the product download status from database

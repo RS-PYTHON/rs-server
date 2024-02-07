@@ -1,0 +1,19 @@
+[project]
+name = "rs-server-doc-generation"
+version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
+
+[tool.poetry]
+name = "rs-server-doc-generation"
+version = "0.0.0"
+description = "dedicated to doc generation since incompatibility with asciidoxy"
+authors = ["Your Name <you@example.com>"]
+
+
+[tool.poetry.dependencies]
+python = ">=3.11.0,<4.0"
+asciidoxy = "^0.8.7"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]

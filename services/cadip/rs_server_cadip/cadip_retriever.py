@@ -20,8 +20,11 @@ def init_cadip_provider(station: str) -> EodagProvider:
     If the station is unknown or if the cadip station configuration reading fails,
     a specific exception is raised to inform the caller of the issue.
 
-    :param station: the station to interact with.
-    :return: the EodagProvider initialized
+    Args:
+        station: the station to interact with.
+
+    Returns:
+        the EodagProvider initialized
     """
     try:
         if not station_to_server_url(station):

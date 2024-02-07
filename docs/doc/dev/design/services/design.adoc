@@ -7,31 +7,31 @@ NOTE: TODO insert a table of the service with short description and the list of 
 Each service provides several functionalities as https endpoints.
 All services are independent of others.
 Each service is provided as an independent Docker image.
-Each service can be started in laptop or cluster mode. (see later for more details)
+Each service can be started in laptop or cluster mode (see later for more details).
 Each service can handle multiple requests in parallel in cluster mode.
 Services are stateless, so they can easily be scaled
 and the activity be divided into the multiple instances.
 
-All services shares some common structures and mechanisms.
+All services share some common structures and mechanisms.
 These common elements are provided by the rs-server-common package.
 
 // TODO the catalog service isn't following these rule since it is reused.
 
 
-=== Sources organisation
+== Sources organisation
 
-NOTE: TODO insert the servie tree structure here
+NOTE: TODO insert the service tree structure here
 
 Each service has its own folder named with the service name.
 This folder is a python project.
 It contains the sources, tests, configuration,... for this service.
 It also contains a Dockerfile describing the service output image.
-The sources of each layer is separated in a specific package.
+The sources of each layer are separated in a specific package.
 
 The shared elements are provided by the rs-server-common package.
 It is handled as a python project as if it is a rs-server service.
 
-=== Services
+== Services
 
 :leveloffset: +3
 

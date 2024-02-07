@@ -7,10 +7,16 @@ inputs:
     required: false
     default: --with dev
 
+  working-directory:
+    description: "the working directory in which poetry is run."
+    required: false
+    default: .
+
 runs:
   using: "composite"
   steps:
     - uses: ./.github/actions/install-python
     - uses: snok/install-poetry@v1
     - run: poetry install ${{ inputs.options }} # don't use quotes around options
+      working-directory: ${{ inputs.working-directory }}
       shell: bash

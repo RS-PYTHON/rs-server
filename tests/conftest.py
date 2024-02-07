@@ -21,6 +21,8 @@ from rs_server_common.db.database import DatabaseSessionManager, get_db, session
 from rs_server_common.fastapi_app import init_app
 from rs_server_common.utils.logging import Logging
 
+from tests.app import app
+
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 
 ###############################
@@ -98,9 +100,8 @@ def fastapi_app_(docker_ip, docker_services, docker_compose_file):  # pylint: di
     load_dotenv(RESOURCES_FOLDER / "db" / ".env")
 
     # Run all routers for the pytests
-    routers = adgs_routers + cadip_routers
     with ExitStack():
-        yield init_app(routers, init_db=True, pause=3, timeout=6)
+        yield app
 
 
 @pytest.fixture(name="client")

@@ -95,10 +95,15 @@ class DownloadStatus(Base):
     @classmethod
     def get(cls, db: Session, name: str | Column[str], raise_if_missing=True) -> DownloadStatus | None:
         """
-        Get single database entry by name.
+        Get single database table entry by name.
 
-        :param str name: Product name.
-        :param bool raise_if_missing: if product is missing, raise Exception or return None.
+        Args:
+            db (Session): Database session
+            name (str): Product name
+            raise_if_missing (bool): if product is missing, raise Exception or return None.
+
+        Returns:
+            DownloadStatus: database table entry
         """
 
         # Check if entry exists
@@ -122,13 +127,19 @@ class DownloadStatus(Base):
         """
         Get single database entry by name if it exists, else None.
 
-        :param str name: Product name.
+        Calls :func:`~get` with `raise_if_missing=False`
         """
         return cls.get(*args, **kwargs, raise_if_missing=False)
 
     @classmethod
     def create(cls, db: Session, **kwargs) -> DownloadStatus:
-        """Create and return database entry"""
+        """
+        Create and return database entry.
+
+        Args:
+            db (Session): Database session
+            kwargs: Any :func:`~DownloadStatus` attributes.
+        """
         entry = cls(**kwargs)
         db.add(entry)
         db.commit()

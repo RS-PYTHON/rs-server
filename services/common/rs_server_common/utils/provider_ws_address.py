@@ -1,4 +1,4 @@
-"""Docstring will be added here"""
+"""TODO Docstring will be added here"""
 import json
 import os
 import os.path as osp
@@ -10,27 +10,21 @@ DEFAULT_STATION_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent
 def station_to_server_url(station: str) -> str | None:
     """Retrieve the configuration data (webserver address) for a CADIP station based on its identifier.
 
-    Parameters
-    ----------
-    station : str
-        Identifier for the CADIP station.
+    Notes:
+        - The station identifier is case-insensitive and is converted to uppercase for matching.
+        - The function reads the station configuration data from a JSON file.
+        - If the station identifier is not found in the configuration data, the function returns None.
 
-    Returns
-    -------
-    str or None
-        A str containing the webserver address for the specified station,
-        or None if the station identifier is not found.
+    Args:
+        station (str): Identifier for the CADIP station.
 
-    Example
-    -------
-    >>> station_to_server_url("station123")
-    'https://station123.example.com'
+    Returns:
+        str or None:
+            A str containing the webserver address for the specified station,
+            or None if the station identifier is not found.
 
-    Notes
-    -----
-    - The station identifier is case-insensitive and is converted to uppercase for matching.
-    - The function reads the station configuration data from a JSON file.
-    - If the station identifier is not found in the configuration data, the function returns None.
+
+
     """
 
     # Check if the config file path is overriden in the environment variables

@@ -17,10 +17,11 @@ def init_app(routers: list[APIRouter], init_db: bool = True, pause: int = 3, tim
     Init the FastAPI application.
     See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
 
-    :param list[APIRouter] routers: list of FastAPI routers to add to the application.
-    :param bool init_db: should we init the database session ?
-    :param int timeout: timeout in seconds to wait for the database connection.
-    :param int pause: pause in seconds to wait for the database connection.
+    Args:
+        routers (list[APIRouter]): list of FastAPI routers to add to the application.
+        init_db (bool): should we init the database session ?
+        timeout (int): timeout in seconds to wait for the database connection.
+        pause (int): pause in seconds to wait for the database connection.
     """
 
     logger = Logging.default(__name__)

@@ -1,6 +1,6 @@
 = Design & concepts
 
-The rs-servcer is divided into two main elements :
+The rs-server is divided into two main elements :
 
 * the rs-server frontend
 * the rs-server backend
