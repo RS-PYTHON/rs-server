@@ -2,11 +2,9 @@
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import Annotated, Optional
+from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from fastapi import Path as FPath
-from fastapi import Query, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from rs_server_adgs import adgs_tags

@@ -3,9 +3,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from fastapi import Path as FPath
-from fastapi import Query, status
+from fastapi import APIRouter, Depends, Query
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.db.database import get_db
