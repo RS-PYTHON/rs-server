@@ -1,7 +1,11 @@
 """HTTP endpoints to get the downloading status from CADIP stations."""
 
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
+from fastapi import Path as FPath
+from fastapi import Query, status
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.db.database import get_db
@@ -12,12 +16,11 @@ router = APIRouter(tags=cadip_tags)
 
 
 @router.get("/cadip/{station}/cadu/status", response_model=ReadDownloadStatus)
-def get_status(name: str, db: Session = Depends(get_db)):
+def get_status(name: Annotated[str, Query(description="CADU product name")], db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
     \f
     Args:
-        name (str): CADU name e.g. "DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw"
         db (Session): database session
     """
     return CadipDownloadStatus.get(name=name, db=db)

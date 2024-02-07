@@ -2,10 +2,13 @@
 import tempfile
 import threading
 from contextlib import contextmanager
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
+from fastapi import Path as FPath
+from fastapi import Query, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
@@ -18,6 +21,7 @@ from rs_server_common.utils.utils import (
     eodag_download,
     update_db,
 )
+from sqlalchemy.orm import Session
 
 router = APIRouter(tags=adgs_tags)
 
@@ -48,8 +52,19 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
         )
 
 
-@router.get("/adgs/aux")
-def download(name: str, local: Optional[str] = None, obs: Optional[str] = None, db=Depends(get_db)):
+class AdgsDownloadResponse(BaseModel):
+    """Endpoint response"""
+
+    started: bool
+
+
+@router.get("/adgs/aux", response_model=AdgsDownloadResponse)
+def download(
+    name: Annotated[str, Query(description="AUX product name")],
+    local: Annotated[str | None, Query(description="Local download directory")] = None,
+    obs: Annotated[str | None, Query(description="S3 storage path e.g. 's3://bucket-name/sub/dir'")] = None,
+    db: Session = Depends(get_db),
+):
     """Initiate an asynchronous download process for an ADGS product using EODAG.
 
     This endpoint triggers the download of an ADGS product identified by the given
@@ -57,9 +72,6 @@ def download(name: str, local: Optional[str] = None, obs: Optional[str] = None, 
     using the start_eodag_download function and updates the product's status in the database.
     \f
     Args:
-        name (str): The name of the ADGS product.
-        local (str, optional): The local path where the ADGS file will be downloaded.
-        obs (str, optional): S3 storage path where the ADGS file will be uploaded
         db (Database): The database connection object.
 
     Returns:

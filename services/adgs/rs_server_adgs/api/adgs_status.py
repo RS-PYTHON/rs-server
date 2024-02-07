@@ -1,7 +1,9 @@
 """HTTP endpoints to get the downloading status from ADGS stations."""
 
 
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_common.db.database import get_db
@@ -12,12 +14,11 @@ router = APIRouter(tags=adgs_tags)
 
 
 @router.get("/adgs/aux/status", response_model=ReadDownloadStatus)
-def get_status(name: str, db: Session = Depends(get_db)):
+def get_status(name: Annotated[str, Query(description="AUX product name")], db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
     \f
     Args:
-        name (str): AUX name
         db (Session): database session
 
     """
