@@ -14,7 +14,8 @@ The technical documentation include links to open the python api and rest api re
 
 link:https://asciidoxy.org/index.html[asciidoxy] is used to generate a asciidoctor documentation with multiple pages and add links between pages.
 asciidoxy is not compatible with the other dev dependencies.
-To use it, we added a python project dedicated to the generation of the technical documentation in the rs-server/docs folder.
+To use it, a python sub-project dedicated to the generation of the technical documentation
+has been added in the rs-server/docs folder.
 
 == Python api reference guide
 
@@ -33,8 +34,8 @@ NOTE: It's important to verify this link in the generated documentation.
 
 == Rest api reference guide
 
-The REST API is provided by FastAPI on a dynamic way on the /docs endpoint,  using SwaggerUI functionalities.
-We also want to provide it on a static way in the technical documentation.
+The REST API is provided by FastAPI on a dynamic way on the /docs endpoint, using SwaggerUI functionalities.
+The technical documentation should also be provided statically in the technical documentation.
 FastAPI enables us to export the openapi specification in a json format.
 Using Swagger UI functionalities, we can generate a static REST API documentation.
 

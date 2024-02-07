@@ -1,5 +1,5 @@
-name: build-technical-doc
-description: "Generate the technical documentation using asciidoxy"
+name: build-python-api
+description: "Build the python API reference guide using Sphinx."
 
 runs:
   using: "composite"
