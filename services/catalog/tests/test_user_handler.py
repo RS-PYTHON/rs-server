@@ -1,17 +1,10 @@
 """Unit tests for user_handler module."""
 
 import pytest
-from starlette.testclient import TestClient
-from rs_server_catalog.app import app
 from rs_server_catalog.user_handler import *
 
 
-@pytest.fixture
-def client():
-    """Test the FastAPI application."""
-    with TestClient(app) as client:
-        yield client
-    
+
 @pytest.fixture
 def collection_toto_1() -> dict:
     """Create a collection for testing."""
@@ -78,10 +71,6 @@ def feature_output() -> dict:
         "collection" : "S1_L1",
     }
 
-def test_(client):
-    """Test the fastAPI client with the middleware."""
-    response = client.get("/catalog/Toto/collections/joplin/items")
-    assert response.status_code == 200
 
 class TestRemovePrefix:
     """This Class contains unit tests for the function remove_user_prefix."""

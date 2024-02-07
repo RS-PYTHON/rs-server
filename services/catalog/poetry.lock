@@ -1403,6 +1403,21 @@ docker-compose-v1 = ["docker-compose (>=1.27.3,<2.0)"]
 tests = ["mypy (>=0.500,<2.000)", "pytest-mypy (>=0.10,<1.0)", "pytest-pycodestyle (>=2.0.0,<3.0)", "pytest-pylint (>=0.14.1,<1.0)", "requests (>=2.22.0,<3.0)", "types-requests (>=2.31,<3.0)", "types-setuptools (>=69.0,<70.0)"]
 
 [[package]]
+name = "pytest-dotenv"
+version = "0.5.2"
+description = "A py.test plugin that parses environment files before running tests"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pytest-dotenv-0.5.2.tar.gz", hash = "sha256:2dc6c3ac6d8764c71c6d2804e902d0ff810fa19692e95fe138aefc9b1aa73732"},
+    {file = "pytest_dotenv-0.5.2-py3-none-any.whl", hash = "sha256:40a2cece120a213898afaa5407673f6bd924b1fa7eafce6bda0e8abffe2f710f"},
+]
+
+[package.dependencies]
+pytest = ">=5.0.0"
+python-dotenv = ">=0.9.1"
+
+[[package]]
 name = "python-dateutil"
 version = "2.8.2"
 description = "Extensions to the standard Python datetime module"
@@ -2219,4 +2234,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "00d8ed986dfefba514ad5387fd63c3f6e6bbe46c0847372b4deaf96b466e8e25"
+content-hash = "6526c2d51125352929fc93098063024c8bff101cfd737e0acc40cddae439b181"

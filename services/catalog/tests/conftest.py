@@ -1,11 +1,9 @@
 """Common fixture for catalog service."""
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 import pytest
-from dotenv import load_dotenv
-from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
 
 from rs_server_catalog.main import app
@@ -46,8 +44,8 @@ def start_database(docker_services, db_url):
 
 @pytest.fixture(scope="session")
 def client(start_database):
-    # Read the .env file that comes with docker-compose.yml
-    load_dotenv(str(Path(__file__).parent / ".env"))
+    # A .env file is read automatically
+    # to setup the env to start the app.
     with TestClient(app) as client:
         yield client
 
