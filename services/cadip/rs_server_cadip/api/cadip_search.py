@@ -10,10 +10,9 @@ from pathlib import Path
 from typing import Annotated
 
 import sqlalchemy
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, status
-from fastapi.responses import JSONResponse
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
@@ -43,7 +42,7 @@ async def list_cadip_handler(
             "By default no sorting is applied.",
         ),
     ] = "+doNotSort",
-) -> list[dict]:  # pylint: disable=too-many-locals
+) -> list[dict] | dict:  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Notes:
@@ -55,14 +54,14 @@ async def list_cadip_handler(
         db (Database): The database connection object.
 
     Returns:
-        JSONResponse: A JSON response containing the STAC Feature Collection or an error message.
+        A list of (or a single) STAC Feature Collection or an error message.
         If the station identifier is invalid, a 400 Bad Request response is returned.
         If no products were found in the mentioned time range, output is an empty list.
 
     """
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
-        return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content="Pagination cannot be less 0")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
         products = init_cadip_provider(station).search(TimeRange(start_date, stop_date), items_per_page=limit)
@@ -77,15 +76,20 @@ async def list_cadip_handler(
             stac_mapper = json.loads(stac_map.read())
             cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from CADIP station")
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=sort_feature_collection(cadip_item_collection, sortby),
-        )
+        return sort_feature_collection(cadip_item_collection, sortby)
 
+    # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"Bad station identifier: {exception}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Bad station identifier: {exception}",
+        ) from exception
 
-    except sqlalchemy.exc.OperationalError:
+    # pylint: disable=duplicate-code
+    except sqlalchemy.exc.OperationalError as exception:
         logger.error("Failed to connect to database!")
-        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content="Database connection error")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database connection error: {exception}",
+        ) from exception

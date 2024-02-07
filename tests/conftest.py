@@ -15,10 +15,7 @@ import pytest
 import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
-from rs_server_adgs.fastapi.adgs_routers import adgs_routers
-from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
-from rs_server_common.fastapi_app import init_app
 from rs_server_common.utils.logging import Logging
 
 from tests.app import app
