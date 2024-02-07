@@ -1,0 +1,29 @@
+rs\_server\_adgs.fastapi package
+================================
+
+Submodules
+----------
+
+rs\_server\_adgs.fastapi.adgs\_app module
+-----------------------------------------
+
+.. automodule:: rs_server_adgs.fastapi.adgs_app
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_adgs.fastapi.adgs\_routers module
+---------------------------------------------
+
+.. automodule:: rs_server_adgs.fastapi.adgs_routers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rs_server_adgs.fastapi
+   :members:
+   :undoc-members:
+   :show-inheritance:

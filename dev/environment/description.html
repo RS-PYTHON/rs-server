@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.16">
+<title>Development environment description</title>
+<style>
+/*! Copyright (C) 2019, TomTom (http://tomtom.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Extension of the AsciiDoctor CSS for AsciiDoxy.
+ * Adding:
+ * - Floating multipage navigation.
+ */
+@import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700";
+@import "https://cdn.jsdelivr.net/gh/asciidoctor/asciidoctor@2.0/data/stylesheets/asciidoctor-default.css";
+
+/* Multipage navigation */
+div#navigation {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+div#navigation table {
+    margin-bottom: 0;
+}
+@media screen and (min-width: 768px) {
+    body.toc2 div#navigation {
+        left: 15em;
+    }
+    body.toc2.toc-right div#navigation {
+        right: 15em;
+    }
+}
+@media screen and (min-width: 1280px) {
+    body.toc2 div#navigation {
+        left: 20em;
+    }
+    body.toc2.toc-right div#navigation {
+        right: 20em;
+    }
+}
+
+</style>
+</head>
+<body class="article">
+<div id="header">
+<h1>Development environment description</h1>
+</div>
+<div id="content">
+<div class="paragraph">
+<p>The following table describes the development technical stack
+and explains briefly the choices that have been made.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Need</th>
+<th class="tableblock halign-left valign-top">Chosen techno</th>
+<th class="tableblock halign-left valign-top">Rational elements</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">language</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">python</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the language commonly used by the final users</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">language version</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">python 3.11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">python 3.12 is too recent to be chosen</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dependency management</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">poetry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">easy to use, good dependency management</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">code formatting</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">black</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">the current standard</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">unittests</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pytest</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">standard</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">lint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pylint, flake8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">standard</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">type check</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">mypy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">commonly used by the team</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">quality check</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sonarqube</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">commonly used by the team</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">commit check</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pre-commit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">commonly used by the team</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">security check</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">trivi</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">used in the previous phase</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">technical documentation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">asciidoctor</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">good standard, simple syntax, good feedback from a team member</p></td>
+</tr>
+</tbody>
+</table>
+<div id="navigation">
+<table class="tableblock frame-none grid-none stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-middle"><a href="../background/tree-structure.html">Prev</a></th>
+<th class="tableblock halign-center valign-middle"><a href="../../index.html">Up</a><br>
+<a href="../../index.html">Home</a></th>
+<th class="tableblock halign-right valign-middle"><a href="../background/workflow.html">Next</a></th>
+</tr>
+</thead>
+</table>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2024-02-07 10:31:55 UTC
+</div>
+</div>
+</body>
+</html>

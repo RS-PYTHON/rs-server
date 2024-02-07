@@ -1,0 +1,38 @@
+rs\_server\_adgs package
+========================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   rs_server_adgs.api
+   rs_server_adgs.fastapi
+
+Submodules
+----------
+
+rs\_server\_adgs.adgs\_download\_status module
+----------------------------------------------
+
+.. automodule:: rs_server_adgs.adgs_download_status
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_adgs.adgs\_retriever module
+---------------------------------------
+
+.. automodule:: rs_server_adgs.adgs_retriever
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rs_server_adgs
+   :members:
+   :undoc-members:
+   :show-inheritance:

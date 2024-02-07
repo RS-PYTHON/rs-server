@@ -1,0 +1,29 @@
+rs\_server\_common.data\_retrieval package
+==========================================
+
+Submodules
+----------
+
+rs\_server\_common.data\_retrieval.eodag\_provider module
+---------------------------------------------------------
+
+.. automodule:: rs_server_common.data_retrieval.eodag_provider
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_common.data\_retrieval.provider module
+--------------------------------------------------
+
+.. automodule:: rs_server_common.data_retrieval.provider
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rs_server_common.data_retrieval
+   :members:
+   :undoc-members:
+   :show-inheritance:

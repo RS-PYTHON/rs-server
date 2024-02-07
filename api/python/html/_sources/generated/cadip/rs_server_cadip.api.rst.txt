@@ -1,0 +1,37 @@
+rs\_server\_cadip.api package
+=============================
+
+Submodules
+----------
+
+rs\_server\_cadip.api.cadip\_download module
+--------------------------------------------
+
+.. automodule:: rs_server_cadip.api.cadip_download
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_cadip.api.cadip\_search module
+------------------------------------------
+
+.. automodule:: rs_server_cadip.api.cadip_search
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_cadip.api.cadip\_status module
+------------------------------------------
+
+.. automodule:: rs_server_cadip.api.cadip_status
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rs_server_cadip.api
+   :members:
+   :undoc-members:
+   :show-inheritance:
