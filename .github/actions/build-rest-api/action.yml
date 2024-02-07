@@ -14,5 +14,5 @@ runs:
 
     - name: Generate openapi specification
       run: |
-        poetry run python -m rs_server.CADIP.openapi dist/doc/output/api/rest/
+        poetry run python -m tests.openapi dist/doc/output/api/rest/
       shell: bash
