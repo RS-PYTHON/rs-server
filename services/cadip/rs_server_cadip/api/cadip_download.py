@@ -66,11 +66,11 @@ class CadipDownloadResponse(BaseModel):
 
 
 @router.get("/cadip/{station}/cadu", response_model=CadipDownloadResponse)
-def download(
+def download_products(
     name: Annotated[str, Query(description="CADU product name")],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     local: Annotated[str | None, Query(description="Local download directory")] = None,
-    obs: Annotated[str | None, Query(description="S3 storage path e.g. 's3://bucket-name/sub/dir'")] = None,
+    obs: Annotated[str | None, Query(description="Object storage path e.g. 's3://bucket-name/sub/dir'")] = None,
     db: Session = Depends(get_db),
 ):  # pylint: disable=too-many-arguments
     """Initiate an asynchronous download process for a CADU product using EODAG.

@@ -14,7 +14,7 @@ router = APIRouter(tags=cadip_tags)
 
 
 @router.get("/cadip/{station}/cadu/status", response_model=ReadDownloadStatus)
-def get_status(name: Annotated[str, Query(description="CADU product name")], db: Session = Depends(get_db)):
+def get_download_status(name: Annotated[str, Query(description="CADU product name")], db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
     \f

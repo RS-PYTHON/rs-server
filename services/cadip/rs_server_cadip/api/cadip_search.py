@@ -31,17 +31,11 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
-async def list_cadip_handler(
+async def search_products(
     datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[
-        str,
-        Query(
-            description="Sorting criteria. +/-fieldName indicates ascending/descending order and field name. "
-            "By default no sorting is applied.",
-        ),
-    ] = "+doNotSort",
+    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "+doNotSort",
 ) -> list[dict] | dict:  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
