@@ -14,7 +14,7 @@ router = APIRouter(tags=adgs_tags)
 
 
 @router.get("/adgs/aux/status", response_model=ReadDownloadStatus)
-def get_status(name: Annotated[str, Query(description="AUX product name")], db: Session = Depends(get_db)):
+def get_download_status(name: Annotated[str, Query(description="AUX product name")], db: Session = Depends(get_db)):
     """
     Get a product download status from its ID or name.
     \f

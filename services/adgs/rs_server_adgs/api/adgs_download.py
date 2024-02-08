@@ -57,10 +57,10 @@ class AdgsDownloadResponse(BaseModel):
 
 
 @router.get("/adgs/aux", response_model=AdgsDownloadResponse)
-def download(
+def download_products(
     name: Annotated[str, Query(description="AUX product name")],
     local: Annotated[str | None, Query(description="Local download directory")] = None,
-    obs: Annotated[str | None, Query(description="S3 storage path e.g. 's3://bucket-name/sub/dir'")] = None,
+    obs: Annotated[str | None, Query(description="Object storage path e.g. 's3://bucket-name/sub/dir'")] = None,
     db: Session = Depends(get_db),
 ):
     """Initiate an asynchronous download process for an ADGS product using EODAG.
