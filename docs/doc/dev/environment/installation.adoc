@@ -1,10 +1,10 @@
 = Install your environment
 
-== Pre requises
+== Prerequisites
 
 This tutorial assumes the developer has already basic knowledge
 and is using a ubuntu working station.
-This tutorial lets the user uses its preferred IDE.
+This tutorial lets the user uses their preferred IDE.
 You could extend your environment with specific IDE integration.
 
 == Checkout the project
@@ -72,7 +72,7 @@ You should first initialize the project locally
 cd $RSPY_ROOT/src/rs-server
 poetry install --with dev
 ----
-This command initialize and activate a virtual environment for your project.
+This command initializes and activates a virtual environment for your project.
 It installs in this environment the project dependencies
 and the develop dependencies (--with dev).
 
@@ -93,15 +93,15 @@ pytest tests -m "unit"
 
 NOTE: Your IDE can provide integration to run your unittests.
 
-== Install trivi
+== Install trivy
 
-link:https://aquasecurity.github.io/trivy/v0.47/[trivy] is used to do some security and license checks on the repository, the generated wheel packages and the docker images.
+link:https://aquasecurity.github.io/trivy/latest/[trivy] is used to perform security and license checks on the repository, the generated wheel packages and the docker images.
 
-trivi is run on the pre-commit and the CI
+trivy is run on the pre-commit and the CI
 to verify the repository compliance with common vulnerabilities, secrets and licenses.
 
 To install trivy on your local environment,
-follow link:https://aquasecurity.github.io/trivy/v0.47/getting-started/installation/[the official procedure].
+follow link:https://aquasecurity.github.io/trivy/latest/getting-started/installation/[the official procedure].
 
 == Install pre-commit hooks
 
@@ -115,7 +115,8 @@ poetry run pre-commit install
 ----
 
 Once installed, checks will be performed before each commit
-to ensure your code is compliant with project best practice :
+to ensure your code is compliant with project best practices :
+
 * assert no unresolved merge conflicts
 * fix end of file
 * fix trailing whitespace
