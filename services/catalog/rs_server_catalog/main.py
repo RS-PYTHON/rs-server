@@ -8,6 +8,7 @@ import os
 
 from brotli_asgi import BrotliMiddleware
 from fastapi.responses import ORJSONResponse
+from rs_server_catalog.user_handler import remove_user_prefix
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import ProxyHeaderMiddleware, CORSMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
@@ -47,10 +48,7 @@ extensions_map = {
 }
 
 if enabled_extensions := os.getenv("ENABLED_EXTENSIONS"):
-    extensions = [
-        extensions_map[extension_name]
-        for extension_name in enabled_extensions.split(",")
-    ]
+    extensions = [extensions_map[extension_name] for extension_name in enabled_extensions.split(",")]
 else:
     extensions = list(extensions_map.values())
 
@@ -113,3 +111,20 @@ def create_handler(app):
 
 
 handler = create_handler(app)
+
+from starlette.concurrency import iterate_in_threadpool
+import json
+from fastapi.responses import StreamingResponse
+
+
+@app.middleware("http")
+async def xxx(request: Request, call_next):
+    path = request.url.path
+    request.scope["path"] = remove_user_prefix(path)
+
+    response = await call_next(request)
+    response_body = [chunk async for chunk in response.body_iterator]
+    response.body_iterator = iterate_in_threadpool(iter(response_body))
+
+    # print(f"response_body={response_body[0].decode()}")
+    return response

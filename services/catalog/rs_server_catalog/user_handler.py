@@ -2,7 +2,9 @@
 
 import re
 
-catalog_owner_id_stac_endpoint_regex = r"/catalog(?P<owner_id>.*)(?P<collections>/collections)((?P<collection_id>/.+?(?=/|$))(?P<items>.*)?)?"
+catalog_owner_id_stac_endpoint_regex = (
+    r"/catalog(?P<owner_id>.*)(?P<collections>/collections)((?P<collection_id>/.+?(?=/|$))(?P<items>.*)?)?"
+)
 
 
 def remove_user_prefix(path: str) -> str:
@@ -20,7 +22,7 @@ def remove_user_prefix(path: str) -> str:
 
     if path == "/":
         raise ValueError("URL (/) is invalid.")
-    
+
     if path == "/catalog":
         return "/"
 
@@ -32,14 +34,15 @@ def remove_user_prefix(path: str) -> str:
         collection_id = groups["collection_id"]
         items = groups["items"]
         if collection_id is None:
-            return "/collections"
+            return "/collections", owner_id
         collection_id = groups["collection_id"][1:]
-        if items == '':
-            return f"/collections/{owner_id}_{collection_id}"
+        if items == "":
+            return f"/collections/{owner_id}_{collection_id}", owner_id
         else:
-            return f"/collections/{owner_id}_{collection_id}/items"
+            return f"/collections/{owner_id}_{collection_id}/items", owner_id
 
-    return res
+    return res, ""
+
 
 def add_user_prefix(path: str, user: str, collection_id: str) -> str:
     """Modify the RS server backend catalog endpoint to get the RS server frontend endpoint.
@@ -54,7 +57,7 @@ def add_user_prefix(path: str, user: str, collection_id: str) -> str:
     if path == "/":
         return "/catalog"
     elif path == "/collections":
-        return f"/catalog/{user}/collections"   
+        return f"/catalog/{user}/collections"
     elif path == f"collections/{user}_{collection_id}":
         return f"/catalog/{user}/collections/{collection_id}"
     elif path == f"collections/{user}_{collection_id}/items":
@@ -63,7 +66,7 @@ def add_user_prefix(path: str, user: str, collection_id: str) -> str:
         raise ValueError(f"URL {path} is invalid.")
 
 
-def remove_user_from_feature(feature: dict, user:str) -> dict:
+def remove_user_from_feature(feature: dict, user: str) -> dict:
     """Remove the user ID from the collection name in the feature.
 
     Args:
@@ -74,11 +77,11 @@ def remove_user_from_feature(feature: dict, user:str) -> dict:
         dict: the feature with a new collection name without the user ID.
     """
     if user in feature["collection"]:
-        feature["collection"] = feature["collection"].removeprefix(user + "_")    
+        feature["collection"] = feature["collection"].removeprefix(f"{user}_")
     return feature
 
 
-def remove_user_from_collection(collection: dict, user:str) -> dict:
+def remove_user_from_collection(collection: dict, user: str) -> dict:
     """Remove the user ID from the id section in the collection.
 
     Args:
@@ -89,8 +92,9 @@ def remove_user_from_collection(collection: dict, user:str) -> dict:
         dict: The collection without the user ID in the id section.
     """
     if user in collection["id"]:
-        collection["id"] = collection["id"].removeprefix(f"{user}_")    
+        collection["id"] = collection["id"].removeprefix(f"{user}_")
     return collection
+
 
 def filter_collections(collections: list[dict], user: str) -> list[dict]:
     """filter the collections according to the user ID.
@@ -102,9 +106,4 @@ def filter_collections(collections: list[dict], user: str) -> list[dict]:
     Returns:
         list[dict]: The list of collections corresponding to the user ID
     """
-    return [
-        collection 
-        for collection in collections
-        if user in collection["id"]
-    ]
-
+    return [collection for collection in collections if user in collection["id"]]

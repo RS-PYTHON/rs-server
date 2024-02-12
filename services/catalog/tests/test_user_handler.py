@@ -1,74 +1,88 @@
 """Unit tests for user_handler module."""
 
 import pytest
-from rs_server_catalog.user_handler import *
-
+from rs_server_catalog.user_handler import (
+    add_user_prefix,
+    filter_collections,
+    remove_user_from_collection,
+    remove_user_from_feature,
+    remove_user_prefix,
+)
 
 
 @pytest.fixture
 def collection_toto_1() -> dict:
     """Create a collection for testing."""
     return {
-        "Value" : "1",
-        "id" : "toto_S1_L1",
-        "count" : "15",
+        "Value": "1",
+        "id": "toto_S1_L1",
+        "count": "15",
     }
+
 
 @pytest.fixture
 def collection_toto_1_output() -> dict:
     """Create a collection for testing."""
     return {
-        "Value" : "1",
-        "id" : "S1_L1",
-        "count" : "15",
+        "Value": "1",
+        "id": "S1_L1",
+        "count": "15",
     }
+
 
 @pytest.fixture
 def collection_toto_2() -> dict:
     """Create a collection for testing."""
     return {
-        "Value" : "65",
-        "id" : "toto_S1_L2",
-        "count" : "54",
+        "Value": "65",
+        "id": "toto_S1_L2",
+        "count": "54",
     }
+
 
 @pytest.fixture
 def collection_titi_1() -> dict:
     """Create a collection for testing."""
     return {
-        "Value" : "97",
-        "id" : "titi_S2_L2",
-        "count" : "2",
+        "Value": "97",
+        "id": "titi_S2_L2",
+        "count": "2",
     }
+
 
 @pytest.fixture
 def collection_titi_2() -> dict:
     """Create a collection for testing."""
     return {
-        "Value" : "109",
-        "id" : "titi_S2_L1",
-        "count" : "17",
+        "Value": "109",
+        "id": "titi_S2_L1",
+        "count": "17",
     }
 
+
 @pytest.fixture
-def collections(collection_toto_1, collection_toto_2, collection_titi_1, collection_titi_2) -> list[dict]:
+def collections(
+    collection_toto_1: dict, collection_toto_2: dict, collection_titi_1: dict, collection_titi_2: dict
+) -> list[dict]:
     """Create a list of collections for testing."""
     return [collection_toto_1, collection_toto_2, collection_titi_1, collection_titi_2]
+
 
 @pytest.fixture
 def feature() -> dict:
     """Create a feature for testing."""
     return {
-        "Geometry" : [(43,44),(72,15),(78,35),(65,82)],
-        "collection" : "titi_S1_L1",
+        "Geometry": [(43, 44), (72, 15), (78, 35), (65, 82)],
+        "collection": "titi_S1_L1",
     }
+
 
 @pytest.fixture
 def feature_output() -> dict:
     """Create a feature for testing."""
     return {
-        "Geometry" : [(43,44),(72,15),(78,35),(65,82)],
-        "collection" : "S1_L1",
+        "Geometry": [(43, 44), (72, 15), (78, 35), (65, 82)],
+        "collection": "S1_L1",
     }
 
 
@@ -81,19 +95,23 @@ class TestRemovePrefix:
         assert str(exc_info.value) == "URL (/) is invalid."
 
     def test_remove_the_catalog_prefix(self):
-        assert remove_user_prefix("/catalog") == "/"
+        assert remove_user_prefix("/catalog") == "/", ""
 
     def test_remove_user_and_catalog_prefix(self):
-        assert remove_user_prefix("/catalog/Toto/collections") == "/collections" 
+        assert remove_user_prefix("/catalog/Toto/collections") == ("/collections", "Toto")
 
     def test_remove_catalog_and_replace_user(self):
-        assert remove_user_prefix("/catalog/Toto/collections/joplin") == "/collections/Toto_joplin" 
+        assert remove_user_prefix("/catalog/Toto/collections/joplin") == ("/collections/Toto_joplin", "Toto")
 
     def test_remove_catalog_replace_user_with_items(self):
-        assert remove_user_prefix("/catalog/Toto/collections/joplin/items") == "/collections/Toto_joplin/items" 
+        assert remove_user_prefix("/catalog/Toto/collections/joplin/items") == (
+            "/collections/Toto_joplin/items",
+            "Toto",
+        )
 
     def test_ignore_if_unknown_endpoint(self):
-        assert remove_user_prefix("/not/found") == "/not/found" # This behavior is to be determined
+        assert remove_user_prefix("/not/found") == ("/not/found", "")  # This behavior is to be determined
+
 
 class TestAddUserPrefix:
     """This Class contains unit tests for the function add_user_prefix."""
@@ -103,13 +121,16 @@ class TestAddUserPrefix:
 
     def test_add_prefix_and_user_prefix(self):
         assert add_user_prefix("/collections", "toto", "") == "/catalog/toto/collections"
-    
+
     def test_add_prefix_and_replace_user(self):
         assert add_user_prefix("collections/toto_joplin", "toto", "joplin") == "/catalog/toto/collections/joplin"
 
     def test_add_prefix_replace_user_with_items(self):
-        assert add_user_prefix("collections/toto_joplin/items", "toto", "joplin") == "/catalog/toto/collections/joplin/items"
-    
+        assert (
+            add_user_prefix("collections/toto_joplin/items", "toto", "joplin")
+            == "/catalog/toto/collections/joplin/items"
+        )
+
     def test_fails_if_invalid_URL(self):
         with pytest.raises(ValueError) as exc_info:
             add_user_prefix("NOT/FOUND", "", "")
@@ -119,26 +140,32 @@ class TestAddUserPrefix:
 class TestRemoveUserFromCollection:
     """This Class contains unit tests for the function remove_user_from_collection."""
 
-    def test_remove_the_user_in_the_collection_id_property(self, collection_toto_1, collection_toto_1_output):
+    def test_remove_the_user_in_the_collection_id_property(
+        self, collection_toto_1: dict, collection_toto_1_output: dict
+    ):
         assert remove_user_from_collection(collection_toto_1, "toto") == collection_toto_1_output
 
-    def test_does_nothing_if_user_is_not_found(self, collection_toto_1): # This behavior is to be determined
-        assert remove_user_from_collection(collection_toto_1, "titi") == collection_toto_1 
+    def test_does_nothing_if_user_is_not_found(self, collection_toto_1: dict):  # This behavior is to be determined
+        assert remove_user_from_collection(collection_toto_1, "titi") == collection_toto_1
+
 
 class TestRemoveUserFromFeature:
     """This Class contains unit tests for the function remove_user_from_feature."""
 
-    def test_remove_the_user_in_the_feature_id_property(self, feature, feature_output):
+    def test_remove_the_user_in_the_feature_id_property(self, feature: dict, feature_output: dict):
         assert remove_user_from_feature(feature, "titi") == feature_output
 
-    def test_does_nothing_if_user_is_not_found(self, feature): # This behavior is to be determined
-        assert remove_user_from_feature(feature, "toto") == feature 
+    def test_does_nothing_if_user_is_not_found(self, feature: dict):  # This behavior is to be determined
+        assert remove_user_from_feature(feature, "toto") == feature
+
 
 class TestFilterCollections:
     """This Class contains unit tests for the function filter_collections"""
 
-    def test_get_all_collections_with_toto_in_the_id_property(self, collection_toto_1, collection_toto_2, collections):
+    def test_get_all_collections_with_toto_in_the_id_property(
+        self, collection_toto_1: dict, collection_toto_2: dict, collections: list[dict]
+    ):
         assert filter_collections(collections, "toto") == [collection_toto_1, collection_toto_2]
 
-    def test_get_nothing_if_the_user_is_not_found(self, collections):
+    def test_get_nothing_if_the_user_is_not_found(self, collections: list[dict]):
         assert filter_collections(collections, "NOTFOUND") == []

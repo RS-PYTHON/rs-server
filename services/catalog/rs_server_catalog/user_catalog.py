@@ -11,12 +11,13 @@ The middleware:
 * modifies the response to remove the user prefix in the collection name
 * modifies the response to update the links.
 """
+
 import json
 
 from starlette.datastructures import URL
 from starlette.types import Send, Receive, Scope, ASGIApp
 
-from rs_server_catalog.user_handler import remove_user_prefix
+from rs_server_catalog.user_handler import remove_user_prefix, remove_user_from_collection, filter_collections
 
 
 class UserCatalogMiddleware:
@@ -47,17 +48,24 @@ class UserCatalogMiddleware:
 
         # Redirect the user catalog specific endpoint
         # to the common stac api endpoint.
-        scope["path"] = remove_user_prefix(URL(scope=scope).path)
+        scope["path"], user = remove_user_prefix(URL(scope=scope).path)
 
         # Update the body response
         async def change_the_response(message):
-            if message["type"] != "http.response.body":
+            if message["type"] != "http.response.body" or scope["method"] == "POST":
                 return await send(message)
 
             content = json.loads(message["body"])
+            if scope["path"] == "/collections":
+                content["collections"] = filter_collections(content["collections"], user)
+                collections = content["collections"]
+                for i in range(len(content["collections"])):
+                    content["collections"][i] = remove_user_from_collection(collections[i], user)
+            content_dump = json.dumps(content)
+            content_encode = content_dump.encode("UTF-8")
+            message["body"] = content_encode
 
-            collections = content["collections"]
-            links = content["links"]
+            # links = content["links"]
             ...
 
             return await send(message)
