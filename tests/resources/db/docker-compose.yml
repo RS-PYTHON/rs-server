@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: postgres_${POSTGRES_DB}
+    container_name: postgres-${POSTGRES_DB}
     restart: always
     # variables are set in the .env file
     environment:
