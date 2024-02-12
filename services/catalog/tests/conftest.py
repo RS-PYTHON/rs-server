@@ -41,7 +41,7 @@ def start_database(docker_services, db_url):
         timeout=30.0, pause=0.1, check=lambda: is_db_up(db_url)
     )
 
-
+@pytest.mark.integration
 @pytest.fixture(scope="session")
 def client(start_database):
     # A .env file is read automatically
@@ -55,7 +55,69 @@ class Collection:
     """A collection for test purpose."""
     user: str
     name: str
-    properties: dict[str, Any]
+
+    @property
+    def id_(self) -> str:
+        """Returns the id."""
+        return f"{self.user}_{self.name}"
+
+    @property
+    def properties(self) -> dict[str, Any]:
+        """Returns the properties."""
+        return {
+            "id": self.id_,
+            "type": "Collection",
+            "links": [
+                {
+                    "rel": "items",
+                    "type": "application/geo+json",
+                    "href": f"http://localhost:8082/collections/{self.id_}/items"
+                },
+                {
+                    "rel": "parent",
+                    "type": "application/json",
+                    "href": "http://localhost:8082/"
+                },
+                {
+                    "rel": "root",
+                    "type": "application/json",
+                    "href": "http://localhost:8082/"
+                },
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": f"http://localhost:8082/collections/{self.id_}"
+                },
+                {
+                    "rel": "license",
+                    "href": "https://creativecommons.org/licenses/publicdomain/",
+                    "title": "public domain"
+                }
+            ],
+            "extent": {
+                "spatial": {
+                    "bbox": [
+                        [
+                            -94.6911621,
+                            37.0332547,
+                            -94.402771,
+                            37.1077651
+                        ]
+                    ]
+                },
+                "temporal": {
+                    "interval": [
+                        [
+                            "2000-02-01T00:00:00Z",
+                            "2000-02-12T00:00:00Z"
+                        ]
+                    ]
+                }
+            },
+            "license": "public-domain",
+            "description": "Some description",
+            "stac_version": "1.0.0"
+        }
 
 
 def a_collection(user: str, name: str) -> Collection:
@@ -72,62 +134,7 @@ def a_collection(user: str, name: str) -> Collection:
     Returns: the initialized collection
 
     """
-    id_ = f"{user}_{name}"
-    properties = {
-        "id": id_,
-        "type": "Collection",
-        "links": [
-            {
-                "rel": "items",
-                "type": "application/geo+json",
-                "href": f"http://localhost:8082/collections/{id_}/items"
-            },
-            {
-                "rel": "parent",
-                "type": "application/json",
-                "href": "http://localhost:8082/"
-            },
-            {
-                "rel": "root",
-                "type": "application/json",
-                "href": "http://localhost:8082/"
-            },
-            {
-                "rel": "self",
-                "type": "application/json",
-                "href": f"http://localhost:8082/collections/{id_}"
-            },
-            {
-                "rel": "license",
-                "href": "https://creativecommons.org/licenses/publicdomain/",
-                "title": "public domain"
-            }
-        ],
-        "extent": {
-            "spatial": {
-                "bbox": [
-                    [
-                        -94.6911621,
-                        37.0332547,
-                        -94.402771,
-                        37.1077651
-                    ]
-                ]
-            },
-            "temporal": {
-                "interval": [
-                    [
-                        "2000-02-01T00:00:00Z",
-                        "2000-02-12T00:00:00Z"
-                    ]
-                ]
-            }
-        },
-        "license": "public-domain",
-        "description": "Some description",
-        "stac_version": "1.0.0"
-    }
-    return Collection(user, name, properties)
+    return Collection(user, name)
 
 
 @pytest.fixture(scope="session")
@@ -160,8 +167,9 @@ def add_collection(client: TestClient, collection: Collection):
     """
     # TODO the endpoint should be modified once the middleware is setup.
     response = client.post(
-        "/collections",
-        json=collection.properties
+        f"/catalog/{collection.user}/collections",
+        json={"id": collection.id_}
+        # json=collection.properties,
     )
     response.raise_for_status()
 
@@ -269,10 +277,3 @@ def a_feature(id_: str, in_collection: str) -> Feature:
     }
     return Feature(id_, in_collection, properties)
 
-
-@pytest.mark.integration
-@pytest.fixture(scope="session", autouse=True)
-def setup_database(client, toto_s1_l1, toto_s2_l3, titi_s2_l1):
-    add_collection(client, toto_s1_l1)
-    add_collection(client, toto_s2_l3)
-    add_collection(client, titi_s2_l1)

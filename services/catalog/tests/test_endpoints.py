@@ -7,6 +7,9 @@ from tests.conftest import add_collection
 
 @pytest.mark.integration
 def test_redirection(client, toto_s1_l1, toto_s2_l3, titi_s2_l1):
+    add_collection(client, toto_s1_l1)
+    add_collection(client, toto_s2_l3)
+    add_collection(client, titi_s2_l1)
 
     response = client.get("/catalog/toto/collections")
 
