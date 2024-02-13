@@ -4,6 +4,7 @@ Enables the extensions specified as a comma-delimited list in
 the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
+
 import os
 
 from brotli_asgi import BrotliMiddleware
@@ -62,7 +63,7 @@ api = StacApi(
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
     # Copy/Paste the default middlewares + UserCatalogMiddleware in first position !!! (before br compression)
-    middlewares=[UserCatalogMiddleware, BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware]
+    middlewares=[UserCatalogMiddleware, BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware],
 )
 app = api.app
 
@@ -111,20 +112,3 @@ def create_handler(app):
 
 
 handler = create_handler(app)
-
-from starlette.concurrency import iterate_in_threadpool
-import json
-from fastapi.responses import StreamingResponse
-
-
-@app.middleware("http")
-async def xxx(request: Request, call_next):
-    path = request.url.path
-    request.scope["path"] = remove_user_prefix(path)
-
-    response = await call_next(request)
-    response_body = [chunk async for chunk in response.body_iterator]
-    response.body_iterator = iterate_in_threadpool(iter(response_body))
-
-    # print(f"response_body={response_body[0].decode()}")
-    return response

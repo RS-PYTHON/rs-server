@@ -45,7 +45,7 @@ class TestRedirectionCatalogUserIdCollections:
         assert parent_link == {
             "rel": "parent",
             "type": "application/json",
-            "href": "http://testserver/",
+            "href": "http://testserver/catalog/toto",
         }
 
     def test_link_root_is_valid(self, client):
@@ -56,7 +56,7 @@ class TestRedirectionCatalogUserIdCollections:
         assert root_link == {
             "rel": "root",
             "type": "application/json",
-            "href": "http://testserver/",
+            "href": "http://testserver/catalog/toto",
         }
 
     def test_link_self_is_valid(self, client):
@@ -92,7 +92,7 @@ class TestRedirectionCatalogUserIdCollections:
         assert link == {
             "rel": "parent",
             "type": "application/json",
-            "href": "http://testserver/",
+            "href": "http://testserver/catalog/toto",
         }
 
     def test_collection_link_root_is_valid(self, client):
@@ -104,7 +104,7 @@ class TestRedirectionCatalogUserIdCollections:
         assert link == {
             "rel": "root",
             "type": "application/json",
-            "href": "http://testserver/",
+            "href": "http://testserver/catalog/toto",
         }
 
     def test_collection_link_self_is_valid(self, client):

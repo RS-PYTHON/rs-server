@@ -24,7 +24,7 @@ def remove_user_prefix(path: str) -> str:
         raise ValueError("URL (/) is invalid.")
 
     if path == "/catalog":
-        return "/"
+        raise ValueError("URL (/catalog) is invalid.")
 
     res = path
     match = re.search(catalog_owner_id_stac_endpoint_regex, path)
@@ -55,15 +55,15 @@ def add_user_prefix(path: str, user: str, collection_id: str) -> str:
         str: The RS server frontend endpoint.
     """
     if path == "/":
-        return "/catalog"
+        return f"/catalog/{user}"
     elif path == "/collections":
         return f"/catalog/{user}/collections"
-    elif path == f"collections/{user}_{collection_id}":
+    elif path == f"/collections/{user}_{collection_id}":
         return f"/catalog/{user}/collections/{collection_id}"
-    elif path == f"collections/{user}_{collection_id}/items":
+    elif path == f"/collections/{user}_{collection_id}/items":
         return f"/catalog/{user}/collections/{collection_id}/items"
     else:
-        raise ValueError(f"URL {path} is invalid.")
+        return path
 
 
 def remove_user_from_feature(feature: dict, user: str) -> dict:

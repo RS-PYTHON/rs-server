@@ -1,4 +1,5 @@
 """Common fixture for catalog service."""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -7,6 +8,8 @@ from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
 
 from rs_server_catalog.main import app
+
+import os.path as osp
 
 
 def is_db_up(db_url: str) -> bool:
@@ -26,6 +29,12 @@ def is_db_up(db_url: str) -> bool:
         return False
 
 
+@pytest.fixture(scope="session", name="docker_compose_file")
+def docker_compose_file_(pytestconfig):
+    """Return the path to the docker-compose.yml file to run before tests."""
+    return osp.join(str(pytestconfig.rootdir), "rs-server", "services", "catalog", "tests", "docker-compose.yml")
+
+
 @pytest.mark.integration
 @pytest.fixture(scope="session")
 def db_url(docker_ip, docker_services) -> str:
@@ -37,9 +46,8 @@ def db_url(docker_ip, docker_services) -> str:
 @pytest.fixture(scope="session", autouse=True)
 def start_database(docker_services, db_url):
     """Ensure pgstac database in available."""
-    docker_services.wait_until_responsive(
-        timeout=30.0, pause=0.1, check=lambda: is_db_up(db_url)
-    )
+    docker_services.wait_until_responsive(timeout=30.0, pause=0.1, check=lambda: is_db_up(db_url))
+
 
 @pytest.mark.integration
 @pytest.fixture(scope="session")
@@ -53,6 +61,7 @@ def client(start_database):
 @dataclass
 class Collection:
     """A collection for test purpose."""
+
     user: str
     name: str
 
@@ -71,52 +80,24 @@ class Collection:
                 {
                     "rel": "items",
                     "type": "application/geo+json",
-                    "href": f"http://localhost:8082/collections/{self.id_}/items"
+                    "href": f"http://localhost:8082/collections/{self.id_}/items",
                 },
-                {
-                    "rel": "parent",
-                    "type": "application/json",
-                    "href": "http://localhost:8082/"
-                },
-                {
-                    "rel": "root",
-                    "type": "application/json",
-                    "href": "http://localhost:8082/"
-                },
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": f"http://localhost:8082/collections/{self.id_}"
-                },
+                {"rel": "parent", "type": "application/json", "href": "http://localhost:8082/"},
+                {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
+                {"rel": "self", "type": "application/json", "href": f"http://localhost:8082/collections/{self.id_}"},
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
-                    "title": "public domain"
-                }
+                    "title": "public domain",
+                },
             ],
             "extent": {
-                "spatial": {
-                    "bbox": [
-                        [
-                            -94.6911621,
-                            37.0332547,
-                            -94.402771,
-                            37.1077651
-                        ]
-                    ]
-                },
-                "temporal": {
-                    "interval": [
-                        [
-                            "2000-02-01T00:00:00Z",
-                            "2000-02-12T00:00:00Z"
-                        ]
-                    ]
-                }
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
             },
             "license": "public-domain",
             "description": "Some description",
-            "stac_version": "1.0.0"
+            "stac_version": "1.0.0",
         }
 
 
@@ -165,11 +146,9 @@ def add_collection(client: TestClient, collection: Collection):
     Raises:
         Error if the collection addition failed.
     """
-    # TODO the endpoint should be modified once the middleware is setup.
     response = client.post(
         f"/catalog/{collection.user}/collections",
-        json={"id": collection.id_}
-        # json=collection.properties,
+        json=collection.properties,
     )
     response.raise_for_status()
 
@@ -177,6 +156,7 @@ def add_collection(client: TestClient, collection: Collection):
 @dataclass
 class Feature:
     """A feature for test purpose."""
+
     id_: str
     collection: str
     properties: dict[str, Any]
@@ -197,68 +177,40 @@ def a_feature(id_: str, in_collection: str) -> Feature:
     """
     properties = {
         "id": id_,
-        "bbox": [
-            -94.6334839,
-            37.0332547,
-            -94.6005249,
-            37.0595608
-        ],
+        "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
         "type": "Feature",
         "links": [
             {
                 "rel": "collection",
                 "type": "application/json",
-                "href": f"http://localhost:8082/collections/{in_collection}"
+                "href": f"http://localhost:8082/collections/{in_collection}",
             },
-            {
-                "rel": "parent",
-                "type": "application/json",
-                "href": f"http://localhost:8082/collections/{in_collection}"
-            },
-            {
-                "rel": "root",
-                "type": "application/json",
-                "href": "http://localhost:8082/"
-            },
+            {"rel": "parent", "type": "application/json", "href": f"http://localhost:8082/collections/{in_collection}"},
+            {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
             {
                 "rel": "self",
                 "type": "application/geo+json",
-                "href": f"http://localhost:8082/collections/{in_collection}/items/{id_}"
-            }
+                "href": f"http://localhost:8082/collections/{in_collection}/items/{id_}",
+            },
         ],
         "assets": {
             "COG": {
                 "href": "https://arturo-stac-api-test-data.s3.amazonaws.com/joplin/images/may24C355000e4102500n.tif",
                 "type": "image/tiff; application=geotiff; profile=cloud-optimized",
-                "title": "NOAA STORM COG"
+                "title": "NOAA STORM COG",
             }
         },
         "geometry": {
             "type": "Polygon",
             "coordinates": [
                 [
-                    [
-                        -94.6334839,
-                        37.0595608
-                    ],
-                    [
-                        -94.6334839,
-                        37.0332547
-                    ],
-                    [
-                        -94.6005249,
-                        37.0332547
-                    ],
-                    [
-                        -94.6005249,
-                        37.0595608
-                    ],
-                    [
-                        -94.6334839,
-                        37.0595608
-                    ]
+                    [-94.6334839, 37.0595608],
+                    [-94.6334839, 37.0332547],
+                    [-94.6005249, 37.0332547],
+                    [-94.6005249, 37.0595608],
+                    [-94.6334839, 37.0595608],
                 ]
-            ]
+            ],
         },
         "collection": in_collection,
         "properties": {
@@ -267,13 +219,12 @@ def a_feature(id_: str, in_collection: str) -> Feature:
             "height": 2500,
             "datetime": "2000-02-02T00:00:00Z",
             "proj:epsg": 3857,
-            "orientation": "nadir"
+            "orientation": "nadir",
         },
         "stac_version": "1.0.0",
         "stac_extensions": [
             "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
-        ]
+            "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+        ],
     }
     return Feature(id_, in_collection, properties)
-

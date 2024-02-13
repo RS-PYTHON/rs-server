@@ -95,7 +95,9 @@ class TestRemovePrefix:
         assert str(exc_info.value) == "URL (/) is invalid."
 
     def test_remove_the_catalog_prefix(self):
-        assert remove_user_prefix("/catalog") == "/", ""
+        with pytest.raises(ValueError) as exc_info:
+            remove_user_prefix("/catalog")
+        assert str(exc_info.value) == "URL (/catalog) is invalid."
 
     def test_remove_user_and_catalog_prefix(self):
         assert remove_user_prefix("/catalog/Toto/collections") == ("/collections", "Toto")
@@ -117,24 +119,22 @@ class TestAddUserPrefix:
     """This Class contains unit tests for the function add_user_prefix."""
 
     def test_return_catalog_if_no_user(self):
-        assert add_user_prefix("/", "", "") == "/catalog"
+        assert add_user_prefix("/", "toto", "") == "/catalog/toto"
 
     def test_add_prefix_and_user_prefix(self):
         assert add_user_prefix("/collections", "toto", "") == "/catalog/toto/collections"
 
     def test_add_prefix_and_replace_user(self):
-        assert add_user_prefix("collections/toto_joplin", "toto", "joplin") == "/catalog/toto/collections/joplin"
+        assert add_user_prefix("/collections/toto_joplin", "toto", "joplin") == "/catalog/toto/collections/joplin"
 
     def test_add_prefix_replace_user_with_items(self):
         assert (
-            add_user_prefix("collections/toto_joplin/items", "toto", "joplin")
+            add_user_prefix("/collections/toto_joplin/items", "toto", "joplin")
             == "/catalog/toto/collections/joplin/items"
         )
 
-    def test_fails_if_invalid_URL(self):
-        with pytest.raises(ValueError) as exc_info:
-            add_user_prefix("NOT/FOUND", "", "")
-        assert str(exc_info.value) == "URL NOT/FOUND is invalid."
+    def test_does_nothing_if_URL_not_found(self):
+        assert add_user_prefix("/NOT/FOUND", "toto", "joplin") == "/NOT/FOUND"
 
 
 class TestRemoveUserFromCollection:
