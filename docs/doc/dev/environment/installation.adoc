@@ -138,6 +138,6 @@ to keep your code compliant with the coding style at any moment.
 
 == The next steps
 
-The ${include("description.adoc")} can provide you with more details about the environment.
-The ${include("../background/workflow.adoc")} describes the workflow followed by developers to implement stories.
-You may also want to read the ${include("../code-style.adoc")}.
+The ${cross_document_ref("description.adoc")} can provide you with more details about the environment.
+The ${cross_document_ref("../background/workflow.adoc")} describes the workflow followed by developers to implement stories.
+You may also want to read the ${cross_document_ref("../code-style.adoc")}.
