@@ -70,11 +70,8 @@ div#navigation table {
 <p>The CADU Interface delivery Point (CADIP) is a pick-up point for Sentinel CADU data. The CADIP allows
 clients to straightforwardly discover and retrieve available data files through a standard OData RESTful API. The following endpoints have been implemented in RS-Server to interact with CADIP RESTful API</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="cadip-search"><span class="green">Search Endpoint</span></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="cadip-search"><span class="green">Search Endpoint</span></h3>
 <div class="paragraph">
 <p>This endpoint retrieves a list of products from the CADU system for a specified station within a given time range and return a STAC compatible FeatureCollection response.</p>
 </div>
@@ -143,10 +140,8 @@ clients to straightforwardly discover and retrieve available data files through 
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="cadip-download"><span class="green">Download Endpoint</span></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="cadip-download"><span class="green">Download Endpoint</span></h3>
 <div class="paragraph">
 <p>This endpoint initiates an asynchronous download process for a CADU product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.</p>
 </div>
@@ -216,10 +211,8 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="cadip-status"><span class="green">Status Endpoint</span></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="cadip-status"><span class="green">Status Endpoint</span></h3>
 <div class="paragraph">
 <p>This endpoint is used to query the download status of an CADU file.</p>
 </div>
@@ -227,6 +220,7 @@ Connection to S3 bucket is required, and should be written in the environmental 
 <h4 id="_api_reference_3">API Reference</h4>
 <div class="paragraph">
 <p><code>/cadip/{station}/cadu/status</code></p>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -276,11 +270,8 @@ Connection to S3 bucket is required, and should be written in the environmental 
 <p>The Auxiliary Data Gathering Service (ADGS) is a pick-up point for Sentinel auxiliary files. This service allows
 clients to discover and retrieve available auxiliary data files through a standard OData RESTful API. The following endpoints have been implemented in RS-Server to interact with ADGS RESTful API.</p>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="adgs-search"><span class="green">Search Endpoint</span></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="adgs-search"><span class="green">Search Endpoint</span></h3>
 <div class="paragraph">
 <p>This endpoint handles the search for products in the AUX station within a specified time interval and return a STAC compatible FeatureCollection response.</p>
 </div>
@@ -342,10 +333,8 @@ clients to discover and retrieve available auxiliary data files through a standa
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="adgs-download"><span class="green">Download Endpoint</span></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="adgs-download"><span class="green">Download Endpoint</span></h3>
 <div class="paragraph">
 <p>This endpoint initiates an asynchronous download process for an AUX product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.</p>
 </div>
@@ -412,10 +401,8 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </div>
 </div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="adgs-status"><span class="green">Status Endpoint</span></h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="adgs-status"><span class="green">Status Endpoint</span></h3>
 <div class="paragraph">
 <p>This endpoint is used to query the download status of an AUX file.</p>
 </div>
@@ -468,7 +455,7 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-middle"><a href="../index.html">Prev</a></th>
+<th class="tableblock halign-left valign-middle"><a href="architecture.html">Prev</a></th>
 <th class="tableblock halign-center valign-middle"><a href="../index.html">Up</a><br>
 <a href="../index.html">Home</a></th>
 <th class="tableblock halign-right valign-middle"><a href="../dev/environment/installation.html">Next</a></th>
@@ -480,9 +467,10 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </div>
 </div>
 </div>
+</div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-02-08 10:50:06 UTC
+Last updated 2024-02-13 10:07:43 UTC
 </div>
 </div>
 </body>

@@ -64,12 +64,12 @@ div#navigation table {
 </div>
 <div id="content">
 <div class="sect1">
-<h2 id="_pre_requises">Pre requises</h2>
+<h2 id="_prerequisites">Prerequisites</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>This tutorial assumes the developer has already basic knowledge
 and is using a ubuntu working station.
-This tutorial lets the user uses its preferred IDE.
+This tutorial lets the user uses their preferred IDE.
 You could extend your environment with specific IDE integration.</p>
 </div>
 </div>
@@ -180,7 +180,7 @@ poetry install --with dev</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>This command initialize and activate a virtual environment for your project.
+<p>This command initializes and activates a virtual environment for your project.
 It installs in this environment the project dependencies
 and the develop dependencies (--with dev).</p>
 </div>
@@ -226,18 +226,18 @@ Your IDE can provide integration to run your unittests.
 </div>
 </div>
 <div class="sect1">
-<h2 id="_install_trivi">Install trivi</h2>
+<h2 id="_install_trivy">Install trivy</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="https://aquasecurity.github.io/trivy/v0.47/">trivy</a> is used to do some security and license checks on the repository, the generated wheel packages and the docker images.</p>
+<p><a href="https://aquasecurity.github.io/trivy/latest/">trivy</a> is used to perform security and license checks on the repository, the generated wheel packages and the docker images.</p>
 </div>
 <div class="paragraph">
-<p>trivi is run on the pre-commit and the CI
+<p>trivy is run on the pre-commit and the CI
 to verify the repository compliance with common vulnerabilities, secrets and licenses.</p>
 </div>
 <div class="paragraph">
 <p>To install trivy on your local environment,
-follow <a href="https://aquasecurity.github.io/trivy/v0.47/getting-started/installation/">the official procedure</a>.</p>
+follow <a href="https://aquasecurity.github.io/trivy/latest/getting-started/installation/">the official procedure</a>.</p>
 </div>
 </div>
 </div>
@@ -256,14 +256,32 @@ poetry run pre-commit install</code></pre>
 </div>
 <div class="paragraph">
 <p>Once installed, checks will be performed before each commit
-to ensure your code is compliant with project best practice :
-* assert no unresolved merge conflicts
-* fix end of file
-* fix trailing whitespace
-* check toml
-* run black formatter
-* run linters
-* run trivy repo checks</p>
+to ensure your code is compliant with project best practices :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>assert no unresolved merge conflicts</p>
+</li>
+<li>
+<p>fix end of file</p>
+</li>
+<li>
+<p>fix trailing whitespace</p>
+</li>
+<li>
+<p>check toml</p>
+</li>
+<li>
+<p>run black formatter</p>
+</li>
+<li>
+<p>run linters</p>
+</li>
+<li>
+<p>run trivy repo checks</p>
+</li>
+</ul>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -321,7 +339,7 @@ You may also want to read the <a href="../code-style.html">Coding style</a>.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-02-08 10:50:06 UTC
+Last updated 2024-02-13 10:07:43 UTC
 </div>
 </div>
 </body>
