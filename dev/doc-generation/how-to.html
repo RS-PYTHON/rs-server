@@ -63,6 +63,8 @@ div#navigation table {
 <h1>Generate rs-server technical documentation</h1>
 </div>
 <div id="content">
+<div id="preamble">
+<div class="sectionbody">
 <div class="paragraph">
 <p>This procedure is run automatically in the CI by the 'generate documentation' workflow.
 It can be executed locally to verify the generated documentation (before publishing it for example).</p>
@@ -70,25 +72,21 @@ It can be executed locally to verify the generated documentation (before publish
 <div class="paragraph">
 <p>See <a href="description.html">Documentation generation process</a> for more details on the process and technical stuff.</p>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Prerequisites</p>
-</li>
-</ol>
 </div>
+</div>
+<div class="sect1">
+<h2 id="_prerequisites">1. Prerequisites</h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The local developer environment has been setup.
 The global python project is setup.
 The python sub-project for doc generation is also setup.</p>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Generate the technical documentation</p>
-</li>
-</ol>
 </div>
+</div>
+<div class="sect1">
+<h2 id="_generate_the_technical_documentation">2. Generate the technical documentation</h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>From the rs-server/docs folder, execute the command:</p>
 </div>
@@ -101,13 +99,11 @@ The python sub-project for doc generation is also setup.</p>
 <p>This command generates the html pages of all the technical documentation
 and write them in the rs-server/dist/doc folder.</p>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Generate the python api documentation</p>
-</li>
-</ol>
 </div>
+</div>
+<div class="sect1">
+<h2 id="_generate_the_python_api_documentation">3. Generate the python api documentation</h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>From the root folder, run the following command :</p>
 </div>
@@ -135,13 +131,11 @@ and write them in a generated folder (excluded of git conf).</p>
 <p>It generates the html pages for the python api of the rs-server.
 The generated api is accessible locally at 'dist/doc/api/html/index.html'.</p>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Generate the REST API documentation</p>
-</li>
-</ol>
 </div>
+</div>
+<div class="sect1">
+<h2 id="_generate_the_rest_api_documentation">4. Generate the REST API documentation</h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>From the root folder, run the following command :</p>
 </div>
@@ -181,13 +175,11 @@ The documented REST API will be the one of the frontend at the end.
 </tr>
 </table>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
-<li>
-<p>Verify the generated documentation</p>
-</li>
-</ol>
 </div>
+</div>
+<div class="sect1">
+<h2 id="_verify_the_generated_documentation">5. Verify the generated documentation</h2>
+<div class="sectionbody">
 <div class="paragraph">
 <p>The technical documentation is generated in the folder "dist/doc/output/".
 The main page is the file "index.html" is this folder.
@@ -249,9 +241,11 @@ You can open the REST API locally starting the rs-server and connecting to the /
 </table>
 </div>
 </div>
+</div>
+</div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-02-13 10:07:43 UTC
+Last updated 2024-02-13 10:37:33 UTC
 </div>
 </div>
 </body>
