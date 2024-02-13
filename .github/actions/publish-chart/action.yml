@@ -1,0 +1,35 @@
+name: publish-chart
+description: Publish Helm chart
+
+inputs:
+  charts_dir:
+    description: Directory containing charts to publish
+    required: true
+  github_token:
+    description: secrets.GITHUB_TOKEN
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+
+    # See: https://github.com/helm/chart-releaser-action
+
+    # Necessary ?
+    - name: Configure Git
+      run: |
+        git config user.name "$GITHUB_ACTOR"
+        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+      shell: bash
+
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+
+    - name: Run chart-releaser
+      uses: helm/chart-releaser-action@v1.6.0
+      with:
+        charts_dir: ${{ inputs.charts_dir }}
+      env:
+        CR_TOKEN: ${{ inputs.github_token }}
