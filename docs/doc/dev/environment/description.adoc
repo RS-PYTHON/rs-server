@@ -46,7 +46,7 @@ and explains briefly the choices that have been made.
 |commonly used by the team
 
 |security check
-|trivi
+|trivy
 |used in the previous phase
 
 |technical documentation

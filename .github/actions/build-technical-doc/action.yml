@@ -17,6 +17,6 @@ runs:
 
     - name: Generate technical documentation
       run: |
-        poetry run asciidoxy --base-dir doc --build-dir ../dist/doc/ --multipage doc/index.adoc
+        poetry run asciidoxy --warnings-are-errors --base-dir doc --image-dir images --build-dir ../dist/doc/ --multipage doc/index.adoc
       working-directory: ./docs
       shell: bash

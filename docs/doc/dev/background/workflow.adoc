@@ -2,7 +2,7 @@
 
 == Git
 
-The project is using the https://git-flow.readthedocs.io/fr/latest/presentation.html[gitflow].
+The project is using the https://git-flow.readthedocs.io/en/latest/presentation.html[gitflow].
 
 The feature branches are named following the pattern "feat-<jira-id>/<short-description>"
 For example : "feat-rspy31/init-tech-doc"
