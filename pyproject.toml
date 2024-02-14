@@ -10,7 +10,6 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.adoc"
 
 packages = [
-    { include = "rs_server" },
     { include = "rs_server_adgs", from = "services/adgs"},
     { include = "rs_server_cadip", from = "services/cadip" },
     { include = "rs_server_common", from = "services/common"},
