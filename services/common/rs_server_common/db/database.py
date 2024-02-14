@@ -8,6 +8,7 @@ Taken from: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-
 import contextlib
 import multiprocessing
 import os
+import traceback
 from functools import wraps
 from pathlib import Path
 from threading import Lock
@@ -158,8 +159,8 @@ class DatabaseSessionManager:
     def reraise_http_exception(cls, exception: Exception):
         """Re-raise all exceptions into HTTP exceptions."""
 
-        # Raised exceptions are not always printed in the console, so do it manually.
-        logger.error(repr(exception))
+        # Raised exceptions are not always printed in the console, so do it manually with the stacktrace.
+        logger.error(traceback.format_exc())
 
         if isinstance(exception, StarletteHTTPException):
             raise exception
