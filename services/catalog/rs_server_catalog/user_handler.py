@@ -8,7 +8,8 @@ catalog_owner_id_stac_endpoint_regex = (
 
 
 def remove_user_prefix(path: str) -> str:
-    """Remove the prefix from the RS Server Frontend endpoints to get the RS Server backend catalog endpoints.
+    """Remove the prefix from the RS Server Frontend endpoints to get the
+    RS Server backend catalog endpoints.
 
     Args:
         path (str): RS Server Frontend endpoints.

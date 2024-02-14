@@ -235,6 +235,12 @@ def feature_titi_S2_L1_0() -> Feature:
 
 
 def add_feature(client: TestClient, feature: Feature):
+    """Add the given feature in the STAC catalogue.
+
+    Args:
+        client (TestClient): The catalog client.
+        feature (Feature): The feature to add.
+    """
     response = client.post(
         f"/catalog/{feature.owner_id}/collections/{feature.collection}/items",
         json=feature.properties,

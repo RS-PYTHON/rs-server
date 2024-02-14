@@ -15,7 +15,6 @@ The middleware:
 import json
 
 from starlette.datastructures import URL
-from starlette.types import Send, Receive, Scope, ASGIApp
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 

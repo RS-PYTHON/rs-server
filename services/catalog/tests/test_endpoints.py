@@ -20,6 +20,7 @@ def setup_database(
 
 @pytest.mark.integration
 class TestRedirectionCatalogUserIdCollections:
+    """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections'"""
 
     def test_status_code_200_toto_if_good_endpoint(self, client):
         response = client.get("/catalog/toto/collections")
@@ -144,6 +145,7 @@ class TestRedirectionCatalogUserIdCollections:
 
 @pytest.mark.integration
 class TestRedirectionCatalogUserIdCollectionsCollectionid:
+    """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}'."""
 
     def test_status_code_200_toto_if_good_endpoint(self, client):
         response = client.get("/catalog/toto/collections/S1_L1")
@@ -226,6 +228,7 @@ class TestRedirectionCatalogUserIdCollectionsCollectionid:
 
 @pytest.mark.integration
 class TestRedirectionGetItems:
+    """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}/items'."""
 
     def test_status_code_200_feature_toto_if_good_endpoint(self, client):
         response = client.get("/catalog/toto/collections/S1_L1/items")

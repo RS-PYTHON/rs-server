@@ -9,7 +9,6 @@ import os
 
 from brotli_asgi import BrotliMiddleware
 from fastapi.responses import ORJSONResponse
-from rs_server_catalog.user_handler import remove_user_prefix
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import ProxyHeaderMiddleware, CORSMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
