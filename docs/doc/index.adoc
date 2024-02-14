@@ -2,7 +2,10 @@
 
 == User manual
 
-The main functionalities are explained here :
+The overall architecture is described here:
+${include("users/architecture.adoc")}
+
+The main functionalities are explained here:
 ${include("users/functionalities.adoc")}
 
 
@@ -10,15 +13,15 @@ ${include("users/functionalities.adoc")}
 
 All you want to know when you are a rs-server developer.
 
-The documentation is organized in 4 sections :
+The documentation is organized in 4 sections:
 
-* Tutorials to help you start coding on rs-server :
+* Tutorials to help you start coding on rs-server:
 ** ${include("dev/environment/installation.adoc")}
 
 * How to guides to provide practical common procedures
 ** ${include("dev/doc-generation/how-to.adoc")}
 
-* Reference guides give you technical information about the code and software API :
+* Reference guides give you technical information about the code and software API:
 ** ${include("dev/code-style.adoc")}
 ** ${include("api/python/html/index.adoc")}
 ** ${include("api/rest/index.adoc")}

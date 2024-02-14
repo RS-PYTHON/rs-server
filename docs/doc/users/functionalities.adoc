@@ -7,7 +7,7 @@ The CADU Interface delivery Point (CADIP) is a pick-up point for Sentinel CADU d
 clients to straightforwardly discover and retrieve available data files through a standard OData RESTful API. The following endpoints have been implemented in RS-Server to interact with CADIP RESTful API
 [[cadip-search]]
 
-== [.green]#Search Endpoint#
+=== [.green]#Search Endpoint#
 This endpoint retrieves a list of products from the CADU system for a specified station within a given time range and return a STAC compatible FeatureCollection response.
 
 ==== API Reference
@@ -53,7 +53,7 @@ GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59
 }
 
 [[cadip-download]]
-== [.green]#Download Endpoint#
+=== [.green]#Download Endpoint#
 
 This endpoint initiates an asynchronous download process for a CADU product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.
 
@@ -93,7 +93,7 @@ GET /cadip/station123/cadu?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.r
 ----
 
 [[cadip-status]]
-== [.green]#Status Endpoint#
+=== [.green]#Status Endpoint#
 This endpoint is used to query the download status of an CADU file.
 
 ==== API Reference
@@ -127,7 +127,7 @@ GET /cadip/{station}/cadu/status?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_0
 The Auxiliary Data Gathering Service (ADGS) is a pick-up point for Sentinel auxiliary files. This service allows
 clients to discover and retrieve available auxiliary data files through a standard OData RESTful API. The following endpoints have been implemented in RS-Server to interact with ADGS RESTful API.
 [[adgs-search]]
-== [.green]#Search Endpoint#
+=== [.green]#Search Endpoint#
 
 This endpoint handles the search for products in the AUX station within a specified time interval and return a STAC compatible FeatureCollection response.
 
@@ -169,7 +169,7 @@ GET /adgs/aux/search?datetime=2018-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=10
 }
 
 [[adgs-download]]
-== [.green]#Download Endpoint#
+=== [.green]#Download Endpoint#
 
 This endpoint initiates an asynchronous download process for an AUX product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.
 
@@ -208,7 +208,7 @@ GET /adgs/aux?name=S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_201
 ----
 
 [[adgs-status]]
-== [.green]#Status Endpoint#
+=== [.green]#Status Endpoint#
 This endpoint is used to query the download status of an AUX file.
 
 ==== Endpoint

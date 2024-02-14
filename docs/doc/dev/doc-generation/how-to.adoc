@@ -1,28 +1,29 @@
 = Generate rs-server technical documentation
+:sectnums:
 
 This procedure is run automatically in the CI by the 'generate documentation' workflow.
 It can be executed locally to verify the generated documentation (before publishing it for example).
 
-See ${include("description.adoc")} for more details on the process and technical stuff.
+See ${cross_document_ref("description.adoc")} for more details on the process and technical stuff.
 
-. Pre-requises
+== Prerequisites
 
 The local developer environment has been setup.
 The global python project is setup.
 The python sub-project for doc generation is also setup.
 
-. Generate the technical documentation
+== Generate the technical documentation
 
 From the rs-server/docs folder, execute the command:
 [source, bash, indent=0]
 ----
-poetry run asciidoxy --base-dir doc --build-dir ../dist/doc/ --multipage doc/index.adoc
+poetry run asciidoxy --warnings-are-errors --base-dir doc --image-dir images --build-dir ../dist/doc/ --multipage doc/index.adoc
 ----
 
 This command generates the html pages of all the technical documentation
 and write them in the rs-server/dist/doc folder.
 
-. Generate the python api documentation
+== Generate the python api documentation
 
 From the root folder, run the following command :
 [source, bash, indent=0]
@@ -43,7 +44,7 @@ poetry run sphinx-build -M html docs/doc/api/python/ dist/doc/output/api/python/
 It generates the html pages for the python api of the rs-server.
 The generated api is accessible locally at 'dist/doc/api/html/index.html'.
 
-. Generate the REST API documentation
+== Generate the REST API documentation
 
 From the root folder, run the following command :
 [source, bash, indent=0]
@@ -69,7 +70,7 @@ The output folder is the one expected for integration with the main document of 
 NOTE: This is a POC waiting for the frontend to be implemented.
 The documented REST API will be the one of the frontend at the end.
 
-. Verify the generated documentation
+== Verify the generated documentation
 
 The technical documentation is generated in the folder "dist/doc/output/".
 The main page is the file "index.html" is this folder.
