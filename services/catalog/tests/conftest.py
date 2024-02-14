@@ -157,12 +157,53 @@ def add_collection(client: TestClient, collection: Collection):
 class Feature:
     """A feature for test purpose."""
 
+    owner_id: str
     id_: str
     collection: str
-    properties: dict[str, Any]
+
+    @property
+    def properties(self) -> dict[str, Any]:
+        return {
+            "id": self.id_,
+            "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
+            "type": "Feature",
+            "assets": {
+                "COG": {
+                    "href": f"https://arturo-stac-api-test-data.s3.amazonaws.com/{self.collection}/images/may24C355000e4102500n.tif",
+                    "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+                    "title": "NOAA STORM COG",
+                }
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-94.6334839, 37.0595608],
+                        [-94.6334839, 37.0332547],
+                        [-94.6005249, 37.0332547],
+                        [-94.6005249, 37.0595608],
+                        [-94.6334839, 37.0595608],
+                    ]
+                ],
+            },
+            "collection": f"{self.owner_id}_{self.collection}",
+            "properties": {
+                "gsd": 0.5971642834779395,
+                "width": 2500,
+                "height": 2500,
+                "datetime": "2000-02-02T00:00:00Z",
+                "proj:epsg": 3857,
+                "orientation": "nadir",
+            },
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+                "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+            ],
+        }
 
 
-def a_feature(id_: str, in_collection: str) -> Feature:
+def a_feature(owner_id: str, id_: str, in_collection: str) -> Feature:
     """Create a feature for test purpose.
 
     The feature is built from a prototype.
@@ -175,56 +216,27 @@ def a_feature(id_: str, in_collection: str) -> Feature:
     Returns:
         The initialized feature
     """
-    properties = {
-        "id": id_,
-        "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
-        "type": "Feature",
-        "links": [
-            {
-                "rel": "collection",
-                "type": "application/json",
-                "href": f"http://localhost:8082/collections/{in_collection}",
-            },
-            {"rel": "parent", "type": "application/json", "href": f"http://localhost:8082/collections/{in_collection}"},
-            {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
-            {
-                "rel": "self",
-                "type": "application/geo+json",
-                "href": f"http://localhost:8082/collections/{in_collection}/items/{id_}",
-            },
-        ],
-        "assets": {
-            "COG": {
-                "href": "https://arturo-stac-api-test-data.s3.amazonaws.com/joplin/images/may24C355000e4102500n.tif",
-                "type": "image/tiff; application=geotiff; profile=cloud-optimized",
-                "title": "NOAA STORM COG",
-            }
-        },
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [-94.6334839, 37.0595608],
-                    [-94.6334839, 37.0332547],
-                    [-94.6005249, 37.0332547],
-                    [-94.6005249, 37.0595608],
-                    [-94.6334839, 37.0595608],
-                ]
-            ],
-        },
-        "collection": in_collection,
-        "properties": {
-            "gsd": 0.5971642834779395,
-            "width": 2500,
-            "height": 2500,
-            "datetime": "2000-02-02T00:00:00Z",
-            "proj:epsg": 3857,
-            "orientation": "nadir",
-        },
-        "stac_version": "1.0.0",
-        "stac_extensions": [
-            "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
-        ],
-    }
-    return Feature(id_, in_collection, properties)
+    return Feature(owner_id, id_, in_collection)
+
+
+@pytest.fixture(scope="session")
+def feature_toto_S1_L1_0() -> Feature:
+    return a_feature("toto", "fe916452-ba6f-4631-9154-c249924a122d", "S1_L1")
+
+
+@pytest.fixture(scope="session")
+def feature_toto_S1_L1_1() -> Feature:
+    return a_feature("toto", "f7f164c9-cfdf-436d-a3f0-69864c38ba2a", "S1_L1")
+
+
+@pytest.fixture(scope="session")
+def feature_titi_S2_L1_0() -> Feature:
+    return a_feature("titi", "fe916452-ba6f-4631-9154-c249924a122d", "S2_L1")
+
+
+def add_feature(client: TestClient, feature: Feature):
+    response = client.post(
+        f"/catalog/{feature.owner_id}/collections/{feature.collection}/items",
+        json=feature.properties,
+    )
+    response.raise_for_status()

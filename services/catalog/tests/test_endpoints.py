@@ -2,19 +2,25 @@ import json
 
 import pytest
 
-from tests.conftest import add_collection
+from tests.conftest import add_collection, add_feature
 
 
 @pytest.mark.integration
 @pytest.fixture(scope="session", autouse=True)
-def setup_database(client, toto_s1_l1, toto_s2_l3, titi_s2_l1):
+def setup_database(
+    client, toto_s1_l1, toto_s2_l3, titi_s2_l1, feature_toto_S1_L1_0, feature_toto_S1_L1_1, feature_titi_S2_L1_0
+):
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s2_l1)
+    add_feature(client, feature_toto_S1_L1_0)
+    add_feature(client, feature_toto_S1_L1_1)
+    add_feature(client, feature_titi_S2_L1_0)
 
 
 @pytest.mark.integration
 class TestRedirectionCatalogUserIdCollections:
+
     def test_status_code_200_toto_if_good_endpoint(self, client):
         response = client.get("/catalog/toto/collections")
         assert response.status_code == 200
@@ -134,3 +140,110 @@ class TestRedirectionCatalogUserIdCollections:
 
     def test_collection_link_about_is_valid(self, client):
         pass
+
+
+@pytest.mark.integration
+class TestRedirectionCatalogUserIdCollectionsCollectionid:
+
+    def test_status_code_200_toto_if_good_endpoint(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1")
+        assert response.status_code == 200
+
+    def test_status_code_200_titi_if_good_endpoint(self, client):
+        response = client.get("/catalog/titi/collections/S2_L1")
+        assert response.status_code == 200
+
+    def load_json_collection(self, client, endpoint):
+        response = client.get(endpoint)
+        collection = json.loads(response.content)
+        return collection["id"]
+
+    def test_collection_toto_S1_L1_with_toto_removed(self, client, toto_s1_l1, toto_s2_l3, titi_s2_l1):
+        collection_id = self.load_json_collection(client, "/catalog/toto/collections/S1_L1")
+        assert collection_id == toto_s1_l1.name
+
+    def test_collection_titi_S2_L1_with_titi_removed(self, client, titi_s2_l1):
+        collection_id = self.load_json_collection(client, "catalog/titi/collections/S2_L1")
+        assert collection_id == titi_s2_l1.name
+
+    def test_collection_toto_S1_L1_link_items_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1")
+        collection = json.loads(response.content)
+        collection_id = collection["id"]
+        links = collection["links"]
+        link = next(link for link in links if link["rel"] == "items")
+        assert link == {
+            "rel": "items",
+            "type": "application/geo+json",
+            "href": f"http://testserver/catalog/toto/collections/{collection_id}/items",
+        }
+
+    def test_collection_toto_S1_L1_link_parent_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1")
+        collection = json.loads(response.content)
+        links = collection["links"]
+        link = next(link for link in links if link["rel"] == "parent")
+        assert link == {
+            "rel": "parent",
+            "type": "application/json",
+            "href": "http://testserver/catalog/toto",
+        }
+
+    def test_collection_toto_S1_L1_link_root_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1")
+        collection = json.loads(response.content)
+        links = collection["links"]
+        link = next(link for link in links if link["rel"] == "root")
+        assert link == {
+            "rel": "root",
+            "type": "application/json",
+            "href": "http://testserver/catalog/toto",
+        }
+
+    def test_collection_toto_S1_L1_link_self_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1")
+        collection = json.loads(response.content)
+        collection_id = collection["id"]
+        links = collection["links"]
+        link = next(link for link in links if link["rel"] == "self")
+        assert link == {
+            "rel": "self",
+            "type": "application/json",
+            "href": f"http://testserver/catalog/toto/collections/{collection_id}",
+        }
+
+    def test_collection_toto_S1_L1_link_license_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1")
+        collection = json.loads(response.content)
+        links = collection["links"]
+        link = next(link for link in links if link["rel"] == "license")
+        assert link == {
+            "rel": "license",
+            "href": "https://creativecommons.org/licenses/publicdomain/",
+            "title": "public domain",
+        }
+
+
+@pytest.mark.integration
+class TestRedirectionGetItems:
+
+    def test_status_code_200_feature_toto_if_good_endpoint(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1/items")
+        assert response.status_code == 200
+
+    def test_status_code_200_feature_titi_if_good_endpoint(self, client):
+        response = client.get("/catalog/titi/collections/S2_L1/items")
+        assert response.status_code == 200
+
+    def load_json_collection(self, client, endpoint):
+        response = client.get(endpoint)
+        features = json.loads(response.content)["features"]
+        return {feature["collection"] for feature in features}
+
+    def test_features_toto_S1_L1_with_toto_removed(self, client, feature_toto_S1_L1_0, feature_toto_S1_L1_1):
+        feature_collection = self.load_json_collection(client, "/catalog/toto/collections/S1_L1/items")
+        assert feature_collection == {feature_toto_S1_L1_0.collection, feature_toto_S1_L1_1.collection}
+
+    def test_feature_titi_S2_L1_0_with_titi_removed(self, client, feature_titi_S2_L1_0):
+        feature_collection = self.load_json_collection(client, "catalog/titi/collections/S2_L1/items")
+        assert feature_collection == {feature_titi_S2_L1_0.collection}
