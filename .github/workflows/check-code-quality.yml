@@ -149,7 +149,7 @@ jobs:
           set -x && poetry run pytest $(find . -name tests) \
             --durations=0 \
             --error-for-skips \
-            --cov=./rs_server --cov=./services \
+            --cov=./services \
             --cov-report=term \
             --cov-report=xml:./cov-report.xml \
             --junit-xml=./junit-xml-report.xml \
@@ -188,7 +188,7 @@ jobs:
             -m integration \
             --durations=0 \
             --error-for-skips \
-            --cov=./rs_server --cov=./services \
+            --cov=./services \
             --cov-report=term \
             --cov-report=xml:./coverage-integration.xml \
         shell: bash
