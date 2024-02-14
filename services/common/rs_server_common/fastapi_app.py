@@ -78,7 +78,7 @@ def init_app(routers: list[APIRouter], init_db: bool = True, pause: int = 3, tim
     for router in routers:
         app.include_router(router)
 
-    @app.get("/")
+    @app.get("/", tags=["Home"])
     async def home():
         """Home endpoint."""
         return {"message": "RS server home endpoint"}

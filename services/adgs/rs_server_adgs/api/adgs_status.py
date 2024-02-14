@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_common.db.database import get_db
-from rs_server_common.db.schemas.download_status_schema import ReadDownloadStatus
+from rs_server_common.schemas.download_status_schema import ReadDownloadStatus
 from sqlalchemy.orm import Session
 
 router = APIRouter(tags=adgs_tags)

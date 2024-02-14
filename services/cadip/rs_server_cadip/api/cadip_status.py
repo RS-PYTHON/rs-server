@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.db.database import get_db
-from rs_server_common.db.schemas.download_status_schema import ReadDownloadStatus
+from rs_server_common.schemas.download_status_schema import ReadDownloadStatus
 from sqlalchemy.orm import Session
 
 router = APIRouter(tags=cadip_tags)
