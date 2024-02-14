@@ -1,4 +1,4 @@
-name: Publish wheels, Docker images, Helm charts
+name: Publish wheels and Docker images
 
 # TODO: is it possible to run this workflow only if the check-code-quality workflow has completed successfully ?
 # I've tried workflow_run but see:
@@ -138,23 +138,4 @@ jobs:
           build_context_path: ./whl
           image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  #######################
-  # Publish Helm charts #
-  #######################
-
-  services-adgs-chart:
-    runs-on: ubuntu-latest
-    name: "'services/adgs' Helm chart"
-    permissions: write-all
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # fetch all history for all branches and tags.
-
-      - id: publish-chart
-        uses: ./.github/actions/publish-chart
-        with:
-          charts_dir: ./services/adgs/.github/chart
           github_token: ${{ secrets.GITHUB_TOKEN }}
