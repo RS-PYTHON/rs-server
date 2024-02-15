@@ -1,7 +1,12 @@
-name: Test workflow_dispatch in publish.yml
+name: Publish wheels and Docker images
 
 on:
   workflow_dispatch:
+    inputs:
+      docker_tag:
+        description: Tag the docker images as e.g. 'latest' or 'feat-rspy123'
+        required: false
+        default: latest
 
 # workflow_dispatch must be set in the main branch, see: https://stackoverflow.com/a/71423764
 jobs:
