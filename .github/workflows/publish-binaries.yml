@@ -11,6 +11,11 @@ on:
     tags:
       - '**'
   workflow_dispatch:
+    inputs:
+      docker_tag:
+        description: Tag the docker images as e.g. 'latest' of 'feat-rspy123'
+        required: false
+        default: latest
 
 env:
   PYTHON_VERSION: 3.11
@@ -108,6 +113,7 @@ jobs:
           image_suffix: -adgs
           version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ github.event.inputs.docker_tag }}
 
   services-cadip-img:
     runs-on: ubuntu-latest
@@ -139,3 +145,4 @@ jobs:
           image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ github.event.inputs.docker_tag }}

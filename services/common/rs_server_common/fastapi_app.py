@@ -83,12 +83,15 @@ def init_app(
     for router in routers:
         app.include_router(router)
 
-    @app.get("/", tags=["Others"])
+    # Add "Others" endpoints
+    others_tag = "Others"
+
+    @app.get("/", tags=[others_tag])
     async def home():
         """Home endpoint."""
         return {"message": "RS server home endpoint"}
 
-    @app.get("/health", response_model=HealthSchema, name="Check service health", tags=["Others"])
+    @app.get("/health", response_model=HealthSchema, name="Check service health", tags=[others_tag])
     async def health() -> HealthSchema:
         """
         Always return a flag set to 'true' when the service is up and running.

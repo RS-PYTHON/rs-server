@@ -17,6 +17,9 @@ inputs:
   github_token:
     description: secrets.GITHUB_TOKEN
     required: true
+  docker_tag:
+    description: Tag the docker images
+    required: false
 
 outputs:
   docker_image:
@@ -105,14 +108,14 @@ runs:
       run: docker push ${{ env.docker_image }}
       shell: bash
 
-    # Tag docker image tag as 'latest' and push it into the registry.
-    # TODO: maybe only do it for git tags, not for manual builds ?
-    # and verify that the old 'latest' tag is overwritten.
-    - name: Push Docker 'latest' tag
+    # Add a docker image tag and push it into the registry.
+    - name: Push Docker tag e.g. 'latest'
       if: always()
-      run: | # use sed to replace the last :<tag> by :latest
+      run: | # use sed to replace the last :<tag> by :docker_tag
         set -x
-        docker_latest=$(sed "s|\(:[^:]*\)|:latest|g" <<< ${{ env.docker_image }})
-        docker tag ${{ env.docker_image }} ${docker_latest}
-        docker push ${docker_latest}
+        if [[ -n ${{ inputs.docker_tag }} ]]; then
+          docker_image_tag=$(sed "s|\(:[^:]*\)|:${{ inputs.docker_tag }}|g" <<< ${{ env.docker_image }})
+          docker tag ${{ env.docker_image }} ${docker_image_tag}
+          docker push ${docker_image_tag}
+        fi
       shell: bash
