@@ -14,11 +14,11 @@ The middleware:
 
 import json
 
-from starlette.datastructures import URL
+from urllib.parse import urlparse
+
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-
-from urllib.parse import urlparse
 
 from rs_server_catalog.user_handler import (
     remove_user_prefix,
@@ -32,31 +32,93 @@ from rs_server_catalog.user_handler import (
 class UserCatalogMiddleware(BaseHTTPMiddleware):
     """The user catalog middleware."""
 
-    def remove_user_from_collections(self, content: dict, user: str):
-        collections = content["collections"]
-        nb_collections = len(collections)
-        for i in range(nb_collections):
-            collections[i] = remove_user_from_collection(collections[i], user)
+    def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
+        # sourcery skip: hoist-loop-from-if, hoist-similar-statement-from-if
+        """Remove the user id from the object.
+
+        Args:
+            content (dict): The response content from the middleware
+            'call_next' loaded in json format.
+            user (str): The user id to remove.
+            object_name (str): Precise the object type. It can be a collection or a feature.
+
+        Returns:
+            dict: The content with the user id removed.
+        """
+        objects = content[object_name]
+        nb_objects = len(objects)
+        if object_name == "collections":
+            for i in range(nb_objects):
+                objects[i] = remove_user_from_collection(objects[i], user)
+        else:
+            for i in range(nb_objects):
+                objects[i] = remove_user_from_feature(objects[i], user)
         return content
 
-    def remove_user_from_features(self, content: dict, user: str):
-        features = content["features"]
-        nb_features = len(features)
-        for i in range(nb_features):
-            features[i] = remove_user_from_feature(features[i], user)
-        return content
+    # def remove_user_from_collections(self, content: dict, user: str) -> dict:
+    #     """Remove the user id from the key 'id' in collections.
 
-    def adapt_collection_links(self, collection: dict, user: str):
+    #     Args:
+    #         content (dict): The response content from the middleware
+    #         'call_next' loaded in json format.
+    #         user (str): The user id.
+
+    #     Returns:
+    #         dict: The content with the user id removed.
+    #     """
+    #     collections = content["collections"]
+    #     nb_collections = len(collections)
+    #     for i in range(nb_collections):
+    #         collections[i] = remove_user_from_collection(collections[i], user)
+    #     return content
+
+    # def remove_user_from_features(self, content: dict, user: str) -> dict:
+    #     """Remove the {owner_id} from the key 'collection' in features
+
+    #     Args:
+    #         content (dict): The response content from the middleware
+    #         'call_next' loaded in json format.
+    #         user (str): The user id.
+
+    #     Returns:
+    #         dict: The content with the user id removed.
+    #     """
+    #     features = content["features"]
+    #     nb_features = len(features)
+    #     for i in range(nb_features):
+    #         features[i] = remove_user_from_feature(features[i], user)
+    #     return content
+
+    def adapt_collection_links(self, collection: dict, user: str) -> dict:
+        """adapt all the links from a collection so the user can use them correctly
+
+        Args:
+            collection (dict): The collection
+            user (str): The user id
+
+        Returns:
+            dict: The collection passed in parameter with adapted links
+        """
         links = collection["links"]
-        for j in range(len(links)):
+        for j, _ in enumerate(links):
             link_parser = urlparse(links[j]["href"])
             new_path = add_user_prefix(link_parser.path, user, collection["id"])
             links[j]["href"] = link_parser._replace(path=new_path).geturl()
         return collection
 
-    def adapt_links(self, content: dict, user: str):
+    def adapt_links(self, content: dict, user: str) -> dict:
+        """adapt all the links that are outside from the collection section
+
+        Args:
+            content (dict): The response content from the middleware
+            'call_next' loaded in json format.
+            user (str): The user id.
+
+        Returns:
+            dict: The content passed in parameter with adapted links
+        """
         links = content["links"]
-        for i in range(len(links)):
+        for i, _ in enumerate(links):
             link_parser = urlparse(links[i]["href"])
             new_path = add_user_prefix(link_parser.path, user, "")
             links[i]["href"] = link_parser._replace(path=new_path).geturl()
@@ -65,9 +127,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         return content
 
     async def dispatch(self, request, call_next) -> None:
-
-        # Redirect the user catalog specific endpoint
-        # to the common stac api endpoint.
+        """Redirect the user catalog specific endpoint and adapt the response content."""
         request.scope["path"], user = remove_user_prefix(request.url.path)
         response = await call_next(request)
 
@@ -76,12 +136,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content = json.loads(b"".join(body).decode())
             if request.scope["path"] == "/collections":
                 content["collections"] = filter_collections(content["collections"], user)
-                content = self.remove_user_from_collections(content, user)
+                content = self.remove_user_from_objects(content, user, "collections")
                 content = self.adapt_links(content, user)
             elif "items" not in request.scope["path"]:
                 content = remove_user_from_collection(content, user)
                 content = self.adapt_collection_links(content, user)
             else:
-                content = self.remove_user_from_features(content, user)
+                content = self.remove_user_from_objects(content, user, "features")
             return JSONResponse(content, status_code=response.status_code)
         return response

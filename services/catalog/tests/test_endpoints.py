@@ -10,6 +10,20 @@ from tests.conftest import add_collection, add_feature
 def setup_database(
     client, toto_s1_l1, toto_s2_l3, titi_s2_l1, feature_toto_S1_L1_0, feature_toto_S1_L1_1, feature_titi_S2_L1_0
 ):
+    """Add collections and feature in the STAC catalog for tests.
+
+    Args:
+        client (_type_): The catalog client.
+        toto_s1_l1 (_type_): a collection named S1_L1 with the user id toto.
+        toto_s2_l3 (_type_): a collection named S2_L3 with the user id toto.
+        titi_s2_l1 (_type_): a collection named S2_L1 with the user id titi.
+        feature_toto_S1_L1_0 (_type_): a feature from the collection S1_L1 with the
+        user id toto.
+        feature_toto_S1_L1_1 (_type_): a second feature from the collection S1_L1
+        with the user id toto.
+        feature_titi_S2_L1_0 (_type_): a feature from the collection S2_L1 with the
+        user id titi.
+    """
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s2_l1)
@@ -44,7 +58,6 @@ class TestRedirectionCatalogUserIdCollections:
         assert collections_ids == {titi_s2_l1.name}
 
     def test_link_parent_is_valid(self, client):
-        # sourcery skip: class-extract-method
         response = client.get("/catalog/toto/collections")
         response_json = json.loads(response.content)
         links = response_json["links"]
