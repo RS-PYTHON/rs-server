@@ -13,15 +13,15 @@ def setup_database(
     """Add collections and feature in the STAC catalog for tests.
 
     Args:
-        client (_type_): The catalog client.
-        toto_s1_l1 (_type_): a collection named S1_L1 with the user id toto.
-        toto_s2_l3 (_type_): a collection named S2_L3 with the user id toto.
-        titi_s2_l1 (_type_): a collection named S2_L1 with the user id titi.
-        feature_toto_S1_L1_0 (_type_): a feature from the collection S1_L1 with the
+        client (TestClient): The catalog client.
+        toto_s1_l1 (Collection): a collection named S1_L1 with the user id toto.
+        toto_s2_l3 (Collection): a collection named S2_L3 with the user id toto.
+        titi_s2_l1 (Collection): a collection named S2_L1 with the user id titi.
+        feature_toto_S1_L1_0 (Feature): a feature from the collection S1_L1 with the
         user id toto.
-        feature_toto_S1_L1_1 (_type_): a second feature from the collection S1_L1
+        feature_toto_S1_L1_1 (Feature): a second feature from the collection S1_L1
         with the user id toto.
-        feature_titi_S2_L1_0 (_type_): a feature from the collection S2_L1 with the
+        feature_titi_S2_L1_0 (Feature): a feature from the collection S2_L1 with the
         user id titi.
     """
     add_collection(client, toto_s1_l1)
@@ -263,3 +263,56 @@ class TestRedirectionGetItems:
     def test_feature_titi_S2_L1_0_with_titi_removed(self, client, feature_titi_S2_L1_0):
         feature_collection = self.load_json_collection(client, "catalog/titi/collections/S2_L1/items")
         assert feature_collection == {feature_titi_S2_L1_0.collection}
+
+
+from pathlib import Path
+from fastapi.openapi.utils import get_openapi
+from rs_server_catalog.main import app
+
+
+def add_parameter_owner_id(parameters: list[dict]) -> dict:
+    to_add = {
+        "description": "Catalog owner id",
+        "required": True,
+        "schema": {"type": "string", "title": "Catalog owner id", "description": "Catalog owner id"},
+        "name": "owner_id",
+        "in": "path",
+    }
+    parameters.append(to_add)
+    return parameters
+
+
+def test_extract_openapi_specification() -> None:
+    """Extract the openapi specification to the given folder.
+
+    Retrieve the openapi specification from the FastAPI instance in json format
+    and write it in the given folder in a file named openapi.json.
+
+    :param to_folder: the folder where the specification is written
+    :return: None
+    """
+    to_folder = Path("rs_server_catalog/openapi_specification")
+    with open(to_folder / "openapi.json", "w", encoding="utf-8") as f:
+        openapi_spec = get_openapi(
+            title=app.title,
+            version=app.version,
+            openapi_version=app.openapi_version,
+            description=app.description,
+            routes=app.routes,
+        )
+        openapi_spec_paths = openapi_spec["paths"]
+        for key, _ in openapi_spec_paths.items():
+            new_key = "/catalog/{owner_id}" + key
+            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+            endpoint = openapi_spec_paths[new_key]
+            for method_key, _ in endpoint.items():
+                method = endpoint[method_key]
+                if "parameters" in method.keys():
+                    method["parameters"] = add_parameter_owner_id(method["parameters"])
+                else:
+                    method["parameters"] = add_parameter_owner_id([])
+        json.dump(
+            openapi_spec,
+            f,
+            indent=4,
+        )

@@ -40,7 +40,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content (dict): The response content from the middleware
             'call_next' loaded in json format.
             user (str): The user id to remove.
-            object_name (str): Precise the object type. It can be a collection or a feature.
+            object_name (str): Precise the object type in the content.
+            It can be collections or features.
 
         Returns:
             dict: The content with the user id removed.
@@ -54,40 +55,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             for i in range(nb_objects):
                 objects[i] = remove_user_from_feature(objects[i], user)
         return content
-
-    # def remove_user_from_collections(self, content: dict, user: str) -> dict:
-    #     """Remove the user id from the key 'id' in collections.
-
-    #     Args:
-    #         content (dict): The response content from the middleware
-    #         'call_next' loaded in json format.
-    #         user (str): The user id.
-
-    #     Returns:
-    #         dict: The content with the user id removed.
-    #     """
-    #     collections = content["collections"]
-    #     nb_collections = len(collections)
-    #     for i in range(nb_collections):
-    #         collections[i] = remove_user_from_collection(collections[i], user)
-    #     return content
-
-    # def remove_user_from_features(self, content: dict, user: str) -> dict:
-    #     """Remove the {owner_id} from the key 'collection' in features
-
-    #     Args:
-    #         content (dict): The response content from the middleware
-    #         'call_next' loaded in json format.
-    #         user (str): The user id.
-
-    #     Returns:
-    #         dict: The content with the user id removed.
-    #     """
-    #     features = content["features"]
-    #     nb_features = len(features)
-    #     for i in range(nb_features):
-    #         features[i] = remove_user_from_feature(features[i], user)
-    #     return content
 
     def adapt_collection_links(self, collection: dict, user: str) -> dict:
         """adapt all the links from a collection so the user can use them correctly
