@@ -1,4 +1,4 @@
-ADGS:
+adgs:
   auth:
     type: GenericAuth
     method: basic

@@ -109,7 +109,7 @@ def download_products(
     # fmt: off
     # Skip this function call formatting to avoid the following error: pylint R0801: Similar lines in 2 files
     eodag_args = EoDAGDownloadHandler(
-        CadipDownloadStatus, thread_started, station, str(db_product.product_id),
+        CadipDownloadStatus, thread_started, station.lower(), str(db_product.product_id),
         name, local, obs,
     )
     # fmt: on

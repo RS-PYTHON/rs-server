@@ -33,7 +33,7 @@ def station_to_server_url(station: str) -> str | None:
     try:
         with open(station_config, encoding="utf-8") as jfile:
             stations_data = json.load(jfile)
-            return stations_data.get(station.upper(), None)
+            return stations_data.get(station.lower(), None)
     except (FileNotFoundError, json.JSONDecodeError) as exc:
         # logger to be added.
         raise ValueError from exc

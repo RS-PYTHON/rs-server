@@ -89,7 +89,7 @@ def cadip_config(eodag_config_folder) -> EodagConfiguration:
         EodagConfiguration: An instance of EodagConfiguration configured for CADIP,
                             initialized with the path to the 'cadip.yaml' configuration file.
     """
-    return EodagConfiguration("CADIP", eodag_config_folder / "cadip.yaml")
+    return EodagConfiguration("cadip", eodag_config_folder / "cadip.yaml")
 
 
 @pytest.fixture(scope="package")

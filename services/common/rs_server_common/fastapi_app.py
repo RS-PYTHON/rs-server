@@ -4,7 +4,6 @@ import time
 import typing
 from contextlib import asynccontextmanager
 from os import environ as env
-from typing import Any, Dict, List, Optional
 
 import sqlalchemy
 from fastapi import APIRouter, FastAPI
