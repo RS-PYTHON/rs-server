@@ -6,6 +6,9 @@ If the variable is not set, enables all extensions.
 """
 
 import os
+import json
+from pathlib import Path
+from fastapi.openapi.utils import get_openapi
 
 from brotli_asgi import BrotliMiddleware
 from fastapi.responses import ORJSONResponse
@@ -30,6 +33,57 @@ from stac_fastapi.pgstac.transactions import BulkTransactionsClient, Transaction
 from stac_fastapi.pgstac.types.search import PgstacSearch
 
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
+
+
+def add_parameter_owner_id(parameters: list[dict]) -> dict:
+    to_add = {
+        "description": "Catalog owner id",
+        "required": True,
+        "schema": {"type": "string", "title": "Catalog owner id", "description": "Catalog owner id"},
+        "name": "owner_id",
+        "in": "path",
+    }
+    parameters.append(to_add)
+    return parameters
+
+
+def extract_openapi_specification() -> None:
+    """Extract the openapi specification to the given folder.
+
+    Retrieve the openapi specification from the FastAPI instance in json format
+    and write it in the given folder in a file named openapi.json.
+
+    :param to_folder: the folder where the specification is written
+    :return: None
+    """
+    to_folder = Path("rs_server_catalog/openapi_specification")
+    with open(to_folder / "openapi.json", "w", encoding="utf-8") as f:
+        openapi_spec = get_openapi(
+            title=app.title,
+            version=app.version,
+            openapi_version=app.openapi_version,
+            description=app.description,
+            routes=app.routes,
+        )
+        openapi_spec_paths = openapi_spec["paths"]
+        for key, _ in openapi_spec_paths.items():
+            new_key = "/catalog/{owner_id}" + key
+            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+            endpoint = openapi_spec_paths[new_key]
+            for method_key, _ in endpoint.items():
+                method = endpoint[method_key]
+                if "parameters" in method.keys():
+                    method["parameters"] = add_parameter_owner_id(method["parameters"])
+                else:
+                    method["parameters"] = add_parameter_owner_id([])
+        json.dump(
+            openapi_spec,
+            f,
+            indent=4,
+        )
+        app.openapi_schema = openapi_spec
+        return app.openapi_schema
+
 
 settings = Settings()
 extensions_map = {
@@ -61,10 +115,10 @@ api = StacApi(
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
-    # Copy/Paste the default middlewares + UserCatalogMiddleware in first position !!! (before br compression)
     middlewares=[UserCatalogMiddleware, BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware],
 )
 app = api.app
+app.openapi_schema = extract_openapi_specification()
 
 
 @app.on_event("startup")

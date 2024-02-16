@@ -152,9 +152,6 @@ class TestRedirectionCatalogUserIdCollections:
             "title": "public domain",
         }
 
-    def test_collection_link_about_is_valid(self, client):
-        pass
-
 
 @pytest.mark.integration
 class TestRedirectionCatalogUserIdCollectionsCollectionid:
@@ -263,56 +260,3 @@ class TestRedirectionGetItems:
     def test_feature_titi_S2_L1_0_with_titi_removed(self, client, feature_titi_S2_L1_0):
         feature_collection = self.load_json_collection(client, "catalog/titi/collections/S2_L1/items")
         assert feature_collection == {feature_titi_S2_L1_0.collection}
-
-
-from pathlib import Path
-from fastapi.openapi.utils import get_openapi
-from rs_server_catalog.main import app
-
-
-def add_parameter_owner_id(parameters: list[dict]) -> dict:
-    to_add = {
-        "description": "Catalog owner id",
-        "required": True,
-        "schema": {"type": "string", "title": "Catalog owner id", "description": "Catalog owner id"},
-        "name": "owner_id",
-        "in": "path",
-    }
-    parameters.append(to_add)
-    return parameters
-
-
-def test_extract_openapi_specification() -> None:
-    """Extract the openapi specification to the given folder.
-
-    Retrieve the openapi specification from the FastAPI instance in json format
-    and write it in the given folder in a file named openapi.json.
-
-    :param to_folder: the folder where the specification is written
-    :return: None
-    """
-    to_folder = Path("rs_server_catalog/openapi_specification")
-    with open(to_folder / "openapi.json", "w", encoding="utf-8") as f:
-        openapi_spec = get_openapi(
-            title=app.title,
-            version=app.version,
-            openapi_version=app.openapi_version,
-            description=app.description,
-            routes=app.routes,
-        )
-        openapi_spec_paths = openapi_spec["paths"]
-        for key, _ in openapi_spec_paths.items():
-            new_key = "/catalog/{owner_id}" + key
-            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
-            endpoint = openapi_spec_paths[new_key]
-            for method_key, _ in endpoint.items():
-                method = endpoint[method_key]
-                if "parameters" in method.keys():
-                    method["parameters"] = add_parameter_owner_id(method["parameters"])
-                else:
-                    method["parameters"] = add_parameter_owner_id([])
-        json.dump(
-            openapi_spec,
-            f,
-            indent=4,
-        )
