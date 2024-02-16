@@ -1,6 +1,7 @@
 """Common fixture for catalog service."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -8,8 +9,6 @@ from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
 
 from rs_server_catalog.main import app
-
-import os.path as osp
 
 
 def is_db_up(db_url: str) -> bool:
@@ -30,9 +29,9 @@ def is_db_up(db_url: str) -> bool:
 
 
 @pytest.fixture(scope="session", name="docker_compose_file")
-def docker_compose_file_(pytestconfig):
+def docker_compose_file_():
     """Return the path to the docker-compose.yml file to run before tests."""
-    return osp.join(str(pytestconfig.rootdir), "rs-server", "services", "catalog", "tests", "docker-compose.yml")
+    return Path(__file__).parent / "docker-compose.yml"
 
 
 @pytest.mark.integration
