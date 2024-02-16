@@ -11,6 +11,25 @@ from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils.logging import Logging
 
+# Add some endpoints specific to the main application
+others_router = APIRouter(tags=["Others"])
+
+
+@others_router.get("/")
+async def home():
+    """Home endpoint."""
+    return {"message": "RS server home endpoint"}
+
+
+@others_router.get("/health", response_model=HealthSchema, name="Check service health")
+async def health() -> HealthSchema:
+    """
+    Always return a flag set to 'true' when the service is up and running.
+    \f
+    Otherwise this code won't be run anyway and the caller will have other sorts of errors.
+    """
+    return HealthSchema(healthy=True)
+
 
 @typing.no_type_check
 def init_app(
@@ -80,24 +99,7 @@ def init_app(
     app.state.pg_timeout = timeout
 
     # Add routers to the FastAPI app
-    for router in routers:
+    for router in routers + [others_router]:
         app.include_router(router)
-
-    # Add "Others" endpoints
-    others_tag = "Others"
-
-    @app.get("/", tags=[others_tag])
-    async def home():
-        """Home endpoint."""
-        return {"message": "RS server home endpoint"}
-
-    @app.get("/health", response_model=HealthSchema, name="Check service health", tags=[others_tag])
-    async def health() -> HealthSchema:
-        """
-        Always return a flag set to 'true' when the service is up and running.
-        \f
-        Otherwise this code won't be run anyway and the caller will have other sorts of errors.
-        """
-        return HealthSchema(healthy=True)
 
     return app
