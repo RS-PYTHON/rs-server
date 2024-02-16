@@ -92,7 +92,16 @@ def init_app(
             except TypeError:  # TypeError: object NoneType can't be used in 'await' expression
                 sessionmanager.close()
 
-    app = FastAPI(title="RS FastAPI server", lifespan=lifespan)
+    # Override the swagger /docs URL from an environment variable.
+    # Also set the openapi.json URL under the same path.
+    try:
+        docs_url = env["RSPY_DOCS_URL"].strip("/")
+        docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
+    except KeyError:
+        docs_params = {}
+
+    # Init the FastAPI application
+    app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params)
 
     # Pass postgres arguments to the app so they can be used in the lifespan function above.
     app.state.pg_pause = pause
