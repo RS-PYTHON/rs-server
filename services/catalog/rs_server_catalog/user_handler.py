@@ -68,7 +68,8 @@ def remove_user_from_feature(feature: dict, user: str) -> dict:
     """Remove the user ID from the collection name in the feature.
 
     Args:
-        feature (dict): a geojson that contains georeferenced data and metadata like the collection name.
+        feature (dict): a geojson that contains georeferenced
+        data and metadata like the collection name.
         user (str): The user ID.
 
     Returns:
@@ -83,7 +84,8 @@ def remove_user_from_collection(collection: dict, user: str) -> dict:
     """Remove the user ID from the id section in the collection.
 
     Args:
-        collection (dict): A dictionary that contains metadata about the collection content like the id of the collection.
+        collection (dict): A dictionary that contains metadata
+        about the collection content like the id of the collection.
         user (str): The user ID.
 
     Returns:
