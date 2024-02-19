@@ -36,6 +36,15 @@ from rs_server_catalog.user_catalog import UserCatalogMiddleware
 
 
 def add_parameter_owner_id(parameters: list[dict]) -> dict:
+    """Add the owner id dictionnary to the parameter list.
+
+    Args:
+        parameters (list[dict]): the parameters list
+        where we want to add the owner id parameter.
+
+    Returns:
+        dict: the new parameters list with the owner id parameter.
+    """
     to_add = {
         "description": "Catalog owner id",
         "required": True,
@@ -57,6 +66,8 @@ def extract_openapi_specification() -> None:
     :return: None
     """
     to_folder = Path("rs_server_catalog/openapi_specification")
+    if not os.path.isdir(to_folder):
+        os.mkdir(to_folder)
     with open(to_folder / "openapi.json", "w", encoding="utf-8") as f:
         openapi_spec = get_openapi(
             title=app.title,
