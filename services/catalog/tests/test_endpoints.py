@@ -4,7 +4,7 @@ import pytest
 
 
 @pytest.mark.integration
-class TestRedirectionCatalogUserIdCollections:
+class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-function-docstring
     """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections'"""
 
     def test_status_code_200_toto_if_good_endpoint(self, client):
@@ -128,7 +128,7 @@ class TestRedirectionCatalogUserIdCollections:
 
 
 @pytest.mark.integration
-class TestRedirectionCatalogUserIdCollectionsCollectionid:
+class TestRedirectionCatalogUserIdCollectionsCollectionid:  # pylint: disable=missing-function-docstring
     """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}'."""
 
     def test_status_code_200_toto_if_good_endpoint(self, client):
@@ -211,7 +211,7 @@ class TestRedirectionCatalogUserIdCollectionsCollectionid:
 
 
 @pytest.mark.integration
-class TestRedirectionGetItems:
+class TestRedirectionGetItems:  # pylint: disable=missing-function-docstring
     """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}/items'."""
 
     def test_status_code_200_feature_toto_if_good_endpoint(self, client):

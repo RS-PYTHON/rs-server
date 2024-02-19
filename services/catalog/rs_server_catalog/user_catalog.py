@@ -63,8 +63,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             dict: The collection passed in parameter with adapted links
         """
         links = collection["links"]
-        for j, _ in enumerate(links):
-            link_parser = urlparse(links[j]["href"])
+        for j, link in enumerate(links):
+            link_parser = urlparse(link["href"])
             new_path = add_user_prefix(link_parser.path, user, collection["id"])
             links[j]["href"] = link_parser._replace(path=new_path).geturl()
         return collection
@@ -81,8 +81,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             dict: The content passed in parameter with adapted links
         """
         links = content["links"]
-        for i, _ in enumerate(links):
-            link_parser = urlparse(links[i]["href"])
+        for i, link in enumerate(links):
+            link_parser = urlparse(link["href"])
             new_path = add_user_prefix(link_parser.path, user, "")
             links[i]["href"] = link_parser._replace(path=new_path).geturl()
         for i in range(len(content["collections"])):
