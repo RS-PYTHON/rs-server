@@ -89,7 +89,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content["collections"][i] = self.adapt_collection_links(content["collections"][i], user)
         return content
 
-    async def dispatch(self, request, call_next) -> None:
+    async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request.scope["path"], user = remove_user_prefix(request.url.path)
         response = await call_next(request)

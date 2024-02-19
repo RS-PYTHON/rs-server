@@ -7,7 +7,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 )
 
 
-def remove_user_prefix(path: str) -> str:
+def remove_user_prefix(path: str) -> tuple[str, str]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 
