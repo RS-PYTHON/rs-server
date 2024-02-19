@@ -5,9 +5,8 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 
-import json
 import os
-from pathlib import Path
+import uvicorn
 
 from brotli_asgi import BrotliMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -131,33 +130,15 @@ async def shutdown_event():
 
 def run():
     """Run app from command line using uvicorn if available."""
-    try:
-        import uvicorn
-
-        uvicorn.run(
-            "stac_fastapi.pgstac.app:app",
-            host=settings.app_host,
-            port=settings.app_port,
-            log_level="info",
-            reload=settings.reload,
-            root_path=os.getenv("UVICORN_ROOT_PATH", ""),
-        )
-    except ImportError:
-        raise RuntimeError("Uvicorn must be installed in order to use command")
+    uvicorn.run(
+        "stac_fastapi.pgstac.app:app",
+        host=settings.app_host,
+        port=settings.app_port,
+        log_level="info",
+        reload=settings.reload,
+        root_path=os.getenv("UVICORN_ROOT_PATH", ""),
+    )
 
 
 if __name__ == "__main__":
     run()
-
-
-def create_handler(app):
-    """Create a handler to use with AWS Lambda if mangum available."""
-    try:
-        from mangum import Mangum
-
-        return Mangum(app)
-    except ImportError:
-        return None
-
-
-handler = create_handler(app)

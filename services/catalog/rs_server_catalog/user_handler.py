@@ -39,8 +39,7 @@ def remove_user_prefix(path: str) -> str:
         collection_id = groups["collection_id"][1:]
         if items == "":
             return f"/collections/{owner_id}_{collection_id}", owner_id
-        else:
-            return f"/collections/{owner_id}_{collection_id}/items", owner_id
+        return f"/collections/{owner_id}_{collection_id}/items", owner_id
 
     return res, ""
 
@@ -57,14 +56,13 @@ def add_user_prefix(path: str, user: str, collection_id: str) -> str:
     """
     if path == "/":
         return f"/catalog/{user}"
-    elif path == "/collections":
+    if path == "/collections":
         return f"/catalog/{user}/collections"
-    elif path == f"/collections/{user}_{collection_id}":
+    if path == f"/collections/{user}_{collection_id}":
         return f"/catalog/{user}/collections/{collection_id}"
-    elif path == f"/collections/{user}_{collection_id}/items":
+    if path == f"/collections/{user}_{collection_id}/items":
         return f"/catalog/{user}/collections/{collection_id}/items"
-    else:
-        return path
+    return path
 
 
 def remove_user_from_feature(feature: dict, user: str) -> dict:
