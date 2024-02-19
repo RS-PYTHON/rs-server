@@ -34,4 +34,4 @@ def init_cadip_provider(station: str) -> EodagProvider:
 
     # Check if the config file path is overriden in the environment variables
     eodag_config = Path(os.environ.get("EODAG_CADIP_CONFIG", DEFAULT_EODAG_CONFIG))
-    return EodagProvider(eodag_config, station)  # default to eodag, just init here
+    return EodagProvider(eodag_config, station.lower())  # default to eodag, just init here

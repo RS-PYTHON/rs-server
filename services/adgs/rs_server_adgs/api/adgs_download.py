@@ -94,7 +94,7 @@ def download_products(
     thread_started = threading.Event()
     # fmt: off
     eodag_args = EoDAGDownloadHandler(
-        AdgsDownloadStatus, thread_started, "ADGS", str(db_product.product_id),
+        AdgsDownloadStatus, thread_started, "adgs", str(db_product.product_id),
         name, local, obs,
     )
     # fmt: on

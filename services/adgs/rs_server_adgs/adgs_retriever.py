@@ -29,6 +29,6 @@ def init_adgs_provider(station: str) -> EodagProvider:
     try:
         # Check if the config file path is overriden in the environment variables
         eodag_config = Path(os.environ.get("EODAG_ADGS_CONFIG", DEFAULT_EODAG_CONFIG))
-        return EodagProvider(eodag_config, station)  # default to eodag, default station "ADGS"
+        return EodagProvider(eodag_config, station.lower())  # default to eodag, default station "adgs"
     except Exception as exception:
         raise CreateProviderFailed("Failed to setup eodag") from exception

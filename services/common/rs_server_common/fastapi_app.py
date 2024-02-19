@@ -8,11 +8,17 @@ from os import environ as env
 import sqlalchemy
 from fastapi import APIRouter, FastAPI
 from rs_server_common.db.database import sessionmanager
+from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils.logging import Logging
 
 
 @typing.no_type_check
-def init_app(routers: list[APIRouter], init_db: bool = True, pause: int = 3, timeout: int = None):
+def init_app(
+    routers: list[APIRouter],
+    init_db: bool = True,
+    pause: int = 3,
+    timeout: int = None,
+):
     """
     Init the FastAPI application.
     See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
@@ -49,11 +55,11 @@ def init_app(routers: list[APIRouter], init_db: bool = True, pause: int = 3, tim
                     logger.warning(f"Trying to reach {env['POSTGRES_DB']!r} database on {db_info}")
 
                     # Sleep for n seconds and raise exception if timeout is reached.
-                    if app.pg_timeout is not None:
-                        app.pg_timeout -= app.pg_pause
-                        if app.pg_timeout < 0:
+                    if app.state.pg_timeout is not None:
+                        app.state.pg_timeout -= app.state.pg_pause
+                        if app.state.pg_timeout < 0:
                             raise
-                    time.sleep(app.pg_pause)
+                    time.sleep(app.state.pg_pause)
 
             yield
 
@@ -69,18 +75,26 @@ def init_app(routers: list[APIRouter], init_db: bool = True, pause: int = 3, tim
 
     app = FastAPI(title="RS FastAPI server", lifespan=lifespan)
 
-    # Pass postgres arguments to the app so they can be used in the lifespan function above
-    # (maybe there is a cleaner way to do this)
-    app.pg_pause = pause
-    app.pg_timeout = timeout
+    # Pass postgres arguments to the app so they can be used in the lifespan function above.
+    app.state.pg_pause = pause
+    app.state.pg_timeout = timeout
 
     # Add routers to the FastAPI app
     for router in routers:
         app.include_router(router)
 
-    @app.get("/")
+    @app.get("/", tags=["Others"])
     async def home():
         """Home endpoint."""
         return {"message": "RS server home endpoint"}
+
+    @app.get("/health", response_model=HealthSchema, name="Check service health", tags=["Others"])
+    async def health() -> HealthSchema:
+        """
+        Always return a flag set to 'true' when the service is up and running.
+        \f
+        Otherwise this code won't be run anyway and the caller will have other sorts of errors.
+        """
+        return HealthSchema(healthy=True)
 
     return app

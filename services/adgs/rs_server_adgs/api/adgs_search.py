@@ -58,7 +58,7 @@ async def search_products(
 
     try:
         time_range = TimeRange(start_date, stop_date)
-        products = init_adgs_provider("ADGS").search(time_range, items_per_page=limit)
+        products = init_adgs_provider("adgs").search(time_range, items_per_page=limit)
         write_search_products_to_db(AdgsDownloadStatus, products)
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
