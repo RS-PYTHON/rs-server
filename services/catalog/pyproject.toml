@@ -16,21 +16,22 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-# Common elements for all the rs-server services
-rs-server-common = {path = "../common", develop = true}
 stac-fastapi-pgstac = "^2.4.11"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+# Formatting
+black = "^23.11.0"
+# Testing
 pytest = "^7.4.3"
 pytest-docker = "^3.1.0"
 pytest-dotenv = "^0.5.2"
 # httpx is used by fastapi for test purpose
 httpx = "^0.26.0"
+# sqlalchemy-utils is used for pgstac test purpose
 sqlalchemy-utils = "^0.41.1"
-black = "^23.11.0"
 
 
 [tool.black]
@@ -42,6 +43,7 @@ markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
+# pgstac and stac-fastapi env file for test purpose
 env_files = [
     "tests/.env"
 ]

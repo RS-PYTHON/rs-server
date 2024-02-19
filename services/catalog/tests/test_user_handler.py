@@ -62,7 +62,10 @@ def collection_titi_2() -> dict:
 
 @pytest.fixture
 def collections(
-    collection_toto_1: dict, collection_toto_2: dict, collection_titi_1: dict, collection_titi_2: dict
+    collection_toto_1: dict,
+    collection_toto_2: dict,
+    collection_titi_1: dict,
+    collection_titi_2: dict,
 ) -> list[dict]:
     """Create a list of collections for testing."""
     return [collection_toto_1, collection_toto_2, collection_titi_1, collection_titi_2]
@@ -141,7 +144,9 @@ class TestRemoveUserFromCollection:
     """This Class contains unit tests for the function remove_user_from_collection."""
 
     def test_remove_the_user_in_the_collection_id_property(
-        self, collection_toto_1: dict, collection_toto_1_output: dict
+        self,
+        collection_toto_1: dict,
+        collection_toto_1_output: dict,
     ):
         assert remove_user_from_collection(collection_toto_1, "toto") == collection_toto_1_output
 
@@ -163,7 +168,10 @@ class TestFilterCollections:
     """This Class contains unit tests for the function filter_collections"""
 
     def test_get_all_collections_with_toto_in_the_id_property(
-        self, collection_toto_1: dict, collection_toto_2: dict, collections: list[dict]
+        self,
+        collection_toto_1: dict,
+        collection_toto_2: dict,
+        collections: list[dict],
     ):
         assert filter_collections(collections, "toto") == [collection_toto_1, collection_toto_2]
 

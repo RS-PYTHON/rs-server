@@ -2,35 +2,6 @@ import json
 
 import pytest
 
-from tests.conftest import add_collection, add_feature
-
-
-@pytest.mark.integration
-@pytest.fixture(scope="session", autouse=True)
-def setup_database(
-    client, toto_s1_l1, toto_s2_l3, titi_s2_l1, feature_toto_S1_L1_0, feature_toto_S1_L1_1, feature_titi_S2_L1_0
-):
-    """Add collections and feature in the STAC catalog for tests.
-
-    Args:
-        client (TestClient): The catalog client.
-        toto_s1_l1 (Collection): a collection named S1_L1 with the user id toto.
-        toto_s2_l3 (Collection): a collection named S2_L3 with the user id toto.
-        titi_s2_l1 (Collection): a collection named S2_L1 with the user id titi.
-        feature_toto_S1_L1_0 (Feature): a feature from the collection S1_L1 with the
-        user id toto.
-        feature_toto_S1_L1_1 (Feature): a second feature from the collection S1_L1
-        with the user id toto.
-        feature_titi_S2_L1_0 (Feature): a feature from the collection S2_L1 with the
-        user id titi.
-    """
-    add_collection(client, toto_s1_l1)
-    add_collection(client, toto_s2_l3)
-    add_collection(client, titi_s2_l1)
-    add_feature(client, feature_toto_S1_L1_0)
-    add_feature(client, feature_toto_S1_L1_1)
-    add_feature(client, feature_titi_S2_L1_0)
-
 
 @pytest.mark.integration
 class TestRedirectionCatalogUserIdCollections:
@@ -151,6 +122,9 @@ class TestRedirectionCatalogUserIdCollections:
             "href": "https://creativecommons.org/licenses/publicdomain/",
             "title": "public domain",
         }
+
+    def test_collection_link_about_is_valid(self, client):
+        pass
 
 
 @pytest.mark.integration

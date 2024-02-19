@@ -1,15 +1,13 @@
 """Common fixture for catalog service."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pytest
+from rs_server_catalog.main import app
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
-
-from rs_server_catalog.main import app
-
-import os.path as osp
 
 
 def is_db_up(db_url: str) -> bool:
@@ -30,9 +28,9 @@ def is_db_up(db_url: str) -> bool:
 
 
 @pytest.fixture(scope="session", name="docker_compose_file")
-def docker_compose_file_(pytestconfig):
+def docker_compose_file_():
     """Return the path to the docker-compose.yml file to run before tests."""
-    return osp.join(str(pytestconfig.rootdir), "rs-server", "services", "catalog", "tests", "docker-compose.yml")
+    return Path(__file__).parent / "docker-compose.yml"
 
 
 @pytest.mark.integration
@@ -172,7 +170,7 @@ class Feature:
                     "href": f"https://arturo-stac-api-test-data.s3.amazonaws.com/{self.collection}/images/may24C355000e4102500n.tif",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
-                }
+                },
             },
             "geometry": {
                 "type": "Polygon",
@@ -183,7 +181,7 @@ class Feature:
                         [-94.6005249, 37.0332547],
                         [-94.6005249, 37.0595608],
                         [-94.6334839, 37.0595608],
-                    ]
+                    ],
                 ],
             },
             "collection": f"{self.owner_id}_{self.collection}",
@@ -246,3 +244,36 @@ def add_feature(client: TestClient, feature: Feature):
         json=feature.properties,
     )
     response.raise_for_status()
+
+
+@pytest.mark.integration
+@pytest.fixture(scope="session", autouse=True)
+def setup_database(
+    client,
+    toto_s1_l1,
+    toto_s2_l3,
+    titi_s2_l1,
+    feature_toto_S1_L1_0,
+    feature_toto_S1_L1_1,
+    feature_titi_S2_L1_0,
+):
+    """Add collections and feature in the STAC catalog for tests.
+
+    Args:
+        client (_type_): The catalog client.
+        toto_s1_l1 (_type_): a collection named S1_L1 with the user id toto.
+        toto_s2_l3 (_type_): a collection named S2_L3 with the user id toto.
+        titi_s2_l1 (_type_): a collection named S2_L1 with the user id titi.
+        feature_toto_S1_L1_0 (_type_): a feature from the collection S1_L1 with the
+        user id toto.
+        feature_toto_S1_L1_1 (_type_): a second feature from the collection S1_L1
+        with the user id toto.
+        feature_titi_S2_L1_0 (_type_): a feature from the collection S2_L1 with the
+        user id titi.
+    """
+    add_collection(client, toto_s1_l1)
+    add_collection(client, toto_s2_l3)
+    add_collection(client, titi_s2_l1)
+    add_feature(client, feature_toto_S1_L1_0)
+    add_feature(client, feature_toto_S1_L1_1)
+    add_feature(client, feature_titi_S2_L1_0)
