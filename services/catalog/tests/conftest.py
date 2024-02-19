@@ -34,22 +34,22 @@ def docker_compose_file_():
 
 
 @pytest.mark.integration
-@pytest.fixture(scope="session")
-def db_url(docker_ip, docker_services) -> str:
+@pytest.fixture(scope="session", name="db_url")
+def db_url_fixture(docker_ip, docker_services) -> str:  # pylint: disable=missing-function-docstring
     port = docker_services.port_for("stac-db", 5432)
     return f"postgresql://postgres:password@{docker_ip}:{port}/rspy"
 
 
 @pytest.mark.integration
-@pytest.fixture(scope="session", autouse=True)
-def start_database(docker_services, db_url):
+@pytest.fixture(scope="session", autouse=True, name="start_database")
+def start_database_fixture(docker_services, db_url):
     """Ensure pgstac database in available."""
     docker_services.wait_until_responsive(timeout=30.0, pause=0.1, check=lambda: is_db_up(db_url))
 
 
 @pytest.mark.integration
-@pytest.fixture(scope="session")
-def client(start_database):
+@pytest.fixture(scope="session", name="client")
+def client_fixture(start_database):  # pylint: disable=missing-function-docstring, unused-argument
     # A .env file is read automatically
     # to setup the env to start the app.
     with TestClient(app) as client:
@@ -82,7 +82,11 @@ class Collection:
                 },
                 {"rel": "parent", "type": "application/json", "href": "http://localhost:8082/"},
                 {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
-                {"rel": "self", "type": "application/json", "href": f"http://localhost:8082/collections/{self.id_}"},
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": f"""http://localhost:8082/collections/{self.id_}""",
+                },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
@@ -116,18 +120,18 @@ def a_collection(user: str, name: str) -> Collection:
     return Collection(user, name)
 
 
-@pytest.fixture(scope="session")
-def toto_s1_l1() -> Collection:
+@pytest.fixture(scope="session", name="toto_s1_l1")
+def toto_s1_l1_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("toto", "S1_L1")
 
 
-@pytest.fixture(scope="session")
-def toto_s2_l3() -> Collection:
+@pytest.fixture(scope="session", name="toto_s2_l3")
+def toto_s2_l3_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("toto", "S2_L3")
 
 
-@pytest.fixture(scope="session")
-def titi_s2_l1() -> Collection:
+@pytest.fixture(scope="session", name="titi_s2_l1")
+def titi_s2_l1_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("titi", "S2_L1")
 
 
@@ -160,14 +164,15 @@ class Feature:
     collection: str
 
     @property
-    def properties(self) -> dict[str, Any]:
+    def properties(self) -> dict[str, Any]:  # pylint: disable=missing-function-docstring
         return {
             "id": self.id_,
             "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
             "type": "Feature",
             "assets": {
                 "COG": {
-                    "href": f"https://arturo-stac-api-test-data.s3.amazonaws.com/{self.collection}/images/may24C355000e4102500n.tif",
+                    "href": f"""https://arturo-stac-api-test-data.s3.amazonaws.com
+                    /{self.collection}/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
                 },
@@ -217,18 +222,18 @@ def a_feature(owner_id: str, id_: str, in_collection: str) -> Feature:
     return Feature(owner_id, id_, in_collection)
 
 
-@pytest.fixture(scope="session")
-def feature_toto_S1_L1_0() -> Feature:
+@pytest.fixture(scope="session", name="feature_toto_s1_l1_0")
+def feature_toto_s1_l1_0_fixture() -> Feature:  # pylint: disable=missing-function-docstring
     return a_feature("toto", "fe916452-ba6f-4631-9154-c249924a122d", "S1_L1")
 
 
-@pytest.fixture(scope="session")
-def feature_toto_S1_L1_1() -> Feature:
+@pytest.fixture(scope="session", name="feature_toto_s1_l1_1")
+def feature_toto_s1_l1_1_fixture() -> Feature:  # pylint: disable=missing-function-docstring
     return a_feature("toto", "f7f164c9-cfdf-436d-a3f0-69864c38ba2a", "S1_L1")
 
 
-@pytest.fixture(scope="session")
-def feature_titi_S2_L1_0() -> Feature:
+@pytest.fixture(scope="session", name="feature_titi_s2_l1_0")
+def feature_titi_s2_l1_0_fixture() -> Feature:  # pylint: disable=missing-function-docstring
     return a_feature("titi", "fe916452-ba6f-4631-9154-c249924a122d", "S2_L1")
 
 
@@ -253,10 +258,10 @@ def setup_database(
     toto_s1_l1,
     toto_s2_l3,
     titi_s2_l1,
-    feature_toto_S1_L1_0,
-    feature_toto_S1_L1_1,
-    feature_titi_S2_L1_0,
-):
+    feature_toto_s1_l1_0,
+    feature_toto_s1_l1_1,
+    feature_titi_s2_l1_0,
+):  # pylint: disable=missing-function-docstring, too-many-arguments
     """Add collections and feature in the STAC catalog for tests.
 
     Args:
@@ -274,6 +279,6 @@ def setup_database(
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s2_l1)
-    add_feature(client, feature_toto_S1_L1_0)
-    add_feature(client, feature_toto_S1_L1_1)
-    add_feature(client, feature_titi_S2_L1_0)
+    add_feature(client, feature_toto_s1_l1_0)
+    add_feature(client, feature_toto_s1_l1_1)
+    add_feature(client, feature_titi_s2_l1_0)
