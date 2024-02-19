@@ -5,15 +5,16 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 
-import os
 import json
+import os
 from pathlib import Path
-from fastapi.openapi.utils import get_openapi
 
 from brotli_asgi import BrotliMiddleware
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
+from rs_server_catalog.user_catalog import UserCatalogMiddleware
 from stac_fastapi.api.app import StacApi
-from stac_fastapi.api.middleware import ProxyHeaderMiddleware, CORSMiddleware
+from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (
     ContextExtension,
@@ -31,8 +32,6 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
-
-from rs_server_catalog.user_catalog import UserCatalogMiddleware
 
 
 def add_parameter_owner_id(parameters: list[dict]) -> dict:

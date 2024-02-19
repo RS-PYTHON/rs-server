@@ -13,20 +13,17 @@ The middleware:
 """
 
 import json
-
 from urllib.parse import urlparse
 
-
+from rs_server_catalog.user_handler import (
+    add_user_prefix,
+    filter_collections,
+    remove_user_from_collection,
+    remove_user_from_feature,
+    remove_user_prefix,
+)
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-
-from rs_server_catalog.user_handler import (
-    remove_user_prefix,
-    remove_user_from_collection,
-    filter_collections,
-    add_user_prefix,
-    remove_user_from_feature,
-)
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):

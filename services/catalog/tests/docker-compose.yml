@@ -11,4 +11,3 @@ services:
     ports:
       - ${POSTGRES_PORT}:5432
     command: postgres -N 500
-
