@@ -119,7 +119,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert remove_user_prefix("/not/found") == ("/not/found", "")
 
 
-class TestAddUserPrefix:  # pylint: disable=missing-function-docstrings
+class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function add_user_prefix."""
 
     def test_return_catalog_if_no_user(self):
@@ -136,7 +136,7 @@ class TestAddUserPrefix:  # pylint: disable=missing-function-docstrings
         result = add_user_prefix("/collections/toto_joplin/items", "toto", "joplin")
         assert result == "/catalog/toto/collections/joplin/items"
 
-    def test_does_nothing_if_URL_not_found(self):
+    def test_does_nothing_if_url_not_found(self):
         assert add_user_prefix("/NOT/FOUND", "toto", "joplin") == "/NOT/FOUND"
 
 

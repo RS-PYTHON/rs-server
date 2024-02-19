@@ -1,3 +1,5 @@
+"""Integration tests for user_catalog module."""
+
 import json
 
 import pytest

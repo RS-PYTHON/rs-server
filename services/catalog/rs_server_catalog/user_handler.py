@@ -2,9 +2,8 @@
 
 import re
 
-catalog_owner_id_stac_endpoint_regex = (
-    r"/catalog(?P<owner_id>.*)(?P<collections>/collections)((?P<collection_id>/.+?(?=/|$))(?P<items>.*)?)?"
-)
+CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = r"""/catalog(?P<owner_id>.*)(?P<collections>/collections)
+    ((?P<collection_id>/.+?(?=/|$))(?P<items>.*)?)?"""
 
 
 def remove_user_prefix(path: str) -> str:
@@ -28,7 +27,7 @@ def remove_user_prefix(path: str) -> str:
         raise ValueError("URL (/catalog) is invalid.")
 
     res = path
-    match = re.search(catalog_owner_id_stac_endpoint_regex, path)
+    match = re.search(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path)
     if match:
         groups = match.groupdict()
         owner_id = groups["owner_id"][1:]
