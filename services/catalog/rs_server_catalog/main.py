@@ -142,7 +142,7 @@ def run():
             root_path=os.getenv("UVICORN_ROOT_PATH", ""),
         )
     except ImportError:
-        raise RuntimeError("Uvicorn must be installed in order to use command")
+        raise RuntimeError("Uvicorn must be installed in order to use command")  # pylint: disable=raise-missing-from
 
 
 if __name__ == "__main__":
