@@ -10,7 +10,7 @@ from rs_server_catalog.user_handler import (
 )
 
 
-@pytest.fixture(scope="session", name="collection_toto_1")
+@pytest.fixture(name="collection_toto_1")
 def collection_toto_1_fixture() -> dict:
     """Create a collection for testing."""
     return {
@@ -20,7 +20,7 @@ def collection_toto_1_fixture() -> dict:
     }
 
 
-@pytest.fixture(scope="session", name="collection_toto_1_output")
+@pytest.fixture(name="collection_toto_1_output")
 def collection_toto_1_output_fixture() -> dict:
     """Create a collection for testing."""
     return {
@@ -30,7 +30,7 @@ def collection_toto_1_output_fixture() -> dict:
     }
 
 
-@pytest.fixture(scope="session", name="collection_toto_2")
+@pytest.fixture(name="collection_toto_2")
 def collection_toto_2_fixture() -> dict:
     """Create a collection for testing."""
     return {
@@ -40,7 +40,7 @@ def collection_toto_2_fixture() -> dict:
     }
 
 
-@pytest.fixture(scope="session", name="collection_titi_1")
+@pytest.fixture(name="collection_titi_1")
 def collection_titi_1_fixture() -> dict:
     """Create a collection for testing."""
     return {
@@ -50,7 +50,7 @@ def collection_titi_1_fixture() -> dict:
     }
 
 
-@pytest.fixture(scope="session", name="collection_titi_2")
+@pytest.fixture(name="collection_titi_2")
 def collection_titi_2_fixture() -> dict:
     """Create a collection for testing."""
     return {
@@ -60,7 +60,7 @@ def collection_titi_2_fixture() -> dict:
     }
 
 
-@pytest.fixture(scope="session", name="collections")
+@pytest.fixture(name="collections")
 def collections_fixture(
     collection_toto_1: dict,
     collection_toto_2: dict,
@@ -71,7 +71,7 @@ def collections_fixture(
     return [collection_toto_1, collection_toto_2, collection_titi_1, collection_titi_2]
 
 
-@pytest.fixture(scope="session", name="feature")
+@pytest.fixture(name="feature")
 def feature_fixture() -> dict:
     """Create a feature for testing."""
     return {
@@ -80,7 +80,7 @@ def feature_fixture() -> dict:
     }
 
 
-@pytest.fixture(scope="session", name="feature_output")
+@pytest.fixture(name="feature_output")
 def feature_output_fixture() -> dict:
     """Create a feature for testing."""
     return {

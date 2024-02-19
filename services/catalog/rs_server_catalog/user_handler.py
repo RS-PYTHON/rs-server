@@ -2,8 +2,9 @@
 
 import re
 
-CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = r"""/catalog(?P<owner_id>.*)(?P<collections>/collections)
-    ((?P<collection_id>/.+?(?=/|$))(?P<items>.*)?)?"""
+CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
+    r"/catalog(?P<owner_id>.*)(?P<collections>/collections)((?P<collection_id>/.+?(?=/|$))(?P<items>.*)?)?"
+)
 
 
 def remove_user_prefix(path: str) -> str:

@@ -6,7 +6,7 @@ If the variable is not set, enables all extensions.
 """
 
 import os
-import uvicorn
+
 
 from brotli_asgi import BrotliMiddleware
 from fastapi.openapi.utils import get_openapi
@@ -130,14 +130,19 @@ async def shutdown_event():
 
 def run():
     """Run app from command line using uvicorn if available."""
-    uvicorn.run(
-        "stac_fastapi.pgstac.app:app",
-        host=settings.app_host,
-        port=settings.app_port,
-        log_level="info",
-        reload=settings.reload,
-        root_path=os.getenv("UVICORN_ROOT_PATH", ""),
-    )
+    try:
+        import uvicorn  # pylint: disable=import-outside-toplevel
+
+        uvicorn.run(
+            "stac_fastapi.pgstac.app:app",
+            host=settings.app_host,
+            port=settings.app_port,
+            log_level="info",
+            reload=settings.reload,
+            root_path=os.getenv("UVICORN_ROOT_PATH", ""),
+        )
+    except ImportError:
+        raise RuntimeError("Uvicorn must be installed in order to use command")
 
 
 if __name__ == "__main__":
