@@ -7,7 +7,6 @@ If the variable is not set, enables all extensions.
 
 import os
 
-
 from brotli_asgi import BrotliMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
