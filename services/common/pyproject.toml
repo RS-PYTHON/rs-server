@@ -30,6 +30,7 @@ markdown = "^3.5.1"
 python-dotenv = "^1.0.0"
 psycopg2 = "^2.9.9"
 filelock = "^3.13.1"
+uvicorn = "^0.27.1"
 
 [tool.poetry.group.dev]
 optional = true
