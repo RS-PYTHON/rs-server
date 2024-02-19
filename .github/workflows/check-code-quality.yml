@@ -35,14 +35,24 @@ jobs:
 
       - name: Run pylint
         if: always() # even if previous steps returned a non-zero exit code
-        run: poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
+        run: |
+          set -x
+
+          # TEMP: add dependencies from the catalog service.
+          # The catalog is a distinct project because we have dependency conflicts
+          # between the main application and the stac-fastapi-pgstac dependency.
+          # TODO: resolve them and remove this line
+          poetry run pip install stac-fastapi-pgstac sqlalchemy-utils || true # this is really dirty
+          poetry run pip install pydantic==2.6.1 || true # stac-fastapi-pgstac has downgraded pydantic to v1
+
+          poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
 
       - name: Run flake8
         if: always()
         run: |
-            set -x
-            poetry run flake8 . || true # run next line even if fails
-            poetry run flake8 . --output-file ./flake8-report.txt
+          set -x
+          poetry run flake8 . || true # run next line even if fails
+          poetry run flake8 . --output-file ./flake8-report.txt
 
       - name: Save reports
         uses: actions/upload-artifact@v4
@@ -139,14 +149,17 @@ jobs:
 
   run-unit-tests:
     runs-on: ubuntu-latest
-    name: Run unit tests (pytest)
+    name: Run pytest # pytest unit and integration tests
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
 
-      - name: Run unit tests
+      # Run pytest a first time without the catalog because we have dependency conflicts
+      # between the main application and the stac-fastapi-pgstac dependency.
+      # TODO: resolve them and remove the  -not -path "./services/catalog/*"
+      - name: Run pytest
         run: |
-          set -x && poetry run pytest $(find . -name tests) \
+          set -x && poetry run pytest $(find . -name tests -not -path "./services/catalog/*") \
             --durations=0 \
             --error-for-skips \
             --cov=./services \
@@ -170,33 +183,33 @@ jobs:
             ./junit-xml-report.xml
           retention-days: 1
 
-  # TODO: what the integration tests should be, what is the difference from the unit tests ?
-  # Should they be scheduled or run only when merging to the develop or main branch ?
-  # Note that in the code below, the integration tests will not be counted for the code coverage in sonarqube.
-  run-integration-tests:
+  # run pytest a second time, this time only for the catalog. The code coverage won't appear in sonarqube.
+  # TODO: resolve dependency conflicts and remove this job (so we run pytest only once).
+  run-unit-tests-catalog:
     runs-on: ubuntu-latest
-    name: Run integration tests (pytest)
-    if: ${{ false }} # don't run until implemented
+    name: Run pytest (catalog)
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
+        with:
+          working-directory: ./services/catalog
 
-      - name: Run integration tests
+      - name: Run pytest
         run: |
-          set -x && poetry run pytest \
-            ./tests ./services/adgs/tests ./services/common/tests ./services/cadip/tests \
-            -m integration \
+          set -x && cd ./services/catalog && \
+          poetry run pytest ./tests \
             --durations=0 \
             --error-for-skips \
-            --cov=./services \
+            --cov=. \
             --cov-report=term \
-            --cov-report=xml:./coverage-integration.xml \
+            --cov-report=xml:./cov-report-catalog.xml \
+            --junit-xml=./junit-xml-report-catalog.xml \
         shell: bash
 
       - name: Display code coverage summary in this console
         uses: irongut/CodeCoverageSummary@v1.3.0
-        with:
-          filename: ./coverage-integration.xml
+        with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
+          filename: ./services/catalog/cov-report-catalog.xml
 
   generate-quality-report:
     runs-on: ubuntu-latest
