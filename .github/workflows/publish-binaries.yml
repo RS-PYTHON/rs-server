@@ -11,6 +11,11 @@ on:
     tags:
       - '**'
   workflow_dispatch:
+    inputs:
+      docker_tag:
+        description: Tag the docker images as e.g. 'latest' or 'feat-rspy123'
+        required: false
+        default: latest
 
 env:
   PYTHON_VERSION: 3.11
@@ -48,7 +53,12 @@ jobs:
 
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
       # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/adgs/pyproject.toml
+      - run: |
+          set -x
+          for dep in rs-server-common; do
+            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/adgs/pyproject.toml
+          done
+        shell: bash
 
       - id: publish-wheel
         uses: ./.github/actions/publish-wheel
@@ -67,12 +77,41 @@ jobs:
 
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
       # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: sed -i "s|^.*rs-server-common.*path.*$|rs-server-common = \"\*\"|g"  services/cadip/pyproject.toml
+      - run: |
+          set -x
+          for dep in rs-server-common; do
+            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/cadip/pyproject.toml
+          done
+        shell: bash
 
       - id: publish-wheel
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/cadip
+
+  services-frontend-whl:
+    runs-on: ubuntu-latest
+    name: "'services/frontend' wheel"
+    outputs:
+      version_name: ${{ steps.publish-wheel.outputs.version_name }}
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+
+      # Hack the pyproject.toml. TODO: find a cleaner to do this.
+      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+      - run: |
+          set -x
+          for dep in rs-server-adgs rs-server-cadip rs-server-common; do
+            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/frontend/pyproject.toml
+          done
+        shell: bash
+
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/frontend
 
   #########################
   # Publish Docker images #
@@ -108,6 +147,7 @@ jobs:
           image_suffix: -adgs
           version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ github.event.inputs.docker_tag }}
 
   services-cadip-img:
     runs-on: ubuntu-latest
@@ -139,3 +179,46 @@ jobs:
           image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ github.event.inputs.docker_tag }}
+
+  services-frontend-img:
+    runs-on: ubuntu-latest
+    name: "'services/frontend' Docker image"
+    needs: [services-common-whl, services-adgs-whl, services-cadip-whl, services-frontend-whl]
+    permissions: write-all
+    outputs:
+      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download .whl files into ./whl/
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.services-common-whl.outputs.package_name }}
+          path: ./whl
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.services-adgs-whl.outputs.package_name }}
+          path: ./whl
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.services-cadip-whl.outputs.package_name }}
+          path: ./whl
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.services-frontend-whl.outputs.package_name }}
+          path: ./whl
+
+      - id: publish-docker
+        uses: ./.github/actions/publish-docker
+        with:
+          dockerfile: ./services/frontend/.github/Dockerfile
+          build_context_path: ./whl
+          image_suffix: -frontend
+          version_name: ${{ needs.services-frontend-whl.outputs.version_name }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ github.event.inputs.docker_tag }}
