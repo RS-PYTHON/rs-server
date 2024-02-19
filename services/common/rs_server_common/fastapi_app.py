@@ -11,6 +11,25 @@ from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils.logging import Logging
 
+# Add some endpoints specific to the main application
+others_router = APIRouter(tags=["Others"])
+
+
+@others_router.get("/")
+async def home():
+    """Home endpoint."""
+    return {"message": "RS server home endpoint"}
+
+
+@others_router.get("/health", response_model=HealthSchema, name="Check service health")
+async def health() -> HealthSchema:
+    """
+    Always return a flag set to 'true' when the service is up and running.
+    \f
+    Otherwise this code won't be run anyway and the caller will have other sorts of errors.
+    """
+    return HealthSchema(healthy=True)
+
 
 @typing.no_type_check
 def init_app(
@@ -73,28 +92,23 @@ def init_app(
             except TypeError:  # TypeError: object NoneType can't be used in 'await' expression
                 sessionmanager.close()
 
-    app = FastAPI(title="RS FastAPI server", lifespan=lifespan)
+    # Override the swagger /docs URL from an environment variable.
+    # Also set the openapi.json URL under the same path.
+    try:
+        docs_url = env["RSPY_DOCS_URL"].strip("/")
+        docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
+    except KeyError:
+        docs_params = {}
+
+    # Init the FastAPI application
+    app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params)
 
     # Pass postgres arguments to the app so they can be used in the lifespan function above.
     app.state.pg_pause = pause
     app.state.pg_timeout = timeout
 
     # Add routers to the FastAPI app
-    for router in routers:
+    for router in routers + [others_router]:
         app.include_router(router)
-
-    @app.get("/", tags=["Others"])
-    async def home():
-        """Home endpoint."""
-        return {"message": "RS server home endpoint"}
-
-    @app.get("/health", response_model=HealthSchema, name="Check service health", tags=["Others"])
-    async def health() -> HealthSchema:
-        """
-        Always return a flag set to 'true' when the service is up and running.
-        \f
-        Otherwise this code won't be run anyway and the caller will have other sorts of errors.
-        """
-        return HealthSchema(healthy=True)
 
     return app
