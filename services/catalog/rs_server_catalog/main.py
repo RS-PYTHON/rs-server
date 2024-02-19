@@ -57,13 +57,9 @@ def add_parameter_owner_id(parameters: list[dict]) -> dict:
 
 
 def extract_openapi_specification() -> None:
-    """Extract the openapi specification to the given folder.
-
-    Retrieve the openapi specification from the FastAPI instance in json format
-    and write it in the given folder in a file named openapi.json.
-
-    :param to_folder: the folder where the specification is written
-    :return: None
+    """Extract the openapi specifications and modify the content to be conform
+    to the rs catalog specifications. Then, apply the changes in the application
+    and save the result in json format in 'rs_server_catalog/openapi_specification/openapi.json'.
     """
     to_folder = Path("rs_server_catalog/openapi_specification")
     if not os.path.isdir(to_folder):

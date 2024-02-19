@@ -1,4 +1,4 @@
-"""An ASGI middleware to handle the user multi catalog.
+"""A BaseHTTPMiddleware to handle the user multi catalog.
 
 The stac-fastapi software doesn't handle multi catalog.
 In the rs-server we need to handle user-based catalogs.
@@ -33,7 +33,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
     """The user catalog middleware."""
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
-        # sourcery skip: hoist-loop-from-if, hoist-similar-statement-from-if
         """Remove the user id from the object.
 
         Args:
