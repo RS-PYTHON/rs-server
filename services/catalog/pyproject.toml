@@ -26,12 +26,15 @@ optional = true
 black = "^23.11.0"
 # Testing
 pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
+pytest-error-for-skips = "^2.0.2"
 pytest-docker = "^3.1.0"
 pytest-dotenv = "^0.5.2"
 # httpx is used by fastapi for test purpose
 httpx = "^0.26.0"
 # sqlalchemy-utils is used for pgstac test purpose
 sqlalchemy-utils = "^0.41.1"
+psycopg2 = "^2.9.9"
 
 
 [tool.black]
