@@ -33,7 +33,7 @@ from stac_fastapi.pgstac.transactions import BulkTransactionsClient, Transaction
 from stac_fastapi.pgstac.types.search import PgstacSearch
 
 
-def add_parameter_owner_id(parameters: list[dict]) -> dict:
+def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     """Add the owner id dictionnary to the parameter list.
 
     Args:
@@ -54,7 +54,7 @@ def add_parameter_owner_id(parameters: list[dict]) -> dict:
     return parameters
 
 
-def extract_openapi_specification() -> None:
+def extract_openapi_specification():
     """Extract the openapi specifications and modify the content to be conform
     to the rs catalog specifications. Then, apply the changes in the application.
     """
