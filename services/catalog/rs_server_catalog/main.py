@@ -58,38 +58,28 @@ def add_parameter_owner_id(parameters: list[dict]) -> dict:
 
 def extract_openapi_specification() -> None:
     """Extract the openapi specifications and modify the content to be conform
-    to the rs catalog specifications. Then, apply the changes in the application
-    and save the result in json format in 'rs_server_catalog/openapi_specification/openapi.json'.
+    to the rs catalog specifications. Then, apply the changes in the application.
     """
-    to_folder = Path("rs_server_catalog/openapi_specification")
-    if not os.path.isdir(to_folder):
-        os.mkdir(to_folder)
-    with open(to_folder / "openapi.json", "w", encoding="utf-8") as f:
-        openapi_spec = get_openapi(
-            title=app.title,
-            version=app.version,
-            openapi_version=app.openapi_version,
-            description=app.description,
-            routes=app.routes,
-        )
-        openapi_spec_paths = openapi_spec["paths"]
-        for key, _ in openapi_spec_paths.items():
-            new_key = "/catalog/{owner_id}" + key
-            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
-            endpoint = openapi_spec_paths[new_key]
-            for method_key, _ in endpoint.items():
-                method = endpoint[method_key]
-                if "parameters" in method.keys():
-                    method["parameters"] = add_parameter_owner_id(method["parameters"])
-                else:
-                    method["parameters"] = add_parameter_owner_id([])
-        json.dump(
-            openapi_spec,
-            f,
-            indent=4,
-        )
-        app.openapi_schema = openapi_spec
-        return app.openapi_schema
+    openapi_spec = get_openapi(
+        title=app.title,
+        version=app.version,
+        openapi_version=app.openapi_version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_spec_paths = openapi_spec["paths"]
+    for key, _ in openapi_spec_paths.items():
+        new_key = "/catalog/{owner_id}" + key
+        openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+        endpoint = openapi_spec_paths[new_key]
+        for method_key, _ in endpoint.items():
+            method = endpoint[method_key]
+            if "parameters" in method.keys():
+                method["parameters"] = add_parameter_owner_id(method["parameters"])
+            else:
+                method["parameters"] = add_parameter_owner_id([])
+    app.openapi_schema = openapi_spec
+    return app.openapi_schema
 
 
 settings = Settings()
