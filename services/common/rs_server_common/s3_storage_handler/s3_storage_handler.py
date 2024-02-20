@@ -509,12 +509,10 @@ class S3StorageHandler:
         except RuntimeError:
             self.logger.error(
                 "Could not upload any of the received files because the \
-    bucket %s does not exist or is not accessible. Aborting",
+bucket %s does not exist or is not accessible. Aborting",
                 config.bucket,
             )
-            for collection_file in collection_files:
-                failed_files.append(collection_file[1])
-            return failed_files
+            raise RuntimeError(f"The bucket {config.bucket} does not exist or is not accessible")
 
         for collection_file in collection_files:
             if collection_file[0] is None:
@@ -544,7 +542,7 @@ class S3StorageHandler:
                 except botocore.client.ClientError as error:
                     self.logger.error(
                         "Error when uploading the file %s. \
-    Exception: %s. Retrying in %s seconds for %s more times",
+Exception: %s. Retrying in %s seconds for %s more times",
                         file_to_be_uploaded,
                         error,
                         UP_S3FILE_RETRY_TIMEOUT,
@@ -555,7 +553,7 @@ class S3StorageHandler:
                 except RuntimeError:
                     self.logger.error(
                         "Error when uploading the file %s. \
-    Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+Couldn't get the s3 client. Retrying in %s seconds for %s more times",
                         file_to_be_uploaded,
                         UP_S3FILE_RETRY_TIMEOUT,
                         config.max_retries - keep_trying,
@@ -565,7 +563,7 @@ class S3StorageHandler:
             if not uploaded:
                 self.logger.error(
                     "Could not upload the file %s. The upload was \
-        retried for %s times. Aborting",
+retried for %s times. Aborting",
                     file_to_be_uploaded,
                     config.max_retries,
                 )
