@@ -506,13 +506,13 @@ class S3StorageHandler:
 
         try:
             self.check_bucket_access(config.bucket)
-        except RuntimeError:
+        except RuntimeError as e:
             self.logger.error(
                 "Could not upload any of the received files because the \
 bucket %s does not exist or is not accessible. Aborting",
                 config.bucket,
             )
-            raise RuntimeError(f"The bucket {config.bucket} does not exist or is not accessible")
+            raise RuntimeError(f"The bucket {config.bucket} does not exist or is not accessible") from e
 
         for collection_file in collection_files:
             if collection_file[0] is None:
