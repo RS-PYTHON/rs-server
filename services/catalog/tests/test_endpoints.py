@@ -236,3 +236,8 @@ class TestRedirectionGetItems:  # pylint: disable=missing-function-docstring
     def test_feature_titi_s2_l1_0_with_titi_removed(self, client, feature_titi_s2_l1_0):
         feature_collection = self.load_json_collection(client, "catalog/titi/collections/S2_L1/items")
         assert feature_collection == {feature_titi_s2_l1_0.collection}
+
+
+def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
+    response = client.get("/api.html")
+    assert response.status_code == 200

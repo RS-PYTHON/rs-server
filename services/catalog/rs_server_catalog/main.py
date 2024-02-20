@@ -57,6 +57,8 @@ def extract_openapi_specification():
     """Extract the openapi specifications and modify the content to be conform
     to the rs catalog specifications. Then, apply the changes in the application.
     """
+    if app.openapi_schema:
+        return app.openapi_schema
     openapi_spec = get_openapi(
         title=app.title,
         version=app.version,
@@ -112,7 +114,7 @@ api = StacApi(
     middlewares=[UserCatalogMiddleware, BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware],
 )
 app = api.app
-app.openapi_schema = extract_openapi_specification()
+app.openapi = extract_openapi_specification
 
 
 @app.on_event("startup")

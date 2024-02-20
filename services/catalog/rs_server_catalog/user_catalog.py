@@ -94,7 +94,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         request.scope["path"], user = remove_user_prefix(request.url.path)
         response = await call_next(request)
 
-        if request.method == "GET":
+        if request.method == "GET" and user:
             body = [chunk async for chunk in response.body_iterator]
             content = json.loads(b"".join(body).decode())
             if request.scope["path"] == "/":
