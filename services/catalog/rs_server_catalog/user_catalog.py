@@ -103,10 +103,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 content["collections"] = filter_collections(content["collections"], user)
                 content = self.remove_user_from_objects(content, user, "collections")
                 content = self.adapt_links(content, user)
-            elif "items" not in request.scope["path"]:
+            elif "/collection" in request.scope["path"] and "items" not in request.scope["path"]:
                 content = remove_user_from_collection(content, user)
                 content = self.adapt_collection_links(content, user)
-            else:
+            elif "items" in request.scope["path"]:
                 content = self.remove_user_from_objects(content, user, "features")
             return JSONResponse(content, status_code=response.status_code)
         return response
