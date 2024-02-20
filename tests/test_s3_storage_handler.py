@@ -453,6 +453,7 @@ def test_get_keys_from_s3(
         res = s3_handler.get_keys_from_s3(config)
         logger.debug("get_keys_from_s3 returns: %s", res)
     except RuntimeError:
+        assert bucket == "bucket-non-existent"
         res = []
     finally:
         server.stop()

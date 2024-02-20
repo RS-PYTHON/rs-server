@@ -410,15 +410,14 @@ class S3StorageHandler:
 
         try:
             self.check_bucket_access(config.bucket)
-        except RuntimeError:
+        except RuntimeError as e:
             self.logger.error(
                 "Could not download the file(s) because the \
     bucket %s does not exist or is not accessible. Aborting",
                 config.bucket,
             )
-            for collection_file in collection_files:
-                failed_files.append(collection_file[1])
-            return failed_files
+            raise RuntimeError(f"The bucket {config.bucket} does not exist or is not accessible") from e
+
         for collection_file in collection_files:
             if collection_file[0] is None:
                 failed_files.append(collection_file[1])
