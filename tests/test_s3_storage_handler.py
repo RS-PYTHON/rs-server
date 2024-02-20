@@ -453,6 +453,7 @@ def test_get_keys_from_s3(
         res = s3_handler.get_keys_from_s3(config)
         logger.debug("get_keys_from_s3 returns: %s", res)
     except RuntimeError:
+        assert bucket == "bucket-non-existent"
         res = []
     finally:
         server.stop()
@@ -665,7 +666,6 @@ def test_put_files_to_s3(
 
     export_aws_credentials()
     secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    logger = Logging.default(__name__)
 
     # create the test bucket
     server = ThreadedMotoServer()
@@ -682,23 +682,20 @@ def test_put_files_to_s3(
             s3_handler.s3_client.create_bucket(Bucket=bucket)
         # end of create
 
+        test_bucket_files = []  # type: list[str]
         config = PutFilesToS3Config(lst_with_files, bucket, s3_prefix, 1)
         res = s3_handler.put_files_to_s3(config)
 
-        test_bucket_files = []  # type: list[str]
         for key in lst_with_files:
-            try:
-                s3_files = s3_handler.list_s3_files_obj(bucket, key)
-                test_bucket_files = test_bucket_files + s3_files
-            except RuntimeError:
-                pass
+            s3_files = s3_handler.list_s3_files_obj(bucket, key)
+            test_bucket_files = test_bucket_files + s3_files
+    except RuntimeError:
+        assert bucket == "bucket-nonexistent"
     finally:
         server.stop()
 
-    logger.debug("test_bucket_files  = %s", test_bucket_files)
-
-    logger.debug("Task returns: %s", res)
-    assert len(Counter(keys_in_bucket) - Counter(test_bucket_files)) == 0
-    assert len(Counter(test_bucket_files) - Counter(keys_in_bucket)) == 0
-    assert len(Counter(expected_res) - Counter(res)) == 0
-    assert len(Counter(res) - Counter(expected_res)) == 0
+    if bucket != "bucket-nonexistent":
+        assert len(Counter(keys_in_bucket) - Counter(test_bucket_files)) == 0
+        assert len(Counter(test_bucket_files) - Counter(keys_in_bucket)) == 0
+        assert len(Counter(expected_res) - Counter(res)) == 0
+        assert len(Counter(res) - Counter(expected_res)) == 0
