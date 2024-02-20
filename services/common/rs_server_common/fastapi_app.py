@@ -15,13 +15,15 @@ from rs_server_common.utils.logging import Logging
 others_router = APIRouter(tags=["Others"])
 
 
-@others_router.get("/")
+# include_in_schema=False: hide this endpoint from the swagger
+@others_router.get("/", include_in_schema=False)
 async def home():
     """Home endpoint."""
     return {"message": "RS server home endpoint"}
 
 
-@others_router.get("/health", response_model=HealthSchema, name="Check service health")
+# include_in_schema=False: hide this endpoint from the swagger
+@others_router.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
 async def health() -> HealthSchema:
     """
     Always return a flag set to 'true' when the service is up and running.

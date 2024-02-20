@@ -1,55 +1,57 @@
 [project]
-name = "rs-server-common"
+name = "rs-server-catalog"
 version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
-name = "rs-server-common"
+name = "rs-server-catalog"
 version = "0.0.0"
-description = ""
+description = "rs-server stac catalog"
 authors = ["Your Name <you@example.com>"]
 
 packages = [
-    { include = "rs_server_common" },
+    { include = "rs_server_catalog" },
     { include = "tests", format = "sdist" },
 ]
 
-# Add configuration files to the .whl package
-include = [
-    { path = "config", format = ["wheel"] }
-]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.108.0"
-boto3 = "==1.28.85"
-botocore = "==1.31.85"
-sqlalchemy = "^2.0.25"
-eodag = "^2.11.0"
-pydantic = ">=2.0.0"
-markdown = "^3.5.1"
-python-dotenv = "^1.0.0"
-psycopg2 = "^2.9.9"
-filelock = "^3.13.1"
+stac-fastapi-pgstac = "^2.4.11"
 uvicorn = "^0.27.1"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+# Formatting
+black = "^23.11.0"
+# Testing
+pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
+pytest-error-for-skips = "^2.0.2"
+pytest-docker = "^3.1.0"
+pytest-dotenv = "^0.5.2"
+# httpx is used by fastapi for test purpose
+httpx = "^0.26.0"
+# sqlalchemy-utils is used for pgstac test purpose
+sqlalchemy-utils = "^0.41.1"
+psycopg2 = "^2.9.9"
+
 
 [tool.black]
 line-length = 120
+
 
 [tool.pytest.ini_options]
 markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
+# pgstac and stac-fastapi env file for test purpose
+env_files = [
+    "tests/.env"
+]
 
-[tool.mypy]
-warn_redundant_casts = true
-# Force analyze of partially annotate function signatures
-check_untyped_defs = true
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
