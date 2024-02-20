@@ -310,7 +310,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
                 "/".join(obs_array[3:]),
             )
             s3_handler.put_files_to_s3(s3_config)
-        except RuntimeError:
+        except (RuntimeError, KeyError):
             logger.error("Could not connect to the s3 storage")
             # Try n times to update the status to FAILED in the database
             update_db(
