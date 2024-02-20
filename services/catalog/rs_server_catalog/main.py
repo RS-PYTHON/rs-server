@@ -133,7 +133,7 @@ def run():
         import uvicorn  # pylint: disable=import-outside-toplevel
 
         uvicorn.run(
-            "rs-server-catalog.main:app",
+            "rs_server_catalog.main:app",
             host=settings.app_host,
             port=settings.app_port,
             log_level="info",
