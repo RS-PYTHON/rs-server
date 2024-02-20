@@ -97,6 +97,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         if request.method == "GET":
             body = [chunk async for chunk in response.body_iterator]
             content = json.loads(b"".join(body).decode())
+            if request.scope["path"] == "/":
+                return JSONResponse(content, status_code=response.status_code)
             if request.scope["path"] == "/collections":
                 content["collections"] = filter_collections(content["collections"], user)
                 content = self.remove_user_from_objects(content, user, "collections")

@@ -102,6 +102,9 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
             remove_user_prefix("/catalog")
         assert str(exc_info.value) == "URL (/catalog) is invalid."
 
+    def test_landing_page(self):
+        assert remove_user_prefix("/catalog/Toto") == ("/", "Toto")
+
     def test_remove_user_and_catalog_prefix(self):
         assert remove_user_prefix("/catalog/Toto/collections") == ("/collections", "Toto")
 

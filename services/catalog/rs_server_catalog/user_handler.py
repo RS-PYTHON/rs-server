@@ -6,6 +6,8 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"/catalog(?P<owner_id>.*)(?P<collections>/collections)((?P<collection_id>/.+?(?=/|$))(?P<items>.*)?)?"
 )
 
+CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
+
 
 def remove_user_prefix(path: str) -> tuple[str, str]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
@@ -28,7 +30,13 @@ def remove_user_prefix(path: str) -> tuple[str, str]:
         raise ValueError("URL (/catalog) is invalid.")
 
     res = path
-    match = re.search(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path)
+    match = re.fullmatch(CATALOG_OWNER_ID_REGEX, path)
+    if match:
+        groups = match.groupdict()
+        owner_id = groups["owner_id"]
+        return "/", owner_id
+
+    match = re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path)
     if match:
         groups = match.groupdict()
         owner_id = groups["owner_id"][1:]
