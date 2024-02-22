@@ -237,6 +237,17 @@ class TestRedirectionGetItems:  # pylint: disable=missing-function-docstring
         feature_collection = self.load_json_collection(client, "catalog/titi/collections/S2_L1/items")
         assert feature_collection == {feature_titi_s2_l1_0.collection}
 
+    def test_link_collection_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1/items")
+        response_json = json.loads(response.content)
+        links = response_json["links"]
+        self_link = next(link for link in links if link["rel"] == "collection")
+        assert self_link == {
+            "rel": "collection",
+            "type": "application/json",
+            "href": "http://testserver/catalog/toto/collections/S1_L1",
+        }
+
 
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/api.html")

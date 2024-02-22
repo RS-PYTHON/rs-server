@@ -9,6 +9,39 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
 
 
+def get_ids(path: str) -> dict:
+    """From a str path return the owner_id and the collection_id if they exists.
+
+
+    Args:
+        path (str): the endpoint request.
+
+    Returns:
+        dict: the result containing owner_id and collection_id.
+    """
+    res = {
+        "owner_id": "",
+        "collection_id": "",
+    }
+
+    # To catch the endpoint /catalog/{owner_id}
+    if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
+        groups = match.groupdict()
+        res["owner_id"] = groups["owner_id"]
+        return res
+
+    # To catch all the other endpoints.
+    if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
+        groups = match.groupdict()
+        if groups["owner_id"]:
+            res["owner_id"] = groups["owner_id"][1:]
+        if groups["collection_id"]:
+            res["collection_id"] = groups["collection_id"][1:]
+        return res
+
+    return res
+
+
 def remove_user_prefix(path: str) -> tuple[str, str]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
@@ -29,15 +62,14 @@ def remove_user_prefix(path: str) -> tuple[str, str]:
     if path == "/catalog":
         raise ValueError("URL (/catalog) is invalid.")
 
-    res = path
-    match = re.fullmatch(CATALOG_OWNER_ID_REGEX, path)
-    if match:
+    # To catch the endpoint /catalog/{owner_id}
+    if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
         groups = match.groupdict()
         owner_id = groups["owner_id"]
         return "/", owner_id
 
-    match = re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path)
-    if match:
+    # To catch all the other endpoints.
+    if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
         owner_id = groups["owner_id"][1:]
         collection_id = groups["collection_id"]
@@ -49,7 +81,7 @@ def remove_user_prefix(path: str) -> tuple[str, str]:
             return f"/collections/{owner_id}_{collection_id}", owner_id
         return f"/collections/{owner_id}_{collection_id}/items", owner_id
 
-    return res, ""
+    return path, ""
 
 
 def add_user_prefix(path: str, user: str, collection_id: str) -> str:

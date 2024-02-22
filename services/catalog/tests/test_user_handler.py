@@ -4,6 +4,7 @@ import pytest
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
+    get_ids,
     remove_user_from_collection,
     remove_user_from_feature,
     remove_user_prefix,
@@ -87,6 +88,24 @@ def feature_output_fixture() -> dict:
         "Geometry": [(43, 44), (72, 15), (78, 35), (65, 82)],
         "collection": "S1_L1",
     }
+
+
+class TestGetIds:  # pylint: disable=missing-function-docstring
+    """This Class contains unit tests for the function get_ids."""
+
+    def test_return_empty_string_if_no_match(self):
+        assert get_ids("/NOT/FOUND") == {"owner_id": "", "collection_id": ""}
+
+    def test_with_catalog_owner_id_endpoint(self):
+        assert get_ids("/catalog/toto") == {"owner_id": "toto", "collection_id": ""}
+
+    def test_with_catalog_owner_id_collections_collection_id(self):
+        res = {"owner_id": "toto", "collection_id": "S1_L1"}
+        assert get_ids("/catalog/toto/collections/S1_L1") == res
+
+    def test_with_catalog_owner_id_collections_collection_id_items(self):
+        res = {"owner_id": "toto", "collection_id": "S1_L1"}
+        assert get_ids("/catalog/toto/collections/S1_L1/items") == res
 
 
 class TestRemovePrefix:  # pylint: disable=missing-function-docstring
