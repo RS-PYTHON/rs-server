@@ -52,7 +52,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 objects[i] = remove_user_from_feature(objects[i], user)
         return content
 
-    def adapt_collection_links(self, collection: dict, user: str) -> dict:
+    def adapt_object_links(self, object: dict, user: str) -> dict:
         """adapt all the links from a collection so the user can use them correctly
 
         Args:
@@ -62,14 +62,14 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         Returns:
             dict: The collection passed in parameter with adapted links
         """
-        links = collection["links"]
+        links = object["links"]
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
-            new_path = add_user_prefix(link_parser.path, user, collection["id"])
+            new_path = add_user_prefix(link_parser.path, user, object["id"])
             links[j]["href"] = link_parser._replace(path=new_path).geturl()
-        return collection
+        return object
 
-    def adapt_links(self, content: dict, user: str) -> dict:
+    def adapt_links(self, content: dict, user: str, object_name: str) -> dict:
         """adapt all the links that are outside from the collection section
 
         Args:
@@ -85,8 +85,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             link_parser = urlparse(link["href"])
             new_path = add_user_prefix(link_parser.path, user, "")
             links[i]["href"] = link_parser._replace(path=new_path).geturl()
-        for i in range(len(content["collections"])):
-            content["collections"][i] = self.adapt_collection_links(content["collections"][i], user)
+        for i in range(len(content[object_name])):
+            content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
         return content
 
     async def dispatch(self, request, call_next):
@@ -102,11 +102,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             if request.scope["path"] == "/collections":
                 content["collections"] = filter_collections(content["collections"], user)
                 content = self.remove_user_from_objects(content, user, "collections")
-                content = self.adapt_links(content, user)
+                content = self.adapt_links(content, user, "collections")
             elif "/collection" in request.scope["path"] and "items" not in request.scope["path"]:
                 content = remove_user_from_collection(content, user)
-                content = self.adapt_collection_links(content, user)
+                content = self.adapt_object_links(content, user)
             elif "items" in request.scope["path"]:
                 content = self.remove_user_from_objects(content, user, "features")
+                content = self.adapt_links(content, user, "features")
             return JSONResponse(content, status_code=response.status_code)
         return response
