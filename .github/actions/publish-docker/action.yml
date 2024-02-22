@@ -113,7 +113,7 @@ runs:
       if: always()
       run: | # use sed to replace the last :<tag> by :docker_tag
         set -x
-        if [[ -n ${{ inputs.docker_tag }} ]]; then
+        if [[ ${{ inputs.docker_tag }}test != test ]]; then # if variable is defined and not empty
           docker_image_tag=$(sed "s|\(:[^:]*\)|:${{ inputs.docker_tag }}|g" <<< ${{ env.docker_image }})
           docker tag ${{ env.docker_image }} ${docker_image_tag}
           docker push ${docker_image_tag}

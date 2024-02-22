@@ -22,7 +22,25 @@ None
 
 None
 
+== [1.0a5] - 2024-02-21
+
+=== Added
+
+* RSPY-68: Configure OpenID Connect on K8S cluster
+* RSPY-73: Link RS-Server frontend with CADIP backend endpoints (without UAC)
+* RSPY-78: Link RS-Server frontend with Backend Catalog endpoints (Without UAC) - Part 1
+* RSPY-81: Deploy keycloak on K8S cluster
+* RSPY-91: Link RS-Server frontend with ADGS backend endpoints (without UAC)
+* RSPY-94: Implement a DPR mockup
+* RSPY-113: Harmonize /adgs/aux/search and /cadip/{station}/cadu/search with STAC search endpoint
+* RSPY-121: Setup Ingress Controller
+* RSPY-126: Initialize RS-SERVER-Libraries repository
+* RSPY-134: Setup Helm Chart Releaser to use Github Pages as Helm chart repository
+* RSPY-138: Add public architecture documentation on GitHub
+
 == [1.0a4] - 2024-01-31
+
+=== Added
 
 * RSPY-29: Deploy Kubernetes
 * RSPY-33: Generate CI/CD documentation from Github
@@ -30,8 +48,6 @@ None
 * RSPY-88: Add endpoint GET "/adgs/aux" to ADGS backend server
 * RSPY-90: Add endpoint GET "/adgs/aux/status" to ADGS backend server
 * RSPY-117: Create a Jupyter demo for local target
-
-=== Added
 
 == [1.0a3] - 2024-01-16
 
