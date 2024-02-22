@@ -8,7 +8,6 @@ Subpackages
    :maxdepth: 4
 
    rs_server_common.db.models
-   rs_server_common.db.schemas
 
 Submodules
 ----------

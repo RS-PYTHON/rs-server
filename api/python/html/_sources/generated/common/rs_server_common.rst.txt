@@ -10,6 +10,7 @@ Subpackages
    rs_server_common.data_retrieval
    rs_server_common.db
    rs_server_common.s3_storage_handler
+   rs_server_common.schemas
    rs_server_common.utils
 
 Submodules

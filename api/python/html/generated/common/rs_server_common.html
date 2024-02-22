@@ -52,11 +52,14 @@
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.data_retrieval.html">rs_server_common.data_retrieval package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.db.html">rs_server_common.db package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html">rs_server_common.s3_storage_handler package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html">rs_server_common.schemas package</a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.utils.html">rs_server_common.utils package</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#module-rs_server_common.fastapi_app">rs_server_common.fastapi_app module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#rs_server_common.fastapi_app.health"><code class="docutils literal notranslate"><span class="pre">health()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rs_server_common.fastapi_app.home"><code class="docutils literal notranslate"><span class="pre">home()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rs_server_common.fastapi_app.init_app"><code class="docutils literal notranslate"><span class="pre">init_app()</span></code></a></li>
 </ul>
 </li>
@@ -144,12 +147,6 @@
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.db.models.html#module-rs_server_common.db.models">Module contents</a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="rs_server_common.db.schemas.html">rs_server_common.db.schemas package</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="rs_server_common.db.schemas.html#submodules">Submodules</a></li>
-<li class="toctree-l4"><a class="reference internal" href="rs_server_common.db.schemas.html#module-rs_server_common.db.schemas.download_status_schema">rs_server_common.db.schemas.download_status_schema module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="rs_server_common.db.schemas.html#module-rs_server_common.db.schemas">Module contents</a></li>
-</ul>
-</li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="rs_server_common.db.html#submodules">Submodules</a></li>
@@ -227,6 +224,42 @@
 <li class="toctree-l2"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#module-rs_server_common.s3_storage_handler">Module contents</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="rs_server_common.schemas.html">rs_server_common.schemas package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="rs_server_common.schemas.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rs_server_common.schemas.html#module-rs_server_common.schemas.download_status_schema">rs_server_common.schemas.download_status_schema module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.DownloadStatusBase"><code class="docutils literal notranslate"><span class="pre">DownloadStatusBase</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.DownloadStatusBase.available_at_station"><code class="docutils literal notranslate"><span class="pre">DownloadStatusBase.available_at_station</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.DownloadStatusBase.model_config"><code class="docutils literal notranslate"><span class="pre">DownloadStatusBase.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.DownloadStatusBase.model_fields"><code class="docutils literal notranslate"><span class="pre">DownloadStatusBase.model_fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.DownloadStatusBase.name"><code class="docutils literal notranslate"><span class="pre">DownloadStatusBase.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.DownloadStatusBase.product_id"><code class="docutils literal notranslate"><span class="pre">DownloadStatusBase.product_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus.db_id"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus.db_id</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus.download_start"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus.download_start</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus.download_stop"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus.download_stop</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus.model_config"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus.model_fields"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus.model_fields</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus.serialize_dt"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus.serialize_dt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus.status"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus.status</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.download_status_schema.ReadDownloadStatus.status_fail_message"><code class="docutils literal notranslate"><span class="pre">ReadDownloadStatus.status_fail_message</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="rs_server_common.schemas.html#module-rs_server_common.schemas.health_schema">rs_server_common.schemas.health_schema module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.health_schema.HealthSchema"><code class="docutils literal notranslate"><span class="pre">HealthSchema</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.health_schema.HealthSchema.healthy"><code class="docutils literal notranslate"><span class="pre">HealthSchema.healthy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.health_schema.HealthSchema.model_config"><code class="docutils literal notranslate"><span class="pre">HealthSchema.model_config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.health_schema.HealthSchema.model_fields"><code class="docutils literal notranslate"><span class="pre">HealthSchema.model_fields</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="rs_server_common.schemas.html#module-rs_server_common.schemas">Module contents</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="rs_server_common.utils.html">rs_server_common.utils package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="rs_server_common.utils.html#submodules">Submodules</a></li>
 <li class="toctree-l2"><a class="reference internal" href="rs_server_common.utils.html#module-rs_server_common.utils.logging">rs_server_common.utils.logging module</a><ul>
@@ -289,6 +322,19 @@
 <section id="module-rs_server_common.fastapi_app">
 <span id="rs-server-common-fastapi-app-module"></span><h2>rs_server_common.fastapi_app module<a class="headerlink" href="#module-rs_server_common.fastapi_app" title="Link to this heading"></a></h2>
 <p>Init the FastAPI application.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="rs_server_common.fastapi_app.health">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server_common.fastapi_app.</span></span><span class="sig-name descname"><span class="pre">health</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="rs_server_common.schemas.html#rs_server_common.schemas.health_schema.HealthSchema" title="rs_server_common.schemas.health_schema.HealthSchema"><span class="pre">HealthSchema</span></a></span></span><a class="headerlink" href="#rs_server_common.fastapi_app.health" title="Link to this definition"></a></dt>
+<dd><p>Always return a flag set to ‘true’ when the service is up and running.</p>
+<p>Otherwise this code won’t be run anyway and the caller will have other sorts of errors.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="rs_server_common.fastapi_app.home">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server_common.fastapi_app.</span></span><span class="sig-name descname"><span class="pre">home</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.fastapi_app.home" title="Link to this definition"></a></dt>
+<dd><p>Home endpoint.</p>
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="rs_server_common.fastapi_app.init_app">
 <span class="sig-prename descclassname"><span class="pre">rs_server_common.fastapi_app.</span></span><span class="sig-name descname"><span class="pre">init_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">routers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">APIRouter</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">init_db</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pause</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.fastapi_app.init_app" title="Link to this definition"></a></dt>
