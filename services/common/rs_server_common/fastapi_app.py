@@ -6,8 +6,10 @@ from contextlib import asynccontextmanager
 from os import environ as env
 from typing import Callable
 
+import httpx
 import sqlalchemy
 from fastapi import APIRouter, FastAPI
+from rs_server_common import depends
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils.logging import Logging
@@ -84,7 +86,10 @@ def init_app(
                             raise
                     time.sleep(app.state.pg_pause)
 
-        # Call additional startup events (after starting the database)
+        # Init objects for dependency injection
+        depends.http_client = httpx.AsyncClient()
+
+        # Call additional startup events
         for event in app.state.startup_events:
             event()
 
@@ -94,9 +99,13 @@ def init_app(
         # SHUTDOWN #
         ############
 
-        # Call additional shutdown events (before closing the database)
+        # Call additional shutdown events
         for event in app.state.shutdown_events:
             event()
+
+        # Close objects for dependency injection
+        depends.http_client.aclose()
+        depends.http_client = None
 
         # Close database session
         if app.state.init_db:
