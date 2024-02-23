@@ -4,6 +4,7 @@ import time
 import typing
 from contextlib import asynccontextmanager
 from os import environ as env
+from typing import Callable
 
 import sqlalchemy
 from fastapi import APIRouter, FastAPI
@@ -39,7 +40,9 @@ def init_app(
     init_db: bool = True,
     pause: int = 3,
     timeout: int = None,
-):
+    startup_events: list[Callable] = None,
+    shutdown_events: list[Callable] = None,
+):  # pylint: disable=too-many-arguments
     """
     Init the FastAPI application.
     See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
@@ -49,23 +52,22 @@ def init_app(
         init_db (bool): should we init the database session ?
         timeout (int): timeout in seconds to wait for the database connection.
         pause (int): pause in seconds to wait for the database connection.
+        startup_events (list[Callable]): list of functions that should be run before the application starts
+        shutdown_events (list[Callable]): list of functions that should be run when the application is shutting down
     """
 
     logger = Logging.default(__name__)
 
-    lifespan = None
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Automatically executed when starting and stopping the FastAPI server."""
 
-    if init_db:
+        ###########
+        # STARTUP #
+        ###########
 
-        @asynccontextmanager
-        async def lifespan(app: FastAPI):  # pylint: disable=function-redefined # noqa
-            """Automatically executed when starting and stopping the FastAPI server."""
-
-            ############
-            # STARTING #
-            ############
-
-            # Open database session. Loop until the connection works.
+        # Open database session. Loop until the connection works.
+        if app.state.init_db:
             db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
             while True:
                 try:
@@ -82,13 +84,22 @@ def init_app(
                             raise
                     time.sleep(app.state.pg_pause)
 
-            yield
+        # Call additional startup events (after starting the database)
+        for event in app.state.startup_events:
+            event()
 
-            ############
-            # STOPPING #
-            ############
+        yield
 
-            # Close database session
+        ############
+        # SHUTDOWN #
+        ############
+
+        # Call additional shutdown events (before closing the database)
+        for event in app.state.shutdown_events:
+            event()
+
+        # Close database session
+        if app.state.init_db:
             try:
                 await sessionmanager.close()
             except TypeError:  # TypeError: object NoneType can't be used in 'await' expression
@@ -105,9 +116,12 @@ def init_app(
     # Init the FastAPI application
     app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params)
 
-    # Pass postgres arguments to the app so they can be used in the lifespan function above.
+    # Pass arguments to the app so they can be used in the lifespan function above.
+    app.state.init_db = init_db
     app.state.pg_pause = pause
     app.state.pg_timeout = timeout
+    app.state.startup_events = startup_events or []
+    app.state.shutdown_events = shutdown_events or []
 
     # Add routers to the FastAPI app
     for router in routers + [others_router]:
