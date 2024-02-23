@@ -24,6 +24,7 @@ from rs_server_catalog.user_handler import (
     remove_user_prefix,
 )
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 
@@ -57,7 +58,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         """adapt all the links from a collection so the user can use them correctly
 
         Args:
-            collection (dict): The collection
+            object (dict): The collection
             user (str): The user id
 
         Returns:
@@ -94,22 +95,37 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         """Redirect the user catalog specific endpoint and adapt the response content."""
         ids = get_ids(request.scope["path"])
         request.scope["path"], user = remove_user_prefix(request.url.path)
+
+        if request.method == "POST" and user:
+            request_body = await request.json()
+            if request.scope["path"] == "/collections":
+                request_body_id = request_body["id"]
+                request_body["id"] = f"{user}_{request_body_id}"
+                request.stream = json.dumps(request_body).encode("utf-8")
+
         response = await call_next(request)
 
         if request.method == "GET" and user:
             body = [chunk async for chunk in response.body_iterator]
             content = json.loads(b"".join(body).decode())
-            if request.scope["path"] == "/":
+            if request.scope["path"] == "/":  # /catalog/owner_id
                 return JSONResponse(content, status_code=response.status_code)
-            if request.scope["path"] == "/collections":
+            if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
                 content["collections"] = filter_collections(content["collections"], user)
                 content = self.remove_user_from_objects(content, user, "collections")
                 content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
-            elif "/collection" in request.scope["path"] and "items" not in request.scope["path"]:
+            elif (
+                "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+            ):  # /catalog/owner_id/collections/collection_id
                 content = remove_user_from_collection(content, user)
                 content = self.adapt_object_links(content, user)
-            elif "items" in request.scope["path"]:
+            elif (
+                "items" in request.scope["path"] and not ids["item_id"]
+            ):  # /catalog/owner_id/collections/collection_id/items
                 content = self.remove_user_from_objects(content, user, "features")
                 content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
+            elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
+                content = remove_user_from_feature(content, user)
+                content = self.adapt_object_links(content, user)
             return JSONResponse(content, status_code=response.status_code)
         return response

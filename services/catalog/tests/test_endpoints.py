@@ -249,6 +249,37 @@ class TestRedirectionGetItems:  # pylint: disable=missing-function-docstring
         }
 
 
+class TestRedirectionGetItemsItemId:  # pylint: disable=missing-function-docstring
+    """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}/items/{item_id}'."""
+
+    def test_status_code_200_feature_toto_if_good_endpoint(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
+        assert response.status_code == 200
+
+    def test_status_code_200_feature_titi_if_good_endpoint(self, client):
+        response = client.get("/catalog/titi/collections/S2_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
+        assert response.status_code == 200
+
+    def load_json_feature(self, client, endpoint):
+        response = client.get(endpoint)
+        feature = json.loads(response.content)
+        return feature["collection"]
+
+    def test_feature_toto_s1_l1_0_with_toto_removed(self, client, feature_toto_s1_l1_0):
+        feature_id = self.load_json_feature(
+            client,
+            "/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
+        )
+        assert feature_id == feature_toto_s1_l1_0.collection
+
+    def test_collection_titi_s2_l1_with_titi_removed(self, client, feature_titi_s2_l1_0):
+        feature_id = self.load_json_feature(
+            client,
+            "/catalog/titi/collections/S2_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
+        )
+        assert feature_id == feature_titi_s2_l1_0.collection
+
+
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/api.html")
     assert response.status_code == 200

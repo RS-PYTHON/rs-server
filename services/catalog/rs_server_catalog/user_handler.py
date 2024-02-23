@@ -2,9 +2,7 @@
 
 import re
 
-CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
-    r"/catalog(?P<owner_id>.*)(?P<collections>/collections)((?P<collection_id>/.+?(?=/|$))(?P<items>.*)?)?"
-)
+CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = r"/catalog(?P<owner_id>.*)(?P<collections>/collections)((?P<collection_id>/.+?(?=/|$))(?P<items>/.+?(?=/|$))?(?P<item_id>/.+?(?=/|$))?)?"
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
 
@@ -16,13 +14,10 @@ def get_ids(path: str) -> dict:
     Args:
         path (str): the endpoint request.
 
-    Returns:
+    Returns:s
         dict: the result containing owner_id and collection_id.
     """
-    res = {
-        "owner_id": "",
-        "collection_id": "",
-    }
+    res = {"owner_id": "", "collection_id": "", "item_id": ""}
 
     # To catch the endpoint /catalog/{owner_id}
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
@@ -37,6 +32,8 @@ def get_ids(path: str) -> dict:
             res["owner_id"] = groups["owner_id"][1:]
         if groups["collection_id"]:
             res["collection_id"] = groups["collection_id"][1:]
+        if groups["item_id"]:
+            res["item_id"] = groups["item_id"][1:]
         return res
 
     return res
@@ -74,12 +71,16 @@ def remove_user_prefix(path: str) -> tuple[str, str]:
         owner_id = groups["owner_id"][1:]
         collection_id = groups["collection_id"]
         items = groups["items"]
+        item_id = groups["item_id"]
         if collection_id is None:
             return "/collections", owner_id
         collection_id = groups["collection_id"][1:]
-        if items == "":
+        if items is None:
             return f"/collections/{owner_id}_{collection_id}", owner_id
-        return f"/collections/{owner_id}_{collection_id}/items", owner_id
+        if item_id is None:
+            return f"/collections/{owner_id}_{collection_id}/items", owner_id
+        item_id = item_id[1:]
+        return f"/collections/{owner_id}_{collection_id}/items/{item_id}", owner_id
 
     return path, ""
 

@@ -94,18 +94,26 @@ class TestGetIds:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function get_ids."""
 
     def test_return_empty_string_if_no_match(self):
-        assert get_ids("/NOT/FOUND") == {"owner_id": "", "collection_id": ""}
+        assert get_ids("/NOT/FOUND") == {"owner_id": "", "collection_id": "", "item_id": ""}
 
     def test_with_catalog_owner_id_endpoint(self):
-        assert get_ids("/catalog/toto") == {"owner_id": "toto", "collection_id": ""}
+        assert get_ids("/catalog/toto") == {"owner_id": "toto", "collection_id": "", "item_id": ""}
 
     def test_with_catalog_owner_id_collections_collection_id(self):
-        res = {"owner_id": "toto", "collection_id": "S1_L1"}
+        res = {"owner_id": "toto", "collection_id": "S1_L1", "item_id": ""}
         assert get_ids("/catalog/toto/collections/S1_L1") == res
 
     def test_with_catalog_owner_id_collections_collection_id_items(self):
-        res = {"owner_id": "toto", "collection_id": "S1_L1"}
+        res = {"owner_id": "toto", "collection_id": "S1_L1", "item_id": ""}
         assert get_ids("/catalog/toto/collections/S1_L1/items") == res
+
+    def test_with_catalog_owner_id_collections_collection_id_items_item_id(self):
+        res = {
+            "owner_id": "toto",
+            "collection_id": "S1_L1",
+            "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
+        }
+        assert get_ids("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d") == res
 
 
 class TestRemovePrefix:  # pylint: disable=missing-function-docstring
@@ -136,6 +144,10 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
             "/collections/Toto_joplin/items",
             "Toto",
         )
+
+    def test_item_id(self):
+        result = remove_user_prefix("/catalog/Toto/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d")
+        assert result == ("/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d", "Toto")
 
     def test_ignore_if_unknown_endpoint(self):
         assert remove_user_prefix("/not/found") == ("/not/found", "")
