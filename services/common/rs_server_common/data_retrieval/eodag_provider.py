@@ -1,7 +1,7 @@
 """EODAG Provider."""
 from pathlib import Path
 
-from eodag import EODataAccessGateway, EOProduct
+from eodag import EODataAccessGateway, EOProduct, SearchResult
 from rs_server_common.utils.provider_ws_address import station_to_server_url
 
 from .provider import CreateProviderFailed, Provider, TimeRange
@@ -40,7 +40,7 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
-    def _specific_search(self, between: TimeRange, **kwargs) -> list[EOProduct]:
+    def _specific_search(self, between: TimeRange, **kwargs) -> SearchResult:
         """
         Conducts a search for products within a specified time range.
 
@@ -55,8 +55,8 @@ class EodagProvider(Provider):
                                 for the search range.
 
         Returns:
-            dict[str, EOProduct]: A dictionary where keys are product identifiers and
-                                values are EOProduct instances.
+            SearchResult: A dictionary where keys are product identifiers and
+                            values are EOProduct instances.
 
         Note:
             The time format of the 'between' parameter should be verified or formatted

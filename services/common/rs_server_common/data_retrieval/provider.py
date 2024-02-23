@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -50,7 +51,7 @@ class Provider(ABC):
     and download them locally.
     """
 
-    def search(self, between: TimeRange, **kwargs) -> list[Product]:
+    def search(self, between: TimeRange, **kwargs) -> Any:
         """Search for products with the given time range.
 
         The search result is a dictionary of products found indexed by id.
@@ -59,7 +60,7 @@ class Provider(ABC):
             between: the search period
 
         Returns:
-            the files found indexed by file id.
+            The files found indexed by file id. Specific to each provider.
 
         """
         if between.duration() == timedelta(0):
@@ -69,7 +70,7 @@ class Provider(ABC):
         return self._specific_search(between, **kwargs)
 
     @abstractmethod
-    def _specific_search(self, between: TimeRange) -> list[Product]:
+    def _specific_search(self, between: TimeRange) -> Any:
         """Search for products with the given time range.
 
         Specific search for products after common verification.
