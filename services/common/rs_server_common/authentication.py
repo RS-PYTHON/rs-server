@@ -1,25 +1,22 @@
 """Authentication functions implementation"""
-
-
 #
 # NOTE: taken from https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manager
 #
-# TODO: should we either only accept apikey in the http headers (not query) ?
-# or also implement the middleware to capture the apikey from the url ? See:
-# https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manager/-/blob/main/app/main.py#L75
-#
 
-
+from os import environ as env
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader, APIKeyQuery
 from httpx import AsyncClient
 from rs_server_common.depends import http_client
-from starlette.status import HTTP_403_FORBIDDEN
+from starlette.status import HTTP_400_BAD_REQUEST
 
-api_key_query = APIKeyQuery(name="api-key", scheme_name="API key query", auto_error=False)
-api_key_header = APIKeyHeader(name="x-api-key", scheme_name="API key header", auto_error=False)
+QUERY_NAME = "api-key"
+HEADER_NAME = "x-api-key"
+
+api_key_query = APIKeyQuery(name=QUERY_NAME, scheme_name="API key passed as query parameter", auto_error=False)
+api_key_header = APIKeyHeader(name=HEADER_NAME, scheme_name="API key passed in header", auto_error=False)
 
 
 async def api_key_security(
@@ -27,20 +24,30 @@ async def api_key_security(
     header_param: Annotated[str, Security(api_key_header)],
     client: AsyncClient = Depends(http_client),
 ):
-    params = {"api-key", query_param} if query_param else {}
-    headers = {"x-api-key": api_key_header} if header_param else {}
-    return client.get("...", params=params, headers=headers)
-    # if not query_param and not header_param:
-    #     raise HTTPException(
-    #         status_code=HTTP_403_FORBIDDEN,
-    #         detail="An API key must be passed as query or header",
-    #     )
+    # The uac manager check url is passed as an environment variable
+    try:
+        check_url = env["RSPY_UAC_CHECK_URL"]
+    except KeyError:
+        raise HTTPException(HTTP_400_BAD_REQUEST, "UAC manager URL is undefined")
 
-    # key_info = apikey_crud.check_key(query_param or header_param)
+    # Build the request parameters and header
+    params = {QUERY_NAME: query_param} if query_param else {}
+    headers = {HEADER_NAME: header_param} if header_param else {}
 
-    # if key_info:
-    #     return key_info
-    # else:
-    #     raise HTTPException(
-    #         status_code=HTTP_403_FORBIDDEN, detail="Wrong, revoked, or expired API key."
-    #     )
+    # Request the uac, pass user-defined credentials
+    response = await client.get(check_url, params=params, headers=headers)
+
+    # Return the api key info as a json
+    if response.is_success:
+        return response.json()
+
+    # Try to read the response detail
+    try:
+        detail = response.json()["detail"]
+
+    # If this fail, get the full response content
+    except Exception:
+        detail = response.read().decode("utf-8")
+
+    # Forward error
+    raise HTTPException(response.status_code, detail)
