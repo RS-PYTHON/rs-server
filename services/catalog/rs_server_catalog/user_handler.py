@@ -59,11 +59,14 @@ def remove_user_prefix(path: str) -> tuple[str, str]:
     if path == "/catalog":
         raise ValueError("URL (/catalog) is invalid.")
 
+    if path == "/catalog/search":
+        return "/search"
+
     # To catch the endpoint /catalog/{owner_id}
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
         groups = match.groupdict()
         owner_id = groups["owner_id"]
-        return "/", owner_id
+        return "/"
 
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
@@ -73,16 +76,16 @@ def remove_user_prefix(path: str) -> tuple[str, str]:
         items = groups["items"]
         item_id = groups["item_id"]
         if collection_id is None:
-            return "/collections", owner_id
+            return "/collections"
         collection_id = groups["collection_id"][1:]
         if items is None:
-            return f"/collections/{owner_id}_{collection_id}", owner_id
+            return f"/collections/{owner_id}_{collection_id}"
         if item_id is None:
-            return f"/collections/{owner_id}_{collection_id}/items", owner_id
+            return f"/collections/{owner_id}_{collection_id}/items"
         item_id = item_id[1:]
-        return f"/collections/{owner_id}_{collection_id}/items/{item_id}", owner_id
+        return f"/collections/{owner_id}_{collection_id}/items/{item_id}"
 
-    return path, ""
+    return path
 
 
 def add_user_prefix(path: str, user: str, collection_id: str) -> str:

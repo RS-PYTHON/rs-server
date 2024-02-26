@@ -94,7 +94,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
         ids = get_ids(request.scope["path"])
-        request.scope["path"], user = remove_user_prefix(request.url.path)
+        user = ids["owner_id"]
+        request.scope["path"] = remove_user_prefix(request.url.path)
 
         if request.method == "POST" and user:
             request_body = await request.json()

@@ -130,27 +130,24 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert str(exc_info.value) == "URL (/catalog) is invalid."
 
     def test_landing_page(self):
-        assert remove_user_prefix("/catalog/Toto") == ("/", "Toto")
+        assert remove_user_prefix("/catalog/Toto") == ("/")
 
     def test_remove_user_and_catalog_prefix(self):
-        assert remove_user_prefix("/catalog/Toto/collections") == ("/collections", "Toto")
+        assert remove_user_prefix("/catalog/Toto/collections") == ("/collections")
 
     def test_remove_catalog_and_replace_user(self):
         result = remove_user_prefix("/catalog/Toto/collections/joplin")
-        assert result == ("/collections/Toto_joplin", "Toto")
+        assert result == ("/collections/Toto_joplin")
 
     def test_remove_catalog_replace_user_with_items(self):
-        assert remove_user_prefix("/catalog/Toto/collections/joplin/items") == (
-            "/collections/Toto_joplin/items",
-            "Toto",
-        )
+        assert remove_user_prefix("/catalog/Toto/collections/joplin/items") == ("/collections/Toto_joplin/items")
 
     def test_item_id(self):
         result = remove_user_prefix("/catalog/Toto/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d")
-        assert result == ("/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d", "Toto")
+        assert result == ("/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d")
 
     def test_ignore_if_unknown_endpoint(self):
-        assert remove_user_prefix("/not/found") == ("/not/found", "")
+        assert remove_user_prefix("/not/found") == ("/not/found")
 
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring

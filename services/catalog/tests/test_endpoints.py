@@ -4,6 +4,8 @@ import json
 
 import pytest
 
+from tests.conftest import add_collection, add_feature
+
 
 @pytest.mark.integration
 class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-function-docstring
@@ -211,9 +213,22 @@ class TestRedirectionCatalogUserIdCollectionsCollectionid:  # pylint: disable=mi
             "title": "public domain",
         }
 
+    def test_delete_collection(self, client, toto_s1_l1, feature_toto_s1_l1_0, feature_toto_s1_l1_1):
+        response = client.delete("/catalog/toto/collections/S1_L1")
+        add_collection(client, toto_s1_l1)
+        add_feature(client, feature_toto_s1_l1_0)
+        add_feature(client, feature_toto_s1_l1_1)
+        assert response.status_code == 200
+
+    # def test_update_collection(self, client):
+    #     toto_s1_l1 = client.get("/catalog/toto/collections/S1_L1")
+    #     json_toto = json.loads(toto_s1_l1.content)
+    #     response = client.put("/catalog/toto/collections/S1_L1", json=json_toto, headers=toto_s1_l1.headers)
+    #     assert response.status_code == 200
+
 
 @pytest.mark.integration
-class TestRedirectionGetItems:  # pylint: disable=missing-function-docstring
+class TestRedirectionItems:  # pylint: disable=missing-function-docstring
     """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}/items'."""
 
     def test_status_code_200_feature_toto_if_good_endpoint(self, client):
@@ -249,7 +264,7 @@ class TestRedirectionGetItems:  # pylint: disable=missing-function-docstring
         }
 
 
-class TestRedirectionGetItemsItemId:  # pylint: disable=missing-function-docstring
+class TestRedirectionItemsItemId:  # pylint: disable=missing-function-docstring
     """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}/items/{item_id}'."""
 
     def test_status_code_200_feature_toto_if_good_endpoint(self, client):
@@ -279,7 +294,28 @@ class TestRedirectionGetItemsItemId:  # pylint: disable=missing-function-docstri
         )
         assert feature_id == feature_titi_s2_l1_0.collection
 
+    def test_update_feature(self, client):
+        toto_s1_l1_feature = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
+        json_toto = json.loads(toto_s1_l1_feature.content)
+        json_toto["collection"] = "toto_S1_L1"
+        response = client.put(
+            "/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
+            json=json_toto,
+            headers=toto_s1_l1_feature.headers,
+        )
+        assert response.status_code == 200
+
+    def test_delete_feature(self, client, feature_toto_s1_l1_0):
+        response = client.delete("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
+        add_feature(client, feature_toto_s1_l1_0)
+        assert response.status_code == 200
+
 
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/api.html")
+    assert response.status_code == 200
+
+
+def test_status_code_200_search_if_good_endpoint(client):  # pylint: disable=missing-function-docstring
+    response = client.get("/catalog/search")
     assert response.status_code == 200
