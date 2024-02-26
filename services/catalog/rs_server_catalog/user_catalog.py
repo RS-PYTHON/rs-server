@@ -13,6 +13,7 @@ The middleware:
 """
 
 import json
+import pathlib
 from urllib.parse import urlparse
 
 from rs_server_catalog.user_handler import (
@@ -23,6 +24,7 @@ from rs_server_catalog.user_handler import (
     remove_user_prefix,
 )
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 
@@ -89,11 +91,57 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content["collections"][i] = self.adapt_collection_links(content["collections"][i], user)
         return content
 
+    @staticmethod
+    def update_stac_item_publication(content: dict, user: str) -> dict:
+        # 1 - update assets href
+        for asset in content["assets"]:
+            filename = pathlib.Path(content["assets"][asset]["href"])
+            for suffix in filename.suffixes:
+                fid = str(filename).replace(suffix, "")
+            new_href = (
+                f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
+            )
+            content["assets"][asset].update({"href": new_href})
+            # 2 - update alternate href to define catalog s3 bucket
+            s3_key = f"s3://catalog-bucket/{filename.name}"
+            new_s3_href = {"s3": {"href": s3_key}}
+            content["assets"][asset].update({"alternate": new_s3_href})
+
+        # 3 - include new stac extension if not present
+
+        new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
+        content["stac_extensions"].append(new_stac_extension) if new_stac_extension not in content[
+            "stac_extensions"
+        ] else content["stac_extensions"]
+        # 4 tdb, bucket movement
+        # from rs_server_common.s3_storage_handler import s3_storage_handler
+
+        # 5 - add owner data
+        content["owner"] = user
+        content.update({"collection": f"{user}_{content['collection']}"})
+        return content
+
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request.scope["path"], user = remove_user_prefix(request.url.path)
-        response = await call_next(request)
+        if request.method == "POST" and user:
+            # capture request from frontend and update the content
+            # then forward it to pgstac
+            if "items" in request.scope["path"]:
+                content = await request.body()
+                content = UserCatalogMiddleware.update_stac_item_publication(json.loads(content), user)
+                # update request body (better find the function that updates the body maybe?)
+                request._body = json.dumps(content).encode("utf-8")
+                response = await call_next(request)
+                return JSONResponse(content, status_code=response.status_code)
+            # collection creation was here
+            response = await call_next(request)
+            # can this be moved up?
+            body = [chunk async for chunk in response.body_iterator]
+            content = json.loads(b"".join(body).decode())
+            return JSONResponse(content, status_code=response.status_code)
 
+        response = await call_next(request)
         if request.method == "GET" and user:
             body = [chunk async for chunk in response.body_iterator]
             content = json.loads(b"".join(body).decode())

@@ -189,7 +189,7 @@ class Feature:
                     ],
                 ],
             },
-            "collection": f"{self.owner_id}_{self.collection}",
+            "collection": f"{self.collection}",
             "properties": {
                 "gsd": 0.5971642834779395,
                 "width": 2500,
@@ -237,6 +237,11 @@ def feature_titi_s2_l1_0_fixture() -> Feature:  # pylint: disable=missing-functi
     return a_feature("titi", "fe916452-ba6f-4631-9154-c249924a122d", "S2_L1")
 
 
+@pytest.fixture(scope="session", name="darius_s1_l2")
+def darius_s1_l2_fixture() -> Collection:  # pylint: disable=missing-function-docstring
+    return a_collection("darius", "S1_L2")
+
+
 def add_feature(client: TestClient, feature: Feature):
     """Add the given feature in the STAC catalogue.
 
@@ -258,6 +263,7 @@ def setup_database(
     toto_s1_l1,
     toto_s2_l3,
     titi_s2_l1,
+    darius_s1_l2,
     feature_toto_s1_l1_0,
     feature_toto_s1_l1_1,
     feature_titi_s2_l1_0,
@@ -279,6 +285,7 @@ def setup_database(
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s2_l1)
+    add_collection(client, darius_s1_l2)
     add_feature(client, feature_toto_s1_l1_0)
     add_feature(client, feature_toto_s1_l1_1)
     add_feature(client, feature_titi_s2_l1_0)

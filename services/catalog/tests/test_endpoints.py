@@ -241,3 +241,77 @@ class TestRedirectionGetItems:  # pylint: disable=missing-function-docstring
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/api.html")
     assert response.status_code == 200
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "owner, collection_id, feature_data",
+    [
+        (
+            "darius",
+            "S1_L2",
+            {
+                "collection": "S1_L2",
+                "assets": {
+                    "zarr": {
+                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                        "roles": ["data"],
+                    },
+                    "cog": {
+                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                        "roles": ["data"],
+                    },
+                    "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+                },
+                "bbox": [0],
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [-94.6334839, 37.0595608],
+                            [-94.6334839, 37.0332547],
+                            [-94.6005249, 37.0332547],
+                            [-94.6005249, 37.0595608],
+                            [-94.6334839, 37.0595608],
+                        ],
+                    ],
+                },
+                "id": "S1SIWOCN_20220412T054447_0024_S139",
+                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+                "other_metadata": {},
+                "properties": {
+                    "gsd": 0.5971642834779395,
+                    "width": 2500,
+                    "height": 2500,
+                    "datetime": "2000-02-02T00:00:00Z",
+                    "proj:epsg": 3857,
+                    "orientation": "nadir",
+                },
+                "stac_extensions": [
+                    "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
+                    "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+                    "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+                    "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+                    "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+                    "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+                ],
+                "stac_version": "1.0.0",
+                "type": "Feature",
+            },
+        ),
+    ],
+)
+def test_publish_item_update(client, owner, collection_id, feature_data):
+    # Check if that user darius have a collection (Added in conftest -> setup_database)
+    # Add a featureCollection to darius collection
+    added_feature = client.post(f"/catalog/{owner}/collections/{collection_id}/items", json=feature_data)
+    assert added_feature.status_code == 200
+    feature_data = json.loads(added_feature.content)
+    # check if owner was added and match to the owner of the collection
+    assert feature_data["owner"] == owner
+    # check if stac_extension correctly updated collection name
+    assert feature_data["collection"] == f"{owner}_{collection_id}"
+    # check if stac extension was added
+    assert "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json" in feature_data["stac_extensions"]
+
+    # More test to be added here when bucket move is implemented.
