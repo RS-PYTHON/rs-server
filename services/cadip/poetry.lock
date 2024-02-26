@@ -1363,13 +1363,13 @@ files = [
 
 [[package]]
 name = "sniffio"
-version = "1.3.0"
+version = "1.3.1"
 description = "Sniff out which async library your code is running under"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "sniffio-1.3.0-py3-none-any.whl", hash = "sha256:eecefdce1e5bbfb7ad2eeaabf7c1eeb404d7757c379bd1f7e5cce9d8bf425384"},
-    {file = "sniffio-1.3.0.tar.gz", hash = "sha256:e60305c5e5d314f5389259b7f22aaa33d8f7dee49763119234af3755c55b9101"},
+    {file = "sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"},
+    {file = "sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc"},
 ]
 
 [[package]]
@@ -1478,13 +1478,13 @@ full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart", "pyyam
 
 [[package]]
 name = "stream-zip"
-version = "0.0.70"
+version = "0.0.71"
 description = "Python function to construct a ZIP archive with stream processing - without having to store the entire ZIP in memory or disk"
 optional = false
 python-versions = ">=3.6.7"
 files = [
-    {file = "stream_zip-0.0.70-py3-none-any.whl", hash = "sha256:43835a128e4cbff01f40a30ff3e053f2719379f835011384dd351196f6334512"},
-    {file = "stream_zip-0.0.70.tar.gz", hash = "sha256:135f73f414feef5a786e11e3cc2f5643fc0bdd9b936e79ef4c27e763423fee20"},
+    {file = "stream_zip-0.0.71-py3-none-any.whl", hash = "sha256:4afff6da680876b7982afedcc9c3478a575a519c74015a25a4248d3fe69a46a0"},
+    {file = "stream_zip-0.0.71.tar.gz", hash = "sha256:fd85a01e8eadec4d1151b548c7da0eeecc37432f29df01ba232f672f958a2fc6"},
 ]
 
 [package.dependencies]
@@ -1516,13 +1516,13 @@ telegram = ["requests"]
 
 [[package]]
 name = "typing-extensions"
-version = "4.9.0"
+version = "4.10.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "typing_extensions-4.9.0-py3-none-any.whl", hash = "sha256:af72aea155e91adfc61c3ae9e0e342dbc0cba726d6cba4b6c72c1f34e47291cd"},
-    {file = "typing_extensions-4.9.0.tar.gz", hash = "sha256:23478f88c37f27d76ac8aee6c905017a143b0b1b886c3c9f66bc2fd94f9f5783"},
+    {file = "typing_extensions-4.10.0-py3-none-any.whl", hash = "sha256:69b1a937c3a517342112fb4c6df7e72fc39a38e7891a5730ed4985b5214b5475"},
+    {file = "typing_extensions-4.10.0.tar.gz", hash = "sha256:b0abd7c89e8fb96f98db18d86106ff1d90ab692004eb746cf6eda2682f91b3cb"},
 ]
 
 [[package]]
