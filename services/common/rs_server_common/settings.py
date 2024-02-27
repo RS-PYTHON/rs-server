@@ -11,8 +11,8 @@ from httpx import AsyncClient
 # The local mode flag is defined in an environment variable
 __local_mode: bool = False
 try:
-    value = env["RSPY_LOCAL_MODE"].lower()
-    __local_mode = (value == "1") or (value[0] == "t") or (value[0] == "y")
+    env_var = env["RSPY_LOCAL_MODE"].lower()
+    __local_mode = (env_var == "1") or (env_var[0] == "t") or (env_var[0] == "y")
 except (IndexError, KeyError):
     pass
 
@@ -26,7 +26,7 @@ def local_mode():
 # HTTP client #
 ###############
 
-__http_client: AsyncClient = None
+__http_client: AsyncClient | None = None
 
 
 def http_client():
@@ -36,12 +36,13 @@ def http_client():
 
 def set_http_client(value):
     """Set HTTP client"""
-    global __http_client
+    global __http_client  # pylint: disable=global-statement
     __http_client = value
 
 
 async def del_http_client():
     """Close and delete HTTP client."""
-    global __http_client
-    await __http_client.aclose()
+    global __http_client  # pylint: disable=global-statement
+    if __http_client:
+        await __http_client.aclose()
     __http_client = None

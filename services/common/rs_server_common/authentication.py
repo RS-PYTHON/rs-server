@@ -10,9 +10,8 @@ from typing import Annotated
 
 import httpx
 from cachetools import TTLCache, cached
-from fastapi import Depends, HTTPException, Security
+from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
-from httpx import AsyncClient
 from rs_server_common.settings import local_mode
 from starlette.status import HTTP_400_BAD_REQUEST
 
@@ -48,7 +47,7 @@ def __api_key_security_cached(header_param):
     try:
         check_url = env["RSPY_UAC_CHECK_URL"]
     except KeyError:
-        raise HTTPException(HTTP_400_BAD_REQUEST, "UAC manager URL is undefined")
+        raise HTTPException(HTTP_400_BAD_REQUEST, "UAC manager URL is undefined")  # pylint: disable=raise-missing-from
 
     # Request the uac, pass user-defined credentials
     response = httpx.get(check_url, headers={HEADER_NAME: header_param or ""})
@@ -67,7 +66,7 @@ def __api_key_security_cached(header_param):
             detail = json["error"]
 
     # If this fail, get the full response content
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         detail = response.read().decode("utf-8")
 
     # Forward error
@@ -77,4 +76,6 @@ def __api_key_security_cached(header_param):
 # In local mode: no keycloak. Do nothing and return empty info.
 # Redefine the api_key_security function so we don't have the lock icon anymore in the swagger.
 if local_mode():
-    api_key_security = lambda: ({}, {})
+    # pylint: disable=unnecessary-lambda-assignment
+    # flake8: noqa
+    api_key_security = lambda: ({}, {})  # type: ignore

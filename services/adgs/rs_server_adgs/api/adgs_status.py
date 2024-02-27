@@ -18,7 +18,7 @@ router = APIRouter(tags=adgs_tags)
 async def get_download_status(
     name: Annotated[str, Query(description="AUX product name")],
     db: Session = Depends(get_db),
-    security: tuple[dict, dict] = Depends(api_key_security),
+    _: tuple[dict, dict] = Depends(api_key_security),
 ):
     """
     Get a product download status from its ID or name.

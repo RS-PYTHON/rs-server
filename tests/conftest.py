@@ -11,6 +11,7 @@ import os
 # We are in local mode (no cluster).
 # Do this before any other imports.
 # pylint: disable=wrong-import-position
+# flake8: noqa
 os.environ["RSPY_LOCAL_MODE"] = "1"
 
 import os.path as osp
