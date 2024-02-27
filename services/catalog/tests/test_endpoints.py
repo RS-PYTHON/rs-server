@@ -29,6 +29,42 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         response = client.post("/catalog/esmeralda/collections", json=new_collection)
         assert response.status_code == 200
 
+    def test_status_code_200_update_collection_esmeralda_s1_l1(self, client):
+        esmeralda_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "description": "The S1_L1 collection for Esmeralda user.",
+            "stac_version": "1.0.0",
+        }
+        client.post("/catalog/esmeralda/collections", json=esmeralda_collection)
+        new_esmeralda_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "description": "The S1_L1 collection for BIG Esmeralda user.",
+            "stac_version": "1.0.0",
+        }
+        response = client.put("/catalog/esmeralda/collections", json=new_esmeralda_collection)
+        assert response.status_code == 200
+
+    def test_if_update_collection_esmeralda_s1_l1_worked(self, client):
+        esmeralda_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "description": "The S1_L1 collection for Esmeralda user.",
+            "stac_version": "1.0.0",
+        }
+        client.post("/catalog/esmeralda/collections", json=esmeralda_collection)
+        new_esmeralda_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "description": "The S1_L1 collection for BIG Esmeralda user.",
+            "stac_version": "1.0.0",
+        }
+        client.put("/catalog/esmeralda/collections", json=new_esmeralda_collection)
+        response = client.get("/catalog/esmeralda/collections/S1_L1")
+        content = json.loads(response.content)
+        assert content["description"] == "The S1_L1 collection for BIG Esmeralda user."
+
     def test_collection_with_esmeralda_added_after_post(self, client):
         new_collection = {
             "id": "S1_L1",

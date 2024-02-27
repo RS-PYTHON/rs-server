@@ -24,7 +24,6 @@ from rs_server_catalog.user_handler import (
     remove_user_prefix,
 )
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 
@@ -46,11 +45,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         """
         objects = content[object_name]
         nb_objects = len(objects)
-        if object_name == "collections":
-            for i in range(nb_objects):
+        for i in range(nb_objects):
+            if object_name == "collections":
                 objects[i] = remove_user_from_collection(objects[i], user)
-        else:
-            for i in range(nb_objects):
+            else:
                 objects[i] = remove_user_from_feature(objects[i], user)
         return content
 
@@ -100,13 +98,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         if request.method in ["POST", "PUT"] and user:
             request_body = await request.json()
             if request.scope["path"] == "/collections":
-                request_body_id = request_body["id"]
-                request_body["id"] = f"{user}_{request_body_id}"
-                request._body = json.dumps(request_body).encode("utf-8")
+                request_body["id"] = f"{user}_{request_body['id']}"
             elif f"/collections/{ids['owner_id']}_{ids['collection_id']}/items" in request.scope["path"]:
-                request_body_collection = request_body["collection"]
-                request_body["collection"] = f"{user}_{request_body_collection}"
-                request._body = json.dumps(request_body).encode("utf-8")
+                request_body["collection"] = f"{user}_{request_body['collection']}"
+            request._body = json.dumps(request_body).encode("utf-8")  # pylint: disable=protected-access
 
         response = await call_next(request)
 
