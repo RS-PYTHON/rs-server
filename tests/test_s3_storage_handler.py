@@ -15,6 +15,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     GetKeysFromS3Config,
     PutFilesToS3Config,
     S3StorageHandler,
+    TransferFromS3ToS3Config,
 )
 from rs_server_common.utils.logging import Logging
 
@@ -123,7 +124,7 @@ def test_get_basename(path: str, expected_res: bool):
     [
         (("http://localhost:5000", "test-bucket", 2012)),
         (("http://localhost:5000", "test-bucket", 999)),
-        (("http://localhost:5000", "bucket-nonexistent", 0)),
+        (("http://localhost:5000", "non-existent-bucket", 0)),
     ],
 )
 def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
@@ -179,7 +180,7 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "endpoint, bucket",
-    [(("http://localhost:5000", "test-bucket")), (("http://localhost:5000", "bucket-nonexistent"))],
+    [(("http://localhost:5000", "test-bucket")), (("http://localhost:5000", "non-existent-bucket"))],
 )
 def test_check_bucket_access(endpoint: str, bucket: str):
     """test_check_bucket_access Function Documentation
@@ -383,7 +384,7 @@ def cmp_dirs(dir1, dir2):
         (
             (
                 "http://localhost:5000",
-                "bucket-non-existent",
+                "non-existent-bucket",
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 [],
                 [],
@@ -453,7 +454,7 @@ def test_get_keys_from_s3(
         res = s3_handler.get_keys_from_s3(config)
         logger.debug("get_keys_from_s3 returns: %s", res)
     except RuntimeError:
-        assert bucket == "bucket-non-existent"
+        assert bucket == "non-existent-bucket"
         res = []
     finally:
         server.stop()
@@ -617,7 +618,7 @@ def test_files_to_be_uploaded(lst_with_files: list, expected_res: list):
         (
             (
                 "http://localhost:5000",
-                "bucket-nonexistent",
+                "non-existent-bucket",
                 "non_existent_dir",
                 [
                     "nonexistent_1",
@@ -687,15 +688,132 @@ def test_put_files_to_s3(
         res = s3_handler.put_files_to_s3(config)
 
         for key in lst_with_files:
-            s3_files = s3_handler.list_s3_files_obj(bucket, key)
-            test_bucket_files = test_bucket_files + s3_files
+            test_bucket_files = test_bucket_files + s3_handler.list_s3_files_obj(bucket, key)
+
     except RuntimeError:
-        assert bucket == "bucket-nonexistent"
+        assert bucket == "non-existent-bucket"
     finally:
         server.stop()
 
-    if bucket != "bucket-nonexistent":
+    if bucket != "non-existent-bucket":
         assert len(Counter(keys_in_bucket) - Counter(test_bucket_files)) == 0
         assert len(Counter(test_bucket_files) - Counter(keys_in_bucket)) == 0
         assert len(Counter(expected_res) - Counter(res)) == 0
         assert len(Counter(res) - Counter(expected_res)) == 0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint, bucket_src, lst_with_files, bucket_dst, lst_with_files_to_be_copied, expected_res",
+    [
+        (
+            (
+                "http://localhost:5000",
+                "source-bucket",
+                [
+                    "s3_storage_handler_test/no_root_file1",
+                    "s3_storage_handler_test/no_root_file2",
+                    "s3_storage_handler_test/subdir_1",
+                    "s3_storage_handler_test/subdir_2",
+                ],
+                "destination-bucket",
+                [
+                    "s3_storage_handler_test/no_root_file1",
+                    "s3_storage_handler_test/no_root_file2",
+                    "s3_storage_handler_test/subdir_1/subdir_file",
+                    "s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file1",
+                    "s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file2",
+                    "s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file1",
+                    "s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file2",
+                    "s3_storage_handler_test/subdir_2/subdir_2_file1",
+                    "s3_storage_handler_test/subdir_2/subdir_2_file2",
+                ],
+                [],
+            )
+        ),
+        (
+            (
+                "http://localhost:5000",
+                "source-bucket",
+                ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
+                "destination-bucket",
+                ["s3_storage_handler_test/no_root_file1"],
+                [],
+            )
+        ),
+        (
+            (
+                "http://localhost:5000",
+                "non-existent-bucket",
+                ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
+                "destination-bucket",
+                [],
+                [],
+            )
+        ),
+    ],
+)
+def test_transfer_from_s3_to_s3(
+    endpoint: str,
+    bucket_src: str,
+    lst_with_files: list,
+    bucket_dst: str,
+    lst_with_files_to_be_copied: list,
+    expected_res: list,
+):
+    """test_get_keys_from_s3 Function Documentation
+
+    Test the get_keys_from_s3 function.
+
+    Parameters:
+    - endpoint (str): The S3 endpoint for testing.
+    - bucket (str): The name of the S3 bucket for testing.
+    - lst_with_files (list): List of files to be checked for download.
+    - lst_with_files_to_be_dwn (list): List of tuples representing the expected
+    files to be downloaded. Each tuple consists of a prefix and a file path.
+    - expected_res (list): List of tuples representing the expected result of the Prefect workflow.
+
+    Raises:
+    - AssertionError: If the result of the Prefect workflow does not match expected_res.
+    """
+
+    export_aws_credentials()
+    secrets = {"s3endpoint": endpoint, "accesskey": None, "secretkey": None, "region": ""}
+
+    logger = Logging.default(__name__)
+    # create the test bucket
+    try:
+        server = ThreadedMotoServer()
+        server.start()
+        requests.post(endpoint + "/moto-api/reset", timeout=5)
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        if bucket_src == "source-bucket":
+            s3_handler.s3_client.create_bucket(Bucket=bucket_src)
+            for obj in lst_with_files_to_be_copied:
+                if "nonexistent" not in obj:
+                    s3_handler.s3_client.put_object(Bucket=bucket_src, Key=obj, Body="testing\n")
+        if bucket_dst == "destination-bucket":
+            s3_handler.s3_client.create_bucket(Bucket=bucket_dst)
+        # end of create
+
+        config = TransferFromS3ToS3Config(
+            lst_with_files,
+            bucket_src,
+            bucket_dst,
+            max_retries=1,
+        )
+
+        res = s3_handler.transfer_from_s3_to_s3(config)
+        assert res == expected_res
+        if bucket_dst == "destination-bucket":
+            assert lst_with_files_to_be_copied == s3_handler.list_s3_files_obj(bucket_dst, "")
+
+    except RuntimeError:
+        assert bucket_src == "non-existent-bucket"
+    finally:
+        server.stop()

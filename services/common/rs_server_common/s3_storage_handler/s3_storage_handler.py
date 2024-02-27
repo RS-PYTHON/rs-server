@@ -21,6 +21,63 @@ S3_ERR_FORBIDDEN_ACCESS = 403
 S3_ERR_NOT_FOUND = 404
 
 
+@dataclass
+class GetKeysFromS3Config:
+    """S3 configuration for download
+
+    Attributes:
+        s3_files (list): A list with the  S3 object keys to be downloaded.
+        bucket (str): The S3 bucket name.
+        local_prefix (str): The local prefix where files will be downloaded.
+        overwrite (bool, optional): Flag indicating whether to overwrite existing files. Default is False.
+        max_retries (int, optional): The maximum number of download retries. Default is DWN_S3FILE_RETRIES.
+
+    """
+
+    s3_files: list
+    bucket: str
+    local_prefix: str
+    overwrite: bool = False
+    max_retries: int = DWN_S3FILE_RETRIES
+
+
+@dataclass
+class PutFilesToS3Config:
+    """Configuration for uploading files to S3.
+
+    Attributes:
+        files (List): A list with the local file paths to be uploaded.
+        bucket (str): The S3 bucket name.
+        s3_path (str): The S3 path where files will be uploaded.
+        max_retries (int, optional): The maximum number of upload retries. Default is UP_S3FILE_RETRIES.
+
+    """
+
+    files: list
+    bucket: str
+    s3_path: str
+    max_retries: int = UP_S3FILE_RETRIES
+
+
+@dataclass
+class TransferFromS3ToS3Config:
+    """S3 configuration for copying a list with keys between buckets
+
+    Attributes:
+        s3_files (list): A list with the S3 object keys to be copied.
+        bucket_src (str): The source S3 bucket name.
+        bucket_dst (str): The destination S3 bucket name.
+        max_retries (int, optional): The maximum number of download retries. Default is DWN_S3FILE_RETRIES.
+
+    """
+
+    s3_files: list
+    bucket_src: str
+    bucket_dst: str
+    copy_only: bool = False
+    max_retries: int = DWN_S3FILE_RETRIES
+
+
 class S3StorageHandler:
     """Interacts with an S3 storage
 
@@ -72,7 +129,12 @@ class S3StorageHandler:
             return self.s3_client
         client_config = botocore.config.Config(
             max_pool_connections=100,
-            retries={"total_max_attempts": 10},
+            # timeout for connection
+            connect_timeout=5,
+            # attempts in trying connection
+            # note:  the default behaviour of boto3 is retrying
+            # connections multiple times and exponentially backing off in between
+            retries={"total_max_attempts": 5},
         )
         try:
             return boto3.client(
@@ -118,11 +180,10 @@ class S3StorageHandler:
         if self.s3_client is None or bucket is None or s3_obj is None:
             raise RuntimeError("Input error for deleting the file")
         try:
-            self.logger.debug("{%s} | {%s}", bucket, s3_obj)
-            self.logger.info("Delete file s3://{%s}/{%s}", bucket, s3_obj)
+            self.logger.info("Delete key s3://%s/%s", bucket, s3_obj)
             self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
         except ClientError as e:
-            raise RuntimeError(f"Failed to delete file s3://{bucket}/{s3_obj}") from e
+            raise RuntimeError(f"Failed to delete key s3://{bucket}/{s3_obj}") from e
 
     # helper functions
 
@@ -293,7 +354,6 @@ class S3StorageHandler:
 
         s3_files = []
 
-        self.logger.debug("prefix = %s", prefix)
         try:
             paginator: Any = self.s3_client.get_paginator("list_objects_v2")
             pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
@@ -302,6 +362,7 @@ class S3StorageHandler:
                     if item is not None:
                         s3_files.append(item["Key"])
         except Exception as error:
+            self.logger.error(f"Exception when trying to list files from s3://{bucket}/{prefix}: {error}")
             raise RuntimeError(f"Listing files from s3://{bucket}/{prefix}") from error
 
         return s3_files
@@ -315,6 +376,7 @@ class S3StorageHandler:
         Raises:
             RuntimeError: If an error occurs during the bucket access check.
         """
+
         self.connect_s3()
         try:
             self.s3_client.head_bucket(Bucket=bucket)
@@ -323,8 +385,10 @@ class S3StorageHandler:
             # If it was a 404 error, then the bucket does not exist.
             error_code = int(error.response["Error"]["Code"])
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
+                self.logger.error((f"{bucket} is a private bucket. Forbidden access!"))
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
             if error_code == S3_ERR_NOT_FOUND:
+                self.logger.error((f"{bucket} bucket does not exist!"))
                 raise RuntimeError(f"{bucket} bucket does not exist!") from error
 
     def wait_timeout(self, timeout):
@@ -383,7 +447,7 @@ class S3StorageHandler:
 
         return ret_overwrite
 
-    def get_keys_from_s3(self, config: Any) -> list:
+    def get_keys_from_s3(self, config: GetKeysFromS3Config) -> list:
         """Download S3 keys specified in the configuration.
 
         Args:
@@ -400,14 +464,6 @@ class S3StorageHandler:
 
         """
 
-        # collection_files: list of files to be downloaded
-        #                   the list contains pair objects with the following
-        #                   syntax: (local_path_to_be_added_to_the_local_prefix, s3_key)
-        collection_files = self.files_to_be_downloaded(config.bucket, config.s3_files)
-
-        self.logger.debug("collection_files = %s | bucket = %s", collection_files, config.bucket)
-        failed_files = []
-
         try:
             self.check_bucket_access(config.bucket)
         except RuntimeError as e:
@@ -417,13 +473,19 @@ class S3StorageHandler:
                 config.bucket,
             )
             raise RuntimeError(f"The bucket {config.bucket} does not exist or is not accessible") from e
+        # collection_files: list of files to be downloaded
+        #                   the list contains pair objects with the following
+        #                   syntax: (local_path_to_be_added_to_the_local_prefix, s3_key)
+        collection_files = self.files_to_be_downloaded(config.bucket, config.s3_files)
+
+        self.logger.debug("collection_files = %s | bucket = %s", collection_files, config.bucket)
+        failed_files = []
 
         for collection_file in collection_files:
             if collection_file[0] is None:
                 failed_files.append(collection_file[1])
                 continue
 
-            keep_trying = 0
             local_path = os.path.join(config.local_prefix, collection_file[0].strip("/"))
             s3_file = collection_file[1]
             # for each file to download, create the local dir (if it does not exist)
@@ -433,7 +495,7 @@ class S3StorageHandler:
 
             if not self.check_file_overwriting(local_file, config.overwrite):
                 continue
-            # download the files while no external termination notice is received
+            # download the files
             downloaded = False
             for keep_trying in range(config.max_retries):
                 try:
@@ -481,7 +543,7 @@ class S3StorageHandler:
 
         return failed_files
 
-    def put_files_to_s3(self, config: Any) -> list:
+    def put_files_to_s3(self, config: PutFilesToS3Config) -> list:
         """Upload files to S3 according to the provided configuration.
 
         Args:
@@ -498,11 +560,6 @@ class S3StorageHandler:
 
         """
 
-        failed_files = []
-        self.logger.debug("locals = %s", locals())
-
-        collection_files = self.files_to_be_uploaded(config.files)
-
         try:
             self.check_bucket_access(config.bucket)
         except RuntimeError as e:
@@ -513,13 +570,15 @@ bucket %s does not exist or is not accessible. Aborting",
             )
             raise RuntimeError(f"The bucket {config.bucket} does not exist or is not accessible") from e
 
+        collection_files = self.files_to_be_uploaded(config.files)
+        failed_files = []
+
         for collection_file in collection_files:
             if collection_file[0] is None:
                 self.logger.error("The file %s can't be uploaded, its s3 prefix is None", collection_file[0])
                 failed_files.append(collection_file[1])
                 continue
 
-            keep_trying = 0
             file_to_be_uploaded = collection_file[1]
             # create the s3 key
             s3_obj = os.path.join(config.s3_path, collection_file[0], os.path.basename(file_to_be_uploaded).strip("/"))
@@ -570,40 +629,97 @@ retried for %s times. Aborting",
 
         return failed_files
 
+    def transfer_from_s3_to_s3(self, config: TransferFromS3ToS3Config) -> list:
+        """Copy S3 keys specified in the configuration.
+        Args:
+            config (TransferFromS3ToS3Config): Configuration object containing bucket source, bucket destination,
+                      S3 files, maximum retries.
 
-@dataclass
-class GetKeysFromS3Config:
-    """S3 configuration for download
+        Returns:
+            list: A list of S3 keys that failed to be copied.
 
-    Attributes:
-        s3_files (list): A list of S3 object keys.
-        bucket (str): The S3 bucket name.
-        local_prefix (str): The local prefix where files will be downloaded.
-        overwrite (bool, optional): Flag indicating whether to overwrite existing files. Default is False.
-        max_retries (int, optional): The maximum number of download retries. Default is DWN_S3FILE_RETRIES.
+        Raises:
+            Exception: Any unexpected exception raised during the upload process.
+        """
 
-    """
+        self.check_bucket_access(config.bucket_src)
+        self.check_bucket_access(config.bucket_dst)
 
-    s3_files: list
-    bucket: str
-    local_prefix: str
-    overwrite: bool = False
-    max_retries: int = DWN_S3FILE_RETRIES
+        # collection_files: list of files to be downloaded
+        #                   the list contains pair objects with the following
+        #                   syntax: (local_path_to_be_added_to_the_local_prefix, s3_key)
 
+        collection_files = self.files_to_be_downloaded(config.bucket_src, config.s3_files)
 
-@dataclass
-class PutFilesToS3Config:
-    """Configuration for uploading files to S3.
+        self.logger.debug("collection_files = %s | bucket = %s", collection_files, config.bucket_src)
+        failed_files = []
+        copy_src = {"Bucket": config.bucket_src, "Key": ""}
 
-    Attributes:
-        files (List): A list of local file paths to be uploaded.
-        bucket (str): The S3 bucket name.
-        s3_path (str): The S3 path where files will be uploaded.
-        max_retries (int, optional): The maximum number of upload retries. Default is UP_S3FILE_RETRIES.
+        for collection_file in collection_files:
+            if collection_file[0] is None:
+                failed_files.append(collection_file[1])
+                continue
 
-    """
+            copied = False
+            for keep_trying in range(config.max_retries):
+                self.logger.debug(
+                    "keep_trying {} | range(config.max_retries) {} ".format(keep_trying, range(config.max_retries)),
+                )
+                try:
+                    self.connect_s3()
+                    dwn_start = datetime.now()
+                    copy_src["Key"] = collection_file[1]
+                    self.logger.debug("copy_src = {}".format(copy_src))
+                    self.s3_client.copy_object(CopySource=copy_src, Bucket=config.bucket_dst, Key=collection_file[1])
+                    self.logger.debug(
+                        "s3://%s/%s copied to s3://%s/%s in %s ms",
+                        config.bucket_src,
+                        collection_file[1],
+                        config.bucket_dst,
+                        collection_file[1],
+                        datetime.now() - dwn_start,
+                    )
+                    if not config.copy_only:
+                        self.delete_file_from_s3(config.bucket_src, collection_file[1])
+                        self.logger.debug("Key deleted s3://%s/%s", config.bucket_src, collection_file[1])
+                    copied = True
+                    break
+                except botocore.client.ClientError as error:
+                    self.logger.error(
+                        "Error when copying the file s3://%s/%s to s3://%s. \
+    Exception: %s. Retrying in %s seconds for %s more times",
+                        config.bucket_src,
+                        collection_file[1],
+                        config.bucket_dst,
+                        error,
+                        DWN_S3FILE_RETRY_TIMEOUT,
+                        config.max_retries - keep_trying - 1,
+                    )
+                    if config.max_retries - keep_trying - 1 != 0:
+                        self.disconnect_s3()
+                        self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
+                except RuntimeError:
+                    self.logger.error(
+                        "Error when copying the file s3://%s/%s to s3://%s. \
+    Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+                        config.bucket_src,
+                        collection_file[1],
+                        config.bucket_dst,
+                        DWN_S3FILE_RETRY_TIMEOUT,
+                        config.max_retries - keep_trying - 1,
+                    )
+                    if config.max_retries - keep_trying - 1 != 0:
+                        self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
 
-    files: list
-    bucket: str
-    s3_path: str
-    max_retries: int = UP_S3FILE_RETRIES
+            if not copied:
+                self.logger.error(
+                    "Could not copy the file s3://%s/%s to s3://%s. The copy was \
+    retried for %s times. Aborting",
+                    config.bucket_src,
+                    collection_file[1],
+                    config.bucket_dst,
+                    config.max_retries,
+                )
+                failed_files.append(collection_file[1])
+
+        return failed_files
