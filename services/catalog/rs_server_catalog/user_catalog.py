@@ -131,7 +131,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 content = UserCatalogMiddleware.update_stac_item_publication(json.loads(content), user)
                 # update request body (better find the function that updates the body maybe?)
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-                response = await call_next(request)
+                try:
+                    response = await call_next(request)
+                except Exception as e:  # pylint: disable=broad-except
+                    return JSONResponse(f"Bad request, {e}", status_code=400)
                 return JSONResponse(content, status_code=response.status_code)
             # collection creation was here
             response = await call_next(request)

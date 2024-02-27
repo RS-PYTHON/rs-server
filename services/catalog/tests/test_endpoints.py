@@ -245,67 +245,20 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "owner, collection_id, feature_data",
+    "owner, collection_id",
     [
         (
             "darius",
             "S1_L2",
-            {
-                "collection": "S1_L2",
-                "assets": {
-                    "zarr": {
-                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                        "roles": ["data"],
-                    },
-                    "cog": {
-                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-                        "roles": ["data"],
-                    },
-                    "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
-                },
-                "bbox": [0],
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [-94.6334839, 37.0595608],
-                            [-94.6334839, 37.0332547],
-                            [-94.6005249, 37.0332547],
-                            [-94.6005249, 37.0595608],
-                            [-94.6334839, 37.0595608],
-                        ],
-                    ],
-                },
-                "id": "S1SIWOCN_20220412T054447_0024_S139",
-                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-                "other_metadata": {},
-                "properties": {
-                    "gsd": 0.5971642834779395,
-                    "width": 2500,
-                    "height": 2500,
-                    "datetime": "2000-02-02T00:00:00Z",
-                    "proj:epsg": 3857,
-                    "orientation": "nadir",
-                },
-                "stac_extensions": [
-                    "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-                    "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-                ],
-                "stac_version": "1.0.0",
-                "type": "Feature",
-            },
         ),
     ],
 )
-def test_publish_item_update(client, owner, collection_id, feature_data):
+def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     """Test used to verify publication of a featureCollection to the catalog."""
+    # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file and a good OBS path. => 200 OK
     # Check if that user darius have a collection (Added in conftest -> setup_database)
     # Add a featureCollection to darius collection
-    added_feature = client.post(f"/catalog/{owner}/collections/{collection_id}/items", json=feature_data)
+    added_feature = client.post(f"/catalog/{owner}/collections/{collection_id}/items", json=a_correct_feature)
     assert added_feature.status_code == 200
     feature_data = json.loads(added_feature.content)
     # check if owner was added and match to the owner of the collection
@@ -316,3 +269,21 @@ def test_publish_item_update(client, owner, collection_id, feature_data):
     assert "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json" in feature_data["stac_extensions"]
 
     # More test to be added here when bucket move is implemented.
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "owner, collection_id",
+    [
+        (
+            "darius",
+            "S1_L2",
+        ),
+    ],
+)
+def test_incorrect_feature_publish(client, a_incorrect_feature, owner, collection_id):
+    """This test send a featureCollection to the catalog with a wrong format."""
+    # TC02: Add on Sentinel-1 item to the Catalog with a wrong-formatted STAC JSON file. => 400 Bad Request
+    added_feature = client.post(f"/catalog/{owner}/collections/{collection_id}/items", json=a_incorrect_feature)
+    # Bad request = 400
+    assert added_feature.status_code == 400
