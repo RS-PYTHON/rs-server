@@ -19,6 +19,27 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         response = client.get("/catalog/titi/collections")
         assert response.status_code == 200
 
+    def test_status_code_200_post_new_collection_esmeralda_s1_l1(self, client):
+        new_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "description": "The S1_L1 collection for Esmeralda user.",
+            "stac_version": "1.0.0",
+        }
+        response = client.post("/catalog/esmeralda/collections", json=new_collection)
+        assert response.status_code == 200
+
+    def test_collection_with_esmeralda_added_after_post(self, client):
+        new_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "description": "The S1_L1 collection for Esmeralda user.",
+            "stac_version": "1.0.0",
+        }
+        client.post("/catalog/esmeralda/collections", json=new_collection)
+        response = client.get("/catalog/esmeralda/collections/S1_L1")
+        assert response.status_code == 200
+
     def load_json_collections(self, client, endpoint):
         response = client.get(endpoint)
         collections = json.loads(response.content)["collections"]
@@ -239,17 +260,96 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
         response = client.get("/catalog/titi/collections/S2_L1/items")
         assert response.status_code == 200
 
-    def load_json_collection(self, client, endpoint):
+    def test_status_code_200_post_new_feature_esmeralda(self, client):
+        esmeralda_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "description": "The S1_L1 collection for Esmeralda user.",
+            "stac_version": "1.0.0",
+        }
+
+        client.post("/catalog/esmeralda/collections", json=esmeralda_collection)
+
+        new_feature = {
+            "id": "feature_0",
+            "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-94.6334839, 37.0595608],
+                        [-94.6334839, 37.0332547],
+                        [-94.6005249, 37.0332547],
+                        [-94.6005249, 37.0595608],
+                        [-94.6334839, 37.0595608],
+                    ],
+                ],
+            },
+            "collection": "S1_L1",
+            "properties": {
+                "gsd": 0.5971642834779395,
+                "width": 2500,
+                "height": 2500,
+                "datetime": "2000-02-02T00:00:00Z",
+                "proj:epsg": 3857,
+                "orientation": "nadir",
+            },
+        }
+        response = client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
+        assert response.status_code == 200
+
+    def test_feature_with_esmeralda_added_after_post(self, client):
+        esmeralda_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "description": "The S1_L1 collection for Esmeralda user.",
+            "stac_version": "1.0.0",
+        }
+
+        client.post("/catalog/esmeralda/collections", json=esmeralda_collection)
+
+        new_feature = {
+            "id": "feature_0",
+            "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-94.6334839, 37.0595608],
+                        [-94.6334839, 37.0332547],
+                        [-94.6005249, 37.0332547],
+                        [-94.6005249, 37.0595608],
+                        [-94.6334839, 37.0595608],
+                    ],
+                ],
+            },
+            "collection": "S1_L1",
+            "properties": {
+                "gsd": 0.5971642834779395,
+                "width": 2500,
+                "height": 2500,
+                "datetime": "2000-02-02T00:00:00Z",
+                "proj:epsg": 3857,
+                "orientation": "nadir",
+            },
+        }
+        client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
+        response = client.get("/catalog/esmeralda/collections/S1_L1/items/feature_0")
+        assert response.status_code == 200
+
+    def load_json_feature(self, client, endpoint):
         response = client.get(endpoint)
         features = json.loads(response.content)["features"]
         return {feature["collection"] for feature in features}
 
     def test_features_toto_s1_l1_with_toto_removed(self, client, feature_toto_s1_l1_0, feature_toto_s1_l1_1):
-        feature_collection = self.load_json_collection(client, "/catalog/toto/collections/S1_L1/items")
+        feature_collection = self.load_json_feature(client, "/catalog/toto/collections/S1_L1/items")
         assert feature_collection == {feature_toto_s1_l1_0.collection, feature_toto_s1_l1_1.collection}
 
     def test_feature_titi_s2_l1_0_with_titi_removed(self, client, feature_titi_s2_l1_0):
-        feature_collection = self.load_json_collection(client, "catalog/titi/collections/S2_L1/items")
+        feature_collection = self.load_json_feature(client, "catalog/titi/collections/S2_L1/items")
         assert feature_collection == {feature_titi_s2_l1_0.collection}
 
     def test_link_collection_is_valid(self, client):

@@ -97,12 +97,16 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         user = ids["owner_id"]
         request.scope["path"] = remove_user_prefix(request.url.path)
 
-        if request.method == "POST" and user:
+        if request.method in ["POST", "PUT"] and user:
             request_body = await request.json()
             if request.scope["path"] == "/collections":
                 request_body_id = request_body["id"]
                 request_body["id"] = f"{user}_{request_body_id}"
-                request.stream = json.dumps(request_body).encode("utf-8")
+                request._body = json.dumps(request_body).encode("utf-8")
+            if request.scope["path"] == f"/collections/{ids['owner_id']}_{ids['collection_id']}/items":
+                request_body_collection = request_body["collection"]
+                request_body["collection"] = f"{user}_{request_body_collection}"
+                request._body = json.dumps(request_body).encode("utf-8")
 
         response = await call_next(request)
 
