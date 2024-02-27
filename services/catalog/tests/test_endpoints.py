@@ -302,6 +302,7 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
     ],
 )
 def test_publish_item_update(client, owner, collection_id, feature_data):
+    """Test used to verify publication of a featureCollection to the catalog."""
     # Check if that user darius have a collection (Added in conftest -> setup_database)
     # Add a featureCollection to darius collection
     added_feature = client.post(f"/catalog/{owner}/collections/{collection_id}/items", json=feature_data)

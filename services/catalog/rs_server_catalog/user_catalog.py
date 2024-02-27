@@ -24,7 +24,6 @@ from rs_server_catalog.user_handler import (
     remove_user_prefix,
 )
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 
@@ -93,6 +92,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     @staticmethod
     def update_stac_item_publication(content: dict, user: str) -> dict:
+        """Update json body of feature push to catalog"""
         # 1 - update assets href
         for asset in content["assets"]:
             filename = pathlib.Path(content["assets"][asset]["href"])
@@ -110,9 +110,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
-        content["stac_extensions"].append(new_stac_extension) if new_stac_extension not in content[
-            "stac_extensions"
-        ] else content["stac_extensions"]
+        if new_stac_extension not in content["stac_extensions"]:
+            content["stac_extensions"].append(new_stac_extension)
         # 4 tdb, bucket movement
         # from rs_server_common.s3_storage_handler import s3_storage_handler
 
@@ -131,7 +130,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 content = await request.body()
                 content = UserCatalogMiddleware.update_stac_item_publication(json.loads(content), user)
                 # update request body (better find the function that updates the body maybe?)
-                request._body = json.dumps(content).encode("utf-8")
+                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
                 response = await call_next(request)
                 return JSONResponse(content, status_code=response.status_code)
             # collection creation was here
