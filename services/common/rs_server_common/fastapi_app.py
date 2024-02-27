@@ -9,7 +9,7 @@ from typing import Callable
 import httpx
 import sqlalchemy
 from fastapi import APIRouter, FastAPI
-from rs_server_common import depends
+from rs_server_common import settings
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils.logging import Logging
@@ -87,7 +87,7 @@ def init_app(
                     time.sleep(app.state.pg_pause)
 
         # Init objects for dependency injection
-        depends.http_client = httpx.AsyncClient()
+        settings.set_http_client(httpx.AsyncClient())
 
         # Call additional startup events
         for event in app.state.startup_events:
@@ -104,8 +104,7 @@ def init_app(
             event()
 
         # Close objects for dependency injection
-        depends.http_client.aclose()
-        depends.http_client = None
+        await settings.del_http_client()
 
         # Close database session
         if app.state.init_db:

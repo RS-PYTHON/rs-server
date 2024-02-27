@@ -5,7 +5,14 @@ The conftest.py file serves as a means of providing fixtures for an entire direc
 Fixtures defined in a conftest.py can be used by any test in that package without needing to import them
 (pytest will automatically discover them).
 """
+
 import os
+
+# We are in local mode (no cluster).
+# Do this before any other imports.
+# pylint: disable=wrong-import-position
+os.environ["RSPY_LOCAL_MODE"] = "1"
+
 import os.path as osp
 import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
@@ -25,6 +32,21 @@ RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 ###############################
 # READ COMMAND LINE ARGUMENTS #
 ###############################
+
+
+@pytest.fixture(scope="session", autouse=True)
+def read_cli(request):
+    """Read pytest command-line options passed by the user"""
+
+    # Use the minimal log level
+    option = request.config.getoption("--log-cli-level", None) or request.config.getoption("--log-level", None)
+    if option:
+        Logging.level = option.upper()
+
+
+#####################
+# SETUP ENVIRONMENT #
+#####################
 
 # Resource folders specified from the parent directory of this current script
 S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
@@ -51,16 +73,6 @@ def export_aws_credentials():
     with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)
         os.environ.update(s3_config["s3"])
-
-
-@pytest.fixture(scope="session", autouse=True)
-def read_cli(request):
-    """Read pytest command-line options passed by the user"""
-
-    # Use the minimal log level
-    option = request.config.getoption("--log-cli-level", None) or request.config.getoption("--log-level", None)
-    if option:
-        Logging.level = option.upper()
 
 
 ########################

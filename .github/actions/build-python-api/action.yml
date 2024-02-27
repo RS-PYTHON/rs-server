@@ -8,17 +8,17 @@ runs:
 
     - name: Generate Python API rst files from docstring for common service
       run: |
-        poetry run sphinx-apidoc -o docs/doc/api/python/generated/common services/common/rs_server_common/
+        poetry run sphinx-apidoc -f -o docs/doc/api/python/generated/common services/common/rs_server_common/
       shell: bash
 
     - name: Generate Python API rst files from docstring for cadip service
       run: |
-        poetry run sphinx-apidoc -o docs/doc/api/python/generated/cadip services/cadip/rs_server_cadip/
+        poetry run sphinx-apidoc -f -o docs/doc/api/python/generated/cadip services/cadip/rs_server_cadip/
       shell: bash
 
     - name: Generate Python API rst files from docstring for adgs service
       run: |
-        poetry run sphinx-apidoc -o docs/doc/api/python/generated/adgs services/adgs/rs_server_adgs/
+        poetry run sphinx-apidoc -f -o docs/doc/api/python/generated/adgs services/adgs/rs_server_adgs/
       shell: bash
 
     - name: Generate Python API html from rst files
