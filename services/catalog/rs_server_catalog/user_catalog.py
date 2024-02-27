@@ -103,7 +103,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 request_body_id = request_body["id"]
                 request_body["id"] = f"{user}_{request_body_id}"
                 request._body = json.dumps(request_body).encode("utf-8")
-            if request.scope["path"] == f"/collections/{ids['owner_id']}_{ids['collection_id']}/items":
+            elif f"/collections/{ids['owner_id']}_{ids['collection_id']}/items" in request.scope["path"]:
                 request_body_collection = request_body["collection"]
                 request_body["collection"] = f"{user}_{request_body_collection}"
                 request._body = json.dumps(request_body).encode("utf-8")

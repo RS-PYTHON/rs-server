@@ -397,7 +397,6 @@ class TestRedirectionItemsItemId:  # pylint: disable=missing-function-docstring
     def test_update_feature(self, client):
         toto_s1_l1_feature = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
         json_toto = json.loads(toto_s1_l1_feature.content)
-        json_toto["collection"] = "toto_S1_L1"
         response = client.put(
             "/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
             json=json_toto,
