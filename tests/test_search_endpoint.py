@@ -123,7 +123,7 @@ def test_valid_endpoint_request_list(
                 # Assert that the features are sorted
                 sorted_features = sorted(
                     features,
-                    key=lambda feature: feature["properties"][field_to_sort],
+                    key=lambda feature, field=field_to_sort: feature["properties"][field],
                     reverse=reverse,
                 )
                 assert features == sorted_features
