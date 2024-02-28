@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus, EDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
+from rs_server_common.authentication import api_key_security
 from rs_server_common.db.database import get_db
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -72,6 +73,7 @@ def download_products(
     local: Annotated[str | None, Query(description="Local download directory")] = None,
     obs: Annotated[str | None, Query(description="Object storage path e.g. 's3://bucket-name/sub/dir'")] = None,
     db: Session = Depends(get_db),
+    _: tuple[dict, dict] = Depends(api_key_security),
 ):  # pylint: disable=too-many-arguments
     """Initiate an asynchronous download process for a CADU product using EODAG.
 

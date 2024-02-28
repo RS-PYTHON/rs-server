@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
+from rs_server_common.authentication import api_key_security
 from rs_server_common.db.database import get_db
 from rs_server_common.schemas.download_status_schema import ReadDownloadStatus
 from sqlalchemy.orm import Session
@@ -14,7 +15,11 @@ router = APIRouter(tags=cadip_tags)
 
 
 @router.get("/cadip/{station}/cadu/status", response_model=ReadDownloadStatus)
-def get_download_status(name: Annotated[str, Query(description="CADU product name")], db: Session = Depends(get_db)):
+def get_download_status(
+    name: Annotated[str, Query(description="CADU product name")],
+    db: Session = Depends(get_db),
+    _: tuple[dict, dict] = Depends(api_key_security),
+):
     """
     Get a product download status from its ID or name.
     \f

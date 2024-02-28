@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
+from rs_server_common.authentication import api_key_security
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
 from rs_server_common.utils.logging import Logging
@@ -62,6 +63,7 @@ def download_products(
     local: Annotated[str | None, Query(description="Local download directory")] = None,
     obs: Annotated[str | None, Query(description="Object storage path e.g. 's3://bucket-name/sub/dir'")] = None,
     db: Session = Depends(get_db),
+    _: tuple[dict, dict] = Depends(api_key_security),
 ):
     """Initiate an asynchronous download process for an ADGS product using EODAG.
 

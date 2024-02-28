@@ -5,6 +5,7 @@ Note: calls https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manage
 """
 
 import sys
+import traceback
 from os import environ as env
 from typing import Annotated
 
@@ -13,13 +14,16 @@ from cachetools import TTLCache, cached
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 from rs_server_common.settings import local_mode
-from starlette.status import HTTP_400_BAD_REQUEST
+from rs_server_common.utils.logging import Logging
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
+
+logger = Logging.default(__name__)
 
 # HTTP header field for the api key
 HEADER_NAME = "x-api-key"
 
 # API key authentication using a header.
-api_key_header = APIKeyHeader(name=HEADER_NAME, scheme_name="API key passed in header", auto_error=False)
+api_key_header = APIKeyHeader(name=HEADER_NAME, scheme_name="API key passed in HTTP header", auto_error=False)
 
 
 async def api_key_security(
@@ -50,7 +54,12 @@ def __api_key_security_cached(header_param):
         raise HTTPException(HTTP_400_BAD_REQUEST, "UAC manager URL is undefined")  # pylint: disable=raise-missing-from
 
     # Request the uac, pass user-defined credentials
-    response = httpx.get(check_url, headers={HEADER_NAME: header_param or ""})
+    try:
+        response = httpx.get(check_url, headers={HEADER_NAME: header_param or ""})
+    except httpx.HTTPError as error:
+        message = "Error connecting to the UAC manager"
+        logger.error(f"{message}\n{traceback.format_exc()}")
+        raise HTTPException(HTTP_500_INTERNAL_SERVER_ERROR, message) from error
 
     # Return the api key info
     if response.is_success:

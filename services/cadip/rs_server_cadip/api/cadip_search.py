@@ -10,12 +10,13 @@ from pathlib import Path
 from typing import Annotated
 
 import sqlalchemy
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, status
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
+from rs_server_common.authentication import api_key_security
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -36,6 +37,7 @@ async def search_products(
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "+doNotSort",
+    _: tuple[dict, dict] = Depends(api_key_security),
 ) -> list[dict] | dict:  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
