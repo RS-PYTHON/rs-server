@@ -47,7 +47,7 @@ def get_ids(path: str) -> dict:
     return res
 
 
-def remove_user_prefix(path: str) -> tuple[str, str]:
+def remove_user_prefix(path: str) -> str:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 
