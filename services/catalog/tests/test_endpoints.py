@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from services.catalog.tests.conftest import add_collection, add_feature
+from .conftest import add_collection, add_feature
 
 
 @pytest.mark.integration
