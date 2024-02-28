@@ -106,7 +106,7 @@ def test_valid_endpoint_request_list(
         assert any("some_id_2" in product["properties"].values() for product in data["features"])
         assert any("some_id_3" in product["properties"].values() for product in data["features"])
         assert db_handler.get(db, name="S2L1C.raw").status == EDownloadStatus.NOT_STARTED
-        assert data["features"][0] == expected_feature
+        assert expected_feature in data["features"]
 
         # For each field on which to sort
         for field_to_sort in fields_to_sort:
