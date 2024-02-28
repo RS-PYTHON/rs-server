@@ -1,12 +1,49 @@
 """Integration tests for user_catalog module."""
 
 import json
+import os
+import os.path as osp
 
 import pytest
+import yaml
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
-from .conftest import clear_aws_credentials, export_aws_credentials
+# Resource folders specified from the parent directory of this current script
+S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
+
+
+# Moved here, since this functions utility not fixtures.
+def export_aws_credentials():
+    """Export AWS credentials as environment variables for testing purposes.
+
+    This function sets the following environment variables with dummy values for AWS credentials:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - AWS_SECURITY_TOKEN
+    - AWS_SESSION_TOKEN
+    - AWS_DEFAULT_REGION
+
+    Note: This function is intended for testing purposes only, and it should not be used in production.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
+        s3_config = yaml.safe_load(f)
+        os.environ.update(s3_config["s3"])
+        os.environ.update(s3_config["boto"])
+
+
+def clear_aws_credentials():
+    """Clear AWS credentials from environment variables."""
+    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
+        s3_config = yaml.safe_load(f)
+        for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
+            del os.environ[env_var]
 
 
 @pytest.mark.integration
