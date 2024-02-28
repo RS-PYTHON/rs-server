@@ -99,14 +99,18 @@ def test_valid_endpoint_request_list(
             # Check that product is not in database, this should raise HTTPException
             db_handler.get(db, name="S2L1C.raw")
             assert False
-        data = client.get(endpoint).json()
+        features = client.get(endpoint).json()["features"]
         # check that request returned more than 1 element
-        assert len(data["features"]) == len(expected_products)
+        assert len(features) == len(expected_products)
         # Check if ids and names are matching with given parameters
-        assert any("some_id_2" in product["properties"].values() for product in data["features"])
-        assert any("some_id_3" in product["properties"].values() for product in data["features"])
+        assert any("some_id_2" in product["properties"].values() for product in features)
+        assert any("some_id_3" in product["properties"].values() for product in features)
         assert db_handler.get(db, name="S2L1C.raw").status == EDownloadStatus.NOT_STARTED
-        assert data["features"][0] == expected_feature
+        assert expected_feature in features
+
+        # Assert that the features are sorted by descending datetime by default
+        sorted_features = sorted(features, key=lambda feature: feature["properties"]["datetime"], reverse=True)
+        assert features == sorted_features
 
         # For each field on which to sort
         for field_to_sort in fields_to_sort:
@@ -114,13 +118,15 @@ def test_valid_endpoint_request_list(
             for reverse in [False, True]:
                 # Call the endpoint again, but this time by sorting results
                 sign = "-" if reverse else "+"
-                data = client.get(endpoint, params={"sortby": f"{sign}{field_to_sort}"}).json()
+                features = client.get(endpoint, params={"sortby": f"{sign}{field_to_sort}"}).json()["features"]
 
-                # Get only the requested fields from the result
-                fields = [feature["properties"][field_to_sort] for feature in data["features"]]
-
-                # Check that the list is equal to the sorted list
-                assert fields == sorted(fields, reverse=reverse)
+                # Assert that the features are sorted
+                sorted_features = sorted(
+                    features,
+                    key=lambda feature, field=field_to_sort: feature["properties"][field],  # type: ignore
+                    reverse=reverse,
+                )
+                assert features == sorted_features
 
 
 @pytest.mark.unit

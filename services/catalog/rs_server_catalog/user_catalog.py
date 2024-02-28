@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
+    get_ids,
     remove_user_from_collection,
     remove_user_from_feature,
     remove_user_prefix,
@@ -56,32 +57,31 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         """
         objects = content[object_name]
         nb_objects = len(objects)
-        if object_name == "collections":
-            for i in range(nb_objects):
+        for i in range(nb_objects):
+            if object_name == "collections":
                 objects[i] = remove_user_from_collection(objects[i], user)
-        else:
-            for i in range(nb_objects):
+            else:
                 objects[i] = remove_user_from_feature(objects[i], user)
         return content
 
-    def adapt_collection_links(self, collection: dict, user: str) -> dict:
+    def adapt_object_links(self, my_object: dict, user: str) -> dict:
         """adapt all the links from a collection so the user can use them correctly
 
         Args:
-            collection (dict): The collection
+            object (dict): The collection
             user (str): The user id
 
         Returns:
             dict: The collection passed in parameter with adapted links
         """
-        links = collection["links"]
+        links = my_object["links"]
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
-            new_path = add_user_prefix(link_parser.path, user, collection["id"])
+            new_path = add_user_prefix(link_parser.path, user, my_object["id"])
             links[j]["href"] = link_parser._replace(path=new_path).geturl()
-        return collection
+        return my_object
 
-    def adapt_links(self, content: dict, user: str) -> dict:
+    def adapt_links(self, content: dict, user: str, collection_id: str, object_name: str) -> dict:
         """adapt all the links that are outside from the collection section
 
         Args:
@@ -95,10 +95,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         links = content["links"]
         for i, link in enumerate(links):
             link_parser = urlparse(link["href"])
-            new_path = add_user_prefix(link_parser.path, user, "")
+            new_path = add_user_prefix(link_parser.path, user, collection_id)
             links[i]["href"] = link_parser._replace(path=new_path).geturl()
-        for i in range(len(content["collections"])):
-            content["collections"][i] = self.adapt_collection_links(content["collections"][i], user)
+        for i in range(len(content[object_name])):
+            content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
         return content
 
     @staticmethod
@@ -110,8 +110,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             filename_str = content["assets"][asset]["href"]
             # Note, conversion to pathlib.Path removes the double / from s3://bucket/path/to/file
             filename = pathlib.Path(content["assets"][asset]["href"])
-            for suffix in filename.suffixes:
-                fid = str(filename).rsplit("/", maxsplit=1)[-1].replace(suffix, "")
+            fid = str(filename).rsplit("/", maxsplit=1)[-1]
             new_href = (
                 f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
             )
@@ -159,41 +158,49 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        request.scope["path"], user = remove_user_prefix(request.url.path)
-        if request.method == "POST" and user:
-            # capture request from frontend and update the content
-            # then forward it to pgstac
-            if "items" in request.scope["path"]:
-                content = await request.body()
-                content = UserCatalogMiddleware.update_stac_item_publication(json.loads(content), user)
-                # update request body (better find the function that updates the body maybe?)
-                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-                try:
-                    response = await call_next(request)
-                except Exception as e:  # pylint: disable=broad-except
-                    return JSONResponse(f"Bad request, {e}", status_code=400)
-                return JSONResponse(content, status_code=response.status_code)
-            # collection creation was here
-            response = await call_next(request)
-            # can this be moved up?
-            body = [chunk async for chunk in response.body_iterator]
-            content = json.loads(b"".join(body).decode())
-            return JSONResponse(content, status_code=response.status_code)
 
+        ids = get_ids(request.scope["path"])
+        user = ids["owner_id"]
+        request.scope["path"] = remove_user_prefix(request.url.path)
+
+        if request.method in ["POST", "PUT"] and user:
+            content = await request.body()
+            content = json.loads(content.decode("utf-8"))
+            if request.scope["path"] == "/collections":
+                content["id"] = f"{user}_{content['id']}"
+            if "items" in request.scope["path"]:
+                content = UserCatalogMiddleware.update_stac_item_publication(content, user)
+                # update request body (better find the function that updates the body maybe?)
+            request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+            # Send updated request and return updated content response
+            try:
+                response = await call_next(request)
+            except Exception as e:  # pylint: disable=broad-except
+                return JSONResponse(f"Bad request, {e}", status_code=400)
+            return JSONResponse(content, status_code=response.status_code)
+        # Handle GET requests
         response = await call_next(request)
         if request.method == "GET" and user:
             body = [chunk async for chunk in response.body_iterator]
             content = json.loads(b"".join(body).decode())
-            if request.scope["path"] == "/":
+            if request.scope["path"] == "/":  # /catalog/owner_id
                 return JSONResponse(content, status_code=response.status_code)
-            if request.scope["path"] == "/collections":
+            if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
                 content["collections"] = filter_collections(content["collections"], user)
                 content = self.remove_user_from_objects(content, user, "collections")
-                content = self.adapt_links(content, user)
-            elif "/collection" in request.scope["path"] and "items" not in request.scope["path"]:
+                content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
+            elif (
+                "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+            ):  # /catalog/owner_id/collections/collection_id
                 content = remove_user_from_collection(content, user)
-                content = self.adapt_collection_links(content, user)
-            elif "items" in request.scope["path"]:
+                content = self.adapt_object_links(content, user)
+            elif (
+                "items" in request.scope["path"] and not ids["item_id"]
+            ):  # /catalog/owner_id/collections/collection_id/items
                 content = self.remove_user_from_objects(content, user, "features")
+                content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
+            elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
+                content = remove_user_from_feature(content, user)
+                content = self.adapt_object_links(content, user)
             return JSONResponse(content, status_code=response.status_code)
         return response
