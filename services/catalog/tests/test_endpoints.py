@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from .conftest import add_collection, add_feature
+from .conftest import add_collection, add_feature  # pylint: disable=no-name-in-module
 
 
 @pytest.mark.integration
