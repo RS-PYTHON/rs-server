@@ -594,3 +594,8 @@ def test_incorrect_feature_publish(client, a_incorrect_feature, owner, collectio
 def test_status_code_200_search_if_good_endpoint(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/search")
     assert response.status_code == 200
+
+
+def test_generate_download_presigned_url(client):
+    response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
+    assert response.status_code == 302

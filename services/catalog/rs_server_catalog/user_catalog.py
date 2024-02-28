@@ -156,6 +156,14 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         content.update({"collection": f"{user}_{content['collection']}"})
         return content
 
+    def generate_presigned_url(self, content, path):
+        # Assume that pgstac already selected the correct asset id
+        # just check type, generate and return url
+        # s3_path = content['asset']
+        import pdb
+        pdb.set_trace()
+        return "URL", 302
+
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
 
@@ -183,6 +191,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         if request.method == "GET" and user:
             body = [chunk async for chunk in response.body_iterator]
             content = json.loads(b"".join(body).decode())
+            if "download" in request.url.path:
+                content, code = self.generate_presigned_url(content, request.url.path)
+                return JSONResponse(content, status_code=code)
             if request.scope["path"] == "/":  # /catalog/owner_id
                 return JSONResponse(content, status_code=response.status_code)
             if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
@@ -190,12 +201,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 content = self.remove_user_from_objects(content, user, "collections")
                 content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
             elif (
-                "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+                    "/collection" in request.scope["path"] and "items" not in request.scope["path"]
             ):  # /catalog/owner_id/collections/collection_id
                 content = remove_user_from_collection(content, user)
                 content = self.adapt_object_links(content, user)
             elif (
-                "items" in request.scope["path"] and not ids["item_id"]
+                    "items" in request.scope["path"] and not ids["item_id"]
             ):  # /catalog/owner_id/collections/collection_id/items
                 content = self.remove_user_from_objects(content, user, "features")
                 content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
