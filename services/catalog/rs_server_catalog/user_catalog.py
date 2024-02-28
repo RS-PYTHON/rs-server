@@ -52,7 +52,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 objects[i] = remove_user_from_feature(objects[i], user)
         return content
 
-    def adapt_object_links(self, object: dict, user: str) -> dict:
+    def adapt_object_links(self, my_object: dict, user: str) -> dict:
         """adapt all the links from a collection so the user can use them correctly
 
         Args:
@@ -62,12 +62,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         Returns:
             dict: The collection passed in parameter with adapted links
         """
-        links = object["links"]
+        links = my_object["links"]
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
-            new_path = add_user_prefix(link_parser.path, user, object["id"])
+            new_path = add_user_prefix(link_parser.path, user, my_object["id"])
             links[j]["href"] = link_parser._replace(path=new_path).geturl()
-        return object
+        return my_object
 
     def adapt_links(self, content: dict, user: str, collection_id: str, object_name: str) -> dict:
         """adapt all the links that are outside from the collection section

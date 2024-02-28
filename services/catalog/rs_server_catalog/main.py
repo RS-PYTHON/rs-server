@@ -67,17 +67,14 @@ def extract_openapi_specification():
         routes=app.routes,
     )
     openapi_spec_paths = openapi_spec["paths"]
-    for key, _ in openapi_spec_paths.items():
+    for key in openapi_spec_paths.keys():
         new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
         openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
         endpoint = openapi_spec_paths[new_key]
-        for method_key, _ in endpoint.items():
+        for method_key in endpoint.keys():
             method = endpoint[method_key]
             if new_key != "/catalog/search":
-                if "parameters" in method.keys():
-                    method["parameters"] = add_parameter_owner_id(method["parameters"])
-                else:
-                    method["parameters"] = add_parameter_owner_id([])
+                method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 

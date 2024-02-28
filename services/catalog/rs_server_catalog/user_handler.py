@@ -14,7 +14,7 @@ def get_ids(path: str) -> dict:
     Args:
         path (str): the endpoint request.
 
-    Returns:s
+    Returns:
         dict: the result containing owner_id and collection_id.
     """
     res = {"owner_id": "", "collection_id": "", "item_id": ""}
