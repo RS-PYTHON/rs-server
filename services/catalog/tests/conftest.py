@@ -1,19 +1,13 @@
 """Common fixture for catalog service."""
 
-import os
-import os.path as osp
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
 from rs_server_catalog.main import app
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
-
-# Resource folders specified from the parent directory of this current script
-S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
 
 
 def is_db_up(db_url: str) -> bool:
@@ -382,35 +376,3 @@ def setup_database(
     add_feature(client, feature_toto_s1_l1_0)
     add_feature(client, feature_toto_s1_l1_1)
     add_feature(client, feature_titi_s2_l1_0)
-
-
-def export_aws_credentials():
-    """Export AWS credentials as environment variables for testing purposes.
-
-    This function sets the following environment variables with dummy values for AWS credentials:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - AWS_SECURITY_TOKEN
-    - AWS_SESSION_TOKEN
-    - AWS_DEFAULT_REGION
-
-    Note: This function is intended for testing purposes only, and it should not be used in production.
-
-    Returns:
-        None
-
-    Raises:
-        None
-    """
-    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
-        s3_config = yaml.safe_load(f)
-        os.environ.update(s3_config["s3"])
-        os.environ.update(s3_config["boto"])
-
-
-def clear_aws_credentials():
-    """Clear AWS credentials from environment variables."""
-    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
-        s3_config = yaml.safe_load(f)
-        for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
-            del os.environ[env_var]
