@@ -18,6 +18,9 @@ packages = [
 python = "^3.11"
 stac-fastapi-pgstac = "^2.4.11"
 uvicorn = "^0.27.1"
+moto = "==4.2.8"
+flask = "^3.0.2"
+flask-cors = "^4.0.0"
 
 [tool.poetry.group.dev]
 optional = true

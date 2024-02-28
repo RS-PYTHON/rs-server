@@ -3,6 +3,10 @@
 import json
 
 import pytest
+from moto.server import ThreadedMotoServer
+from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+
+from .conftest import export_aws_credentials
 
 
 @pytest.mark.integration
@@ -255,6 +259,43 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
 )
 def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     """Test used to verify publication of a featureCollection to the catalog."""
+    # Create moto server and temp / catalog bucket
+    moto_endpoint = "http://localhost:8077"
+    export_aws_credentials()
+    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+
+    server = ThreadedMotoServer(port=8077)
+    server.start()
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+
+    temp_bucket = "temp-bucket"
+    catalog_bucket = "catalog-bucket"
+    s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
+    s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+    assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+    assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+    # Populate temp-bucket with some small files.
+    lst_with_files_to_be_copied = [
+        "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+        "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+        "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+    ]
+    for obj in lst_with_files_to_be_copied:
+        s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+
+    # check that temp_bucket is not empty
+    assert s3_handler.list_s3_files_obj(temp_bucket, "")
+    # check if temp_bucket content is different from catalog_bucket
+    assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
+        s3_handler.list_s3_files_obj(catalog_bucket, ""),
+    )
+
     # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file and a good OBS path. => 200 OK
     # Check if that user darius have a collection (Added in conftest -> setup_database)
     # Add a featureCollection to darius collection
@@ -268,6 +309,16 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     # check if stac extension was added
     assert "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json" in feature_data["stac_extensions"]
 
+    # Files were moved, check that catalog_bucket is not empty
+    assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+    # Check if temp_bucket is now empty
+    assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+    # Check if buckets content is different
+    assert s3_handler.list_s3_files_obj(temp_bucket, "") != s3_handler.list_s3_files_obj(catalog_bucket, "")
+    # Check if catalog bucket content match the initial temp-bucket content
+    # If so, files were correctly moved from temp-catalog to bucket catalog.
+    assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+    server.stop()
     # More test to be added here when bucket move is implemented.
 
 

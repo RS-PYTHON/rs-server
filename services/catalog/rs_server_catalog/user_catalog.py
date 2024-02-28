@@ -13,6 +13,7 @@ The middleware:
 """
 
 import json
+import os
 import pathlib
 from urllib.parse import urlparse
 
@@ -25,6 +26,9 @@ from rs_server_catalog.user_handler import (
 )
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+
+bucket_info_path = pathlib.Path(__file__).parent / "config" / "buckets.json"
+bucket_info = json.loads(open(bucket_info_path).read())
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):
@@ -93,27 +97,58 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
     @staticmethod
     def update_stac_item_publication(content: dict, user: str) -> dict:
         """Update json body of feature push to catalog"""
+        files_s3_key = []
         # 1 - update assets href
         for asset in content["assets"]:
+            filename_str = content["assets"][asset]["href"]
+            # Note, conversion to pathlib.Path removes the double / from s3://bucket/path/to/file
             filename = pathlib.Path(content["assets"][asset]["href"])
             for suffix in filename.suffixes:
-                fid = str(filename).replace(suffix, "")
+                fid = str(filename).split("/")[-1].replace(suffix, "")
             new_href = (
                 f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
             )
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
-            s3_key = f"s3://catalog-bucket/{filename.name}"
+            s3_key = filename_str.replace(
+                bucket_info["temp-bucket"]["S3_ENDPOINT"],
+                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+            )
             new_s3_href = {"s3": {"href": s3_key}}
             content["assets"][asset].update({"alternate": new_s3_href})
-
+            files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
         if new_stac_extension not in content["stac_extensions"]:
             content["stac_extensions"].append(new_stac_extension)
         # 4 tdb, bucket movement
-        # from rs_server_common.s3_storage_handler import s3_storage_handler
+        from rs_server_common.s3_storage_handler.s3_storage_handler import (
+            S3StorageHandler,
+            TransferFromS3ToS3Config,
+        )
+
+        try:
+            # try with env, but maybe read from json file?
+            handler = S3StorageHandler(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            )
+            config = TransferFromS3ToS3Config(
+                files_s3_key,
+                bucket_info["temp-bucket"]["name"],
+                bucket_info["catalog-bucket"]["name"],
+                max_retries=3,
+            )
+            failed_files = handler.transfer_from_s3_to_s3(config)
+            if failed_files:
+                return JSONResponse(f"Could not transfer files to catalog bucket: {failed_files}", status_code=500)
+
+        except KeyError:
+            # JSONResponse("Could not find S3 credentials", status_code=500)
+            error = ("Could not find S3 credentials", 500)
 
         # 5 - add owner data
         content["owner"] = user
