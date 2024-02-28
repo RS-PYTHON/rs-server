@@ -4,6 +4,7 @@ import pytest
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
+    get_ids,
     remove_user_from_collection,
     remove_user_from_feature,
     remove_user_prefix,
@@ -89,6 +90,32 @@ def feature_output_fixture() -> dict:
     }
 
 
+class TestGetIds:  # pylint: disable=missing-function-docstring
+    """This Class contains unit tests for the function get_ids."""
+
+    def test_return_empty_string_if_no_match(self):
+        assert get_ids("/NOT/FOUND") == {"owner_id": "", "collection_id": "", "item_id": ""}
+
+    def test_with_catalog_owner_id_endpoint(self):
+        assert get_ids("/catalog/toto") == {"owner_id": "toto", "collection_id": "", "item_id": ""}
+
+    def test_with_catalog_owner_id_collections_collection_id(self):
+        res = {"owner_id": "toto", "collection_id": "S1_L1", "item_id": ""}
+        assert get_ids("/catalog/toto/collections/S1_L1") == res
+
+    def test_with_catalog_owner_id_collections_collection_id_items(self):
+        res = {"owner_id": "toto", "collection_id": "S1_L1", "item_id": ""}
+        assert get_ids("/catalog/toto/collections/S1_L1/items") == res
+
+    def test_with_catalog_owner_id_collections_collection_id_items_item_id(self):
+        res = {
+            "owner_id": "toto",
+            "collection_id": "S1_L1",
+            "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
+        }
+        assert get_ids("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d") == res
+
+
 class TestRemovePrefix:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function remove_user_prefix."""
 
@@ -103,23 +130,24 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert str(exc_info.value) == "URL (/catalog) is invalid."
 
     def test_landing_page(self):
-        assert remove_user_prefix("/catalog/Toto") == ("/", "Toto")
+        assert remove_user_prefix("/catalog/Toto") == ("/")
 
     def test_remove_user_and_catalog_prefix(self):
-        assert remove_user_prefix("/catalog/Toto/collections") == ("/collections", "Toto")
+        assert remove_user_prefix("/catalog/Toto/collections") == ("/collections")
 
     def test_remove_catalog_and_replace_user(self):
         result = remove_user_prefix("/catalog/Toto/collections/joplin")
-        assert result == ("/collections/Toto_joplin", "Toto")
+        assert result == ("/collections/Toto_joplin")
 
     def test_remove_catalog_replace_user_with_items(self):
-        assert remove_user_prefix("/catalog/Toto/collections/joplin/items") == (
-            "/collections/Toto_joplin/items",
-            "Toto",
-        )
+        assert remove_user_prefix("/catalog/Toto/collections/joplin/items") == ("/collections/Toto_joplin/items")
+
+    def test_item_id(self):
+        result = remove_user_prefix("/catalog/Toto/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d")
+        assert result == ("/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d")
 
     def test_ignore_if_unknown_endpoint(self):
-        assert remove_user_prefix("/not/found") == ("/not/found", "")
+        assert remove_user_prefix("/not/found") == ("/not/found")
 
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
