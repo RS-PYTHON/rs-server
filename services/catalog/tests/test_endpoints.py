@@ -9,6 +9,8 @@ import yaml
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
+from .conftest import add_collection, add_feature  # pylint: disable=no-name-in-module
+
 # Resource folders specified from the parent directory of this current script
 S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
 
@@ -44,9 +46,6 @@ def clear_aws_credentials():
         s3_config = yaml.safe_load(f)
         for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
             del os.environ[env_var]
-
-
-from .conftest import add_collection, add_feature  # pylint: disable=no-name-in-module
 
 
 @pytest.mark.integration
@@ -374,7 +373,7 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
                 "orientation": "nadir",
             },
             "assets": {},
-            "stac_extensions": []
+            "stac_extensions": [],
         }
         response = client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
         assert response.status_code == 200
@@ -415,7 +414,7 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
                 "orientation": "nadir",
             },
             "assets": {},
-            "stac_extensions": []
+            "stac_extensions": [],
         }
         client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
         response = client.get("/catalog/esmeralda/collections/S1_L1/items/feature_0")
@@ -503,8 +502,8 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
     "owner, collection_id",
     [
         (
-                "darius",
-                "S1_L2",
+            "darius",
+            "S1_L2",
         ),
     ],
 )
@@ -579,8 +578,8 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     "owner, collection_id",
     [
         (
-                "darius",
-                "S1_L2",
+            "darius",
+            "S1_L2",
         ),
     ],
 )
