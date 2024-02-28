@@ -150,7 +150,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         except KeyError:
             # JSONResponse("Could not find S3 credentials", status_code=500)
-            error = ("Could not find S3 credentials", 500)  # pylint: disable=unused-variable
+            error = ("Could not find S3 credentials", 500)  # pylint: disable=unused-variable # noqa
 
         # 5 - add owner data
         content["owner"] = user
