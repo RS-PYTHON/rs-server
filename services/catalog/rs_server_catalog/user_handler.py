@@ -2,7 +2,15 @@
 
 import re
 
-CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = r"/catalog(?P<owner_id>.*)(?P<collections>/collections)((?P<collection_id>/.+?(?=/|$))(?P<items>/.+?(?=/|$))?(?P<item_id>/.+?(?=/|$))?)?"
+CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
+    r"/catalog"
+    r"(?P<owner_id>.*)"
+    r"(?P<collections>/collections)"
+    r"((?P<collection_id>/.+?(?=/|$))"
+    r"(?P<items>/.+?(?=/|$))?"
+    r"(?P<item_id>/.+?(?=/|$))?)?"
+)
+
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
 
@@ -76,14 +84,16 @@ def remove_user_prefix(path: str) -> tuple[str, str]:
         items = groups["items"]
         item_id = groups["item_id"]
         if collection_id is None:
-            return "/collections"
-        collection_id = groups["collection_id"][1:]
-        if items is None:
-            return f"/collections/{owner_id}_{collection_id}"
-        if item_id is None:
-            return f"/collections/{owner_id}_{collection_id}/items"
-        item_id = item_id[1:]
-        return f"/collections/{owner_id}_{collection_id}/items/{item_id}"
+            path = "/collections"
+        else:
+            collection_id = groups["collection_id"][1:]
+            if items is None:
+                path = f"/collections/{owner_id}_{collection_id}"
+            elif item_id is None:
+                path = f"/collections/{owner_id}_{collection_id}/items"
+            else:
+                item_id = item_id[1:]
+                path = f"/collections/{owner_id}_{collection_id}/items/{item_id}"
 
     return path
 

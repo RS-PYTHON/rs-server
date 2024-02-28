@@ -401,7 +401,8 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
 
 
 class TestRedirectionItemsItemId:  # pylint: disable=missing-function-docstring
-    """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}/items/{item_id}'."""
+    """This class contains integration tests for the endpoint
+    '/catalog/{ownerId}/collections/{collectionId}/items/{item_id}'."""
 
     def test_status_code_200_feature_toto_if_good_endpoint(self, client):
         response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
