@@ -6,7 +6,7 @@ import pytest
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
-from .conftest import export_aws_credentials
+from .conftest import clear_aws_credentials, export_aws_credentials
 
 
 @pytest.mark.integration
@@ -319,6 +319,7 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     # If so, files were correctly moved from temp-catalog to bucket catalog.
     assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
     server.stop()
+    clear_aws_credentials()
     # More test to be added here when bucket move is implemented.
 
 

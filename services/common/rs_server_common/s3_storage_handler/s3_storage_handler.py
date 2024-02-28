@@ -663,13 +663,15 @@ retried for %s times. Aborting",
             copied = False
             for keep_trying in range(config.max_retries):
                 self.logger.debug(
-                    "keep_trying {} | range(config.max_retries) {} ".format(keep_trying, range(config.max_retries)),
+                    "keep_trying %s | range(config.max_retries) %s ",
+                    keep_trying,
+                    range(config.max_retries),
                 )
                 try:
                     self.connect_s3()
                     dwn_start = datetime.now()
                     copy_src["Key"] = collection_file[1]
-                    self.logger.debug("copy_src = {}".format(copy_src))
+                    self.logger.debug("copy_src = %s", copy_src)
                     self.s3_client.copy_object(CopySource=copy_src, Bucket=config.bucket_dst, Key=collection_file[1])
                     self.logger.debug(
                         "s3://%s/%s copied to s3://%s/%s in %s ms",

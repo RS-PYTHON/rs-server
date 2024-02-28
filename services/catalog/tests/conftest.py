@@ -406,3 +406,11 @@ def export_aws_credentials():
         s3_config = yaml.safe_load(f)
         os.environ.update(s3_config["s3"])
         os.environ.update(s3_config["boto"])
+
+
+def clear_aws_credentials():
+    """Clear AWS credentials from environment variables."""
+    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
+        s3_config = yaml.safe_load(f)
+        for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
+            del os.environ[env_var]

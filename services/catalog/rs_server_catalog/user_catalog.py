@@ -15,6 +15,7 @@ The middleware:
 import json
 import os
 import pathlib
+from typing import Any
 from urllib.parse import urlparse
 
 from rs_server_catalog.user_handler import (
@@ -24,11 +25,17 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     remove_user_prefix,
 )
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3StorageHandler,
+    TransferFromS3ToS3Config,
+)
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 bucket_info_path = pathlib.Path(__file__).parent / "config" / "buckets.json"
-bucket_info = json.loads(open(bucket_info_path).read())
+
+with open(bucket_info_path, encoding="utf-8") as bucket_info_file:
+    bucket_info = json.loads(bucket_info_file.read())
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):
@@ -95,7 +102,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         return content
 
     @staticmethod
-    def update_stac_item_publication(content: dict, user: str) -> dict:
+    def update_stac_item_publication(content: dict, user: str) -> Any:  # pylint: disable=too-many-locals
         """Update json body of feature push to catalog"""
         files_s3_key = []
         # 1 - update assets href
@@ -104,7 +111,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # Note, conversion to pathlib.Path removes the double / from s3://bucket/path/to/file
             filename = pathlib.Path(content["assets"][asset]["href"])
             for suffix in filename.suffixes:
-                fid = str(filename).split("/")[-1].replace(suffix, "")
+                fid = str(filename).rsplit("/", maxsplit=1)[-1].replace(suffix, "")
             new_href = (
                 f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
             )
@@ -123,11 +130,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         if new_stac_extension not in content["stac_extensions"]:
             content["stac_extensions"].append(new_stac_extension)
         # 4 tdb, bucket movement
-        from rs_server_common.s3_storage_handler.s3_storage_handler import (
-            S3StorageHandler,
-            TransferFromS3ToS3Config,
-        )
-
         try:
             # try with env, but maybe read from json file?
             handler = S3StorageHandler(
@@ -148,7 +150,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         except KeyError:
             # JSONResponse("Could not find S3 credentials", status_code=500)
-            error = ("Could not find S3 credentials", 500)
+            error = ("Could not find S3 credentials", 500)  # pylint: disable=unused-variable
 
         # 5 - add owner data
         content["owner"] = user
