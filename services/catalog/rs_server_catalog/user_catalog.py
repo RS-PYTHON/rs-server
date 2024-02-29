@@ -180,12 +180,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except KeyError:
-            return "Could not find s3 credentials"
+            return "Could not find s3 credentials", 400
         except botocore.exceptions.ClientError:
-            return "Could not generate presigned url"
+            return "Could not generate presigned url", 400
         return response, 302
 
-    async def dispatch(self, request, call_next):
+    async def dispatch(self, request, call_next):  # pylint: disable=too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
 
         ids = get_ids(request.scope["path"])
@@ -213,8 +213,11 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             body = [chunk async for chunk in response.body_iterator]
             content = json.loads(b"".join(body).decode())
             if "download" in request.url.path:
-                content, code = self.generate_presigned_url(content, request.url.path)
-                return JSONResponse(content, status_code=code)
+                if content.get("code", True) != "NotFoundError":
+                    # Only generate presigned url if the item is found
+                    content, code = self.generate_presigned_url(content, request.url.path)
+                    return JSONResponse(content, status_code=code)
+                return JSONResponse(content, status_code=response.status_code)
             if request.scope["path"] == "/":  # /catalog/owner_id
                 return JSONResponse(content, status_code=response.status_code)
             if request.scope["path"] == "/collections":  # /catalog/owner_id/collections

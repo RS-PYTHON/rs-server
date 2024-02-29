@@ -5,6 +5,7 @@ import os
 import os.path as osp
 
 import pytest
+import requests
 import yaml
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
@@ -625,9 +626,17 @@ def test_generate_download_presigned_url(client):
     assert response.status_code == 302
     # Check that response is a url not file content!
     assert response.content != object_cotent
-    # TBD Check file with byte-stream
+
+    # call the redirected url
+    product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
+    assert product_content.status_code == 200
+    # check that content is the same as the original file
+    assert product_content.content.decode() == object_cotent
+
+    assert client.get("/catalog/toto/collections/S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
     server.stop()
+    # Remove bucket credentials form env variables / should create a s3_handler without credentials error
     clear_aws_credentials()
-
-
-# TBA: Tests fail cases
+    response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
+    assert response.status_code == 400
+    assert response.content == b'"Could not find s3 credentials"'
