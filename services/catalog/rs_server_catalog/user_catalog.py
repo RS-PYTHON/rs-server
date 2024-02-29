@@ -18,6 +18,8 @@ import pathlib
 from typing import Any
 from urllib.parse import urlparse
 
+import botocore
+import starlette
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
@@ -116,6 +118,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             )
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
+            if bucket_info["temp-bucket"]["S3_ENDPOINT"] not in filename_str:
+                return JSONResponse(f"Wrong obs bucket for {filename_str}", status_code=400)
             s3_key = filename_str.replace(
                 bucket_info["temp-bucket"]["S3_ENDPOINT"],
                 bucket_info["catalog-bucket"]["S3_ENDPOINT"],
@@ -149,7 +153,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         except KeyError:
             # JSONResponse("Could not find S3 credentials", status_code=500)
-            error = ("Could not find S3 credentials", 500)  # pylint: disable=unused-variable # noqa
+            pass
+        except botocore.exceptions.EndpointConnectionError:
+            return JSONResponse("Could not connect to obs bucket!", status_code=400)
 
         # 5 - add owner data
         content["owner"] = user
@@ -170,6 +176,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 content["id"] = f"{user}_{content['id']}"
             if "items" in request.scope["path"]:
                 content = UserCatalogMiddleware.update_stac_item_publication(content, user)
+                # If something fails inside update_stac_item_publication don't forward the request
+                if isinstance(content, starlette.responses.JSONResponse):
+                    return JSONResponse(content.body.decode(), status_code=content.status_code)
                 # update request body (better find the function that updates the body maybe?)
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             # Send updated request and return updated content response

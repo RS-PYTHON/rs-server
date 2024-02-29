@@ -591,6 +591,19 @@ def test_incorrect_feature_publish(client, a_incorrect_feature, owner, collectio
     assert added_feature.status_code == 400
 
 
+@pytest.mark.unit
+def test_incorrect_bucket_publish(client, a_correct_feature):
+    """Test used to verify failure when obs path is wrong."""
+    # TC03: Add on Sentinel-1 item to the Catalog with a wrong OBS path  => ERROR => 400 Bad Request
+    export_aws_credentials()
+    a_correct_feature["assets"]["zarr"]["href"] = "incorrect_s3_url/some_file.zarr.zip"
+    a_correct_feature["assets"]["cog"]["href"] = "incorrect_s3_url/some_file.cog.zip"
+    a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
+    added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
+    assert added_feature.status_code == 400
+    clear_aws_credentials()
+
+
 def test_status_code_200_search_if_good_endpoint(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/search")
     assert response.status_code == 200
