@@ -110,20 +110,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # 1 - update assets href
         for asset in content["assets"]:
             filename_str = content["assets"][asset]["href"]
-            # Note, conversion to pathlib.Path removes the double / from s3://bucket/path/to/file
-            filename = pathlib.Path(content["assets"][asset]["href"])
-            fid = str(filename).rsplit("/", maxsplit=1)[-1]
+            fid = filename_str.rsplit("/", maxsplit=1)[-1]
             new_href = (
                 f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
             )
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
-            if bucket_info["temp-bucket"]["S3_ENDPOINT"] not in filename_str:
-                return JSONResponse(f"Wrong obs bucket for {filename_str}", status_code=400)
-            s3_key = filename_str.replace(
-                bucket_info["temp-bucket"]["S3_ENDPOINT"],
-                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
-            )
+            old_bucket_arr = filename_str.split("/")
+            old_bucket_arr[2] = bucket_info["catalog-bucket"]["S3_ENDPOINT"]
+            s3_key = "/".join(old_bucket_arr)
             new_s3_href = {"s3": {"href": s3_key}}
             content["assets"][asset].update({"alternate": new_s3_href})
             files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
@@ -145,6 +140,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 files_s3_key,
                 bucket_info["temp-bucket"]["name"],
                 bucket_info["catalog-bucket"]["name"],
+                copy_only=False,
                 max_retries=3,
             )
             failed_files = handler.transfer_from_s3_to_s3(config)
@@ -155,12 +151,13 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # JSONResponse("Could not find S3 credentials", status_code=500)
             pass
         except botocore.exceptions.EndpointConnectionError:
-            return JSONResponse("Could not connect to obs bucket!", status_code=400)
+            pass
+            # return JSONResponse("Could not connect to obs bucket!", status_code=400)
 
         # 5 - add owner data
         content["owner"] = user
         content.update({"collection": f"{user}_{content['collection']}"})
-        return content
+        return content, handler
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
@@ -175,7 +172,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
             if "items" in request.scope["path"]:
-                content = UserCatalogMiddleware.update_stac_item_publication(content, user)
+                content, s3_handler = UserCatalogMiddleware.update_stac_item_publication(content, user)
                 # If something fails inside update_stac_item_publication don't forward the request
                 if isinstance(content, starlette.responses.JSONResponse):
                     return JSONResponse(content.body.decode(), status_code=content.status_code)
@@ -184,7 +181,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # Send updated request and return updated content response
             try:
                 response = await call_next(request)
+                # s3_handler.delete_file_from_s3(tmp_bucket)
             except Exception as e:  # pylint: disable=broad-except
+                # s3_handler.delete_file_from_s3(content[alternate])
                 return JSONResponse(f"Bad request, {e}", status_code=400)
             return JSONResponse(content, status_code=response.status_code)
         # Handle GET requests
