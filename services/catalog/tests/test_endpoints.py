@@ -453,5 +453,5 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
 
 
 def test_status_code_200_search_if_good_endpoint(client):  # pylint: disable=missing-function-docstring
-    response = client.get("/catalog/search")
+    response = client.get("/catalog/search?collections=S1_L1&owner_id=toto&pablo=escobar")
     assert response.status_code == 200

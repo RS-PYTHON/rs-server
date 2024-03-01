@@ -13,7 +13,7 @@ The middleware:
 """
 
 import json
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from rs_server_catalog.user_handler import (
     add_user_prefix,
@@ -94,6 +94,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         ids = get_ids(request.scope["path"])
         user = ids["owner_id"]
         request.scope["path"] = remove_user_prefix(request.url.path)
+
+        if request.method == "GET" and request.scope["path"] == "/search":
+            query = parse_qs(request.url.query)
+            if "owner_id" in query and "collections" in query:
+                query["collections"] = [f"{query['owner_id'][0]}_{query['collections'][0]}"]
+                request.scope["query_string"] = urlencode(query, doseq=True).encode()
 
         if request.method in ["POST", "PUT"] and user:
             request_body = await request.json()
