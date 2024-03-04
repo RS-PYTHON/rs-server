@@ -570,7 +570,6 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
     server.stop()
     clear_aws_credentials()
-    # More test to be added here when bucket move is implemented.
 
 
 @pytest.mark.unit
@@ -601,9 +600,60 @@ def test_incorrect_bucket_publish(client, a_correct_feature):
     a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
     added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
     assert added_feature.status_code == 400
+    assert added_feature.content == b'"\\"Invalid obs bucket!\\""'
     clear_aws_credentials()
 
 
 def test_status_code_200_search_if_good_endpoint(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/search")
     assert response.status_code == 200
+
+
+@pytest.mark.unit
+def test_failure_while_moving_files_between_buckets(client, mocker, a_correct_feature):
+    """Test failure in transferring files between buckets."""
+    moto_endpoint = "http://localhost:8088"
+    export_aws_credentials()
+    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+
+    server = ThreadedMotoServer(port=8088)
+    server.start()
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+
+    temp_bucket = "temp-bucket"
+    catalog_bucket = "catalog-bucket"
+    s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
+    s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+    assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+    assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+    # Populate temp-bucket with some small files.
+    lst_with_files_to_be_copied = [
+        "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+        "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+        "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+    ]
+    for obj in lst_with_files_to_be_copied:
+        s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+    assert s3_handler.list_s3_files_obj(temp_bucket, "")
+    assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+    # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
+    mocker.patch(
+        "rs_server_catalog.user_catalog.UserCatalogMiddleware.update_stac_item_publication",
+        return_value=({}, None),
+    )
+
+    added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
+    # Check if status code is BAD REQUEST
+    assert added_feature.status_code == 400
+    # If catalog publish fails, catalog_bucket should be empty, and temp_bucket should not be empty.
+
+    assert s3_handler.list_s3_files_obj(temp_bucket, "")
+    assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+    clear_aws_credentials()
+    server.stop()

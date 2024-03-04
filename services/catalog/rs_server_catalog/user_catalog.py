@@ -41,6 +41,30 @@ with open(bucket_info_path, encoding="utf-8") as bucket_info_file:
     bucket_info = json.loads(bucket_info_file.read())
 
 
+def clear_temp_bucket(handler, content: dict):
+    """Used to clear specific files from temporary bucket."""
+    if not handler:
+        return
+    for asset in content["assets"]:
+        # Iterate through all assets and delete them from the temp bucket.
+        file_key = content["assets"][asset]["alternate"]["s3"]["href"].replace(
+            bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+            "",
+        )
+        # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
+        handler.delete_file_from_s3(bucket_info["temp-bucket"]["name"], file_key)
+
+
+def clear_catalog_bucket(handler, content: dict):
+    """Used to clear specific files from catalog bucket."""
+    if not handler:
+        return
+    for asset in content["assets"]:
+        # For catalog bucket, data is already store into alternate:s3:href
+        file_key = content["assets"][asset]["alternate"]["s3"]["href"]
+        handler.delete_file_from_s3(bucket_info["catalog-bucket"]["name"], file_key)
+
+
 class UserCatalogMiddleware(BaseHTTPMiddleware):
     """The user catalog middleware."""
 
@@ -116,18 +140,22 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             )
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
-            old_bucket_arr = filename_str.split("/")
-            old_bucket_arr[2] = bucket_info["catalog-bucket"]["S3_ENDPOINT"]
-            s3_key = "/".join(old_bucket_arr)
-            new_s3_href = {"s3": {"href": s3_key}}
-            content["assets"][asset].update({"alternate": new_s3_href})
-            files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
+            try:
+                old_bucket_arr = filename_str.split("/")
+                old_bucket_arr[2] = bucket_info["catalog-bucket"]["name"]
+                s3_key = "/".join(old_bucket_arr)
+                new_s3_href = {"s3": {"href": s3_key}}
+                content["assets"][asset].update({"alternate": new_s3_href})
+                files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
+            except (IndexError, AttributeError, KeyError):
+                return JSONResponse("Invalid obs bucket!", status_code=400), None
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
         if new_stac_extension not in content["stac_extensions"]:
             content["stac_extensions"].append(new_stac_extension)
         # 4 tdb, bucket movement
+        handler = None
         try:
             # try with env, but maybe read from json file?
             handler = S3StorageHandler(
@@ -140,7 +168,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 files_s3_key,
                 bucket_info["temp-bucket"]["name"],
                 bucket_info["catalog-bucket"]["name"],
-                copy_only=False,
+                copy_only=True,
                 max_retries=3,
             )
             failed_files = handler.transfer_from_s3_to_s3(config)
@@ -148,11 +176,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(f"Could not transfer files to catalog bucket: {failed_files}", status_code=500)
 
         except KeyError:
+            pass
             # JSONResponse("Could not find S3 credentials", status_code=500)
-            pass
         except botocore.exceptions.EndpointConnectionError:
-            pass
-            # return JSONResponse("Could not connect to obs bucket!", status_code=400)
+            return JSONResponse("Could not connect to obs bucket!", status_code=400)
 
         # 5 - add owner data
         content["owner"] = user
@@ -161,7 +188,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-
+        s3_handler = None
         ids = get_ids(request.scope["path"])
         user = ids["owner_id"]
         request.scope["path"] = remove_user_prefix(request.url.path)
@@ -181,10 +208,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # Send updated request and return updated content response
             try:
                 response = await call_next(request)
-                # s3_handler.delete_file_from_s3(tmp_bucket)
             except Exception as e:  # pylint: disable=broad-except
-                # s3_handler.delete_file_from_s3(content[alternate])
+                # If something fails while publishing data into catalog, revert files moved into catalog bucket
+                clear_catalog_bucket(s3_handler, content)
                 return JSONResponse(f"Bad request, {e}", status_code=400)
+            # If catalog publication is successful, remove files from temp bucket
+            clear_temp_bucket(s3_handler, content)
             return JSONResponse(content, status_code=response.status_code)
         # Handle GET requests
         response = await call_next(request)
