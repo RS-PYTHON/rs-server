@@ -187,6 +187,22 @@ class S3StorageHandler:
 
     # helper functions
 
+    def delete_bucket_completely(self, bucket_name):
+        """Utils function used to remove a s3 bucket even if not empty"""
+        response = self.s3_client.list_objects_v2(
+            Bucket=bucket_name,
+        )
+
+        while response["KeyCount"] > 0:
+            response = self.s3_client.delete_objects(
+                Bucket=bucket_name,
+                Delete={"Objects": [{"Key": obj["Key"]} for obj in response["Contents"]]},
+            )
+            response = self.s3_client.list_objects_v2(
+                Bucket=bucket_name,
+            )
+        response = self.s3_client.delete_bucket(Bucket=bucket_name)
+
     @staticmethod
     def get_secrets(secrets, secret_file):
         """Read secrets from a specified file.

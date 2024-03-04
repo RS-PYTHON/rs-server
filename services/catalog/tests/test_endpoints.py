@@ -568,6 +568,9 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     # Check if catalog bucket content match the initial temp-bucket content
     # If so, files were correctly moved from temp-catalog to bucket catalog.
     assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+    # clean up
+    s3_handler.delete_bucket_completely(temp_bucket)
+    s3_handler.delete_bucket_completely(catalog_bucket)
     server.stop()
     clear_aws_credentials()
 
@@ -655,5 +658,8 @@ def test_failure_while_moving_files_between_buckets(client, mocker, a_correct_fe
 
     assert s3_handler.list_s3_files_obj(temp_bucket, "")
     assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-    clear_aws_credentials()
+    # clean up
+    s3_handler.delete_bucket_completely(temp_bucket)
+    s3_handler.delete_bucket_completely(catalog_bucket)
     server.stop()
+    clear_aws_credentials()
