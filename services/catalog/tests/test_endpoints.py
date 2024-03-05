@@ -554,7 +554,7 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     assert added_feature.status_code == 200
     feature_data = json.loads(added_feature.content)
     # check if owner was added and match to the owner of the collection
-    assert feature_data["owner"] == owner
+    assert feature_data["properties"]["owner"] == owner
     # check if stac_extension correctly updated collection name
     assert feature_data["collection"] == f"{owner}_{collection_id}"
     # check if stac extension was added
@@ -569,9 +569,11 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     # Check if catalog bucket content match the initial temp-bucket content
     # If so, files were correctly moved from temp-catalog to bucket catalog.
     assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+    # clean up
+    s3_handler.delete_bucket_completely(temp_bucket)
+    s3_handler.delete_bucket_completely(catalog_bucket)
     server.stop()
     clear_aws_credentials()
-    # More test to be added here when bucket move is implemented.
 
 
 @pytest.mark.unit
@@ -592,6 +594,20 @@ def test_incorrect_feature_publish(client, a_incorrect_feature, owner, collectio
     assert added_feature.status_code == 400
 
 
+@pytest.mark.unit
+def test_incorrect_bucket_publish(client, a_correct_feature):
+    """Test used to verify failure when obs path is wrong."""
+    # TC03: Add on Sentinel-1 item to the Catalog with a wrong OBS path  => ERROR => 400 Bad Request
+    export_aws_credentials()
+    a_correct_feature["assets"]["zarr"]["href"] = "incorrect_s3_url/some_file.zarr.zip"
+    a_correct_feature["assets"]["cog"]["href"] = "incorrect_s3_url/some_file.cog.zip"
+    a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
+    added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
+    assert added_feature.status_code == 400
+    assert added_feature.content == b'"\\"Invalid obs bucket!\\""'
+    clear_aws_credentials()
+
+
 def test_status_code_200_search_if_good_endpoint(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/search")
     assert response.status_code == 200
@@ -603,40 +619,56 @@ def test_generate_download_presigned_url(client):
     moto_endpoint = "http://localhost:8077"
     export_aws_credentials()
     secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+
+
+@pytest.mark.unit
+def test_failure_while_moving_files_between_buckets(client, mocker, a_correct_feature):
+    """Test failure in transferring files between buckets."""
+    moto_endpoint = "http://localhost:8088"
+    export_aws_credentials()
+    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+
+    server = ThreadedMotoServer(port=8088)
+    server.start()
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
         secrets["s3endpoint"],
         secrets["region"],
     )
-    server = ThreadedMotoServer(port=8077)
-    server.start()
 
-    # Upload a file to catalog-bucket
+    temp_bucket = "temp-bucket"
     catalog_bucket = "catalog-bucket"
+    s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
     s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-    object_cotent = "testing\n"
-    s3_handler.s3_client.put_object(
-        Bucket=catalog_bucket,
-        Key="S1_L1/images/may24C355000e4102500n.tif",
-        Body=object_cotent,
+    assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+    assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+    # Populate temp-bucket with some small files.
+    lst_with_files_to_be_copied = [
+        "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+        "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+        "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+    ]
+    for obj in lst_with_files_to_be_copied:
+        s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+    assert s3_handler.list_s3_files_obj(temp_bucket, "")
+    assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+    # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
+    mocker.patch(
+        "rs_server_catalog.user_catalog.UserCatalogMiddleware.update_stac_item_publication",
+        return_value=({}, None),
     )
 
-    response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
-    assert response.status_code == 302
-    # Check that response is a url not file content!
-    assert response.content != object_cotent
+    added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
+    # Check if status code is BAD REQUEST
+    assert added_feature.status_code == 400
+    # If catalog publish fails, catalog_bucket should be empty, and temp_bucket should not be empty.
 
-    # call the redirected url
-    product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
-    assert product_content.status_code == 200
-    # check that content is the same as the original file
-    assert product_content.content.decode() == object_cotent
-
-    assert client.get("/catalog/toto/collections/S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
+    assert s3_handler.list_s3_files_obj(temp_bucket, "")
+    assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+    # clean up
+    s3_handler.delete_bucket_completely(temp_bucket)
+    s3_handler.delete_bucket_completely(catalog_bucket)
     server.stop()
-    # Remove bucket credentials form env variables / should create a s3_handler without credentials error
     clear_aws_credentials()
-    response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
-    assert response.status_code == 400
-    assert response.content == b'"Could not find s3 credentials"'

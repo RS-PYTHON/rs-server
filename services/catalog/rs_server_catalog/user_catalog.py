@@ -18,7 +18,8 @@ import pathlib
 from typing import Any
 from urllib.parse import urlparse
 
-import botocore.exceptions
+import botocore
+import starlette
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
@@ -39,6 +40,30 @@ bucket_info_path = pathlib.Path(__file__).parent / "config" / "buckets.json"
 
 with open(bucket_info_path, encoding="utf-8") as bucket_info_file:
     bucket_info = json.loads(bucket_info_file.read())
+
+
+def clear_temp_bucket(handler, content: dict):
+    """Used to clear specific files from temporary bucket."""
+    if not handler:
+        return
+    for asset in content["assets"]:
+        # Iterate through all assets and delete them from the temp bucket.
+        file_key = content["assets"][asset]["alternate"]["s3"]["href"].replace(
+            bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+            "",
+        )
+        # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
+        handler.delete_file_from_s3(bucket_info["temp-bucket"]["name"], file_key)
+
+
+def clear_catalog_bucket(handler, content: dict):
+    """Used to clear specific files from catalog bucket."""
+    if not handler:
+        return
+    for asset in content["assets"]:
+        # For catalog bucket, data is already store into alternate:s3:href
+        file_key = content["assets"][asset]["alternate"]["s3"]["href"]
+        handler.delete_file_from_s3(bucket_info["catalog-bucket"]["name"], file_key)
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):
@@ -110,27 +135,28 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # 1 - update assets href
         for asset in content["assets"]:
             filename_str = content["assets"][asset]["href"]
-            # Note, conversion to pathlib.Path removes the double / from s3://bucket/path/to/file
-            filename = pathlib.Path(content["assets"][asset]["href"])
-            fid = str(filename).rsplit("/", maxsplit=1)[-1]
+            fid = filename_str.rsplit("/", maxsplit=1)[-1]
             new_href = (
                 f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
             )
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
-            s3_key = filename_str.replace(
-                bucket_info["temp-bucket"]["S3_ENDPOINT"],
-                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
-            )
-            new_s3_href = {"s3": {"href": s3_key}}
-            content["assets"][asset].update({"alternate": new_s3_href})
-            files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
+            try:
+                old_bucket_arr = filename_str.split("/")
+                old_bucket_arr[2] = bucket_info["catalog-bucket"]["name"]
+                s3_key = "/".join(old_bucket_arr)
+                new_s3_href = {"s3": {"href": s3_key}}
+                content["assets"][asset].update({"alternate": new_s3_href})
+                files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
+            except (IndexError, AttributeError, KeyError):
+                return JSONResponse("Invalid obs bucket!", status_code=400), None
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
         if new_stac_extension not in content["stac_extensions"]:
             content["stac_extensions"].append(new_stac_extension)
         # 4 tdb, bucket movement
+        handler = None
         try:
             # try with env, but maybe read from json file?
             handler = S3StorageHandler(
@@ -143,6 +169,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 files_s3_key,
                 bucket_info["temp-bucket"]["name"],
                 bucket_info["catalog-bucket"]["name"],
+                copy_only=True,
                 max_retries=3,
             )
             failed_files = handler.transfer_from_s3_to_s3(config)
@@ -150,13 +177,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(f"Could not transfer files to catalog bucket: {failed_files}", status_code=500)
 
         except KeyError:
+            pass
             # JSONResponse("Could not find S3 credentials", status_code=500)
-            error = ("Could not find S3 credentials", 500)  # pylint: disable=unused-variable # noqa
+        except botocore.exceptions.EndpointConnectionError:
+            return JSONResponse("Could not connect to obs bucket!", status_code=400)
 
         # 5 - add owner data
-        content["owner"] = user
+        content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{content['collection']}"})
-        return content
+        return content, handler
 
     def generate_presigned_url(self, content, path):
         """This function is used to generate a time-limited download url"""
@@ -187,7 +216,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
-
+        s3_handler = None
         ids = get_ids(request.scope["path"])
         user = ids["owner_id"]
         request.scope["path"] = remove_user_prefix(request.url.path)
@@ -198,14 +227,21 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
             if "items" in request.scope["path"]:
-                content = UserCatalogMiddleware.update_stac_item_publication(content, user)
+                content, s3_handler = UserCatalogMiddleware.update_stac_item_publication(content, user)
+                # If something fails inside update_stac_item_publication don't forward the request
+                if isinstance(content, starlette.responses.JSONResponse):
+                    return JSONResponse(content.body.decode(), status_code=content.status_code)
                 # update request body (better find the function that updates the body maybe?)
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             # Send updated request and return updated content response
             try:
                 response = await call_next(request)
             except Exception as e:  # pylint: disable=broad-except
+                # If something fails while publishing data into catalog, revert files moved into catalog bucket
+                clear_catalog_bucket(s3_handler, content)
                 return JSONResponse(f"Bad request, {e}", status_code=400)
+            # If catalog publication is successful, remove files from temp bucket
+            clear_temp_bucket(s3_handler, content)
             return JSONResponse(content, status_code=response.status_code)
         # Handle GET requests
         response = await call_next(request)
