@@ -214,7 +214,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             return "Could not generate presigned url", 400
         return response, 302
 
-    async def dispatch(self, request, call_next):  # pylint: disable=too-many-return-statements
+    async def dispatch(self, request, call_next):  # pylint: disable=too-many-return-statements,too-many-branches
         """Redirect the user catalog specific endpoint and adapt the response content."""
         s3_handler = None
         ids = get_ids(request.scope["path"])

@@ -619,6 +619,44 @@ def test_generate_download_presigned_url(client):
     moto_endpoint = "http://localhost:8077"
     export_aws_credentials()
     secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    server = ThreadedMotoServer(port=8077)
+    server.start()
+
+    # Upload a file to catalog-bucket
+    catalog_bucket = "catalog-bucket"
+    s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+    object_cotent = "testing\n"
+    s3_handler.s3_client.put_object(
+        Bucket=catalog_bucket,
+        Key="S1_L1/images/may24C355000e4102500n.tif",
+        Body=object_cotent,
+    )
+
+    response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
+    assert response.status_code == 302
+    # Check that response is a url not file content!
+    assert response.content != object_cotent
+
+    # call the redirected url
+    product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
+    assert product_content.status_code == 200
+    # check that content is the same as the original file
+    assert product_content.content.decode() == object_cotent
+
+    assert client.get("/catalog/toto/collections/S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
+    s3_handler.delete_bucket_completely(catalog_bucket)
+    server.stop()
+    # Remove bucket credentials form env variables / should create a s3_handler without credentials error
+    clear_aws_credentials()
+    response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
+    assert response.status_code == 400
+    assert response.content == b'"Could not find s3 credentials"'
 
 
 @pytest.mark.unit
