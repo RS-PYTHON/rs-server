@@ -553,7 +553,7 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     assert added_feature.status_code == 200
     feature_data = json.loads(added_feature.content)
     # check if owner was added and match to the owner of the collection
-    assert feature_data['properties']["owner"] == owner
+    assert feature_data["properties"]["owner"] == owner
     # check if stac_extension correctly updated collection name
     assert feature_data["collection"] == f"{owner}_{collection_id}"
     # check if stac extension was added
