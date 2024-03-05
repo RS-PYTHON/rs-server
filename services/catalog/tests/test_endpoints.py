@@ -452,6 +452,67 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
     assert response.status_code == 200
 
 
-def test_status_code_200_search_if_good_endpoint(client):  # pylint: disable=missing-function-docstring
-    response = client.get("/catalog/search?collections=S1_L1&owner_id=toto&pablo=escobar")
-    assert response.status_code == 200
+class TestCatalogSearchEndpoint:
+    """This class contains integration tests for the endpoint '/catalog/search'."""
+
+    def test_search_endpoint_with_filter_owner_id_and_other(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner_id='toto'"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 2
+
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=3000 AND owner_id='toto'"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 0
+
+    def test_search_endpoint_with_filter_owner_id_only(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "owner_id='toto'"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 2
+
+    def test_search_endpoint_without_collections(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"filter-lang": "cql2-text", "filter": "owner_id='toto'"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 2
+
+    def test_searh_endpoint_without_owner_id(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 0  # behavior to be determined
+
+    def test_search_endpoint_with_specific_filter(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 0  # behavior to be determined
+
+    def test_search_endpoint_without_filter_lang(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"collections": "S1_L1", "filter": "width=3000 AND owner_id='toto'"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 0  # behavior to be determined
+
+    def test_queryables(self, client):  # pylint: disable=missing-function-docstring
+        response = client.get("/catalog/queryables")
+        content = json.loads(response.content)
+        with open("queryables.json", "w", encoding="utf-8") as f:
+            json.dump(content, f, indent=2)
+        assert response.status_code == 200

@@ -18,6 +18,7 @@ packages = [
 python = "^3.11"
 stac-fastapi-pgstac = "^2.4.11"
 uvicorn = "^0.27.1"
+pygeofilter = "^0.2.1"
 
 [tool.poetry.group.dev]
 optional = true
