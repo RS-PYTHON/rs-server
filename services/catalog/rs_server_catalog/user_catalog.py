@@ -26,7 +26,7 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     remove_user_prefix,
 )
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -144,7 +144,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         Args:
             request (Request): The Client request to be updated.
-            user (str): The owner id.
+            ids (dict): The owner id.
 
         Returns:
             Request: The request updated.
@@ -160,17 +160,22 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         request._body = json.dumps(request_body).encode("utf-8")  # pylint: disable=protected-access
         return request
 
-    async def manage_get_endpoints(self, request: Request, response: Response, ids: dict) -> JSONResponse:
+    async def manage_get_endpoints(
+        self,
+        request: Request,
+        response: Response | StreamingResponse,
+        ids: dict,
+    ) -> Response:
         """Remove the user name from obects and adapt all links.
 
         Args:
             request (Request): The client request.
-            response (Response): The response from the rs-catalog.
+            response (Response | StreamingResponse): The response from the rs-catalog.
             ids (dict): a dictionnary containing owner_id, collection_id and
             item_id if they exist.
 
         Returns:
-            JSONResponse: The response updated.
+            Response: The response updated.
         """
         user = ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
