@@ -26,7 +26,7 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     remove_user_prefix,
 )
-from starlette.middleware.base import BaseHTTPMiddleware, _StreamingResponse
+from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
@@ -130,7 +130,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         query = parse_qs(request.url.query)
         if "filter" in query:
             if "filter-lang" not in query:
-                query["filter-lang"] = "cql2-text"
+                query["filter-lang"] = ["cql2-text"]
             qs_filter = query["filter"][0]
             filters = parse_ecql(qs_filter)
             user = self.find_owner_id(filters)
@@ -163,7 +163,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
     async def manage_get_endpoints(
         self,
         request: Request,
-        response: Response | _StreamingResponse,
+        response: StreamingResponse,
         ids: dict,
     ) -> Response:
         """Remove the user name from obects and adapt all links.
