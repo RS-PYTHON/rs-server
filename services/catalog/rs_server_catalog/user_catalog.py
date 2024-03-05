@@ -179,7 +179,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         """
         user = ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(body).decode())
+        content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
         if request.scope["path"] == "/":  # /catalog/owner_id
             return JSONResponse(content, status_code=response.status_code)
         if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
