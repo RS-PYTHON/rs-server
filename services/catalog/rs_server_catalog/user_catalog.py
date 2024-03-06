@@ -186,7 +186,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         content.update({"collection": f"{user}_{content['collection']}"})
         return content, handler
 
-    async def dispatch(self, request, call_next):
+    async def dispatch(self, request, call_next):  # pylint: disable=too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         s3_handler = None
         ids = get_ids(request.scope["path"])
@@ -206,14 +206,19 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 # update request body (better find the function that updates the body maybe?)
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             # Send updated request and return updated content response
+            response = None
             try:
                 response = await call_next(request)
             except Exception as e:  # pylint: disable=broad-except
                 # If something fails while publishing data into catalog, revert files moved into catalog bucket
-                clear_catalog_bucket(s3_handler, content)
-                body = [chunk async for chunk in response.body_iterator]
-                response_content = json.loads(b"".join(body).decode())
-                return JSONResponse(f"Bad request, {response_content}, {e}", status_code=400)
+                if response is not None:
+                    # Capture response content from catalog, if any
+                    clear_catalog_bucket(s3_handler, content)
+                    body = [chunk async for chunk in response.body_iterator]
+                    response_content = json.loads(b"".join(body).decode())
+                    return JSONResponse(f"Bad request, {response_content}, {e}", status_code=400)
+                # Otherwise just return the exception
+                return JSONResponse(f"Bad request, {e}", status_code=400)
             # If catalog publication is successful, remove files from temp bucket
             clear_temp_bucket(s3_handler, content)
             return JSONResponse(content, status_code=response.status_code)
