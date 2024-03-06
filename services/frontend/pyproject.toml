@@ -10,32 +10,25 @@ authors = ["Your Name <you@example.com>"]
 
 packages = [
     { include = "rs_server_frontend" },
+    { include = "tests", format = "sdist" },
 ]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-rs-server-adgs = {path = "../adgs", develop = true}
-rs-server-cadip = {path = "../cadip", develop = true}
-rs-server-common = {path = "../common", develop = true}
+fastapi = "^0.110.0"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+pytest = "^8.0.2"
 
-[tool.black]
-line-length = 120
 
 [tool.pytest.ini_options]
 markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
-
-[tool.mypy]
-warn_redundant_casts = true
-# Force analyze of partially annotate function signatures
-check_untyped_defs = true
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
