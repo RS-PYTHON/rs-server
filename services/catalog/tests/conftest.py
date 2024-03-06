@@ -196,6 +196,7 @@ class Feature:
                 "datetime": "2000-02-02T00:00:00Z",
                 "proj:epsg": 3857,
                 "orientation": "nadir",
+                "owner_id": f"{self.owner_id}",
             },
             "stac_version": "1.0.0",
             "stac_extensions": [
