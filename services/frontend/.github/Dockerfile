@@ -16,16 +16,10 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi ect ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_adgs-*.whl rs_server_cadip-*.whl rs_server_frontend-*.whl
+RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM python:3.11-slim-bookworm
-
-# Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
-RUN \
-    apt update && \
-    apt install -y libpq-dev && \
-    rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
 # Copy the python installation from the build stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
@@ -38,4 +32,4 @@ RUN useradd -m user
 USER user
 WORKDIR /home/user
 
-ENTRYPOINT [ "python", "-m", "uvicorn", "rs_server_frontend.fastapi.frontend_app:app", "--host", "0.0.0.0", "--port", "8000" ]
+ENTRYPOINT [ "python", "-m", "uvicorn", "--factory", "rs_server_frontend.main:start_app", "--host", "0.0.0.0", "--port", "8000" ]
