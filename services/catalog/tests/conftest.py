@@ -72,20 +72,20 @@ class Collection:
     def properties(self) -> dict[str, Any]:
         """Returns the properties."""
         return {
-            "id": self.id_,
+            "id": self.name,
             "type": "Collection",
             "links": [
                 {
                     "rel": "items",
                     "type": "application/geo+json",
-                    "href": f"http://localhost:8082/collections/{self.id_}/items",
+                    "href": f"http://localhost:8082/collections/{self.name}/items",
                 },
                 {"rel": "parent", "type": "application/json", "href": "http://localhost:8082/"},
                 {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
                 {
                     "rel": "self",
                     "type": "application/json",
-                    "href": f"""http://localhost:8082/collections/{self.id_}""",
+                    "href": f"""http://localhost:8082/collections/{self.name}""",
                 },
                 {
                     "rel": "license",
@@ -189,7 +189,7 @@ class Feature:
                     ],
                 ],
             },
-            "collection": f"{self.owner_id}_{self.collection}",
+            "collection": f"{self.collection}",
             "properties": {
                 "gsd": 0.5971642834779395,
                 "width": 2500,

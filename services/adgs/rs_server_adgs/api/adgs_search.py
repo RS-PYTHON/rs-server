@@ -33,7 +33,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 async def search_products(
     datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "+doNotSort",
+    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
     _: tuple[dict, dict] = Depends(api_key_security),
 ) -> list[dict] | dict:  # pylint: disable=too-many-locals
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
