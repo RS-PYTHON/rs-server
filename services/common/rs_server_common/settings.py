@@ -1,25 +1,34 @@
 """Store diverse objects and values used throughout the application."""
 
-from os import environ as env
+import os
 
 from httpx import AsyncClient
 
-##############
-# Local mode #
-##############
+#########################
+# Environment variables #
+#########################
 
-# The local mode flag is defined in an environment variable
-__local_mode: bool = False
-try:
-    env_var = env["RSPY_LOCAL_MODE"].lower()
-    __local_mode = (env_var == "1") or (env_var[0] == "t") or (env_var[0] == "y")
-except (IndexError, KeyError):
-    pass
+
+def env_bool(var: str, default: bool) -> bool:
+    """
+    Return True if an environemnt variable is set to 1, true or yes (case insensitive).
+    Return False if set to 0, false or no (case insensitive).
+    Return the default value if not set or set to a different value.
+    """
+    val = os.getenv(var, str(default)).lower()
+    if val in ("y", "yes", "t", "true", "on", "1"):
+        return True
+    if val in ("n", "no", "f", "false", "off", "0"):
+        return False
+    return default
 
 
 def local_mode():
-    """Get local mode flag"""
-    return __local_mode
+    """
+    Return True if the 'RSPY_LOCAL_MODE' environemnt variable is set to 1, true or yes (case insensitive).
+    By default: if not set or set to a different value, return False.
+    """
+    return env_bool("RSPY_LOCAL_MODE", False)
 
 
 ###############

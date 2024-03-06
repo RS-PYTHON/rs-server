@@ -79,7 +79,7 @@ def __api_key_security_cached(header_param):
         detail = response.read().decode("utf-8")
 
     # Forward error
-    raise HTTPException(response.status_code, detail)
+    raise HTTPException(response.status_code, f"UAC manager: {detail}")
 
 
 # In local mode: no keycloak. Do nothing and return empty info.
