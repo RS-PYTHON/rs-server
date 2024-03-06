@@ -510,7 +510,7 @@ class TestCatalogSearchEndpoint:
         content = json.loads(response.content)
         assert len(content["features"]) == 0  # behavior to be determined
 
-    def test_post_search_endpoint(self, client):
+    def test_post_search_endpoint(self, client):  # pylint: disable=missing-function-docstring
         test_json = {
             "collections": "S1_L1",
             "filter-lang": "cql2-json",
