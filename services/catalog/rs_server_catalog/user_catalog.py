@@ -17,6 +17,7 @@ import json
 from urllib.parse import parse_qs, urlencode, urlparse
 
 from pygeofilter.ast import Attribute, Equal, Like, Node
+from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
 from rs_server_catalog.user_handler import (
     add_user_prefix,
@@ -157,6 +158,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             f"/collections/{ids['owner_id']}_{ids['collection_id']}/items" in request.scope["path"]
         ):  # /catalog/.../items(/item_id)
             request_body["collection"] = f"{user}_{request_body['collection']}"
+        elif request.scope["path"] == "/search" and "filter" in request_body:
+            qs_filter = request_body["filter"]
+            filters = parse_cql2_json(qs_filter)
+            user = self.find_owner_id(filters)
+            if "collections" in request_body:
+                request_body["collections"] = [f"{user}_{request_body['collections']}"]
         request._body = json.dumps(request_body).encode("utf-8")  # pylint: disable=protected-access
         return request
 
