@@ -1,1 +1,1 @@
-"""Main package."""
+"""Frontend main package."""

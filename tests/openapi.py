@@ -27,6 +27,7 @@ def extract_openapi_specification(to_folder: Path) -> None:
                 routes=app.routes,
             ),
             f,
+            indent=2,
         )
 
 
