@@ -211,7 +211,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             except Exception as e:  # pylint: disable=broad-except
                 # If something fails while publishing data into catalog, revert files moved into catalog bucket
                 clear_catalog_bucket(s3_handler, content)
-                return JSONResponse(f"Bad request, {e}", status_code=400)
+                body = [chunk async for chunk in response.body_iterator]
+                response_content = json.loads(b"".join(body).decode())
+                return JSONResponse(f"Bad request, {response_content}, {e}", status_code=400)
             # If catalog publication is successful, remove files from temp bucket
             clear_temp_bucket(s3_handler, content)
             return JSONResponse(content, status_code=response.status_code)
