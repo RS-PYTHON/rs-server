@@ -8,8 +8,9 @@ from typing import Callable
 
 import httpx
 import sqlalchemy
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from rs_server_common import settings
+from rs_server_common.authentication import apikey_security
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils.logging import Logging
@@ -121,8 +122,14 @@ def init_app(
     except KeyError:
         docs_params = {}
 
+    # In cluster mode, add the api key security: the user must provide
+    # an api key (generated from the apikey manager) to access the endpoints
+    dependencies = []
+    if not settings.local_mode():
+        dependencies.append(Depends(apikey_security))
+
     # Init the FastAPI application
-    app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params)
+    app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params, dependencies=dependencies)
 
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db

@@ -6,7 +6,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_common.authentication import api_key_security
 from rs_server_common.db.database import get_db
 from rs_server_common.schemas.download_status_schema import ReadDownloadStatus
 from sqlalchemy.orm import Session
@@ -18,7 +17,6 @@ router = APIRouter(tags=adgs_tags)
 async def get_download_status(
     name: Annotated[str, Query(description="AUX product name")],
     db: Session = Depends(get_db),
-    _: tuple[dict, dict] = Depends(api_key_security),
 ):
     """
     Get a product download status from its ID or name.
