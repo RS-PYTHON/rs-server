@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir --upgrade pip
 # We copy them into a /tmp directory that we can clean at the end.
 RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
+RUN ls -all /tmp/whl/
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi ect ...
