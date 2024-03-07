@@ -198,18 +198,22 @@ jobs:
   services-catalog-img:
     runs-on: ubuntu-latest
     name: "'services/catalog' Docker image"
-    needs: [services-common-whl, services-catalog-whl]
+    # TODO: this has to be activated when Jira rspy-155 is solved
+    #needs: [services-common-whl, services-catalog-whl]
+    # TODO: this has to be deleted when Jira rspy-155 is solved
+    needs: [services-catalog-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
       - uses: actions/checkout@v4
       # Download .whl files into ./whl/
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-common-whl.outputs.package_name }}
-          path: ./whl
+      # TODO: the following 5 comments have to be activated when Jira rspy-155 is solved
+      #- name: Download .whl dependencies
+      #  uses: actions/download-artifact@v4
+      #  with:
+      #    name: ${{ needs.services-common-whl.outputs.package_name }}
+      #    path: ./whl
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
