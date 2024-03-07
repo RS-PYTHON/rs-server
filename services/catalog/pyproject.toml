@@ -10,7 +10,6 @@ authors = ["Your Name <you@example.com>"]
 
 packages = [
     { include = "rs_server_catalog" },
-    { include = "rs_server_common" },
     { include = "tests", format = "sdist" },
 ]
 
