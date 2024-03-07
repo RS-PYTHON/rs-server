@@ -70,7 +70,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         links = my_object["links"]
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
-            new_path = add_user_prefix(link_parser.path, user, my_object["id"])
+            if "properties" in my_object:  # If my_object is a feature
+                new_path = add_user_prefix(link_parser.path, user, my_object["collection"], my_object["id"])
+            else:  # If my_object is a collection
+                new_path = add_user_prefix(link_parser.path, user, my_object["id"])
             links[j]["href"] = link_parser._replace(path=new_path).geturl()
         return my_object
 
