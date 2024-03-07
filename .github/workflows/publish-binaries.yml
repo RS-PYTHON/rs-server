@@ -198,7 +198,7 @@ jobs:
   services-catalog-img:
     runs-on: ubuntu-latest
     name: "'services/catalog' Docker image"
-    needs: [services-catalog-whl]
+    needs: [services-common-whl, services-catalog-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
