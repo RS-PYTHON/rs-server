@@ -143,7 +143,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 request.scope["query_string"] = urlencode(query, doseq=True).encode()
         return request
 
-    async def manage_search_response(self, response: StreamingResponse, request: Request):
+    async def manage_search_response(self, response: StreamingResponse, request: Request) -> Response:
         """The '/catalog/search' endpoint doesn't give the information of the owner_id and collection_id.
         to get these values, this function try to search them into the search query. If successful,
         updates the response content by removing the owner_id from the collection_id and adapt all links.
@@ -165,8 +165,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         elif request.method == "POST":
             query = await request.json()
             if "filter" in query:
-                qs_filter = query["filter"]
-                filters = parse_cql2_json(qs_filter)
+                qs_filter_json = query["filter"]
+                filters = parse_cql2_json(qs_filter_json)
         owner_id = self.find_owner_id(filters)
         if "collections" in query:
             collection_id = query["collections"][0].removeprefix(owner_id)
