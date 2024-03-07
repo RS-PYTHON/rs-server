@@ -204,8 +204,12 @@ jobs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
       - uses: actions/checkout@v4
-
       # Download .whl files into ./whl/
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.services-common-whl.outputs.package_name }}
+          path: ./whl
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
