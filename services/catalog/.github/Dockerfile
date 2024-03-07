@@ -16,7 +16,7 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi ect ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_catalog-*.whl rs_server_common-*.whl
+RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_catalog-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM python:3.11-slim-bookworm
