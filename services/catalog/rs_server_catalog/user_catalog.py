@@ -120,7 +120,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 res = right
         return res
 
-    def manage_search_endpoint(self, request: Request) -> Request:
+    def manage_search_request(self, request: Request) -> Request:
         """find the user in the filter parameter and add it to the
         collection name.
 
@@ -143,7 +143,42 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 request.scope["query_string"] = urlencode(query, doseq=True).encode()
         return request
 
-    async def manage_put_post_endpoints(self, request: Request, ids: dict) -> Request:
+    async def manage_search_response(self, response: StreamingResponse, request: Request):
+        """The '/catalog/search' endpoint doesn't give the information of the owner_id and collection_id.
+        to get these values, this function try to search them into the search query. If successful,
+        updates the response content by removing the owner_id from the collection_id and adapt all links.
+        If not successful, does nothing and return the response.
+
+        Args:
+            response (StreamingResponse): The response from the rs server.
+            request (Request): The request from the client.
+
+        Returns:
+            Response: The updated response.
+        """
+        owner_id, collection_id = "", ""
+        if request.method == "GET":
+            query = parse_qs(request.url.query)
+            if "filter" in query:
+                qs_filter = query["filter"][0]
+                filters = parse_ecql(qs_filter)
+        elif request.method == "POST":
+            query = await request.json()
+            if "filter" in query:
+                qs_filter = query["filter"]
+                filters = parse_cql2_json(qs_filter)
+        owner_id = self.find_owner_id(filters)
+        if "collections" in query:
+            collection_id = query["collections"][0].removeprefix(owner_id)
+        if owner_id and collection_id:
+            body = [chunk async for chunk in response.body_iterator]
+            content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+            content = self.remove_user_from_objects(content, owner_id, "features")
+            content = self.adapt_links(content, owner_id, collection_id, "features")
+            return JSONResponse(content, status_code=response.status_code)
+        return response
+
+    async def manage_put_post_request(self, request: Request, ids: dict) -> Request:
         """Adapt the request body for the STAC endpoint.
 
         Args:
@@ -170,7 +205,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         request._body = json.dumps(request_body).encode("utf-8")  # pylint: disable=protected-access
         return request
 
-    async def manage_get_endpoints(
+    async def manage_get_response(
         self,
         request: Request,
         response: StreamingResponse,
@@ -206,6 +241,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         ):  # /catalog/owner_id/collections/collection_id/items
             content = self.remove_user_from_objects(content, user, "features")
             content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
+        elif request.scope["path"] == "/search":
+            pass
         elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
@@ -218,13 +255,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         request.scope["path"] = remove_user_prefix(request.url.path)
 
         if request.method == "GET" and request.scope["path"] == "/search":
-            request = self.manage_search_endpoint(request)
+            request = self.manage_search_request(request)
         elif request.method in ["POST", "PUT"] and user:
-            request = await self.manage_put_post_endpoints(request, ids)
+            request = await self.manage_put_post_request(request, ids)
 
         response = await call_next(request)
 
-        if request.method == "GET" and user:
-            response = await self.manage_get_endpoints(request, response, ids)
+        if request.scope["path"] == "/search":
+            response = await self.manage_search_response(response, request)
+        elif request.method == "GET" and user:
+            response = await self.manage_get_response(request, response, ids)
 
         return response
