@@ -123,8 +123,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         Middleware implementation.
         """
 
-        # Only for the catalog endpoints
-        if request.url.path.lower().startswith("/catalog"):
+        # Only in cluster mode (not local mode) and for the catalog endpoints
+        if (not local_mode()) and request.url.path.lower().startswith("/catalog"):
             # Read the api key passed in header
             apikey_value = request.headers.get(authentication.HEADER_NAME, None)
             if not apikey_value:
