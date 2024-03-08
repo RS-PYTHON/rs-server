@@ -39,6 +39,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
 bucket_info_path = pathlib.Path(__file__).parent / "config" / "buckets.json"
 
 with open(bucket_info_path, encoding="utf-8") as bucket_info_file:
@@ -189,6 +190,33 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{content['collection']}"})
         return content, handler
+
+    def generate_presigned_url(self, content, path):
+        """This function is used to generate a time-limited download url"""
+        # Assume that pgstac already selected the correct asset id
+        # just check type, generate and return url
+        asset_id = path.split("/")[-1]
+        s3_path = content["assets"][asset_id]["alternate"]["s3"]["href"].replace(
+            bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+            "",
+        )
+        try:
+            handler = S3StorageHandler(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            )
+            response = handler.s3_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": bucket_info["catalog-bucket"]["name"], "Key": s3_path},
+                ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
+            )
+        except KeyError:
+            return "Could not find s3 credentials", 400
+        except botocore.exceptions.ClientError:
+            return "Could not generate presigned url", 400
+        return response, 302
 
     def find_owner_id(self, ecql_ast: Node) -> str:
         """Browse an abstract syntax tree (AST) to find the owner_id.
@@ -342,6 +370,34 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
         if request.method == "GET" and user:
+            body = [chunk async for chunk in response.body_iterator]
+            content = json.loads(b"".join(body).decode())
+            if "download" in request.url.path:
+                if content.get("code", True) != "NotFoundError":
+                    # Only generate presigned url if the item is found
+                    content, code = self.generate_presigned_url(content, request.url.path)
+                    return JSONResponse(content, status_code=code)
+                return JSONResponse(content, status_code=response.status_code)
+            if request.scope["path"] == "/":  # /catalog/owner_id
+                return JSONResponse(content, status_code=response.status_code)
+            if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
+                content["collections"] = filter_collections(content["collections"], user)
+                content = self.remove_user_from_objects(content, user, "collections")
+                content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
+            elif (
+                "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+            ):  # /catalog/owner_id/collections/collection_id
+                content = remove_user_from_collection(content, user)
+                content = self.adapt_object_links(content, user)
+            elif (
+                "items" in request.scope["path"] and not ids["item_id"]
+            ):  # /catalog/owner_id/collections/collection_id/items
+                content = self.remove_user_from_objects(content, user, "features")
+                content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
+            elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
+                content = remove_user_from_feature(content, user)
+                content = self.adapt_object_links(content, user)
+            return JSONResponse(content, status_code=response.status_code)
             response = await self.manage_get_endpoints(request, response, ids)
 
         return response
