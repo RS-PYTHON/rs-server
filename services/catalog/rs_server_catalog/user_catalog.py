@@ -211,7 +211,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         response: StreamingResponse,
         ids: dict,
     ) -> Response:
-        """Remove the user name from obects and adapt all links.
+        """Remove the user name from objects and adapt all links.
 
         Args:
             request (Request): The client request.
