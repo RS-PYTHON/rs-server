@@ -51,6 +51,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
     """The user catalog middleware."""
 
     handler: S3StorageHandler = None
+    temp_bucket_name: str = "temp-bucket"
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -78,14 +79,14 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         """Used to clear specific files from temporary bucket."""
         if not self.handler:
             return
-        for asset in content["assets"]:
+        for asset in content.get("assets", {}):
             # Iterate through all assets and delete them from the temp bucket.
             file_key = content["assets"][asset]["alternate"]["s3"]["href"].replace(
                 bucket_info["catalog-bucket"]["S3_ENDPOINT"],
                 "",
             )
             # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
-            self.handler.delete_file_from_s3(bucket_info["temp-bucket"]["name"], file_key)
+            self.handler.delete_file_from_s3(self.temp_bucket_name, file_key)
 
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
@@ -147,11 +148,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = filename_str.split("/")
+                self.temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
                 old_bucket_arr[2] = bucket_info["catalog-bucket"]["name"]
                 s3_key = "/".join(old_bucket_arr)
                 new_s3_href = {"s3": {"href": s3_key}}
                 content["assets"][asset].update({"alternate": new_s3_href})
-                files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
+                files_s3_key.append(filename_str.replace(f"s3://{self.temp_bucket_name}", ""))
             except (IndexError, AttributeError, KeyError) as exc:
                 raise HTTPException(detail="Invalid obs bucket!", status_code=400) from exc
         # 3 - include new stac extension if not present
@@ -170,7 +172,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             )
             config = TransferFromS3ToS3Config(
                 files_s3_key,
-                bucket_info["temp-bucket"]["name"],
+                self.temp_bucket_name,
                 bucket_info["catalog-bucket"]["name"],
                 copy_only=True,
                 max_retries=3,
