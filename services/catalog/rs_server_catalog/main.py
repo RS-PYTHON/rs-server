@@ -6,10 +6,10 @@ If the variable is not set, enables all extensions.
 """
 
 import os
-from typing import Annotated, Callable
+from typing import Callable
 
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, HTTPException, Request, Security
+from fastapi import Depends, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
@@ -113,7 +113,7 @@ else:
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
 
 
-class AuthenticationMiddleware(BaseHTTPMiddleware):
+class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """
     Implement authentication verification.
     """
@@ -134,7 +134,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             apikey_info = await authentication.apikey_security(request, apikey_value)
 
             # TODO: check api key rights before calling the next middleware
-            logger.warning(f"API key information: {apikey_info}")
+            logger.debug(f"API key information: {apikey_info}")
 
         # Call the next middleware
         return await call_next(request)
@@ -166,8 +166,8 @@ if not local_mode():
     scopes = []
     for route in api.app.router.routes:
         if isinstance(route, APIRoute):
-            for method in route.methods:
-                scopes.append({"path": route.path, "method": method})
+            for method_ in route.methods:
+                scopes.append({"path": route.path, "method": method_})
 
     # Note: Depends(apikey_security) doesn't work (the function is not called) after we
     # changed the url prefixes in the openapi specification.

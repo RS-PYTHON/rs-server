@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Annotated
 
 import sqlalchemy
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, status
 from rs_server_cadip import cadip_tags
