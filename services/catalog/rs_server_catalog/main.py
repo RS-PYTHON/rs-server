@@ -6,11 +6,17 @@ If the variable is not set, enables all extensions.
 """
 
 import os
+from typing import Annotated, Callable
 
 from brotli_asgi import BrotliMiddleware
+from fastapi import Depends, HTTPException, Request, Security
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
+from fastapi.routing import APIRoute
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
+from rs_server_common import authentication
+from rs_server_common.settings import local_mode
+from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
@@ -30,6 +36,10 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.status import HTTP_403_FORBIDDEN
+
+logger = Logging.default(__name__)
 
 
 def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
@@ -102,6 +112,34 @@ else:
 
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
 
+
+class AuthenticationMiddleware(BaseHTTPMiddleware):
+    """
+    Implement authentication verification.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """
+        Middleware implementation.
+        """
+
+        # Only for the catalog endpoints
+        if request.url.path.lower().startswith("/catalog"):
+            # Read the api key passed in header
+            apikey_value = request.headers.get(authentication.HEADER_NAME, None)
+            if not apikey_value:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
+
+            # Check the api key validity, passed as an HTTP header.
+            apikey_info = await authentication.apikey_security(request, apikey_value)
+
+            # TODO: check api key rights before calling the next middleware
+            logger.warning(f"API key information: {apikey_info}")
+
+        # Call the next middleware
+        return await call_next(request)
+
+
 api = StacApi(
     settings=settings,
     extensions=extensions,
@@ -109,10 +147,32 @@ api = StacApi(
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
-    middlewares=[UserCatalogMiddleware, BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware],
+    middlewares=[
+        UserCatalogMiddleware,
+        BrotliMiddleware,
+        CORSMiddleware,
+        ProxyHeaderMiddleware,
+        AuthenticationMiddleware,
+    ],
 )
 app = api.app
 app.openapi = extract_openapi_specification
+
+
+# In cluster mode, add the api key security dependency: the user must provide
+# an api key (generated from the apikey manager) to access the endpoints
+if not local_mode():
+    # One scope for each ApiRouter path and method
+    scopes = []
+    for route in api.app.router.routes:
+        if isinstance(route, APIRoute):
+            for method in route.methods:
+                scopes.append({"path": route.path, "method": method})
+
+    # Note: Depends(apikey_security) doesn't work (the function is not called) after we
+    # changed the url prefixes in the openapi specification.
+    # But this dependency still adds the lock icon in swagger to enter the api key.
+    api.add_route_dependencies(scopes=scopes, dependencies=[Depends(authentication.apikey_security)])
 
 
 @app.on_event("startup")

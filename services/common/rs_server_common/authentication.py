@@ -22,28 +22,30 @@ logger = Logging.default(__name__)
 HEADER_NAME = "x-api-key"
 
 # API key authentication using a header.
-api_key_header = APIKeyHeader(name=HEADER_NAME, scheme_name="API key passed in HTTP header", auto_error=False)
+apikey_header = APIKeyHeader(name=HEADER_NAME, scheme_name="API key passed in HTTP header", auto_error=True)
 
 
 async def apikey_security(
     request: Request,
-    header_param: Annotated[str, Security(api_key_header)],
+    apikey_value: Annotated[str, Security(apikey_header)],
 ) -> tuple[dict, dict]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
 
     Args:
-        header_param (Security): API key passed in header,
+        apikey_value (Security): API key passed in header,
 
     Returns:
-        Tuple of (IAM roles, config) information from the keycloak server.
+        Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
     """
     # Call the cached function (fastapi Depends doesn't work with @cached)
-    request.state.apikey_info = __apikey_security_cached(str(header_param))
+    apikey_info = __apikey_security_cached(str(apikey_value))
+    request.state.apikey_info = apikey_info
+    return apikey_info
 
 
 @cached(cache=TTLCache(maxsize=sys.maxsize, ttl=120))
-def __apikey_security_cached(header_param):
+def __apikey_security_cached(apikey_value):
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
     """
@@ -55,7 +57,7 @@ def __apikey_security_cached(header_param):
 
     # Request the uac, pass user-defined credentials
     try:
-        response = httpx.get(check_url, headers={HEADER_NAME: header_param or ""})
+        response = httpx.get(check_url, headers={HEADER_NAME: apikey_value or ""})
     except httpx.HTTPError as error:
         message = "Error connecting to the UAC manager"
         logger.error(f"{message}\n{traceback.format_exc()}")
