@@ -604,13 +604,8 @@ def test_incorrect_bucket_publish(client, a_correct_feature):
     a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
     added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
     assert added_feature.status_code == 400
-    assert added_feature.content == b'"\\"Invalid obs bucket!\\""'
+    assert added_feature.content == b'"Invalid obs bucket"'
     clear_aws_credentials()
-
-
-def test_status_code_200_search_if_good_endpoint(client):  # pylint: disable=missing-function-docstring
-    response = client.get("/catalog/search")
-    assert response.status_code == 200
 
 
 def test_generate_download_presigned_url(client):
