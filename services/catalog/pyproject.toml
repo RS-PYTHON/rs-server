@@ -11,8 +11,18 @@ authors = ["Your Name <you@example.com>"]
 packages = [
     { include = "rs_server_catalog" },
     { include = "tests", format = "sdist" },
+
+    # TEMP for https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-155
+    # Use the rs_server_common source directory instead of using rs-server-common as a dependency.
+    # But this doesn't work when building the wheel. So for the whl, copy the rs_server_common
+    # directory and remove the from=../common part.
+    { include = "rs_server_common", from = "../common" },
 ]
 
+# Add configuration files to the .whl package
+include = [
+    { path = "config", format = ["wheel"] }
+]
 
 [tool.poetry.dependencies]
 python = "^3.11"
