@@ -392,11 +392,44 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
         response = client.get("/catalog/toto/collections/S1_L1/items")
         response_json = json.loads(response.content)
         links = response_json["links"]
-        self_link = next(link for link in links if link["rel"] == "collection")
-        assert self_link == {
+        collection_link = next(link for link in links if link["rel"] == "collection")
+        assert collection_link == {
             "rel": "collection",
             "type": "application/json",
             "href": "http://testserver/catalog/toto/collections/S1_L1",
+        }
+
+    def test_link_parent_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1/items")
+        response_json = json.loads(response.content)
+        links = response_json["links"]
+        parent_link = next(link for link in links if link["rel"] == "parent")
+        assert parent_link == {
+            "rel": "parent",
+            "type": "application/json",
+            "href": "http://testserver/catalog/toto/collections/S1_L1",
+        }
+
+    def test_link_root_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1/items")
+        response_json = json.loads(response.content)
+        links = response_json["links"]
+        root_link = next(link for link in links if link["rel"] == "root")
+        assert root_link == {
+            "rel": "root",
+            "type": "application/json",
+            "href": "http://testserver/catalog/toto",
+        }
+
+    def test_link_self_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1/items")
+        response_json = json.loads(response.content)
+        links = response_json["links"]
+        self_link = next(link for link in links if link["rel"] == "self")
+        assert self_link == {
+            "rel": "self",
+            "type": "application/geo+json",
+            "href": "http://testserver/catalog/toto/collections/S1_L1/items",
         }
 
 
@@ -445,6 +478,17 @@ class TestRedirectionItemsItemId:  # pylint: disable=missing-function-docstring
         response = client.delete("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
         add_feature(client, feature_toto_s1_l1_0)
         assert response.status_code == 200
+
+    def test_self_link_is_valid(self, client):
+        response = client.get("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
+        response_json = json.loads(response.content)
+        links = response_json["links"]
+        self_link = next(link for link in links if link["rel"] == "self")
+        assert self_link == {
+            "rel": "self",
+            "type": "application/geo+json",
+            "href": "http://testserver/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
+        }
 
 
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring

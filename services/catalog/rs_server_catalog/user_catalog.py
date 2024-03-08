@@ -144,7 +144,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         return request
 
     async def manage_search_response(self, response: StreamingResponse, request: Request) -> Response:
-        """The '/catalog/search' endpoint doesn't give the information of the owner_id and collection_id.
+        """The '/catalog/search' path doesn't give the information of the owner_id and collection_id.
         to get these values, this function try to search them into the search query. If successful,
         updates the response content by removing the owner_id from the collection_id and adapt all links.
         If not successful, does nothing and return the response.
