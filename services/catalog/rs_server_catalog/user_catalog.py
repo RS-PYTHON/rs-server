@@ -21,6 +21,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
 import starlette
+from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
@@ -152,8 +153,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 new_s3_href = {"s3": {"href": s3_key}}
                 content["assets"][asset].update({"alternate": new_s3_href})
                 files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
-            except (IndexError, AttributeError, KeyError):
-                return JSONResponse("Invalid obs bucket!", status_code=400)
+            except (IndexError, AttributeError, KeyError) as exc:
+                raise HTTPException(detail="Invalid obs bucket!", status_code=400) from exc
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
@@ -177,13 +178,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             )
             failed_files = self.handler.transfer_from_s3_to_s3(config)
             if failed_files:
-                return JSONResponse(f"Could not transfer files to catalog bucket: {failed_files}", status_code=500)
-
+                raise HTTPException(
+                    detail=f"Could not transfer files to catalog bucket: {failed_files}",
+                    status_code=500,
+                )
         except KeyError:
             pass
             # JSONResponse("Could not find S3 credentials", status_code=500)
-        except botocore.exceptions.EndpointConnectionError:
-            return JSONResponse("Could not connect to obs bucket!", status_code=400)
+        except botocore.exceptions.EndpointConnectionError as exc:
+            raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from exc
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
@@ -339,7 +342,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content = self.update_stac_item_publication(content, user)
             # If something fails inside update_stac_item_publication don't forward the request
             if isinstance(content, starlette.responses.JSONResponse):
-                return JSONResponse(content.body.decode(), status_code=content.status_code)
+                raise HTTPException(detail=content.body.decode(), status_code=content.status_code)
             # update request body (better find the function that updates the body maybe?)
         elif request.scope["path"] == "/search" and "filter" in content:
             qs_filter = content["filter"]
@@ -421,10 +424,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
             self.clear_temp_bucket(response_content)
-        except RuntimeError:
-            return JSONResponse("Failed to clear temp-bucket", status_code=400)
-        except Exception:  # pylint: disable=broad-except
-            return JSONResponse("Bad request", status_code=400)
+        except RuntimeError as exc:
+            raise HTTPException(detail="Failed to clear temp-bucket", status_code=400) from exc
+        except Exception as exc:  # pylint: disable=broad-except
+            raise HTTPException(detail="Bad request", status_code=400) from exc
         return JSONResponse(response_content, status_code=response.status_code)
 
     async def manage_get_endpoints(
@@ -484,11 +487,11 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())
             self.clear_catalog_bucket(response_content)
-            return JSONResponse(f"Bad request, {response_content}", status_code=400)
+            raise HTTPException(detail=f"Bad request, {response_content}", status_code=400)
         # Otherwise just return the exception
-        return JSONResponse("Bad request", status_code=400)
+        raise HTTPException(detail="Bad request", status_code=400)
 
-    async def dispatch(self, request, call_next):  # pylint: disable=too-many-return-statements
+    async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
         ids = get_ids(request.scope["path"])
         user = ids["owner_id"]
@@ -496,27 +499,31 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         # Handle requests
         if request.method == "GET" and request.scope["path"] == "/search":
+            # URL: GET: '/catalog/search'
             request = self.manage_search_request(request)
         elif request.method in ["POST", "PUT"] and user:
+            # URL: POST / PUT: '/catalog/{USER}/collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
             request = await self.manage_put_post_request(request, ids)
-            if isinstance(request, starlette.responses.JSONResponse):
-                # Forward the failure, don't continue
-                return JSONResponse(content="Invalid obs bucket", status_code=400)
 
         response = None
         try:
             response = await call_next(request)
         except Exception:  # pylint: disable=broad-except
             response = await self.manage_response_error(response)
+            return response
 
         # Handle responses
         if request.scope["path"] == "/search":
+            # GET: '/catalog/search'
             response = await self.manage_search_response(request, response)
         elif request.method == "GET" and "download" in request.url.path:
+            # URL: GET: '/catalog/{USER}/collections/{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
         elif request.method == "GET" and user:
+            # URL: GET: '/catalog/{USER}/Collections'
             response = await self.manage_get_response(request, response, ids)
         elif request.method in ["POST", "PUT"] and user:
+            # URL: POST / PUT: '/catalog/{USER}/Collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
             response = await self.manage_put_post_response(response)
 
         return response
