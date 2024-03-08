@@ -20,7 +20,6 @@ from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
-import starlette
 from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
@@ -340,10 +339,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content["id"] = f"{user}_{content['id']}"
         if "items" in request.scope["path"]:
             content = self.update_stac_item_publication(content, user)
-            # If something fails inside update_stac_item_publication don't forward the request
-            if isinstance(content, starlette.responses.JSONResponse):
-                raise HTTPException(detail=content.body.decode(), status_code=content.status_code)
-            # update request body (better find the function that updates the body maybe?)
         elif request.scope["path"] == "/search" and "filter" in content:
             qs_filter = content["filter"]
             filters = parse_cql2_json(qs_filter)
@@ -351,6 +346,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # May be duplicate?
             if "collections" in content:
                 content["collections"] = [f"{user}_{content['collections']}"]
+        # update request body (better find the function that updates the body maybe?)c
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         return request  # pylint: disable=protected-access
 
@@ -419,7 +415,23 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_put_post_response(self, response: StreamingResponse):
-        """Used to handle put or post responses."""
+        """
+        Manage put or post responses.
+
+        Args:
+            response (starlette.responses.StreamingResponse): The response object received.
+
+        Returns:
+            JSONResponse: Returns a JSONResponse object containing the response content
+            with the appropriate status code.
+
+        Raises:
+            HTTPException: If there is an error while clearing the temporary bucket,
+            raises an HTTPException with a status code of 400 and detailed information.
+            If there is a generic exception, raises an HTTPException with a status code
+            of 400 and a generic bad request detail.
+
+        """
         try:
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
@@ -471,21 +483,44 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content = self.adapt_object_links(content, user)
         return JSONResponse(content, status_code=response.status_code)
 
-    async def manage_download_response(self, request, response):
-        """Used to handle reqeust that should generate presigned url."""
+    async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
+        """
+        Manage download response and handle requests that should generate a presigned URL.
+
+        Args:
+            request (starlette.requests.Request): The request object.
+            response (starlette.responses.StreamingResponse): The response object received.
+
+        Returns:
+            JSONResponse: Returns a JSONResponse object containing either the presigned URL or
+            the response content with the appropriate status code.
+
+        """
         body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(body).decode())
+        content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
             content, code = self.generate_presigned_url(content, request.url.path)
             return JSONResponse(content, status_code=code)
         return JSONResponse(content, status_code=response.status_code)
 
-    async def manage_response_error(self, response):
-        """This function is called when request send to catalog fails"""
+    async def manage_response_error(self, response: StreamingResponse | Any) -> JSONResponse:
+        """
+        Manage response error when sending a request to the catalog.
+
+        Args:
+            response (starlette.responses.StreamingResponse): The response object received from the failed request.
+
+        Raises:
+            HTTPException: If the response is not None, clears the catalog bucket and raises an HTTPException
+                with a status code of 400 and detailed information about the bad request.
+                If the response is None, raises an HTTPException with a status code of 400 and
+                a generic bad request detail.
+
+        """
         if response is not None:
             body = [chunk async for chunk in response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())
+            response_content = json.loads(b"".join(body).decode())  # type:ignore
             self.clear_catalog_bucket(response_content)
             raise HTTPException(detail=f"Bad request, {response_content}", status_code=400)
         # Otherwise just return the exception
