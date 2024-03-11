@@ -9,10 +9,10 @@
   },
   "catalog-bucket":
   {
-    "name": "test-data",
+    "name": "final-catalog",
     "S3_ACCESSKEY": "acces_key",
     "S3_SECRETKEY": "secret_key",
-    "S3_ENDPOINT": "s3://test-data/",
+    "S3_ENDPOINT": "s3://final-catalog",
     "S3_REGION": "sbg"
   }
 }
