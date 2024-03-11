@@ -77,16 +77,19 @@ def extract_openapi_specification():
         routes=app.routes,
     )
     openapi_spec_paths = openapi_spec["paths"]
-    for key in openapi_spec_paths.keys():
-        new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
-        openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
-        endpoint = openapi_spec_paths[new_key]
-        for method_key in endpoint.keys():
-            method = endpoint[method_key]
-            if new_key != "/catalog/search":
-                method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-            elif method["operationId"] == "Search_search_get":
-                method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+    for key in list(openapi_spec_paths.keys()):
+        if "_mgmt" not in key:
+            new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
+            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+            endpoint = openapi_spec_paths[new_key]
+            for method_key in endpoint.keys():
+                method = endpoint[method_key]
+                if new_key != "/catalog/search":
+                    method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
+                elif method["operationId"] == "Search_search_get":
+                    method[
+                        "description"
+                    ] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
