@@ -81,9 +81,13 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             return
         for asset in content.get("assets", {}):
             # Iterate through all assets and delete them from the temp bucket.
-            file_key = content["assets"][asset]["alternate"]["s3"]["href"].replace(
-                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
-                "",
+            file_key = (
+                content["assets"][asset]["alternate"]["s3"]["href"]
+                .replace(
+                    bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+                    "",
+                )
+                .lstrip("/")
             )
             # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
             self.handler.delete_file_from_s3(self.temp_bucket_name, file_key)
