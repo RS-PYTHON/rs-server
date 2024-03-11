@@ -1,0 +1,44 @@
+@startuml python-components
+
+node "RS Server" {
+  component [rs.server]
+}
+
+node "RS Client Libraries" {
+  package "rs.common" {
+    [rs.common.log]
+    [rs.common.trace]
+    [rs.common.metrics]
+  }
+
+  component [rs.client]
+  component [rs.processing]
+
+  package "rs.chain" {
+    [rs.chain.on_demand]
+    [rs.chain.systematic]
+    [rs.chain.operations]
+  }
+}
+
+[rs.server] --> [rs.common.log]
+[rs.server] --> [rs.common.trace]
+[rs.server] --> [rs.common.metrics]
+
+[rs.client] --> [rs.common.log]
+[rs.client] --> [rs.common.trace]
+[rs.client] --> [rs.common.metrics]
+
+[rs.processing] --> [rs.common.log]
+[rs.processing] --> [rs.common.trace]
+[rs.processing] --> [rs.common.metrics]
+
+[rs.chain.on_demand] --> [rs.client]
+[rs.chain.on_demand] --> [rs.processing]
+
+[rs.chain.systematic] --> [rs.client]
+[rs.chain.systematic] --> [rs.processing]
+
+[rs.chain.operations] --> [rs.client]
+
+@enduml
