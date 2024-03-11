@@ -85,6 +85,8 @@ def extract_openapi_specification():
             method = endpoint[method_key]
             if new_key != "/catalog/search":
                 method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
+            elif method["operationId"] == "Search_search_get":
+                method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 

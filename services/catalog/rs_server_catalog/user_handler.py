@@ -98,12 +98,14 @@ def remove_user_prefix(path: str) -> str:
     return path
 
 
-def add_user_prefix(path: str, user: str, collection_id: str) -> str:
+def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = "") -> str:
     """Modify the RS server backend catalog endpoint to get the RS server frontend endpoint.
 
     Args:
         path (str): RS server backend endpoint.
         user (str): The user ID.
+        collection_id (str): The collection id.
+        feature_id (str): The feature id.
 
     Returns:
         str: The RS server frontend endpoint.
@@ -116,6 +118,8 @@ def add_user_prefix(path: str, user: str, collection_id: str) -> str:
         return f"/catalog/{user}/collections/{collection_id}"
     if path == f"/collections/{user}_{collection_id}/items":
         return f"/catalog/{user}/collections/{collection_id}/items"
+    if f"/collections/{user}_{collection_id}/items" in path:  # /catalog/.../items/item_id
+        return f"/catalog/{user}/collections/{collection_id}/items/{feature_id}"
     return path
 
 
