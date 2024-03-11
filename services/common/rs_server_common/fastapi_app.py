@@ -15,19 +15,19 @@ from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils.logging import Logging
 
-# Add some endpoints specific to the main application
-others_router = APIRouter(tags=["Others"])
+# Add technical endpoints specific to the main application
+technical_router = APIRouter(tags=["Technical"])
 
 
 # include_in_schema=False: hide this endpoint from the swagger
-@others_router.get("/", include_in_schema=False)
+@technical_router.get("/", include_in_schema=False)
 async def home():
     """Home endpoint."""
     return {"message": "RS server home endpoint"}
 
 
 # include_in_schema=False: hide this endpoint from the swagger
-@others_router.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
+@technical_router.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
 async def health() -> HealthSchema:
     """
     Always return a flag set to 'true' when the service is up and running.
@@ -122,14 +122,8 @@ def init_app(
     except KeyError:
         docs_params = {}
 
-    # In cluster mode, add the api key security: the user must provide
-    # an api key (generated from the apikey manager) to access the endpoints
-    dependencies = []
-    if not settings.local_mode():
-        dependencies.append(Depends(apikey_security))
-
     # Init the FastAPI application
-    app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params, dependencies=dependencies)
+    app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params)
 
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db
@@ -138,8 +132,19 @@ def init_app(
     app.state.startup_events = startup_events or []
     app.state.shutdown_events = shutdown_events or []
 
+    # In cluster mode, add the api key security: the user must provide
+    # an api key (generated from the apikey manager) to access the endpoints
+    dependencies = []
+    if not settings.local_mode():
+        dependencies.append(Depends(apikey_security))
+
+    # Add the authenticated routers (and not the technical routers) to a single bigger router
+    auth_router = APIRouter(dependencies=dependencies)
+    for router in routers:
+        auth_router.include_router(router)
+
     # Add routers to the FastAPI app
-    for router in routers + [others_router]:
-        app.include_router(router)
+    app.include_router(auth_router)
+    app.include_router(technical_router)
 
     return app

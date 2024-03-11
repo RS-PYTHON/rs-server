@@ -41,6 +41,9 @@ from starlette.status import HTTP_403_FORBIDDEN
 
 logger = Logging.default(__name__)
 
+# Technical endpoints (no authentication)
+TECH_ENDPOINTS = ["/_mgmt/ping"]
+
 
 def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     """Add the owner id dictionnary to the parameter list.
@@ -78,18 +81,17 @@ def extract_openapi_specification():
     )
     openapi_spec_paths = openapi_spec["paths"]
     for key in list(openapi_spec_paths.keys()):
-        if "_mgmt" not in key:
-            new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
-            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
-            endpoint = openapi_spec_paths[new_key]
-            for method_key in endpoint.keys():
-                method = endpoint[method_key]
-                if new_key != "/catalog/search":
-                    method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-                elif method["operationId"] == "Search_search_get":
-                    method[
-                        "description"
-                    ] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+        if key in TECH_ENDPOINTS:
+            continue
+        new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
+        openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+        endpoint = openapi_spec_paths[new_key]
+        for method_key in endpoint.keys():
+            method = endpoint[method_key]
+            if new_key != "/catalog/search":
+                method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
+            elif method["operationId"] == "Search_search_get":
+                method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
@@ -129,7 +131,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         """
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (not local_mode()) and request.url.path.lower().startswith("/catalog"):
+        if (not local_mode()) and request.url.path.startswith("/catalog"):
             # Read the api key passed in header
             apikey_value = request.headers.get(authentication.HEADER_NAME, None)
             if not apikey_value:
@@ -171,6 +173,9 @@ if not local_mode():
     scopes = []
     for route in api.app.router.routes:
         if isinstance(route, APIRoute):
+            # Not on the technical endpoints
+            if route.path in TECH_ENDPOINTS:
+                continue
             for method_ in route.methods:
                 scopes.append({"path": route.path, "method": method_})
 

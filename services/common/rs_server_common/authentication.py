@@ -10,9 +10,11 @@ from os import environ as env
 from typing import Annotated
 
 import httpx
-from cachetools import TTLCache, cached
+from asyncache import cached
+from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security
 from fastapi.security import APIKeyHeader
+from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -39,13 +41,13 @@ async def apikey_security(
         Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
     """
     # Call the cached function (fastapi Depends doesn't work with @cached)
-    apikey_info = __apikey_security_cached(str(apikey_value))
+    apikey_info = await __apikey_security_cached(str(apikey_value))
     request.state.apikey_info = apikey_info
     return apikey_info
 
 
 @cached(cache=TTLCache(maxsize=sys.maxsize, ttl=120))
-def __apikey_security_cached(apikey_value):
+async def __apikey_security_cached(apikey_value):
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
     """
@@ -57,7 +59,7 @@ def __apikey_security_cached(apikey_value):
 
     # Request the uac, pass user-defined credentials
     try:
-        response = httpx.get(check_url, headers={HEADER_NAME: apikey_value or ""})
+        response = await settings.http_client().get(check_url, headers={HEADER_NAME: apikey_value or ""})
     except httpx.HTTPError as error:
         message = "Error connecting to the UAC manager"
         logger.error(f"{message}\n{traceback.format_exc()}")
