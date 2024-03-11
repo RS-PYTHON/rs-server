@@ -67,7 +67,7 @@ def extract_openapi_specification():
         routes=app.routes,
     )
     openapi_spec_paths = openapi_spec["paths"]
-    for key in openapi_spec_paths.keys():
+    for key in list(openapi_spec_paths.keys()):
         if "_mgmt" not in key:
             new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
             openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
