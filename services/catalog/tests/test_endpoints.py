@@ -82,11 +82,13 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         new_esmeralda_collection = {
             "id": "S1_L1",
             "type": "Collection",
-            "description": "The S1_L1 collection for BIG Esmeralda user.",
+            "description": "The S1_L1 collection for New Esmeralda user.",
             "stac_version": "1.0.0",
         }
         response = client.put("/catalog/esmeralda/collections", json=new_esmeralda_collection)
         assert response.status_code == 200
+        response_json = json.loads(response.content)
+        assert response_json["id"] == "S1_L1"
 
     def test_if_update_collection_esmeralda_s1_l1_worked(self, client):
         esmeralda_collection = {
@@ -318,12 +320,6 @@ class TestRedirectionCatalogUserIdCollectionsCollectionid:  # pylint: disable=mi
         add_feature(client, feature_toto_s1_l1_0)
         add_feature(client, feature_toto_s1_l1_1)
         assert response.status_code == 200
-
-    # def test_update_collection(self, client):
-    #     toto_s1_l1 = client.get("/catalog/toto/collections/S1_L1")
-    #     json_toto = json.loads(toto_s1_l1.content)
-    #     response = client.put("/catalog/toto/collections/S1_L1", json=json_toto, headers=toto_s1_l1.headers)
-    #     assert response.status_code == 200
 
 
 @pytest.mark.integration
@@ -833,3 +829,59 @@ class TestCatalogSearchEndpoint:
         with open("queryables.json", "w", encoding="utf-8") as f:
             json.dump(content, f, indent=2)
         assert response.status_code == 200
+
+
+from fastapi.openapi.utils import get_openapi
+from rs_server_catalog.main import app
+
+
+def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
+    """Add the owner id dictionnary to the parameter list.
+
+    Args:
+        parameters (list[dict]): the parameters list
+        where we want to add the owner id parameter.
+
+    Returns:
+        dict: the new parameters list with the owner id parameter.
+    """
+    to_add = {
+        "description": "Catalog owner id",
+        "required": True,
+        "schema": {"type": "string", "title": "Catalog owner id", "description": "Catalog owner id"},
+        "name": "owner_id",
+        "in": "path",
+    }
+    parameters.append(to_add)
+    return parameters
+
+
+def test_extract_openapi_specification():
+    """Extract the openapi specifications and modify the content to be conform
+    to the rs catalog specifications. Then, apply the changes in the application.
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_spec = get_openapi(
+        title=app.title,
+        version=app.version,
+        openapi_version=app.openapi_version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_spec_paths = openapi_spec["paths"]
+    for key in list(openapi_spec_paths.keys()):
+        if "_mgmt" not in key:
+            new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
+            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+            endpoint = openapi_spec_paths[new_key]
+            for method_key in endpoint.keys():
+                method = endpoint[method_key]
+                if new_key != "/catalog/search":
+                    method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
+                elif method["operationId"] == "Search_search_get":
+                    method[
+                        "description"
+                    ] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+    app.openapi_schema = openapi_spec
+    return app.openapi_schema

@@ -331,6 +331,21 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         return request  # pylint: disable=protected-access
 
+    async def manage_put_post_response(self, request: Request, response: StreamingResponse, ids: dict):
+        """Used to handle put or post responses."""
+        try:
+            body = [chunk async for chunk in response.body_iterator]
+            response_content = json.loads(b"".join(body).decode())  # type: ignore
+            if request.scope["path"] == "/collections":
+                response_content = remove_user_from_collection(response_content, ids["owner_id"])
+                response_content = self.adapt_object_links(response_content, ids["owner_id"])
+            self.clear_temp_bucket(response_content)
+        except RuntimeError:
+            return JSONResponse("Failed to clear temp-bucket", status_code=400)
+        except Exception:  # pylint: disable=broad-except
+            return JSONResponse("Bad request", status_code=400)
+        return JSONResponse(response_content, status_code=response.status_code)
+
     async def manage_get_response(
         self,
         request: Request,
@@ -373,18 +388,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
         return JSONResponse(content, status_code=response.status_code)
-
-    async def manage_put_post_response(self, response: StreamingResponse):
-        """Used to handle put or post responses."""
-        try:
-            body = [chunk async for chunk in response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())  # type: ignore
-            self.clear_temp_bucket(response_content)
-        except RuntimeError:
-            return JSONResponse("Failed to clear temp-bucket", status_code=400)
-        except Exception:  # pylint: disable=broad-except
-            return JSONResponse("Bad request", status_code=400)
-        return JSONResponse(response_content, status_code=response.status_code)
 
     async def manage_download_response(self, request, response):
         """Used to handle reqeust that should generate presigned url."""
@@ -435,6 +438,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         elif request.method == "GET" and user:
             response = await self.manage_get_response(request, response, ids)
         elif request.method in ["POST", "PUT"] and user:
-            response = await self.manage_put_post_response(response)
+            response = await self.manage_put_post_response(request, response, ids)
 
         return response
