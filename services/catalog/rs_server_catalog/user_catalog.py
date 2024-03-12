@@ -168,12 +168,14 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # 4 tdb, bucket movement
         try:
             # try with env, but maybe read from json file?
+            print("Creating s3 storage handler")
             self.handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
                 os.environ["S3_SECRETKEY"],
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
             )
+            print("Creating config for s3 handler")
             config = TransferFromS3ToS3Config(
                 files_s3_key,
                 self.temp_bucket_name,
@@ -181,19 +183,23 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 copy_only=True,
                 max_retries=3,
             )
+            print("Calling s3 handler transfer_from_s3_to_s3 function")
             failed_files = self.handler.transfer_from_s3_to_s3(config)
+            print(f"ret failed files = {failed_files}")
             if failed_files:
                 raise HTTPException(
                     detail=f"Could not transfer files to catalog bucket: {failed_files}",
                     status_code=500,
                 )
         except KeyError:
+            print("KeyErro exception !")
             pass
             # JSONResponse("Could not find S3 credentials", status_code=500)
         except botocore.exceptions.EndpointConnectionError as exc:
             raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from exc
 
         # 5 - add owner data
+        print("Updating owner data")
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{content['collection']}"})
         return content
@@ -206,7 +212,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         s3_path = content["assets"][asset_id]["alternate"]["s3"]["href"].replace(
             bucket_info["catalog-bucket"]["S3_ENDPOINT"],
             "",
-        )
+        ).lstrip("/")
         try:
             handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
