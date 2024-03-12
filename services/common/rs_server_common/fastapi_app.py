@@ -114,7 +114,7 @@ def init_app(
             except TypeError:  # TypeError: object NoneType can't be used in 'await' expression
                 sessionmanager.close()
 
-    # Override the swagger /docs URL from an environment variable.
+    # For cluster deployment: override the swagger /docs URL from an environment variable.
     # Also set the openapi.json URL under the same path.
     try:
         docs_url = env["RSPY_DOCS_URL"].strip("/")

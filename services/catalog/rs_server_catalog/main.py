@@ -8,6 +8,7 @@ If the variable is not set, enables all extensions.
 import os
 from typing import Callable
 
+import httpx
 from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
@@ -15,7 +16,7 @@ from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
 from rs_server_common import authentication
-from rs_server_common.settings import local_mode
+from rs_server_common import settings as common_settings
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
@@ -131,7 +132,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         """
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (not local_mode()) and request.url.path.startswith("/catalog"):
+        if (not common_settings.local_mode()) and request.url.path.startswith("/catalog"):
             # Read the api key passed in header
             apikey_value = request.headers.get(authentication.HEADER_NAME, None)
             if not apikey_value:
@@ -168,7 +169,7 @@ app.openapi = extract_openapi_specification
 
 # In cluster mode, add the api key security dependency: the user must provide
 # an api key (generated from the apikey manager) to access the endpoints
-if not local_mode():
+if not common_settings.local_mode():
     # One scope for each ApiRouter path and method
     scopes = []
     for route in api.app.router.routes:
@@ -187,14 +188,22 @@ if not local_mode():
 
 @app.on_event("startup")
 async def startup_event():
-    """Connect to database on startup."""
+    """FastAPI startup events"""
+    # Connect to database on startup
     await connect_to_db(app)
+
+    # Init objects for dependency injection
+    common_settings.set_http_client(httpx.AsyncClient())
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Close database connection."""
+    """FastAPI shutdown events"""
+    # Close database connection
     await close_db_connection(app)
+
+    # Close objects for dependency injection
+    await common_settings.del_http_client()
 
 
 def run():
