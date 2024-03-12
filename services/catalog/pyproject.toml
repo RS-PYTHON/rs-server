@@ -10,6 +10,7 @@ authors = ["Your Name <you@example.com>"]
 
 packages = [
     { include = "rs_server_catalog" },
+    { include = "rs_server_common" },
     { include = "tests", format = "sdist" },
 
     # TEMP for https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-155

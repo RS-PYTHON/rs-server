@@ -4,6 +4,7 @@ import json
 import os
 import os.path as osp
 
+import fastapi
 import pytest
 import requests
 import yaml
@@ -633,9 +634,10 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
 def test_incorrect_feature_publish(client, a_incorrect_feature, owner, collection_id):
     """This test send a featureCollection to the catalog with a wrong format."""
     # TC02: Add on Sentinel-1 item to the Catalog with a wrong-formatted STAC JSON file. => 400 Bad Request
-    added_feature = client.post(f"/catalog/{owner}/collections/{collection_id}/items", json=a_incorrect_feature)
-    # Bad request = 400
-    assert added_feature.status_code == 400
+    with pytest.raises(fastapi.HTTPException):
+        added_feature = client.post(f"/catalog/{owner}/collections/{collection_id}/items", json=a_incorrect_feature)
+        # Bad request = 400
+        assert added_feature.status_code == 400
 
 
 @pytest.mark.unit
@@ -646,9 +648,55 @@ def test_incorrect_bucket_publish(client, a_correct_feature):
     a_correct_feature["assets"]["zarr"]["href"] = "incorrect_s3_url/some_file.zarr.zip"
     a_correct_feature["assets"]["cog"]["href"] = "incorrect_s3_url/some_file.cog.zip"
     a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
+    with pytest.raises(fastapi.HTTPException):
+        added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
+        assert added_feature.status_code == 400
+        assert added_feature.content == b'"Invalid obs bucket"'
+        clear_aws_credentials()
+
+
+@pytest.mark.unit
+def test_custom_bucket_publish(client, a_correct_feature):
+    """Test with other temp bucket name."""
+    moto_endpoint = "http://localhost:8077"
+    export_aws_credentials()
+    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    server = ThreadedMotoServer(port=8077)
+    server.start()
+    custom_bucket = "some-custom-bucket"
+    catalog_bucket = "catalog-bucket"
+    a_correct_feature["assets"]["zarr"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.zarr.zip"
+    a_correct_feature["assets"]["cog"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.cog.zip"
+    a_correct_feature["assets"]["ncdf"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.ncdf.zip"
+
+    s3_handler.s3_client.create_bucket(Bucket=custom_bucket)
+    s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+    lst_with_files_to_be_copied = [
+        "correct_location/some_file.zarr.zip",
+        "correct_location/some_file.cog.zip",
+        "correct_location/some_file.ncdf.zip",
+    ]
+    for obj in lst_with_files_to_be_copied:
+        s3_handler.s3_client.put_object(Bucket=custom_bucket, Key=obj, Body="testing\n")
+
+    assert s3_handler.list_s3_files_obj(custom_bucket, "")
+    assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+
     added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
-    assert added_feature.status_code == 400
-    assert added_feature.content == b'"Invalid obs bucket"'
+    assert added_feature.status_code == 200
+
+    assert not s3_handler.list_s3_files_obj(custom_bucket, "")
+    assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+    s3_handler.delete_bucket_completely(custom_bucket)
+    s3_handler.delete_bucket_completely(catalog_bucket)
+    server.stop()
     clear_aws_credentials()
 
 
@@ -736,11 +784,11 @@ def test_failure_while_moving_files_between_buckets(client, mocker, a_correct_fe
         "rs_server_catalog.user_catalog.UserCatalogMiddleware.update_stac_item_publication",
         return_value=({}, None),
     )
-
-    added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
-    # Check if status code is BAD REQUEST
-    assert added_feature.status_code == 400
-    # If catalog publish fails, catalog_bucket should be empty, and temp_bucket should not be empty.
+    with pytest.raises(fastapi.HTTPException):
+        added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
+        # Check if status code is BAD REQUEST
+        assert added_feature.status_code == 400
+        # If catalog publish fails, catalog_bucket should be empty, and temp_bucket should not be empty.
 
     assert s3_handler.list_s3_files_obj(temp_bucket, "")
     assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
