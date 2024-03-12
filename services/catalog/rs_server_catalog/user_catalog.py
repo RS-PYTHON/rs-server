@@ -414,6 +414,22 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # Otherwise just return the exception
         return JSONResponse("Bad request", status_code=400)
 
+    async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
+        """Change the name of the deleted collection by removing owner_id.
+
+        Args:
+            response (StreamingResponse): The client response.
+            user (str): The owner id.
+
+        Returns:
+            JSONResponse: The new response with the updated collection name.
+        """
+        body = [chunk async for chunk in response.body_iterator]
+        response_content = json.loads(b"".join(body).decode())
+        if "deleted collection" in response_content:
+            response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
+        return JSONResponse(response_content)
+
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         ids = get_ids(request.scope["path"])
@@ -444,5 +460,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             response = await self.manage_get_response(request, response, ids)
         elif request.method in ["POST", "PUT"] and user:
             response = await self.manage_put_post_response(request, response, ids)
+        elif request.method == "DELETE" and user:
+            response = await self.manage_delete_response(response, user)
 
         return response
