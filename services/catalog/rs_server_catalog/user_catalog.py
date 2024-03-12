@@ -339,6 +339,11 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             if request.scope["path"] == "/collections":
                 response_content = remove_user_from_collection(response_content, ids["owner_id"])
                 response_content = self.adapt_object_links(response_content, ids["owner_id"])
+            elif (
+                request.scope["path"] == f"/collections/{ids['owner_id']}_{ids['collection_id']}/items/{ids['item_id']}"
+            ):
+                response_content = remove_user_from_feature(response_content, ids["owner_id"])
+                response_content = self.adapt_object_links(response_content, ids["owner_id"])
             self.clear_temp_bucket(response_content)
         except RuntimeError:
             return JSONResponse("Failed to clear temp-bucket", status_code=400)

@@ -515,6 +515,8 @@ class TestRedirectionItemsItemId:  # pylint: disable=missing-function-docstring
             headers=toto_s1_l1_feature.headers,
         )
         assert response.status_code == 200
+        response_json = json.loads(response.content)
+        assert response_json["collection"] == "S1_L1"
 
     def test_delete_feature(self, client, feature_toto_s1_l1_0):
         response = client.delete("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
