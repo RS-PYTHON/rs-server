@@ -10,6 +10,7 @@ authors = ["Your Name <you@example.com>"]
 
 packages = [
     { include = "rs_server_frontend" },
+    { include = "tools", format = "sdist" },
     { include = "tests", format = "sdist" },
 ]
 
@@ -26,6 +27,10 @@ optional = true
 pytest = "^8.0.2"
 # Testing fastapi
 httpx = "^0.27.0"
+# Tools
+requests = "^2.31.0"
+# Test tools
+responses = "^0.25.0"
 
 
 [tool.pytest.ini_options]
