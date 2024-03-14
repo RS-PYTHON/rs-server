@@ -31,6 +31,11 @@ def local_mode():
     return env_bool("RSPY_LOCAL_MODE", False)
 
 
+def cluster_mode():
+    """Return 'not local_mode()'"""
+    return not local_mode()
+
+
 ###############
 # HTTP client #
 ###############

@@ -6,6 +6,7 @@ Note: calls https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manage
 
 import sys
 import traceback
+from enum import Enum
 from os import environ as env
 from typing import Annotated
 
@@ -21,16 +22,39 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERRO
 logger = Logging.default(__name__)
 
 # HTTP header field for the api key
-HEADER_NAME = "x-api-key"
+APIKEY_HEADER = "x-api-key"
 
 # API key authentication using a header.
-apikey_header = APIKeyHeader(name=HEADER_NAME, scheme_name="API key passed in HTTP header", auto_error=True)
+APIKEY_SECURITY = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
+
+
+class Auth(Enum):
+    """
+    Enum values for authentication.
+
+    NOTE: enum names = the values returned by keyclowk, uppercase
+    """
+
+    # IAM roles
+
+    # ADGS
+    RS_ADGS_READ = "rs_adgs_read"
+    RS_ADGS_DOWNLOAD = "rs_adgs_download"
+
+    # CADIP
+    RS_CADIP_CADIP_READ = "rs_cadip_cadip_read"
+    RS_CADIP_CADIP_DOWNLOAD = "rs_cadip_cadip_download"
+    # TODO: above is cadip "cadip" station (does it really exist ?),
+    # do the oter stations (ins, mps, ...) see stations_cfg.json ?
+
+    # Catalog
+    S1_ACCESS = "s1_access"  # TODO: use e.g. s1_read, s1_write, s1_download instead ?
 
 
 async def apikey_security(
     request: Request,
-    apikey_value: Annotated[str, Security(apikey_header)],
-) -> tuple[dict, dict]:
+    apikey_value: Annotated[str, Security(APIKEY_SECURITY)],
+) -> tuple[list, dict]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
 
@@ -41,13 +65,14 @@ async def apikey_security(
         Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
     """
     # Call the cached function (fastapi Depends doesn't work with @cached)
-    apikey_info = await __apikey_security_cached(str(apikey_value))
-    request.state.apikey_info = apikey_info
-    return apikey_info
+    auth_roles, auth_config = await __apikey_security_cached(str(apikey_value))
+    request.state.auth_roles = auth_roles
+    request.state.auth_config = auth_config
+    return auth_roles, auth_config
 
 
 @cached(cache=TTLCache(maxsize=sys.maxsize, ttl=120))
-async def __apikey_security_cached(apikey_value):
+async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
     """
@@ -59,16 +84,27 @@ async def __apikey_security_cached(apikey_value):
 
     # Request the uac, pass user-defined credentials
     try:
-        response = await settings.http_client().get(check_url, headers={HEADER_NAME: apikey_value or ""})
+        response = await settings.http_client().get(check_url, headers={APIKEY_HEADER: apikey_value or ""})
     except httpx.HTTPError as error:
         message = "Error connecting to the UAC manager"
         logger.error(f"{message}\n{traceback.format_exc()}")
         raise HTTPException(HTTP_500_INTERNAL_SERVER_ERROR, message) from error
 
-    # Return the api key info
+    # Read the api key info
     if response.is_success:
         contents = response.json()
-        return contents["iam_roles"], contents["config"]
+        str_roles, config = contents["iam_roles"], contents["config"]
+
+        # Convert IAM roles to enum
+        roles = []
+        for role in str_roles:
+            try:
+                roles.append(Auth[role.upper()])
+            except KeyError:
+                logger.warning(f"Unknown IAM role: {role!r}")
+
+        # Note: for now, config is an empty dict
+        return roles, config
 
     # Try to read the response detail or error
     try:

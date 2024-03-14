@@ -132,9 +132,9 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         """
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (not common_settings.local_mode()) and request.url.path.startswith("/catalog"):
+        if (common_settings.cluster_mode()) and request.url.path.startswith("/catalog"):
             # Read the api key passed in header
-            apikey_value = request.headers.get(authentication.HEADER_NAME, None)
+            apikey_value = request.headers.get(authentication.APIKEY_HEADER, None)
             if not apikey_value:
                 raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
 
@@ -169,7 +169,7 @@ app.openapi = extract_openapi_specification
 
 # In cluster mode, add the api key security dependency: the user must provide
 # an api key (generated from the apikey manager) to access the endpoints
-if not common_settings.local_mode():
+if common_settings.cluster_mode():
     # One scope for each ApiRouter path and method
     scopes = []
     for route in api.app.router.routes:

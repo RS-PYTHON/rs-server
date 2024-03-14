@@ -3,7 +3,7 @@
 import pytest
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import HEADER_NAME as APIKEY_HEADER
+from rs_server_common.authentication import APIKEY_HEADER
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
@@ -34,7 +34,8 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
         status_code=HTTP_200_OK,
-        json={"iam_roles": {}, "config": {}},
+        # NOTE: we could use other roles and config, to be discussed
+        json={"iam_roles": ["rs_adgs_read", "s1_access"], "config": {}},
     )
 
     # With a wrong api key, it returns 403

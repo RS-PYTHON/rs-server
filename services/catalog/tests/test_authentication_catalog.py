@@ -6,7 +6,7 @@ import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import HEADER_NAME as APIKEY_HEADER
+from rs_server_common.authentication import APIKEY_HEADER
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
