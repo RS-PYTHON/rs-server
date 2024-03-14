@@ -199,7 +199,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from exc
 
         # 5 - add owner data
-        print("Updating owner data")
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{content['collection']}"})
         return content

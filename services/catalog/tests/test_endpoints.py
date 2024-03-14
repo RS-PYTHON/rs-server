@@ -682,6 +682,7 @@ def test_custom_bucket_publish(client, a_correct_feature):
         a_correct_feature["assets"]["zarr"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.zarr.zip"
         a_correct_feature["assets"]["cog"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.cog.zip"
         a_correct_feature["assets"]["ncdf"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.ncdf.zip"
+        a_correct_feature["id"] = "new_feature_id"
 
         s3_handler.s3_client.create_bucket(Bucket=custom_bucket)
         s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
@@ -797,7 +798,7 @@ def test_failure_while_moving_files_between_buckets(client, mocker, a_correct_fe
         # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
         mocker.patch(
             "rs_server_catalog.user_catalog.UserCatalogMiddleware.update_stac_item_publication",
-            return_value=({}, None),
+            return_value={},
         )
         with pytest.raises(fastapi.HTTPException):
             added_feature = client.post("/catalog/darius/collections/S1_L2/items", json=a_correct_feature)
