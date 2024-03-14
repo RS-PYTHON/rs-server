@@ -192,7 +192,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                     status_code=500,
                 )
         except KeyError:
-            print("KeyErro exception !")
+            print("KeyError exception !")
             pass
             # JSONResponse("Could not find S3 credentials", status_code=500)
         except botocore.exceptions.EndpointConnectionError as exc:
@@ -209,10 +209,14 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # Assume that pgstac already selected the correct asset id
         # just check type, generate and return url
         asset_id = path.split("/")[-1]
-        s3_path = content["assets"][asset_id]["alternate"]["s3"]["href"].replace(
-            bucket_info["catalog-bucket"]["S3_ENDPOINT"],
-            "",
-        ).lstrip("/")
+        s3_path = (
+            content["assets"][asset_id]["alternate"]["s3"]["href"]
+            .replace(
+                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+                "",
+            )
+            .lstrip("/")
+        )
         try:
             handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
