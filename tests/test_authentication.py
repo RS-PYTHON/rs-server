@@ -7,7 +7,7 @@ from rs_server_common.authentication import HEADER_NAME as APIKEY_HEADER
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
-from tests.conftest import RSPY_LOCAL_MODE, Envs
+from tests.conftest import RSPY_LOCAL_MODE, Envs  # pylint: disable=no-name-in-module
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"

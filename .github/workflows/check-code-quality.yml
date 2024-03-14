@@ -161,6 +161,7 @@ jobs:
       - name: Run pytest
         run: |
           set -x && poetry run pytest $(find . -name tests -not -path "./services/catalog/*") \
+            -s --disable-pytest-warnings \
             --durations=0 \
             --error-for-skips \
             --cov=./services \
@@ -173,6 +174,7 @@ jobs:
           (cd ./services/catalog && poetry install --with dev)
           (source ./services/catalog/tests/.env && \
           poetry --directory ./services/catalog run pytest ./services/catalog/tests \
+            -s --disable-pytest-warnings \
             --durations=0 \
             --error-for-skips \
             --cov=./services \
