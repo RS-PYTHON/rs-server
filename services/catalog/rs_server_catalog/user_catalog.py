@@ -170,13 +170,13 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content["stac_extensions"].append(new_stac_extension)
         # 4 tdb, bucket movement
         try:
-            # try with env, but maybe read from json file?
+            # try with env, but maybe read from json file?            
             self.handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
                 os.environ["S3_SECRETKEY"],
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
-            )
+            )            
             config = TransferFromS3ToS3Config(
                 files_s3_key,
                 self.temp_bucket_name,
@@ -184,19 +184,22 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 copy_only=True,
                 max_retries=3,
             )
+            
             failed_files = self.handler.transfer_from_s3_to_s3(config)
+            
             if failed_files:
                 raise HTTPException(
                     detail=f"Could not transfer files to catalog bucket: {failed_files}",
                     status_code=500,
                 )
-        except KeyError:
+        except KeyError:            
             pass
             # JSONResponse("Could not find S3 credentials", status_code=500)
         except botocore.exceptions.EndpointConnectionError as exc:
             raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from exc
 
         # 5 - add owner data
+        print("Updating owner data")
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{content['collection']}"})
         return content
@@ -206,9 +209,13 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # Assume that pgstac already selected the correct asset id
         # just check type, generate and return url
         asset_id = path.split("/")[-1]
-        s3_path = content["assets"][asset_id]["alternate"]["s3"]["href"].replace(
-            bucket_info["catalog-bucket"]["S3_ENDPOINT"],
-            "",
+        s3_path = (
+            content["assets"][asset_id]["alternate"]["s3"]["href"]
+            .replace(
+                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+                "",
+            )
+            .lstrip("/")
         )
         try:
             handler = S3StorageHandler(
