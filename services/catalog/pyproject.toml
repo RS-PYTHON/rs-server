@@ -10,7 +10,6 @@ authors = ["Your Name <you@example.com>"]
 
 packages = [
     { include = "rs_server_catalog" },
-    { include = "rs_server_common" },
     { include = "tests", format = "sdist" },
 
     # TEMP for https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-155
@@ -52,6 +51,7 @@ filelock = "^3.13.1"
 # uvicorn = "^0.27.1"
 httpx = "^0.27.0"
 cachetools = "^5.3.3"
+asyncache = "^0.3.1"
 
 [tool.poetry.group.dev]
 optional = true
@@ -70,6 +70,8 @@ httpx = "^0.27.0"
 # sqlalchemy-utils is used for pgstac test purpose
 sqlalchemy-utils = "^0.41.1"
 psycopg2 = "^2.9.9"
+pytest-httpx = "^0.30.0"
+pytest-asyncio = "^0.23.2"
 
 
 [tool.black]
@@ -85,6 +87,7 @@ markers = [
 env_files = [
     "tests/.env"
 ]
+asyncio_mode = "auto"
 
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"

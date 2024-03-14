@@ -114,7 +114,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         links = my_object["links"]
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
-            new_path = add_user_prefix(link_parser.path, user, my_object["id"])
+            if "properties" in my_object:  # If my_object is a feature
+                new_path = add_user_prefix(link_parser.path, user, my_object["collection"], my_object["id"])
+            else:  # If my_object is a collection
+                new_path = add_user_prefix(link_parser.path, user, my_object["id"])
             links[j]["href"] = link_parser._replace(path=new_path).geturl()
         return my_object
 
@@ -181,7 +184,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 copy_only=True,
                 max_retries=3,
             )
+
             failed_files = self.handler.transfer_from_s3_to_s3(config)
+
             if failed_files:
                 raise HTTPException(
                     detail=f"Could not transfer files to catalog bucket: {failed_files}",
@@ -203,9 +208,13 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # Assume that pgstac already selected the correct asset id
         # just check type, generate and return url
         asset_id = path.split("/")[-1]
-        s3_path = content["assets"][asset_id]["alternate"]["s3"]["href"].replace(
-            bucket_info["catalog-bucket"]["S3_ENDPOINT"],
-            "",
+        s3_path = (
+            content["assets"][asset_id]["alternate"]["s3"]["href"]
+            .replace(
+                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+                "",
+            )
+            .lstrip("/")
         )
         try:
             handler = S3StorageHandler(
@@ -249,29 +258,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         return res
 
     def manage_search_request(self, request: Request) -> Request:
-        """find the user in the filter parameter and add it to the
-        collection name.
-
-        Args:
-            request Request: the client request.
-
-        Returns:
-            Request: the new request with the collection name updated.
-        """
-
-        query = parse_qs(request.url.query)
-        if "filter" in query:
-            if "filter-lang" not in query:
-                query["filter-lang"] = ["cql2-text"]
-            qs_filter = query["filter"][0]
-            filters = parse_ecql(qs_filter)
-            user = self.find_owner_id(filters)
-            if "collections" in query:
-                query["collections"] = [f"{user}_{query['collections'][0]}"]
-                request.scope["query_string"] = urlencode(query, doseq=True).encode()
-        return request
-
-    def manage_search_endpoint(self, request: Request) -> Request:
         """find the user in the filter parameter and add it to the
         collection name.
 
@@ -356,27 +342,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         return request  # pylint: disable=protected-access
 
-    async def manage_put_post_endpoints(self, request: Request, ids: dict) -> Request:
-        """Adapt the request body for the STAC endpoint.
-
-        Args:
-            request (Request): The Client request to be updated.
-            ids (dict): The owner id.
-
-        Returns:
-            Request: The request updated.
-        """
-        user = ids["owner_id"]
-        request_body = await request.json()
-        if request.scope["path"] == "/collections":  # /catalog/{owner_id}/collections
-            request_body["id"] = f"{user}_{request_body['id']}"
-        elif (
-            f"/collections/{ids['owner_id']}_{ids['collection_id']}/items" in request.scope["path"]
-        ):  # /catalog/.../items(/item_id)
-            request_body["collection"] = f"{user}_{request_body['collection']}"
-        request._body = json.dumps(request_body).encode("utf-8")  # pylint: disable=protected-access
-        return request  # pylint: disable=protected-access
-
     async def manage_get_response(
         self,
         request: Request,
@@ -447,47 +412,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         except Exception as exc:  # pylint: disable=broad-except
             raise HTTPException(detail="Bad request", status_code=400) from exc
         return JSONResponse(response_content, status_code=response.status_code)
-
-    async def manage_get_endpoints(
-        self,
-        request: Request,
-        response: StreamingResponse,
-        ids: dict,
-    ) -> Response:
-        """Remove the user name from obects and adapt all links.
-
-        Args:
-            request (Request): The client request.
-            response (Response | StreamingResponse): The response from the rs-catalog.
-            ids (dict): a dictionnary containing owner_id, collection_id and
-            item_id if they exist.
-
-        Returns:
-            Response: The response updated.
-        """
-        user = ids["owner_id"]
-        body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
-        if request.scope["path"] == "/":  # /catalog/owner_id
-            return JSONResponse(content, status_code=response.status_code)
-        if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
-            content["collections"] = filter_collections(content["collections"], user)
-            content = self.remove_user_from_objects(content, user, "collections")
-            content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
-        elif (
-            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
-        ):  # /catalog/owner_id/collections/collection_id
-            content = remove_user_from_collection(content, user)
-            content = self.adapt_object_links(content, user)
-        elif (
-            "items" in request.scope["path"] and not ids["item_id"]
-        ):  # /catalog/owner_id/collections/collection_id/items
-            content = self.remove_user_from_objects(content, user, "features")
-            content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
-        elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
-            content = remove_user_from_feature(content, user)
-            content = self.adapt_object_links(content, user)
-        return JSONResponse(content, status_code=response.status_code)
 
     async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
         """

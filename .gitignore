@@ -53,6 +53,8 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+cov-report.xml
+junit-xml-report.xml
 
 # Translations
 *.mo
