@@ -168,33 +168,32 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
         if new_stac_extension not in content["stac_extensions"]:
             content["stac_extensions"].append(new_stac_extension)
-        # 4 tdb, bucket movement
+        # 4 bucket movement
         try:
-            # try with env, but maybe read from json file?
-            self.handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
-            config = TransferFromS3ToS3Config(
-                files_s3_key,
-                self.temp_bucket_name,
-                bucket_info["catalog-bucket"]["name"],
-                copy_only=True,
-                max_retries=3,
-            )
-
-            failed_files = self.handler.transfer_from_s3_to_s3(config)
-
-            if failed_files:
-                raise HTTPException(
-                    detail=f"Could not transfer files to catalog bucket: {failed_files}",
-                    status_code=500,
+            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+                self.handler = S3StorageHandler(
+                    os.environ["S3_ACCESSKEY"],
+                    os.environ["S3_SECRETKEY"],
+                    os.environ["S3_ENDPOINT"],
+                    os.environ["S3_REGION"],
                 )
-        except KeyError:
-            pass
-            # JSONResponse("Could not find S3 credentials", status_code=500)
+                config = TransferFromS3ToS3Config(
+                    files_s3_key,
+                    self.temp_bucket_name,
+                    bucket_info["catalog-bucket"]["name"],
+                    copy_only=True,
+                    max_retries=3,
+                )
+
+                failed_files = self.handler.transfer_from_s3_to_s3(config)
+
+                if failed_files:
+                    raise HTTPException(
+                        detail=f"Could not transfer files to catalog bucket: {failed_files}",
+                        status_code=500,
+                    )
+        except KeyError as kerr:
+            raise HTTPException(detail="Could not find S3 credentials", status_code=500) from kerr
         except botocore.exceptions.EndpointConnectionError as exc:
             raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from exc
 

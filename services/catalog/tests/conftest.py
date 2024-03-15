@@ -7,6 +7,7 @@ import os
 # pylint: disable=wrong-import-position
 # flake8: noqa
 os.environ["RSPY_LOCAL_MODE"] = "1"
+os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
 from dataclasses import dataclass
 from pathlib import Path
