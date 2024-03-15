@@ -1,7 +1,8 @@
 {
     "id": "Name",
     "adgs:id": "id",
-    "datetime": "PublicationDate",
+    "created": "PublicationDate",
+    "datetime": "Start",
     "start_datetime": "Start",
     "end_datetime": "End",
     "file:size": "ContentLength"
