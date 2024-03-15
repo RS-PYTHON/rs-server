@@ -560,7 +560,8 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     moto_endpoint = "http://localhost:8077"
     export_aws_credentials()
     secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-
+    # Enable bucket transfer
+    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
     server = ThreadedMotoServer(port=8077)
     server.start()
     try:
@@ -626,6 +627,7 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     finally:
         server.stop()
         clear_aws_credentials()
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
 
 @pytest.mark.unit
@@ -674,6 +676,7 @@ def test_custom_bucket_publish(client, a_correct_feature):
         secrets["s3endpoint"],
         secrets["region"],
     )
+    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
     server = ThreadedMotoServer(port=8077)
     server.start()
     try:
@@ -709,6 +712,7 @@ def test_custom_bucket_publish(client, a_correct_feature):
     finally:
         server.stop()
         clear_aws_credentials()
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
 
 def test_generate_download_presigned_url(client):
