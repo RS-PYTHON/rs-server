@@ -14,7 +14,7 @@ import httpx
 from asyncache import cached
 from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security
-from fastapi.security import APIKeyHeader
+from fastapi.security import APIKeyHeader, APIKeyQuery
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
@@ -24,8 +24,9 @@ logger = Logging.default(__name__)
 # HTTP header field for the api key
 APIKEY_HEADER = "x-api-key"
 
-# API key authentication using a header.
-APIKEY_SECURITY = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
+# API key authentication using a header or query param
+APIKEY_SECURITY_HEADER = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
+APIKEY_SECURITY_QUERY = APIKeyQuery(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
 
 
 class Auth(Enum):

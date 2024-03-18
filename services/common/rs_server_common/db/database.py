@@ -65,7 +65,7 @@ class DatabaseSessionManager:
         # make sure to initialize the session only once.
         with DatabaseSessionManager.lock:
             if (self._engine is None) or (self._sessionmaker is None):
-                self._engine = create_engine(url or self.url(), poolclass=NullPool)
+                self._engine = create_engine(url or self.url(), poolclass=NullPool, pool_pre_ping=True)
                 self._sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
 
                 try:
