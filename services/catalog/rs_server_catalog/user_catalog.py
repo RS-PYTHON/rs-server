@@ -384,6 +384,27 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content = self.adapt_object_links(content, user)
         return JSONResponse(content, status_code=response.status_code)
 
+    async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
+        """
+        Manage download response and handle requests that should generate a presigned URL.
+
+        Args:
+            request (starlette.requests.Request): The request object.
+            response (starlette.responses.StreamingResponse): The response object received.
+
+        Returns:
+            JSONResponse: Returns a JSONResponse object containing either the presigned URL or
+            the response content with the appropriate status code.
+
+        """
+        body = [chunk async for chunk in response.body_iterator]
+        content = json.loads(b"".join(body).decode())  # type:ignore
+        if content.get("code", True) != "NotFoundError":
+            # Only generate presigned url if the item is found
+            content, code = self.generate_presigned_url(content, request.url.path)
+            return JSONResponse(content, status_code=code)
+        return JSONResponse(content, status_code=response.status_code)
+
     async def manage_put_post_response(self, request: Request, response: StreamingResponse, ids: dict):
         """
         Manage put or post responses.
@@ -419,27 +440,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         except Exception as exc:  # pylint: disable=broad-except
             raise HTTPException(detail="Bad request", status_code=400) from exc
         return JSONResponse(response_content, status_code=response.status_code)
-
-    async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
-        """
-        Manage download response and handle requests that should generate a presigned URL.
-
-        Args:
-            request (starlette.requests.Request): The request object.
-            response (starlette.responses.StreamingResponse): The response object received.
-
-        Returns:
-            JSONResponse: Returns a JSONResponse object containing either the presigned URL or
-            the response content with the appropriate status code.
-
-        """
-        body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(body).decode())  # type:ignore
-        if content.get("code", True) != "NotFoundError":
-            # Only generate presigned url if the item is found
-            content, code = self.generate_presigned_url(content, request.url.path)
-            return JSONResponse(content, status_code=code)
-        return JSONResponse(content, status_code=response.status_code)
 
     async def manage_response_error(self, response: StreamingResponse | Any) -> JSONResponse:
         """
@@ -478,7 +478,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         return JSONResponse(response_content)
-
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
