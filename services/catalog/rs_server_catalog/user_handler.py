@@ -64,7 +64,7 @@ def remove_user_prefix(path: str) -> str:
     if path == "/":
         raise ValueError("URL (/) is invalid.")
 
-    if path == "/catalog":
+    if path == "/catalog/":
         return "/"
 
     if path == "/catalog/search":
