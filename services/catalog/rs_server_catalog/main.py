@@ -84,12 +84,12 @@ def extract_openapi_specification():
     for key in list(openapi_spec_paths.keys()):
         if key in TECH_ENDPOINTS:
             continue
-        new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
+        new_key = f"/catalog{key}" if key in ["/search", "/"] else "/catalog/{owner_id}" + key
         openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
         endpoint = openapi_spec_paths[new_key]
         for method_key in endpoint.keys():
             method = endpoint[method_key]
-            if new_key != "/catalog/search":
+            if new_key not in ["/catalog/search", "/catalog/"]:
                 method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
             elif method["operationId"] == "Search_search_get":
                 method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
