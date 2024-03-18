@@ -5,6 +5,7 @@ The conftest.py file serves as a means of providing fixtures for an entire direc
 Fixtures defined in a conftest.py can be used by any test in that package without needing to import them
 (pytest will automatically discover them).
 """
+
 import os
 import os.path as osp
 import subprocess  # nosec ignore security issue
@@ -13,18 +14,36 @@ from pathlib import Path
 
 import pytest
 import yaml
+from attr import dataclass
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
-from tests.app import app
+from tests.app import init_app
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+
+RSPY_LOCAL_MODE = "RSPY_LOCAL_MODE"
 
 ###############################
 # READ COMMAND LINE ARGUMENTS #
 ###############################
+
+
+@pytest.fixture(scope="session", autouse=True)
+def read_cli(request):
+    """Read pytest command-line options passed by the user"""
+
+    # Use the minimal log level
+    option = request.config.getoption("--log-cli-level", None) or request.config.getoption("--log-level", None)
+    if option:
+        Logging.level = option.upper()
+
+
+#####################
+# SETUP ENVIRONMENT #
+#####################
 
 # Resource folders specified from the parent directory of this current script
 S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
@@ -53,16 +72,6 @@ def export_aws_credentials():
         os.environ.update(s3_config["s3"])
 
 
-@pytest.fixture(scope="session", autouse=True)
-def read_cli(request):
-    """Read pytest command-line options passed by the user"""
-
-    # Use the minimal log level
-    option = request.config.getoption("--log-cli-level", None) or request.config.getoption("--log-level", None)
-    if option:
-        Logging.level = option.upper()
-
-
 ########################
 # FASTAPI AND DATABASE #
 ########################
@@ -86,19 +95,41 @@ def docker_compose_file_():
     return RESOURCES_FOLDER / "db" / "docker-compose.yml"
 
 
-@pytest.fixture(autouse=True, name="fastapi_app")
-def fastapi_app_(docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
+@dataclass
+class Envs:
+    """A simple class that contains dict-defined environment variables."""
+
+    envs: dict
+
+
+@pytest.fixture(name="fastapi_app")
+def fastapi_app_(request, docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
     """
     Init the FastAPI application and the database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
     """
 
-    # Read the .env file that comes with docker-compose.yml
-    load_dotenv(RESOURCES_FOLDER / "db" / ".env")
+    # Set environment variables passed by parametrization (if any)
+    with pytest.MonkeyPatch.context() as mp:
+        # Default values
+        pytest_env = {RSPY_LOCAL_MODE: True}  # no cluster mode for pytests
 
-    # Run all routers for the pytests
-    with ExitStack():
-        yield app
+        # Read parametrization
+        try:
+            pytest_env.update(request.param.envs)  # envs = Envs instance
+        except AttributeError:
+            pass
+
+        # Update environment variables
+        for env, value in pytest_env.items():
+            mp.setenv(env, str(value))
+
+        # Read the .env file that comes with docker-compose.yml
+        load_dotenv(RESOURCES_FOLDER / "db" / ".env")
+
+        # Run all routers for the pytests
+        with ExitStack():
+            yield init_app()
 
 
 @pytest.fixture(name="client")

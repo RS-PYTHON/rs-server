@@ -50,7 +50,7 @@ bandit = "^1.7.5"
 safety = "^2.3.5"
 pylint = "^3.0.3"
 flake8-pyproject = "^1.2.3"
-httpx = "^0.25.2"
+httpx = "^0.27.0"
 moto = "==4.2.8"
 flask = "^3.0.0"
 flask-cors = "^4.0.0"
@@ -58,6 +58,7 @@ pytest-asyncio = "^0.23.2"
 pytest-docker = "^2.0.1"
 sphinx = "^7.2.6"
 sphinx-rtd-theme = "^2.0.0"
+pytest-httpx = "^0.30.0"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
@@ -102,6 +103,11 @@ notes = ["XXX"] # no errors on TODO and FIXME
 [tool.pylint.SIMILARITIES]
 # Minimum lines number of a similarity FIXME.
 min-similarity-lines=10
+
+# [tool.pylint."MESSAGES CONTROL"]
+# disable = [
+#     "duplicate-code",
+# ]
 
 [tool.bandit.assert_used]
 skips = ['*/test_*.py']

@@ -1,5 +1,14 @@
 """Common fixture for catalog service."""
 
+import os
+
+# We are in local mode (no cluster).
+# Do this before any other imports.
+# pylint: disable=wrong-import-position
+# flake8: noqa
+os.environ["RSPY_LOCAL_MODE"] = "1"
+os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -171,8 +180,7 @@ class Feature:
             "type": "Feature",
             "assets": {
                 "COG": {
-                    "href": f"""https://arturo-stac-api-test-data.s3.amazonaws.com
-                    /{self.collection}/images/may24C355000e4102500n.tif""",
+                    "href": f"""s3://temp-bucket/{self.collection}/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
                 },
@@ -197,6 +205,7 @@ class Feature:
                 "datetime": "2000-02-02T00:00:00Z",
                 "proj:epsg": 3857,
                 "orientation": "nadir",
+                "owner_id": f"{self.owner_id}",
             },
             "stac_version": "1.0.0",
             "stac_extensions": [
@@ -237,6 +246,99 @@ def feature_titi_s2_l1_0_fixture() -> Feature:  # pylint: disable=missing-functi
     return a_feature("titi", "fe916452-ba6f-4631-9154-c249924a122d", "S2_L1")
 
 
+@pytest.fixture(scope="session", name="darius_s1_l2")
+def darius_s1_l2_fixture() -> Collection:  # pylint: disable=missing-function-docstring
+    return a_collection("darius", "S1_L2")
+
+
+@pytest.fixture(scope="session", name="a_correct_feature")
+def a_correct_feature_fixture() -> dict:
+    """This fixture returns a correct feature."""
+    return {
+        "collection": "S1_L2",
+        "assets": {
+            "zarr": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "roles": ["data"],
+            },
+            "cog": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "roles": ["data"],
+            },
+            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+        },
+        "bbox": [0],
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-94.6334839, 37.0595608],
+                    [-94.6334839, 37.0332547],
+                    [-94.6005249, 37.0332547],
+                    [-94.6005249, 37.0595608],
+                    [-94.6334839, 37.0595608],
+                ],
+            ],
+        },
+        "id": "S1SIWOCN_20220412T054447_0024_S139",
+        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+        "other_metadata": {},
+        "properties": {
+            "gsd": 0.5971642834779395,
+            "width": 2500,
+            "height": 2500,
+            "datetime": "2000-02-02T00:00:00Z",
+            "proj:epsg": 3857,
+            "orientation": "nadir",
+        },
+        "stac_extensions": [
+            "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+        ],
+        "stac_version": "1.0.0",
+        "type": "Feature",
+    }
+
+
+@pytest.fixture(scope="session", name="a_incorrect_feature")
+def a_incorrect_feature_fixture() -> dict:
+    """This fixture return a feature without geometry and properties."""
+    return {
+        "collection": "S1_L2",
+        "assets": {
+            "zarr": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "roles": ["data"],
+            },
+            "cog": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "roles": ["data"],
+            },
+            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+        },
+        "bbox": [0],
+        "geometry": {},
+        "id": "S1SIWOCN_20220412T054447_0024_S139",
+        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+        "other_metadata": {},
+        "properties": {},
+        "stac_extensions": [
+            "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+        ],
+        "stac_version": "1.0.0",
+        "type": "Feature",
+    }
+
+
 def add_feature(client: TestClient, feature: Feature):
     """Add the given feature in the STAC catalogue.
 
@@ -258,6 +360,7 @@ def setup_database(
     toto_s1_l1,
     toto_s2_l3,
     titi_s2_l1,
+    darius_s1_l2,
     feature_toto_s1_l1_0,
     feature_toto_s1_l1_1,
     feature_titi_s2_l1_0,
@@ -279,6 +382,7 @@ def setup_database(
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s2_l1)
+    add_collection(client, darius_s1_l2)
     add_feature(client, feature_toto_s1_l1_0)
     add_feature(client, feature_toto_s1_l1_1)
     add_feature(client, feature_titi_s2_l1_0)

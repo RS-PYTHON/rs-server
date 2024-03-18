@@ -10,7 +10,8 @@
         "adgs:id": "PLACEHOLDER",
         "datetime": "PLACEHOLDER",
         "start_datetime": "PLACEHOLDER",
-        "end_datetime": "PLACEHOLDER"
+        "end_datetime": "PLACEHOLDER",
+        "created": "PLACEHOLDER"
     },
     "links": [],
     "assets": {
