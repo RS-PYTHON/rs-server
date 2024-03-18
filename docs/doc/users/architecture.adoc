@@ -13,7 +13,7 @@ We can split the system into following Components:
 ** *RS-Server Backend / LTA*
 ** *RS-Server Backend / AUXIP*
 
-* *RS-Server libraries*: this is a set of python functions that provide processing task and flows. Flows and tasks can be orchestrated by Prefect server or executed from any Python environment. On RS-Server side there will be also function to compute performance indicator.
+* *RS-Client libraries*: this is a set of python functions that provide processing task and flows. Flows and tasks can be orchestrated by Prefect server or executed from any Python environment. On RS-Server side there will be also function to compute performance indicator.
 
 * *RS-Virtual environment*: Component that gives users access to computational environments and resources for executing processing chains.
 
@@ -30,8 +30,16 @@ We can split the system into following Components:
 
 image::staticview.png[]
 
+=== RS Client Libraries
+
+image::python-components.png[]
+
 == Dynamic View
 
 The following schema highlights main interactions between the components.
 
 image::dynamicview.png[]
+
+=== STAC item lifecycle
+
+image::stac-item-lifecycle.png[]
