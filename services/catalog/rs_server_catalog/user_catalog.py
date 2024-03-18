@@ -474,7 +474,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             JSONResponse: The new response with the updated collection name.
         """
         body = [chunk async for chunk in response.body_iterator]
-        response_content = json.loads(b"".join(body).decode())
+        response_content = json.loads(b"".join(body).decode())  # type:ignore
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         return JSONResponse(response_content)
