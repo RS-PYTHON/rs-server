@@ -72,6 +72,7 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         }
         response = client.post("/catalog/esmeralda/collections", json=new_collection)
         assert response.status_code == 200
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def test_status_code_200_update_collection_esmeralda_s1_l1(self, client):
         esmeralda_collection = {
@@ -91,6 +92,7 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         assert response.status_code == 200
         response_json = json.loads(response.content)
         assert response_json["id"] == "S1_L1"
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def test_if_update_collection_esmeralda_s1_l1_worked(self, client):
         esmeralda_collection = {
@@ -110,6 +112,7 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         response = client.get("/catalog/esmeralda/collections/S1_L1")
         content = json.loads(response.content)
         assert content["description"] == "The S1_L1 collection for BIG Esmeralda user."
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def test_collection_with_esmeralda_added_after_post(self, client):
         new_collection = {
@@ -121,6 +124,7 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         client.post("/catalog/esmeralda/collections", json=new_collection)
         response = client.get("/catalog/esmeralda/collections/S1_L1")
         assert response.status_code == 200
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def load_json_collections(self, client, endpoint):
         response = client.get(endpoint)
@@ -376,6 +380,7 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
         }
         response = client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
         assert response.status_code == 200
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def test_feature_with_esmeralda_added_after_post(self, client):
         esmeralda_collection = {
@@ -418,6 +423,7 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
         client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
         response = client.get("/catalog/esmeralda/collections/S1_L1/items/feature_0")
         assert response.status_code == 200
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def load_json_feature(self, client, endpoint):
         response = client.get(endpoint)
@@ -955,8 +961,8 @@ def test_extract_openapi_specification():
                 if new_key != "/catalog/search":
                     method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
                 elif method["operationId"] == "Search_search_get":
-                    method[
-                        "description"
-                    ] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+                    method["description"] = (
+                        "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+                    )
     app.openapi_schema = openapi_spec
     return app.openapi_schema
