@@ -12,7 +12,7 @@
     "name": "catalog-bucket",
     "S3_ACCESSKEY": "acces_key",
     "S3_SECRETKEY": "secret_key",
-    "S3_ENDPOINT": "s3://catalog-bucket/",
+    "S3_ENDPOINT": "s3://catalog-bucket",
     "S3_REGION": "sbg"
   }
 }

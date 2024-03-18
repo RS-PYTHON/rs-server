@@ -20,7 +20,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
-import starlette
+from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
@@ -51,6 +51,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
     """The user catalog middleware."""
 
     handler: S3StorageHandler = None
+    temp_bucket_name: str = "temp-bucket"
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -78,14 +79,18 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         """Used to clear specific files from temporary bucket."""
         if not self.handler:
             return
-        for asset in content["assets"]:
+        for asset in content.get("assets", {}):
             # Iterate through all assets and delete them from the temp bucket.
-            file_key = content["assets"][asset]["alternate"]["s3"]["href"].replace(
-                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
-                "",
+            file_key = (
+                content["assets"][asset]["alternate"]["s3"]["href"]
+                .replace(
+                    bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+                    "",
+                )
+                .lstrip("/")
             )
             # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
-            self.handler.delete_file_from_s3(bucket_info["temp-bucket"]["name"], file_key)
+            self.handler.delete_file_from_s3(self.temp_bucket_name, file_key)
 
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
@@ -150,43 +155,47 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = filename_str.split("/")
+                self.temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
                 old_bucket_arr[2] = bucket_info["catalog-bucket"]["name"]
                 s3_key = "/".join(old_bucket_arr)
                 new_s3_href = {"s3": {"href": s3_key}}
                 content["assets"][asset].update({"alternate": new_s3_href})
-                files_s3_key.append(filename_str.replace(bucket_info["temp-bucket"]["S3_ENDPOINT"], ""))
-            except (IndexError, AttributeError, KeyError):
-                return JSONResponse("Invalid obs bucket!", status_code=400)
+                files_s3_key.append(filename_str.replace(f"s3://{self.temp_bucket_name}", ""))
+            except (IndexError, AttributeError, KeyError) as exc:
+                raise HTTPException(detail="Invalid obs bucket!", status_code=400) from exc
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
         if new_stac_extension not in content["stac_extensions"]:
             content["stac_extensions"].append(new_stac_extension)
-        # 4 tdb, bucket movement
+        # 4 bucket movement
         try:
-            # try with env, but maybe read from json file?
-            self.handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
-            config = TransferFromS3ToS3Config(
-                files_s3_key,
-                bucket_info["temp-bucket"]["name"],
-                bucket_info["catalog-bucket"]["name"],
-                copy_only=True,
-                max_retries=3,
-            )
-            failed_files = self.handler.transfer_from_s3_to_s3(config)
-            if failed_files:
-                return JSONResponse(f"Could not transfer files to catalog bucket: {failed_files}", status_code=500)
+            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+                self.handler = S3StorageHandler(
+                    os.environ["S3_ACCESSKEY"],
+                    os.environ["S3_SECRETKEY"],
+                    os.environ["S3_ENDPOINT"],
+                    os.environ["S3_REGION"],
+                )
+                config = TransferFromS3ToS3Config(
+                    files_s3_key,
+                    self.temp_bucket_name,
+                    bucket_info["catalog-bucket"]["name"],
+                    copy_only=True,
+                    max_retries=3,
+                )
 
-        except KeyError:
-            pass
-            # JSONResponse("Could not find S3 credentials", status_code=500)
-        except botocore.exceptions.EndpointConnectionError:
-            return JSONResponse("Could not connect to obs bucket!", status_code=400)
+                failed_files = self.handler.transfer_from_s3_to_s3(config)
+
+                if failed_files:
+                    raise HTTPException(
+                        detail=f"Could not transfer files to catalog bucket: {failed_files}",
+                        status_code=500,
+                    )
+        except KeyError as kerr:
+            raise HTTPException(detail="Could not find S3 credentials", status_code=500) from kerr
+        except botocore.exceptions.EndpointConnectionError as exc:
+            raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from exc
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
@@ -198,9 +207,13 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # Assume that pgstac already selected the correct asset id
         # just check type, generate and return url
         asset_id = path.split("/")[-1]
-        s3_path = content["assets"][asset_id]["alternate"]["s3"]["href"].replace(
-            bucket_info["catalog-bucket"]["S3_ENDPOINT"],
-            "",
+        s3_path = (
+            content["assets"][asset_id]["alternate"]["s3"]["href"]
+            .replace(
+                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+                "",
+            )
+            .lstrip("/")
         )
         try:
             handler = S3StorageHandler(
@@ -317,10 +330,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content["id"] = f"{user}_{content['id']}"
         if "items" in request.scope["path"]:
             content = self.update_stac_item_publication(content, user)
-            # If something fails inside update_stac_item_publication don't forward the request
-            if isinstance(content, starlette.responses.JSONResponse):
-                return JSONResponse(content.body.decode(), status_code=content.status_code)
-            # update request body (better find the function that updates the body maybe?)
         elif request.scope["path"] == "/search" and "filter" in content:
             qs_filter = content["filter"]
             filters = parse_cql2_json(qs_filter)
@@ -328,6 +337,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # May be duplicate?
             if "collections" in content:
                 content["collections"] = [f"{user}_{content['collections']}"]
+        # update request body (better find the function that updates the body maybe?)c
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         return request  # pylint: disable=protected-access
 
@@ -375,7 +385,23 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_put_post_response(self, request: Request, response: StreamingResponse, ids: dict):
-        """Used to handle put or post responses."""
+        """
+        Manage put or post responses.
+
+        Args:
+            response (starlette.responses.StreamingResponse): The response object received.
+
+        Returns:
+            JSONResponse: Returns a JSONResponse object containing the response content
+            with the appropriate status code.
+
+        Raises:
+            HTTPException: If there is an error while clearing the temporary bucket,
+            raises an HTTPException with a status code of 400 and detailed information.
+            If there is a generic exception, raises an HTTPException with a status code
+            of 400 and a generic bad request detail.
+
+        """
         try:
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
@@ -388,31 +414,54 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 response_content = remove_user_from_feature(response_content, ids["owner_id"])
                 response_content = self.adapt_object_links(response_content, ids["owner_id"])
             self.clear_temp_bucket(response_content)
-        except RuntimeError:
-            return JSONResponse("Failed to clear temp-bucket", status_code=400)
-        except Exception:  # pylint: disable=broad-except
-            return JSONResponse("Bad request", status_code=400)
+        except RuntimeError as exc:
+            raise HTTPException(detail="Failed to clear temp-bucket", status_code=400) from exc
+        except Exception as exc:  # pylint: disable=broad-except
+            raise HTTPException(detail="Bad request", status_code=400) from exc
         return JSONResponse(response_content, status_code=response.status_code)
 
-    async def manage_download_response(self, request, response):
-        """Used to handle reqeust that should generate presigned url."""
+    async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
+        """
+        Manage download response and handle requests that should generate a presigned URL.
+
+        Args:
+            request (starlette.requests.Request): The request object.
+            response (starlette.responses.StreamingResponse): The response object received.
+
+        Returns:
+            JSONResponse: Returns a JSONResponse object containing either the presigned URL or
+            the response content with the appropriate status code.
+
+        """
         body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(body).decode())
+        content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
             content, code = self.generate_presigned_url(content, request.url.path)
             return JSONResponse(content, status_code=code)
         return JSONResponse(content, status_code=response.status_code)
 
-    async def manage_response_error(self, response):
-        """This function is called when request send to catalog fails"""
+    async def manage_response_error(self, response: StreamingResponse | Any) -> JSONResponse:
+        """
+        Manage response error when sending a request to the catalog.
+
+        Args:
+            response (starlette.responses.StreamingResponse): The response object received from the failed request.
+
+        Raises:
+            HTTPException: If the response is not None, clears the catalog bucket and raises an HTTPException
+                with a status code of 400 and detailed information about the bad request.
+                If the response is None, raises an HTTPException with a status code of 400 and
+                a generic bad request detail.
+
+        """
         if response is not None:
             body = [chunk async for chunk in response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())
+            response_content = json.loads(b"".join(body).decode())  # type:ignore
             self.clear_catalog_bucket(response_content)
-            return JSONResponse(f"Bad request, {response_content}", status_code=400)
+            raise HTTPException(detail=f"Bad request, {response_content}", status_code=400)
         # Otherwise just return the exception
-        return JSONResponse("Bad request", status_code=400)
+        raise HTTPException(detail="Bad request", status_code=400)
 
     async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
         """Change the name of the deleted collection by removing owner_id.
@@ -430,7 +479,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         return JSONResponse(response_content)
 
-    async def dispatch(self, request, call_next):  # pylint: disable=too-many-return-statements
+
+    async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
         ids = get_ids(request.scope["path"])
         user = ids["owner_id"]
@@ -438,27 +488,31 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         # Handle requests
         if request.method == "GET" and request.scope["path"] == "/search":
+            # URL: GET: '/catalog/search'
             request = self.manage_search_request(request)
         elif request.method in ["POST", "PUT"] and user:
+            # URL: POST / PUT: '/catalog/{USER}/collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
             request = await self.manage_put_post_request(request, ids)
-            if isinstance(request, starlette.responses.JSONResponse):
-                # Forward the failure, don't continue
-                return JSONResponse(content="Invalid obs bucket", status_code=400)
 
         response = None
         try:
             response = await call_next(request)
         except Exception:  # pylint: disable=broad-except
             response = await self.manage_response_error(response)
+            return response
 
         # Handle responses
         if request.scope["path"] == "/search":
+            # GET: '/catalog/search'
             response = await self.manage_search_response(request, response)
         elif request.method == "GET" and "download" in request.url.path:
+            # URL: GET: '/catalog/{USER}/collections/{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
         elif request.method == "GET" and user:
+            # URL: GET: '/catalog/{USER}/Collections'
             response = await self.manage_get_response(request, response, ids)
         elif request.method in ["POST", "PUT"] and user:
+            # URL: POST / PUT: '/catalog/{USER}/Collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
             response = await self.manage_put_post_response(request, response, ids)
         elif request.method == "DELETE" and user:
             response = await self.manage_delete_response(response, user)

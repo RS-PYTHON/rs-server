@@ -6,11 +6,18 @@ If the variable is not set, enables all extensions.
 """
 
 import os
+from typing import Callable
 
+import httpx
 from brotli_asgi import BrotliMiddleware
+from fastapi import Depends, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
+from fastapi.routing import APIRoute
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
+from rs_server_common import authentication
+from rs_server_common import settings as common_settings
+from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
@@ -30,6 +37,13 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.status import HTTP_403_FORBIDDEN
+
+logger = Logging.default(__name__)
+
+# Technical endpoints (no authentication)
+TECH_ENDPOINTS = ["/_mgmt/ping"]
 
 
 def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
@@ -68,18 +82,17 @@ def extract_openapi_specification():
     )
     openapi_spec_paths = openapi_spec["paths"]
     for key in list(openapi_spec_paths.keys()):
-        if "_mgmt" not in key:
-            new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
-            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
-            endpoint = openapi_spec_paths[new_key]
-            for method_key in endpoint.keys():
-                method = endpoint[method_key]
-                if new_key != "/catalog/search":
-                    method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-                elif method["operationId"] == "Search_search_get":
-                    method[
-                        "description"
-                    ] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+        if key in TECH_ENDPOINTS:
+            continue
+        new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
+        openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+        endpoint = openapi_spec_paths[new_key]
+        for method_key in endpoint.keys():
+            method = endpoint[method_key]
+            if new_key != "/catalog/search":
+                method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
+            elif method["operationId"] == "Search_search_get":
+                method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
@@ -107,6 +120,34 @@ else:
 
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
 
+
+class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """
+    Implement authentication verification.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """
+        Middleware implementation.
+        """
+
+        # Only in cluster mode (not local mode) and for the catalog endpoints
+        if (common_settings.cluster_mode()) and request.url.path.startswith("/catalog"):
+            # Read the api key passed in header
+            apikey_value = request.headers.get(authentication.APIKEY_HEADER, None)
+            if not apikey_value:
+                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
+
+            # Check the api key validity, passed as an HTTP header.
+            apikey_info = await authentication.apikey_security(request, apikey_value)
+
+            # TODO: check api key rights before calling the next middleware
+            logger.debug(f"API key information: {apikey_info}")
+
+        # Call the next middleware
+        return await call_next(request)
+
+
 api = StacApi(
     settings=settings,
     extensions=extensions,
@@ -114,22 +155,55 @@ api = StacApi(
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
-    middlewares=[UserCatalogMiddleware, BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware],
+    middlewares=[
+        UserCatalogMiddleware,
+        BrotliMiddleware,
+        CORSMiddleware,
+        ProxyHeaderMiddleware,
+        AuthenticationMiddleware,
+    ],
 )
 app = api.app
 app.openapi = extract_openapi_specification
 
 
+# In cluster mode, add the api key security dependency: the user must provide
+# an api key (generated from the apikey manager) to access the endpoints
+if common_settings.cluster_mode():
+    # One scope for each ApiRouter path and method
+    scopes = []
+    for route in api.app.router.routes:
+        if isinstance(route, APIRoute):
+            # Not on the technical endpoints
+            if route.path in TECH_ENDPOINTS:
+                continue
+            for method_ in route.methods:
+                scopes.append({"path": route.path, "method": method_})
+
+    # Note: Depends(apikey_security) doesn't work (the function is not called) after we
+    # changed the url prefixes in the openapi specification.
+    # But this dependency still adds the lock icon in swagger to enter the api key.
+    api.add_route_dependencies(scopes=scopes, dependencies=[Depends(authentication.apikey_security)])
+
+
 @app.on_event("startup")
 async def startup_event():
-    """Connect to database on startup."""
+    """FastAPI startup events"""
+    # Connect to database on startup
     await connect_to_db(app)
+
+    # Init objects for dependency injection
+    common_settings.set_http_client(httpx.AsyncClient())
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Close database connection."""
+    """FastAPI shutdown events"""
+    # Close database connection
     await close_db_connection(app)
+
+    # Close objects for dependency injection
+    await common_settings.del_http_client()
 
 
 def run():

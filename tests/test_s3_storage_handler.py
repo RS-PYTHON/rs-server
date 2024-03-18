@@ -19,7 +19,11 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 
-from .conftest import S3_RSC_FOLDER, export_aws_credentials
+# TODO: use fixture instead ? + set environment variables in monkeypatch
+from .conftest import (  # pylint: disable=no-name-in-module
+    S3_RSC_FOLDER,
+    export_aws_credentials,
+)
 
 FULL_FOLDER = osp.join(S3_RSC_FOLDER, "full_s3_storage_handler_test")
 SHORT_FOLDER = osp.join(S3_RSC_FOLDER, "short_s3_storage_handler_test")
