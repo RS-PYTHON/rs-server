@@ -72,6 +72,7 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         }
         response = client.post("/catalog/esmeralda/collections", json=new_collection)
         assert response.status_code == 200
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def test_status_code_200_update_collection_esmeralda_s1_l1(self, client):
         esmeralda_collection = {
@@ -84,11 +85,14 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         new_esmeralda_collection = {
             "id": "S1_L1",
             "type": "Collection",
-            "description": "The S1_L1 collection for BIG Esmeralda user.",
+            "description": "The S1_L1 collection for New Esmeralda user.",
             "stac_version": "1.0.0",
         }
         response = client.put("/catalog/esmeralda/collections", json=new_esmeralda_collection)
         assert response.status_code == 200
+        response_json = json.loads(response.content)
+        assert response_json["id"] == "S1_L1"
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def test_if_update_collection_esmeralda_s1_l1_worked(self, client):
         esmeralda_collection = {
@@ -108,6 +112,7 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         response = client.get("/catalog/esmeralda/collections/S1_L1")
         content = json.loads(response.content)
         assert content["description"] == "The S1_L1 collection for BIG Esmeralda user."
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def test_collection_with_esmeralda_added_after_post(self, client):
         new_collection = {
@@ -119,6 +124,7 @@ class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-functi
         client.post("/catalog/esmeralda/collections", json=new_collection)
         response = client.get("/catalog/esmeralda/collections/S1_L1")
         assert response.status_code == 200
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def load_json_collections(self, client, endpoint):
         response = client.get(endpoint)
@@ -321,12 +327,6 @@ class TestRedirectionCatalogUserIdCollectionsCollectionid:  # pylint: disable=mi
         add_feature(client, feature_toto_s1_l1_1)
         assert response.status_code == 200
 
-    # def test_update_collection(self, client):
-    #     toto_s1_l1 = client.get("/catalog/toto/collections/S1_L1")
-    #     json_toto = json.loads(toto_s1_l1.content)
-    #     response = client.put("/catalog/toto/collections/S1_L1", json=json_toto, headers=toto_s1_l1.headers)
-    #     assert response.status_code == 200
-
 
 @pytest.mark.integration
 class TestRedirectionItems:  # pylint: disable=missing-function-docstring
@@ -380,6 +380,7 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
         }
         response = client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
         assert response.status_code == 200
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def test_feature_with_esmeralda_added_after_post(self, client):
         esmeralda_collection = {
@@ -422,6 +423,7 @@ class TestRedirectionItems:  # pylint: disable=missing-function-docstring
         client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
         response = client.get("/catalog/esmeralda/collections/S1_L1/items/feature_0")
         assert response.status_code == 200
+        client.delete("/catalog/esmeralda/collections/S1_L1")
 
     def load_json_feature(self, client, endpoint):
         response = client.get(endpoint)
@@ -521,6 +523,8 @@ class TestRedirectionItemsItemId:  # pylint: disable=missing-function-docstring
             headers=toto_s1_l1_feature.headers,
         )
         assert response.status_code == 200
+        response_json = json.loads(response.content)
+        assert response_json["collection"] == "S1_L1"
 
     def test_delete_feature(self, client, feature_toto_s1_l1_0):
         response = client.delete("/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
