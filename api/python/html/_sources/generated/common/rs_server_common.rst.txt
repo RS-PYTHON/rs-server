@@ -16,10 +16,26 @@ Subpackages
 Submodules
 ----------
 
+rs\_server\_common.authentication module
+----------------------------------------
+
+.. automodule:: rs_server_common.authentication
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rs\_server\_common.fastapi\_app module
 --------------------------------------
 
 .. automodule:: rs_server_common.fastapi_app
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_common.settings module
+----------------------------------
+
+.. automodule:: rs_server_common.settings
    :members:
    :undoc-members:
    :show-inheritance:

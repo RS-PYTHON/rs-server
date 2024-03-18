@@ -57,7 +57,9 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#module-rs_server_common.authentication">rs_server_common.authentication module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#module-rs_server_common.fastapi_app">rs_server_common.fastapi_app module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#module-rs_server_common.settings">rs_server_common.settings module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#module-rs_server_common">Module contents</a></li>
 </ul>
 </li>
@@ -226,7 +228,7 @@ and download them locally.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="rs_server_common.data_retrieval.provider.Provider.search">
-<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">between</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#rs_server_common.data_retrieval.provider.TimeRange" title="rs_server_common.data_retrieval.provider.TimeRange"><span class="pre">TimeRange</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#rs_server_common.data_retrieval.provider.Product" title="rs_server_common.data_retrieval.provider.Product"><span class="pre">Product</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#rs_server_common.data_retrieval.provider.Provider.search" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">between</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#rs_server_common.data_retrieval.provider.TimeRange" title="rs_server_common.data_retrieval.provider.TimeRange"><span class="pre">TimeRange</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#rs_server_common.data_retrieval.provider.Provider.search" title="Link to this definition"></a></dt>
 <dd><p>Search for products with the given time range.</p>
 <p>The search result is a dictionary of products found indexed by id.</p>
 <dl class="field-list simple">
@@ -234,7 +236,7 @@ and download them locally.</p>
 <dd class="field-odd"><p><strong>between</strong> – the search period</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>the files found indexed by file id.</p>
+<dd class="field-even"><p>The files found indexed by file id. Specific to each provider.</p>
 </dd>
 </dl>
 </dd></dl>

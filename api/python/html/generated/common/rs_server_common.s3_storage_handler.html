@@ -57,7 +57,9 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#module-rs_server_common.authentication">rs_server_common.authentication module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#module-rs_server_common.fastapi_app">rs_server_common.fastapi_app module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#module-rs_server_common.settings">rs_server_common.settings module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="rs_server_common.html#module-rs_server_common">Module contents</a></li>
 </ul>
 </li>
@@ -109,7 +111,7 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.GetKeysFromS3Config.s3_files">
 <span class="sig-name descname"><span class="pre">s3_files</span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.GetKeysFromS3Config.s3_files" title="Link to this definition"></a></dt>
-<dd><p>A list of S3 object keys.</p>
+<dd><p>A list with the  S3 object keys to be downloaded.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>list</p>
@@ -196,7 +198,7 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.PutFilesToS3Config.files">
 <span class="sig-name descname"><span class="pre">files</span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.PutFilesToS3Config.files" title="Link to this definition"></a></dt>
-<dd><p>A list of local file paths to be uploaded.</p>
+<dd><p>A list with the local file paths to be uploaded.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>List</p>
@@ -361,6 +363,12 @@ method to create an S3 client instance using the provided credentials and config
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_bucket_completely">
+<span class="sig-name descname"><span class="pre">delete_bucket_completely</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_bucket_completely" title="Link to this definition"></a></dt>
+<dd><p>Utils function used to remove a s3 bucket even if not empty</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_file_from_s3">
 <span class="sig-name descname"><span class="pre">delete_file_from_s3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s3_obj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_file_from_s3" title="Link to this definition"></a></dt>
 <dd><p>Delete a file from S3.</p>
@@ -441,7 +449,7 @@ If the local file doesn’t exist, the pair will be (None, requested_file_to_upl
 
 <dl class="py method">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_keys_from_s3">
-<span class="sig-name descname"><span class="pre">get_keys_from_s3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_keys_from_s3" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">get_keys_from_s3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#rs_server_common.s3_storage_handler.s3_storage_handler.GetKeysFromS3Config" title="rs_server_common.s3_storage_handler.s3_storage_handler.GetKeysFromS3Config"><span class="pre">GetKeysFromS3Config</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_keys_from_s3" title="Link to this definition"></a></dt>
 <dd><p>Download S3 keys specified in the configuration.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -517,7 +525,7 @@ This function should not be used in production</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.put_files_to_s3">
-<span class="sig-name descname"><span class="pre">put_files_to_s3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.put_files_to_s3" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">put_files_to_s3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#rs_server_common.s3_storage_handler.s3_storage_handler.PutFilesToS3Config" title="rs_server_common.s3_storage_handler.s3_storage_handler.PutFilesToS3Config"><span class="pre">PutFilesToS3Config</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.put_files_to_s3" title="Link to this definition"></a></dt>
 <dd><p>Upload files to S3 according to the provided configuration.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -538,6 +546,27 @@ It returns a list of local files that couldn’t be uploaded successfully.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.transfer_from_s3_to_s3">
+<span class="sig-name descname"><span class="pre">transfer_from_s3_to_s3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config" title="rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config"><span class="pre">TransferFromS3ToS3Config</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.transfer_from_s3_to_s3" title="Link to this definition"></a></dt>
+<dd><p>Copy S3 keys specified in the configuration.
+:param config: Configuration object containing bucket source, bucket destination,</p>
+<blockquote>
+<div><p>S3 files, maximum retries.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of S3 keys that failed to be copied.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>Exception</strong> – Any unexpected exception raised during the upload process.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.wait_timeout">
 <span class="sig-name descname"><span class="pre">wait_timeout</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.wait_timeout" title="Link to this definition"></a></dt>
 <dd><p>Wait for a specified timeout duration (minimum 200 ms).</p>
@@ -552,6 +581,82 @@ in each iteration until the cumulative sleep time reaches the specified timeout 
 </dd>
 </dl>
 </dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server_common.s3_storage_handler.s3_storage_handler.</span></span><span class="sig-name descname"><span class="pre">TransferFromS3ToS3Config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s3_files</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket_src</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bucket_dst</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_retries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>S3 configuration for copying a list with keys between buckets</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.s3_files">
+<span class="sig-name descname"><span class="pre">s3_files</span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.s3_files" title="Link to this definition"></a></dt>
+<dd><p>A list with the S3 object keys to be copied.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.bucket_src">
+<span class="sig-name descname"><span class="pre">bucket_src</span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.bucket_src" title="Link to this definition"></a></dt>
+<dd><p>The source S3 bucket name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.bucket_dst">
+<span class="sig-name descname"><span class="pre">bucket_dst</span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.bucket_dst" title="Link to this definition"></a></dt>
+<dd><p>The destination S3 bucket name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.max_retries">
+<span class="sig-name descname"><span class="pre">max_retries</span></span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.max_retries" title="Link to this definition"></a></dt>
+<dd><p>The maximum number of download retries. Default is DWN_S3FILE_RETRIES.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">bucket_dst</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">bucket_src</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#id10" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.copy_only">
+<span class="sig-name descname"><span class="pre">copy_only</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.copy_only" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">max_retries</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">20</span></em><a class="headerlink" href="#id11" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">s3_files</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span></em><a class="headerlink" href="#id12" title="Link to this definition"></a></dt>
+<dd></dd></dl>
 
 </dd></dl>
 
