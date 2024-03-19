@@ -361,16 +361,6 @@ class TestTheMergedOpenapi:
         assert the_merge_openapis["openapi"] == adgs_openapi["openapi"]
 
     @responses.activate
-    def test_version_is_the_same_as_the_service(
-        self,
-        cadip_openapi: dict,
-        adgs_openapi: dict,
-        the_merge_openapis: dict,
-    ):
-        assert the_merge_openapis["info"]["version"] == cadip_openapi["info"]["version"]
-        assert the_merge_openapis["info"]["version"] == adgs_openapi["info"]["version"]
-
-    @responses.activate
     def test_title_is_rs_server(
         self,
         cadip_openapi: dict,
@@ -456,30 +446,3 @@ class TestTestMergeProcessFailedWhen:
         cause = exc_info.value.__cause__
         assert isinstance(cause, ValueError)
         assert str(cause) == "The openapi versions are not all the same : 3.1.0, 9.9.9"
-
-    @responses.activate
-    def test_all_services_have_not_the_same_version(
-        self,
-        cadip_openapi: dict,
-        services_conf: ServicesConfiguration,
-        tmp_path: Path,
-    ):
-        adgs_openapi = a_service_openapi(service_name="adgs", service_version="9.9.9")
-        responses.get(
-            url=services_conf.doc_endpoint_url("cadip"),
-            status=200,
-            json=cadip_openapi,
-        )
-        responses.get(
-            url=services_conf.doc_endpoint_url("adgs"),
-            status=200,
-            json=adgs_openapi,
-        )
-
-        with pytest.raises(BuildOpenapiFailed) as exc_info:
-            build_aggregated_openapi(services_conf.file, tmp_path / "output.json")
-        assert str(exc_info.value) == "Unable to generate REST documentation."
-
-        cause = exc_info.value.__cause__
-        assert isinstance(cause, ValueError)
-        assert str(cause) == "The service versions are not all the same : 0.1.0, 9.9.9"

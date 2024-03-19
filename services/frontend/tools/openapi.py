@@ -5,6 +5,7 @@ from pathlib import Path
 
 import requests
 from requests import HTTPError
+from rs_server_frontend import __version__
 
 
 class BuildOpenapiFailed(BaseException):
@@ -50,7 +51,7 @@ class AggregatedOpenapi:
     def build_openapi(self) -> dict:
         return {
             "openapi": self.merge_openapi_versions(),
-            "info": {"title": "RS-server", "version": self.merge_service_versions()},
+            "info": {"title": "RS-server", "version": str(__version__)},
             "paths": self.merge_paths(),
             "components": self.merge_components(),
         }
