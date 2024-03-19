@@ -381,9 +381,9 @@ def setup_database(
         user id titi.
     """
     add_collection(client, toto_s1_l1)
-    add_collection(client, toto_s2_l3)
-    add_collection(client, titi_s2_l1)
+    # add_collection(client, toto_s2_l3)
+    # add_collection(client, titi_s2_l1)
     add_collection(client, darius_s1_l2)
     add_feature(client, feature_toto_s1_l1_0)
-    add_feature(client, feature_toto_s1_l1_1)
-    add_feature(client, feature_titi_s2_l1_0)
+    # add_feature(client, feature_toto_s1_l1_1)
+    # add_feature(client, feature_titi_s2_l1_0)

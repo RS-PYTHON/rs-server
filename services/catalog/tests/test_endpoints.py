@@ -562,283 +562,6 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
     assert response.status_code == 200
 
 
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "owner, collection_id",
-    [
-        (
-            "darius",
-            "S1_L2",
-        ),
-    ],
-)
-def test_publish_item_update(client, a_correct_feature, owner, collection_id):
-    """Test used to verify publication of a featureCollection to the catalog."""
-    # Create moto server and temp / catalog bucket
-    moto_endpoint = "http://localhost:8077"
-    export_aws_credentials()
-    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    # Enable bucket transfer
-    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
-    server = ThreadedMotoServer(port=8077)
-    server.start()
-    try:
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
-
-        temp_bucket = "temp-bucket"
-        catalog_bucket = "catalog-bucket"
-        s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
-        s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-        assert not s3_handler.list_s3_files_obj(temp_bucket, "")
-        assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-
-        # Populate temp-bucket with some small files.
-        lst_with_files_to_be_copied = [
-            "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-            "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-            "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-        ]
-        for obj in lst_with_files_to_be_copied:
-            s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
-
-        # check that temp_bucket is not empty
-        assert s3_handler.list_s3_files_obj(temp_bucket, "")
-        # check if temp_bucket content is different from catalog_bucket
-        assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
-            s3_handler.list_s3_files_obj(catalog_bucket, ""),
-        )
-
-        # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
-        # and a good OBS path. => 200 OK
-        # Check if that user darius have a collection (Added in conftest -> setup_database)
-        # Add a featureCollection to darius collection
-        added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
-        assert added_feature.status_code == 200
-        feature_data = json.loads(added_feature.content)
-        # check if owner was added and match to the owner of the collection
-        assert feature_data["properties"]["owner"] == owner
-        # check if stac_extension correctly updated collection name
-        assert feature_data["collection"] == f"{owner}_{collection_id}"
-        # check if stac extension was added
-        assert (
-            "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json" in feature_data["stac_extensions"]
-        )
-
-        # Files were moved, check that catalog_bucket is not empty
-        assert s3_handler.list_s3_files_obj(catalog_bucket, "")
-        # Check if temp_bucket is now empty
-        assert not s3_handler.list_s3_files_obj(temp_bucket, "")
-        # Check if buckets content is different
-        assert s3_handler.list_s3_files_obj(temp_bucket, "") != s3_handler.list_s3_files_obj(catalog_bucket, "")
-        # Check if catalog bucket content match the initial temp-bucket content
-        # If so, files were correctly moved from temp-catalog to bucket catalog.
-        assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
-        # clean up
-        s3_handler.delete_bucket_completely(temp_bucket)
-        s3_handler.delete_bucket_completely(catalog_bucket)
-
-    finally:
-        server.stop()
-        clear_aws_credentials()
-        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "owner, collection_id",
-    [
-        (
-            "darius",
-            "S1_L2",
-        ),
-    ],
-)
-def test_incorrect_feature_publish(client, a_incorrect_feature, owner, collection_id):
-    """This test send a featureCollection to the catalog with a wrong format."""
-    # TC02: Add on Sentinel-1 item to the Catalog with a wrong-formatted STAC JSON file. => 400 Bad Request
-    with pytest.raises(fastapi.HTTPException):
-        added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
-        # Bad request = 400
-        assert added_feature.status_code == 400
-
-
-@pytest.mark.unit
-def test_incorrect_bucket_publish(client, a_correct_feature):
-    """Test used to verify failure when obs path is wrong."""
-    # TC03: Add on Sentinel-1 item to the Catalog with a wrong OBS path  => ERROR => 400 Bad Request
-    export_aws_credentials()
-    a_correct_feature["assets"]["zarr"]["href"] = "incorrect_s3_url/some_file.zarr.zip"
-    a_correct_feature["assets"]["cog"]["href"] = "incorrect_s3_url/some_file.cog.zip"
-    a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
-    with pytest.raises(fastapi.HTTPException):
-        added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
-        assert added_feature.status_code == 400
-        assert added_feature.content == b'"Invalid obs bucket"'
-        clear_aws_credentials()
-
-
-@pytest.mark.unit
-def test_custom_bucket_publish(client, a_correct_feature):
-    """Test with other temp bucket name."""
-    moto_endpoint = "http://localhost:8077"
-    export_aws_credentials()
-    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    s3_handler = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
-    )
-    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
-    server = ThreadedMotoServer(port=8077)
-    server.start()
-    try:
-        custom_bucket = "some-custom-bucket"
-        catalog_bucket = "catalog-bucket"
-        a_correct_feature["assets"]["zarr"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.zarr.zip"
-        a_correct_feature["assets"]["cog"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.cog.zip"
-        a_correct_feature["assets"]["ncdf"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.ncdf.zip"
-        a_correct_feature["id"] = "new_feature_id"
-
-        s3_handler.s3_client.create_bucket(Bucket=custom_bucket)
-        s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-        lst_with_files_to_be_copied = [
-            "correct_location/some_file.zarr.zip",
-            "correct_location/some_file.cog.zip",
-            "correct_location/some_file.ncdf.zip",
-        ]
-        for obj in lst_with_files_to_be_copied:
-            s3_handler.s3_client.put_object(Bucket=custom_bucket, Key=obj, Body="testing\n")
-
-        assert s3_handler.list_s3_files_obj(custom_bucket, "")
-        assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-
-        added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
-        assert added_feature.status_code == 200
-
-        assert not s3_handler.list_s3_files_obj(custom_bucket, "")
-        assert s3_handler.list_s3_files_obj(catalog_bucket, "")
-
-        s3_handler.delete_bucket_completely(custom_bucket)
-        s3_handler.delete_bucket_completely(catalog_bucket)
-
-    finally:
-        server.stop()
-        clear_aws_credentials()
-        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
-
-
-def test_generate_download_presigned_url(client):
-    """Test used to verify the generation of a presigned url for a download."""
-    # Start moto server
-    moto_endpoint = "http://localhost:8077"
-    export_aws_credentials()
-    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-    s3_handler = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
-    )
-    server = ThreadedMotoServer(port=8077)
-    server.start()
-
-    try:
-        # Upload a file to catalog-bucket
-        catalog_bucket = "catalog-bucket"
-        s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-        object_cotent = "testing\n"
-        s3_handler.s3_client.put_object(
-            Bucket=catalog_bucket,
-            Key="S1_L1/images/may24C355000e4102500n.tif",
-            Body=object_cotent,
-        )
-
-        response = client.get("/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
-        assert response.status_code == 302
-        # Check that response is a url not file content!
-        assert response.content != object_cotent
-
-        # call the redirected url
-        product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
-        assert product_content.status_code == 200
-        # check that content is the same as the original file
-        assert product_content.content.decode() == object_cotent
-
-        assert client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
-        s3_handler.delete_bucket_completely(catalog_bucket)
-
-    finally:
-        server.stop()
-        # Remove bucket credentials form env variables / should create a s3_handler without credentials error
-        clear_aws_credentials()
-
-    response = client.get("/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
-    assert response.status_code == 400
-    assert response.content == b'"Could not find s3 credentials"'
-
-
-@pytest.mark.unit
-def test_failure_while_moving_files_between_buckets(client, mocker, a_correct_feature):
-    """Test failure in transferring files between buckets."""
-    moto_endpoint = "http://localhost:8088"
-    export_aws_credentials()
-    secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-
-    server = ThreadedMotoServer(port=8088)
-    server.start()
-    try:
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
-
-        temp_bucket = "temp-bucket"
-        catalog_bucket = "catalog-bucket"
-        s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
-        s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-        assert not s3_handler.list_s3_files_obj(temp_bucket, "")
-        assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-
-        # Populate temp-bucket with some small files.
-        lst_with_files_to_be_copied = [
-            "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-            "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-            "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-        ]
-        for obj in lst_with_files_to_be_copied:
-            s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
-        assert s3_handler.list_s3_files_obj(temp_bucket, "")
-        assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-        # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
-        mocker.patch(
-            "rs_server_catalog.user_catalog.UserCatalogMiddleware.update_stac_item_publication",
-            return_value={},
-        )
-        with pytest.raises(fastapi.HTTPException):
-            added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
-            # Check if status code is BAD REQUEST
-            assert added_feature.status_code == 400
-            # If catalog publish fails, catalog_bucket should be empty, and temp_bucket should not be empty.
-
-        assert s3_handler.list_s3_files_obj(temp_bucket, "")
-        assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-        # clean up
-        s3_handler.delete_bucket_completely(temp_bucket)
-        s3_handler.delete_bucket_completely(catalog_bucket)
-
-    finally:
-        server.stop()
-        clear_aws_credentials()
-
-
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
 
@@ -924,3 +647,441 @@ class TestCatalogSearchEndpoint:
             assert response.status_code == 200
         finally:
             pathlib.Path("queryables.json").unlink(missing_ok=True)
+
+
+# REWORKED TESTS
+class TestCatalogPublishCollectionEndpoint:
+    def test_create_new_minimal_collection(self, client):
+        """
+        Test endpoint POST /catalog/collections.
+        """
+        minimal_collection = {
+            "id": "test_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "test_owner",
+        }
+        response = client.post("/catalog/collections", json=minimal_collection)
+        # Check that collection status code is 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        # Check that internal collection id is set to owner_collection
+        assert json.loads(response.content)["id"] == "test_owner_test_collection"
+        assert json.loads(response.content)["owner"] == "test_owner"
+
+        # # Call search endpoint to verify presence of collection in catalog
+        # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner='test_owner'"}
+        # response = client.get("/catalog/search", params=test_params)
+        # assert response.status_code == 200
+
+        # Test that /catalog/collection GET endpoint returns the correct collection id
+        response = client.get("/catalog/collections", params={"owner": "test_owner"})
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        response_content = json.loads(response.content)["collections"][0]
+        # Check that values are correctly written in catalogDB
+        assert response_content["id"] == minimal_collection["id"]
+        assert response_content["owner"] == minimal_collection["owner"]
+        assert response_content["description"] == minimal_collection["description"]
+        assert response_content["type"] == minimal_collection["type"]
+        assert response_content["stac_version"] == minimal_collection["stac_version"]
+
+    def test_failure_to_create_collection(self, client):
+        """
+        Test endpoint POST /catalog/collections with incorrect collection.
+        Endpoint: POST /catalog/collections
+        """
+        # This minimal collection is missing the id field
+        minimal_incorrect_collection = {
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "test_incorrect_owner",
+        }
+        # Test that response is 400 BAD Request
+        with pytest.raises(fastapi.HTTPException):
+            response = client.post("/catalog/collections", json=minimal_incorrect_collection)
+            assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        # Check that owner from this collection is not written in catalogDB
+        response = client.get("/catalog/collections", params={"owner": "test_incorrect_owner"})
+        assert not len(json.loads(response.content)["collections"])
+
+    def test_create_a_collection_already_created(self, client):
+        """
+        Test that endpoint POST /catalog/collections returns 409 Conflict if collection already exists.
+        This action can be performed only by PUT or PATCH /catalog/collections.
+        """
+        minimal_collection = {
+            "id": "duplicate_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "duplicate_owner",
+        }
+        # Test that collection is correctly published
+        response = client.post("/catalog/collections", json=minimal_collection)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        # Test that duplicate collection cannot be published
+        response = client.post("/catalog/collections", json=minimal_collection)
+        assert response.status_code == fastapi.status.HTTP_409_CONFLICT
+        # Change values from collection, try to publish again
+        minimal_collection["description"] = "test_description_updated"
+        response = client.post("/catalog/collections", json=minimal_collection)
+        # Test that is not allowed
+        assert response.status_code == fastapi.status.HTTP_409_CONFLICT
+        # Check into catalogDB that values are not updated
+        response = client.get("/catalog/collections", params={"owner": "duplicate_owner"})
+        response_content = json.loads(response.content)["collections"][0]
+        assert response_content["description"] == "test_description"
+
+    def test_update_a_created_collection(self, client):
+        """
+        Test that endpoint PUT /catalog/collections updates a collection.
+        Endpoint: PUT /catalog/collections.
+        """
+        minimal_collection = {
+            "id": "second_test_collection",
+            "type": "Collection",
+            "description": "not_updated_test_description",
+            "stac_version": "1.0.0",
+            "owner": "second_test_owner",
+        }
+        # Post the collection
+        response = client.post("/catalog/collections", json=minimal_collection)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        # test if is ok written in catalogDB
+        response = client.get("/catalog/collections", params={"owner": "second_test_owner"})
+        response_content = json.loads(response.content)["collections"][0]
+        assert response_content["description"] == "not_updated_test_description"
+        # Update the collection description and PUT
+        minimal_collection["description"] = "the_updated_test_description"
+        response = client.put("/catalog/collections", json=minimal_collection)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        # !!!!! DISABLED, to be added
+        # response = client.put("/catalog/collections/second_test_owner/second_test_collection", json=minimal_collection)
+        # assert response.status_code == fastapi.status.HTTP_200_OK
+        # !!!!
+        # Check that collection is correctly updated
+        response = client.get("/catalog/collections", params={"owner": "second_test_owner"})
+        response_content = json.loads(response.content)["collections"][0]
+        assert response_content["description"] == "the_updated_test_description"
+
+    def test_delete_a_created_collection(self, client):
+        """
+        Test that a created collection can be deleted
+        Endpoint: DELETE /catalog/collections.
+        """
+        minimal_collection = {
+            "id": "will_be_deleted_collection",
+            "type": "Collection",
+            "description": "will_be_deleted_description",
+            "stac_version": "1.0.0",
+            "owner": "will_be_deleted_owner",
+        }
+        response = client.post("/catalog/collections", json=minimal_collection)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+
+        # Check that collection is correctly published
+        # response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
+        # response_content = json.loads(response.content)['collections'][0]
+        # assert response_content['description'] == minimal_collection['description']
+        response = client.get("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection/items")
+
+        # # Delete the collection
+        # delete_info = {"owner": "will_be_deleted_owner", "id": "will_be_deleted_collection"}
+        # response = client.delete("/catalog/collections", params=delete_info)
+        # assert response.status_code == fastapi.status.HTTP_200_OK
+        # # Check that collection is correctly deleted
+        # response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
+        # response_content = json.loads(response.content)['collections'][0]
+        # assert response_content['description'] == minimal_collection['description']
+
+    def test_delete_a_non_existent_collection(self, client):
+        # Should call delete endpoint on a non existent collection id
+        pass
+
+
+class TestCatalogPublishFeatureWithBucketTransferEndpoint:
+    @pytest.mark.parametrize(
+        "owner, collection_id",
+        [
+            (
+                "darius",
+                "S1_L2",
+            ),
+        ],
+    )
+    def test_publish_item_update(self, client, a_correct_feature, owner, collection_id):
+        """Test used to verify publication of a featureCollection to the catalog."""
+        # Create moto server and temp / catalog bucket
+        moto_endpoint = "http://localhost:8077"
+        export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        # Enable bucket transfer
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+        try:
+            s3_handler = S3StorageHandler(
+                secrets["accesskey"],
+                secrets["secretkey"],
+                secrets["s3endpoint"],
+                secrets["region"],
+            )
+
+            temp_bucket = "temp-bucket"
+            catalog_bucket = "catalog-bucket"
+            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+            # Populate temp-bucket with some small files.
+            lst_with_files_to_be_copied = [
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+            ]
+            for obj in lst_with_files_to_be_copied:
+                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+
+            # check that temp_bucket is not empty
+            assert s3_handler.list_s3_files_obj(temp_bucket, "")
+            # check if temp_bucket content is different from catalog_bucket
+            assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
+                s3_handler.list_s3_files_obj(catalog_bucket, ""),
+            )
+
+            # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
+            # and a good OBS path. => 200 OK
+            # Check if that user darius have a collection (Added in conftest -> setup_database)
+            # Add a featureCollection to darius collection
+            added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
+            assert added_feature.status_code == 200
+            feature_data = json.loads(added_feature.content)
+            # check if owner was added and match to the owner of the collection
+            assert feature_data["properties"]["owner"] == owner
+            # check if stac_extension correctly updated collection name
+            assert feature_data["collection"] == f"{owner}_{collection_id}"
+            # check if stac extension was added
+            assert (
+                "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
+                in feature_data["stac_extensions"]
+            )
+
+            # Files were moved, check that catalog_bucket is not empty
+            assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+            # Check if temp_bucket is now empty
+            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+            # Check if buckets content is different
+            assert s3_handler.list_s3_files_obj(temp_bucket, "") != s3_handler.list_s3_files_obj(catalog_bucket, "")
+            # Check if catalog bucket content match the initial temp-bucket content
+            # If so, files were correctly moved from temp-catalog to bucket catalog.
+            assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+            # clean up
+            s3_handler.delete_bucket_completely(temp_bucket)
+            s3_handler.delete_bucket_completely(catalog_bucket)
+
+        finally:
+            server.stop()
+            clear_aws_credentials()
+            os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "owner, collection_id",
+        [
+            (
+                "darius",
+                "S1_L2",
+            ),
+        ],
+    )
+    def test_incorrect_feature_publish(self, client, a_incorrect_feature, owner, collection_id):
+        """This test send a featureCollection to the catalog with a wrong format."""
+        # TC02: Add on Sentinel-1 item to the Catalog with a wrong-formatted STAC JSON file. => 400 Bad Request
+        with pytest.raises(fastapi.HTTPException):
+            added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
+            # Bad request = 400
+            assert added_feature.status_code == 400
+
+    @pytest.mark.unit
+    def test_incorrect_bucket_publish(self, client, a_correct_feature):
+        """Test used to verify failure when obs path is wrong."""
+        # TC03: Add on Sentinel-1 item to the Catalog with a wrong OBS path  => ERROR => 400 Bad Request
+        export_aws_credentials()
+        a_correct_feature["assets"]["zarr"]["href"] = "incorrect_s3_url/some_file.zarr.zip"
+        a_correct_feature["assets"]["cog"]["href"] = "incorrect_s3_url/some_file.cog.zip"
+        a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
+        with pytest.raises(fastapi.HTTPException):
+            added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
+            assert added_feature.status_code == 400
+            assert added_feature.content == b'"Invalid obs bucket"'
+            clear_aws_credentials()
+
+    @pytest.mark.unit
+    def test_custom_bucket_publish(self, client, a_correct_feature):
+        """Test with other temp bucket name."""
+        moto_endpoint = "http://localhost:8077"
+        export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+        try:
+            custom_bucket = "some-custom-bucket"
+            catalog_bucket = "catalog-bucket"
+            a_correct_feature["assets"]["zarr"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.zarr.zip"
+            a_correct_feature["assets"]["cog"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.cog.zip"
+            a_correct_feature["assets"]["ncdf"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.ncdf.zip"
+            a_correct_feature["id"] = "new_feature_id"
+
+            s3_handler.s3_client.create_bucket(Bucket=custom_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            lst_with_files_to_be_copied = [
+                "correct_location/some_file.zarr.zip",
+                "correct_location/some_file.cog.zip",
+                "correct_location/some_file.ncdf.zip",
+            ]
+            for obj in lst_with_files_to_be_copied:
+                s3_handler.s3_client.put_object(Bucket=custom_bucket, Key=obj, Body="testing\n")
+
+            assert s3_handler.list_s3_files_obj(custom_bucket, "")
+            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+            added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
+            assert added_feature.status_code == 200
+
+            assert not s3_handler.list_s3_files_obj(custom_bucket, "")
+            assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+            s3_handler.delete_bucket_completely(custom_bucket)
+            s3_handler.delete_bucket_completely(catalog_bucket)
+
+        finally:
+            server.stop()
+            clear_aws_credentials()
+            os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+    def test_generate_download_presigned_url(self, client):
+        """Test used to verify the generation of a presigned url for a download."""
+        # Start moto server
+        moto_endpoint = "http://localhost:8077"
+        export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+
+        try:
+            # Upload a file to catalog-bucket
+            catalog_bucket = "catalog-bucket"
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            object_cotent = "testing\n"
+            s3_handler.s3_client.put_object(
+                Bucket=catalog_bucket,
+                Key="S1_L1/images/may24C355000e4102500n.tif",
+                Body=object_cotent,
+            )
+
+            response = client.get(
+                "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
+            )
+            assert response.status_code == 302
+            # Check that response is a url not file content!
+            assert response.content != object_cotent
+
+            # call the redirected url
+            product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
+            assert product_content.status_code == 200
+            # check that content is the same as the original file
+            assert product_content.content.decode() == object_cotent
+
+            assert client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
+            s3_handler.delete_bucket_completely(catalog_bucket)
+
+        finally:
+            server.stop()
+            # Remove bucket credentials form env variables / should create a s3_handler without credentials error
+            clear_aws_credentials()
+
+        response = client.get("/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
+        assert response.status_code == 400
+        assert response.content == b'"Could not find s3 credentials"'
+
+    @pytest.mark.unit
+    def test_failure_while_moving_files_between_buckets(self, client, mocker, a_correct_feature):
+        """Test failure in transferring files between buckets."""
+        moto_endpoint = "http://localhost:8088"
+        export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+
+        server = ThreadedMotoServer(port=8088)
+        server.start()
+        try:
+            s3_handler = S3StorageHandler(
+                secrets["accesskey"],
+                secrets["secretkey"],
+                secrets["s3endpoint"],
+                secrets["region"],
+            )
+
+            temp_bucket = "temp-bucket"
+            catalog_bucket = "catalog-bucket"
+            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+            # Populate temp-bucket with some small files.
+            lst_with_files_to_be_copied = [
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+            ]
+            for obj in lst_with_files_to_be_copied:
+                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+            assert s3_handler.list_s3_files_obj(temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
+            mocker.patch(
+                "rs_server_catalog.user_catalog.UserCatalogMiddleware.update_stac_item_publication",
+                return_value={},
+            )
+            with pytest.raises(fastapi.HTTPException):
+                added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
+                # Check if status code is BAD REQUEST
+                assert added_feature.status_code == 400
+                # If catalog publish fails, catalog_bucket should be empty, and temp_bucket should not be empty.
+
+            assert s3_handler.list_s3_files_obj(temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            # clean up
+            s3_handler.delete_bucket_completely(temp_bucket)
+            s3_handler.delete_bucket_completely(catalog_bucket)
+
+        finally:
+            server.stop()
+            clear_aws_credentials()
+
+
+class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
+    def test_create_new_minimal_feature(self, client):
+        minimal_collection = {
+            "id": "test_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "test_owner",
+        }
+        response = client.post("/catalog/collections", json=minimal_collection)

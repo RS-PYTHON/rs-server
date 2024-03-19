@@ -324,22 +324,25 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         Returns:
             Request: The request updated.
         """
-        user = ids["owner_id"]
-        content = await request.json()
-        if request.scope["path"] == "/collections":
-            content["id"] = f"{user}_{content['id']}"
-        if "items" in request.scope["path"]:
-            content = self.update_stac_item_publication(content, user)
-        elif request.scope["path"] == "/search" and "filter" in content:
-            qs_filter = content["filter"]
-            filters = parse_cql2_json(qs_filter)
-            user = self.find_owner_id(filters)
-            # May be duplicate?
-            if "collections" in content:
-                content["collections"] = [f"{user}_{content['collections']}"]
-        # update request body (better find the function that updates the body maybe?)c
-        request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-        return request  # pylint: disable=protected-access
+        try:
+            user = ids["owner_id"]
+            content = await request.json()
+            if request.scope["path"] == "/collections":
+                content["id"] = f"{user}_{content['id']}"
+            if "items" in request.scope["path"]:
+                content = self.update_stac_item_publication(content, user)
+            elif request.scope["path"] == "/search" and "filter" in content:
+                qs_filter = content["filter"]
+                filters = parse_cql2_json(qs_filter)
+                user = self.find_owner_id(filters)
+                # May be duplicate?
+                if "collections" in content:
+                    content["collections"] = [f"{user}_{content['collections']}"]
+            # update request body (better find the function that updates the body maybe?)c
+            request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+            return request  # pylint: disable=protected-access
+        except KeyError as key_error_msg:
+            raise HTTPException(detail=f"Missing key in request body! {key_error_msg}", status_code=400)
 
     async def manage_get_response(
         self,

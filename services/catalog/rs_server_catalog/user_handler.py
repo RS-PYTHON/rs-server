@@ -2,7 +2,7 @@
 import re
 
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
-    r"/catalog" r"/collections" r"(?P<owner_id>.*):(?P<collection_id>.*)/items" r"(?P<item_id>/.+?(?=/|$))?"
+    r"/catalog" r"/collections" r"(?P<owner_id>.*):(?P<collection_id>.*)" r"/items" r"(?P<item_id>/.+?(?=/|$))?"
 )
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
@@ -29,7 +29,6 @@ def get_ids(path: str) -> dict:
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
-        # import pdb; pdb.set_trace()
         if groups["owner_id"]:
             res["owner_id"] = groups["owner_id"][1:]
         if groups["collection_id"]:
