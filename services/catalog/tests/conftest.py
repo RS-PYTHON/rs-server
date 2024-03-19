@@ -83,6 +83,7 @@ class Collection:
         return {
             "id": self.name,
             "type": "Collection",
+            "owner": self.user,
             "links": [
                 {
                     "rel": "items",
@@ -158,7 +159,7 @@ def add_collection(client: TestClient, collection: Collection):
         Error if the collection addition failed.
     """
     response = client.post(
-        f"/catalog/{collection.user}/collections",
+        "/catalog/collections",
         json=collection.properties,
     )
     response.raise_for_status()
@@ -347,7 +348,7 @@ def add_feature(client: TestClient, feature: Feature):
         feature (Feature): The feature to add.
     """
     response = client.post(
-        f"/catalog/{feature.owner_id}/collections/{feature.collection}/items",
+        f"/catalog/collections/{feature.owner_id}:{feature.collection}/items",
         json=feature.properties,
     )
     response.raise_for_status()

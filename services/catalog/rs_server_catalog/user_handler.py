@@ -1,16 +1,9 @@
 """This library contains all functions needed for the fastAPI middleware."""
-
 import re
 
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
-    r"/catalog"
-    r"(?P<owner_id>.*)"
-    r"(?P<collections>/collections)"
-    r"((?P<collection_id>/.+?(?=/|$))"
-    r"(?P<items>/.+?(?=/|$))?"
-    r"(?P<item_id>/.+?(?=/|$))?)?"
+    r"/catalog" r"/collections" r"(?P<owner_id>.*):(?P<collection_id>.*)/items" r"(?P<item_id>/.+?(?=/|$))?"
 )
-
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
 
@@ -36,10 +29,14 @@ def get_ids(path: str) -> dict:
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
+        # import pdb; pdb.set_trace()
         if groups["owner_id"]:
             res["owner_id"] = groups["owner_id"][1:]
         if groups["collection_id"]:
-            res["collection_id"] = groups["collection_id"][1:]
+            if ":" in groups["collection_id"]:
+                res["owner_id"], res["collection_id"] = map(lambda x: x.lstrip("/"), groups["collection_id"].split(":"))
+            else:
+                res["collection_id"] = groups["collection_id"]
         if groups["item_id"]:
             res["item_id"] = groups["item_id"][1:]
         return res
@@ -70,30 +67,26 @@ def remove_user_prefix(path: str) -> str:
     if path == "/catalog/search":
         return "/search"
 
-    # To catch the endpoint /catalog/{owner_id}
-    if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
-        groups = match.groupdict()
-        owner_id = groups["owner_id"]
-        return "/"
+    if path == "/catalog/collections":
+        return "/collections"
+    # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
+    # # To catch the endpoint /catalog/{owner_id}
+    # if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
+    #     groups = match.groupdict()
+    #     owner_id = groups["owner_id"]
+    #     return "/"
 
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
         owner_id = groups["owner_id"][1:]
         collection_id = groups["collection_id"]
-        items = groups["items"]
         item_id = groups["item_id"]
-        if collection_id is None:
-            path = "/collections"
+        if item_id is None:
+            path = f"/collections/{owner_id}_{collection_id}/items"
         else:
-            collection_id = groups["collection_id"][1:]
-            if items is None:
-                path = f"/collections/{owner_id}_{collection_id}"
-            elif item_id is None:
-                path = f"/collections/{owner_id}_{collection_id}/items"
-            else:
-                item_id = item_id[1:]
-                path = f"/collections/{owner_id}_{collection_id}/items/{item_id}"
+            item_id = item_id[1:]
+            path = f"/collections/{owner_id}_{collection_id}/items/{item_id}"
 
     return path
 

@@ -457,15 +457,26 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
+        if request.method in ["POST", "PUT"]:
+            request_body = await request.json()
+        else:
+            # Needed?
+            # Raise HTTPExc if params are missing from GET message
+            request_body = dict(request.query_params)
+
         ids = get_ids(request.scope["path"])
-        user = ids["owner_id"]
         request.scope["path"] = remove_user_prefix(request.url.path)
+        # Overwrite user and collection id with the ones provided in the request body
+        user = request_body.get("owner", None)
+        collection_id = request_body.get("id", None)
+        ids["owner_id"] = user if user else ids["owner_id"]
+        ids["collection_id"] = collection_id if collection_id else ids["collection_id"]
 
         # Handle requests
         if request.method == "GET" and request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
             request = self.manage_search_request(request)
-        elif request.method in ["POST", "PUT"] and user:
+        elif request.method in ["POST", "PUT"] and ids["owner_id"]:
             # URL: POST / PUT: '/catalog/{USER}/collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
             request = await self.manage_put_post_request(request, ids)
 
@@ -483,10 +494,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         elif request.method == "GET" and "download" in request.url.path:
             # URL: GET: '/catalog/{USER}/collections/{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
-        elif request.method == "GET" and user:
+        elif request.method == "GET" and ids["owner_id"]:
             # URL: GET: '/catalog/{USER}/Collections'
             response = await self.manage_get_response(request, response, ids)
-        elif request.method in ["POST", "PUT"] and user:
+        elif request.method in ["POST", "PUT"] and ids["owner_id"]:
             # URL: POST / PUT: '/catalog/{USER}/Collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
             response = await self.manage_put_post_response(response)
 
