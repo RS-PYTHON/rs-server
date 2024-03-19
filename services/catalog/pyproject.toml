@@ -60,7 +60,7 @@ optional = true
 # Formatting
 black = "^23.11.0"
 # Testing
-pytest = "^7.4.3"
+pytest = "^8.1.0"
 pytest-cov = "^4.1.0"
 pytest-error-for-skips = "^2.0.2"
 pytest-docker = "^3.1.0"
