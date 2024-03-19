@@ -22,6 +22,19 @@ None
 
 None
 
+== [1.0a6] - 2024-03-14
+
+=== Added
+
+* RSPY-15: Setup UAC Manager
+* RSPY-25: Override endpoint "publication of STAC item" to the Catalog backend server
+* RSPY-49: Deploy Prefect Server on K8S cluster
+* RSPY-85: Implement CADU ingestion Prefect @flow
+* RSPY-100: Link RS-Server frontend with Backend Catalog endpoints (Without UAC) - Part 2
+* RSPY-115: Implement ADGS ingestion Prefect @flow
+* RSPY-125: Cluster configuration folder is hard-coded
+* RSPY-139: Add endpoint to download product (without UAC)
+
 == [1.0a5] - 2024-02-21
 
 === Added
