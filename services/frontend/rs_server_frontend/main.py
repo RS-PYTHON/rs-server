@@ -26,16 +26,13 @@ def load_openapi_spec() -> dict:
     try:
         with open(openapi_location, "r") as file:
             return json.load(file)
-    except IOError as e:
-        raise IOError(
-            f'openapi spec was not found at "{openapi_location}".'
-            "Maybe the RS_SERVER_OPENAPI_FILE environment variable is not correctly set.",
+    except (FileNotFoundError, IOError) as e:
+        raise type(e)(
+            f"openapi spec was not found at {openapi_location!r}. "
+            "Is the 'RS_SERVER_OPENAPI_FILE' environment variable correctly set ?",
         ) from e
     except ValueError as e:
-        raise ValueError(
-            f'openapi spec was found at "{openapi_location}"'
-            "but the file was not valid.",
-        ) from e
+        raise ValueError(f"openapi spec was found at {openapi_location!r} but the file is not valid.") from e
 
 
 class Frontend:

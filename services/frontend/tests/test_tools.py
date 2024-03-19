@@ -21,9 +21,7 @@ class ServicesConfiguration:
     file: Path
 
     def doc_endpoint_url(self, service: str) -> str:
-        return (
-            f"{self.config[service]['root_url']}/{self.config[service]['doc_endpoint']}"
-        )
+        return f"{self.config[service]['root_url']}/{self.config[service]['doc_endpoint']}"
 
 
 @pytest.fixture(scope="module")
@@ -322,9 +320,7 @@ class TestGenerateAggregateRestDocFailsWhen:
 
         cause = exc_info.value.__cause__
         assert isinstance(cause, IOError)
-        assert (
-            str(cause) == f"Unable to write the aggregated openapi into {output_file}."
-        )
+        assert str(cause) == f"Unable to write the aggregated openapi into {output_file}."
 
 
 class TestTheMergedOpenapi:
@@ -381,7 +377,7 @@ class TestTheMergedOpenapi:
         adgs_openapi: dict,
         the_merge_openapis: dict,
     ):
-        assert the_merge_openapis["info"]["title"] == "RS server"
+        assert the_merge_openapis["info"]["title"] == "RS-server"
 
     @responses.activate
     def test_keeps_the_paths_of_all_services(
@@ -390,12 +386,8 @@ class TestTheMergedOpenapi:
         adgs_openapi: dict,
         the_merge_openapis: dict,
     ):
-        assert all(
-            path in the_merge_openapis["paths"] for path in cadip_openapi["paths"]
-        )
-        assert all(
-            path in the_merge_openapis["paths"] for path in adgs_openapi["paths"]
-        )
+        assert all(path in the_merge_openapis["paths"] for path in cadip_openapi["paths"])
+        assert all(path in the_merge_openapis["paths"] for path in adgs_openapi["paths"])
 
     def test_keeps_the_paths_configuration_of_one_of_the_service(
         self,
@@ -463,7 +455,7 @@ class TestTestMergeProcessFailedWhen:
 
         cause = exc_info.value.__cause__
         assert isinstance(cause, ValueError)
-        assert str(cause) == "The openapi versions are not all the same : 9.9.9, 3.1.0"
+        assert str(cause) == "The openapi versions are not all the same : 3.1.0, 9.9.9"
 
     @responses.activate
     def test_all_services_have_not_the_same_version(
@@ -490,4 +482,4 @@ class TestTestMergeProcessFailedWhen:
 
         cause = exc_info.value.__cause__
         assert isinstance(cause, ValueError)
-        assert str(cause) == "The service versions are not all the same : 9.9.9, 0.1.0"
+        assert str(cause) == "The service versions are not all the same : 0.1.0, 9.9.9"

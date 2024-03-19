@@ -123,7 +123,7 @@ def init_app(
         docs_params = {}
 
     # Init the FastAPI application
-    app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params)
+    app = FastAPI(title="RS-server", lifespan=lifespan, **docs_params)
 
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db

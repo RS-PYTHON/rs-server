@@ -1,4 +1,5 @@
 import json
+import sys
 from functools import reduce
 from pathlib import Path
 
@@ -49,22 +50,20 @@ class AggregatedOpenapi:
     def build_openapi(self) -> dict:
         return {
             "openapi": self.merge_openapi_versions(),
-            "info": {"title": "RS server", "version": self.merge_service_versions()},
+            "info": {"title": "RS-server", "version": self.merge_service_versions()},
             "paths": self.merge_paths(),
             "components": self.merge_components(),
         }
 
     def merge_openapi_versions(self) -> str:
-        openapi_versions = {sub["openapi"] for sub in self.sub_openapis.values()}
+        openapi_versions = sorted({sub["openapi"] for sub in self.sub_openapis.values()})
         if len(openapi_versions) > 1:
             versions = ", ".join(openapi_versions)
             raise ValueError(f"The openapi versions are not all the same : {versions}")
         return next(iter(openapi_versions))
 
     def merge_service_versions(self) -> str:
-        services_versions = {
-            sub["info"]["version"] for sub in self.sub_openapis.values()
-        }
+        services_versions = sorted({sub["info"]["version"] for sub in self.sub_openapis.values()})
         if len(services_versions) > 1:
             versions = ", ".join(services_versions)
             raise ValueError(f"The service versions are not all the same : {versions}")
@@ -76,7 +75,11 @@ class AggregatedOpenapi:
 
     def merge_components(self) -> dict[str, dict]:
         schemas = (sub["components"]["schemas"] for sub in self.sub_openapis.values())
-        return {"schemas": reduce(merge_dicts, schemas)}
+        security = (sub["components"].get("securitySchemes", {}) for sub in self.sub_openapis.values())
+        return {
+            "schemas": reduce(merge_dicts, schemas),
+            "securitySchemes": reduce(merge_dicts, security),
+        }
 
 
 def write_openapi(openapi: dict, to_path: Path):
@@ -97,3 +100,7 @@ def build_aggregated_openapi(services_file: Path, to_path: Path):
         write_openapi(aggregated, to_path)
     except BaseException as e:
         raise BuildOpenapiFailed() from e
+
+
+if __name__ == "__main__":
+    build_aggregated_openapi(*sys.argv[1:])

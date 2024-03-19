@@ -2322,6 +2322,23 @@ type = "directory"
 url = "services/common"
 
 [[package]]
+name = "rs-server-frontend"
+version = "0.0.0"
+description = ""
+optional = false
+python-versions = "^3.11"
+files = []
+develop = true
+
+[package.dependencies]
+fastapi = "^0.110.0"
+uvicorn = "^0.27.1"
+
+[package.source]
+type = "directory"
+url = "services/frontend"
+
+[[package]]
 name = "ruamel-yaml"
 version = "0.18.6"
 description = "ruamel.yaml is a YAML parser/emitter that supports roundtrip preservation of comments, seq/map flow style, and map key order"
@@ -3016,4 +3033,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "c6b228eaad560e0b4b49e2bcb7e0cd6e48afe3a1d24eb785dc48a6b2e2628e0f"
+content-hash = "15d630ac0b1d2bbb1dafee6a436308caa1c9097354c5b29c0baae107ae2e4f25"

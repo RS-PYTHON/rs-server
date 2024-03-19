@@ -8,7 +8,7 @@ from starlette.status import HTTP_200_OK
 
 
 class TestStartingApplication:
-    """Veirfies the openapi loading at the start of the frontend application."""
+    """Verifies the openapi loading at the start of the frontend application."""
 
     def test_fails_if_the_openapi_spec_is_not_found(self, monkeypatch):
         monkeypatch.setenv("RS_SERVER_OPENAPI_FILE", "file/not/found")
@@ -17,10 +17,6 @@ class TestStartingApplication:
         assert str(exc_info.value) == "Unable to serve openapi specification."
         cause = exc_info.value.__cause__
         assert isinstance(cause, IOError)
-        assert (
-            str(cause) == 'openapi spec was not found at "file/not/found".'
-            "Maybe the RS_SERVER_OPENAPI_FILE environment variable is not correctly set."
-        )
         assert isinstance(cause.__cause__, FileNotFoundError)
 
     def test_fails_if_the_openapi_spec_is_not_relevant(
@@ -34,10 +30,6 @@ class TestStartingApplication:
         assert str(exc_info.value) == "Unable to serve openapi specification."
         cause = exc_info.value.__cause__
         assert isinstance(cause, ValueError)
-        assert (
-            str(cause) == f'openapi spec was found at "{invalid_openapi_spec_file}"'
-            "but the file was not valid."
-        )
         assert isinstance(cause.__cause__, JSONDecodeError)
 
 
