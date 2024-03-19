@@ -384,34 +384,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content = self.adapt_object_links(content, user)
         return JSONResponse(content, status_code=response.status_code)
 
-    async def manage_put_post_response(self, response: StreamingResponse):
-        """
-        Manage put or post responses.
-
-        Args:
-            response (starlette.responses.StreamingResponse): The response object received.
-
-        Returns:
-            JSONResponse: Returns a JSONResponse object containing the response content
-            with the appropriate status code.
-
-        Raises:
-            HTTPException: If there is an error while clearing the temporary bucket,
-            raises an HTTPException with a status code of 400 and detailed information.
-            If there is a generic exception, raises an HTTPException with a status code
-            of 400 and a generic bad request detail.
-
-        """
-        try:
-            body = [chunk async for chunk in response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())  # type: ignore
-            self.clear_temp_bucket(response_content)
-        except RuntimeError as exc:
-            raise HTTPException(detail="Failed to clear temp-bucket", status_code=400) from exc
-        except Exception as exc:  # pylint: disable=broad-except
-            raise HTTPException(detail="Bad request", status_code=400) from exc
-        return JSONResponse(response_content, status_code=response.status_code)
-
     async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
         """
         Manage download response and handle requests that should generate a presigned URL.
@@ -432,6 +404,42 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             content, code = self.generate_presigned_url(content, request.url.path)
             return JSONResponse(content, status_code=code)
         return JSONResponse(content, status_code=response.status_code)
+
+    async def manage_put_post_response(self, request: Request, response: StreamingResponse, ids: dict):
+        """
+        Manage put or post responses.
+
+        Args:
+            response (starlette.responses.StreamingResponse): The response object received.
+
+        Returns:
+            JSONResponse: Returns a JSONResponse object containing the response content
+            with the appropriate status code.
+
+        Raises:
+            HTTPException: If there is an error while clearing the temporary bucket,
+            raises an HTTPException with a status code of 400 and detailed information.
+            If there is a generic exception, raises an HTTPException with a status code
+            of 400 and a generic bad request detail.
+
+        """
+        try:
+            body = [chunk async for chunk in response.body_iterator]
+            response_content = json.loads(b"".join(body).decode())  # type: ignore
+            if request.scope["path"] == "/collections":
+                response_content = remove_user_from_collection(response_content, ids["owner_id"])
+                response_content = self.adapt_object_links(response_content, ids["owner_id"])
+            elif (
+                request.scope["path"] == f"/collections/{ids['owner_id']}_{ids['collection_id']}/items/{ids['item_id']}"
+            ):
+                response_content = remove_user_from_feature(response_content, ids["owner_id"])
+                response_content = self.adapt_object_links(response_content, ids["owner_id"])
+            self.clear_temp_bucket(response_content)
+        except RuntimeError as exc:
+            raise HTTPException(detail="Failed to clear temp-bucket", status_code=400) from exc
+        except Exception as exc:  # pylint: disable=broad-except
+            raise HTTPException(detail="Bad request", status_code=400) from exc
+        return JSONResponse(response_content, status_code=response.status_code)
 
     async def manage_response_error(self, response: StreamingResponse | Any) -> JSONResponse:
         """
@@ -454,6 +462,22 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             raise HTTPException(detail=f"Bad request, {response_content}", status_code=400)
         # Otherwise just return the exception
         raise HTTPException(detail="Bad request", status_code=400)
+
+    async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
+        """Change the name of the deleted collection by removing owner_id.
+
+        Args:
+            response (StreamingResponse): The client response.
+            user (str): The owner id.
+
+        Returns:
+            JSONResponse: The new response with the updated collection name.
+        """
+        body = [chunk async for chunk in response.body_iterator]
+        response_content = json.loads(b"".join(body).decode())  # type:ignore
+        if "deleted collection" in response_content:
+            response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
+        return JSONResponse(response_content)
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
@@ -488,6 +512,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             response = await self.manage_get_response(request, response, ids)
         elif request.method in ["POST", "PUT"] and user:
             # URL: POST / PUT: '/catalog/{USER}/Collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
-            response = await self.manage_put_post_response(response)
+            response = await self.manage_put_post_response(request, response, ids)
+        elif request.method == "DELETE" and user:
+            response = await self.manage_delete_response(response, user)
 
         return response
