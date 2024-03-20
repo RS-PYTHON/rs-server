@@ -60,7 +60,7 @@ class Frontend:
                 # (they don't appear in the openapi.json)
                 swagger_ui_init_oauth={
                     "clientId": "(this value is not used)",
-                    "appName": "APIKeyManager",
+                    "appName": "API-Key Manager",
                     "usePkceWithAuthorizationCodeGrant": True,
                 },
             )

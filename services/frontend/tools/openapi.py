@@ -31,8 +31,6 @@ class ServiceConf:
         openapi_url (str): url to the service openapi.json file
         openapi_contents (dict): service openapi.json file contents
         change_tags (dict): changes to make to the path tags as key/value=old/new value.
-        Regular expressions and captures can be used with \i=result.group(i) as in
-        https://pynative.com/python-regex-capturing-groups/#h-example-to-capture-multiple-groups
     """
 
     name: str
@@ -93,8 +91,8 @@ class AggregatedOpenapi:
 
     def __init__(self, services: dict[str, ServiceConf]):
         """Constructor"""
-        self.services = services
-        self.all_openapi = [service.openapi_contents for service in self.services.values()]
+        self.services: dict[str, ServiceConf] = services
+        self.all_openapi: list[dict] = [service.openapi_contents for service in self.services.values()]
 
     def build_openapi(self) -> dict:
         """Return the built openapi.json as a dict"""
@@ -117,8 +115,38 @@ class AggregatedOpenapi:
 
     def merge_paths(self) -> dict[str, dict]:
         """Merge two openapi.json paths"""
-        paths = (sub["paths"] for sub in self.all_openapi)
-        return reduce(merge_dicts, paths)
+
+        # All paths of all services
+        all_paths = []
+
+        # Get each service paths
+        for service in self.services.values():
+            service_paths = service.openapi_contents["paths"]
+            all_paths.append(service_paths)
+
+            # For each path method (get, post, ...)
+            for path in [path for methods in service_paths.values() for path in methods.values()]:
+
+                # Get the path tags or a default one
+                if ("tags" in path) and (len(path["tags"]) > 0):
+                    tags = path["tags"]
+                    default_tag = False
+                else:
+                    tags = [""]
+                    default_tag = True
+
+                # Change tags value
+                for i_tag, tag in enumerate(tags):
+                    for replace_what, replace_by in service.change_tags.items():
+                        if tag == replace_what:
+                            tags[i_tag] = replace_by
+
+                # Save the modified tag. Don't save unmodified default tags.
+                if not (default_tag and tags == [""]):
+                    path["tags"] = tags
+
+        # Merge all services paths
+        return reduce(merge_dicts, all_paths)
 
     def merge_components(self) -> dict[str, dict]:
         """Merge two openapi.json components"""

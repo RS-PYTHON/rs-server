@@ -9,10 +9,16 @@
     "openapi_url": "http://localhost:8003/api",
     "change_tags": {
       "": "Catalog",
-      "Transaction Extension": "Catalog transaction extension"
+      "Liveliness/Readiness": "Catalog (Liveliness/Readiness)",
+      "Transaction Extension": "Catalog (Transaction Extension)",
+      "Filter Extension": "Catalog (Filter Extension)",
+      "Bulk Transaction Extension": "Catalog (Bulk Transaction Extension)"
     }
   },
   "uac_manager": {
-    "openapi_url": "http://localhost:8004/openapi.json"
+    "openapi_url": "http://localhost:8004/openapi.json",
+    "change_tags": {
+      "Manage API keys": "API-Key Manager"
+    }
   }
 }
