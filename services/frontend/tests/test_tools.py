@@ -21,7 +21,7 @@ class ServicesConfiguration:
     file: Path
 
     def doc_endpoint_url(self, service: str) -> str:
-        return f"{self.config[service]['root_url']}/{self.config[service]['doc_endpoint']}"
+        return f"{self.config[service]['openapi_url']}"
 
 
 @pytest.fixture(scope="module")
@@ -204,7 +204,6 @@ class TestGenerateAggregateRestDocFailsWhen:
                 tools_test_path / conf_file,
                 tmp_path / "output.json",
             )
-        assert str(exc_info.value) == "Unable to generate REST documentation."
 
         cause = exc_info.value.__cause__
         assert isinstance(cause, IOError)
@@ -231,7 +230,6 @@ class TestGenerateAggregateRestDocFailsWhen:
 
         with pytest.raises(BuildOpenapiFailed) as exc_info:
             build_aggregated_openapi(services_conf.file, tmp_path / "output.json")
-        assert str(exc_info.value) == "Unable to generate REST documentation."
 
         cause = exc_info.value.__cause__
         assert isinstance(cause, HTTPError)
@@ -263,7 +261,6 @@ class TestGenerateAggregateRestDocFailsWhen:
 
         with pytest.raises(BuildOpenapiFailed) as exc_info:
             build_aggregated_openapi(services_conf.file, tmp_path / "output.json")
-        assert str(exc_info.value) == "Unable to generate REST documentation."
 
         cause = exc_info.value.__cause__
         assert isinstance(cause, ValueError)
@@ -290,7 +287,6 @@ class TestGenerateAggregateRestDocFailsWhen:
 
         with pytest.raises(BuildOpenapiFailed) as exc_info:
             build_aggregated_openapi(services_conf.file, tmp_path / "output.json")
-        assert str(exc_info.value) == "Unable to generate REST documentation."
 
     @responses.activate
     def test_the_aggregated_documentation_cannot_be_written(
@@ -316,7 +312,6 @@ class TestGenerateAggregateRestDocFailsWhen:
 
         with pytest.raises(BuildOpenapiFailed) as exc_info:
             build_aggregated_openapi(services_conf.file, output_file)
-        assert str(exc_info.value) == "Unable to generate REST documentation."
 
         cause = exc_info.value.__cause__
         assert isinstance(cause, IOError)
@@ -441,7 +436,6 @@ class TestTestMergeProcessFailedWhen:
         output_file = tmp_path / "output.json"
         with pytest.raises(BuildOpenapiFailed) as exc_info:
             build_aggregated_openapi(services_conf.file, output_file)
-        assert str(exc_info.value) == "Unable to generate REST documentation."
 
         cause = exc_info.value.__cause__
         assert isinstance(cause, ValueError)

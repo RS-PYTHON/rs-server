@@ -1,18 +1,18 @@
 {
   "adgs": {
-    "root_url": "http://localhost:8001",
-    "doc_endpoint": "openapi.json"
+    "openapi_url": "http://localhost:8001/openapi.json"
   },
   "cadip": {
-    "root_url": "http://localhost:8002",
-    "doc_endpoint": "openapi.json"
+    "openapi_url": "http://localhost:8002/openapi.json"
   },
   "catalog": {
-    "root_url": "http://localhost:8003",
-    "doc_endpoint": "api"
+    "openapi_url": "http://localhost:8003/api",
+    "change_tags": {
+      "": "Catalog",
+      "Transaction Extension": "Catalog transaction extension"
+    }
   },
   "uac_manager": {
-    "root_url": "http://localhost:8004",
-    "doc_endpoint": "openapi.json"
+    "openapi_url": "http://localhost:8004/openapi.json"
   }
 }

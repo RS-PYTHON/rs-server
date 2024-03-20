@@ -1,10 +1,8 @@
 {
   "adgs": {
-    "root_url": "http://localhost:8001",
-    "doc_endpoint": "openapi.json"
+    "openapi_url": "http://localhost:8001/openapi.json"
   },
   "cadip": {
-    "root_url": "http://localhost:8002",
-    "doc_endpoint": "openapi.json"
+    "openapi_url": "http://localhost:8002/openapi.json"
   },
 }
