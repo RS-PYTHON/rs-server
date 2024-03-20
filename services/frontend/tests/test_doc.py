@@ -1,4 +1,5 @@
 """Tests for the docs endpoints."""
+
 import json
 from json import JSONDecodeError
 
@@ -11,7 +12,7 @@ class TestStartingApplication:
     """Verifies the openapi loading at the start of the frontend application."""
 
     def test_fails_if_the_openapi_spec_is_not_found(self, monkeypatch):
-        monkeypatch.setenv("RS_SERVER_OPENAPI_FILE", "file/not/found")
+        monkeypatch.setenv("RSPY_OPENAPI_FILE", "file/not/found")
         with pytest.raises(FrontendFailed) as exc_info:
             Frontend()
         assert str(exc_info.value) == "Unable to serve openapi specification."
@@ -24,7 +25,7 @@ class TestStartingApplication:
         monkeypatch,
         invalid_openapi_spec_file,
     ):
-        monkeypatch.setenv("RS_SERVER_OPENAPI_FILE", str(invalid_openapi_spec_file))
+        monkeypatch.setenv("RSPY_OPENAPI_FILE", str(invalid_openapi_spec_file))
         with pytest.raises(FrontendFailed) as exc_info:
             Frontend()
         assert str(exc_info.value) == "Unable to serve openapi specification."

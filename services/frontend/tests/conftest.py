@@ -1,4 +1,5 @@
 """"Common fixtures."""
+
 import json
 from pathlib import Path
 
@@ -35,7 +36,7 @@ def expected_openapi_spec(openapi_spec_file) -> dict:
 @pytest.fixture
 def client(monkeypatch, openapi_spec_file) -> TestClient:
     """The nominal application client for test purpose."""
-    monkeypatch.setenv("RS_SERVER_OPENAPI_FILE", str(openapi_spec_file))
+    monkeypatch.setenv("RSPY_OPENAPI_FILE", str(openapi_spec_file))
     app = Frontend().app
     with TestClient(app) as the_client:
         yield the_client

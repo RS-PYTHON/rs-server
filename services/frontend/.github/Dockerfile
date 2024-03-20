@@ -32,4 +32,7 @@ RUN useradd -m user
 USER user
 WORKDIR /home/user
 
+# Set env var to the aggregated openapi.json released in the .whl package
+ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.11/site-packages/resources/openapi.json
+
 ENTRYPOINT [ "python", "-m", "uvicorn", "--factory", "rs_server_frontend.main:start_app", "--host", "0.0.0.0", "--port", "8000" ]

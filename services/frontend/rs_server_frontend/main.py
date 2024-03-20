@@ -1,4 +1,5 @@
 """The frontend application."""
+
 import json
 import os
 
@@ -13,7 +14,7 @@ def load_openapi_spec() -> dict:
     """Load the openapi specification.
 
     The openapi is loaded from a json file.
-    This json file location is given by the environment variable RS_SERVER_OPENAPI_FILE.
+    This json file location is given by the environment variable RSPY_OPENAPI_FILE.
 
     An IOError is raised in case of errors during the file reading.
     A ValueError is raised in case of errors during the json parsing.
@@ -22,17 +23,19 @@ def load_openapi_spec() -> dict:
         the loaded openapi specification
 
     """
-    openapi_location = os.getenv("RS_SERVER_OPENAPI_FILE", "")
+    openapi_location = os.getenv("RSPY_OPENAPI_FILE", "")
     try:
         with open(openapi_location, "r") as file:
             return json.load(file)
     except (FileNotFoundError, IOError) as e:
         raise type(e)(
             f"openapi spec was not found at {openapi_location!r}. "
-            "Is the 'RS_SERVER_OPENAPI_FILE' environment variable correctly set ?",
+            "Is the 'RSPY_OPENAPI_FILE' environment variable correctly set ?",
         ) from e
     except ValueError as e:
-        raise ValueError(f"openapi spec was found at {openapi_location!r} but the file is not valid.") from e
+        raise ValueError(
+            f"openapi spec was found at {openapi_location!r} but the file is not valid.",
+        ) from e
 
 
 class Frontend:
@@ -43,7 +46,7 @@ class Frontend:
 
         The frontend serves the rs-server REST API documentation.
         this documentation is an openapi specification loaded from a json file.
-        This file location is given by the RS_SERVER_OPENAPI_FILE environment variable.
+        This file location is given by the RSPY_OPENAPI_FILE environment variable.
 
         This file is loaded during the frontend application initialization
         and is kept in memory cache for the entire life of the application.

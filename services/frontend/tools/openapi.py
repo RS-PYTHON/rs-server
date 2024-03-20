@@ -5,6 +5,7 @@ from pathlib import Path
 
 import requests
 from requests import HTTPError
+from requests.exceptions import ConnectionError
 from rs_server_frontend import __version__
 
 
@@ -28,9 +29,9 @@ def load_openapi(service: str, retrieve_url: str) -> dict:
         response = requests.get(retrieve_url)
         response.raise_for_status()
         return json.loads(response.content)
-    except HTTPError as e:
+    except (ConnectionError, HTTPError) as e:
         # TODO check what kind of base exception is relevant here
-        raise HTTPError(
+        raise type(e)(
             f"Unable to retrieve the openapi documentation for {service}.",
         ) from e
     except ValueError as e:
@@ -57,14 +58,18 @@ class AggregatedOpenapi:
         }
 
     def merge_openapi_versions(self) -> str:
-        openapi_versions = sorted({sub["openapi"] for sub in self.sub_openapis.values()})
+        openapi_versions = sorted(
+            {sub["openapi"] for sub in self.sub_openapis.values()},
+        )
         if len(openapi_versions) > 1:
             versions = ", ".join(openapi_versions)
             raise ValueError(f"The openapi versions are not all the same : {versions}")
         return next(iter(openapi_versions))
 
     def merge_service_versions(self) -> str:
-        services_versions = sorted({sub["info"]["version"] for sub in self.sub_openapis.values()})
+        services_versions = sorted(
+            {sub["info"]["version"] for sub in self.sub_openapis.values()},
+        )
         if len(services_versions) > 1:
             versions = ", ".join(services_versions)
             raise ValueError(f"The service versions are not all the same : {versions}")
@@ -87,6 +92,7 @@ def write_openapi(openapi: dict, to_path: Path):
     try:
         with open(to_path, "w") as file:
             json.dump(openapi, file, indent=2)
+            file.write("\n")
     except IOError as e:
         raise IOError(f"Unable to write the aggregated openapi into {to_path}.") from e
 

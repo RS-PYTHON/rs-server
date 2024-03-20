@@ -14,6 +14,11 @@ packages = [
     { include = "tests", format = "sdist" },
 ]
 
+# Add configuration files to the .whl package
+include = [
+    { path = "resources/openapi.json", format = ["wheel"] }
+]
+
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.110.0"
