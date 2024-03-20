@@ -3,6 +3,7 @@
 This module provides functionality to retrieve a list of products from the CADU system for a specified station.
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
+
 import json
 import os.path as osp
 import traceback
