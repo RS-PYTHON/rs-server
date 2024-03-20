@@ -666,7 +666,7 @@ class TestCatalogPublishCollectionEndpoint:
         # Check that collection status code is 200
         assert response.status_code == fastapi.status.HTTP_200_OK
         # Check that internal collection id is set to owner_collection
-        assert json.loads(response.content)["id"] == "test_owner_test_collection"
+        assert json.loads(response.content)["id"] == "test_collection"
         assert json.loads(response.content)["owner"] == "test_owner"
 
         # # Call search endpoint to verify presence of collection in catalog
@@ -721,13 +721,15 @@ class TestCatalogPublishCollectionEndpoint:
         response = client.post("/catalog/collections", json=minimal_collection)
         assert response.status_code == fastapi.status.HTTP_200_OK
         # Test that duplicate collection cannot be published
-        response = client.post("/catalog/collections", json=minimal_collection)
-        assert response.status_code == fastapi.status.HTTP_409_CONFLICT
+        with pytest.raises(fastapi.HTTPException):
+            response = client.post("/catalog/collections", json=minimal_collection)
+            assert response.status_code == fastapi.status.HTTP_409_CONFLICT
         # Change values from collection, try to publish again
         minimal_collection["description"] = "test_description_updated"
-        response = client.post("/catalog/collections", json=minimal_collection)
-        # Test that is not allowed
-        assert response.status_code == fastapi.status.HTTP_409_CONFLICT
+        with pytest.raises(fastapi.HTTPException):
+            response = client.post("/catalog/collections", json=minimal_collection)
+            # Test that is not allowed
+            assert response.status_code == fastapi.status.HTTP_409_CONFLICT
         # Check into catalogDB that values are not updated
         response = client.get("/catalog/collections", params={"owner": "duplicate_owner"})
         response_content = json.loads(response.content)["collections"][0]

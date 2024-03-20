@@ -89,8 +89,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 )
                 .lstrip("/")
             )
-            # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
-            self.handler.delete_file_from_s3(self.temp_bucket_name, file_key)
+            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+                # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
+                self.handler.delete_file_from_s3(self.temp_bucket_name, file_key)
 
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
@@ -99,7 +100,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         for asset in content["assets"]:
             # For catalog bucket, data is already store into alternate:s3:href
             file_key = content["assets"][asset]["alternate"]["s3"]["href"]
-            self.handler.delete_file_from_s3(bucket_info["catalog-bucket"]["name"], file_key)
+            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+                self.handler.delete_file_from_s3(bucket_info["catalog-bucket"]["name"], file_key)
 
     def adapt_object_links(self, my_object: dict, user: str) -> dict:
         """adapt all the links from a collection so the user can use them correctly
@@ -513,6 +515,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         except Exception:  # pylint: disable=broad-except
             response = await self.manage_response_error(response)
             return response
+
+        # Don't forward responses that fail
+        if response.status_code != 200:
+            body = [chunk async for chunk in response.body_iterator]
+            response_content = json.loads(b"".join(body).decode())  # type:ignore
+            raise HTTPException(detail=response_content, status_code= response.status_code)
 
         # Handle responses
         if request.scope["path"] == "/search":
