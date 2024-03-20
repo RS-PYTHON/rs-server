@@ -1,4 +1,5 @@
 """Unittests for cadip search endpoint."""
+
 from contextlib import contextmanager
 
 import pytest

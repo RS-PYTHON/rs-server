@@ -1,4 +1,5 @@
 """Common fixtures for data retrieval."""
+
 from datetime import datetime
 
 import pytest

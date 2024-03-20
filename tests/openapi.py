@@ -1,4 +1,5 @@
 """Utility module for openapi specification manipulation."""
+
 import argparse
 import json
 from pathlib import Path
