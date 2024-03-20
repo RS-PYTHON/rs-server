@@ -486,6 +486,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
+        import pdb
+        pdb.set_trace()
         if request.method in ["POST", "PUT"]:
             request_body = await request.json()
         else:
