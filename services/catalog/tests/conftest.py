@@ -252,6 +252,23 @@ def darius_s1_l2_fixture() -> Collection:  # pylint: disable=missing-function-do
     return a_collection("darius", "S1_L2")
 
 
+@pytest.fixture(scope="session", name="a_minimal_collection")
+def a_minimal_collection_fixture(client) -> dict:
+    """
+    This fixture is used to return the minimal form of accepted collection
+    """
+    client.post(
+        "/catalog/collections",
+        json={
+            "id": "fixture_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "fixture_owner",
+        },
+    )
+
+
 @pytest.fixture(scope="session", name="a_correct_feature")
 def a_correct_feature_fixture() -> dict:
     """This fixture returns a correct feature."""
@@ -381,9 +398,9 @@ def setup_database(
         user id titi.
     """
     add_collection(client, toto_s1_l1)
-    # add_collection(client, toto_s2_l3)
-    # add_collection(client, titi_s2_l1)
+    add_collection(client, toto_s2_l3)
+    add_collection(client, titi_s2_l1)
     add_collection(client, darius_s1_l2)
     add_feature(client, feature_toto_s1_l1_0)
-    # add_feature(client, feature_toto_s1_l1_1)
-    # add_feature(client, feature_titi_s2_l1_0)
+    add_feature(client, feature_toto_s1_l1_1)
+    add_feature(client, feature_titi_s2_l1_0)

@@ -343,8 +343,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # update request body (better find the function that updates the body maybe?)c
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             return request  # pylint: disable=protected-access
-        except KeyError as key_error_msg:
-            raise HTTPException(detail=f"Missing key in request body! {key_error_msg}", status_code=400)
+        except KeyError as kerr_msg:
+            raise HTTPException(detail=f"Missing key in request body! {kerr_msg}", status_code=400) from kerr_msg
 
     async def manage_get_response(
         self,
@@ -486,8 +486,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        import pdb
-        pdb.set_trace()
         if request.method in ["POST", "PUT"]:
             request_body = await request.json()
         else:
@@ -522,7 +520,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         if response.status_code != 200:
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type:ignore
-            raise HTTPException(detail=response_content, status_code= response.status_code)
+            raise HTTPException(detail=response_content, status_code=response.status_code)
 
         # Handle responses
         if request.scope["path"] == "/search":

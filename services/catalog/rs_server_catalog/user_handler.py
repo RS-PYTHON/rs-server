@@ -33,7 +33,10 @@ def get_ids(path: str) -> dict:
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
         if ":" in groups["owner_collection_id"]:
-            res["owner_id"], res["collection_id"] = map(lambda x: x.lstrip("/"), groups["owner_collection_id"].split(":"))
+            res["owner_id"], res["collection_id"] = map(
+                lambda x: x.lstrip("/"),
+                groups["owner_collection_id"].split(":"),
+            )
         if groups["item_id"]:
             res["item_id"] = groups["item_id"][1:]
         return res
@@ -66,6 +69,7 @@ def remove_user_prefix(path: str) -> str:
 
     if path == "/catalog/collections":
         return "/collections"
+
     # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
     # # To catch the endpoint /catalog/{owner_id}
     # if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
@@ -80,7 +84,10 @@ def remove_user_prefix(path: str) -> str:
             owner_id, collection_id = map(lambda x: x.lstrip("/"), groups["owner_collection_id"].split(":"))
         item_id = groups["item_id"]
         if item_id is None:
-            path = f"/collections/{owner_id}_{collection_id}"
+            if "items" in path:
+                path = f"/collections/{owner_id}_{collection_id}/items"
+            else:
+                path = f"/collections/{owner_id}_{collection_id}"
         else:
             item_id = item_id[1:]
             path = f"/collections/{owner_id}_{collection_id}/items/{item_id}"

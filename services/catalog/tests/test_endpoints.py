@@ -1,5 +1,5 @@
 """Integration tests for user_catalog module."""
-
+import copy
 import json
 import os
 import os.path as osp
@@ -11,8 +11,6 @@ import requests
 import yaml
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
-
-from .conftest import add_collection, add_feature  # pylint: disable=no-name-in-module
 
 # Resource folders specified from the parent directory of this current script
 S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
@@ -49,512 +47,6 @@ def clear_aws_credentials():
         s3_config = yaml.safe_load(f)
         for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
             del os.environ[env_var]
-
-
-@pytest.mark.integration
-class TestRedirectionCatalogUserIdCollections:  # pylint: disable=missing-function-docstring
-    """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections'"""
-
-    def test_status_code_200_toto_if_good_endpoint(self, client):
-        test_params = {"filter-lang": "cql2-text", "filter": "owner_id='toto'"}
-        response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
-
-    def test_status_code_200_titi_if_good_endpoint(self, client):
-        test_params = {"filter-lang": "cql2-text", "filter": "owner_id='titi'"}
-        response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
-
-    def test_status_code_200_post_new_collection_esmeralda_s1_l1(self, client):
-        new_collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "description": "The S1_L1 collection for Esmeralda user.",
-            "stac_version": "1.0.0",
-            "owner": "esmeralda",
-        }
-        response = client.post("/catalog/collections", json=new_collection)
-        assert response.status_code == 200
-        client.delete("/catalog/collections/esmeralda:S1_L1")
-
-    def test_status_code_200_update_collection_esmeralda_s1_l1(self, client):
-        esmeralda_collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "description": "The S1_L1 collection for Esmeralda user.",
-            "stac_version": "1.0.0",
-            "owner": "esmeralda",
-        }
-        client.post("/catalog/collections", json=esmeralda_collection)
-        new_esmeralda_collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "description": "The S1_L1 collection for New Esmeralda user.",
-            "stac_version": "1.0.0",
-            "owner": "esmeralda",
-        }
-        response = client.put("/catalog/collections", json=new_esmeralda_collection)
-        assert response.status_code == 200
-        response_json = json.loads(response.content)
-        assert response_json["id"] == "S1_L1"
-        client.delete("/catalog/esmeralda/collections/S1_L1")
-
-    def test_if_update_collection_esmeralda_s1_l1_worked(self, client):
-        esmeralda_collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "description": "The S1_L1 collection for Esmeralda user.",
-            "stac_version": "1.0.0",
-            "owner": "esmeralda",
-        }
-        client.post("/catalog/collections", json=esmeralda_collection)
-        new_esmeralda_collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "description": "The S1_L1 collection for BIG Esmeralda user.",
-            "stac_version": "1.0.0",
-            "owner": "esmeralda",
-        }
-        client.put("/catalog/esmeralda/collections", json=new_esmeralda_collection)
-        response = client.get("/catalog/esmeralda/collections/S1_L1")
-        content = json.loads(response.content)
-        assert content["description"] == "The S1_L1 collection for BIG Esmeralda user."
-        client.delete("/catalog/esmeralda/collections/S1_L1")
-
-    def test_collection_with_esmeralda_added_after_post(self, client):
-        new_collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "description": "The S1_L1 collection for Esmeralda user.",
-            "stac_version": "1.0.0",
-        }
-        client.post("/catalog/esmeralda/collections", json=new_collection)
-        response = client.get("/catalog/esmeralda/collections/S1_L1")
-        assert response.status_code == 200
-        client.delete("/catalog/esmeralda/collections/S1_L1")
-
-    def load_json_collections(self, client, endpoint, owner):
-        response = client.get(endpoint, params={"owner": owner})
-        collections = json.loads(response.content)["collections"]
-        return {collection["id"] for collection in collections}
-
-    def test_collections_with_toto_removed(self, client, toto_s1_l1, toto_s2_l3):
-        collections_ids = self.load_json_collections(client, "/catalog/collections", "toto")
-        assert collections_ids == {toto_s1_l1.name, toto_s2_l3.name}
-
-    def test_collections_with_titi_removed(self, client, titi_s2_l1):
-        collections_ids = self.load_json_collections(client, "catalog/collections", "titi")
-        assert collections_ids == {titi_s2_l1.name}
-
-    def test_link_parent_is_valid(self, client):
-        response = client.get("/catalog/collections", params={"owner": "toto"})
-        response_json = json.loads(response.content)
-        links = response_json["links"]
-        parent_link = next(link for link in links if link["rel"] == "parent")
-        assert parent_link == {
-            "rel": "parent",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto",
-        }
-
-    def test_link_root_is_valid(self, client):
-        response = client.get("/catalog/collections", params={"owner": "toto"})
-        response_json = json.loads(response.content)
-        links = response_json["links"]
-        root_link = next(link for link in links if link["rel"] == "root")
-        assert root_link == {
-            "rel": "root",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto",
-        }
-
-    def test_link_self_is_valid(self, client):
-        response = client.get("/catalog/collections", params={"owner": "toto"})
-        response_json = json.loads(response.content)
-        links = response_json["links"]
-        self_link = next(link for link in links if link["rel"] == "self")
-        assert self_link == {
-            "rel": "self",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto/collections",
-        }
-
-    def test_collection_link_items_is_valid(self, client):
-        response = client.get("/catalog/collections", params={"owner": "toto"})
-        response_json = json.loads(response.content)
-        collection = response_json["collections"][0]
-        collection_id = collection["id"]
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "items")
-        assert link == {
-            "rel": "items",
-            "type": "application/geo+json",
-            "href": f"http://testserver/catalog/toto/collections/{collection_id}/items",
-        }
-
-    def test_collection_link_parent_is_valid(self, client):
-        response = client.get("/catalog/collections", params={"owner": "toto"})
-        response_json = json.loads(response.content)
-        collection = response_json["collections"][0]
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "parent")
-        assert link == {
-            "rel": "parent",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto",
-        }
-
-    def test_collection_link_root_is_valid(self, client):
-        response = client.get("/catalog/collections", params={"owner": "toto"})
-        response_json = json.loads(response.content)
-        collection = response_json["collections"][0]
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "root")
-        assert link == {
-            "rel": "root",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto",
-        }
-
-    def test_collection_link_self_is_valid(self, client):
-        response = client.get("/catalog/collections", params={"owner": "toto"})
-        response_json = json.loads(response.content)
-        collection = response_json["collections"][0]
-        collection_id = collection["id"]
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "self")
-        assert link == {
-            "rel": "self",
-            "type": "application/json",
-            "href": f"http://testserver/catalog/toto/collections/{collection_id}",
-        }
-
-    def test_collection_link_license_is_valid(self, client):
-        response = client.get("/catalog/collections", params={"owner": "toto"})
-        response_json = json.loads(response.content)
-        collection = response_json["collections"][0]
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "license")
-        assert link == {
-            "rel": "license",
-            "href": "https://creativecommons.org/licenses/publicdomain/",
-            "title": "public domain",
-        }
-
-    def test_collection_link_about_is_valid(self, client):
-        pass
-
-
-@pytest.mark.integration
-class TestRedirectionCatalogUserIdCollectionsCollectionid:  # pylint: disable=missing-function-docstring
-    """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}'."""
-
-    def test_status_code_200_toto_if_good_endpoint(self, client):
-        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "owner_id='toto'"}
-        response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
-
-    def test_status_code_200_titi_if_good_endpoint(self, client):
-        test_params = {"collections": "S2_L1", "filter-lang": "cql2-text", "filter": "owner_id='titi'"}
-        response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
-
-    def load_json_collection(self, client, endpoint, params):
-        response = client.get(endpoint, params=params)
-        collection = json.loads(response.content)
-        return collection["id"]
-
-    def test_collection_toto_s1_l1_with_toto_removed(self, client, toto_s1_l1):
-        test_params = {"collections": "S1_L1", "filter": "owner_id='toto'"}
-        collection_id = self.load_json_collection(client, "/catalog/search", params=test_params)
-        assert collection_id == toto_s1_l1.name
-
-    def test_collection_titi_s2_l1_with_titi_removed(self, client, titi_s2_l1):
-        test_params = {"collections": "S2_L1", "filter": "owner_id='titi'"}
-        collection_id = self.load_json_collection(client, "catalog/search", params=test_params)
-        assert collection_id == titi_s2_l1.name
-
-    def test_collection_toto_s1_l1_link_items_is_valid(self, client):
-        test_params = {"collections": "S1_L1", "filter": "owner_id='toto'"}
-        response = client.get("catalog/search", params=test_params)
-        collection = json.loads(response.content)
-        collection_id = collection["id"]
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "items")
-        assert link == {
-            "rel": "items",
-            "type": "application/geo+json",
-            "href": f"http://testserver/catalog/toto/collections/{collection_id}/items",
-        }
-
-    def test_collection_toto_s1_l1_link_parent_is_valid(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1")
-        collection = json.loads(response.content)
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "parent")
-        assert link == {
-            "rel": "parent",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto",
-        }
-
-    def test_collection_toto_s1_l1_link_root_is_valid(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1")
-        collection = json.loads(response.content)
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "root")
-        assert link == {
-            "rel": "root",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto",
-        }
-
-    def test_collection_toto_s1_l1_link_self_is_valid(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1")
-        collection = json.loads(response.content)
-        collection_id = collection["id"]
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "self")
-        assert link == {
-            "rel": "self",
-            "type": "application/json",
-            "href": f"http://testserver/catalog/toto/collections/{collection_id}",
-        }
-
-    def test_collection_toto_s1_l1_link_license_is_valid(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1")
-        collection = json.loads(response.content)
-        links = collection["links"]
-        link = next(link for link in links if link["rel"] == "license")
-        assert link == {
-            "rel": "license",
-            "href": "https://creativecommons.org/licenses/publicdomain/",
-            "title": "public domain",
-        }
-
-    def test_delete_collection(self, client, toto_s1_l1, feature_toto_s1_l1_0, feature_toto_s1_l1_1):
-        response = client.delete("/catalog/collections/toto:S1_L1")
-        add_collection(client, toto_s1_l1)
-        add_feature(client, feature_toto_s1_l1_0)
-        add_feature(client, feature_toto_s1_l1_1)
-        assert response.status_code == 200
-
-
-@pytest.mark.integration
-class TestRedirectionItems:  # pylint: disable=missing-function-docstring
-    """This class contains integration tests for the endpoint '/catalog/{ownerId}/collections/{collectionId}/items'."""
-
-    def test_status_code_200_feature_toto_if_good_endpoint(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1/items")
-        assert response.status_code == 200
-
-    def test_status_code_200_feature_titi_if_good_endpoint(self, client):
-        response = client.get("/catalog/collections/titi:S2_L1/items")
-        assert response.status_code == 200
-
-    def test_status_code_200_post_new_feature_esmeralda(self, client):
-        esmeralda_collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "description": "The S1_L1 collection for Esmeralda user.",
-            "stac_version": "1.0.0",
-            "owner": "esmeralda",
-        }
-
-        client.post("/catalog/collections", json=esmeralda_collection)
-
-        new_feature = {
-            "id": "feature_0",
-            "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
-            "type": "Feature",
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [-94.6334839, 37.0595608],
-                        [-94.6334839, 37.0332547],
-                        [-94.6005249, 37.0332547],
-                        [-94.6005249, 37.0595608],
-                        [-94.6334839, 37.0595608],
-                    ],
-                ],
-            },
-            "collection": "S1_L1",
-            "properties": {
-                "gsd": 0.5971642834779395,
-                "width": 2500,
-                "height": 2500,
-                "datetime": "2000-02-02T00:00:00Z",
-                "proj:epsg": 3857,
-                "orientation": "nadir",
-            },
-            "assets": {},
-            "stac_extensions": [],
-        }
-        response = client.post("/catalog/collections/esmeralda:S1_L1/items", json=new_feature)
-        assert response.status_code == 200
-        client.delete("/catalog/esmeralda/collections/S1_L1")
-
-    def test_feature_with_esmeralda_added_after_post(self, client):
-        esmeralda_collection = {
-            "id": "S1_L1",
-            "type": "Collection",
-            "description": "The S1_L1 collection for Esmeralda user.",
-            "stac_version": "1.0.0",
-            "owner": "esmeralda",
-        }
-
-        client.post("/catalog/collections", json=esmeralda_collection)
-
-        new_feature = {
-            "id": "feature_0",
-            "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
-            "type": "Feature",
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [-94.6334839, 37.0595608],
-                        [-94.6334839, 37.0332547],
-                        [-94.6005249, 37.0332547],
-                        [-94.6005249, 37.0595608],
-                        [-94.6334839, 37.0595608],
-                    ],
-                ],
-            },
-            "collection": "S1_L1",
-            "properties": {
-                "gsd": 0.5971642834779395,
-                "width": 2500,
-                "height": 2500,
-                "datetime": "2000-02-02T00:00:00Z",
-                "proj:epsg": 3857,
-                "orientation": "nadir",
-            },
-            "assets": {},
-            "stac_extensions": [],
-        }
-        client.post("/catalog/esmeralda/collections/S1_L1/items", json=new_feature)
-        response = client.get("/catalog/esmeralda/collections/S1_L1/items/feature_0")
-        assert response.status_code == 200
-        client.delete("/catalog/esmeralda/collections/S1_L1")
-
-    def load_json_feature(self, client, endpoint):
-        response = client.get(endpoint)
-        features = json.loads(response.content)["features"]
-        return {feature["collection"] for feature in features}
-
-    def test_features_toto_s1_l1_with_toto_removed(self, client, feature_toto_s1_l1_0, feature_toto_s1_l1_1):
-        feature_collection = self.load_json_feature(client, "/catalog/toto/collections/S1_L1/items")
-        assert feature_collection == {feature_toto_s1_l1_0.collection, feature_toto_s1_l1_1.collection}
-
-    def test_feature_titi_s2_l1_0_with_titi_removed(self, client, feature_titi_s2_l1_0):
-        feature_collection = self.load_json_feature(client, "catalog/titi/collections/S2_L1/items")
-        assert feature_collection == {feature_titi_s2_l1_0.collection}
-
-    def test_link_collection_is_valid(self, client):
-        response = client.get("/catalog/toto/collections/S1_L1/items")
-        response_json = json.loads(response.content)
-        links = response_json["links"]
-        collection_link = next(link for link in links if link["rel"] == "collection")
-        assert collection_link == {
-            "rel": "collection",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto/collections/S1_L1",
-        }
-
-    def test_link_parent_is_valid(self, client):
-        response = client.get("/catalog/toto/collections/S1_L1/items")
-        response_json = json.loads(response.content)
-        links = response_json["links"]
-        parent_link = next(link for link in links if link["rel"] == "parent")
-        assert parent_link == {
-            "rel": "parent",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto/collections/S1_L1",
-        }
-
-    def test_link_root_is_valid(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1/items")
-        response_json = json.loads(response.content)
-        links = response_json["links"]
-        root_link = next(link for link in links if link["rel"] == "root")
-        assert root_link == {
-            "rel": "root",
-            "type": "application/json",
-            "href": "http://testserver/catalog/toto",
-        }
-
-    def test_link_self_is_valid(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1/items")
-        response_json = json.loads(response.content)
-        links = response_json["links"]
-        self_link = next(link for link in links if link["rel"] == "self")
-        assert self_link == {
-            "rel": "self",
-            "type": "application/geo+json",
-            "href": "http://testserver/collections/toto_S1_L1/items",
-        }
-
-
-class TestRedirectionItemsItemId:  # pylint: disable=missing-function-docstring
-    """This class contains integration tests for the endpoint
-    '/catalog/{ownerId}/collections/{collectionId}/items/{item_id}'."""
-
-    def test_status_code_200_feature_toto_if_good_endpoint(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
-        assert response.status_code == 200
-
-    def test_status_code_200_feature_titi_if_good_endpoint(self, client):
-        response = client.get("/catalog/collections/titi:S2_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
-        assert response.status_code == 200
-
-    def load_json_feature(self, client, endpoint):
-        response = client.get(endpoint)
-        feature = json.loads(response.content)
-        return feature["collection"]
-
-    def test_feature_toto_s1_l1_0_with_toto_removed(self, client, feature_toto_s1_l1_0):
-        feature_id = self.load_json_feature(
-            client,
-            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
-        )
-        assert feature_id == feature_toto_s1_l1_0.collection
-
-    def test_collection_titi_s2_l1_with_titi_removed(self, client, feature_titi_s2_l1_0):
-        feature_id = self.load_json_feature(
-            client,
-            "/catalog/collections/titi:S2_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
-        )
-        assert feature_id == feature_titi_s2_l1_0.collection
-
-    def test_update_feature(self, client):
-        toto_s1_l1_feature = client.get("/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
-        json_toto = json.loads(toto_s1_l1_feature.content)
-        response = client.put(
-            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
-            json=json_toto,
-            headers=toto_s1_l1_feature.headers,
-        )
-        assert response.status_code == 200
-        response_json = json.loads(response.content)
-        assert response_json["collection"] == "S1_L1"
-
-    def test_delete_feature(self, client, feature_toto_s1_l1_0):
-        response = client.delete("/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
-        add_feature(client, feature_toto_s1_l1_0)
-        assert response.status_code == 200
-
-    def test_self_link_is_valid(self, client):
-        response = client.get("/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d")
-        response_json = json.loads(response.content)
-        links = response_json["links"]
-        self_link = next(link for link in links if link["rel"] == "self")
-        assert self_link == {
-            "rel": "self",
-            "type": "application/geo+json",
-            "href": "http://testserver/catalog/toto/collections/S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
-        }
 
 
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
@@ -651,6 +143,8 @@ class TestCatalogSearchEndpoint:
 
 # REWORKED TESTS
 class TestCatalogPublishCollectionEndpoint:
+    """This class is used to group all tests for publishing a collection into catalog DB."""
+
     def test_create_new_minimal_collection(self, client):
         """
         Test endpoint POST /catalog/collections.
@@ -703,7 +197,7 @@ class TestCatalogPublishCollectionEndpoint:
             assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
         # Check that owner from this collection is not written in catalogDB
         response = client.get("/catalog/collections", params={"owner": "test_incorrect_owner"})
-        assert not len(json.loads(response.content)["collections"])
+        assert len(json.loads(response.content)["collections"]) == 0
 
     def test_create_a_collection_already_created(self, client):
         """
@@ -784,11 +278,11 @@ class TestCatalogPublishCollectionEndpoint:
 
         # Check that collection is correctly published
         first_check_response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
-        first_response_content = json.loads(first_check_response.content)['collections'][0]
-        assert first_response_content['description'] == minimal_collection['description']
+        first_response_content = json.loads(first_check_response.content)["collections"][0]
+        assert first_response_content["description"] == minimal_collection["description"]
 
         # !!!
-        #response = client.get("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection/items")
+        # response = client.get("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection/items")
         # !!!
 
         # Delete the collection
@@ -797,15 +291,19 @@ class TestCatalogPublishCollectionEndpoint:
         # Check that collection is correctly deleted
         second_check_response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
         second_response_content = json.loads(second_check_response.content)
-        assert minimal_collection['id'] not in second_response_content['collections']
+        assert minimal_collection["id"] not in second_response_content["collections"]
 
     def test_delete_a_non_existent_collection(self, client):
+        """
+        Test DELETE collection endpoint on non existing collection
+        """
         # Should call delete endpoint on a non existent collection id
         with pytest.raises(fastapi.HTTPException):
             delete_response = client.delete("/catalog/collections/non_existent_owner:non_existent_collection")
             assert delete_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
     def test_delete_a_foreign_collection(self, client):
+        """Test DELETE collection endpoint, with a user that has no rights to remove a existing collection."""
         minimal_collection = {
             "id": "correctly_created_collection",
             "type": "Collection",
@@ -822,6 +320,8 @@ class TestCatalogPublishCollectionEndpoint:
 
 
 class TestCatalogPublishFeatureWithBucketTransferEndpoint:
+    """This class is used to group tests that just post a feature on catalogDB without moving assets."""
+
     @pytest.mark.parametrize(
         "owner, collection_id",
         [
@@ -1028,10 +528,14 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             # check that content is the same as the original file
             assert product_content.content.decode() == object_cotent
 
-            assert client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
-            s3_handler.delete_bucket_completely(catalog_bucket)
+            with pytest.raises(fastapi.HTTPException):
+                assert (
+                    client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code
+                    == 404
+                )
 
         finally:
+            s3_handler.delete_bucket_completely(catalog_bucket)
             server.stop()
             # Remove bucket credentials form env variables / should create a s3_handler without credentials error
             clear_aws_credentials()
@@ -1097,12 +601,190 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
 
 class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
-    def test_create_new_minimal_feature(self, client):
+    """Class used to group tests that publish a collection and move assets between buckets."""
+
+    def test_create_new_minimal_feature(self, client, a_correct_feature):
+        """Test that a feature is correctly published into catalogDB
+        ENDPOINT: POST /catalog/collections/{user:collection}/items
+        ENDPOINT: GET /catalog/collections/{user:collection}/items
+        ENDPOINT: GET /catalog/collections/{user:collection}/items/{featureID}"""
         minimal_collection = {
-            "id": "test_collection",
+            "id": "fixture_collection",
             "type": "Collection",
             "description": "test_description",
             "stac_version": "1.0.0",
-            "owner": "test_owner",
+            "owner": "fixture_owner",
         }
-        response = client.post("/catalog/collections", json=minimal_collection)
+        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
+        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
+        # Change correct feature collection id to match with minimal collection and post it
+        a_correct_feature["collection"] = "fixture_collection"
+        feature_post_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=a_correct_feature,
+        )
+        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        # Check if the future is correctly posted to catalog
+        check_features_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
+        assert check_features_response.status_code == fastapi.status.HTTP_200_OK
+        # Test if query returns only one feature for this collection
+        returned_features = json.loads(check_features_response.content)
+        assert returned_features["context"]["returned"] == 1
+        # Test feature content
+        assert returned_features["features"][0]["id"] == a_correct_feature["id"]
+        assert returned_features["features"][0]["geometry"] == a_correct_feature["geometry"]
+        assert returned_features["features"][0]["properties"]["owner"] == "fixture_owner"
+        # Get feature using specific endpoint with featureID
+        feature_id = a_correct_feature["id"]
+        specific_feature_response = client.get(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{feature_id}",
+        )
+        assert specific_feature_response.status_code == fastapi.status.HTTP_200_OK
+        specific_feature = json.loads(check_features_response.content)
+        # Check that specific feature is exactly match for previous one
+        assert specific_feature["features"][0] == returned_features["features"][0]
+        # Cleanup the test
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+
+    def test_get_non_existent_feature(self, client, a_minimal_collection):
+        """
+        Testing GET feature endpoint with a non-existent feature ID.
+        """
+        # Try to get a non-existent feature from a non-existing collection
+        with pytest.raises(fastapi.HTTPException):
+            feature_post_response = client.get("/catalog/collections/non_owner:non_collection/items/non_feature_id")
+            assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+            # Try to get a non-existent feature from an existing collection
+            feature_post_response = client.get(
+                "/catalog/collections/fixture_owner:fixture_collection/items/incorrect_feature_id",
+            )
+            assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+        # Cleanup the test
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+
+    def test_update_with_a_correct_feature(self, client, a_correct_feature):
+        """
+        ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
+        """
+        minimal_collection = {
+            "id": "fixture_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "fixture_owner",
+        }
+        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
+        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
+        # Change correct feature collection id to match with minimal collection and post it
+        a_correct_feature["collection"] = "fixture_collection"
+        # Post the correct feature to catalog
+        feature_post_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=a_correct_feature,
+        )
+        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        # Update the feature and PUT it into catalogDB
+        updated_feature_sent = copy.deepcopy(a_correct_feature)
+        updated_feature_sent["bbox"] = [77]
+        feature_put_response = client.put(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+            json=updated_feature_sent,
+        )
+        assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
+        # Test the updated feature from catalog
+        updated_feature = client.get(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+        )
+        assert updated_feature.status_code == fastapi.status.HTTP_200_OK
+        updated_feature = json.loads(updated_feature.content)
+        # Test that ID has changed, but other arbitrary field not
+        assert updated_feature["bbox"] == updated_feature_sent["bbox"]
+        assert updated_feature["geometry"] == a_correct_feature["geometry"]
+
+        # Cleanup the test
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+
+    def test_update_with_a_incorrect_feature(self, client, a_correct_feature):
+        """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
+        minimal_collection = {
+            "id": "fixture_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "fixture_owner",
+        }
+        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
+        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
+        # Change correct feature collection id to match with minimal collection and post it
+        a_correct_feature["collection"] = "fixture_collection"
+        # Post the correct feature to catalog
+        feature_post_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=a_correct_feature,
+        )
+        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        # Update the feature with an incorrect value and PUT it into catalogDB
+        updated_feature_sent = copy.deepcopy(a_correct_feature)
+        updated_feature_sent["bbox"] = "Incorrect_bbox_value"
+
+        with pytest.raises(fastapi.HTTPException):
+            client.put(
+                f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+                json=updated_feature_sent,
+            )
+        # Cleanup the test
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+
+    def test_delete_a_correct_feature(self, client, a_correct_feature):
+        """
+        ENDPOINT: DELETE: /catalog/collections/{user:collection}/items/{featureID}
+        """
+        minimal_collection = {
+            "id": "fixture_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "fixture_owner",
+        }
+        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
+        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
+        a_correct_feature["collection"] = "fixture_collection"
+        # Post the correct feature to catalog
+        feature_post_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=a_correct_feature,
+        )
+        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        # Delete the feature from catalogDB
+        delete_response = client.delete(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+        )
+        assert delete_response.status_code == fastapi.status.HTTP_200_OK
+        # Test that feature was correctly removed from catalogDB
+        with pytest.raises(fastapi.HTTPException):
+            client.get(f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}")
+        # Test that collection is now empty
+        collection_content_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
+        assert collection_content_response.status_code == fastapi.status.HTTP_200_OK
+        collection_content_response = json.loads(collection_content_response.content)
+        assert collection_content_response["context"]["returned"] == 0
+        # Cleanup the test
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+
+    def test_delete_a_non_existing_feature(self, client):
+        """
+        Test DELETE feature endpoint on non-existing feature.
+        """
+        minimal_collection = {
+            "id": "fixture_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "fixture_owner",
+        }
+        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
+        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
+        with pytest.raises(fastapi.HTTPException):
+            client.delete("/catalog/collections/fixture_owner:fixture_collection/items/non_existent_feature")
+        # Cleanup the test
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
