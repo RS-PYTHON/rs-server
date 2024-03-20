@@ -55,7 +55,15 @@ class Frontend:
         """
         try:
             self.openapi_spec: dict = load_openapi_spec()
-            self.app: FastAPI = FastAPI()
+            self.app: FastAPI = FastAPI(
+                # Same hardcoded values than in the apikey manager
+                # (they don't appear in the openapi.json)
+                swagger_ui_init_oauth={
+                    "clientId": "(this value is not used)",
+                    "appName": "APIKeyManager",
+                    "usePkceWithAuthorizationCodeGrant": True,
+                },
+            )
             self.app.openapi = self.get_openapi
         except BaseException as e:
             raise FrontendFailed("Unable to serve openapi specification.") from e
