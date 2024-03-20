@@ -51,7 +51,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     handler: S3StorageHandler = None
     temp_bucket_name: str = "temp-bucket"
-    request_ids: dict = None
+    request_ids: dict[Any, Any] = {}
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -510,7 +510,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # URL: GET: '/catalog/search'
             request = self.manage_search_request(request)
         elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
-            # URL: POST / PUT: '/catalog/{USER}/collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
+            # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
+            # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)
 
         response = None
@@ -531,13 +532,14 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # GET: '/catalog/search'
             response = await self.manage_search_response(request, response)
         elif request.method == "GET" and "download" in request.url.path:
-            # URL: GET: '/catalog/{USER}/collections/{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
+            # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
         elif request.method == "GET" and self.request_ids["owner_id"]:
-            # URL: GET: '/catalog/{USER}/Collections'
+            # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             response = await self.manage_get_response(request, response)
         elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
-            # URL: POST / PUT: '/catalog/{USER}/Collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
+            # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
+            # or '/catalog/collections/{USER}:{COLLECTION}/items'
             response = await self.manage_put_post_response(request, response)
         elif request.method == "DELETE" and user:
             response = await self.manage_delete_response(response, user)

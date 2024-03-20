@@ -12,39 +12,6 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
 
 
-def get_ids(path: str) -> dict:
-    """From a str path return the owner_id and the collection_id if they exists.
-
-
-    Args:
-        path (str): the endpoint request.
-
-    Returns:
-        dict: the result containing owner_id and collection_id.
-    """
-    res = {"owner_id": "", "collection_id": "", "item_id": ""}
-
-    # To catch the endpoint /catalog/{owner_id}
-    if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
-        groups = match.groupdict()
-        res["owner_id"] = groups["owner_id"]
-        return res
-
-    # To catch all the other endpoints.
-    if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
-        groups = match.groupdict()
-        if ":" in groups["owner_collection_id"]:
-            res["owner_id"], res["collection_id"] = map(
-                lambda x: x.lstrip("/"),
-                groups["owner_collection_id"].split(":"),
-            )
-        if groups["item_id"]:
-            res["item_id"] = groups["item_id"][1:]
-        return res
-
-    return res
-
-
 def reroute_url(path: str, method: str) -> Tuple[str, dict]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
@@ -61,11 +28,8 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:
         dict: Return a dictionary containing owner, collection and item ID.
     """
 
-    if path == "/":
-        raise ValueError("URL (/) is invalid.")
-
-    if path == "/catalog":
-        raise ValueError("URL (/catalog) is invalid.")
+    if path in ["/", "/catalog"]:
+        raise ValueError(f"URL ({path}) is invalid.")
 
     ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
 
@@ -76,11 +40,9 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:
         return "/collections", ids_dict
 
     # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
-    # # To catch the endpoint /catalog/{owner_id}
-    # if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
-    #     groups = match.groupdict()
-    #     owner_id = groups["owner_id"]
-    #     return "/"
+    # To catch the endpoint /catalog/{owner_id}
+    if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
+        return "/", ids_dict
 
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
