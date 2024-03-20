@@ -233,6 +233,7 @@ class TestCatalogPublishCollectionEndpoint:
         """
         Test that endpoint PUT /catalog/collections updates a collection.
         Endpoint: PUT /catalog/collections.
+        Endpoint: PUT /catalog/collections/owner:collection
         """
         minimal_collection = {
             "id": "second_test_collection",
@@ -242,24 +243,36 @@ class TestCatalogPublishCollectionEndpoint:
             "owner": "second_test_owner",
         }
         # Post the collection
-        response = client.post("/catalog/collections", json=minimal_collection)
-        assert response.status_code == fastapi.status.HTTP_200_OK
+        post_collection_response = client.post("/catalog/collections", json=minimal_collection)
+        assert post_collection_response.status_code == fastapi.status.HTTP_200_OK
         # test if is ok written in catalogDB
-        response = client.get("/catalog/collections", params={"owner": "second_test_owner"})
-        response_content = json.loads(response.content)["collections"][0]
+        get_collection_response = client.get("/catalog/collections", params={"owner": "second_test_owner"})
+        response_content = json.loads(get_collection_response.content)["collections"][0]
         assert response_content["description"] == "not_updated_test_description"
         # Update the collection description and PUT
         minimal_collection["description"] = "the_updated_test_description"
-        response = client.put("/catalog/collections", json=minimal_collection)
-        assert response.status_code == fastapi.status.HTTP_200_OK
-        # !!!!!
-        response = client.put("/catalog/collections/second_test_owner:second_test_collection", json=minimal_collection)
-        assert response.status_code == fastapi.status.HTTP_200_OK
-        # !!!!
+        updated_collection_response = client.put("/catalog/collections", json=minimal_collection)
+        assert updated_collection_response.status_code == fastapi.status.HTTP_200_OK
+
         # Check that collection is correctly updated
-        response = client.get("/catalog/collections", params={"owner": "second_test_owner"})
-        response_content = json.loads(response.content)["collections"][0]
+        get_check_collection_response = client.get("/catalog/collections", params={"owner": "second_test_owner"})
+        response_content = json.loads(get_check_collection_response.content)["collections"][0]
         assert response_content["description"] == "the_updated_test_description"
+
+        # Update collection using PUT /catalog/collections/owner:collection
+        minimal_collection["description"] = "description_updated_again"
+        second_update_response = client.put(
+            "/catalog/collections/second_test_owner:second_test_collection",
+            json=minimal_collection,
+        )
+        assert second_update_response.status_code == fastapi.status.HTTP_200_OK
+
+        # Check that collection is correctly updated, use GET /catalog/collections/owner:collection
+        second_check_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
+        second_check_response_content = json.loads(second_check_response.content)["collections"][0]
+        assert second_check_response_content["description"] == "description_updated_again"
+        # cleanup
+        client.delete("/catalog/collections/second_test_owner:second_test_collection")
 
     def test_delete_a_created_collection(self, client):
         """

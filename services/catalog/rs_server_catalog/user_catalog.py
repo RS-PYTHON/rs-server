@@ -27,10 +27,9 @@ from pygeofilter.parsers.ecql import parse as parse_ecql
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
-    get_ids,
     remove_user_from_collection,
     remove_user_from_feature,
-    remove_user_prefix,
+    reroute_url,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
@@ -52,6 +51,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     handler: S3StorageHandler = None
     temp_bucket_name: str = "temp-bucket"
+    request_ids: dict = None
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -316,18 +316,17 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             return JSONResponse(content, status_code=response.status_code)
         return response
 
-    async def manage_put_post_request(self, request: Request, ids: dict) -> Request | JSONResponse:
+    async def manage_put_post_request(self, request: Request) -> Request | JSONResponse:
         """Adapt the request body for the STAC endpoint.
 
         Args:
             request (Request): The Client request to be updated.
-            ids (dict): The owner id.
 
         Returns:
             Request: The request updated.
         """
         try:
-            user = ids["owner_id"]
+            user = self.request_ids["owner_id"]
             content = await request.json()
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
@@ -346,24 +345,18 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         except KeyError as kerr_msg:
             raise HTTPException(detail=f"Missing key in request body! {kerr_msg}", status_code=400) from kerr_msg
 
-    async def manage_get_response(
-        self,
-        request: Request,
-        response: StreamingResponse,
-        ids: dict,
-    ) -> Response:
+    async def manage_get_response(self, request: Request, response: StreamingResponse) -> Response:
         """Remove the user name from obects and adapt all links.
 
         Args:
             request (Request): The client request.
             response (Response | StreamingResponse): The response from the rs-catalog.
-            ids (dict): a dictionnary containing owner_id, collection_id and
             item_id if they exist.
 
         Returns:
             Response: The response updated.
         """
-        user = ids["owner_id"]
+        user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
         if request.scope["path"] == "/":  # /catalog/owner_id
@@ -371,20 +364,30 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             content["collections"] = filter_collections(content["collections"], user)
             content = self.remove_user_from_objects(content, user, "collections")
-            content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
+            content = self.adapt_links(
+                content,
+                self.request_ids["owner_id"],
+                self.request_ids["collection_id"],
+                "collections",
+            )
         elif (
             "/collection" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/owner_id/collections/collection_id
             content = remove_user_from_collection(content, user)
             content = self.adapt_object_links(content, user)
         elif (
-            "items" in request.scope["path"] and not ids["item_id"]
+            "items" in request.scope["path"] and not self.request_ids["item_id"]
         ):  # /catalog/owner_id/collections/collection_id/items
             content = self.remove_user_from_objects(content, user, "features")
-            content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
+            content = self.adapt_links(
+                content,
+                self.request_ids["owner_id"],
+                self.request_ids["collection_id"],
+                "features",
+            )
         elif request.scope["path"] == "/search":
             pass
-        elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
+        elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
         return JSONResponse(content, status_code=response.status_code)
@@ -410,7 +413,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             return JSONResponse(content, status_code=code)
         return JSONResponse(content, status_code=response.status_code)
 
-    async def manage_put_post_response(self, request: Request, response: StreamingResponse, ids: dict):
+    async def manage_put_post_response(self, request: Request, response: StreamingResponse):
         """
         Manage put or post responses.
 
@@ -432,13 +435,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
             if request.scope["path"] == "/collections":
-                response_content = remove_user_from_collection(response_content, ids["owner_id"])
-                response_content = self.adapt_object_links(response_content, ids["owner_id"])
+                response_content = remove_user_from_collection(response_content, self.request_ids["owner_id"])
+                response_content = self.adapt_object_links(response_content, self.request_ids["owner_id"])
             elif (
-                request.scope["path"] == f"/collections/{ids['owner_id']}_{ids['collection_id']}/items/{ids['item_id']}"
+                request.scope["path"]
+                == f"/collections/{self.request_ids['owner_id']}_{self.request_ids['collection_id']}/items/\
+{self.request_ids['item_id']}"
             ):
-                response_content = remove_user_from_feature(response_content, ids["owner_id"])
-                response_content = self.adapt_object_links(response_content, ids["owner_id"])
+                response_content = remove_user_from_feature(response_content, self.request_ids["owner_id"])
+                response_content = self.adapt_object_links(response_content, self.request_ids["owner_id"])
             self.clear_temp_bucket(response_content)
         except RuntimeError as exc:
             raise HTTPException(detail="Failed to clear temp-bucket", status_code=400) from exc
@@ -493,21 +498,20 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # Raise HTTPExc if params are missing from GET message
             request_body = dict(request.query_params)
 
-        ids = get_ids(request.scope["path"])
-        request.scope["path"] = remove_user_prefix(request.url.path)
+        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method)
         # Overwrite user and collection id with the ones provided in the request body
         user = request_body.get("owner", None)
         collection_id = request_body.get("id", None)
-        ids["owner_id"] = user if user else ids["owner_id"]
-        ids["collection_id"] = collection_id if collection_id else ids["collection_id"]
+        self.request_ids["owner_id"] = user if user else self.request_ids["owner_id"]
+        self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
 
         # Handle requests
         if request.method == "GET" and request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
             request = self.manage_search_request(request)
-        elif request.method in ["POST", "PUT"] and ids["owner_id"]:
+        elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/{USER}/collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
-            request = await self.manage_put_post_request(request, ids)
+            request = await self.manage_put_post_request(request)
 
         response = None
         try:
@@ -529,12 +533,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         elif request.method == "GET" and "download" in request.url.path:
             # URL: GET: '/catalog/{USER}/collections/{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
-        elif request.method == "GET" and ids["owner_id"]:
+        elif request.method == "GET" and self.request_ids["owner_id"]:
             # URL: GET: '/catalog/{USER}/Collections'
-            response = await self.manage_get_response(request, response, ids)
-        elif request.method in ["POST", "PUT"] and ids["owner_id"]:
+            response = await self.manage_get_response(request, response)
+        elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/{USER}/Collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
-            response = await self.manage_put_post_response(request, response, ids)
+            response = await self.manage_put_post_response(request, response)
         elif request.method == "DELETE" and user:
             response = await self.manage_delete_response(response, user)
 
