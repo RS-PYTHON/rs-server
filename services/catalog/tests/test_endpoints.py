@@ -646,7 +646,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Cleanup the test
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
-    def test_get_non_existent_feature(self, client, a_minimal_collection):
+    def test_get_non_existent_feature(self, client, a_minimal_collection):  # pylint: disable=unused-argument
         """
         Testing GET feature endpoint with a non-existent feature ID.
         """
