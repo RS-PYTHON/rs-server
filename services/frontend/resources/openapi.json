@@ -1556,13 +1556,13 @@
         ]
       }
     },
-    "/auth/me": {
+    "/apikeymanager/auth/me": {
       "get": {
         "tags": [
           "API-Key Manager"
         ],
         "summary": "Show My Information",
-        "operationId": "show_my_information_auth_me_get",
+        "operationId": "show_my_information_apikeymanager_auth_me_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1580,14 +1580,14 @@
         ]
       }
     },
-    "/auth/api_key/new": {
+    "/apikeymanager/auth/api_key/new": {
       "get": {
         "tags": [
           "API-Key Manager"
         ],
         "summary": "Create Api Key",
         "description": "Create and return a new API key associated with my account.",
-        "operationId": "create_api_key_auth_api_key_new_get",
+        "operationId": "create_api_key_apikeymanager_auth_api_key_new_get",
         "security": [
           {
             "OAuth2Implicit": []
@@ -1658,7 +1658,7 @@
               "application/json": {
                 "schema": {
                   "type": "string",
-                  "title": "Response Create Api Key Auth Api Key New Get"
+                  "title": "Response Create Api Key Apikeymanager Auth Api Key New Get"
                 }
               }
             }
@@ -1676,14 +1676,14 @@
         }
       }
     },
-    "/auth/api_key/list": {
+    "/apikeymanager/auth/api_key/list": {
       "get": {
         "tags": [
           "API-Key Manager"
         ],
         "summary": "List My Api Keys",
         "description": "List all API keys and usage information associated with my account.",
-        "operationId": "list_my_api_keys_auth_api_key_list_get",
+        "operationId": "list_my_api_keys_apikeymanager_auth_api_key_list_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1694,7 +1694,7 @@
                     "$ref": "#/components/schemas/UsageLog"
                   },
                   "type": "array",
-                  "title": "Response List My Api Keys Auth Api Key List Get"
+                  "title": "Response List My Api Keys Apikeymanager Auth Api Key List Get"
                 }
               }
             }
@@ -1707,14 +1707,14 @@
         ]
       }
     },
-    "/auth/api_key/revoke": {
+    "/apikeymanager/auth/api_key/revoke": {
       "get": {
         "tags": [
           "API-Key Manager"
         ],
         "summary": "Revoke Api Key",
         "description": "Revoke an API key associated with my account.",
-        "operationId": "revoke_api_key_auth_api_key_revoke_get",
+        "operationId": "revoke_api_key_apikeymanager_auth_api_key_revoke_get",
         "security": [
           {
             "OAuth2Implicit": []
@@ -1755,14 +1755,14 @@
         }
       }
     },
-    "/auth/api_key/renew": {
+    "/apikeymanager/auth/api_key/renew": {
       "get": {
         "tags": [
           "API-Key Manager"
         ],
         "summary": "Renew Api Key",
         "description": "Renew an API key associated with my account, reactivate it if it was revoked.",
-        "operationId": "renew_api_key_auth_api_key_renew_get",
+        "operationId": "renew_api_key_apikeymanager_auth_api_key_renew_get",
         "security": [
           {
             "OAuth2Implicit": []
@@ -1813,7 +1813,7 @@
                       "type": "null"
                     }
                   ],
-                  "title": "Response Renew Api Key Auth Api Key Renew Get"
+                  "title": "Response Renew Api Key Apikeymanager Auth Api Key Renew Get"
                 }
               }
             }
@@ -3079,6 +3079,10 @@
             "type": "string",
             "title": "Name"
           },
+          "user_login": {
+            "type": "string",
+            "title": "User Login"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
@@ -3161,6 +3165,7 @@
         "type": "object",
         "required": [
           "name",
+          "user_login",
           "is_active",
           "never_expire",
           "expiration_date",
@@ -3185,7 +3190,7 @@
         "flows": {
           "implicit": {
             "scopes": {},
-            "authorizationUrl": "/auth/auth"
+            "authorizationUrl": "/apikeymanager/auth/auth"
           }
         }
       }

@@ -15,8 +15,8 @@
       "Bulk Transaction Extension": "Catalog (Bulk Transaction Extension)"
     }
   },
-  "uac_manager": {
-    "openapi_url": "http://localhost:8004/openapi.json",
+  "apikey_manager": {
+    "openapi_url": "http://localhost:8004/apikeymanager/openapi.json",
     "change_tags": {
       "Manage API keys": "API-Key Manager"
     }

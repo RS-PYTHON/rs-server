@@ -156,6 +156,7 @@ jobs:
       - uses: ./.github/actions/poetry-install
       - name: Run pytest
         run: ./resources/all_pytests.sh
+        shell: bash
 
       - name: Display code coverage summary in this console
         uses: irongut/CodeCoverageSummary@v1.3.0
