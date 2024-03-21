@@ -114,7 +114,6 @@ class TestCatalogSearchEndpoint:
 
     def test_post_search_endpoint(self, client):  # pylint: disable=missing-function-docstring
         test_json = {
-            "collections": "S1_L1",
             "filter-lang": "cql2-json",
             "filter": {
                 "op": "and",
@@ -169,7 +168,7 @@ class TestCatalogPublishCollectionEndpoint:
         # assert response.status_code == 200
 
         # Test that /catalog/collection GET endpoint returns the correct collection id
-        response = client.get("/catalog/collections", params={"owner": "test_owner"})
+        response = client.get("/catalog/collections/test_owner:test_collection")
         assert response.status_code == fastapi.status.HTTP_200_OK
         response_content = json.loads(response.content)["collections"][0]
         # Check that values are correctly written in catalogDB
@@ -196,8 +195,10 @@ class TestCatalogPublishCollectionEndpoint:
             response = client.post("/catalog/collections", json=minimal_incorrect_collection)
             assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
         # Check that owner from this collection is not written in catalogDB
-        response = client.get("/catalog/collections", params={"owner": "test_incorrect_owner"})
-        assert len(json.loads(response.content)["collections"]) == 0
+        test_params = {"filter-lang": "cql2-text", "filter": "owner_id='test_incorrect_owner'"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        assert len(json.loads(response.content)["features"]) == 0
 
     def test_create_a_collection_already_created(self, client):
         """
@@ -225,7 +226,7 @@ class TestCatalogPublishCollectionEndpoint:
             # Test that is not allowed
             assert response.status_code == fastapi.status.HTTP_409_CONFLICT
         # Check into catalogDB that values are not updated
-        response = client.get("/catalog/collections", params={"owner": "duplicate_owner"})
+        response = client.get("/catalog/collections/duplicate_owner:duplicate_collection")
         response_content = json.loads(response.content)["collections"][0]
         assert response_content["description"] == "test_description"
 
@@ -246,7 +247,7 @@ class TestCatalogPublishCollectionEndpoint:
         post_collection_response = client.post("/catalog/collections", json=minimal_collection)
         assert post_collection_response.status_code == fastapi.status.HTTP_200_OK
         # test if is ok written in catalogDB
-        get_collection_response = client.get("/catalog/collections", params={"owner": "second_test_owner"})
+        get_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
         response_content = json.loads(get_collection_response.content)["collections"][0]
         assert response_content["description"] == "not_updated_test_description"
         # Update the collection description and PUT
@@ -255,7 +256,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert updated_collection_response.status_code == fastapi.status.HTTP_200_OK
 
         # Check that collection is correctly updated
-        get_check_collection_response = client.get("/catalog/collections", params={"owner": "second_test_owner"})
+        get_check_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
         response_content = json.loads(get_check_collection_response.content)["collections"][0]
         assert response_content["description"] == "the_updated_test_description"
 
@@ -290,13 +291,9 @@ class TestCatalogPublishCollectionEndpoint:
         assert response.status_code == fastapi.status.HTTP_200_OK
 
         # Check that collection is correctly published
-        first_check_response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
+        first_check_response = client.get("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection")
         first_response_content = json.loads(first_check_response.content)["collections"][0]
         assert first_response_content["description"] == minimal_collection["description"]
-
-        # !!!
-        # response = client.get("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection/items")
-        # !!!
 
         # Delete the collection
         delete_response = client.delete("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection")
@@ -330,6 +327,34 @@ class TestCatalogPublishCollectionEndpoint:
             delete_response = client.delete("/catalog/collections/owner_with_no_rights:correctly_created_collection")
             # To be changed with 405 not allowed after UAC
             assert delete_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+
+    def test_delete_non_empty_collection(
+        self, client, a_minimal_collection, a_correct_feature,
+    ):  # pylint: disable=unused-argument
+        """
+        Test that a collection than contain features can be successfully deleted.
+        """
+        # Post the feature to collection
+        first_get_collection_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
+        assert first_get_collection_response.status_code == fastapi.status.HTTP_200_OK
+        assert json.loads(first_get_collection_response.content)["context"]["returned"] == 0
+        updated_feature_sent = copy.deepcopy(a_correct_feature)
+        updated_feature_sent["collection"] = "fixture_collection"
+        post_collection_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=updated_feature_sent,
+        )
+        assert post_collection_response.status_code == fastapi.status.HTTP_200_OK
+        # Test that collection is not empty
+        second_get_collection_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
+        assert second_get_collection_response.status_code == fastapi.status.HTTP_200_OK
+        assert json.loads(second_get_collection_response.content)["context"]["returned"] > 0
+        # Delete collection
+        delete_response = client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        assert delete_response.status_code == fastapi.status.HTTP_200_OK
+        # Test that collection is removed, request raises 404 exception
+        with pytest.raises(fastapi.HTTPException):
+            client.get("/catalog/collections/fixture_owner:fixture_collection/items")
 
 
 class TestCatalogPublishFeatureWithBucketTransferEndpoint:
@@ -672,8 +697,6 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
                 "/catalog/collections/fixture_owner:fixture_collection/items/incorrect_feature_id",
             )
             assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-        # Cleanup the test
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_update_with_a_correct_feature(self, client, a_correct_feature):
         """

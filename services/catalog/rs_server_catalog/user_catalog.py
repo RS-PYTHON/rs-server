@@ -491,12 +491,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        if request.method in ["POST", "PUT"]:
-            request_body = await request.json()
-        else:
-            # Needed?
-            # Raise HTTPExc if params are missing from GET message
-            request_body = dict(request.query_params)
+        request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
 
         request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method)
         # Overwrite user and collection id with the ones provided in the request body
