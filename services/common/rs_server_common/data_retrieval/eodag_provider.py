@@ -1,4 +1,5 @@
 """EODAG Provider."""
+
 from pathlib import Path
 
 from eodag import EODataAccessGateway, EOProduct, SearchResult

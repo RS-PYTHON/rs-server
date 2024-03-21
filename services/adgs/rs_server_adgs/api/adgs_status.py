@@ -1,6 +1,5 @@
 """HTTP endpoints to get the downloading status from ADGS stations."""
 
-
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query

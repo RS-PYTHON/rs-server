@@ -1,4 +1,5 @@
 """Module used to download AUX files from ADGS station."""
+
 import tempfile
 import threading
 from contextlib import contextmanager

@@ -1,4 +1,5 @@
 """Module used to download CADU files from CADIP stations."""
+
 import os
 import os.path as osp
 import tempfile

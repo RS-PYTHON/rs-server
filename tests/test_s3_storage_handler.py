@@ -1,4 +1,5 @@
 """Docstring to be added."""
+
 # pylint: disable=R0913,R0914 # Too many arguments, Too many local variables
 import filecmp
 import os
