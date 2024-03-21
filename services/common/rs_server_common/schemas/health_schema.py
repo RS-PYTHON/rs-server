@@ -1,6 +1,5 @@
 """HealthSchema schema implementation."""
 
-
 from pydantic import BaseModel
 
 

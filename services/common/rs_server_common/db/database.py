@@ -4,7 +4,6 @@ Database connection.
 Taken from: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
 """
 
-
 import contextlib
 import multiprocessing
 import os

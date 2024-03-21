@@ -1,4 +1,5 @@
 """Class used to test a Provider."""
+
 import pytest
 from rs_server_common.data_retrieval.provider import SearchProductFailed, TimeRange
 
