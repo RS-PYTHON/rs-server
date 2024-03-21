@@ -1,4 +1,5 @@
 """This library contains all functions needed for the fastAPI middleware."""
+
 import re
 from typing import Tuple
 

@@ -1,4 +1,5 @@
 """Integration tests for user_catalog module."""
+
 import copy
 import json
 import os
