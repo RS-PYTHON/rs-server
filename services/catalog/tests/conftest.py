@@ -253,7 +253,7 @@ def darius_s1_l2_fixture() -> Collection:  # pylint: disable=missing-function-do
 
 
 @pytest.fixture(scope="session", name="a_minimal_collection")
-def a_minimal_collection_fixture(client) -> dict:
+def a_minimal_collection_fixture(client) -> None:
     """
     This fixture is used to return the minimal form of accepted collection
     """

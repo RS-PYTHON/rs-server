@@ -329,7 +329,10 @@ class TestCatalogPublishCollectionEndpoint:
             assert delete_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
     def test_delete_non_empty_collection(
-        self, client, a_minimal_collection, a_correct_feature,
+        self,
+        client,
+        a_minimal_collection,
+        a_correct_feature,
     ):  # pylint: disable=unused-argument
         """
         Test that a collection than contain features can be successfully deleted.
