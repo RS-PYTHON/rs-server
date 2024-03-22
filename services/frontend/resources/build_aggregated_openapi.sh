@@ -20,7 +20,8 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # On exit, kill the containers and network and send the exit signal to subprocesses
     db_container="postgres"
     ak_container="apikey-manager"
-    trap "docker rm -f $db_container $ak_container || true; docker network rm $network || true" EXIT
+    on_exit="docker rm -f $db_container $ak_container || true; docker network rm $network || true"
+    trap 'eval $on_exit' EXIT # use simple quotes so the string is interpreted when we exit
 
     # First we need to pull the apikey manager docker image.
     # TODO: to be changed with the :latest tag
@@ -85,13 +86,12 @@ if [[ " $@ " == *" --run-services "* ]]; then
         port="$3"
         health="$4"
 
-        # In a subprocess: install the poetry environment and
-        # run uvicorn with the environment variables set above
-        (
-            cd "$path"
-            poetry install
-            (poetry run uvicorn "$app" --host=localhost --port="$port" --workers=1)&
-        )
+        # Install the poetry environment and run uvicorn with the environment variables set above
+        cd "$path"
+        poetry install
+        (poetry run uvicorn "$app" --host=localhost --port="$port" --workers=1)&
+        on_exit="$on_exit; kill -9 $!" # kill the last process = unvicorn on exit
+        cd -
 
         # Call the health endpoint until it returns a status code OK
         local i=0
