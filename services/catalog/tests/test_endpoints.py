@@ -12,7 +12,11 @@ import yaml
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
-from .conftest import add_collection, add_feature  # pylint: disable=no-name-in-module
+from .conftest import (  # pylint: disable=no-name-in-module
+    RESOURCES_FOLDER,
+    add_collection,
+    add_feature,
+)
 
 # Resource folders specified from the parent directory of this current script
 S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
@@ -37,7 +41,7 @@ def export_aws_credentials():
     Raises:
         None
     """
-    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
+    with open(RESOURCES_FOLDER / "s3" / "s3.yml", "r", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)
         os.environ.update(s3_config["s3"])
         os.environ.update(s3_config["boto"])
@@ -45,7 +49,7 @@ def export_aws_credentials():
 
 def clear_aws_credentials():
     """Clear AWS credentials from environment variables."""
-    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
+    with open(RESOURCES_FOLDER / "s3" / "s3.yml", "r", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)
         for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
             del os.environ[env_var]

@@ -1,6 +1,8 @@
 """Common fixture for catalog service."""
 
 import os
+import os.path as osp
+import subprocess
 
 # We are in local mode (no cluster).
 # Do this before any other imports.
@@ -17,6 +19,15 @@ import pytest
 from rs_server_catalog.main import app
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
+
+# Clean before running.
+# No security risks since this file is not released into production.
+RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+subprocess.run(
+    [RESOURCES_FOLDER / "../../../../tests/resources/clean.sh"],
+    check=False,
+    shell=False,
+)  # nosec ignore security issue
 
 
 def is_db_up(db_url: str) -> bool:
@@ -46,7 +57,7 @@ def docker_compose_file_():
 @pytest.fixture(scope="session", name="db_url")
 def db_url_fixture(docker_ip, docker_services) -> str:  # pylint: disable=missing-function-docstring
     port = docker_services.port_for("stac-db", 5432)
-    return f"postgresql://postgres:password@{docker_ip}:{port}/rspy"
+    return f"postgresql://postgres:password@{docker_ip}:{port}/{os.getenv('POSTGRES_DB')}"
 
 
 @pytest.mark.integration
