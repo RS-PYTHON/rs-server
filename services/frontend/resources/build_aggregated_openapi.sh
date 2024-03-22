@@ -19,15 +19,15 @@ if [[ " $@ " == *" --run-services "* ]]; then
 
     # On exit, kill the containers and network and send the exit signal to subprocesses
     db_container="postgres"
-    ak_container= #"apikey-manager"
+    ak_container="apikey-manager"
     trap "docker rm -f $db_container $ak_container; docker network rm $network; kill 0" EXIT
 
     # First we need to pull the apikey manager docker image.
-    # TODO: to be change with the :latest tag
+    # TODO: to be changed with the :latest tag
     # TODO: to be changed when the apikey manager will have its own container registry.
     # docker login https://ghcr.io/v2/rs-python # you may need this if running locally
-    # ak_image="ghcr.io/rs-python/apikey-manager:rspy15-uac"
-    # docker pull "$ak_image"
+    ak_image="ghcr.io/rs-python/apikey-manager:rspy15-uac"
+    docker pull "$ak_image"
 
     # Use the same configuration as in the cluster deployment.
     #export RSPY_DOCS_URL= # used to define the /docs swagger page (not used)
@@ -60,24 +60,23 @@ if [[ " $@ " == *" --run-services "* ]]; then
         i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$ak_container'" && exit 1
     done
 
-    # # Run the apikey manager. Use the same port as in services.json.
-    # (docker run --rm --network=$network --name=$ak_container -p 8004:8000 \
-    #     -e APIKEYMAN_URL_PREFIX \
-    #     -e API_KEYS_DB_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${db_container}:5432/${POSTGRES_DB} \
-    #     -e VERIFY_AUDIENCE=0 \
-    #     -e OAUTH2_SERVER_URL=https://iam.dev-rspy.esa-copernicus.eu \
-    #     -e OAUTH2_REALM=rspy \
-    #     -e OAUTH2_CLIENT_ID=dummy_client_id \
-    #     -e OAUTH2_CLIENT_SECRET=dummy_client_secret \
-    #     --health-cmd="wget --spider localhost:8000/health/status" --health-interval=2s --health-timeout=2s --health-retries=10 \
-	#     "$ak_image" \
-    # )&
-    # i=0
-    # while [[ $(docker inspect --format='{{.State.Health.Status}}' $ak_container) != healthy ]]; do
-    #     sleep 2
-    #     i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$ak_container'" && exit 1
-    # done
-    # Note: use instead the version deployed on the cluster
+    # Run the apikey manager. Use the same port as in services.json.
+    (docker run --rm --network=$network --name=$ak_container -p 8004:8000 \
+        -e APIKEYMAN_URL_PREFIX \
+        -e API_KEYS_DB_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${db_container}:5432/${POSTGRES_DB} \
+        -e VERIFY_AUDIENCE=0 \
+        -e OAUTH2_SERVER_URL=https://iam.dev-rspy.esa-copernicus.eu \
+        -e OAUTH2_REALM=rspy \
+        -e OAUTH2_CLIENT_ID=dummy_client_id \
+        -e OAUTH2_CLIENT_SECRET=dummy_client_secret \
+        --health-cmd="wget --spider localhost:8000/health/status" --health-interval=2s --health-timeout=2s --health-retries=10 \
+	    "$ak_image" \
+    )&
+    i=0
+    while [[ $(docker inspect --format='{{.State.Health.Status}}' $ak_container) != healthy ]]; do
+        sleep 2
+        i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$ak_container'" && exit 1
+    done
 
     # Run local fastapi services
     run_local_service() {
