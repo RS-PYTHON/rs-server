@@ -267,7 +267,7 @@ jobs:
   services-frontend-img:
     runs-on: ubuntu-latest
     name: "'services/frontend' Docker image"
-    needs: [services-common-whl, services-adgs-whl, services-cadip-whl, services-frontend-whl]
+    needs: [services-frontend-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
@@ -275,21 +275,6 @@ jobs:
       - uses: actions/checkout@v4
 
       # Download .whl files into ./whl/
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-common-whl.outputs.package_name }}
-          path: ./whl
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-adgs-whl.outputs.package_name }}
-          path: ./whl
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-cadip-whl.outputs.package_name }}
-          path: ./whl
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:

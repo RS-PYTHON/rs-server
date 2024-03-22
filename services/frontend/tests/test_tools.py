@@ -1,3 +1,5 @@
+"""Test the frontend generation tool."""
+
 import json
 import re
 from dataclasses import dataclass
@@ -8,6 +10,8 @@ import responses
 from requests import HTTPError
 from tools.openapi import BuildOpenapiFailed, build_aggregated_openapi
 
+# pylint: disable=missing-class-docstring,missing-function-docstring,too-few-public-methods,redefined-outer-name
+
 
 @pytest.fixture(scope="module")
 def tools_test_path(resources_test_path) -> Path:
@@ -17,10 +21,13 @@ def tools_test_path(resources_test_path) -> Path:
 
 @dataclass
 class ServicesConfiguration:
+    """Service configuration json file and associated contents as a python dict."""
+
     config: dict
     file: Path
 
     def doc_endpoint_url(self, service: str) -> str:
+        """Return a service url"""
         return f"{self.config[service]['openapi_url']}"
 
 
@@ -31,7 +38,7 @@ def services_conf_file(tools_test_path) -> Path:
 
 @pytest.fixture(scope="module")
 def services_conf(services_conf_file) -> ServicesConfiguration:
-    with open(services_conf_file, "r") as file:
+    with open(services_conf_file, "r", encoding="utf-8") as file:
         return ServicesConfiguration(config=json.load(file), file=services_conf_file)
 
 
@@ -116,12 +123,12 @@ def a_service_openapi(
 
 
 @pytest.fixture(scope="module")
-def cadip_openapi(tools_test_path) -> dict:
+def cadip_openapi(tools_test_path) -> dict:  # pylint: disable=unused-argument
     return a_service_openapi(service_name="cadip", common_difference="cadip")
 
 
 @pytest.fixture(scope="module")
-def adgs_openapi(tools_test_path) -> dict:
+def adgs_openapi(tools_test_path) -> dict:  # pylint: disable=unused-argument
     return a_service_openapi(service_name="adgs", common_difference="adgs")
 
 
@@ -270,7 +277,7 @@ class TestGenerateAggregateRestDocFailsWhen:
     def test_the_merge_process_failed(
         self,
         cadip_openapi: dict,
-        adgs_openapi: dict,
+        adgs_openapi: dict,  # pylint: disable=unused-argument
         services_conf: ServicesConfiguration,
         tmp_path: Path,
     ):
@@ -285,7 +292,7 @@ class TestGenerateAggregateRestDocFailsWhen:
             json=a_service_openapi(service_name="adgs", openapi_version="9.9.9"),
         )
 
-        with pytest.raises(BuildOpenapiFailed) as exc_info:
+        with pytest.raises(BuildOpenapiFailed):
             build_aggregated_openapi(services_conf.file, tmp_path / "output.json")
 
     @responses.activate
@@ -342,7 +349,7 @@ class TestTheMergedOpenapi:
         output_file = tmp_path / "output.json"
         build_aggregated_openapi(services_conf.file, output_file)
 
-        with open(output_file, "r") as file:
+        with open(output_file, "r", encoding="utf-8") as file:
             return json.load(file)
 
     @responses.activate
@@ -358,8 +365,8 @@ class TestTheMergedOpenapi:
     @responses.activate
     def test_title_is_rs_server(
         self,
-        cadip_openapi: dict,
-        adgs_openapi: dict,
+        cadip_openapi: dict,  # pylint: disable=unused-argument
+        adgs_openapi: dict,  # pylint: disable=unused-argument
         the_merge_openapis: dict,
     ):
         assert the_merge_openapis["info"]["title"] == "RS-server"

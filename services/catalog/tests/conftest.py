@@ -2,7 +2,7 @@
 
 import os
 import os.path as osp
-import subprocess
+import subprocess  # nosec ignore security issue
 
 # We are in local mode (no cluster).
 # Do this before any other imports.

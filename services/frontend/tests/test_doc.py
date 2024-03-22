@@ -7,6 +7,8 @@ import pytest
 from rs_server_frontend.main import Frontend, FrontendFailed
 from starlette.status import HTTP_200_OK
 
+# pylint: disable=missing-function-docstring,too-few-public-methods
+
 
 class TestStartingApplication:
     """Verifies the openapi loading at the start of the frontend application."""

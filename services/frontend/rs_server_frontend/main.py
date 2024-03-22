@@ -18,34 +18,6 @@ class HealthSchema(BaseModel):
     healthy: bool
 
 
-def load_openapi_spec() -> dict:
-    """Load the openapi specification.
-
-    The openapi is loaded from a json file.
-    This json file location is given by the environment variable RSPY_OPENAPI_FILE.
-
-    An IOError is raised in case of errors during the file reading.
-    A ValueError is raised in case of errors during the json parsing.
-
-    Returns:
-        the loaded openapi specification
-
-    """
-    openapi_location = os.getenv("RSPY_OPENAPI_FILE", "")
-    try:
-        with open(openapi_location, "r") as file:
-            return json.load(file)
-    except (FileNotFoundError, IOError) as e:
-        raise type(e)(
-            f"openapi spec was not found at {openapi_location!r}. "
-            "Is the 'RSPY_OPENAPI_FILE' environment variable correctly set ?",
-        ) from e
-    except ValueError as e:
-        raise ValueError(
-            f"openapi spec was found at {openapi_location!r} but the file is not valid.",
-        ) from e
-
-
 class Frontend:
     """The frontend application."""
 
@@ -71,9 +43,9 @@ class Frontend:
             docs_params = {}
 
         try:
-            self.openapi_spec: dict = load_openapi_spec()
+            self.openapi_spec: dict = self.load_openapi_spec()
             self.app: FastAPI = FastAPI(
-                **docs_params,
+                **docs_params,  # type: ignore
                 # Same hardcoded values than in the apikey manager
                 # (they don't appear in the openapi.json)
                 swagger_ui_init_oauth={
@@ -82,7 +54,7 @@ class Frontend:
                     "usePkceWithAuthorizationCodeGrant": True,
                 },
             )
-            self.app.openapi = self.get_openapi
+            self.app.openapi = self.get_openapi  # type: ignore
         except BaseException as e:
             raise FrontendFailed("Unable to serve openapi specification.") from e
 
@@ -95,6 +67,34 @@ class Frontend:
             Otherwise this code won't be run anyway and the caller will have other sorts of errors.
             """
             return HealthSchema(healthy=True)
+
+    @staticmethod
+    def load_openapi_spec() -> dict:
+        """Load the openapi specification.
+
+        The openapi is loaded from a json file.
+        This json file location is given by the environment variable RSPY_OPENAPI_FILE.
+
+        An IOError is raised in case of errors during the file reading.
+        A ValueError is raised in case of errors during the json parsing.
+
+        Returns:
+            the loaded openapi specification
+
+        """
+        openapi_location = os.getenv("RSPY_OPENAPI_FILE", "")
+        try:
+            with open(openapi_location, "r", encoding="utf-8") as file:
+                return json.load(file)
+        except (FileNotFoundError, IOError) as e:
+            raise type(e)(
+                f"openapi spec was not found at {openapi_location!r}. "
+                "Is the 'RSPY_OPENAPI_FILE' environment variable correctly set ?",
+            ) from e
+        except ValueError as e:
+            raise ValueError(
+                f"openapi spec was found at {openapi_location!r} but the file is not valid.",
+            ) from e
 
     def get_openapi(self) -> dict:
         """Returns the openapi specification.

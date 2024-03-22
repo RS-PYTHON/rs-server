@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Generator
 
 import pytest
 from rs_server_frontend.main import Frontend
@@ -15,26 +16,26 @@ def resources_test_path() -> Path:
 
 
 @pytest.fixture(scope="session")
-def openapi_spec_file(resources_test_path) -> Path:
+def openapi_spec_file(resources_test_path) -> Path:  # pylint: disable=redefined-outer-name
     """The path to the nominal openapi."""
     return resources_test_path / "openapi.json"
 
 
 @pytest.fixture(scope="session")
-def invalid_openapi_spec_file(resources_test_path) -> Path:
+def invalid_openapi_spec_file(resources_test_path) -> Path:  # pylint: disable=redefined-outer-name
     """The path to the invalid openapi."""
     return resources_test_path / "wrong-openapi.json"
 
 
 @pytest.fixture(scope="session")
-def expected_openapi_spec(openapi_spec_file) -> dict:
+def expected_openapi_spec(openapi_spec_file) -> dict:  # pylint: disable=redefined-outer-name
     """The nominal openapi."""
-    with open(openapi_spec_file, "r") as file:
+    with open(openapi_spec_file, "r", encoding="utf-8") as file:
         return json.load(file)
 
 
 @pytest.fixture
-def client(monkeypatch, openapi_spec_file) -> TestClient:
+def client(monkeypatch, openapi_spec_file) -> Generator[TestClient, None, None]:  # pylint: disable=redefined-outer-name
     """The nominal application client for test purpose."""
     monkeypatch.setenv("RSPY_OPENAPI_FILE", str(openapi_spec_file))
     app = Frontend().app

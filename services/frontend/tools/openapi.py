@@ -10,7 +10,7 @@ from pathlib import Path
 import requests
 from attr import dataclass
 from requests import HTTPError
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
 from rs_server_frontend import __version__
 
 
@@ -49,7 +49,7 @@ class ServiceConf:
 
         # Read the input configuration file
         try:
-            with open(conf_path, "r") as file:
+            with open(conf_path, "r", encoding="utf-8") as file:
                 conf_contents = json.load(file)
         except IOError as e:
             raise IOError(f"File {conf_path} was not found.") from e
@@ -65,7 +65,7 @@ class ServiceConf:
 
             # Read the openapi.json contents
             try:
-                response = requests.get(service_json["openapi_url"])
+                response = requests.get(service_json["openapi_url"], timeout=30)
                 response.raise_for_status()
                 service_conf.openapi_contents = json.loads(response.content)
             except (ConnectionError, HTTPError) as e:
@@ -165,7 +165,7 @@ def build_aggregated_openapi(services_file: Path, to_path: Path):
         aggregated = AggregatedOpenapi(services).build_openapi()
 
         try:
-            with open(to_path, "w") as file:
+            with open(to_path, "w", encoding="utf-8") as file:
                 json.dump(aggregated, file, indent=2)
                 file.write("\n")
         except IOError as e:
@@ -175,4 +175,4 @@ def build_aggregated_openapi(services_file: Path, to_path: Path):
 
 
 if __name__ == "__main__":
-    build_aggregated_openapi(*sys.argv[1:])
+    build_aggregated_openapi(*[Path(path) for path in sys.argv[1:]])
