@@ -4,10 +4,17 @@ import json
 import os
 
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 
 class FrontendFailed(BaseException):
     """Exception raised if the frontend initialization failed."""
+
+
+class HealthSchema(BaseModel):
+    """Health status flag."""
+
+    healthy: bool
 
 
 def load_openapi_spec() -> dict:
@@ -67,6 +74,16 @@ class Frontend:
             self.app.openapi = self.get_openapi
         except BaseException as e:
             raise FrontendFailed("Unable to serve openapi specification.") from e
+
+        # include_in_schema=False: hide this endpoint from the swagger
+        @self.app.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
+        async def health() -> HealthSchema:
+            """
+            Always return a flag set to 'true' when the service is up and running.
+            \f
+            Otherwise this code won't be run anyway and the caller will have other sorts of errors.
+            """
+            return HealthSchema(healthy=True)
 
     def get_openapi(self) -> dict:
         """Returns the openapi specification.

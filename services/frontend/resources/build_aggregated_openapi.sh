@@ -20,7 +20,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # On exit, kill the containers and network and send the exit signal to subprocesses
     db_container="postgres"
     ak_container="apikey-manager"
-    trap "docker rm -f $db_container $ak_container; docker network rm $network; kill 0" EXIT
+    trap "docker rm -f $db_container $ak_container || true; docker network rm $network || true" EXIT
 
     # First we need to pull the apikey manager docker image.
     # TODO: to be changed with the :latest tag
