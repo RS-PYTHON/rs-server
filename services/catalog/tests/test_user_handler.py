@@ -144,8 +144,13 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         result = remove_user_prefix("/catalog/Toto/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d")
         assert result == ("/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d")
 
-    def test_ignore_if_unknown_endpoint(self):
-        assert remove_user_prefix("/not/found") == ("/not/found")
+    def test_fails_if_unknown_endpoint(self):
+        with pytest.raises(ValueError) as exc_info:
+            remove_user_prefix("/not/found")
+        assert str(exc_info.value) == "Path /not/found is invalid."
+
+    def test_work_with_ping_endpoinst(self):
+        assert remove_user_prefix("/_mgmt/ping") == ("/_mgmt/ping")
 
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring

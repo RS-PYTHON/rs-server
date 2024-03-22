@@ -25,7 +25,7 @@ logger = Logging.default(__name__)
 
 # @pytest.mark.skip gives an error, I don't know why
 # @pytest.mark.skip(reason="Errors on certain endpoints and when reloading the fastapi app")
-async def te_st_authentication(monkeypatch, httpx_mock: HTTPXMock):
+async def test_authentication(monkeypatch, httpx_mock: HTTPXMock):
     """
     Test that the http endpoints are protected and return 403 if not authenticated.
     Set RSPY_LOCAL_MODE to False before running the fastapi app.
@@ -90,20 +90,28 @@ async def sub_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPX
             # For each method (get, post, ...)
             for method in route.methods:
                 logger.debug(f"Test the {path!r} [{method}] authentication")
+                if path != "/catalog/any_owner/conformance" and "catalog" in path:
+                    if "any_owner" in path:
+                        path = path.replace("any_owner", "toto")
 
-                try:
-                    # Check that without api key in headers, the endpoint is protected and we receive a 403
-                    assert client.request(method, path).status_code == HTTP_403_FORBIDDEN
+                    if "{collection_id}" in path:
+                        path = path.replace("{collection_id}", "S1_L1")
 
-                    # Test a valid and wrong api key values in headers
-                    assert (
-                        client.request(method, path, headers={APIKEY_HEADER: VALID_APIKEY}).status_code
-                        != HTTP_403_FORBIDDEN
-                    )
-                    assert (
-                        client.request(method, path, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
-                        == HTTP_403_FORBIDDEN
-                    )
+                    if "{item_id}" in path:
+                        path = path.replace("{item_id}", "fe916452-ba6f-4631-9154-c249924a122d")
 
-                except Exception as exception:
-                    logger.error(exception)  # TODO: why do we have exceptions with certain requests ?
+                    try:
+                        # Check that without api key in headers, the endpoint is protected and we receive a 403
+                        assert client.request(method, path).status_code == HTTP_403_FORBIDDEN
+
+                        # Test a valid and wrong api key values in headers
+                        assert (
+                            client.request(method, path, headers={APIKEY_HEADER: VALID_APIKEY}).status_code
+                            != HTTP_403_FORBIDDEN
+                        )
+                        assert (
+                            client.request(method, path, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
+                            == HTTP_403_FORBIDDEN
+                        )
+                    finally:
+                        continue

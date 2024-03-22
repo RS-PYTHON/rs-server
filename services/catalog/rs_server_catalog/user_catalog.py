@@ -16,6 +16,7 @@ The middleware:
 import json
 import os
 import pathlib
+import re
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -32,6 +33,7 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     remove_user_prefix,
 )
+from rs_server_common.authentication import apikey_security
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
@@ -325,7 +327,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             Request: The request updated.
         """
         user = ids["owner_id"]
-        content = await request.json()
+        try:  # Check if Json is empty or invalid format
+            content = await request.json()
+        except RuntimeError as exc:
+            raise HTTPException(detail="An error occurred while retrieving JSON content", status_code=400) from exc
         if request.scope["path"] == "/collections":
             content["id"] = f"{user}_{content['id']}"
         if "items" in request.scope["path"]:
@@ -340,6 +345,66 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         # update request body (better find the function that updates the body maybe?)c
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         return request  # pylint: disable=protected-access
+
+    def manage_landing_page(self, request: Request, auth_roles: list, user_login: str, content: json) -> dict:
+        """All sub user catalogs accessible by the user calling it are returned as "child" links.
+
+        Args:
+            request (Request): The client request.
+            auth_roles (list): list of roles of the api-key.
+            user_login (str): The api-key owner.
+            content (dict): The landing page.
+
+        Returns:
+            dict: The updated landingpage.
+        """
+        catalog_read_right_pattern = (
+            r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
+        )
+        for role in auth_roles:
+            if match := re.match(catalog_read_right_pattern, role):
+                groups = match.groupdict()
+                if user_login != groups["owner_id"]:
+                    child_link = {
+                        "rel": "child",
+                        "type": "application/json",
+                        "href": "",
+                    }
+                    url = request.url
+                    child_link["href"] = f"{url}{groups['owner_id']}"
+                    content["links"].append(child_link)
+        return content
+
+    def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> dict:
+        """Return the list of all collections accessible by the user calling it.
+
+        Args:
+            collections (dict): List of all collections.
+            auth_roles (list): List of roles of the api-key.
+            user_login (str): The api-key owner.
+
+        Returns:
+            dict: The list of all collections accessible by the user.
+        """
+        accessible_collections = []
+        catalog_read_right_pattern = (
+            r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
+        )
+        for role in auth_roles:
+            if match := re.match(catalog_read_right_pattern, role):
+                groups = match.groupdict()
+                if groups["right_type"] == "read":  # The user calling the endpoint as read access to:
+                    if groups["collection_id"] == "*":  # The user calling the endpoint has access to the entire catalog
+                        new_accessible_collections = filter_collections(collections, groups["owner_id"])
+                        accessible_collections += new_accessible_collections
+                    else:  # The user calling the endpoint has access to a specific collection from the catalog group["owner_id"]
+                        new_accessible_collection = filter_collections(
+                            collections,
+                            f"{groups['owner_id']}_{groups['collection_id']}",
+                        )
+                        accessible_collections += new_accessible_collection
+        accessible_collections += filter_collections(collections, user_login)
+        return accessible_collections
 
     async def manage_get_response(
         self,
@@ -361,27 +426,47 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         user = ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
-        if request.scope["path"] == "/":  # /catalog/owner_id
-            return JSONResponse(content, status_code=response.status_code)
-        if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
-            content["collections"] = filter_collections(content["collections"], user)
-            content = self.remove_user_from_objects(content, user, "collections")
-            content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
-        elif (
-            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
-        ):  # /catalog/owner_id/collections/collection_id
-            content = remove_user_from_collection(content, user)
-            content = self.adapt_object_links(content, user)
-        elif (
-            "items" in request.scope["path"] and not ids["item_id"]
-        ):  # /catalog/owner_id/collections/collection_id/items
-            content = self.remove_user_from_objects(content, user, "features")
-            content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
-        elif request.scope["path"] == "/search":
-            pass
-        elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
-            content = remove_user_from_feature(content, user)
-            content = self.adapt_object_links(content, user)
+
+        if "detail" not in content:  # Test if the user is authenticated.
+            if request.scope["path"] == "/":  # /catalog
+                try:
+                    api_key = request.headers["x-api-key"]
+                    auth_roles, _, user_login = await apikey_security(request, api_key)
+                    content = self.manage_landing_page(request, auth_roles, user_login, content)
+                finally:  # TODO: what to do if the api_key doesnt work ? for example in local mode.
+                    return JSONResponse(content, status_code=response.status_code)
+            if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
+                # ajouter le /collections sans le owner_id
+                if ids["owner_id"]:
+                    content["collections"] = filter_collections(content["collections"], user)
+                    content = self.remove_user_from_objects(content, user, "collections")
+                    content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
+                else:
+                    try:
+                        api_key = request.headers["x-api-key"]
+                        auth_roles, _, user_login = await apikey_security(request, api_key)
+                        content["collections"] = self.manage_all_collections(
+                            content["collections"],
+                            auth_roles,
+                            user_login,
+                        )
+                    finally:
+                        pass
+            elif (
+                "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+            ):  # /catalog/owner_id/collections/collection_id
+                content = remove_user_from_collection(content, user)
+                content = self.adapt_object_links(content, user)
+            elif (
+                "items" in request.scope["path"] and not ids["item_id"]
+            ):  # /catalog/owner_id/collections/collection_id/items
+                content = self.remove_user_from_objects(content, user, "features")
+                content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
+            elif request.scope["path"] == "/search":
+                pass
+            elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
+                content = remove_user_from_feature(content, user)
+                content = self.adapt_object_links(content, user)
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
@@ -492,7 +577,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         elif request.method in ["POST", "PUT"] and user:
             # URL: POST / PUT: '/catalog/{USER}/collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
             request = await self.manage_put_post_request(request, ids)
-
         response = None
         try:
             response = await call_next(request)
@@ -507,8 +591,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         elif request.method == "GET" and "download" in request.url.path:
             # URL: GET: '/catalog/{USER}/collections/{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
-        elif request.method == "GET" and user:
+        elif request.method == "GET" and (user or request.scope["path"] in ["/", "/collections"]):
             # URL: GET: '/catalog/{USER}/Collections'
+            # URL: GET: '/catalog'
+            # URL: GET: '/catalog/collections
             response = await self.manage_get_response(request, response, ids)
         elif request.method in ["POST", "PUT"] and user:
             # URL: POST / PUT: '/catalog/{USER}/Collections' or '/catalog/{USER}/collections/{COLLECTION}/items'

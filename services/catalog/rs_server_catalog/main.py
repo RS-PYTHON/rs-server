@@ -93,6 +93,18 @@ def extract_openapi_specification():
                 method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
             elif method["operationId"] == "Search_search_get":
                 method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+    catalog_collection = {
+        "get": {
+            "summary": "Get all collections accessible by the user calling it.",
+            "description": "Endpoint.",
+            "operationId": "Get_all_collections",
+            "responses": {
+                "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
+            },
+            "security": [{"API key passed in HTTP header": []}],
+        },
+    }
+    openapi_spec_paths["/catalog/collections"] = catalog_collection
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 

@@ -28,27 +28,27 @@ APIKEY_HEADER = "x-api-key"
 APIKEY_SECURITY = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
 
 
-class Auth(Enum):
-    """
-    Enum values for authentication.
+# class Auth(Enum):
+#     """
+#     Enum values for authentication.
 
-    NOTE: enum names = the values returned by keyclowk, uppercase
-    """
+#     NOTE: enum names = the values returned by keyclowk, uppercase
+#     """
 
-    # IAM roles
+#     # IAM roles
 
-    # ADGS
-    RS_ADGS_READ = "rs_adgs_read"
-    RS_ADGS_DOWNLOAD = "rs_adgs_download"
+#     # ADGS
+#     RS_ADGS_READ = "rs_adgs_read"
+#     RS_ADGS_DOWNLOAD = "rs_adgs_download"
 
-    # CADIP
-    RS_CADIP_CADIP_READ = "rs_cadip_cadip_read"
-    RS_CADIP_CADIP_DOWNLOAD = "rs_cadip_cadip_download"
-    # TODO: above is cadip "cadip" station (does it really exist ?),
-    # do the oter stations (ins, mps, ...) see stations_cfg.json ?
+#     # CADIP
+#     RS_CADIP_CADIP_READ = "rs_cadip_cadip_read"
+#     RS_CADIP_CADIP_DOWNLOAD = "rs_cadip_cadip_download"
+#     # TODO: above is cadip "cadip" station (does it really exist ?),
+#     # do the oter stations (ins, mps, ...) see stations_cfg.json ?
 
-    # Catalog
-    S1_ACCESS = "s1_access"  # TODO: use e.g. s1_read, s1_write, s1_download instead ?
+#     # Catalog
+#     S1_ACCESS = "s1_access"  # TODO: use e.g. s1_read, s1_write, s1_download instead ?
 
 
 async def apikey_security(
@@ -65,10 +65,10 @@ async def apikey_security(
         Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
     """
     # Call the cached function (fastapi Depends doesn't work with @cached)
-    auth_roles, auth_config = await __apikey_security_cached(str(apikey_value))
+    auth_roles, auth_config, user_login = await __apikey_security_cached(str(apikey_value))
     request.state.auth_roles = auth_roles
     request.state.auth_config = auth_config
-    return auth_roles, auth_config
+    return auth_roles, auth_config, user_login
 
 
 @cached(cache=TTLCache(maxsize=sys.maxsize, ttl=120))
@@ -93,18 +93,18 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
     # Read the api key info
     if response.is_success:
         contents = response.json()
-        str_roles, config = contents["iam_roles"], contents["config"]
+        str_roles, config, user_login = contents["iam_roles"], contents["config"], contents["user_login"]
 
         # Convert IAM roles to enum
         roles = []
         for role in str_roles:
             try:
-                roles.append(Auth[role.upper()])
+                roles.append(role)
             except KeyError:
                 logger.warning(f"Unknown IAM role: {role!r}")
 
         # Note: for now, config is an empty dict
-        return roles, config
+        return roles, config, user_login
 
     # Try to read the response detail or error
     try:

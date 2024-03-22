@@ -30,7 +30,8 @@ def get_ids(path: str) -> dict:
     # To catch the endpoint /catalog/{owner_id}
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
         groups = match.groupdict()
-        res["owner_id"] = groups["owner_id"]
+        if groups["owner_id"] != "collections":  # To not confuse /catalog/{owner_id} with /catalog/collections
+            res["owner_id"] = groups["owner_id"]
         return res
 
     # To catch all the other endpoints.
@@ -60,6 +61,7 @@ def remove_user_prefix(path: str) -> str:
     Returns:
         str: Return the URL path with prefix removed.
     """
+    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*"]
 
     if path == "/":
         raise ValueError("URL (/) is invalid.")
@@ -73,7 +75,8 @@ def remove_user_prefix(path: str) -> str:
     # To catch the endpoint /catalog/{owner_id}
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
         groups = match.groupdict()
-        owner_id = groups["owner_id"]
+        if groups["owner_id"] == "collections":
+            return "/collections"
         return "/"
 
     # To catch all the other endpoints.
@@ -83,18 +86,23 @@ def remove_user_prefix(path: str) -> str:
         collection_id = groups["collection_id"]
         items = groups["items"]
         item_id = groups["item_id"]
-        if collection_id is None:
+        if collection_id is None:  # /catalog/{owner_id}/collections
             path = "/collections"
         else:
             collection_id = groups["collection_id"][1:]
-            if items is None:
+            if items is None:  # /catalog/{owner_id}/collections/{collection_id}
                 path = f"/collections/{owner_id}_{collection_id}"
-            elif item_id is None:
+            elif item_id is None:  # /catalog/{owner_id}/collections/{collection_id}/items
                 path = f"/collections/{owner_id}_{collection_id}/items"
-            else:
+            else:  # /catalog/{owner_id}/collections/{collection_id}/items/{item_id}
                 item_id = item_id[1:]
                 path = f"/collections/{owner_id}_{collection_id}/items/{item_id}"
 
+    elif path == "/catalog/collections":
+        path = "/collections"
+
+    elif "catalog" not in path and not any(re.match(pattern, path) for pattern in patterns):
+        raise ValueError(f"Path {path} is invalid.")
     return path
 
 
