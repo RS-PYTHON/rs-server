@@ -2,6 +2,7 @@
 
 import json
 import os
+from os import environ as env
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -60,9 +61,19 @@ class Frontend:
 
         A specific FrontendFailed exception is raised if the openapi loading failed.
         """
+
+        # For cluster deployment: override the swagger /docs URL from an environment variable.
+        # Also set the openapi.json URL under the same path.
+        try:
+            docs_url = env["RSPY_DOCS_URL"].strip("/")
+            docs_params = {"docs_url": f"/{docs_url}", "openapi_url": f"/{docs_url}/openapi.json"}
+        except KeyError:
+            docs_params = {}
+
         try:
             self.openapi_spec: dict = load_openapi_spec()
             self.app: FastAPI = FastAPI(
+                **docs_params,
                 # Same hardcoded values than in the apikey manager
                 # (they don't appear in the openapi.json)
                 swagger_ui_init_oauth={
