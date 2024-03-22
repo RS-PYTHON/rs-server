@@ -138,14 +138,13 @@ jobs:
     continue-on-error: true # TODO remove when the right python repo will be set
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/install-python
 
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
+      - name: Generate the aggregated openapi.json/swagger
+        run: |
           set -x
-          for dep in rs-server-adgs rs-server-cadip rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/frontend/pyproject.toml
-          done
+          pip install poetry # we need poetry for the sub-projects, but no need to install the root project
+          ./services/frontend/resources/build_aggregated_openapi.sh --run-services
         shell: bash
 
       - id: publish-wheel

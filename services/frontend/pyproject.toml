@@ -23,6 +23,8 @@ include = [
 python = "^3.11"
 fastapi = "^0.110.0"
 uvicorn = "^0.27.1"
+requests = "^2.31.0"
+attrs = "^23.2.0"
 
 [tool.poetry.group.dev]
 optional = true

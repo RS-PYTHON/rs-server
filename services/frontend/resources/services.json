@@ -16,7 +16,7 @@
     }
   },
   "apikey_manager": {
-    "openapi_url": "http://localhost:8004/apikeymanager/openapi.json",
+    "openapi_url": "https://dev-rspy.esa-copernicus.eu/apikeymanager/openapi.json",
     "change_tags": {
       "Manage API keys": "API-Key Manager"
     }
