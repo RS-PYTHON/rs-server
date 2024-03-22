@@ -4,12 +4,13 @@ import threading
 from contextlib import contextmanager
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
+from rs_server_common.authentication import apikey_validator
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
 from rs_server_common.utils.logging import Logging
@@ -57,7 +58,9 @@ class AdgsDownloadResponse(BaseModel):
 
 
 @router.get("/adgs/aux", response_model=AdgsDownloadResponse)
+# @apikey_validator(station="adgs",access_type="download")
 def download_products(
+    request: Request,
     name: Annotated[str, Query(description="AUX product name")],
     local: Annotated[str | None, Query(description="Local download directory")] = None,
     obs: Annotated[str | None, Query(description="Object storage path e.g. 's3://bucket-name/sub/dir'")] = None,
@@ -78,6 +81,8 @@ def download_products(
     Raises:
         None
     """
+    apikey_validator("adgs", "download", request)
+
     try:
         db_product = AdgsDownloadStatus.get(db, name=name)
     except Exception as exception:  # pylint: disable=broad-exception-caught

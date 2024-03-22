@@ -13,10 +13,12 @@ from typing import Annotated
 import httpx
 from asyncache import cached
 from cachetools import TTLCache
-from fastapi import HTTPException, Request, Security
+from fastapi import HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
+
+# from functools import wraps
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
@@ -44,6 +46,16 @@ class Auth(Enum):
     # CADIP
     RS_CADIP_CADIP_READ = "rs_cadip_cadip_read"
     RS_CADIP_CADIP_DOWNLOAD = "rs_cadip_cadip_download"
+    RS_CADIP_INS_READ = "rs_cadip_ins_read"
+    RS_CADIP_INS_DOWNLOAD = "rs_cadip_ins_download"
+    RS_CADIP_MPS_READ = "rs_cadip_mps_read"
+    RS_CADIP_MPS_DOWNLOAD = "rs_cadip_mps_download"
+    RS_CADIP_MTI_READ = "rs_cadip_mti_read"
+    RS_CADIP_MTI_DOWNLOAD = "rs_cadip_mti_download"
+    RS_CADIP_NSG_READ = "rs_cadip_nsg_read"
+    RS_CADIP_NSG_DOWNLOAD = "rs_cadip_nsg_download"
+    RS_CADIP_SGS_READ = "rs_cadip_sgs_read"
+    RS_CADIP_SGS_DOWNLOAD = "rs_cadip_sgs_download"
     # TODO: above is cadip "cadip" station (does it really exist ?),
     # do the oter stations (ins, mps, ...) see stations_cfg.json ?
 
@@ -120,3 +132,51 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
 
     # Forward error
     raise HTTPException(response.status_code, f"UAC manager: {detail}")
+
+
+# def apikey_validator(station, access_type):
+#     """ Docstring to be added """
+#     def decorator(func):
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+
+#             if settings.cluster_mode():
+#                 try:
+#                     requested_role = Auth[f"rs_{station}_{access_type}".upper()]
+#                 except KeyError:
+#                     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+#                                 detail=f"!!!!Authorization key does not include the right role to \
+#                                     {kwargs['access_type']} the {kwargs['station']} station")
+
+#                 if requested_role not in kwargs['request'].state.auth_roles:
+#                     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+#                                 detail=f"Authorization key does not include the right role to \
+#                                     {kwargs['access_type']} the {kwargs['station']} station")
+
+#             return func(*args, **kwargs)
+
+#         return wrapper
+#     return decorator
+
+
+def apikey_validator(station: str, access_type: str, request: Request):
+    """Docstring to be added"""
+    if not settings.cluster_mode():
+        return
+
+    try:
+        requested_role = Auth[f"rs_{station}_{access_type}".upper()]
+        auth_roles = request.state.auth_roles
+        logger.debug(
+            f"API key information for station: auth_roles = {auth_roles} | auth_config = {request.state.auth_config}",
+        )
+    except (KeyError, AttributeError):
+        requested_role = None
+        auth_roles = None
+
+    if not requested_role or not auth_roles or requested_role not in auth_roles:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authorization key does not include the right role to \
+                                     {access_type} the {station} station",
+        )

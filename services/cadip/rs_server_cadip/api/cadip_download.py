@@ -11,12 +11,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi import Path as FPath
-from fastapi import Query, status
+from fastapi import Query, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus, EDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
+from rs_server_common.authentication import apikey_validator
 from rs_server_common.db.database import get_db
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -67,6 +68,7 @@ class CadipDownloadResponse(BaseModel):
 
 @router.get("/cadip/{station}/cadu", response_model=CadipDownloadResponse)
 def download_products(
+    request: Request,
     name: Annotated[str, Query(description="CADU product name")],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     local: Annotated[str | None, Query(description="Local download directory")] = None,
@@ -82,6 +84,8 @@ def download_products(
     Args:
         db (Database): The database connection object.
     """
+
+    apikey_validator(f"cadip_{station.lower()}", "download", request)
 
     # Get the product download status from database
     try:
