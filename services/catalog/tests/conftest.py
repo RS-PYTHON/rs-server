@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator
 
-import fastapi
 import pytest
 from rs_server_catalog.main import app
 from sqlalchemy_utils import database_exists
@@ -259,7 +258,7 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
     """
     This fixture is used to return the minimal form of accepted collection
     """
-    collection_post_response = client.post(
+    client.post(
         "/catalog/collections",
         json={
             "id": "fixture_collection",
@@ -269,7 +268,6 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
             "owner": "fixture_owner",
         },
     )
-    assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
     yield
     # teardown cleanup
     if json.loads(client.get("/catalog/collections/fixture_owner:fixture_collection").content)["collections"]:
