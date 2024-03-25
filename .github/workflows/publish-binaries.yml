@@ -153,7 +153,7 @@ jobs:
         run: |
           set -x
           pip install poetry # we need poetry for the sub-projects, but no need to install the root project
-          ./services/frontend/resources/build_aggregated_openapi.sh --run-services
+          ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
         shell: bash
 
       - id: publish-wheel

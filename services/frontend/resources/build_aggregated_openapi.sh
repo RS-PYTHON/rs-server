@@ -116,6 +116,13 @@ to_file="${SCRIPT_DIR}/openapi.json" # output file = aggregated json
 (
     cd "${SCRIPT_DIR}"
     poetry install
+
+    # Set hard-coded version name from git tags.
+    # WARNING: this changes pyproject.toml and __init__.py
+    if [[ " $@ " == *" --set-version "* ]]; then
+        poetry self add "poetry-dynamic-versioning[plugin]" && poetry dynamic-versioning
+    fi
+
     poetry run python -m tools.openapi "$services_file" "$to_file"
 )
 

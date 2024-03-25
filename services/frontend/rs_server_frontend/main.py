@@ -6,6 +6,7 @@ from os import environ as env
 
 from fastapi import FastAPI
 from pydantic import BaseModel
+from rs_server_frontend import __version__
 
 
 class FrontendFailed(BaseException):
@@ -45,6 +46,7 @@ class Frontend:
         try:
             self.openapi_spec: dict = self.load_openapi_spec()
             self.app: FastAPI = FastAPI(
+                version=__version__,
                 **docs_params,  # type: ignore
                 # Same hardcoded values than in the apikey manager
                 # (they don't appear in the openapi.json)
