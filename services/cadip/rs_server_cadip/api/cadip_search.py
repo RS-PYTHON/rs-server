@@ -33,6 +33,7 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
+@apikey_validator(station="cadip", access_type="read")
 def search_products(
     request: Request,
     datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
@@ -56,7 +57,7 @@ def search_products(
         If no products were found in the mentioned time range, output is an empty list.
 
     """
-    apikey_validator(f"cadip_{station.lower()}", "read", request)
+    # apikey_validator(f"cadip_{station.lower()}", "read", request)
 
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
@@ -104,5 +105,5 @@ def search_products(
         logger.error("General failure!")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=exception,
+            detail=f"General failure: {exception}",
         ) from exception

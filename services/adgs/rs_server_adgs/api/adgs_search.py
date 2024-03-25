@@ -31,7 +31,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 @router.get("/adgs/aux/search")
-# @apikey_validator(station="adgs",access_type="read")
+@apikey_validator(station="adgs", access_type="read")
 def search_products(  # pylint: disable=too-many-locals
     request: Request,
     datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
@@ -56,7 +56,7 @@ def search_products(  # pylint: disable=too-many-locals
         If no products were found in the mentioned time range, output is an empty list.
 
     """
-    apikey_validator("adgs", "read", request)
+    # apikey_validator("adgs", "read", request)
 
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
@@ -105,5 +105,5 @@ def search_products(  # pylint: disable=too-many-locals
         logger.error("General failure!")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=exception,
+            detail=f"General failure: {exception}",
         ) from exception

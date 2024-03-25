@@ -17,6 +17,7 @@ router = APIRouter(tags=cadip_tags)
 
 
 @router.get("/cadip/{station}/cadu/status", response_model=ReadDownloadStatus)
+@apikey_validator(station="cadip", access_type="download")
 def get_download_status(
     request: Request,
     name: Annotated[str, Query(description="CADU product name")],
@@ -29,6 +30,6 @@ def get_download_status(
     Args:
         db (Session): database session
     """
-    apikey_validator(f"cadip_{station.lower()}", "download", request)
+    # apikey_validator(f"cadip_{station.lower()}", "download", request)
 
     return CadipDownloadStatus.get(name=name, db=db)

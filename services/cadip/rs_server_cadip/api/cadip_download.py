@@ -67,6 +67,7 @@ class CadipDownloadResponse(BaseModel):
 
 
 @router.get("/cadip/{station}/cadu", response_model=CadipDownloadResponse)
+@apikey_validator(station="cadip", access_type="download")
 def download_products(
     request: Request,
     name: Annotated[str, Query(description="CADU product name")],
@@ -85,7 +86,7 @@ def download_products(
         db (Database): The database connection object.
     """
 
-    apikey_validator(f"cadip_{station.lower()}", "download", request)
+    # apikey_validator(f"cadip_{station.lower()}", "download", request)
 
     # Get the product download status from database
     try:

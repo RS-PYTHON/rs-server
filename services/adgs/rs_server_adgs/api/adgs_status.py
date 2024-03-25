@@ -15,7 +15,7 @@ router = APIRouter(tags=adgs_tags)
 
 
 @router.get("/adgs/aux/status", response_model=ReadDownloadStatus)
-# @apikey_validator(station="adgs",access_type="download")
+@apikey_validator(station="adgs", access_type="download")
 def get_download_status(
     request: Request,
     name: Annotated[str, Query(description="AUX product name")],
@@ -28,6 +28,6 @@ def get_download_status(
         db (Session): database session
 
     """
-    apikey_validator("adgs", "download", request)
+    # apikey_validator("adgs", "download", request)
 
     return AdgsDownloadStatus.get(name=name, db=db)

@@ -7,6 +7,7 @@ Note: calls https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manage
 import sys
 import traceback
 from enum import Enum
+from functools import wraps
 from os import environ as env
 from typing import Annotated
 
@@ -28,6 +29,17 @@ APIKEY_HEADER = "x-api-key"
 
 # API key authentication using a header.
 APIKEY_SECURITY = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
+
+# Look up table for stations
+STATIONS_AUTH_lut = {
+    "adgs": "adgs",
+    "ins": "cadip_ins",
+    "mps": "cadip_mps",
+    "mti": "cadip_nsg",
+    "nsg": "cadip_nsg",
+    "sgs": "cadip_sgs",
+    "cadip": "cadip_cadip",
+}
 
 
 class Auth(Enum):
@@ -134,49 +146,57 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
     raise HTTPException(response.status_code, f"UAC manager: {detail}")
 
 
-# def apikey_validator(station, access_type):
-#     """ Docstring to be added """
-#     def decorator(func):
-#         @wraps(func)
-#         def wrapper(*args, **kwargs):
-
-#             if settings.cluster_mode():
-#                 try:
-#                     requested_role = Auth[f"rs_{station}_{access_type}".upper()]
-#                 except KeyError:
-#                     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-#                                 detail=f"!!!!Authorization key does not include the right role to \
-#                                     {kwargs['access_type']} the {kwargs['station']} station")
-
-#                 if requested_role not in kwargs['request'].state.auth_roles:
-#                     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-#                                 detail=f"Authorization key does not include the right role to \
-#                                     {kwargs['access_type']} the {kwargs['station']} station")
-
-#             return func(*args, **kwargs)
-
-#         return wrapper
-#     return decorator
-
-
-def apikey_validator(station: str, access_type: str, request: Request):
+def apikey_validator(station, access_type):
     """Docstring to be added"""
-    if not settings.cluster_mode():
-        return
 
-    try:
-        requested_role = Auth[f"rs_{station}_{access_type}".upper()]
-        auth_roles = request.state.auth_roles
-        logger.debug(
-            f"API key information for station: auth_roles = {auth_roles} | auth_config = {request.state.auth_config}",
-        )
-    except (KeyError, AttributeError):
-        requested_role = None
-        auth_roles = None
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if settings.cluster_mode():
+                try:
+                    logger.info("Checking AUTH")
+                    __station = STATIONS_AUTH_lut[kwargs["station"].lower()] if station == "cadip" else station
+                    requested_role = Auth[f"rs_{__station}_{access_type}".upper()]
+                    auth_roles = kwargs["request"].state.auth_roles
+                    print(f"auth_roles = {auth_roles}")
+                except KeyError:
+                    requested_role = None
 
-    if not requested_role or not auth_roles or requested_role not in auth_roles:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authorization key does not include the right role to \
-                                     {access_type} the {station} station",
-        )
+                if not requested_role or requested_role not in auth_roles:
+                    logger.info("AUTH: Raising exception !")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail=f"Authorization key does not include the right role to \
+{access_type} the {__station} station",
+                    )
+                logger.info("AUTH: PASS !")
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+# def apikey_validator(station: str, access_type: str, request: Request):
+#     """Docstring to be added"""
+#     if not settings.cluster_mode():
+#         return
+
+#     try:
+#         requested_role = Auth[f"rs_{station}_{access_type}".upper()]
+#         auth_roles = request.state.auth_roles
+#         logger.debug(
+#             f"API key information for station: auth_roles = {auth_roles} | auth_config = {request.state.auth_config}",
+#         )
+#     except (KeyError, AttributeError):
+#         requested_role = None
+#         auth_roles = None
+#     import pdb
+#     pdb.set_trace
+#     if not requested_role or not auth_roles or requested_role not in auth_roles:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail=f"Authorization key does not include the right role to \
+#                                      {access_type} the {station} station",
+#         )

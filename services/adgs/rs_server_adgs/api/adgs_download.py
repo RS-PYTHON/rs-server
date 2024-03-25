@@ -58,7 +58,7 @@ class AdgsDownloadResponse(BaseModel):
 
 
 @router.get("/adgs/aux", response_model=AdgsDownloadResponse)
-# @apikey_validator(station="adgs",access_type="download")
+@apikey_validator(station="adgs", access_type="download")
 def download_products(
     request: Request,
     name: Annotated[str, Query(description="AUX product name")],
@@ -81,7 +81,7 @@ def download_products(
     Raises:
         None
     """
-    apikey_validator("adgs", "download", request)
+    # apikey_validator("adgs", "download", request)
 
     try:
         db_product = AdgsDownloadStatus.get(db, name=name)
