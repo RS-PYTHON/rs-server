@@ -891,51 +891,6 @@ files = [
 ]
 
 [[package]]
-name = "httpcore"
-version = "1.0.4"
-description = "A minimal low-level HTTP client."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "httpcore-1.0.4-py3-none-any.whl", hash = "sha256:ac418c1db41bade2ad53ae2f3834a3a0f5ae76b56cf5aa497d2d033384fc7d73"},
-    {file = "httpcore-1.0.4.tar.gz", hash = "sha256:cb2839ccfcba0d2d3c1131d3c3e26dfc327326fbe7a5dc0dbfe9f6c9151bb022"},
-]
-
-[package.dependencies]
-certifi = "*"
-h11 = ">=0.13,<0.15"
-
-[package.extras]
-asyncio = ["anyio (>=4.0,<5.0)"]
-http2 = ["h2 (>=3,<5)"]
-socks = ["socksio (==1.*)"]
-trio = ["trio (>=0.22.0,<0.25.0)"]
-
-[[package]]
-name = "httpx"
-version = "0.27.0"
-description = "The next generation HTTP client."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "httpx-0.27.0-py3-none-any.whl", hash = "sha256:71d5465162c13681bff01ad59b2cc68dd838ea1f10e51574bac27103f00c91a5"},
-    {file = "httpx-0.27.0.tar.gz", hash = "sha256:a0cb88a46f32dc874e04ee956e4c2764aba2aa228f650b06788ba6bda2962ab5"},
-]
-
-[package.dependencies]
-anyio = "*"
-certifi = "*"
-httpcore = "==1.*"
-idna = "*"
-sniffio = "*"
-
-[package.extras]
-brotli = ["brotli", "brotlicffi"]
-cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<14)"]
-http2 = ["h2 (>=3,<5)"]
-socks = ["socksio (==1.*)"]
-
-[[package]]
 name = "identify"
 version = "2.5.35"
 description = "File identification library for Python"
@@ -2039,24 +1994,6 @@ files = [
 pytest = ">=4.6"
 
 [[package]]
-name = "pytest-httpx"
-version = "0.30.0"
-description = "Send responses to httpx."
-optional = false
-python-versions = ">=3.9"
-files = [
-    {file = "pytest-httpx-0.30.0.tar.gz", hash = "sha256:755b8edca87c974dd4f3605c374fda11db84631de3d163b99c0df5807023a19a"},
-    {file = "pytest_httpx-0.30.0-py3-none-any.whl", hash = "sha256:6d47849691faf11d2532565d0c8e0e02b9f4ee730da31687feae315581d7520c"},
-]
-
-[package.dependencies]
-httpx = "==0.27.*"
-pytest = ">=7,<9"
-
-[package.extras]
-testing = ["pytest-asyncio (==0.23.*)", "pytest-cov (==4.*)"]
-
-[[package]]
 name = "pytest-mock"
 version = "3.12.0"
 description = "Thin-wrapper around the mock package for easier use with pytest"
@@ -2262,7 +2199,7 @@ jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
 name = "rs-server-adgs"
-version = "1.0a6.post34.dev0+5f75557"
+version = "1.0a6.post36.dev0+f6f6b9f"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2278,7 +2215,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "1.0a6.post34.dev0+5f75557"
+version = "1.0a6.post36.dev0+f6f6b9f"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2294,7 +2231,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-common"
-version = "1.0a6.post34.dev0+5f75557"
+version = "1.0a6.post36.dev0+f6f6b9f"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2309,7 +2246,6 @@ cachetools = "^5.3.3"
 eodag = "==2.12.0"
 fastapi = "^0.110.0"
 filelock = "^3.13.1"
-httpx = "^0.27.0"
 markdown = "^3.5.1"
 psycopg2 = "^2.9.9"
 pydantic = ">=2.0.0"
@@ -2323,7 +2259,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "1.0a6.post34.dev0+5f75557"
+version = "1.0a6.post36.dev0+f6f6b9f"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -3035,4 +2971,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "fc5d562be07ad6af83f206ff7feb9d8fc24af7ea704d1186867ceab6dfda6bbb"
+content-hash = "9ae8fe8170ae56b82286c298a873c02db0d6c58c5f9fc06ab28452b86646e776"
