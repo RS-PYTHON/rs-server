@@ -7,7 +7,7 @@ image::https://sonarqube.ops-csc.com/api/project_badges/measure?branch=develop&p
 
 ---
 
-== Useful links
+== Quick links
 
 * Deployed services: https://dev-rspy.esa-copernicus.eu/docs
 * Online documentation: https://rs-python.github.io/rs-server/

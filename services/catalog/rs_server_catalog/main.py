@@ -12,7 +12,7 @@ import httpx
 from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
@@ -134,6 +134,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
         if (common_settings.cluster_mode()) and request.url.path.startswith("/catalog"):
+
             # Read the api key passed in header
             apikey_value = request.headers.get(authentication.APIKEY_HEADER, None)
             if not apikey_value:
