@@ -436,10 +436,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                     auth_roles, _, user_login = await apikey_security(request, api_key)
                     content = self.manage_landing_page(request, auth_roles, user_login, content)
                 finally:
-                    return JSONResponse(
+                    return JSONResponse(  # pylint: disable=return-in-finally, lost-exception
                         content,
                         status_code=response.status_code,
-                    )  # pylint: disable=return-in-finally, lost-exception, line-too-long
+                    )
             if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
                 # ajouter le /collections sans le owner_id
                 if ids["owner_id"]:
