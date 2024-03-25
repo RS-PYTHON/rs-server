@@ -7,6 +7,12 @@ image::https://sonarqube.ops-csc.com/api/project_badges/measure?branch=develop&p
 
 ---
 
+== Useful links
+
+* Deployed services: https://dev-rspy.esa-copernicus.eu/docs
+* Online documentation: https://rs-python.github.io/rs-server/
+* SonarQube reports: https://sonarqube.ops-csc.com/dashboard?id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&branch=develop
+
 == Overview
 
 RS server is a toolbox that allows users to retrieve external data used by Copernicus processing chains,
