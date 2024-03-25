@@ -565,7 +565,7 @@ def test_publish_item_update(client, a_correct_feature, owner, collection_id):
     export_aws_credentials()
     secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
     # Enable bucket transfer
-    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+    os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
     server = ThreadedMotoServer(port=8077)
     server.start()
     try:
