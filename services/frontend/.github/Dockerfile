@@ -1,6 +1,6 @@
 
 # Build stage for multi stage build.
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.11-alpine as builder
 
 # Install dependencies
 RUN apt update && apt install -y libpq-dev gcc
@@ -19,7 +19,7 @@ ADD ./*.whl /tmp/whl
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_adgs-*.whl rs_server_cadip-*.whl rs_server_frontend-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
-FROM python:3.11-slim-bookworm
+FROM python:3.11-alpine
 
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
 RUN \
