@@ -375,7 +375,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                     content["links"].append(child_link)
         return content
 
-    def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> dict:
+    def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
         """Return the list of all collections accessible by the user calling it.
 
         Args:
