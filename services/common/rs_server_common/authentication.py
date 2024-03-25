@@ -6,7 +6,6 @@ Note: calls https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manage
 
 import sys
 import traceback
-from enum import Enum
 from os import environ as env
 from typing import Annotated
 

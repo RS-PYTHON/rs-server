@@ -83,7 +83,9 @@ def extract_openapi_specification():
     openapi_spec_paths = openapi_spec["paths"]
     for key in list(openapi_spec_paths.keys()):
         if key in TECH_ENDPOINTS:
+            del openapi_spec_paths[key]
             continue
+
         new_key = f"/catalog{key}" if key in ["/search", "/"] else "/catalog/{owner_id}" + key
         openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
         endpoint = openapi_spec_paths[new_key]

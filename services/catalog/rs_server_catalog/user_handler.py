@@ -48,7 +48,7 @@ def get_ids(path: str) -> dict:
     return res
 
 
-def remove_user_prefix(path: str) -> str:
+def remove_user_prefix(path: str) -> str:  # pylint: disable=too-many-branches
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 
