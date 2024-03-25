@@ -1,5 +1,6 @@
 """Integration tests for user_catalog module."""
 
+# pylint: disable=unused-argument
 import copy
 import json
 import os
@@ -334,7 +335,7 @@ class TestCatalogPublishCollectionEndpoint:
         client,
         a_minimal_collection,
         a_correct_feature,
-    ):  # pylint: disable=unused-argument
+    ):
         """
         Test that a collection than contain features can be successfully deleted.
         """
@@ -645,20 +646,11 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
     """Class used to group tests that publish a collection and move assets between buckets."""
 
-    def test_create_new_minimal_feature(self, client, a_correct_feature):
+    def test_create_new_minimal_feature(self, client, a_minimal_collection, a_correct_feature):
         """Test that a feature is correctly published into catalogDB
         ENDPOINT: POST /catalog/collections/{user:collection}/items
         ENDPOINT: GET /catalog/collections/{user:collection}/items
         ENDPOINT: GET /catalog/collections/{user:collection}/items/{featureID}"""
-        minimal_collection = {
-            "id": "fixture_collection",
-            "type": "Collection",
-            "description": "test_description",
-            "stac_version": "1.0.0",
-            "owner": "fixture_owner",
-        }
-        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
-        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         feature_post_response = client.post(
@@ -685,10 +677,8 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         specific_feature = json.loads(check_features_response.content)
         # Check that specific feature is exactly match for previous one
         assert specific_feature["features"][0] == returned_features["features"][0]
-        # Cleanup the test
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
-    def test_get_non_existent_feature(self, client, a_minimal_collection):  # pylint: disable=unused-argument
+    def test_get_non_existent_feature(self, client, a_minimal_collection):
         """
         Testing GET feature endpoint with a non-existent feature ID.
         """
@@ -702,19 +692,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             )
             assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
-    def test_update_with_a_correct_feature(self, client, a_correct_feature):
+    def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
-        minimal_collection = {
-            "id": "fixture_collection",
-            "type": "Collection",
-            "description": "test_description",
-            "stac_version": "1.0.0",
-            "owner": "fixture_owner",
-        }
-        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
-        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
@@ -741,20 +722,8 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert updated_feature["bbox"] == updated_feature_sent["bbox"]
         assert updated_feature["geometry"] == a_correct_feature["geometry"]
 
-        # Cleanup the test
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
-
-    def test_update_with_a_incorrect_feature(self, client, a_correct_feature):
+    def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
-        minimal_collection = {
-            "id": "fixture_collection",
-            "type": "Collection",
-            "description": "test_description",
-            "stac_version": "1.0.0",
-            "owner": "fixture_owner",
-        }
-        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
-        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
@@ -772,22 +741,11 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
                 f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
                 json=updated_feature_sent,
             )
-        # Cleanup the test
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
-    def test_delete_a_correct_feature(self, client, a_correct_feature):
+    def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: DELETE: /catalog/collections/{user:collection}/items/{featureID}
         """
-        minimal_collection = {
-            "id": "fixture_collection",
-            "type": "Collection",
-            "description": "test_description",
-            "stac_version": "1.0.0",
-            "owner": "fixture_owner",
-        }
-        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
-        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
         feature_post_response = client.post(
@@ -808,23 +766,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert collection_content_response.status_code == fastapi.status.HTTP_200_OK
         collection_content_response = json.loads(collection_content_response.content)
         assert collection_content_response["context"]["returned"] == 0
-        # Cleanup the test
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
-    def test_delete_a_non_existing_feature(self, client):
+    def test_delete_a_non_existing_feature(self, client, a_minimal_collection):
         """
         Test DELETE feature endpoint on non-existing feature.
         """
-        minimal_collection = {
-            "id": "fixture_collection",
-            "type": "Collection",
-            "description": "test_description",
-            "stac_version": "1.0.0",
-            "owner": "fixture_owner",
-        }
-        collection_post_response = client.post("/catalog/collections", json=minimal_collection)
-        assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
         with pytest.raises(fastapi.HTTPException):
             client.delete("/catalog/collections/fixture_owner:fixture_collection/items/non_existent_feature")
-        # Cleanup the test
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")

@@ -1,5 +1,6 @@
 """Common fixture for catalog service."""
 
+import json
 import os
 
 # We are in local mode (no cluster).
@@ -11,8 +12,9 @@ os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
+import fastapi
 import pytest
 from rs_server_catalog.main import app
 from sqlalchemy_utils import database_exists
@@ -252,12 +254,12 @@ def darius_s1_l2_fixture() -> Collection:  # pylint: disable=missing-function-do
     return a_collection("darius", "S1_L2")
 
 
-@pytest.fixture(scope="session", name="a_minimal_collection")
-def a_minimal_collection_fixture(client) -> None:
+@pytest.fixture(scope="function", name="a_minimal_collection")
+def a_minimal_collection_fixture(client) -> Iterator[None]:
     """
     This fixture is used to return the minimal form of accepted collection
     """
-    client.post(
+    collection_post_response = client.post(
         "/catalog/collections",
         json={
             "id": "fixture_collection",
@@ -267,6 +269,11 @@ def a_minimal_collection_fixture(client) -> None:
             "owner": "fixture_owner",
         },
     )
+    assert collection_post_response.status_code == fastapi.status.HTTP_200_OK
+    yield
+    # teardown cleanup
+    if json.loads(client.get("/catalog/collections/fixture_owner:fixture_collection").content)["collections"]:
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
 
 @pytest.fixture(scope="session", name="a_correct_feature")
