@@ -346,7 +346,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         return request  # pylint: disable=protected-access
 
-    def manage_landing_page(self, request: Request, auth_roles: list, user_login: str, content: json) -> dict:
+    def manage_landing_page(self, request: Request, auth_roles: list, user_login: str, content: dict) -> list:
         """All sub user catalogs accessible by the user calling it are returned as "child" links.
 
         Args:

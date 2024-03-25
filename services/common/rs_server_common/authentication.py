@@ -53,7 +53,7 @@ APIKEY_SECURITY = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed i
 async def apikey_security(
     request: Request,
     apikey_value: Annotated[str, Security(APIKEY_SECURITY)],
-) -> tuple[list, dict]:
+) -> tuple[list, dict, str]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
 
@@ -71,7 +71,7 @@ async def apikey_security(
 
 
 @cached(cache=TTLCache(maxsize=sys.maxsize, ttl=120))
-async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
+async def __apikey_security_cached(apikey_value) -> tuple[list, dict, str]:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
     """
