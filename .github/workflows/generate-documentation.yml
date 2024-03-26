@@ -12,10 +12,12 @@ env:
   PYTHON_VERSION: 3.11
 
 jobs:
-  generate-technical-documentation:
-    name: Generate technical documentation
+
+  generate-documentation:
+    name: Generate documentation
     runs-on: ubuntu-latest
     permissions:
+      packages: read
       contents: write
     steps:
       - uses: actions/checkout@v4
