@@ -33,7 +33,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 @router.get("/adgs/aux/search")
 @apikey_validator(station="adgs", access_type="read")
 def search_products(  # pylint: disable=too-many-locals
-    request: Request,
+    request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",

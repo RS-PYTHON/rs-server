@@ -34,13 +34,13 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 @router.get("/cadip/{station}/cadu/search")
 @apikey_validator(station="cadip", access_type="read")
-def search_products(
-    request: Request,
+def search_products(  # pylint: disable=too-many-locals
+    request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
-) -> list[dict] | dict:  # pylint: disable=too-many-locals
+) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Notes:

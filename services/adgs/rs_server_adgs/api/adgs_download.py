@@ -60,7 +60,7 @@ class AdgsDownloadResponse(BaseModel):
 @router.get("/adgs/aux", response_model=AdgsDownloadResponse)
 @apikey_validator(station="adgs", access_type="download")
 def download_products(
-    request: Request,
+    request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="AUX product name")],
     local: Annotated[str | None, Query(description="Local download directory")] = None,
     obs: Annotated[str | None, Query(description="Object storage path e.g. 's3://bucket-name/sub/dir'")] = None,

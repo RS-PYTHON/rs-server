@@ -19,10 +19,12 @@ router = APIRouter(tags=cadip_tags)
 @router.get("/cadip/{station}/cadu/status", response_model=ReadDownloadStatus)
 @apikey_validator(station="cadip", access_type="download")
 def get_download_status(
-    request: Request,
+    request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="CADU product name")],
     db: Session = Depends(get_db),
-    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    station: str = FPath(  # pylint: disable=unused-argument
+        description="CADIP station identifier (MTI, SGS, MPU, INU, etc)",
+    ),
 ):
     """
     Get a product download status from its ID or name.

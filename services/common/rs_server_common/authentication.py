@@ -95,7 +95,11 @@ async def apikey_security(
     return auth_roles, auth_config
 
 
-@cached(cache=TTLCache(maxsize=sys.maxsize, ttl=120))
+# The following variable is needed for tests to pass
+ttl_cache: TTLCache = TTLCache(maxsize=sys.maxsize, ttl=120)
+
+
+@cached(cache=ttl_cache)
 async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
@@ -147,29 +151,37 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
 
 
 def apikey_validator(station, access_type):
-    """Docstring to be added"""
+    """Decorator to validate API key access.
+
+    Args:
+        station (str): The station name.
+        access_type (str): The type of access.
+
+    Raises:
+        HTTPException: If the authorization key does not include the right role
+            to access the specified station.
+
+    Returns:
+        function: Decorator function.
+    """
 
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             if settings.cluster_mode():
                 try:
-                    logger.info("Checking AUTH")
                     __station = STATIONS_AUTH_lut[kwargs["station"].lower()] if station == "cadip" else station
                     requested_role = Auth[f"rs_{__station}_{access_type}".upper()]
                     auth_roles = kwargs["request"].state.auth_roles
-                    print(f"auth_roles = {auth_roles}")
                 except KeyError:
                     requested_role = None
 
                 if not requested_role or requested_role not in auth_roles:
-                    logger.info("AUTH: Raising exception !")
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail=f"Authorization key does not include the right role to \
 {access_type} the {__station} station",
                     )
-                logger.info("AUTH: PASS !")
 
             return func(*args, **kwargs)
 
