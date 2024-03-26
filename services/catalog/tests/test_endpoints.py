@@ -910,7 +910,3 @@ class TestCatalogSearchEndpoint:
             assert response.status_code == 200
         finally:
             pathlib.Path("queryables.json").unlink(missing_ok=True)
-
-
-def test_landing_page():
-    pass
