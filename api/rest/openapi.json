@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "RS-server",
-    "version": "0.0.0.post1.dev0+5da81b7"
+    "title": "RS-Server",
+    "version": "0.0.0.post1.dev0+55b8eaa"
   },
   "paths": {
     "/adgs/aux/search": {
