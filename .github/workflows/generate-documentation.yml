@@ -17,8 +17,8 @@ jobs:
     name: Generate documentation
     runs-on: ubuntu-latest
     permissions:
-      packages: read
-      contents: write
+      packages: read # to pull docker images when running build_aggregated_openapi.sh
+      contents: write # to publish the generated documentation
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install

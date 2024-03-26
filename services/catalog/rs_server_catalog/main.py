@@ -12,7 +12,7 @@ import httpx
 from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalogMiddleware

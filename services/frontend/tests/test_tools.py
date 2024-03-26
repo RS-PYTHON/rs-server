@@ -369,7 +369,7 @@ class TestTheMergedOpenapi:
         adgs_openapi: dict,  # pylint: disable=unused-argument
         the_merge_openapis: dict,
     ):
-        assert the_merge_openapis["info"]["title"] == "RS-server"
+        assert the_merge_openapis["info"]["title"] == "RS-Server"
 
     @responses.activate
     def test_keeps_the_paths_of_all_services(

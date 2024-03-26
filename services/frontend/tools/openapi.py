@@ -98,7 +98,7 @@ class AggregatedOpenapi:
         """Return the built openapi.json as a dict"""
         return {
             "openapi": self.merge_openapi_versions(),
-            "info": {"title": "RS-server", "version": str(__version__)},
+            "info": {"title": "RS-Server", "version": str(__version__)},
             "paths": self.merge_paths(),
             "components": self.merge_components(),
         }
