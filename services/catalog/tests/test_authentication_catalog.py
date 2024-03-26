@@ -65,7 +65,7 @@ async def sub_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPX
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
         status_code=HTTP_200_OK,
-        json={"iam_roles": {}, "config": {}, "user_login": {}},
+        json={"iam_roles": ["rs_adgs_read", "s1_access"], "config": {}, "user_login": {}},
     )
 
     # With a wrong api key, it returns 403
