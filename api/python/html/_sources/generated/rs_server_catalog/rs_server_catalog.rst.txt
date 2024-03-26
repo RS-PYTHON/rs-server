@@ -1,0 +1,37 @@
+rs\_server\_catalog package
+===========================
+
+Submodules
+----------
+
+rs\_server\_catalog.main module
+-------------------------------
+
+.. automodule:: rs_server_catalog.main
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_catalog.user\_catalog module
+----------------------------------------
+
+.. automodule:: rs_server_catalog.user_catalog
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_catalog.user\_handler module
+----------------------------------------
+
+.. automodule:: rs_server_catalog.user_handler
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rs_server_catalog
+   :members:
+   :undoc-members:
+   :show-inheritance:

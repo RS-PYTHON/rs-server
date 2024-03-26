@@ -1,0 +1,21 @@
+rs\_server\_frontend package
+============================
+
+Submodules
+----------
+
+rs\_server\_frontend.main module
+--------------------------------
+
+.. automodule:: rs_server_frontend.main
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rs_server_frontend
+   :members:
+   :undoc-members:
+   :show-inheritance:
