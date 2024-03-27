@@ -26,7 +26,7 @@ class Frontend:
         """Create a frontend application.
 
         The frontend serves the rs-server REST API documentation.
-        this documentation is an openapi specification loaded from a json file.
+        This documentation is an openapi specification loaded from a json file.
         This file location is given by the RSPY_OPENAPI_FILE environment variable.
 
         This file is loaded during the frontend application initialization
