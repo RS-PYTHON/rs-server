@@ -30,7 +30,7 @@ APIKEY_HEADER = "x-api-key"
 APIKEY_SECURITY = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
 
 # Look up table for stations
-STATIONS_AUTH_lut = {
+STATIONS_AUTH_LUT = {
     "adgs": "adgs",
     "ins": "cadip_ins",
     "mps": "cadip_mps",
@@ -125,7 +125,7 @@ def apikey_validator(station, access_type):
         def wrapper(*args, **kwargs):
             if settings.cluster_mode():
                 try:
-                    __station = STATIONS_AUTH_lut[kwargs["station"].lower()] if station == "cadip" else station
+                    __station = STATIONS_AUTH_LUT[kwargs["station"].lower()] if station == "cadip" else station
                     requested_role = f"rs_{__station}_{access_type}".upper()
                     auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
                 except KeyError:
