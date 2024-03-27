@@ -1,7 +1,0 @@
-rs_server_adgs
-==============
-
-.. toctree::
-   :maxdepth: 4
-
-   rs_server_adgs
