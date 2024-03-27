@@ -5,7 +5,7 @@ import urllib
 import pytest
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import APIKEY_HEADER, STATIONS_AUTH_lut, ttl_cache
+from rs_server_common.authentication import APIKEY_HEADER, STATIONS_AUTH_LUT, ttl_cache
 from rs_server_common.utils.logging import Logging
 from starlette.status import (
     HTTP_200_OK,
@@ -176,6 +176,7 @@ def test_apikey_validator_adgs(fastapi_app, client, monkeypatch, httpx_mock: HTT
         ]
 
 
+adgs_station_identifiers = ["adgs"]
 cadip_station_identifiers = ["ins", "mps", "mti", "nsg", "sgs", "cadip"]
 
 
@@ -206,8 +207,8 @@ def test_apikey_validator_cadip(
     set_access_type_read = []
     set_access_type_download = []
     for identifier in cadip_station_identifiers:
-        set_access_type_read.append(f"rs_{STATIONS_AUTH_lut[identifier]}_read")
-        set_access_type_download.append(f"rs_{STATIONS_AUTH_lut[identifier]}_download")
+        set_access_type_read.append(f"rs_{STATIONS_AUTH_LUT[identifier]}_read")
+        set_access_type_download.append(f"rs_{STATIONS_AUTH_LUT[identifier]}_download")
     endpoints = []
     # Gather the endpoints
     # For each api endpoint (except the technical endpoints)
@@ -297,3 +298,103 @@ def test_apikey_validator_cadip(
             HTTP_503_SERVICE_UNAVAILABLE,
             HTTP_404_NOT_FOUND,
         ]
+
+
+date = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
+name = {"name": "TEST_FILE.raw"}
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "fastapi_app, allowed_access_type",
+    [
+        (
+            (
+                Envs({RSPY_LOCAL_MODE: False}),
+                ["read"],
+            )
+        ),
+        (
+            (
+                Envs({RSPY_LOCAL_MODE: False}),
+                ["download"],
+            )
+        ),
+        (
+            (
+                Envs({RSPY_LOCAL_MODE: False}),
+                ["read", "download"],
+            )
+        ),
+    ],
+    ids=[
+        "authorization_adgs_read",
+        "authorization_adgs_dwn",
+        "authorization_adgs_both",
+    ],
+    indirect=["fastapi_app"],
+)
+def test_apikey_validator(  # pylint: disable=too-many-arguments
+    fastapi_app,
+    allowed_access_type,
+    client,
+    monkeypatch,
+    httpx_mock: HTTPXMock,
+):
+    """
+    Test that the http endpoints are protected and return 401 if not authorized.
+    Set RSPY_LOCAL_MODE to False before running the fastapi app.
+    """
+    ttl_cache.clear()
+
+    # Mock the uac manager url
+    monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+    set_access_type = ["s1_access"]
+
+    for access_type in allowed_access_type:
+        for station_name in adgs_station_identifiers + cadip_station_identifiers:
+            set_access_type.append(f"rs_{STATIONS_AUTH_LUT[station_name]}_{access_type}")
+
+    # With a valid api key in headers, set the roles
+    httpx_mock.add_response(
+        url=RSPY_UAC_CHECK_URL,
+        match_headers={APIKEY_HEADER: VALID_APIKEY},
+        status_code=HTTP_200_OK,
+        json={"iam_roles": set_access_type, "config": {}},
+    )
+
+    # For each api endpoint (except the technical endpoints)
+    for route in fastapi_app.router.routes:
+        if (not isinstance(route, APIRoute)) or (route.path in ("/", "/health")):
+            continue
+
+        # For each method (get, post, ...)
+        for method in route.methods:
+            route_path_splitted = route.path.split("/")
+            if len(route_path_splitted) < 2:
+                continue
+            # Gather endpoints for all adgs and cadip stations
+            endpoints = []
+            if route_path_splitted[1] in (adgs_station_identifiers + cadip_station_identifiers):
+                if "search" in route.path:
+                    endpoint_type = "read"
+                    request_params = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
+                else:
+                    endpoint_type = "download"
+                    request_params = {"name": "TEST_FILE.raw"}
+
+                if route_path_splitted[1] == "cadip":
+                    for cadip_station in cadip_station_identifiers:
+                        endpoints.append(
+                            route.path.replace("{station}", cadip_station.upper())
+                            + "?"
+                            + urllib.parse.urlencode(request_params),
+                        )
+                else:
+                    endpoints = [route.path + "?" + urllib.parse.urlencode(request_params)]
+
+                for endpoint in endpoints:
+                    resp = client.request(method, endpoint, headers={APIKEY_HEADER: VALID_APIKEY})
+                    if endpoint_type in allowed_access_type:
+                        # this means the auth key passed
+                        assert resp.status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
