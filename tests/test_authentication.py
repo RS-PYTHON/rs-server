@@ -397,4 +397,6 @@ def test_apikey_validator(  # pylint: disable=too-many-arguments
                     resp = client.request(method, endpoint, headers={APIKEY_HEADER: VALID_APIKEY})
                     if endpoint_type in allowed_access_type:
                         # this means the auth key passed
-                        assert resp.status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+                        assert resp.status_code in [HTTP_503_SERVICE_UNAVAILABLE, HTTP_404_NOT_FOUND]
+                    else:
+                        assert resp.status_code == HTTP_401_UNAUTHORIZED
