@@ -39,6 +39,7 @@ async def health() -> HealthSchema:
 
 @typing.no_type_check
 def init_app(
+    api_version: str,
     routers: list[APIRouter],
     init_db: bool = True,
     pause: int = 3,
@@ -51,6 +52,8 @@ def init_app(
     See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
 
     Args:
+        api_version (str): version of our application (not the version of the OpenAPI specification
+        nor the version of FastAPI being used)
         routers (list[APIRouter]): list of FastAPI routers to add to the application.
         init_db (bool): should we init the database session ?
         timeout (int): timeout in seconds to wait for the database connection.
@@ -123,7 +126,7 @@ def init_app(
         docs_params = {}
 
     # Init the FastAPI application
-    app = FastAPI(title="RS FastAPI server", lifespan=lifespan, **docs_params)
+    app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params)
 
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db

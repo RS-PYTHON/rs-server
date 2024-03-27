@@ -36,5 +36,6 @@ It is handled as a python project as if it is a rs-server service.
 :leveloffset: +2
 
 include::cadip.adoc[]
+include::frontend.adoc[]
 
 :leveloffset: -2

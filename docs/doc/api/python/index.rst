@@ -5,6 +5,8 @@ RS Server Python API Documentation
     :maxdepth: 2
     :caption: Contents:
 
-    RS Server commons <generated/common/modules>
-    RS Server cadip service <generated/cadip/modules>
-    RS Server adgs service <generated/adgs/modules>
+    RS-Server ADGS <generated/rs_server_adgs/modules>
+    RS-Server CADIP <generated/rs_server_cadip/modules>
+    RS-Server Catalog <generated/rs_server_catalog/modules>
+    RS-Server Frontend <generated/rs_server_frontend/modules>
+    RS-Server Common <generated/rs_server_common/modules>
