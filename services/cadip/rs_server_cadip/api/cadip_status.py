@@ -32,6 +32,5 @@ def get_download_status(
     Args:
         db (Session): database session
     """
-    # apikey_validator(f"cadip_{station.lower()}", "download", request)
 
     return CadipDownloadStatus.get(name=name, db=db)

@@ -28,6 +28,5 @@ def get_download_status(
         db (Session): database session
 
     """
-    # apikey_validator("adgs", "download", request)
 
     return AdgsDownloadStatus.get(name=name, db=db)

@@ -86,8 +86,6 @@ def download_products(
         db (Database): The database connection object.
     """
 
-    # apikey_validator(f"cadip_{station.lower()}", "download", request)
-
     # Get the product download status from database
     try:
         db_product = CadipDownloadStatus.get(db, name=name)

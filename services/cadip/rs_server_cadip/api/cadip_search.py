@@ -57,7 +57,6 @@ def search_products(  # pylint: disable=too-many-locals
         If no products were found in the mentioned time range, output is an empty list.
 
     """
-    # apikey_validator(f"cadip_{station.lower()}", "read", request)
 
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:

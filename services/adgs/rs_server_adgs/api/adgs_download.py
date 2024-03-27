@@ -81,7 +81,6 @@ def download_products(
     Raises:
         None
     """
-    # apikey_validator("adgs", "download", request)
 
     try:
         db_product = AdgsDownloadStatus.get(db, name=name)
