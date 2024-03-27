@@ -4,7 +4,6 @@ import json
 from importlib import reload
 
 import pytest
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER
