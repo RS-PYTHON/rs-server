@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.16">
+<title>CI/CD workflows</title>
+<style>
+/*! Copyright (C) 2019, TomTom (http://tomtom.com).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/* Extension of the AsciiDoctor CSS for AsciiDoxy.
+ * Adding:
+ * - Floating multipage navigation.
+ */
+@import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700";
+@import "https://cdn.jsdelivr.net/gh/asciidoctor/asciidoctor@2.0/data/stylesheets/asciidoctor-default.css";
+
+/* Multipage navigation */
+div#navigation {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+div#navigation table {
+    margin-bottom: 0;
+}
+@media screen and (min-width: 768px) {
+    body.toc2 div#navigation {
+        left: 15em;
+    }
+    body.toc2.toc-right div#navigation {
+        right: 15em;
+    }
+}
+@media screen and (min-width: 1280px) {
+    body.toc2 div#navigation {
+        left: 20em;
+    }
+    body.toc2.toc-right div#navigation {
+        right: 20em;
+    }
+}
+
+</style>
+</head>
+<body class="article">
+<div id="header">
+<h1>CI/CD workflows</h1>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>The CI/CD (Continuous Integration and Delivery) is implemented using GitHub Actions yaml scripts.</p>
+</div>
+<div class="paragraph">
+<p>Implemented workflows are:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Check code quality</p>
+</li>
+<li>
+<p>Publish wheels and Docker images</p>
+</li>
+<li>
+<p>Generate documentation</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_check_code_quality_workflow"><strong>Check code quality</strong> workflow</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This workflow is run either automatically after each <code>git push</code> command on each branch and pull request, or manually.</p>
+</div>
+<div class="paragraph">
+<p>It runs the following jobs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Check format (pre-commit, black, isort)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>This job checks that you have run <code>pre-commit run --all-files</code> in your local git repository before committing. The <code>pre-commit</code> runs <code>black</code> and <code>isort</code> to auto-format your source code and facilitate reviewing differences and merging between git branches.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Check linting (pylint, flake8)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>These linters analyse your code without actually running it. They check for errors, enforce a coding standard, look for code smells, and can make suggestions about how the code could be refactored.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Check typing (mypy)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Add type annotations to your Python programs, and use mypy to type check them.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Check security (bandit, safety, trivy)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Bandit is a tool designed to find common security issues in Python code.</p>
+</li>
+<li>
+<p>Safety checks Python dependencies for known security vulnerabilities and suggests the proper remediations for vulnerabilities detected.</p>
+</li>
+<li>
+<p>Trivy is a comprehensive and versatile security scanner that looks for security issues, and targets where it can find those issues. The scan results are updated into the GitHub Security tab: <a href="https://github.com/RS-PYTHON/rs-server/security/code-scanning" class="bare">https://github.com/RS-PYTHON/rs-server/security/code-scanning</a></p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Run unit tests (pytest)</p>
+</li>
+<li>
+<p>Run integration tests (pytest)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Test source code and determine if it is fit to use.</p>
+</li>
+<li>
+<p>Unit tests are faster than integration tests and use mockup servers. Integration tests are run on the production infrastructure (to be confirmed).</p>
+</li>
+<li>
+<p>They also calculate code coverage i.e. percentage measure of the degree to which the source code is executed when the tests are run. Only the unit tests coverage is shown in sonarqube.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Quality report (sonarqube)</p>
+<div class="ulist">
+<ul>
+<li>
+<p>SonarQube is a platform for continuous inspection of code quality to perform automatic reviews with static analysis of code to detect bugs and code smells. It offers reports on duplicated code, coding standards, unit tests, code coverage, code complexity, comments, bugs, and security recommendations.</p>
+</li>
+<li>
+<p>It renders the reports from pylint, flake8, bandit and code coverage in a more graphical way.</p>
+</li>
+<li>
+<p>Reports are displayed at: <a href="https://sonarqube.ops-csc.com/dashboard?branch=develop&amp;id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ" class="bare">https://sonarqube.ops-csc.com/dashboard?branch=develop&amp;id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ</a></p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_publish_wheels_and_docker_images_workflow"><strong>Publish wheels and Docker images</strong> workflow</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This workflow is run either automatically after adding a git tag to a commit, or manually. It:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Builds source code into Python wheel packages.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Upload them into the Python registry.</p>
+</li>
+<li>
+<p>Make them available for manual download as GitHub Actions artifacts.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Builds the project Docker images (that use the Python wheel packages).</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Scan them with Trivy for security issues and update results into the GitHub Security tab: <a href="https://github.com/RS-PYTHON/rs-server/security/code-scanning" class="bare">https://github.com/RS-PYTHON/rs-server/security/code-scanning</a></p>
+</li>
+<li>
+<p>Upload them into the ghcr.io GitHub package registry: <a href="https://github.com/orgs/RS-PYTHON/packages" class="bare">https://github.com/orgs/RS-PYTHON/packages</a></p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The git tag name must conform to the following syntax examples:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>v2.0</code> is a version for a release with at least major updates.</p>
+</li>
+<li>
+<p><code>v2.1</code> is a version for a release without any major updates.</p>
+</li>
+<li>
+<p><code>v2.1rc1</code> is the version for the first 2.1 release-candidate.</p>
+</li>
+<li>
+<p><code>v1.0a3</code> is the version for sprint 3 features integration.</p>
+</li>
+<li>
+<p><code>v1.0a3+dev9afcfc1</code> is dev commit version during the sprint 3.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>Poetry dynamic versioning</code> python plugin is then used to determine automatically the wheels and Docker images version name. Note that it is slighty different from the git tag name:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>v</code> is removed.</p>
+</li>
+<li>
+<p>For Docker images, <code>+</code> is replaced by <code>.</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>So we have e.g. the wheel filenames:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rs_server-2.0-py3-none-any.whl</code></p>
+</li>
+<li>
+<p><code>rs_server-2.1-py3-none-any.whl</code></p>
+</li>
+<li>
+<p><code>rs_server-2.1rc1-py3-none-any.whl</code></p>
+</li>
+<li>
+<p><code>rs_server-1.0a3-py3-none-any.whl</code></p>
+</li>
+<li>
+<p><code>rs_server-1.0a3+dev9afcfc1-py3-none-any.whl</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>And the Docker images:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:2.0</code></p>
+</li>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:2.1</code></p>
+</li>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:2.1rc1</code></p>
+</li>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:1.0a3</code></p>
+</li>
+<li>
+<p><code>ghcr.io/rs-python/rs-server:1.0a3.dev9afcfc1</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When running manually the workflow, the version name is determined automatically as:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>0.0.0.post1.dev0+&lt;short-hash-commit&gt;</code> for the wheels.</p>
+</li>
+<li>
+<p><code>0.0.0.post1.dev0.&lt;short-hash-commit&gt;</code> for the Docker images.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>e.g. <code>0.0.0.post1.dev0+216f7fa</code> and <code>0.0.0.post1.dev0.216f7fa</code>.</p>
+</div>
+<div class="paragraph">
+<p>But running manually the workflow is discouraged, it is preferred to generate the wheels and Docker images by creating a new git tag (to be discussed).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_generate_documentation_workflow">Generate documentation workflow</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This workflow is run either automatically after adding a git tag to a commit, or manually.</p>
+</div>
+<div class="paragraph">
+<p>It builds the documentation following the how-to procedure to generate the documentation.</p>
+</div>
+<div class="paragraph">
+<p>Then, the result is published as the <a href="https://rs-python.github.io/rs-server">GitHub Pages of the rs-server</a>.</p>
+</div>
+<div id="navigation">
+<table class="tableblock frame-none grid-none stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-middle"><a href="workflow.html">Prev</a></th>
+<th class="tableblock halign-center valign-middle"><a href="../../index.html">Up</a><br>
+<a href="../../index.html">Home</a></th>
+<th class="tableblock halign-right valign-middle"><a href="../design/design.html">Next</a></th>
+</tr>
+</thead>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2024-03-27 09:11:21 UTC
+</div>
+</div>
+</body>
+</html>

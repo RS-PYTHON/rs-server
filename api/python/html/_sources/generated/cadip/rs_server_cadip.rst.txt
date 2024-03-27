@@ -1,0 +1,38 @@
+rs\_server\_cadip package
+=========================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   rs_server_cadip.api
+   rs_server_cadip.fastapi
+
+Submodules
+----------
+
+rs\_server\_cadip.cadip\_download\_status module
+------------------------------------------------
+
+.. automodule:: rs_server_cadip.cadip_download_status
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_cadip.cadip\_retriever module
+-----------------------------------------
+
+.. automodule:: rs_server_cadip.cadip_retriever
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rs_server_cadip
+   :members:
+   :undoc-members:
+   :show-inheritance:

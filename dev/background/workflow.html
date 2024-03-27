@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.16">
-<title>RS server&#8217;s technical documentation</title>
+<title>Team workflow</title>
 <style>
 /*! Copyright (C) 2019, TomTom (http://tomtom.com).
  *
@@ -60,109 +60,134 @@ div#navigation table {
 </head>
 <body class="article">
 <div id="header">
-<h1>RS server&#8217;s technical documentation</h1>
+<h1>Team workflow</h1>
 </div>
 <div id="content">
 <div class="sect1">
-<h2 id="_user_manual">User manual</h2>
+<h2 id="_git">Git</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The overall architecture is described here:
-<a href="users/architecture.html">Architecture</a></p>
+<p>The project is using the <a href="https://git-flow.readthedocs.io/en/latest/presentation.html">gitflow</a>.</p>
 </div>
 <div class="paragraph">
-<p>The main functionalities are explained here:
-<a href="users/functionalities.html">Features</a></p>
+<p>The feature branches are named following the pattern "feat-&lt;jira-id&gt;/&lt;short-description&gt;"
+For example : "feat-rspy31/init-tech-doc"</p>
+</div>
+<div class="paragraph">
+<p>Sometimes, a branch can implement multiple stories.
+For example : "feat-rspy36-37/read-write-storage"</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_developer_manual">Developer manual</h2>
+<h2 id="_jira_tickets">JIRA tickets</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>All you want to know when you are a rs-server developer.</p>
+<p>The backlog is handled on a private JIRA instance.</p>
 </div>
 <div class="paragraph">
-<p>The documentation is organized in 4 sections:</p>
+<p>The ticket is initially in the TODO state.
+When the implementation starts, the state becomes "IN PROGRESS"
+and the ticket is assigned to the responsible developer.
+When the implementation is completed, the state becomes "IMPLEMENTED".</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_development_dor">development DoR</h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
-<p>Tutorials to help you start coding on rs-server:</p>
+<p>development team understands what is expected</p>
+</li>
+<li>
+<p>test cases are writen and clear</p>
+</li>
+<li>
+<p>identify the specific integration tests if needed</p>
+</li>
+<li>
+<p>technical documentation to write is identified</p>
+</li>
+<li>
+<p>user documentation to write is identified</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_development_dod">development DoD</h2>
+<div class="sectionbody">
 <div class="ulist">
 <ul>
 <li>
-<p><a href="dev/environment/installation.html">Install your environment</a></p>
+<p>code written covers the functionality</p>
+</li>
+<li>
+<p>new code is covered by unit tests</p>
+</li>
+<li>
+<p>new code is covered by integration tests if any</p>
+</li>
+<li>
+<p>new test cases have been automated</p>
+</li>
+<li>
+<p>documentation has been updated</p>
+</li>
+<li>
+<p>changelog has been updated</p>
+</li>
+<li>
+<p>all unit tests are green</p>
+</li>
+<li>
+<p>all integration tests are green</p>
+</li>
+<li>
+<p>all acceptance tests are green</p>
+</li>
+<li>
+<p>the best practices are followed</p>
+<div class="ulist">
+<ul>
+<li>
+<p>the design is followed</p>
+</li>
+<li>
+<p>the CI checks have been run and are green</p>
+</li>
+<li>
+<p>the sonarqube errors have been fixed</p>
 </li>
 </ul>
 </div>
 </li>
 <li>
-<p>How to guides to provide practical common procedures</p>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="dev/doc-generation/how-to.html">Generate rs-server technical documentation</a></p>
+<p>a code review with a team member has been made</p>
 </li>
 </ul>
 </div>
-</li>
-<li>
-<p>Reference guides give you technical information about the code and software API:</p>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="dev/code-style.html">Coding style</a></p>
-</li>
-<li>
-<p><a href="api/python/html/index.html">Python reference api</a></p>
-</li>
-<li>
-<p><a href="api/rest/index.html">REST reference api</a></p>
-</li>
-</ul>
 </div>
-</li>
-</ul>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<div class="title">Note</div>
-</td>
-<td class="content">
-TODO include a link to the python API
-</td>
-</tr>
-</table>
+<div class="sect1">
+<h2 id="_code_review">Code review</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The objectives of the code reviews are :</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Additional information about the software, the team, the design,&#8230;&#8203;</p>
-<div class="ulist">
-<ul>
-<li>
-<p><a href="dev/background/tree-structure.html">Project tree structure</a></p>
+<p>double-check the DoD completion</p>
 </li>
 <li>
-<p><a href="dev/environment/description.html">Development environment description</a></p>
+<p>share knowledge accros development team</p>
 </li>
 <li>
-<p><a href="dev/background/workflow.html">Team workflow</a></p>
-</li>
-<li>
-<p><a href="dev/background/ci.html">CI/CD workflows</a></p>
-</li>
-<li>
-<p><a href="dev/design/design.html">Design &amp; concepts</a></p>
-</li>
-<li>
-<p><a href="dev/doc-generation/description.html">Documentation generation process</a></p>
-</li>
-</ul>
-</div>
+<p>human feedback on written tests, code and documentation</p>
 </li>
 </ul>
 </div>
@@ -175,9 +200,10 @@ TODO include a link to the python API
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-middle"></th>
-<th class="tableblock halign-center valign-middle"></th>
-<th class="tableblock halign-right valign-middle"><a href="users/architecture.html">Next</a></th>
+<th class="tableblock halign-left valign-middle"><a href="../environment/description.html">Prev</a></th>
+<th class="tableblock halign-center valign-middle"><a href="../../index.html">Up</a><br>
+<a href="../../index.html">Home</a></th>
+<th class="tableblock halign-right valign-middle"><a href="ci.html">Next</a></th>
 </tr>
 </thead>
 </table>

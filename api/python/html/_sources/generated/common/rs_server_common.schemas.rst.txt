@@ -1,0 +1,29 @@
+rs\_server\_common.schemas package
+==================================
+
+Submodules
+----------
+
+rs\_server\_common.schemas.download\_status\_schema module
+----------------------------------------------------------
+
+.. automodule:: rs_server_common.schemas.download_status_schema
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_common.schemas.health\_schema module
+------------------------------------------------
+
+.. automodule:: rs_server_common.schemas.health_schema
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: rs_server_common.schemas
+   :members:
+   :undoc-members:
+   :show-inheritance:
