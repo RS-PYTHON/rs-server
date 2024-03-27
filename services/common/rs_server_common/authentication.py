@@ -87,18 +87,7 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
     # Read the api key info
     if response.is_success:
         contents = response.json()
-        str_roles, config = contents["iam_roles"], contents["config"]
-
-        # Convert IAM roles to enum
-        roles = []
-        for role in str_roles:
-            try:
-                roles.append(role.upper())
-            except KeyError:
-                logger.warning(f"Unknown IAM role: {role!r}")
-
-        # Note: for now, config is an empty dict
-        return roles, config
+        return contents["iam_roles"], contents["config"]
 
     # Try to read the response detail or error
     try:
@@ -138,7 +127,7 @@ def apikey_validator(station, access_type):
                 try:
                     __station = STATIONS_AUTH_lut[kwargs["station"].lower()] if station == "cadip" else station
                     requested_role = f"rs_{__station}_{access_type}".upper()
-                    auth_roles = kwargs["request"].state.auth_roles
+                    auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
                 except KeyError:
                     requested_role = None
 

@@ -3,8 +3,9 @@
 import pytest
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import APIKEY_HEADER, ttl_cache
+from rs_server_common.authentication import APIKEY_HEADER, apikey_security, ttl_cache
 from rs_server_common.utils.logging import Logging
+from starlette.datastructures import State
 from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
 
 from tests.conftest import RSPY_LOCAL_MODE, Envs  # pylint: disable=no-name-in-module
@@ -22,6 +23,59 @@ CLUSTER_ENV = Envs(envs={RSPY_LOCAL_MODE: False})
 logger = Logging.default(__name__)
 
 
+async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
+    """
+    Test that we are caching the call results to the apikey_security function, that calls the
+    apikey manager service and keycloak to check the apikey validity and information.
+    """
+
+    # Mock the uac manager url
+    monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+    # The function is updating request.state. We don't have a request object here,
+    # so just create a dummy one of type State = an object that can be used to store arbitrary state.
+    dummy_request = State()
+    dummy_request.state = State()
+
+    # Initial response expected from the function
+    initial_response = {"iam_roles": ["initial", "roles"], "config": {"initial": "config"}}
+
+    # Clear the cached response and mock the uac manager response
+    ttl_cache.clear()
+    httpx_mock.add_response(
+        url=RSPY_UAC_CHECK_URL,
+        match_headers={APIKEY_HEADER: VALID_APIKEY},
+        status_code=HTTP_200_OK,
+        json=initial_response,
+    )
+
+    # Check the apikey_security result
+    await apikey_security(dummy_request, VALID_APIKEY)
+    assert dummy_request.state.auth_roles == initial_response["iam_roles"]
+    assert dummy_request.state.auth_config == initial_response["config"]
+
+    # If the UAC manager response changes, we won't see it because the previous result was cached
+    modified_response = {"iam_roles": ["modified", "roles"], "config": {"modified": "config"}}
+    httpx_mock.add_response(
+        url=RSPY_UAC_CHECK_URL,
+        match_headers={APIKEY_HEADER: VALID_APIKEY},
+        status_code=HTTP_200_OK,
+        json=modified_response,
+    )
+
+    # Still the initial response !
+    for _ in range(100):
+        await apikey_security(dummy_request, VALID_APIKEY)
+        assert dummy_request.state.auth_roles == initial_response["iam_roles"]
+        assert dummy_request.state.auth_config == initial_response["config"]
+
+    # We have to clear the cache to obtain the modified response
+    ttl_cache.clear()
+    await apikey_security(dummy_request, VALID_APIKEY)
+    assert dummy_request.state.auth_roles == modified_response["iam_roles"]
+    assert dummy_request.state.auth_config == modified_response["config"]
+
+
 # Use the fastapi_app fixture from conftest, parametrized with request.param.envs = {RSPY_LOCAL_MODE: False}
 @pytest.mark.parametrize("fastapi_app", [CLUSTER_ENV], indirect=["fastapi_app"], ids=["cluster_mode"])
 async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPXMock):
@@ -34,6 +88,7 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
     monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
     # With a valid api key in headers, the uac manager will give access to the endpoint
+    ttl_cache.clear()  # clear the cached response
     httpx_mock.add_response(
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
@@ -118,6 +173,20 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
     # Mock the uac manager url
     monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
+    def mock_uac_response(json: dict):
+        """Mock the UAC response. Clear the cached response everytime."""
+        ttl_cache.clear()
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json=json,
+        )
+
+    def client_request(station_endpoint: str):
+        """Request endpoint."""
+        return client.request(method, station_endpoint, params=query_params, headers={APIKEY_HEADER: VALID_APIKEY})
+
     # for each cadip station or just "adgs"
     for station in stations:
         # Replace the station in the endpoint and expected role
@@ -125,20 +194,6 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
         station_role = expected_role.format(station=station)
 
         logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
-
-        def mock_uac_response(json: dict):
-            """Mock the UAC response. Clear the cached response everytime."""
-            ttl_cache.clear()
-            httpx_mock.add_response(
-                url=RSPY_UAC_CHECK_URL,
-                match_headers={APIKEY_HEADER: VALID_APIKEY},
-                status_code=HTTP_200_OK,
-                json=json,
-            )
-
-        def client_request(station_endpoint: str):
-            """Request endpoint."""
-            return client.request(method, station_endpoint, params=query_params, headers={APIKEY_HEADER: VALID_APIKEY})
 
         # With no roles, we should receive an unauthorized response
         mock_uac_response({"iam_roles": [], "config": {}})
