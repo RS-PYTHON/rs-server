@@ -10,13 +10,15 @@ import traceback
 from pathlib import Path
 from typing import Annotated
 
+import requests
 import sqlalchemy
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
-from fastapi import Query, status
+from fastapi import Query, Request, status
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
+from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -32,12 +34,14 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
-async def search_products(
+@apikey_validator(station="cadip", access_type="read")
+def search_products(  # pylint: disable=too-many-locals
+    request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
-) -> list[dict] | dict:  # pylint: disable=too-many-locals
+) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     Notes:
@@ -54,6 +58,7 @@ async def search_products(
         If no products were found in the mentioned time range, output is an empty list.
 
     """
+
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
@@ -87,4 +92,18 @@ async def search_products(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Database connection error: {exception}",
+        ) from exception
+
+    except requests.exceptions.ConnectionError as exception:
+        logger.error("Failed to connect to station!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Station {station} connection error: {exception}",
+        ) from exception
+
+    except Exception as exception:  # pylint: disable=broad-exception-caught
+        logger.error("General failure!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"General failure: {exception}",
         ) from exception

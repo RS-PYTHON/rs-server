@@ -6,17 +6,19 @@ Note: calls https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manage
 
 import sys
 import traceback
-from enum import Enum
+from functools import wraps
 from os import environ as env
 from typing import Annotated
 
 import httpx
 from asyncache import cached
 from cachetools import TTLCache
-from fastapi import HTTPException, Request, Security
+from fastapi import HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
+
+# from functools import wraps
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
@@ -27,28 +29,16 @@ APIKEY_HEADER = "x-api-key"
 # API key authentication using a header.
 APIKEY_SECURITY = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
 
-
-class Auth(Enum):
-    """
-    Enum values for authentication.
-
-    NOTE: enum names = the values returned by keyclowk, uppercase
-    """
-
-    # IAM roles
-
-    # ADGS
-    RS_ADGS_READ = "rs_adgs_read"
-    RS_ADGS_DOWNLOAD = "rs_adgs_download"
-
-    # CADIP
-    RS_CADIP_CADIP_READ = "rs_cadip_cadip_read"
-    RS_CADIP_CADIP_DOWNLOAD = "rs_cadip_cadip_download"
-    # TODO: above is cadip "cadip" station (does it really exist ?),
-    # do the oter stations (ins, mps, ...) see stations_cfg.json ?
-
-    # Catalog
-    S1_ACCESS = "s1_access"  # TODO: use e.g. s1_read, s1_write, s1_download instead ?
+# Look up table for stations
+STATIONS_AUTH_LUT = {
+    "adgs": "adgs",
+    "ins": "cadip_ins",
+    "mps": "cadip_mps",
+    "mti": "cadip_mti",
+    "nsg": "cadip_nsg",
+    "sgs": "cadip_sgs",
+    "cadip": "cadip_cadip",
+}
 
 
 async def apikey_security(
@@ -71,7 +61,11 @@ async def apikey_security(
     return auth_roles, auth_config
 
 
-@cached(cache=TTLCache(maxsize=sys.maxsize, ttl=120))
+# The following variable is needed for the tests to pass
+ttl_cache: TTLCache = TTLCache(maxsize=sys.maxsize, ttl=120)
+
+
+@cached(cache=ttl_cache)
 async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
@@ -93,18 +87,7 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
     # Read the api key info
     if response.is_success:
         contents = response.json()
-        str_roles, config = contents["iam_roles"], contents["config"]
-
-        # Convert IAM roles to enum
-        roles = []
-        for role in str_roles:
-            try:
-                roles.append(Auth[role.upper()])
-            except KeyError:
-                logger.warning(f"Unknown IAM role: {role!r}")
-
-        # Note: for now, config is an empty dict
-        return roles, config
+        return contents["iam_roles"], contents["config"]
 
     # Try to read the response detail or error
     try:
@@ -120,3 +103,43 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
 
     # Forward error
     raise HTTPException(response.status_code, f"UAC manager: {detail}")
+
+
+def apikey_validator(station, access_type):
+    """Decorator to validate API key access.
+
+    Args:
+        station (str): The station name.
+        access_type (str): The type of access.
+
+    Raises:
+        HTTPException: If the authorization key does not include the right role
+            to access the specified station.
+
+    Returns:
+        function: Decorator function.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if settings.cluster_mode():
+                try:
+                    __station = STATIONS_AUTH_LUT[kwargs["station"].lower()] if station == "cadip" else station
+                    requested_role = f"rs_{__station}_{access_type}".upper()
+                    auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
+                except KeyError:
+                    requested_role = None
+
+                if not requested_role or requested_role not in auth_roles:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail=f"Authorization key does not include the right role to \
+{access_type} the {__station!r} station",
+                    )
+
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

@@ -110,7 +110,6 @@ def fastapi_app_(request, docker_ip, docker_services, docker_compose_file):  # p
     with pytest.MonkeyPatch.context() as mp:
         # Default values
         pytest_env = {RSPY_LOCAL_MODE: True}  # no cluster mode for pytests
-
         # Read parametrization
         try:
             pytest_env.update(request.param.envs)  # envs = Envs instance
