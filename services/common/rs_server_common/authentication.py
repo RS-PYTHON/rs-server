@@ -41,38 +41,37 @@ STATIONS_AUTH_lut = {
     "cadip": "cadip_cadip",
 }
 
+# class Auth(Enum):
+#     """
+#     Enum values for authentication.
 
-class Auth(Enum):
-    """
-    Enum values for authentication.
+#     NOTE: enum names = the values returned by keyclowk, uppercase
+#     """
 
-    NOTE: enum names = the values returned by keyclowk, uppercase
-    """
+#     # IAM roles
 
-    # IAM roles
+#     # ADGS
+#     RS_ADGS_READ = "rs_adgs_read"
+#     RS_ADGS_DOWNLOAD = "rs_adgs_download"
 
-    # ADGS
-    RS_ADGS_READ = "rs_adgs_read"
-    RS_ADGS_DOWNLOAD = "rs_adgs_download"
+#     # CADIP
+#     RS_CADIP_CADIP_READ = "rs_cadip_cadip_read"
+#     RS_CADIP_CADIP_DOWNLOAD = "rs_cadip_cadip_download"
+#     RS_CADIP_INS_READ = "rs_cadip_ins_read"
+#     RS_CADIP_INS_DOWNLOAD = "rs_cadip_ins_download"
+#     RS_CADIP_MPS_READ = "rs_cadip_mps_read"
+#     RS_CADIP_MPS_DOWNLOAD = "rs_cadip_mps_download"
+#     RS_CADIP_MTI_READ = "rs_cadip_mti_read"
+#     RS_CADIP_MTI_DOWNLOAD = "rs_cadip_mti_download"
+#     RS_CADIP_NSG_READ = "rs_cadip_nsg_read"
+#     RS_CADIP_NSG_DOWNLOAD = "rs_cadip_nsg_download"
+#     RS_CADIP_SGS_READ = "rs_cadip_sgs_read"
+#     RS_CADIP_SGS_DOWNLOAD = "rs_cadip_sgs_download"
+#     # TODO: above is cadip "cadip" station (does it really exist ?),
+#     # do the oter stations (ins, mps, ...) see stations_cfg.json ?
 
-    # CADIP
-    RS_CADIP_CADIP_READ = "rs_cadip_cadip_read"
-    RS_CADIP_CADIP_DOWNLOAD = "rs_cadip_cadip_download"
-    RS_CADIP_INS_READ = "rs_cadip_ins_read"
-    RS_CADIP_INS_DOWNLOAD = "rs_cadip_ins_download"
-    RS_CADIP_MPS_READ = "rs_cadip_mps_read"
-    RS_CADIP_MPS_DOWNLOAD = "rs_cadip_mps_download"
-    RS_CADIP_MTI_READ = "rs_cadip_mti_read"
-    RS_CADIP_MTI_DOWNLOAD = "rs_cadip_mti_download"
-    RS_CADIP_NSG_READ = "rs_cadip_nsg_read"
-    RS_CADIP_NSG_DOWNLOAD = "rs_cadip_nsg_download"
-    RS_CADIP_SGS_READ = "rs_cadip_sgs_read"
-    RS_CADIP_SGS_DOWNLOAD = "rs_cadip_sgs_download"
-    # TODO: above is cadip "cadip" station (does it really exist ?),
-    # do the oter stations (ins, mps, ...) see stations_cfg.json ?
-
-    # Catalog
-    S1_ACCESS = "s1_access"  # TODO: use e.g. s1_read, s1_write, s1_download instead ?
+#     # Catalog
+#     S1_ACCESS = "s1_access"  # TODO: use e.g. s1_read, s1_write, s1_download instead ?
 
 
 async def apikey_security(
@@ -95,7 +94,7 @@ async def apikey_security(
     return auth_roles, auth_config
 
 
-# The following variable is needed for tests to pass
+# The following variable is needed for the tests to pass
 ttl_cache: TTLCache = TTLCache(maxsize=sys.maxsize, ttl=120)
 
 
@@ -127,7 +126,7 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
         roles = []
         for role in str_roles:
             try:
-                roles.append(Auth[role.upper()])
+                roles.append(role.upper())
             except KeyError:
                 logger.warning(f"Unknown IAM role: {role!r}")
 
@@ -171,7 +170,7 @@ def apikey_validator(station, access_type):
             if settings.cluster_mode():
                 try:
                     __station = STATIONS_AUTH_lut[kwargs["station"].lower()] if station == "cadip" else station
-                    requested_role = Auth[f"rs_{__station}_{access_type}".upper()]
+                    requested_role = f"rs_{__station}_{access_type}".upper()
                     auth_roles = kwargs["request"].state.auth_roles
                 except KeyError:
                     requested_role = None
