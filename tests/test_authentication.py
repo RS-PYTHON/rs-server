@@ -126,56 +126,32 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
 
         logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
 
-        # With a valid api key in headers, set no role
-        ttl_cache.clear()  # clear the cached response everytime
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={"iam_roles": [], "config": {}},
-        )
+        def mock_uac_response(json: dict):
+            """Mock the UAC response. Clear the cached response everytime."""
+            ttl_cache.clear()
+            httpx_mock.add_response(
+                url=RSPY_UAC_CHECK_URL,
+                match_headers={APIKEY_HEADER: VALID_APIKEY},
+                status_code=HTTP_200_OK,
+                json=json,
+            )
 
-        # We should receive an unauthorized response
-        assert (
-            client.request(
-                method,
-                station_endpoint,
-                params=query_params,
-                headers={APIKEY_HEADER: VALID_APIKEY},
-            ).status_code
-            == HTTP_401_UNAUTHORIZED
-        )
+        def client_request(station_endpoint: str):
+            """Request endpoint."""
+            return client.request(method, station_endpoint, params=query_params, headers={APIKEY_HEADER: VALID_APIKEY})
 
-        # Now set the expected role
-        ttl_cache.clear()  # clear the cached response everytime
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={"iam_roles": [station_role], "config": {}},
-        )
+        # With no roles, we should receive an unauthorized response
+        mock_uac_response({"iam_roles": [], "config": {}})
+        assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
 
-        # We should be authorized (no 401 or 403)
-        assert client.request(
-            method,
-            station_endpoint,
-            params=query_params,
-            headers={APIKEY_HEADER: VALID_APIKEY},
-        ).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+        # Idem with non-relevant roles
+        mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}})
+        assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
+
+        # With the right expected role, we should be authorized (no 401 or 403)
+        mock_uac_response({"iam_roles": [station_role], "config": {}})
+        assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
 
         # It should also work if other random roles are present
-        ttl_cache.clear()  # clear the cached response everytime
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={"iam_roles": [station_role, "any", "other", "role"], "config": {}},
-        )
-
-        # We should be authorized (no 401 or 403)
-        assert client.request(
-            method,
-            station_endpoint,
-            params=query_params,
-            headers={APIKEY_HEADER: VALID_APIKEY},
-        ).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+        mock_uac_response({"iam_roles": [station_role, "any", "other", "role"], "config": {}})
+        assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
