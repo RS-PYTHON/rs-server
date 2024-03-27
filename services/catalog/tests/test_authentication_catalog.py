@@ -1,5 +1,6 @@
 """Unit tests for the authentication."""
 
+import json
 from importlib import reload
 
 import pytest
@@ -25,7 +26,7 @@ logger = Logging.default(__name__)
 
 # @pytest.mark.skip gives an error, I don't know why
 # @pytest.mark.skip(reason="Errors on certain endpoints and when reloading the fastapi app")
-async def test_authentication(monkeypatch, httpx_mock: HTTPXMock):
+async def test_authentification(monkeypatch, httpx_mock: HTTPXMock):
     """
     Test that the http endpoints are protected and return 403 if not authenticated.
     Set RSPY_LOCAL_MODE to False before running the fastapi app.
@@ -38,7 +39,7 @@ async def test_authentication(monkeypatch, httpx_mock: HTTPXMock):
             mp.setenv("RSPY_LOCAL_MODE", "False")
             reload(rs_server_catalog.main)
         with TestClient(rs_server_catalog.main.app) as client:
-            await sub_authentication(rs_server_catalog.main.app, client, monkeypatch, httpx_mock)
+            await sub_authentication(client, monkeypatch, httpx_mock)
     finally:
         try:
             reload(rs_server_catalog.main)
@@ -46,17 +47,7 @@ async def test_authentication(monkeypatch, httpx_mock: HTTPXMock):
             logger.error(exception)  # TODO: why do we have exceptions when closing the database ?
 
 
-######################################
-# Copied from test_authentication.py #
-######################################
-
-
-async def sub_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPXMock):
-    """
-    Test that the http endpoints are protected and return 403 if not authenticated.
-    Set RSPY_LOCAL_MODE to False before running the fastapi app.
-    """
-
+async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
     # Mock the uac manager url
     monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
@@ -65,7 +56,31 @@ async def sub_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPX
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
         status_code=HTTP_200_OK,
-        json={"iam_roles": ["rs_adgs_read", "s1_access"], "config": {}, "user_login": {}},
+        json={
+            "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+            "name": "toto",
+            "user_login": "pyteam",
+            "is_active": True,
+            "never_expire": True,
+            "expiration_date": "2024-04-10T13:57:28.475052",
+            "total_queries": 0,
+            "latest_sync_date": "2024-03-26T13:57:28.475058",
+            "iam_roles": [
+                "rs_cadip_SGS_download",
+                "rs_cadip_MTI_read",
+                "rs_adgs_read",
+                "rs_cadip_cadip_read",
+                "rs_adgs_download",
+                "default-roles-rspy",
+                "rs_catalog_toto:*_read",
+                "rs_catalog_titi:S2_L1_read",
+                "rs_catalog_darius:*_write",
+                "rs_cadip_cadip_download",
+                "rs_catalog_toto:sentinel1-grd_read",
+            ],
+            "config": {},
+            "allowed_referers": ["toto"],
+        },
     )
 
     # With a wrong api key, it returns 403
@@ -75,43 +90,174 @@ async def sub_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPX
         status_code=HTTP_403_FORBIDDEN,
     )
 
-    # For each api endpoint (except the technical endpoints)
-    for route in fastapi_app.router.routes:
-        if (not isinstance(route, APIRoute)) or (route.path in ("/", "/health", "/_mgmt/ping")):
-            continue
+    # Check that without api key in headers, the endpoint is protected and we receive a 403
+    assert client.request("GET", "/catalog/").status_code == HTTP_403_FORBIDDEN
 
-        # Test route paths with and without the "/catalog/{owner_id}" prefix.
-        # See extract_openapi_specification()
-        route_paths = [route.path]
-        if route.path != "/search":
-            route_paths.append(f"/catalog/any_owner{route.path}")
+    # Test a wrong api key in headers
+    assert client.request("GET", "/catalog/", headers={APIKEY_HEADER: WRONG_APIKEY}).status_code == HTTP_403_FORBIDDEN
 
-        for path in route_paths:
-            # For each method (get, post, ...)
-            for method in route.methods:
-                logger.debug(f"Test the {path!r} [{method}] authentication")
-                if path != "/catalog/any_owner/conformance" and "catalog" in path:
-                    if "any_owner" in path:
-                        path = path.replace("any_owner", "toto")
+    # Test a valid api key in headers
+    landing_page_response = client.request("GET", "/catalog/", headers={APIKEY_HEADER: VALID_APIKEY})
+    assert landing_page_response.status_code == HTTP_200_OK
 
-                    if "{collection_id}" in path:
-                        path = path.replace("{collection_id}", "S1_L1")
+    content = json.loads(landing_page_response.content)
+    valid_links = [
+        {"rel": "self", "type": "application/json", "href": "http://testserver/"},
+        {"rel": "root", "type": "application/json", "href": "http://testserver/"},
+        {"rel": "data", "type": "application/json", "href": "http://testserver/collections"},
+        {
+            "rel": "conformance",
+            "type": "application/json",
+            "title": "STAC/WFS3 conformance classes implemented by this server",
+            "href": "http://testserver/conformance",
+        },
+        {
+            "rel": "search",
+            "type": "application/geo+json",
+            "title": "STAC search",
+            "href": "http://testserver/search",
+            "method": "GET",
+        },
+        {
+            "rel": "search",
+            "type": "application/geo+json",
+            "title": "STAC search",
+            "href": "http://testserver/search",
+            "method": "POST",
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "toto_S1_L1",
+            "href": "http://testserver/collections/toto_S1_L1",
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "toto_S2_L3",
+            "href": "http://testserver/collections/toto_S2_L3",
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "titi_S2_L1",
+            "href": "http://testserver/collections/titi_S2_L1",
+        },
+        {
+            "rel": "service-desc",
+            "type": "application/vnd.oai.openapi+json;version=3.0",
+            "title": "OpenAPI service description",
+            "href": "http://testserver/api",
+        },
+        {
+            "rel": "service-doc",
+            "type": "text/html",
+            "title": "OpenAPI service documentation",
+            "href": "http://testserver/api.html",
+        },
+        {"rel": "child", "type": "application/json", "href": "http://testserver/catalog/toto"},
+    ]
+    assert content["links"] == valid_links
 
-                    if "{item_id}" in path:
-                        path = path.replace("{item_id}", "fe916452-ba6f-4631-9154-c249924a122d")
+    assert client.request("GET", "/catalog/collections").status_code == HTTP_403_FORBIDDEN
 
-                    try:
-                        # Check that without api key in headers, the endpoint is protected and we receive a 403
-                        assert client.request(method, path).status_code == HTTP_403_FORBIDDEN
+    all_collections = client.request("GET", "/catalog/collections", headers={APIKEY_HEADER: VALID_APIKEY})
+    assert all_collections.status_code == HTTP_200_OK
 
-                        # Test a valid and wrong api key values in headers
-                        assert (
-                            client.request(method, path, headers={APIKEY_HEADER: VALID_APIKEY}).status_code
-                            != HTTP_403_FORBIDDEN
-                        )
-                        assert (
-                            client.request(method, path, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
-                            == HTTP_403_FORBIDDEN
-                        )
-                    finally:
-                        continue
+    content = json.loads(all_collections.content)
+    valid_collections = [
+        {
+            "id": "toto_S1_L1",
+            "type": "Collection",
+            "links": [
+                {
+                    "rel": "items",
+                    "type": "application/geo+json",
+                    "href": "http://testserver/collections/toto_S1_L1/items",
+                },
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/"},
+                {"rel": "self", "type": "application/json", "href": "http://testserver/collections/toto_S1_L1"},
+                {
+                    "rel": "items",
+                    "href": "http://localhost:8082/collections/S1_L1/items",
+                    "type": "application/geo+json",
+                },
+                {
+                    "rel": "license",
+                    "href": "https://creativecommons.org/licenses/publicdomain/",
+                    "title": "public domain",
+                },
+            ],
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+            "license": "public-domain",
+            "description": "Some description",
+            "stac_version": "1.0.0",
+        },
+        {
+            "id": "toto_S2_L3",
+            "type": "Collection",
+            "links": [
+                {
+                    "rel": "items",
+                    "type": "application/geo+json",
+                    "href": "http://testserver/collections/toto_S2_L3/items",
+                },
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/"},
+                {"rel": "self", "type": "application/json", "href": "http://testserver/collections/toto_S2_L3"},
+                {
+                    "rel": "items",
+                    "href": "http://localhost:8082/collections/S2_L3/items",
+                    "type": "application/geo+json",
+                },
+                {
+                    "rel": "license",
+                    "href": "https://creativecommons.org/licenses/publicdomain/",
+                    "title": "public domain",
+                },
+            ],
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+            "license": "public-domain",
+            "description": "Some description",
+            "stac_version": "1.0.0",
+        },
+        {
+            "id": "titi_S2_L1",
+            "type": "Collection",
+            "links": [
+                {
+                    "rel": "items",
+                    "type": "application/geo+json",
+                    "href": "http://testserver/collections/titi_S2_L1/items",
+                },
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/"},
+                {"rel": "self", "type": "application/json", "href": "http://testserver/collections/titi_S2_L1"},
+                {
+                    "rel": "items",
+                    "href": "http://localhost:8082/collections/S2_L1/items",
+                    "type": "application/geo+json",
+                },
+                {
+                    "rel": "license",
+                    "href": "https://creativecommons.org/licenses/publicdomain/",
+                    "title": "public domain",
+                },
+            ],
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+            "license": "public-domain",
+            "description": "Some description",
+            "stac_version": "1.0.0",
+        },
+    ]
+    assert content["collections"] == valid_collections

@@ -361,10 +361,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         catalog_read_right_pattern = (
             r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
         )
+        # Add catalogs links that the user can access to.
         for role in auth_roles:
             if match := re.match(catalog_read_right_pattern, role):
                 groups = match.groupdict()
-                if user_login != groups["owner_id"]:
+                if (
+                    user_login != groups["owner_id"]
+                    and groups["collection_id"] == "*"
+                    and groups["right_type"] == "read"
+                ):
                     child_link = {
                         "rel": "child",
                         "type": "application/json",
@@ -373,6 +378,32 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                     url = request.url
                     child_link["href"] = f"{url}{groups['owner_id']}"
                     content["links"].append(child_link)
+                    # content["links"] = [
+                    #     link for link in content["links"] if f"{groups['owner_id']}_" not in link["href"]
+                    # ]  # to remove all the collection links and keep only catalogs.
+        i = 0
+        # Delete all collections that the user does not have access to.
+        while i < len(content["links"]):
+            link = content["links"][i]
+
+            if link["rel"] == "child":  # Only check child links.
+                authorized = 0
+                for role in auth_roles:  # Check in the authorisations list if the link is allowed to the user.
+                    if match := re.match(catalog_read_right_pattern, role):
+                        groups = match.groupdict()
+                        if (
+                            groups["owner_id"] in link["href"]
+                            and (groups["collection_id"] == "*" or groups["collection_id"] in link["href"])
+                            and groups["right_type"] == "read"
+                        ):
+                            authorized = 1
+                            break
+                if not authorized:
+                    del content["links"][i]
+                else:
+                    i += 1
+            else:
+                i += 1
         return content
 
     def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
@@ -441,7 +472,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                         status_code=response.status_code,
                     )
             if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
-                # ajouter le /collections sans le owner_id
                 if ids["owner_id"]:
                     content["collections"] = filter_collections(content["collections"], user)
                     content = self.remove_user_from_objects(content, user, "collections")
@@ -598,7 +628,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             response = await self.manage_download_response(request, response)
         elif request.method == "GET" and (user or request.scope["path"] in ["/", "/collections"]):
             # URL: GET: '/catalog/{USER}/Collections'
-            # URL: GET: '/catalog'
+            # URL: GET: '/catalog/'
             # URL: GET: '/catalog/collections
             response = await self.manage_get_response(request, response, ids)
         elif request.method in ["POST", "PUT"] and user:
