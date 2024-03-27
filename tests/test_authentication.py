@@ -35,7 +35,7 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
         match_headers={APIKEY_HEADER: VALID_APIKEY},
         status_code=HTTP_200_OK,
         # NOTE: we could use other roles and config, to be discussed
-        json={"iam_roles": ["rs_adgs_read", "s1_access"], "config": {}},
+        json={"iam_roles": ["rs_adgs_read", "s1_access"], "config": {}, "user_login": {}},
     )
 
     # With a wrong api key, it returns 403
