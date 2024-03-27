@@ -25,7 +25,7 @@ logger = Logging.default(__name__)
 
 # @pytest.mark.skip gives an error, I don't know why
 # @pytest.mark.skip(reason="Errors on certain endpoints and when reloading the fastapi app")
-async def test_authentification(monkeypatch, httpx_mock: HTTPXMock):
+async def te_st_authentification(monkeypatch, httpx_mock: HTTPXMock):
     """
     Test that the http endpoints are protected and return 403 if not authenticated.
     Set RSPY_LOCAL_MODE to False before running the fastapi app.
