@@ -15,7 +15,6 @@ The middleware:
 
 import json
 import os
-import pathlib
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
