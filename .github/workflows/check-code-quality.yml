@@ -148,42 +148,14 @@ jobs:
           >> $GITHUB_STEP_SUMMARY
         shell: bash
 
-  run-unit-tests:
+  run-all-pytests:
     runs-on: ubuntu-latest
     name: Run pytest # pytest unit and integration tests
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
-
-      # Run pytest a first time without the catalog because we have dependency conflicts
-      # between the main application and the stac-fastapi-pgstac dependency.
-      # TODO: resolve them and remove the  -not -path "./services/catalog/*"
       - name: Run pytest
-        run: |
-          set -x && poetry run pytest $(find . -name tests -not -path "./services/catalog/*") \
-            -s --disable-pytest-warnings \
-            --durations=0 \
-            --error-for-skips \
-            --cov=./services \
-            --cov-report=term \
-            --cov-report=xml:./cov-report.xml \
-            --junit-xml=./junit-xml-report.xml \
-
-          # run pytest a second time, this time only for the catalog.
-          # TODO: resolve dependency conflicts and remove this job (so we run pytest only once).
-          (cd ./services/catalog && poetry install --with dev)
-          (source ./services/catalog/tests/.env && \
-          poetry --directory ./services/catalog run pytest ./services/catalog/tests \
-            -s --disable-pytest-warnings \
-            --durations=0 \
-            --error-for-skips \
-            --cov=./services \
-            --cov-report=term \
-            --cov-report=xml:./cov-report.xml \
-            --junit-xml=./junit-xml-report.xml \
-            --cov-append \
-          )
-
+        run: ./resources/all_pytests.sh
         shell: bash
 
       - name: Display code coverage summary in this console
@@ -194,7 +166,7 @@ jobs:
       - name: Save reports
         uses: actions/upload-artifact@v4
         with:
-          name: run-unit-tests
+          name: run-all-pytests
           path: |
             .coverage
             ./cov-report.xml
@@ -204,7 +176,7 @@ jobs:
   generate-quality-report:
     runs-on: ubuntu-latest
     name: Quality report (sonarqube)
-    needs: [check-linting, check-security, run-unit-tests] # see actions/download-artifact below
+    needs: [check-linting, check-security, run-all-pytests] # see actions/download-artifact below
     permissions: write-all # write pull request comments
     # Mark the job as OK even if the sonarqube quality gate doesn't pass.
     # We will resolve these issues later.
@@ -221,11 +193,11 @@ jobs:
         with:
           name:
             check-security
-      - name: Download unit test reports
+      - name: Download pytest reports
         uses: actions/download-artifact@v4
         with:
           name:
-            run-unit-tests
+            run-all-pytests
 
         # The sonarqube step will run a container docker with volume mounting: -v $(pwd):/github/workspace
         # The coverage report files contain the hard-coded path to the current directory $(pwd).

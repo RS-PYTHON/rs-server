@@ -12,20 +12,78 @@ env:
   PYTHON_VERSION: 3.11
 
 jobs:
-  generate-technical-documentation:
-    name: Generate technical documentation
+
+  generate-documentation:
+    name: Generate documentation
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      packages: read # to pull docker images when running build_aggregated_openapi.sh
+      contents: write # to publish the generated documentation
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+        with:
+          working-directory: .
+      # The technical documentation uses a dedicated python project to be built
+      - uses: ./.github/actions/poetry-install
+        with:
+          working-directory: ./docs
+
       # The order of these steps is important
       # The technical documentation has to be first
       # because some fake documentation are then replaced
       # by the following steps for link purpose.
-      - uses:  ./.github/actions/build-technical-doc
-      - uses:  ./.github/actions/build-python-api
-      - uses:  ./.github/actions/build-rest-api
+
+      - name: Generate AsciiDoc HTML documentation
+        run: |
+          set -x
+          sudo apt-get update && sudo apt-get install -y asciidoctor # install asciidoctor
+          poetry run asciidoxy \
+            --warnings-are-errors --base-dir doc --image-dir images --build-dir ../dist/doc/ --multipage doc/index.adoc
+        working-directory: ./docs
+        shell: bash
+
+      - name: Generate Python API HTML documentation from the docstrings
+        run: |
+          set -x
+
+          # Generate rst files from docstrings
+          for service in \
+            services/adgs/rs_server_adgs \
+            services/cadip/rs_server_cadip \
+            services/catalog/rs_server_catalog \
+            services/common/rs_server_common \
+            services/frontend/rs_server_frontend \
+          ; do
+            poetry run sphinx-apidoc -f -o docs/doc/api/python/generated/$(basename $service) "$service"
+          done
+
+          # Generate Python API html from rst files
+          poetry run sphinx-build -M html docs/doc/api/python/ dist/doc/output/api/python/
+
+      # To pull ghcr.io/rs-python/apikey-manager
+      # TODO: to be changed when the apikey manager will have its own container registry.
+      - name: Log into Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate REST API (Swagger) HTML documentation
+        run: |
+          set -x
+
+          # Copy the index.html file from the git repository
+          mkdir -p dist/doc/output/api/rest/
+          cp docs/doc/api/rest/index.html dist/doc/output/api/rest/
+
+          # Generate the aggregated openapi.json/swagger
+          ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
+
+          # Copy it beside the index.html
+          cp ./services/frontend/resources/openapi.json dist/doc/output/api/rest
+        shell: bash
 
       - name: Deploy docs to ghpages
         uses: peaceiris/actions-gh-pages@v3
