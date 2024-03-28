@@ -3,18 +3,20 @@
 This module provides functionality to retrieve a list of products from the ADGS stations.
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
+
 import json
 import os.path as osp
 import traceback
 from pathlib import Path
 from typing import Annotated
 
+import requests
 import sqlalchemy
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
-from rs_server_common import settings
+from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -30,8 +32,9 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
 @router.get("/adgs/aux/search")
-async def search_products(  # pylint: disable=too-many-locals
-    request: Request,
+@apikey_validator(station="adgs", access_type="read")
+def search_products(  # pylint: disable=too-many-locals
+    request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
@@ -54,9 +57,6 @@ async def search_products(  # pylint: disable=too-many-locals
         If no products were found in the mentioned time range, output is an empty list.
 
     """
-    if settings.cluster_mode():
-        # TODO: check api key rights before running the endpoint
-        logger.debug(f"API key information: {(request.state.auth_roles, request.state.auth_config)}")
 
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
@@ -92,4 +92,18 @@ async def search_products(  # pylint: disable=too-many-locals
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Database connection error: {exception}",
+        ) from exception
+
+    except requests.exceptions.ConnectionError as exception:
+        logger.error("Failed to connect to station!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Station ADGS connection error: {exception}",
+        ) from exception
+
+    except Exception as exception:  # pylint: disable=broad-exception-caught
+        logger.error("General failure!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"General failure: {exception}",
         ) from exception

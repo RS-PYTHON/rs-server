@@ -28,10 +28,9 @@ from pygeofilter.parsers.ecql import parse as parse_ecql
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
-    get_ids,
     remove_user_from_collection,
     remove_user_from_feature,
-    remove_user_prefix,
+    reroute_url,
 )
 from rs_server_common.authentication import apikey_security
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
@@ -54,6 +53,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     handler: S3StorageHandler = None
     temp_bucket_name: str = "temp-bucket"
+    request_ids: dict[Any, Any] = {}
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -91,8 +91,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 )
                 .lstrip("/")
             )
-            # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
-            self.handler.delete_file_from_s3(self.temp_bucket_name, file_key)
+            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+                # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
+                self.handler.delete_file_from_s3(self.temp_bucket_name, file_key)
 
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
@@ -101,7 +102,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         for asset in content["assets"]:
             # For catalog bucket, data is already store into alternate:s3:href
             file_key = content["assets"][asset]["alternate"]["s3"]["href"]
-            self.handler.delete_file_from_s3(bucket_info["catalog-bucket"]["name"], file_key)
+            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+                self.handler.delete_file_from_s3(bucket_info["catalog-bucket"]["name"], file_key)
 
     def adapt_object_links(self, my_object: dict, user: str) -> dict:
         """adapt all the links from a collection so the user can use them correctly
@@ -316,35 +318,34 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             return JSONResponse(content, status_code=response.status_code)
         return response
 
-    async def manage_put_post_request(self, request: Request, ids: dict) -> Request | JSONResponse:
+    async def manage_put_post_request(self, request: Request) -> Request | JSONResponse:
         """Adapt the request body for the STAC endpoint.
 
         Args:
             request (Request): The Client request to be updated.
-            ids (dict): The owner id.
 
         Returns:
             Request: The request updated.
         """
-        user = ids["owner_id"]
-        try:  # Check if Json is empty or invalid format
+        try:
+            user = self.request_ids["owner_id"]
             content = await request.json()
-        except RuntimeError as exc:
-            raise HTTPException(detail="An error occurred while retrieving JSON content", status_code=400) from exc
-        if request.scope["path"] == "/collections":
-            content["id"] = f"{user}_{content['id']}"
-        if "items" in request.scope["path"]:
-            content = self.update_stac_item_publication(content, user)
-        elif request.scope["path"] == "/search" and "filter" in content:
-            qs_filter = content["filter"]
-            filters = parse_cql2_json(qs_filter)
-            user = self.find_owner_id(filters)
-            # May be duplicate?
-            if "collections" in content:
-                content["collections"] = [f"{user}_{content['collections']}"]
-        # update request body (better find the function that updates the body maybe?)c
-        request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-        return request  # pylint: disable=protected-access
+            if request.scope["path"] == "/collections":
+                content["id"] = f"{user}_{content['id']}"
+            if "items" in request.scope["path"]:
+                content = self.update_stac_item_publication(content, user)
+            elif request.scope["path"] == "/search" and "filter" in content:
+                qs_filter = content["filter"]
+                filters = parse_cql2_json(qs_filter)
+                user = self.find_owner_id(filters)
+                # May be duplicate?
+                if "collections" in content:
+                    content["collections"] = [f"{user}_{content['collections']}"]
+            # update request body (better find the function that updates the body maybe?)c
+            request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+            return request  # pylint: disable=protected-access
+        except KeyError as kerr_msg:
+            raise HTTPException(detail=f"Missing key in request body! {kerr_msg}", status_code=400) from kerr_msg
 
     def manage_landing_page(self, request: Request, auth_roles: list, user_login: str, content: dict) -> dict:
         """All sub user catalogs accessible by the user calling it are returned as "child" links.
@@ -443,20 +444,16 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         self,
         request: Request,
         response: StreamingResponse,
-        ids: dict,
     ) -> Response:
         """Remove the user name from obects and adapt all links.
 
         Args:
             request (Request): The client request.
             response (Response | StreamingResponse): The response from the rs-catalog.
-            ids (dict): a dictionnary containing owner_id, collection_id and
-            item_id if they exist.
-
         Returns:
             Response: The response updated.
         """
-        user = ids["owner_id"]
+        user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
 
@@ -472,10 +469,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                         status_code=response.status_code,
                     )
             if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
-                if ids["owner_id"]:
+                if user:
                     content["collections"] = filter_collections(content["collections"], user)
                     content = self.remove_user_from_objects(content, user, "collections")
-                    content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "collections")
+                    content = self.adapt_links(
+                        content,
+                        user,
+                        self.request_ids["collection_id"],
+                        "collections",
+                    )
                 else:
                     try:
                         api_key = request.headers["x-api-key"]
@@ -493,15 +495,20 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 content = remove_user_from_collection(content, user)
                 content = self.adapt_object_links(content, user)
             elif (
-                "items" in request.scope["path"] and not ids["item_id"]
+                "items" in request.scope["path"] and not self.request_ids["item_id"]
             ):  # /catalog/owner_id/collections/collection_id/items
                 content = self.remove_user_from_objects(content, user, "features")
-                content = self.adapt_links(content, ids["owner_id"], ids["collection_id"], "features")
+                content = self.adapt_links(
+                    content,
+                    user,
+                    self.request_ids["collection_id"],
+                    "features",
+                )
             elif request.scope["path"] == "/search":
                 pass
-            elif ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
-                content = remove_user_from_feature(content, user)
-                content = self.adapt_object_links(content, user)
+        elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
+            content = remove_user_from_feature(content, user)
+            content = self.adapt_object_links(content, user)
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
@@ -525,7 +532,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             return JSONResponse(content, status_code=code)
         return JSONResponse(content, status_code=response.status_code)
 
-    async def manage_put_post_response(self, request: Request, response: StreamingResponse, ids: dict):
+    async def manage_put_post_response(self, request: Request, response: StreamingResponse):
         """
         Manage put or post responses.
 
@@ -544,16 +551,18 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         """
         try:
+            user = self.request_ids["owner_id"]
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
             if request.scope["path"] == "/collections":
-                response_content = remove_user_from_collection(response_content, ids["owner_id"])
-                response_content = self.adapt_object_links(response_content, ids["owner_id"])
+                response_content = remove_user_from_collection(response_content, user)
+                response_content = self.adapt_object_links(response_content, user)
             elif (
-                request.scope["path"] == f"/collections/{ids['owner_id']}_{ids['collection_id']}/items/{ids['item_id']}"
+                request.scope["path"]
+                == f"/collections/{user}_{self.request_ids['collection_id']}/items/{self.request_ids['item_id']}"
             ):
-                response_content = remove_user_from_feature(response_content, ids["owner_id"])
-                response_content = self.adapt_object_links(response_content, ids["owner_id"])
+                response_content = remove_user_from_feature(response_content, user)
+                response_content = self.adapt_object_links(response_content, user)
             self.clear_temp_bucket(response_content)
         except RuntimeError as exc:
             raise HTTPException(detail="Failed to clear temp-bucket", status_code=400) from exc
@@ -601,17 +610,23 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        ids = get_ids(request.scope["path"])
-        user = ids["owner_id"]
-        request.scope["path"] = remove_user_prefix(request.url.path)
+        request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
+
+        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method)
+        # Overwrite user and collection id with the ones provided in the request body
+        user = request_body.get("owner", None)
+        collection_id = request_body.get("id", None)
+        self.request_ids["owner_id"] = user if user else self.request_ids["owner_id"]
+        self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
 
         # Handle requests
         if request.method == "GET" and request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
             request = self.manage_search_request(request)
-        elif request.method in ["POST", "PUT"] and user:
-            # URL: POST / PUT: '/catalog/{USER}/collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
-            request = await self.manage_put_post_request(request, ids)
+        elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
+            # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
+            # or '/catalog/collections/{USER}:{COLLECTION}/items'
+            request = await self.manage_put_post_request(request)
         response = None
         try:
             response = await call_next(request)
@@ -619,21 +634,28 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             response = await self.manage_response_error(response)
             return response
 
+        # Don't forward responses that fail
+        if response.status_code != 200:
+            body = [chunk async for chunk in response.body_iterator]
+            response_content = json.loads(b"".join(body).decode())  # type:ignore
+            raise HTTPException(detail=response_content, status_code=response.status_code)
+
         # Handle responses
         if request.scope["path"] == "/search":
             # GET: '/catalog/search'
             response = await self.manage_search_response(request, response)
         elif request.method == "GET" and "download" in request.url.path:
-            # URL: GET: '/catalog/{USER}/collections/{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
+            # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
-        elif request.method == "GET" and (user or request.scope["path"] in ["/", "/collections"]):
-            # URL: GET: '/catalog/{USER}/Collections'
+        elif request.method == "GET" and self.request_ids["owner_id"]:
+            # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             # URL: GET: '/catalog/'
             # URL: GET: '/catalog/collections
-            response = await self.manage_get_response(request, response, ids)
-        elif request.method in ["POST", "PUT"] and user:
-            # URL: POST / PUT: '/catalog/{USER}/Collections' or '/catalog/{USER}/collections/{COLLECTION}/items'
-            response = await self.manage_put_post_response(request, response, ids)
+            response = await self.manage_get_response(request, response)
+        elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
+            # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
+            # or '/catalog/collections/{USER}:{COLLECTION}/items'
+            response = await self.manage_put_post_response(request, response)
         elif request.method == "DELETE" and user:
             response = await self.manage_delete_response(response, user)
 

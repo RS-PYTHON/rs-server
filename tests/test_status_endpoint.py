@@ -1,4 +1,5 @@
 """Unittests for adgs status endpoint."""
+
 from contextlib import contextmanager
 
 import pytest

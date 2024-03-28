@@ -22,7 +22,7 @@ None
 
 None
 
-== [1.0a6] - 2024-03-14
+== [0.1a6] - 2024-03-14
 
 === Added
 
@@ -35,7 +35,7 @@ None
 * RSPY-125: Cluster configuration folder is hard-coded
 * RSPY-139: Add endpoint to download product (without UAC)
 
-== [1.0a5] - 2024-02-21
+== [0.1a5] - 2024-02-21
 
 === Added
 
@@ -51,7 +51,7 @@ None
 * RSPY-134: Setup Helm Chart Releaser to use Github Pages as Helm chart repository
 * RSPY-138: Add public architecture documentation on GitHub
 
-== [1.0a4] - 2024-01-31
+== [0.1a4] - 2024-01-31
 
 === Added
 
@@ -62,7 +62,7 @@ None
 * RSPY-90: Add endpoint GET "/adgs/aux/status" to ADGS backend server
 * RSPY-117: Create a Jupyter demo for local target
 
-== [1.0a3] - 2024-01-16
+== [0.1a3] - 2024-01-16
 
 === Added
 

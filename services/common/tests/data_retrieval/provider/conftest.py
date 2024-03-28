@@ -1,4 +1,5 @@
 """Common fixtures for provider tests."""
+
 import pathlib
 from dataclasses import dataclass
 from pathlib import Path
