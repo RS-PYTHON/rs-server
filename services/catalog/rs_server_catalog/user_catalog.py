@@ -647,7 +647,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         elif request.method == "GET" and "download" in request.url.path:
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
-        elif request.method == "GET" and self.request_ids["owner_id"]:
+        elif request.method == "GET" and (
+            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections"]
+        ):
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             # URL: GET: '/catalog/'
             # URL: GET: '/catalog/collections

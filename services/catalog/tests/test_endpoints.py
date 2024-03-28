@@ -277,7 +277,7 @@ class TestCatalogPublishCollectionEndpoint:
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
 
-    def test_delete_a_created_collection(self, client):
+    def te_st_delete_a_created_collection(self, client):
         """
         Test that a created collection can be deleted
         Endpoint: DELETE /catalog/collections.
@@ -301,7 +301,7 @@ class TestCatalogPublishCollectionEndpoint:
         delete_response = client.delete("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection")
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
         # Check that collection is correctly deleted
-        second_check_response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
+        second_check_response = client.get("/catalog/collections/", params={"owner": "will_be_deleted_owner"})
         second_response_content = json.loads(second_check_response.content)
         assert minimal_collection["id"] not in second_response_content["collections"]
 

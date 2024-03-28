@@ -98,7 +98,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert str(exc_info.value) == "URL (/) is invalid."
 
     def test_remove_the_catalog_prefix(self):
-        assert remove_user_prefix("/catalog/Toto") == ("/")
+        assert reroute_url("/catalog/Toto", "GET")[0] == ("/")
 
     # Disabled for moment
     # def test_landing_page(self):
@@ -115,11 +115,11 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
 
     def test_fails_if_unknown_endpoint(self):
         with pytest.raises(ValueError) as exc_info:
-            remove_user_prefix("/not/found")
+            reroute_url("/not/found", "GET")
         assert str(exc_info.value) == "Path /not/found is invalid."
 
     def test_work_with_ping_endpoinst(self):
-        assert remove_user_prefix("/_mgmt/ping") == ("/_mgmt/ping")
+        assert reroute_url("/_mgmt/ping", "GET")[0] == ("/_mgmt/ping")
 
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
