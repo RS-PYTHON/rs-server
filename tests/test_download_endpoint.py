@@ -3,9 +3,13 @@
 import filecmp
 import os
 import os.path as osp
+import secrets as sec_generator
+import string
 import tempfile
 import time
 from contextlib import contextmanager
+from threading import Thread
+from typing import List
 
 import pytest
 import responses
@@ -566,3 +570,82 @@ def test_upload_to_s3(
             assert found
         finally:
             moto_server_endpoint.stop()
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize(
+    "endpoint, local_filenames, db_handler",
+    [
+        ("/adgs/aux", ["AUX_1.raw", "AUX_2.raw", "AUX_3.raw"], AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", ["CADIP_1.raw", "CADIP_2.raw", "CADIP__3.raw"], CadipDownloadStatus),
+    ],
+)
+def test_valid_parallel_download(
+    client,
+    endpoint,
+    local_filenames,
+    db_handler,
+):  # pylint: disable=unused-argument, too-many-locals
+    """
+    Test the parallel behaviour of download endpoint with 3 requests.
+    """
+    # To be added, also check os.environ["EODAG_CFG_DIR"] inside thread
+    publication_date = "2023-10-10T00:00:00.111Z"
+    # Set the ids of requested files, and their local name
+    requested_product_ids = ["id_1", "id_2", "id_3"]
+    # Mock local file for comparison / pickup point response
+    local_temp_files = []
+    for mock_resp_id in requested_product_ids:
+        # Generate a random file content, random dimension
+        file_content = "".join(sec_generator.choice(string.ascii_letters) for _ in range(250))
+        # Write the random generated content on file, for later comparison
+        with open(f"{mock_resp_id}.raw", "x", encoding="utf-8") as fp:
+            fp.write(file_content)
+        local_temp_files.append(f"{mock_resp_id}.raw")
+        # Mock cadip station response for each id
+        responses.add(
+            responses.GET,
+            f"http://127.0.0.1:5000/Files({mock_resp_id})/$value",
+            body=file_content,
+            status=200,
+        )
+        # Mock ADGS station responses for each id
+        responses.add(
+            responses.GET,
+            f"http://127.0.0.1:5001/Products({mock_resp_id})/$value",
+            body=file_content,
+            status=200,
+        )
+    with contextmanager(get_db)() as db:
+        # Add a download status to database
+        request_threads: List[Thread] = []
+        download_locations = []
+        for product_id, filename in zip(requested_product_ids, local_filenames):
+            with tempfile.TemporaryDirectory() as download_dir:
+                # For each file, set DB status to IN_PROGRESS
+                db_handler.create(
+                    db=db,
+                    product_id=product_id,
+                    name=filename,
+                    available_at_station=publication_date,
+                    status=EDownloadStatus.IN_PROGRESS,
+                )
+                # Save download location
+                download_locations.append(download_dir + f"/{filename}")
+                # Compose endpoint call and create a list of threads
+                request_threads.append(
+                    Thread(target=client.get, args=(f"{endpoint}?name={filename}&local={download_dir}",)),
+                )
+    # Start all threads in parallel
+    for req_thread in request_threads:
+        req_thread.start()
+    # Give it some time to download / maybe use join() ?
+    time.sleep(1)
+    # Compare downloaded file with local files, to check if content is correctly streamed.
+    for downloaded_file, local_file in zip(download_locations, local_temp_files):
+        assert filecmp.cmp(downloaded_file, local_file)
+
+    # Cleanup
+    for local_file in local_temp_files:
+        os.unlink(local_file)
