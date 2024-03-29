@@ -11,7 +11,7 @@ import subprocess  # nosec ignore security issue
 # flake8: noqa
 os.environ["RSPY_LOCAL_MODE"] = "1"
 os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
-os.environ["CATALOG_S3_BUCKET"] = "catalog-bucket"
+os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
 
 from dataclasses import dataclass
 from pathlib import Path
