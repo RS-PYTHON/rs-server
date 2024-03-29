@@ -284,7 +284,7 @@ POST /catalog/collections
 This endpoint returns a collection details based on parameters given in request.
 [source,http]
 ----
-GET /catalog/collections/{ownerId#collectionId}
+GET /catalog/collections/{ownerId:collectionId}
 ----
 .Get Collection result body example
 [%collapsible]
@@ -348,7 +348,7 @@ GET /catalog/collections/{ownerId#collectionId}
 This endpoint updates a collection from STAC if it exists and request body json data is STAC compatible.
 [source,http]
 ----
-PUT /catalog/collections/{ownerId#collectionId}
+PUT /catalog/collections/{ownerId:collectionId}
 ----
 
 .Updated collection JSON body example
@@ -372,7 +372,7 @@ PUT /catalog/collections/{ownerId#collectionId}
 This endpoint deletes a collection from STAC if it exists and owner has right to perform this action.
 [source,http]
 ----
-DELETE /catalog/collections/{ownerId#collectionId}
+DELETE /catalog/collections/{ownerId:collectionId}
 ----
 
 === [.green]#Create a Feature#
@@ -380,7 +380,7 @@ This endpoint converts a request with a correct JSON body feature descriptor to 
 RS-Server Backend also move assets between s3 storages and updates hypertext reference of each STAC Feature with s3 locations.
 [source,http]
 ----
-POST /catalog/collections/{ownerId#collectionId}/items
+POST /catalog/collections/{ownerId:collectionId}/items
 ----
 .Feature body example
 [%collapsible]
@@ -453,7 +453,7 @@ POST /catalog/collections/{ownerId#collectionId}/items
 This endpoint returns a feature details based on parameters given in request.
 [source,http]
 ----
-GET /catalog/collections/{ownerId#collectionId}/items/{featureID}
+GET /catalog/collections/{ownerId:collectionId}/items/{featureID}
 ----
 .Get Feature result body example
 [%collapsible]
@@ -554,5 +554,5 @@ GET /catalog/collections/{ownerId#collectionId}/items/{featureID}
 This endpoint updates content of a feature is request JSON data is completely STAC-compatible.
 [source,http]
 ----
-PUT /catalog/collections/{ownerId#collectionId}/items/{featureID}
+PUT /catalog/collections/{ownerId:collectionId}/items/{featureID}
 ----
