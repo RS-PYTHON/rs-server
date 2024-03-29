@@ -27,7 +27,7 @@ class EodagProvider(Provider):
             config_file: the path to the eodag configuration file
             provider: the name of the eodag provider
         """
-        self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # create unique /tmp dir
+        self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         self.provider: str = provider
         self.client: EODataAccessGateway = self.init_eodag_client(config_file)
         self.client.set_preferred_provider(self.provider)
