@@ -13,7 +13,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
 
 
-def reroute_url(path: str, method: str) -> Tuple[str, dict]:
+def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=too-many-branches
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 

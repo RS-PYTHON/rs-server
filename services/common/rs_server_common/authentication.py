@@ -66,7 +66,7 @@ ttl_cache: TTLCache = TTLCache(maxsize=sys.maxsize, ttl=120)
 
 
 @cached(cache=ttl_cache)
-async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
+async def __apikey_security_cached(apikey_value) -> tuple[list, dict, dict]:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
     """
