@@ -31,18 +31,18 @@ Class CadipClient {
 }
 
 Class pystac_client {
- 
+
 }
- 
+
 Class StacClient {
 - rs_server_api_key : UUID
 - rs_server_href : string
 - owner_id : string
 ==
 + __init__ (api_key:UUID, href:string, owner_id:string)
-+ open(...) -> pystac_client.Client 
++ open(...) -> pystac_client.Client
 }
- 
+
 Class AuxipClient {
 - rs_server_api_key : UUID
 - rs_server_href : string
@@ -61,7 +61,7 @@ Class AuxipClient {
 Class StacApiIO {
  - headers:[Dict[str, str]] = [["API-KEY", "myKey"]]
 }
- 
+
 RsClient "1" *-- "0,1" CadipClient
 RsClient "1" *-- "0,1" StacClient
 RsClient "1" *-- "0,1" AuxipClient
