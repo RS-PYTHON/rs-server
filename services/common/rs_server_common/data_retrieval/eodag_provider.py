@@ -1,6 +1,10 @@
 """EODAG Provider."""
 
+import os
+import shutil
+import tempfile
 from pathlib import Path
+from threading import Lock
 
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from rs_server_common.utils.provider_ws_address import station_to_server_url
@@ -14,6 +18,8 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
+    lock = Lock()  # static Lock instance
+
     def __init__(self, config_file: Path, provider: str):
         """Create a EODAG provider.
 
@@ -21,9 +27,15 @@ class EodagProvider(Provider):
             config_file: the path to the eodag configuration file
             provider: the name of the eodag provider
         """
+        self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # create unique /tmp dir
         self.provider: str = provider
         self.client: EODataAccessGateway = self.init_eodag_client(config_file)
         self.client.set_preferred_provider(self.provider)
+
+    def __del__(self):
+        """Destructor"""
+
+        shutil.rmtree(self.eodag_cfg_dir.name)  # remove the unique /tmp dir
 
     def init_eodag_client(self, config_file: Path) -> EODataAccessGateway:
         """Initialize the eodag client.
@@ -37,7 +49,10 @@ class EodagProvider(Provider):
              the initialized eodag client
         """
         try:
-            return EODataAccessGateway(config_file.as_posix())
+            # Use thread-lock
+            with EodagProvider.lock:
+                os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
+                return EODataAccessGateway(config_file.as_posix())
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
