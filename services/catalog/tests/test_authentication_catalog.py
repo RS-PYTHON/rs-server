@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER
 from rs_server_common.utils.logging import Logging
-from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+from starlette.status import HTTP_200_OK
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -81,19 +81,6 @@ async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
             "allowed_referers": ["toto"],
         },
     )
-
-    # With a wrong api key, it returns 403
-    # httpx_mock.add_response(
-    #     url=RSPY_UAC_CHECK_URL,
-    #     match_headers={APIKEY_HEADER: WRONG_APIKEY},
-    #     status_code=HTTP_403_FORBIDDEN,
-    # )
-
-    # # Check that without api key in headers, the endpoint is protected and we receive a 403
-    # assert client.request("GET", "/catalog/").status_code == HTTP_403_FORBIDDEN
-
-    # # Test a wrong api key in headers
-    # assert client.request("GET", "/catalog/", headers={APIKEY_HEADER: WRONG_APIKEY}).status_code == HTTP_403_FORBIDDEN
 
     # Test a valid api key in headers
     landing_page_response = client.request("GET", "/catalog/", headers={APIKEY_HEADER: VALID_APIKEY})
