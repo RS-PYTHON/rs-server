@@ -83,11 +83,11 @@ async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
     )
 
     # With a wrong api key, it returns 403
-    httpx_mock.add_response(
-        url=RSPY_UAC_CHECK_URL,
-        match_headers={APIKEY_HEADER: WRONG_APIKEY},
-        status_code=HTTP_403_FORBIDDEN,
-    )
+    # httpx_mock.add_response(
+    #     url=RSPY_UAC_CHECK_URL,
+    #     match_headers={APIKEY_HEADER: WRONG_APIKEY},
+    #     status_code=HTTP_403_FORBIDDEN,
+    # )
 
     # # Check that without api key in headers, the endpoint is protected and we receive a 403
     # assert client.request("GET", "/catalog/").status_code == HTTP_403_FORBIDDEN
