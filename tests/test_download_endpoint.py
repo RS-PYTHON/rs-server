@@ -643,8 +643,10 @@ def test_valid_parallel_download(
     # Give it some time to download / maybe use join() ?
     time.sleep(1)
     # Compare downloaded file with local files, to check if content is correctly streamed.
-    for downloaded_file, local_file in zip(download_locations, local_temp_files):
-        assert filecmp.cmp(downloaded_file, local_file)
+    assert all(
+        filecmp.cmp(downloaded_file, local_file)
+        for downloaded_file, local_file in zip(download_locations, local_temp_files)
+    )
 
     # Cleanup
     for local_file in local_temp_files:
