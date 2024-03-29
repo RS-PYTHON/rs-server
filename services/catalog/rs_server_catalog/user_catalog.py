@@ -15,7 +15,6 @@ The middleware:
 
 import json
 import os
-import pathlib
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -40,10 +39,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
-bucket_info_path = pathlib.Path(__file__).parent / "config" / "buckets.json"
-
-with open(bucket_info_path, encoding="utf-8") as bucket_info_file:
-    bucket_info = json.loads(bucket_info_file.read())
+CATALOG_BUCKET = os.environ.get("CATALOG_S3_BUCKET", "rs-cluster-catalog")
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):
@@ -84,7 +80,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             file_key = (
                 content["assets"][asset]["alternate"]["s3"]["href"]
                 .replace(
-                    bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+                    f"s3://{CATALOG_BUCKET}",
                     "",
                 )
                 .lstrip("/")
@@ -101,7 +97,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # For catalog bucket, data is already store into alternate:s3:href
             file_key = content["assets"][asset]["alternate"]["s3"]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
-                self.handler.delete_file_from_s3(bucket_info["catalog-bucket"]["name"], file_key)
+                self.handler.delete_file_from_s3(CATALOG_BUCKET, file_key)
 
     def adapt_object_links(self, my_object: dict, user: str) -> dict:
         """adapt all the links from a collection so the user can use them correctly
@@ -158,7 +154,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             try:
                 old_bucket_arr = filename_str.split("/")
                 self.temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
-                old_bucket_arr[2] = bucket_info["catalog-bucket"]["name"]
+                old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 new_s3_href = {"s3": {"href": s3_key}}
                 content["assets"][asset].update({"alternate": new_s3_href})
@@ -182,7 +178,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 config = TransferFromS3ToS3Config(
                     files_s3_key,
                     self.temp_bucket_name,
-                    bucket_info["catalog-bucket"]["name"],
+                    CATALOG_BUCKET,
                     copy_only=True,
                     max_retries=3,
                 )
@@ -212,7 +208,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         s3_path = (
             content["assets"][asset_id]["alternate"]["s3"]["href"]
             .replace(
-                bucket_info["catalog-bucket"]["S3_ENDPOINT"],
+                f"s3://{CATALOG_BUCKET}",
                 "",
             )
             .lstrip("/")
@@ -226,7 +222,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             )
             response = handler.s3_client.generate_presigned_url(
                 "get_object",
-                Params={"Bucket": bucket_info["catalog-bucket"]["name"], "Key": s3_path},
+                Params={"Bucket": CATALOG_BUCKET, "Key": s3_path},
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except KeyError:
