@@ -39,7 +39,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
-CATALOG_BUCKET = os.environ.get("CATALOG_S3_BUCKET", "rs-cluster-catalog")
+CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):
