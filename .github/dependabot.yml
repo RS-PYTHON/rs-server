@@ -7,27 +7,27 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-  - package-ecosystem: "poetry"
+  - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "daily"
-  - package-ecosystem: "poetry"
+  - package-ecosystem: "pip"
     directory: "/services/adgs"
     schedule:
       interval: "daily"
-  - package-ecosystem: "poetry"
+  - package-ecosystem: "pip"
     directory: "/services/cadip"
     schedule:
       interval: "daily"
-  - package-ecosystem: "poetry"
+  - package-ecosystem: "pip"
     directory: "/services/catalog"
     schedule:
       interval: "daily"
-  - package-ecosystem: "poetry"
+  - package-ecosystem: "pip"
     directory: "/services/common"
     schedule:
       interval: "daily"
-  - package-ecosystem: "poetry"
+  - package-ecosystem: "pip"
     directory: "/services/frontend"
     schedule:
       interval: "daily"
