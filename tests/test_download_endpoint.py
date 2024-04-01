@@ -578,10 +578,27 @@ def test_upload_to_s3(
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize(
+    # create some temp dirs that should exist during the scope of this function
     "endpoint, local_filenames, db_handler",
     [
-        ("/adgs/aux", ["AUX_1.raw", "AUX_2.raw", "AUX_3.raw"], AdgsDownloadStatus),
-        ("/cadip/CADIP/cadu", ["CADIP_1.raw", "CADIP_2.raw", "CADIP__3.raw"], CadipDownloadStatus),
+        (
+            "/adgs/aux",
+            [
+                ("AUX_1.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+                ("AUX_2.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+                ("AUX_3.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+            ],
+            AdgsDownloadStatus,
+        ),
+        (
+            "/cadip/CADIP/cadu",
+            [
+                ("CADIP_1.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+                ("CADIP_2.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+                ("CADIP_3.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+            ],
+            CadipDownloadStatus,
+        ),
     ],
 )
 def test_valid_parallel_download(
@@ -635,16 +652,16 @@ def test_valid_parallel_download(
             db_handler.create(
                 db=db,
                 product_id=product_id,
-                name=filename,
+                name=filename[0],
                 available_at_station=publication_date,
                 status=EDownloadStatus.IN_PROGRESS,
             )
             # Save download location
-            download_dir = tempfile.TemporaryDirectory().name  # pylint: disable=consider-using-with
-            download_locations.append(download_dir + f"/{filename}")
+            # download_dir = tempfile.TemporaryDirectory().name  # pylint: disable=consider-using-with
+            download_locations.append(filename[1] + f"/{filename[0]}")
             # Compose endpoint call and create a list of threads
             request_threads.append(
-                Thread(target=client.get, args=(f"{endpoint}?name={filename}&local={download_dir}",)),
+                Thread(target=client.get, args=(f"{endpoint}?name={filename[0]}&local={filename[1]}",)),
             )
     # Start all threads in parallel
     for req_thread in request_threads:
