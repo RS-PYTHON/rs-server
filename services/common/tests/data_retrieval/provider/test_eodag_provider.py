@@ -73,7 +73,7 @@ class TestAEodagProvider:
         # directly calling the destructor, keep in mind that this one is not
         # guaranteed to be called by python itself
         provider.__del__()  # pylint: disable=unnecessary-dunder-call
-        assert os.path.isdir(provider.eodag_cfg_dir.name)
+        assert not os.path.isdir(provider.eodag_cfg_dir.name)
 
     def test_cant_be_initialized_with_a_wrong_configuration(self, not_found_config):
         """
