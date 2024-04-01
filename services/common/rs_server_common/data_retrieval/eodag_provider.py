@@ -34,8 +34,10 @@ class EodagProvider(Provider):
 
     def __del__(self):
         """Destructor"""
-
-        shutil.rmtree(self.eodag_cfg_dir.name)  # remove the unique /tmp dir
+        try:
+            shutil.rmtree(self.eodag_cfg_dir.name)  # remove the unique /tmp dir
+        except FileNotFoundError:
+            pass
 
     def init_eodag_client(self, config_file: Path) -> EODataAccessGateway:
         """Initialize the eodag client.
