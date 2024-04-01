@@ -1,6 +1,11 @@
 """Unit tests for EodagProvider."""
 
 import json
+import os
+import tempfile
+from pathlib import Path
+from threading import Thread
+from typing import Any, List
 
 import pytest
 import responses
@@ -52,9 +57,23 @@ class TestAEodagProvider:
         provided configuration, including the creation of an EODataAccessGateway client.
 
         """
+        # ensure that EODAG_CFG_DIR env var does not exist
+        del os.environ["EODAG_CFG_DIR"]
         provider = EodagProvider(cadip_config.file, cadip_config.provider)
+        # check that EODAG_CFG_DIR env var has been set
+        assert "EODAG_CFG_DIR" in os.environ
+        # check the value of EODAG_CFG_DIR
+        assert os.getenv("EODAG_CFG_DIR") == provider.eodag_cfg_dir.name
+        # check the existence of the temp directory
+        assert os.path.isdir(provider.eodag_cfg_dir.name)
         assert isinstance(provider.client, EODataAccessGateway)
+        # check that EODAG_CFG_DIR env var was set
         assert cadip_config.provider in provider.client.available_providers()
+        # test if the temp path is deleted
+        # directly calling the destructor, keep in mind that this one is not
+        # guaranteed to be called by python itself
+        provider.__del__()  # pylint: disable=unnecessary-dunder-call
+        assert os.path.isdir(provider.eodag_cfg_dir.name)
 
     def test_cant_be_initialized_with_a_wrong_configuration(self, not_found_config):
         """
@@ -164,3 +183,55 @@ class TestAEodagProviderDownload:
         with open(downloaded_file, encoding="utf-8") as f:
             actual_content = json.load(f)
         assert actual_content == content
+
+    @responses.activate
+    def test_parallel_download_at_the_given_location(self, cadip_config):
+        """
+        Tests writing the downloaded file at the given location.
+
+        This test checks if EodagProvider can successfully write the downloaded file at the specified location,
+        using the content mocked from the CADIP server response.
+
+        """
+
+        def dwn_thread(cc, idx, result):
+            product_id = f"file_{idx}.tmp"
+
+            content = {
+                f"thread_{idx}": f"content {idx}",
+                f"info {idx}": f"value {idx}",
+            }
+            mock_cadip_download(product_id, content)
+
+            provider = EodagProvider(cc.file, cc.provider)
+            with tempfile.TemporaryDirectory() as download_dir:
+                downloaded_file = Path(download_dir) / f"downloaded_thread_{idx}.txt"
+                provider.download(product_id, downloaded_file)
+
+                assert downloaded_file.exists()
+                assert downloaded_file.is_file()
+
+                with open(downloaded_file, encoding="utf-8") as f:
+                    actual_content = json.load(f)
+
+                assert actual_content == content
+            result[idx] = provider.eodag_cfg_dir
+            # directly calling the destructor, keep in mind that this one is not
+            # guaranteed to be called by python itself
+            provider.__del__()  # pylint: disable=unnecessary-dunder-call
+
+        request_threads: List[Thread] = []
+        nb_of_threads = 10
+        results: Any = [None] * nb_of_threads
+        for idx in range(nb_of_threads):
+            request_threads.append(Thread(target=dwn_thread, args=(cadip_config, idx, results)))
+        for dt in request_threads:
+            dt.start()
+        for dt in request_threads:
+            dt.join()
+        # assure that the temp dirs created by eodag are unique
+        assert len(results) == len(set(results))
+        # check if all the temp dirs have been deleted (by directly calling the destructor in the thread)
+        for res in results:
+            assert isinstance(res, tempfile.TemporaryDirectory)
+            assert not os.path.isdir(res.name)
