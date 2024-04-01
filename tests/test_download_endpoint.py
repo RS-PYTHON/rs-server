@@ -594,6 +594,12 @@ def test_valid_parallel_download(
     publication_date = "2023-10-10T00:00:00.111Z"
     # Set the ids of requested files, and their local name
     requested_product_ids = ["id_1", "id_2", "id_3"]
+    # Cleanup
+    for local_file in requested_product_ids:
+        try:
+            os.unlink(local_file + ".raw")
+        except FileNotFoundError:
+            pass
     # Mock local file for comparison / pickup point response
     local_temp_files = []
     for mock_resp_id in requested_product_ids:
@@ -622,27 +628,26 @@ def test_valid_parallel_download(
         request_threads: List[Thread] = []
         download_locations = []
         for product_id, filename in zip(requested_product_ids, local_filenames):
-            with tempfile.TemporaryDirectory() as download_dir:
-                # For each file, set DB status to IN_PROGRESS
-                db_handler.create(
-                    db=db,
-                    product_id=product_id,
-                    name=filename,
-                    available_at_station=publication_date,
-                    status=EDownloadStatus.IN_PROGRESS,
-                )
-                # Save download location
-                download_locations.append(download_dir + f"/{filename}")
-                # Compose endpoint call and create a list of threads
-                request_threads.append(
-                    Thread(target=client.get, args=(f"{endpoint}?name={filename}&local={download_dir}",)),
-                )
+            # For each file, set DB status to IN_PROGRESS
+            db_handler.create(
+                db=db,
+                product_id=product_id,
+                name=filename,
+                available_at_station=publication_date,
+                status=EDownloadStatus.IN_PROGRESS,
+            )
+            # Save download location
+            download_dir = tempfile.TemporaryDirectory().name
+            download_locations.append(download_dir + f"/{filename}")
+            # Compose endpoint call and create a list of threads
+            request_threads.append(
+                Thread(target=client.get, args=(f"{endpoint}?name={filename}&local={download_dir}",)),
+            )
     # Start all threads in parallel
     for req_thread in request_threads:
         req_thread.start()
-    # join threads
-    for req_thread in request_threads:
-        req_thread.join()
+    # wait for threads to download
+    time.sleep(1)
     # Compare downloaded file with local files, to check if content is correctly streamed.
     assert all(
         filecmp.cmp(downloaded_file, local_file)
