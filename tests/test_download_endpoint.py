@@ -667,7 +667,7 @@ def test_valid_parallel_download(
     for req_thread in request_threads:
         req_thread.start()
     # wait for threads to download
-    time.sleep(1)
+    time.sleep(5)
     # Compare downloaded file with local files, to check if content is correctly streamed.
     assert all(
         filecmp.cmp(downloaded_file, local_file)
