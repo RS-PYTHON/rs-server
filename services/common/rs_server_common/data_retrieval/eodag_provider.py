@@ -77,6 +77,10 @@ class EodagProvider(Provider):
         )
         return products
 
+    def _specific_session_search(self, mapped_search_args, **kwargs) -> SearchResult:
+        products, _ = self.client.search(**mapped_search_args, provider=self.provider, raise_errors=True, **kwargs)
+        return products
+
     def download(self, product_id: str, to_file: Path) -> None:
         """Download the expected product at the given local location.
 

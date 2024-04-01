@@ -325,3 +325,20 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         limit = -5
         test_endpoint = f"{endpoint}&limit={limit}"
         assert client.get(test_endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+## TEST SESSIONS ZONE
+
+
+@pytest.mark.unit
+def test_valid_sessions_endpoint_request_list(client):
+    assert (
+        client.get("/cadip/cadip/session?id=S1A_20170501121534062343,S1A_20240328185208053186").status_code
+        == status.HTTP_200_OK
+    )
+    assert client.get("/cadip/cadip/session?id=S1A_20240328185208053186").status_code == status.HTTP_200_OK
+    assert client.get("/cadip/cadip/session?platform=S1A, S2B").status_code == status.HTTP_200_OK
+
+    assert client.get("/cadip/cadip/session?platform=S2B").status_code == status.HTTP_200_OK
+
+    assert client.get("/cadip/cadip/session?platform=S2B&platform=S1A").status_code == status.HTTP_200_OK

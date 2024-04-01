@@ -8,7 +8,7 @@ import json
 import os.path as osp
 import traceback
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, List
 
 import requests
 import sqlalchemy
@@ -107,3 +107,27 @@ def search_products(  # pylint: disable=too-many-locals
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",
         ) from exception
+
+
+@router.get("/cadip/{station}/session")
+@apikey_validator(station="cadip", access_type="read")
+def search_session(
+    request: Request,  # pylint: disable=unused-argument
+    station,
+    id=None,
+    platform=None,
+    start_date=None,
+    stop_date=None,
+):
+    # Tbd - change list split with typing
+    id = id.split(",") if id else None
+    platform = platform[0].split(",") if platform else None
+    start_date, stop_date = (
+        validate_inputs_format(f"{start_date / stop_date}") if start_date and stop_date else None
+    ), None
+    try:
+        products = init_cadip_provider(f"{station}_session").session_search(id, platform, start_date, stop_date)
+        # map products to stac class to be added here
+        return HTTPException(status_code=status.HTTP_200_OK, detail="OK")
+    except:
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
