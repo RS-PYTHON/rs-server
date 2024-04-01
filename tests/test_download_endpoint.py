@@ -666,6 +666,9 @@ def test_valid_parallel_download(
     # Start all threads in parallel
     for req_thread in request_threads:
         req_thread.start()
+    # join threads
+    for req_thread in request_threads:
+        req_thread.join()
     # wait for threads to download
     time.sleep(5)
     # Compare downloaded file with local files, to check if content is correctly streamed.
