@@ -174,6 +174,7 @@ def test_exception_while_valid_download(
         # send the request
         assert db_handler.get(db, name=filename).status == EDownloadStatus.IN_PROGRESS
         client.get(endpoint)
+        time.sleep(0.4)
         assert db_handler.get(db, name=filename).status == EDownloadStatus.FAILED
         assert db_handler.get(db, name=filename).status_fail_message == "Exception('Error while downloading')"
 
@@ -373,10 +374,12 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
         )
         # send the request
         data = client.get(endpoint)
+        time.sleep(0.1)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed and download started
         # Error message is written into db
+
         assert result.status == EDownloadStatus.FAILED
         assert data.json() == {"started": "true"}
         assert result.status_fail_message == "Exception('Some Runtime Error occured here.')"
@@ -637,7 +640,7 @@ def test_valid_parallel_download(
                 status=EDownloadStatus.IN_PROGRESS,
             )
             # Save download location
-            download_dir = tempfile.TemporaryDirectory().name
+            download_dir = tempfile.TemporaryDirectory().name  # pylint: disable=consider-using-with
             download_locations.append(download_dir + f"/{filename}")
             # Compose endpoint call and create a list of threads
             request_threads.append(
