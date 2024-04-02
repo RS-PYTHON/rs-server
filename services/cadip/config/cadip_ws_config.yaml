@@ -72,7 +72,7 @@ cadip:
 
   download:
     type: HTTPDownload
-    base_uri: 'https://127.0.0.1:5000/Files'
+    base_uri: 'http://127.0.0.1:5000/Files'
     metadata_mapping:
         uid: '$.Id'
         downloadLink: 'http://127.0.0.1:5000/Files({uid})/$value'
