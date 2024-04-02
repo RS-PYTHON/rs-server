@@ -6,10 +6,12 @@ import tempfile
 from pathlib import Path
 from threading import Lock
 
+import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
-from rs_server_common.utils.provider_ws_address import station_to_server_url
 
 from .provider import CreateProviderFailed, Provider, TimeRange
+
+# from rs_server_common.utils.provider_ws_address import station_to_server_url
 
 
 class EodagProvider(Provider):
@@ -29,6 +31,7 @@ class EodagProvider(Provider):
         """
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         self.provider: str = provider
+        self.config_file = config_file
         self.client: EODataAccessGateway = self.init_eodag_client(config_file)
         self.client.set_preferred_provider(self.provider)
 
@@ -131,13 +134,19 @@ class EodagProvider(Provider):
             the initialized EO Product
 
         """
-        return EOProduct(
-            self.provider,
-            {
-                "id": product_id,
-                "title": filename,
-                "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
-                # TODO build from configuration (but how ?)
-                "downloadLink": f"{station_to_server_url(self.provider)}({product_id})/$value",
-            },
-        )
+        try:
+            with open(self.config_file, "r", encoding="utf-8") as f:
+                yaml_loaded = yaml.safe_load(f)
+            return EOProduct(
+                self.provider,
+                {
+                    "id": product_id,
+                    "title": filename,
+                    "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
+                    # TODO build from configuration (but how ?)
+                    # "downloadLink": f"{station_to_server_url(self.provider)}({product_id})/$value",
+                    "downloadLink": f"{yaml_loaded[self.provider.lower()]['download']['base_uri']}({product_id})/$value",
+                },
+            )
+        except Exception as e:
+            raise CreateProviderFailed(f"Can't initialize {self.provider} download provider") from e
