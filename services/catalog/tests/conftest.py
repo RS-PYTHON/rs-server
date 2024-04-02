@@ -1,21 +1,35 @@
 """Common fixture for catalog service."""
 
+import json
 import os
+import os.path as osp
+import subprocess  # nosec ignore security issue
 
 # We are in local mode (no cluster).
 # Do this before any other imports.
 # pylint: disable=wrong-import-position
 # flake8: noqa
 os.environ["RSPY_LOCAL_MODE"] = "1"
+os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import pytest
 from rs_server_catalog.main import app
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
+
+# Clean before running.
+# No security risks since this file is not released into production.
+RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+subprocess.run(
+    [RESOURCES_FOLDER / "../../../../tests/resources/clean.sh"],
+    check=False,
+    shell=False,
+)  # nosec ignore security issue
 
 
 def is_db_up(db_url: str) -> bool:
@@ -45,7 +59,7 @@ def docker_compose_file_():
 @pytest.fixture(scope="session", name="db_url")
 def db_url_fixture(docker_ip, docker_services) -> str:  # pylint: disable=missing-function-docstring
     port = docker_services.port_for("stac-db", 5432)
-    return f"postgresql://postgres:password@{docker_ip}:{port}/rspy"
+    return f"postgresql://postgres:password@{docker_ip}:{port}/{os.getenv('POSTGRES_DB')}"
 
 
 @pytest.mark.integration
@@ -82,6 +96,7 @@ class Collection:
         return {
             "id": self.name,
             "type": "Collection",
+            "owner": self.user,
             "links": [
                 {
                     "rel": "items",
@@ -157,7 +172,7 @@ def add_collection(client: TestClient, collection: Collection):
         Error if the collection addition failed.
     """
     response = client.post(
-        f"/catalog/{collection.user}/collections",
+        "/catalog/collections",
         json=collection.properties,
     )
     response.raise_for_status()
@@ -248,6 +263,27 @@ def feature_titi_s2_l1_0_fixture() -> Feature:  # pylint: disable=missing-functi
 @pytest.fixture(scope="session", name="darius_s1_l2")
 def darius_s1_l2_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("darius", "S1_L2")
+
+
+@pytest.fixture(scope="function", name="a_minimal_collection")
+def a_minimal_collection_fixture(client) -> Iterator[None]:
+    """
+    This fixture is used to return the minimal form of accepted collection
+    """
+    client.post(
+        "/catalog/collections",
+        json={
+            "id": "fixture_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "fixture_owner",
+        },
+    )
+    yield
+    # teardown cleanup
+    if json.loads(client.get("/catalog/collections/fixture_owner:fixture_collection").content)["collections"]:
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
 
 @pytest.fixture(scope="session", name="a_correct_feature")
@@ -346,7 +382,7 @@ def add_feature(client: TestClient, feature: Feature):
         feature (Feature): The feature to add.
     """
     response = client.post(
-        f"/catalog/{feature.owner_id}/collections/{feature.collection}/items",
+        f"/catalog/collections/{feature.owner_id}:{feature.collection}/items",
         json=feature.properties,
     )
     response.raise_for_status()

@@ -45,9 +45,6 @@ def read_cli(request):
 # SETUP ENVIRONMENT #
 #####################
 
-# Resource folders specified from the parent directory of this current script
-S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
-
 
 def export_aws_credentials():
     """Export AWS credentials as environment variables for testing purposes.
@@ -67,7 +64,7 @@ def export_aws_credentials():
     Raises:
         None
     """
-    with open(osp.join(S3_RSC_FOLDER, "s3.yml"), "r", encoding="utf-8") as f:
+    with open(RESOURCES_FOLDER / "s3" / "s3.yml", "r", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)
         os.environ.update(s3_config["s3"])
 
@@ -113,7 +110,6 @@ def fastapi_app_(request, docker_ip, docker_services, docker_compose_file):  # p
     with pytest.MonkeyPatch.context() as mp:
         # Default values
         pytest_env = {RSPY_LOCAL_MODE: True}  # no cluster mode for pytests
-
         # Read parametrization
         try:
             pytest_env.update(request.param.envs)  # envs = Envs instance

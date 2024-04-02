@@ -1,4 +1,5 @@
 """Unit tests for fake provider."""
+
 from datetime import timedelta
 
 import pytest

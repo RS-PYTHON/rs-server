@@ -5,8 +5,9 @@
 # pylint: disable=unused-import, import-outside-toplevel
 # flake8: noqa
 import rs_server_adgs.adgs_download_status  # DON'T REMOVE
+from rs_server_adgs import __version__
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_common.fastapi_app import init_app
 
 # Init the FastAPI application with the adgs routers.
-app = init_app(adgs_routers, init_db=True)
+app = init_app(__version__, adgs_routers, init_db=True)

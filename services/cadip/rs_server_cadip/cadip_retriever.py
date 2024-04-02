@@ -1,4 +1,5 @@
 """This will be used to configure dataretriever used for cadip"""
+
 import os
 import os.path as osp
 from pathlib import Path

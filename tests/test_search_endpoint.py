@@ -1,4 +1,5 @@
 """Unittests for cadip search endpoint."""
+
 from contextlib import contextmanager
 
 import pytest
@@ -29,7 +30,10 @@ from rs_server_common.db.models.download_status import EDownloadStatus
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
                 "geometry": None,
                 "properties": {
-                    "datetime": "2021-02-16T12:00:00.000Z",
+                    "created": "2021-02-16T12:00:00.000Z",
+                    "datetime": "1970-01-01T12:00:00.000Z",
+                    "start_datetime": "1970-01-01T12:00:00.000Z",
+                    "end_datetime": "1970-01-01T12:00:00.000Z",
                     "eviction_datetime": "eviction_date_test_value",
                     "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
                     "cadip:retransfer": False,
@@ -53,8 +57,9 @@ from rs_server_common.db.models.download_status import EDownloadStatus
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
                 "geometry": None,
                 "properties": {
+                    "created": "2021-02-16T12:00:00.000Z",
                     "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
-                    "datetime": "2021-02-16T12:00:00.000Z",
+                    "datetime": "ContentDate_Start_test_value",
                     "start_datetime": "ContentDate_Start_test_value",
                     "end_datetime": "ContentDate_End_test_value",
                 },

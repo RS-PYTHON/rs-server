@@ -1,101 +1,73 @@
 """This library contains all functions needed for the fastAPI middleware."""
 
 import re
+from typing import Tuple
 
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
-    r"/catalog"
-    r"(?P<owner_id>.*)"
-    r"(?P<collections>/collections)"
-    r"((?P<collection_id>/.+?(?=/|$))"
+    r"/catalog/collections"
+    r"((?P<owner_collection_id>/.+?(?=/|$))"
     r"(?P<items>/.+?(?=/|$))?"
     r"(?P<item_id>/.+?(?=/|$))?)?"
 )
 
-
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
 
 
-def get_ids(path: str) -> dict:
-    """From a str path return the owner_id and the collection_id if they exists.
-
-
-    Args:
-        path (str): the endpoint request.
-
-    Returns:
-        dict: the result containing owner_id and collection_id.
-    """
-    res = {"owner_id": "", "collection_id": "", "item_id": ""}
-
-    # To catch the endpoint /catalog/{owner_id}
-    if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
-        groups = match.groupdict()
-        res["owner_id"] = groups["owner_id"]
-        return res
-
-    # To catch all the other endpoints.
-    if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
-        groups = match.groupdict()
-        if groups["owner_id"]:
-            res["owner_id"] = groups["owner_id"][1:]
-        if groups["collection_id"]:
-            res["collection_id"] = groups["collection_id"][1:]
-        if groups["item_id"]:
-            res["item_id"] = groups["item_id"][1:]
-        return res
-
-    return res
-
-
-def remove_user_prefix(path: str) -> str:
+def reroute_url(path: str, method: str) -> Tuple[str, dict]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 
     Args:
         path (str): RS Server Frontend endpoints.
+        method (str): RS Server Fronted request method type.
 
     Raises:
         ValueError: If the path is not valid.
 
     Returns:
         str: Return the URL path with prefix removed.
+        dict: Return a dictionary containing owner, collection and item ID.
     """
 
-    if path == "/":
-        raise ValueError("URL (/) is invalid.")
+    if path in ["/", "/catalog"]:
+        raise ValueError(f"URL ({path}) is invalid.")
 
-    if path == "/catalog":
-        raise ValueError("URL (/catalog) is invalid.")
+    ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
 
     if path == "/catalog/search":
-        return "/search"
+        return "/search", ids_dict
 
+    if path == "/catalog/collections":
+        return "/collections", ids_dict
+
+    # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
     # To catch the endpoint /catalog/{owner_id}
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
-        groups = match.groupdict()
-        owner_id = groups["owner_id"]
-        return "/"
+        return "/", ids_dict
 
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
-        owner_id = groups["owner_id"][1:]
-        collection_id = groups["collection_id"]
-        items = groups["items"]
-        item_id = groups["item_id"]
-        if collection_id is None:
+        if ":" in groups["owner_collection_id"]:
+            ids_dict["owner_id"], ids_dict["collection_id"] = map(
+                lambda x: x.lstrip("/"),
+                groups["owner_collection_id"].split(":"),
+            )
+        # /catalog/collections/owner:collection case is the same for PUT / POST / DELETE, but needs different paths
+        if groups["items"] is None and method != "DELETE":
             path = "/collections"
         else:
-            collection_id = groups["collection_id"][1:]
-            if items is None:
-                path = f"/collections/{owner_id}_{collection_id}"
-            elif item_id is None:
-                path = f"/collections/{owner_id}_{collection_id}/items"
+            ids_dict["item_id"] = groups["item_id"]
+            if ids_dict["item_id"] is None:
+                if "items" in path:
+                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items"
+                else:
+                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}"
             else:
-                item_id = item_id[1:]
-                path = f"/collections/{owner_id}_{collection_id}/items/{item_id}"
+                ids_dict["item_id"] = ids_dict["item_id"][1:]
+                path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items/{ids_dict['item_id']}"
 
-    return path
+    return path, ids_dict
 
 
 def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = "") -> str:

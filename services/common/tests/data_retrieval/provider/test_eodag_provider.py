@@ -1,4 +1,5 @@
 """Unit tests for EodagProvider."""
+
 import json
 
 import pytest
