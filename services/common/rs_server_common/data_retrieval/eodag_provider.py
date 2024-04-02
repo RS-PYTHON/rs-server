@@ -136,7 +136,7 @@ class EodagProvider(Provider):
         """
         try:
             with open(self.config_file, "r", encoding="utf-8") as f:
-                yaml_loaded = yaml.safe_load(f)
+                base_uri = yaml.safe_load(f)[self.provider.lower()]["download"]["base_uri"]
             return EOProduct(
                 self.provider,
                 {
@@ -145,7 +145,7 @@ class EodagProvider(Provider):
                     "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
                     # TODO build from configuration (but how ?)
                     # "downloadLink": f"{station_to_server_url(self.provider)}({product_id})/$value",
-                    "downloadLink": f"{yaml_loaded[self.provider.lower()]['download']['base_uri']}({product_id})/$value",
+                    "downloadLink": f"{base_uri}({product_id})/$value",
                 },
             )
         except Exception as e:
