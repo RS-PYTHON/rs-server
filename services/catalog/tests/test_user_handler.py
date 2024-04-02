@@ -170,6 +170,9 @@ class TestRemoveUserFromFeature:  # pylint: disable=missing-function-docstring
 class TestFilterCollections:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function filter_collections"""
 
+    def test_get_nothing_if_the_user_is_not_found(self, collections: list[dict]):
+        assert filter_collections(collections, "NOTFOUND") == []
+
     def test_get_all_collections_with_toto_in_the_id_property(
         self,
         collection_toto_1: dict,
@@ -177,6 +180,3 @@ class TestFilterCollections:  # pylint: disable=missing-function-docstring
         collections: list[dict],
     ):
         assert filter_collections(collections, "toto") == [collection_toto_1, collection_toto_2]
-
-    def test_get_nothing_if_the_user_is_not_found(self, collections: list[dict]):
-        assert filter_collections(collections, "NOTFOUND") == []

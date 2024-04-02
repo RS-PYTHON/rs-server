@@ -38,7 +38,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     dummy_request.state = State()
 
     # Initial response expected from the function
-    initial_response = {"iam_roles": ["initial", "roles"], "config": {"initial": "config"}, "user_login": {}}
+    initial_response = {"iam_roles": ["initial", "roles"], "config": {"initial": "config"}}
 
     # Clear the cached response and mock the uac manager response
     ttl_cache.clear()
@@ -55,7 +55,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     assert dummy_request.state.auth_config == initial_response["config"]
 
     # If the UAC manager response changes, we won't see it because the previous result was cached
-    modified_response = {"iam_roles": ["modified", "roles"], "config": {"modified": "config"}, "user_login": {}}
+    modified_response = {"iam_roles": ["modified", "roles"], "config": {"modified": "config"}}
     httpx_mock.add_response(
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
@@ -94,7 +94,7 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
         match_headers={APIKEY_HEADER: VALID_APIKEY},
         status_code=HTTP_200_OK,
         # NOTE: we could use other roles and config, to be discussed
-        json={"iam_roles": [], "config": {}, "user_login": {}},
+        json={"iam_roles": [], "config": {}},
     )
 
     # With a wrong api key, it returns 403
@@ -197,17 +197,17 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
         logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
 
         # With no roles, we should receive an unauthorized response
-        mock_uac_response({"iam_roles": [], "config": {}, "user_login": {}})
+        mock_uac_response({"iam_roles": [], "config": {}})
         assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
 
         # Idem with non-relevant roles
-        mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}, "user_login": {}})
+        mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}})
         assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
 
         # With the right expected role, we should be authorized (no 401 or 403)
-        mock_uac_response({"iam_roles": [station_role], "config": {}, "user_login": {}})
+        mock_uac_response({"iam_roles": [station_role], "config": {}})
         assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
 
         # It should also work if other random roles are present
-        mock_uac_response({"iam_roles": [station_role, "any", "other", "role"], "config": {}, "user_login": {}})
+        mock_uac_response({"iam_roles": [station_role, "any", "other", "role"], "config": {}})
         assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
