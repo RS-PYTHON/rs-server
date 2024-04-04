@@ -1,0 +1,76 @@
+@startuml python-rs-client
+
+Class RsClient {
+- rs_server_api_key : UUID
+- rs_server_href : string
+- owner_id : string
+- stac_client:StacClient = None;
+- cadip_client:CadipClient = None;
+- auxip_client:AuxipClient = None;
+==
++ __init__ (api_key:UUID, href: string )
++ get_stac_client() -> StacClient
++ get_cadip_client(station:string, platforms:[string]) -> CadipClient
++ get_auxip_client(platforms:[string]) -> AuxipClient
+}
+
+Class CadipClient {
+- rs_server_api_key : UUID
+- rs_server_href : string
+- owner_id : string
+- station:string
+- platforms:[string]
+==
++ __init__ (api_key:UUID, href:string, owner_id:string, station:string, platforms:[string])
++ search (start:datetime, stop:datetime) -> [pystac.ItemCollection]
++ search (session:[string]) -> [pystac.ItemCollection]
++ download (cadu:[string]) -> pystac.ItemCollection
++ download (cadu_uuid:[UUID]) -> pystac.ItemCollection
++ download_status(cadu:string) -> string
++ download_status(cadu_uuid:UUID) -> string
+}
+
+Class pystac_client {
+
+}
+
+Class StacClient {
+- rs_server_api_key : UUID
+- rs_server_href : string
+- owner_id : string
+==
++ __init__ (api_key:UUID, href:string, owner_id:string)
++ open(...) -> pystac_client.Client
+}
+
+Class AuxipClient {
+- rs_server_api_key : UUID
+- rs_server_href : string
+- owner_id : string
+- platforms:[string]
+==
++ __init__ (api_key:UUID, href:string, owner_id:string, platforms:[string])
++ search (start:datetime, stop:datetime)  -> [pystac.ItemCollection]
++ search (type:string, start:datetime, stop:datetime)  -> [pystac.ItemCollection]
++ download (aux:[string]) -> pystac.ItemCollection
++ download (aux_uuid:[UUID])  -> pystac.ItemCollection
++ download_status(aux:string)  -> string
++ download_status(aux_uuid:UUID)  -> string
+}
+
+Class StacApiIO {
+ - headers:[Dict[str, str]] = [["API-KEY", "myKey"]]
+}
+
+RsClient "1" *-- "0,1" CadipClient
+RsClient "1" *-- "0,1" StacClient
+RsClient "1" *-- "0,1" AuxipClient
+pystac_client <|-- StacClient
+StacClient "1" *-- "1"  StacApiIO
+
+note right
+`StacApiIO` object is used for I/O requests.
+For RS project, we will inject the API-KEY in the x-api-key HTTP header.
+end note
+
+@enduml

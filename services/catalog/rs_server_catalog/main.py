@@ -14,6 +14,7 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
+from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
 from rs_server_common import authentication
 from rs_server_common import settings as common_settings
@@ -75,7 +76,7 @@ def extract_openapi_specification():
         return app.openapi_schema
     openapi_spec = get_openapi(
         title=app.title,
-        version=app.version,
+        version=__version__,
         openapi_version=app.openapi_version,
         description=app.description,
         routes=app.routes,
@@ -147,6 +148,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
         if (common_settings.cluster_mode()) and request.url.path.startswith("/catalog"):
+
             # Read the api key passed in header
             apikey_value = request.headers.get(authentication.APIKEY_HEADER, None)
             if not apikey_value:
