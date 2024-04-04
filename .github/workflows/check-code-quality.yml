@@ -23,7 +23,7 @@ jobs:
           ":information_source: This job checks that you have run \`pre-commit run --all-files\` in
           your local git repository before committing."
           >> $GITHUB_STEP_SUMMARY
-      - uses: pre-commit/action@v3.0.0
+      - uses: pre-commit/action@v3.0.1
 
   check-linting:
     runs-on: ubuntu-latest
