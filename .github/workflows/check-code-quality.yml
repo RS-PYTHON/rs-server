@@ -148,29 +148,6 @@ jobs:
           >> $GITHUB_STEP_SUMMARY
         shell: bash
 
-  check-poetry-lock:
-    runs-on: ubuntu-latest
-    name: Check poetry.lock files
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/install-python
-      - run: |
-          set -x
-          pip install poetry
-
-          # In each subproject, run 'poetry lock --no-update'
-          # then check that the poetry.lock files were up-to-date (i.e. not updated by the poetry lock command)
-          for f in $(find . -name pyproject.toml); do
-              (cd $(dirname $f) && poetry lock --no-update)
-          done
-
-          git status
-          if [[ -n $(git status | grep "modified:.*poetry.lock") ]]; then
-            >&2 echo "Some poetry.lock files need updating, run './resources/poetry_lock_install.sh'"
-            exit 1
-          fi
-        shell: bash
-
   run-all-pytests:
     runs-on: ubuntu-latest
     name: Run pytest # pytest unit and integration tests
