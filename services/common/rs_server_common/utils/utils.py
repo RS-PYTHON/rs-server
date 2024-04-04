@@ -258,7 +258,9 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
         argument.thread_started.set()
         init = datetime.now()
         filename = Path(local) / argument.name
+        logger.debug(f"argument.product_id = {argument.product_id} | filename = {filename}")
         provider.download(argument.product_id, filename)
+        logger.debug(f"AFTER DOWNLOAD")
         logger.info(
             "%s : %s : File: %s downloaded in %s",
             os.getpid(),
