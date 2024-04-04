@@ -62,8 +62,8 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#submodules">Submodules</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#module-rs_server_common.authentication">rs_server_common.authentication module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#rs_server_common.authentication.Auth"><code class="docutils literal notranslate"><span class="pre">Auth</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rs_server_common.authentication.apikey_security"><code class="docutils literal notranslate"><span class="pre">apikey_security()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#rs_server_common.authentication.apikey_validator"><code class="docutils literal notranslate"><span class="pre">apikey_validator()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-rs_server_common.fastapi_app">rs_server_common.fastapi_app module</a><ul>
@@ -356,39 +356,6 @@
 <span id="rs-server-common-authentication-module"></span><h2>rs_server_common.authentication module<a class="headerlink" href="#module-rs_server_common.authentication" title="Link to this heading"></a></h2>
 <p>Authentication functions implementation.</p>
 <p>Note: calls <a class="reference external" href="https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manager">https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manager</a></p>
-<dl class="py class">
-<dt class="sig sig-object py" id="rs_server_common.authentication.Auth">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server_common.authentication.</span></span><span class="sig-name descname"><span class="pre">Auth</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.authentication.Auth" title="Link to this definition"></a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
-<p>Enum values for authentication.</p>
-<p>NOTE: enum names = the values returned by keyclowk, uppercase</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="rs_server_common.authentication.Auth.RS_ADGS_DOWNLOAD">
-<span class="sig-name descname"><span class="pre">RS_ADGS_DOWNLOAD</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'rs_adgs_download'</span></em><a class="headerlink" href="#rs_server_common.authentication.Auth.RS_ADGS_DOWNLOAD" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="rs_server_common.authentication.Auth.RS_ADGS_READ">
-<span class="sig-name descname"><span class="pre">RS_ADGS_READ</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'rs_adgs_read'</span></em><a class="headerlink" href="#rs_server_common.authentication.Auth.RS_ADGS_READ" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="rs_server_common.authentication.Auth.RS_CADIP_CADIP_DOWNLOAD">
-<span class="sig-name descname"><span class="pre">RS_CADIP_CADIP_DOWNLOAD</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'rs_cadip_cadip_download'</span></em><a class="headerlink" href="#rs_server_common.authentication.Auth.RS_CADIP_CADIP_DOWNLOAD" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="rs_server_common.authentication.Auth.RS_CADIP_CADIP_READ">
-<span class="sig-name descname"><span class="pre">RS_CADIP_CADIP_READ</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'rs_cadip_cadip_read'</span></em><a class="headerlink" href="#rs_server_common.authentication.Auth.RS_CADIP_CADIP_READ" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="rs_server_common.authentication.Auth.S1_ACCESS">
-<span class="sig-name descname"><span class="pre">S1_ACCESS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'s1_access'</span></em><a class="headerlink" href="#rs_server_common.authentication.Auth.S1_ACCESS" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
 <dl class="py function">
 <dt class="sig sig-object py" id="rs_server_common.authentication.apikey_security">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server_common.authentication.</span></span><span class="sig-name descname"><span class="pre">apikey_security</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apikey_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#rs_server_common.authentication.apikey_security" title="Link to this definition"></a></dt>
@@ -399,6 +366,30 @@
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="rs_server_common.authentication.apikey_validator">
+<span class="sig-prename descclassname"><span class="pre">rs_server_common.authentication.</span></span><span class="sig-name descname"><span class="pre">apikey_validator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">station</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">access_type</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.authentication.apikey_validator" title="Link to this definition"></a></dt>
+<dd><p>Decorator to validate API key access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>station</strong> (<em>str</em>) – The station name.</p></li>
+<li><p><strong>access_type</strong> (<em>str</em>) – The type of access.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>HTTPException</strong> – If the authorization key does not include the right role
+    to access the specified station.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Decorator function.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>function</p>
 </dd>
 </dl>
 </dd></dl>

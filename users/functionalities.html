@@ -446,6 +446,375 @@ Connection to S3 bucket is required, and should be written in the environmental 
 }</code></pre>
 </div>
 </div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_catalog"><span class="black">Catalog</span></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The following section groups all the endpoints a user can use to interact with a STAC-compatible database system.</p>
+</div>
+<hr>
+<div class="sect3">
+<h4 id="_stac_feature">STAC Feature:</h4>
+<div class="paragraph">
+<p>A STAC Feature represents a single geospatial asset or dataset. It encapsulates metadata describing the asset, including its spatial and temporal extent, properties, and links to associated data files. STAC Features provide a standardized way to describe individual geospatial datasets, making it easier to discover, access, and use such data across different platforms and tools.</p>
+</div>
+<hr>
+</div>
+<div class="sect3">
+<h4 id="_stac_collection">STAC Collection:</h4>
+<div class="paragraph">
+<p>A STAC Collection is a logical grouping of related STAC Features. It serves as a container for organizing and categorizing similar datasets based on common characteristics, themes, or purposes. Collections can represent various geospatial data themes such as satellite imagery, aerial photography, or land cover classifications. They provide a structured framework for managing and querying multiple related datasets collectively, simplifying data organization and access workflows.</p>
+</div>
+<hr>
+<div class="paragraph">
+<p>Using the endpoints described below, a user shall be able to:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Create / Read / Update / Delete a STAC feature.</p>
+</li>
+<li>
+<p>Create / Read / Update / Delete a collection of STAC features.</p>
+</li>
+<li>
+<p>Search details of existing catalogs, features and collections.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_create_a_collection"><span class="green">Create a collection</span></h3>
+<div class="paragraph">
+<p>This endpoint converts a request with a correct JSON body collection descriptor to a database entry.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">POST /catalog/collections</code></pre>
+</div>
+</div>
+<details>
+<summary class="title">Collection body example</summary>
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+    "id": "test_collection",
+    "type": "Collection",
+    "description": "Collection description",
+    "stac_version": "1.0.0",
+    "owner": "test_owner"
+}</code></pre>
+</div>
+</div>
+</div>
+</details>
+</div>
+<div class="sect2">
+<h3 id="_get_a_collection"><span class="green">Get a collection</span></h3>
+<div class="paragraph">
+<p>This endpoint returns a collection details based on parameters given in request.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">GET /catalog/collections/{ownerId:collectionId}</code></pre>
+</div>
+</div>
+<details>
+<summary class="title">Get Collection result body example</summary>
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+  "collections": [
+    {
+      "id": "test_collection",
+      "type": "Collection",
+      "owner": "test_owner",
+      "description": "Collection description",
+      "stac_version": "1.0.0",
+      "links": [
+        {
+          "rel": "items",
+          "type": "application/geo+json",
+          "href": "http://testserver/catalog/test_owner/collections/test_collection/items"
+        },
+        {
+          "rel": "parent",
+          "type": "application/json",
+          "href": "http://testserver/catalog/test_owner"
+        },
+        {
+          "rel": "root",
+          "type": "application/json",
+          "href": "http://testserver/catalog/test_owner"
+        },
+        {
+          "rel": "self",
+          "type": "application/json",
+          "href": "http://testserver/catalog/test_owner/collections/test_collection"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "rel": "root",
+      "type": "application/json",
+      "href": "http://testserver/catalog/test_owner"
+    },
+    {
+      "rel": "parent",
+      "type": "application/json",
+      "href": "http://testserver/catalog/test_owner"
+    },
+    {
+      "rel": "self",
+      "type": "application/json",
+      "href": "http://testserver/catalog/test_owner/collections"
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+</div>
+</details>
+</div>
+<div class="sect2">
+<h3 id="_update_a_collection"><span class="green">Update a collection</span></h3>
+<div class="paragraph">
+<p>This endpoint updates a collection from STAC if it exists and request body json data is STAC compatible.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">PUT /catalog/collections/{ownerId:collectionId}</code></pre>
+</div>
+</div>
+<details>
+<summary class="title">Updated collection JSON body example</summary>
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+    "id": "test_collection",
+    "type": "Collection",
+    "description": "Updated collection description",
+    "stac_version": "1.0.0",
+    "owner": "test_owner"
+}</code></pre>
+</div>
+</div>
+</div>
+</details>
+</div>
+<div class="sect2">
+<h3 id="_delete_a_collection"><span class="green">Delete a collection</span></h3>
+<div class="paragraph">
+<p>This endpoint deletes a collection from STAC if it exists and owner has right to perform this action.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">DELETE /catalog/collections/{ownerId:collectionId}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_create_a_feature"><span class="green">Create a Feature</span></h3>
+<div class="paragraph">
+<p>This endpoint converts a request with a correct JSON body feature descriptor to a database entry.
+RS-Server Backend also move assets between s3 storages and updates hypertext reference of each STAC Feature with s3 locations.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">POST /catalog/collections/{ownerId:collectionId}/items</code></pre>
+</div>
+</div>
+<details>
+<summary class="title">Feature body example</summary>
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+  "collection": "S1_L2",
+  "assets": {
+    "zarr": {
+      "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+      "roles": [
+        "data"
+      ]
+    },
+    "cog": {
+      "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+      "roles": [
+        "data"
+      ]
+    },
+    "ncdf": {
+      "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+      "roles": [
+        "data"
+      ]
+    }
+  },
+  "bbox": [0],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [[-94.6334839, 37.0595608],
+        [-94.6334839, 37.0332547],
+        [-94.6005249, 37.0332547],
+        [-94.6005249, 37.0595608],
+        [-94.6334839, 37.0595608]]
+    ]
+  },
+  "id": "S1SIWOCN_20220412T054447_0024_S139",
+  "links": [
+    {
+      "href": "./.zattrs.json",
+      "rel": "self",
+      "type": "application/json"
+    }
+  ],
+  "other_metadata": {},
+  "properties": {
+    "gsd": 0.5971642834779395,
+    "width": 2500,
+    "height": 2500,
+    "datetime": "2000-02-02T00:00:00Z",
+    "proj:epsg": 3857,
+    "orientation": "nadir"
+  },
+  "stac_extensions": [
+    "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
+  ],
+  "stac_version": "1.0.0",
+  "type": "Feature"
+}</code></pre>
+</div>
+</div>
+</div>
+</details>
+</div>
+<div class="sect2">
+<h3 id="_get_a_feature"><span class="green">Get a Feature</span></h3>
+<div class="paragraph">
+<p>This endpoint returns a feature details based on parameters given in request.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">GET /catalog/collections/{ownerId:collectionId}/items/{featureID}</code></pre>
+</div>
+</div>
+<details>
+<summary class="title">Get Feature result body example</summary>
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+  "id": "S1SIWOCN_20220412T054447_0024_S139",
+  "bbox": [0],
+  "type": "Feature",
+  "links": [
+    {
+      "rel": "collection",
+      "type": "application/json",
+      "href": "http://testserver/catalog/fixture_owner/collections/fixture_collection"
+    },
+    {
+      "rel": "parent",
+      "type": "application/json",
+      "href": "http://testserver/catalog/fixture_owner/collections/fixture_collection"
+    },
+    {
+      "rel": "root",
+      "type": "application/json",
+      "href": "http://testserver/catalog/fixture_owner"
+    },
+    {
+      "rel": "self",
+      "type": "application/geo+json",
+      "href": "http://testserver/catalog/fixture_owner/collections/fixture_collection/items/new_feature_id"
+    }
+  ],
+  "assets": {
+    "cog": {
+      "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.cog.zip/download/cog",
+      "roles": [
+        "data"
+      ],
+      "alternate": {
+        "s3": {
+          "href": "s3://catalog-bucket/correct_location/some_file.cog.zip"
+        }
+      }
+    },
+    "ncdf": {
+      "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.ncdf.zip/download/ncdf",
+      "roles": [
+        "data"
+      ],
+      "alternate": {
+        "s3": {
+          "href": "s3://catalog-bucket/correct_location/some_file.ncdf.zip"
+        }
+      }
+    },
+    "zarr": {
+      "href": "https://rs-server/catalog/fixture_owner/collections/fixture_collection/items/some_file.zarr.zip/download/zarr",
+      "roles": [
+        "data"
+      ],
+      "alternate": {
+        "s3": {
+          "href": "s3://catalog-bucket/correct_location/some_file.zarr.zip"
+        }
+      }
+    }
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [[-94.6334839, 37.0595608],
+        [-94.6334839, 37.0332547],
+        [-94.6005249, 37.0332547],
+        [-94.6005249, 37.0595608],
+        [-94.6334839, 37.0595608]]
+    ]
+  },
+  "collection": "fixture_collection",
+  "properties": {
+    "gsd": 0.5971642834779395,
+    "owner": "fixture_owner",
+    "width": 2500,
+    "height": 2500,
+    "datetime": "2000-02-02T00:00:00Z",
+    "proj:epsg": 3857,
+    "orientation": "nadir"
+  },
+  "stac_version": "1.0.0",
+  "stac_extensions": [
+    "https://stac-extensions.github.io/eopf/v1.0.0/schema.json"
+  ]
+}</code></pre>
+</div>
+</div>
+</div>
+</details>
+</div>
+<div class="sect2">
+<h3 id="_update_a_feature"><span class="green">Update a Feature</span></h3>
+<div class="paragraph">
+<p>This endpoint updates content of a feature is request JSON data is completely STAC-compatible.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">PUT /catalog/collections/{ownerId:collectionId}/items/{featureID}</code></pre>
+</div>
+</div>
 <div id="navigation">
 <table class="tableblock frame-none grid-none stretch">
 <colgroup>
@@ -467,10 +836,9 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </div>
 </div>
 </div>
-</div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-03-27 14:49:55 UTC
+Last updated 2024-04-04 10:09:07 UTC
 </div>
 </div>
 </body>

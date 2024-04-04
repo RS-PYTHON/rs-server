@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "RS-Server",
-    "version": "0.0.0.post1.dev0+e17aa2e"
+    "version": "0.1a7"
   },
   "paths": {
     "/adgs/aux/search": {
@@ -433,6 +433,17 @@
           }
         ],
         "parameters": [
+          {
+            "name": "station",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "CADIP station identifier (MTI, SGS, MPU, INU, etc)",
+              "title": "Station"
+            },
+            "description": "CADIP station identifier (MTI, SGS, MPU, INU, etc)"
+          },
           {
             "name": "name",
             "in": "query",
