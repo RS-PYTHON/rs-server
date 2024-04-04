@@ -22,6 +22,22 @@ None
 
 None
 
+== [0.1a7] - 2024-04-03
+
+=== Added
+
+* RSPY-86: Deploy security stack on K8S cluster
+* RSPY-122: Deploy RS-Server on K8S cluster
+* RSPY-129: Deploy prometheus and node_exporter on K8S cluster
+* RSPY-135: Setup Swagger/OpenAPI documentation aggregation frontend
+* RSPY-137: Link RS-Server frontend with Backend Catalog endpoints (Without UAC) - Part 3
+* RSPY-152: Simplify Catalog endpoints with "ownerId:collectionId"
+* RSPY-157: Update the datetimes STAC mapping for ADGS & CADIP
+* RSPY-163: Implement access control to the CADIP stations (with UAC)
+* RSPY-164: Implement access control to the ADGS center (with UAC)
+* RSPY-169: Project versioning and naming
+* RSPY-171: [URGENT] Replace Miniconda by Miniforge
+
 == [0.1a6] - 2024-03-14
 
 === Added
