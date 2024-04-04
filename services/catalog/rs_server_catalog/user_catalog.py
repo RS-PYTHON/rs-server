@@ -14,6 +14,7 @@ The middleware:
 """
 
 import json
+import logging
 import os
 import re
 from typing import Any
@@ -459,11 +460,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                     api_key = request.headers["x-api-key"]
                     auth_roles, _, user_login = await apikey_security(request, api_key)
                     content = self.manage_landing_page(request, auth_roles, user_login, content)
-                finally:
-                    return JSONResponse(  # pylint: disable=return-in-finally, lost-exception
-                        content,
-                        status_code=response.status_code,
-                    )
+                except:  # pylint: disable=bare-except
+                    logging.exception("apikey not available or local mode")
+                return JSONResponse(
+                    content,
+                    status_code=response.status_code,
+                )
             if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
                 if user:
                     content["collections"] = filter_collections(content["collections"], user)
