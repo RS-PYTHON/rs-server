@@ -625,7 +625,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
             # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
             mocker.patch(
-                "rs_server_catalog.user_catalog.UserCatalogMiddleware.update_stac_item_publication",
+                "rs_server_catalog.user_catalog.UserCatalog.update_stac_item_publication",
                 return_value={},
             )
             with pytest.raises(fastapi.HTTPException):
