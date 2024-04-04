@@ -7,7 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER
-from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK
 
 # Dummy url for the uac manager check endpoint
@@ -17,33 +16,26 @@ RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 VALID_APIKEY = "VALID_API_KEY"
 WRONG_APIKEY = "WRONG_APIKEY"
 
-logger = Logging.default(__name__)
-
-
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
 
 # @pytest.mark.skip gives an error, I don't know why
 # @pytest.mark.skip(reason="Errors on certain endpoints and when reloading the fastapi app")
-async def te_st_authentification(monkeypatch, httpx_mock: HTTPXMock):
+async def test_authentification(monkeypatch, httpx_mock: HTTPXMock):
     """
     Test that the http endpoints are protected and return 403 if not authenticated.
     Set RSPY_LOCAL_MODE to False before running the fastapi app.
     """
-
     try:
         import rs_server_catalog
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setenv("RSPY_LOCAL_MODE", "False")
             reload(rs_server_catalog.main)
-        with TestClient(rs_server_catalog.main.app) as client:
-            await sub_authentication(client, monkeypatch, httpx_mock)
-    finally:
-        try:
-            reload(rs_server_catalog.main)
-        except Exception as exception:
-            logger.error(exception)  # TODO: why do we have exceptions when closing the database ?
+        with TestClient(rs_server_catalog.main.app) as local_client:
+            await sub_authentication(local_client, monkeypatch, httpx_mock)
+    except Exception:
+        assert False
 
 
 async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
