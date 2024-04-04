@@ -68,19 +68,17 @@ class EodagProvider(Provider):
         Raises:
             Exception: If the search encounters an error or fails, an exception is raised.
         """
-        if kwargs:
-            if kwargs["id"]:
-                if isinstance(kwargs["id"], list):
-                    mapped_search_args = {"SessionIds": ", ".join(kwargs["id"])}
-                elif isinstance(kwargs["id"], str):
-                    mapped_search_args = {"SessionId": kwargs["id"]}
-                kwargs.pop("id")  # clear kwargs to still pass them to eodag
-            if kwargs["platform"]:
-                if isinstance(kwargs["platform"], list):
-                    mapped_search_args = {"platforms": ", ".join(kwargs["platform"])}
-                elif isinstance(kwargs["platform"], str):
-                    mapped_search_args = {"platform": kwargs["platform"]}
-                kwargs.pop("platform")  # clear kwargs to still pass them to eodag
+        if kwargs.pop("sessions_search", False):
+            if session_id := kwargs.pop("id", None):
+                if isinstance(session_id, list):
+                    mapped_search_args = {"SessionIds": ", ".join(session_id)}
+                elif isinstance(session_id, str):
+                    mapped_search_args = {"SessionId": session_id}
+            if platform := kwargs.pop("platform", None):
+                if isinstance(platform, list):
+                    mapped_search_args = {"platforms": ", ".join(platform)}
+                elif isinstance(platform, str):
+                    mapped_search_args = {"platform": platform}
             if between.start and between.end:
                 mapped_search_args = {
                     "startTimeFromAscendingNode": between.start,

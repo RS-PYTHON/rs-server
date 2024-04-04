@@ -142,6 +142,7 @@ def search_session(
             TimeRange(start_date, stop_date),
             id=id,  # pylint: disable=redefined-builtin
             platform=platform,
+            sessions_search=True,
         )
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
