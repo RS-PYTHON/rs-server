@@ -460,8 +460,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                     api_key = request.headers["x-api-key"]
                     auth_roles, _, user_login = await apikey_security(request, api_key)
                     content = self.manage_landing_page(request, auth_roles, user_login, content)
-                except:  # pylint: disable=bare-except
-                    logging.exception("apikey not available or local mode")
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logging.exception("apikey not available or local mode %e", e)
                 return JSONResponse(
                     content,
                     status_code=response.status_code,
