@@ -8,7 +8,7 @@ import json
 import os.path as osp
 import traceback
 from pathlib import Path
-from typing import Annotated, List
+from typing import Annotated
 
 import requests
 import sqlalchemy
@@ -114,20 +114,48 @@ def search_products(  # pylint: disable=too-many-locals
 def search_session(
     request: Request,  # pylint: disable=unused-argument
     station,
-    id=None,
+    id=None,  # pylint: disable=redefined-builtin
     platform=None,
     start_date=None,
     stop_date=None,
-):
+):  # pylint: disable=too-many-arguments
+    """Endpoint to retrieve list of sessions from any CADIP station.
+
+    Args:
+        station (str): CADIP station identifier (MTI, SGS, MPU, INU, etc)
+        id (str, list-like-str): Session identifier
+            (eg: "S1A_20170501121534062343" or "S1A_20170501121534062343, S1A_20240328185208053186")
+        platform (str, list-like-str): Satellite identifier
+            (eg: "S1A" or "S1A, S1B")
+        start_date (str): Start date of the time interval
+        stop_date (str): Stop date of the time interval
+
+    """
     # Tbd - change list split with typing
     id = id.split(",") if id else None
-    platform = platform[0].split(",") if platform else None
+    platform = platform.split(",") if platform else None
     start_date, stop_date = (
-        validate_inputs_format(f"{start_date / stop_date}") if start_date and stop_date else None
+        validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else None
     ), None
     try:
-        products = init_cadip_provider(f"{station}_session").session_search(id, platform, start_date, stop_date)
-        # map products to stac class to be added here
-        return HTTPException(status_code=status.HTTP_200_OK, detail="OK")
-    except:
-        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        products = init_cadip_provider(f"{station}_session").search(
+            TimeRange(start_date, stop_date),
+            id=id,  # pylint: disable=redefined-builtin
+            platform=platform,
+        )
+        feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
+        stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
+        with (
+            open(feature_template_path, encoding="utf-8") as template,
+            open(stac_mapper_path, encoding="utf-8") as stac_map,
+        ):
+            feature_template = json.loads(template.read())
+            stac_mapper = json.loads(stac_map.read())
+            cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
+            return cadip_sessions_collection
+    except [OSError, FileNotFoundError] as exception:
+        return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
+    except json.JSONDecodeError as exception:
+        return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"JSON Map Error: {exception}")
+    except ValueError:
+        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unable to map OData to STAC.")

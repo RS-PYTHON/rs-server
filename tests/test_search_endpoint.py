@@ -332,13 +332,33 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
 
 @pytest.mark.unit
 def test_valid_sessions_endpoint_request_list(client):
+    """Test cases for all valid endpoints requests of cadip session endpoint"""
+    # Test with a list of 2 SessionIds
     assert (
         client.get("/cadip/cadip/session?id=S1A_20170501121534062343,S1A_20240328185208053186").status_code
         == status.HTTP_200_OK
     )
+    # TC001: Search one session only with a single id (ex: id=S1A_20240312192515052953).
+    # Check that response return 1 result in STAC format for the given id.
     assert client.get("/cadip/cadip/session?id=S1A_20240328185208053186").status_code == status.HTTP_200_OK
+    assert client.get("/cadip/cadip/session?id=S1A_20240328185208053186").json()["numberMatched"] == 1
+
+    # Test with a single platform
+    assert client.get("/cadip/cadip/session?id=S1A_20240328185208053186&platform=S1A").status_code == status.HTTP_200_OK
+    # Test with a list of session ids and list of platforms
+    mfsid_endpoint = "/cadip/cadip/session?id=S1A_20240328185208053186,S1A_20240328185208053186&platform=S1A,S2B"
+    assert client.get(mfsid_endpoint).status_code == status.HTTP_200_OK
+    # Test only with a list of platforms
     assert client.get("/cadip/cadip/session?platform=S1A, S2B").status_code == status.HTTP_200_OK
-
+    # Test with single platform
     assert client.get("/cadip/cadip/session?platform=S2B").status_code == status.HTTP_200_OK
-
+    # Test passing multiple platforms (should be similar to platform=S2B, S1A
     assert client.get("/cadip/cadip/session?platform=S2B&platform=S1A").status_code == status.HTTP_200_OK
+    # TC002: Search several sessions by satellites and date
+    # (ex: platform=S1A,S1B&start_date=2024-03-12T08:00:00.000Z&stop_date=2024-03-12T12:00:00.000Z.)
+    # Check that response returns several results in STAC format for the sessions that match the criteria
+    # (at least two in the sample data).
+    # Test with stop_date, start_date and platform
+    mf_endpoint = "/cadip/cadip/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-16T12:00:00Z&platform=S1A"
+    assert client.get(mf_endpoint).status_code == status.HTTP_200_OK
+    assert client.get(mf_endpoint).json()["numberMatched"] > 1

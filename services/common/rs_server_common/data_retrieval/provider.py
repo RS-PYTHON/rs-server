@@ -21,6 +21,9 @@ class TimeRange:
         """
         return self.end - self.start
 
+    def __bool__(self) -> bool:
+        return self.start is not None and self.end is not None
+
 
 @dataclass
 class Product:
@@ -64,26 +67,12 @@ class Provider(ABC):
             The files found indexed by file id. Specific to each provider.
 
         """
-        if between.duration() == timedelta(0):
-            return []
-        if between.duration() < timedelta(0):
-            raise SearchProductFailed(f"Search timerange is inverted : ({between.start} -> {between.end})")
+        if between:
+            if between.duration() == timedelta(0):
+                return []
+            if between.duration() < timedelta(0):
+                raise SearchProductFailed(f"Search timerange is inverted : ({between.start} -> {between.end})")
         return self._specific_search(between, **kwargs)
-
-    def session_search(self, sessionId: str, platform: str, start_date: datetime, stop_date: datetime, **kwargs):
-        # some checks to be implemented here
-        # Transform sessionID and platform to SessionIds / SessionID or platforms / platform
-        if sessionId:
-            if isinstance(sessionId, list):
-                mapped_search_args = dict(SessionIds=", ".join(sessionId))
-            elif isinstance(sessionId, str):
-                mapped_search_args = dict(SessionId=sessionId)
-        if platform:
-            if isinstance(platform, list):
-                mapped_search_args = dict(platforms=", ".join(platform))
-            elif isinstance(platform, str):
-                mapped_search_args = dict(platform=platform)
-        return self._specific_session_search(mapped_search_args)
 
     @abstractmethod
     def _specific_search(self, between: TimeRange) -> Any:

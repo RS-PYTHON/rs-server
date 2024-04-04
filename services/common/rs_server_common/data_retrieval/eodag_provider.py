@@ -68,17 +68,33 @@ class EodagProvider(Provider):
         Raises:
             Exception: If the search encounters an error or fails, an exception is raised.
         """
-        products, _ = self.client.search(
-            start=str(between.start),
-            end=str(between.end),
-            provider=self.provider,
-            raise_errors=True,
-            **kwargs,
-        )
-        return products
-
-    def _specific_session_search(self, mapped_search_args, **kwargs) -> SearchResult:
-        products, _ = self.client.search(**mapped_search_args, provider=self.provider, raise_errors=True, **kwargs)
+        if kwargs:
+            if kwargs["id"]:
+                if isinstance(kwargs["id"], list):
+                    mapped_search_args = {"SessionIds": ", ".join(kwargs["id"])}
+                elif isinstance(kwargs["id"], str):
+                    mapped_search_args = {"SessionId": kwargs["id"]}
+                kwargs.pop("id")  # clear kwargs to still pass them to eodag
+            if kwargs["platform"]:
+                if isinstance(kwargs["platform"], list):
+                    mapped_search_args = {"platforms": ", ".join(kwargs["platform"])}
+                elif isinstance(kwargs["platform"], str):
+                    mapped_search_args = {"platform": kwargs["platform"]}
+                kwargs.pop("platform")  # clear kwargs to still pass them to eodag
+            if between.start and between.end:
+                mapped_search_args = {
+                    "startTimeFromAscendingNode": between.start,
+                    "completionTimeFromAscendingNode": between.end,
+                }
+            products, _ = self.client.search(**mapped_search_args, provider=self.provider, raise_errors=True, **kwargs)
+        else:
+            products, _ = self.client.search(
+                start=str(between.start),
+                end=str(between.end),
+                provider=self.provider,
+                raise_errors=True,
+                **kwargs,
+            )
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:
