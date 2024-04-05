@@ -4,11 +4,12 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
+# pylint: disable=redefined-builtin
 import json
 import os.path as osp
 import traceback
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, List, Union
 
 import requests
 import sqlalchemy
@@ -114,10 +115,10 @@ def search_products(  # pylint: disable=too-many-locals
 def search_session(
     request: Request,  # pylint: disable=unused-argument
     station,
-    id=None,  # pylint: disable=redefined-builtin
-    platform=None,
-    start_date=None,
-    stop_date=None,
+    id: Annotated[Union[str, None], Query(description="SessionID filter e.g 'S1A_20170501121534062343")] = None,
+    platform: Annotated[Union[str, None], Query(description="Satellite filter e.g 'S1A")] = None,
+    start_date: Annotated[Union[str, None], Query(description="Start time e.g. '2024-01-01T00:00:00Z'")] = None,
+    stop_date: Annotated[Union[str, None], Query(description="Stop time e.g. '2024-01-01T00:00:00Z'")] = None,
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Endpoint to retrieve list of sessions from any CADIP station.
 
@@ -132,15 +133,15 @@ def search_session(
 
     """
     # Tbd - change list split with typing
-    id = id.split(",") if id else None
-    platform = platform.split(",") if platform else None
+    session_id: Union[List[str], None] = id.split(",") if id else None
+    satellite: Union[List[str], None] = platform.split(",") if platform else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
 
     try:
         products = init_cadip_provider(f"{station}_session").search(
             TimeRange(*time_interval),
-            id=id,  # pylint: disable=redefined-builtin
-            platform=platform,
+            id=session_id,  # pylint: disable=redefined-builtin
+            platform=satellite,
             sessions_search=True,
         )
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
