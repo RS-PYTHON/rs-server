@@ -54,7 +54,7 @@ class UserCatalog:
         """Constructor, called from the middleware"""
 
         self.handler: S3StorageHandler = None
-        self.temp_bucket_name: str = None
+        self.temp_bucket_name: str = ""
         self.request_ids: dict[Any, Any] = {}
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
@@ -566,7 +566,7 @@ class UserCatalog:
         return response
 
 
-class UserCatalogMiddleware(BaseHTTPMiddleware):
+class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """The user catalog middleware."""
 
     async def dispatch(self, request, call_next):
@@ -574,13 +574,5 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         # NOTE: the same 'self' instance is reused by all requests so it must
         # not be used by several requests at the same time or we'll have conflicts.
-        # Check it with
-        try:
-            self.counter += 1
-        except Exception:
-            self.counter = 1
-        print(f"The is the {self.counter} time that the same UserCatalogMiddleware is used")
-        # TODO: remove these above lines
-
         # Do everything in a specific object.
         return await UserCatalog().dispatch(request, call_next)
