@@ -356,26 +356,27 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         Returns:
             dict: The list of all collections accessible by the user.
         """
-        accessible_collections = []
         catalog_read_right_pattern = (
             r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
         )
-        for role in auth_roles:
-            if match := re.match(catalog_read_right_pattern, role):
-                groups = match.groupdict()
-                if groups["right_type"] == "read":  # The user calling the endpoint as read access to:
-                    if groups["collection_id"] == "*":  # The user calling the endpoint has access to the entire catalog
-                        new_accessible_collections = filter_collections(collections, groups["owner_id"])
-                        accessible_collections += new_accessible_collections
-                    else:
-                        # The user calling the endpoint has access
-                        # to a specific collection from the catalog group["owner_id"]
-                        new_accessible_collection = filter_collections(
-                            collections,
-                            f"{groups['owner_id']}_{groups['collection_id']}",
-                        )
-                        accessible_collections += new_accessible_collection
-        accessible_collections += filter_collections(collections, user_login)
+        accessible_collections = []
+
+        # Filter roles for read access
+        read_roles = [role for role in auth_roles if re.match(catalog_read_right_pattern, role)]
+
+        for role in read_roles:
+            groups = re.match(catalog_read_right_pattern, role).groupdict()
+            if groups["right_type"] == "read":
+                owner_id = groups["owner_id"]
+                collection_id = groups["collection_id"]
+                accessible_collections.extend(
+                    filter_collections(
+                        collections,
+                        owner_id if collection_id == "*" else f"{owner_id}_{collection_id}",
+                    ),
+                )
+
+        accessible_collections.extend(filter_collections(collections, user_login))
         return accessible_collections
 
     async def manage_get_response(
