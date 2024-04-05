@@ -5,12 +5,16 @@ name: Publish wheels and Docker images
 # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
 # Note: This event will only trigger a workflow run if the workflow file is on the default branch.
 
-# Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
+# Run workflow only ...
 on:
+  pull_request: # pushes on pull requests
+    types: [opened, synchronize, reopened]
   push:
+    branches:
+      - feat/test-demos-from-ci # pushes on the 'develop' branch # TODO use develop instead
     tags:
-      - '**'
-  workflow_dispatch:
+      - '**' # for new git tags (including hierarchical tags like v1.0/beta)
+  workflow_dispatch: # manually
     inputs:
       docker_tag:
         description: Tag the docker images as e.g. 'latest' or 'feat-rspy123'
@@ -23,270 +27,319 @@ env:
 
 jobs:
 
-  ##################
-  # Publish wheels #
-  ##################
 
-  services-common-whl:
+  set-env:
     runs-on: ubuntu-latest
-    name: "'services/common' wheel"
     outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
+      docker_tag: ${{ steps.set-env.outputs.docker_tag }}
+      branch_name: ${{ steps.set-env.outputs.branch_name }}
     steps:
-      - uses: actions/checkout@v4
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
-        with:
-          package_directory: services/common
-
-  services-adgs-whl:
-    runs-on: ubuntu-latest
-    name: "'services/adgs' wheel"
-    outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
-    steps:
-      - uses: actions/checkout@v4
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/adgs/pyproject.toml
-          done
-        shell: bash
-
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
-        with:
-          package_directory: services/adgs
-
-  services-cadip-whl:
-    runs-on: ubuntu-latest
-    name: "'services/cadip' wheel"
-    outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
-    steps:
-      - uses: actions/checkout@v4
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/cadip/pyproject.toml
-          done
-        shell: bash
-
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
-        with:
-          package_directory: services/cadip
-
-  services-catalog-whl:
-    runs-on: ubuntu-latest
-    name: "'services/catalog' wheel"
-    outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
-    steps:
-      - uses: actions/checkout@v4
-
-      # TEMP for https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-155
-      # For line: { include = "rs_server_common", from = "../common" },
-      # Copy the rs_server_common directory and remove the from=../common part.
-      - run: |
-          set -x
-          cd services/catalog
-          cp -r ../common/rs_server_common/ .
-          sed -i "s|^\(\s*\).*include.*rs_server_common.*$|\1{include=\"rs_server_common\"},|g" pyproject.toml
-
-          # Also copy the common config files
-          mkdir -p ./config
-          cp -rf ../common/config/* ./config
-        shell: bash
-
-      # NOTE: when RSPY-155 is resolved, remove the above step and uncomment the below step.
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      # - run: |
-      #     set -x
-      #     for dep in rs-server-common; do
-      #       sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/adgs/pyproject.toml
-      #     done
-      #   shell: bash
-
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
-        with:
-          package_directory: services/catalog
-
-  services-frontend-whl:
-    runs-on: ubuntu-latest
-    name: "'services/frontend' wheel"
-    outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/install-python
-
-      # To pull ghcr.io/rs-python/apikey-manager
-      # TODO: to be changed when the apikey manager will have its own container registry.
-      - name: Log into Docker registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate the aggregated openapi.json/swagger
+      - id: set-env
         run: |
           set -x
-          pip install poetry # we need poetry for the sub-projects, but no need to install the root project
-          ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
+
+          # Get the current branch name (or source branch for a pull request)
+          if [[ ${{ github.event_name }} == pull_request ]]; then
+            branch_name=${{ github.event.pull_request.head.ref }}
+          else
+            branch_name=${{ github.ref_name }}
+          fi
+
+          # Determine the docker tag to set to new docker images.
+          # If it's set manually, keep it
+          if [[ ${{ github.event.inputs.docker_tag }}test != test ]]; then # test not empty
+            docker_tag=${{ github.event.inputs.docker_tag }}
+
+          # For a pull request, use the branch name
+          elif [[ ${{ github.event_name }} == pull_request ]]; then
+            docker_tag="$branch_name"
+
+          # For a push on develop or a tag, use the docker tag :latest
+          else
+            docker_tag=latest
+          fi
+
+          # Replace special characters by -
+          docker_tag=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$docker_tag")
+
+          # Save values
+          echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+          echo "docker_tag=$docker_tag" >> $GITHUB_OUTPUT
         shell: bash
 
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
-        with:
-          package_directory: services/frontend
-
-  #########################
-  # Publish Docker images #
-  #########################
-
-  services-adgs-img:
+  test:
     runs-on: ubuntu-latest
-    name: "'services/adgs' Docker image"
-    needs: [services-common-whl, services-adgs-whl]
-    permissions: write-all
-    outputs:
-      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+    needs: [set-env]
     steps:
-      - uses: actions/checkout@v4
+      - run: echo "docker_tag=${{ needs.set-env.outputs.docker_tag }} branch_name=${{ needs.set-env.outputs.branch_name }}"
+        shell: bash
 
-      # Download .whl files into ./whl/
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-common-whl.outputs.package_name }}
-          path: ./whl
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-adgs-whl.outputs.package_name }}
-          path: ./whl
 
-      - id: publish-docker
-        uses: ./.github/actions/publish-docker
-        with:
-          dockerfile: ./services/adgs/.github/Dockerfile
-          build_context_path: ./whl
-          image_suffix: -adgs
-          version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ github.event.inputs.docker_tag }}
 
-  services-cadip-img:
-    runs-on: ubuntu-latest
-    name: "'services/cadip' Docker image"
-    needs: [services-common-whl, services-cadip-whl]
-    permissions: write-all
-    outputs:
-      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
-    steps:
-      - uses: actions/checkout@v4
+  # ##################
+  # # Publish wheels #
+  # ##################
 
-      # Download .whl files into ./whl/
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-common-whl.outputs.package_name }}
-          path: ./whl
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-cadip-whl.outputs.package_name }}
-          path: ./whl
+  # services-common-whl:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/common' wheel"
+  #   outputs:
+  #     version_name: ${{ steps.publish-wheel.outputs.version_name }}
+  #     package_name: ${{ steps.publish-wheel.outputs.package_name }}
+  #   continue-on-error: true # TODO remove when the right python repo will be set
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - id: publish-wheel
+  #       uses: ./.github/actions/publish-wheel
+  #       with:
+  #         package_directory: services/common
 
-      - id: publish-docker
-        uses: ./.github/actions/publish-docker
-        with:
-          dockerfile: ./services/cadip/.github/Dockerfile
-          build_context_path: ./whl
-          image_suffix: -cadip
-          version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ github.event.inputs.docker_tag }}
+  # services-adgs-whl:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/adgs' wheel"
+  #   outputs:
+  #     version_name: ${{ steps.publish-wheel.outputs.version_name }}
+  #     package_name: ${{ steps.publish-wheel.outputs.package_name }}
+  #   continue-on-error: true # TODO remove when the right python repo will be set
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-  services-catalog-img:
-    runs-on: ubuntu-latest
-    name: "'services/catalog' Docker image"
-    # TODO: this has to be activated when Jira rspy-155 is solved
-    #needs: [services-common-whl, services-catalog-whl]
-    # TODO: this has to be deleted when Jira rspy-155 is solved
-    needs: [services-catalog-whl]
-    permissions: write-all
-    outputs:
-      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
-    steps:
-      - uses: actions/checkout@v4
-      # Download .whl files into ./whl/
-      # TODO: the following 5 comments have to be activated when Jira rspy-155 is solved
-      #- name: Download .whl dependencies
-      #  uses: actions/download-artifact@v4
-      #  with:
-      #    name: ${{ needs.services-common-whl.outputs.package_name }}
-      #    path: ./whl
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-catalog-whl.outputs.package_name }}
-          path: ./whl
+  #     # Hack the pyproject.toml. TODO: find a cleaner to do this.
+  #     # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+  #     - run: |
+  #         set -x
+  #         for dep in rs-server-common; do
+  #           sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/adgs/pyproject.toml
+  #         done
+  #       shell: bash
 
-      - id: publish-docker
-        uses: ./.github/actions/publish-docker
-        with:
-          dockerfile: ./services/catalog/.github/Dockerfile
-          build_context_path: ./whl
-          image_suffix: -catalog
-          version_name: ${{ needs.services-catalog-whl.outputs.version_name }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ github.event.inputs.docker_tag }}
+  #     - id: publish-wheel
+  #       uses: ./.github/actions/publish-wheel
+  #       with:
+  #         package_directory: services/adgs
 
-  services-frontend-img:
-    runs-on: ubuntu-latest
-    name: "'services/frontend' Docker image"
-    needs: [services-frontend-whl]
-    permissions: write-all
-    outputs:
-      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
-    steps:
-      - uses: actions/checkout@v4
+  # services-cadip-whl:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/cadip' wheel"
+  #   outputs:
+  #     version_name: ${{ steps.publish-wheel.outputs.version_name }}
+  #     package_name: ${{ steps.publish-wheel.outputs.package_name }}
+  #   continue-on-error: true # TODO remove when the right python repo will be set
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      # Download .whl files into ./whl/
-      - name: Download .whl dependencies
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.services-frontend-whl.outputs.package_name }}
-          path: ./whl
+  #     # Hack the pyproject.toml. TODO: find a cleaner to do this.
+  #     # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+  #     - run: |
+  #         set -x
+  #         for dep in rs-server-common; do
+  #           sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/cadip/pyproject.toml
+  #         done
+  #       shell: bash
 
-      - id: publish-docker
-        uses: ./.github/actions/publish-docker
-        with:
-          dockerfile: ./services/frontend/.github/Dockerfile
-          build_context_path: ./whl
-          image_suffix: -frontend
-          version_name: ${{ needs.services-frontend-whl.outputs.version_name }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ github.event.inputs.docker_tag }}
+  #     - id: publish-wheel
+  #       uses: ./.github/actions/publish-wheel
+  #       with:
+  #         package_directory: services/cadip
+
+  # services-catalog-whl:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/catalog' wheel"
+  #   outputs:
+  #     version_name: ${{ steps.publish-wheel.outputs.version_name }}
+  #     package_name: ${{ steps.publish-wheel.outputs.package_name }}
+  #   continue-on-error: true # TODO remove when the right python repo will be set
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     # TEMP for https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-155
+  #     # For line: { include = "rs_server_common", from = "../common" },
+  #     # Copy the rs_server_common directory and remove the from=../common part.
+  #     - run: |
+  #         set -x
+  #         cd services/catalog
+  #         cp -r ../common/rs_server_common/ .
+  #         sed -i "s|^\(\s*\).*include.*rs_server_common.*$|\1{include=\"rs_server_common\"},|g" pyproject.toml
+
+  #         # Also copy the common config files
+  #         mkdir -p ./config
+  #         cp -rf ../common/config/* ./config
+  #       shell: bash
+
+  #     # NOTE: when RSPY-155 is resolved, remove the above step and uncomment the below step.
+
+  #     # Hack the pyproject.toml. TODO: find a cleaner to do this.
+  #     # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+  #     # - run: |
+  #     #     set -x
+  #     #     for dep in rs-server-common; do
+  #     #       sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/adgs/pyproject.toml
+  #     #     done
+  #     #   shell: bash
+
+  #     - id: publish-wheel
+  #       uses: ./.github/actions/publish-wheel
+  #       with:
+  #         package_directory: services/catalog
+
+  # services-frontend-whl:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/frontend' wheel"
+  #   outputs:
+  #     version_name: ${{ steps.publish-wheel.outputs.version_name }}
+  #     package_name: ${{ steps.publish-wheel.outputs.package_name }}
+  #   continue-on-error: true # TODO remove when the right python repo will be set
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/actions/install-python
+
+  #     # To pull ghcr.io/rs-python/apikey-manager
+  #     # TODO: to be changed when the apikey manager will have its own container registry.
+  #     - name: Log into Docker registry
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ghcr.io
+  #         username: ${{ github.actor }}
+  #         password: ${{ secrets.GITHUB_TOKEN }}
+
+  #     - name: Generate the aggregated openapi.json/swagger
+  #       run: |
+  #         set -x
+  #         pip install poetry # we need poetry for the sub-projects, but no need to install the root project
+  #         ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
+  #       shell: bash
+
+  #     - id: publish-wheel
+  #       uses: ./.github/actions/publish-wheel
+  #       with:
+  #         package_directory: services/frontend
+
+  # #########################
+  # # Publish Docker images #
+  # #########################
+
+  # services-adgs-img:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/adgs' Docker image"
+  #   needs: [services-common-whl, services-adgs-whl]
+  #   permissions: write-all
+  #   outputs:
+  #     docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     # Download .whl files into ./whl/
+  #     - name: Download .whl dependencies
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ needs.services-common-whl.outputs.package_name }}
+  #         path: ./whl
+  #     - name: Download .whl dependencies
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ needs.services-adgs-whl.outputs.package_name }}
+  #         path: ./whl
+
+  #     - id: publish-docker
+  #       uses: ./.github/actions/publish-docker
+  #       with:
+  #         dockerfile: ./services/adgs/.github/Dockerfile
+  #         build_context_path: ./whl
+  #         image_suffix: -adgs
+  #         version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         docker_tag: ${{ github.event.inputs.docker_tag }}
+
+  # services-cadip-img:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/cadip' Docker image"
+  #   needs: [services-common-whl, services-cadip-whl]
+  #   permissions: write-all
+  #   outputs:
+  #     docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     # Download .whl files into ./whl/
+  #     - name: Download .whl dependencies
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ needs.services-common-whl.outputs.package_name }}
+  #         path: ./whl
+  #     - name: Download .whl dependencies
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ needs.services-cadip-whl.outputs.package_name }}
+  #         path: ./whl
+
+  #     - id: publish-docker
+  #       uses: ./.github/actions/publish-docker
+  #       with:
+  #         dockerfile: ./services/cadip/.github/Dockerfile
+  #         build_context_path: ./whl
+  #         image_suffix: -cadip
+  #         version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         docker_tag: ${{ github.event.inputs.docker_tag }}
+
+  # services-catalog-img:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/catalog' Docker image"
+  #   # TODO: this has to be activated when Jira rspy-155 is solved
+  #   #needs: [services-common-whl, services-catalog-whl]
+  #   # TODO: this has to be deleted when Jira rspy-155 is solved
+  #   needs: [services-catalog-whl]
+  #   permissions: write-all
+  #   outputs:
+  #     docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     # Download .whl files into ./whl/
+  #     # TODO: the following 5 comments have to be activated when Jira rspy-155 is solved
+  #     #- name: Download .whl dependencies
+  #     #  uses: actions/download-artifact@v4
+  #     #  with:
+  #     #    name: ${{ needs.services-common-whl.outputs.package_name }}
+  #     #    path: ./whl
+  #     - name: Download .whl dependencies
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ needs.services-catalog-whl.outputs.package_name }}
+  #         path: ./whl
+
+  #     - id: publish-docker
+  #       uses: ./.github/actions/publish-docker
+  #       with:
+  #         dockerfile: ./services/catalog/.github/Dockerfile
+  #         build_context_path: ./whl
+  #         image_suffix: -catalog
+  #         version_name: ${{ needs.services-catalog-whl.outputs.version_name }}
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         docker_tag: ${{ github.event.inputs.docker_tag }}
+
+  # services-frontend-img:
+  #   runs-on: ubuntu-latest
+  #   name: "'services/frontend' Docker image"
+  #   needs: [services-frontend-whl]
+  #   permissions: write-all
+  #   outputs:
+  #     docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     # Download .whl files into ./whl/
+  #     - name: Download .whl dependencies
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ needs.services-frontend-whl.outputs.package_name }}
+  #         path: ./whl
+
+  #     - id: publish-docker
+  #       uses: ./.github/actions/publish-docker
+  #       with:
+  #         dockerfile: ./services/frontend/.github/Dockerfile
+  #         build_context_path: ./whl
+  #         image_suffix: -frontend
+  #         version_name: ${{ needs.services-frontend-whl.outputs.version_name }}
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         docker_tag: ${{ github.event.inputs.docker_tag }}
