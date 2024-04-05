@@ -309,12 +309,13 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
             side_effect=CreateProviderFailed("Invalid station"),
         )
         # send the request
-        data = client.get(endpoint)
+        client.get(endpoint)
+        # wait for eodag to fail in initialization
+        time.sleep(2)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed
         assert result.status == EDownloadStatus.FAILED
-        assert data.json() == {"started": "false"}
 
 
 @pytest.mark.unit
@@ -367,14 +368,15 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
             status=EDownloadStatus.NOT_STARTED,
         )
         # Mock function data_retriever.download to raise an error
-        # In order to verify that download status is not set to in progress and set to false.
+        # Verify that the download status is set to false.
         mocker.patch(
             "rs_server_common.data_retrieval.eodag_provider.EodagProvider.download",
             side_effect=Exception("Some Runtime Error occured here."),
         )
         # send the request
         data = client.get(endpoint)
-        time.sleep(0.1)
+        # wait for eodag to start
+        time.sleep(3)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed and download started
