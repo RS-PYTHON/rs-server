@@ -365,16 +365,17 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         read_roles = [role for role in auth_roles if re.match(catalog_read_right_pattern, role)]
 
         for role in read_roles:
-            groups = re.match(catalog_read_right_pattern, role).groupdict()
-            if groups["right_type"] == "read":
-                owner_id = groups["owner_id"]
-                collection_id = groups["collection_id"]
-                accessible_collections.extend(
-                    filter_collections(
-                        collections,
-                        owner_id if collection_id == "*" else f"{owner_id}_{collection_id}",
-                    ),
-                )
+            if match := re.match(catalog_read_right_pattern, role):
+                groups = match.groupdict()
+                if groups["right_type"] == "read":
+                    owner_id = groups["owner_id"]
+                    collection_id = groups["collection_id"]
+                    accessible_collections.extend(
+                        filter_collections(
+                            collections,
+                            owner_id if collection_id == "*" else f"{owner_id}_{collection_id}",
+                        ),
+                    )
 
         accessible_collections.extend(filter_collections(collections, user_login))
         return accessible_collections
