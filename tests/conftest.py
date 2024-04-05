@@ -26,6 +26,7 @@ RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 
 RSPY_LOCAL_MODE = "RSPY_LOCAL_MODE"
 
+
 ###############################
 # READ COMMAND LINE ARGUMENTS #
 ###############################
@@ -217,3 +218,38 @@ def expected_products_fixture(a_product) -> list[dict]:
         a_product("some_id_2", "S1A.raw", "2023-02-16T12:00:00.000Z"),
         a_product("some_id_3", "S2L1C.raw", "2019-02-16T12:00:00.000Z"),
     ]
+
+
+def a_session_fixture(id_, at_date, satellite_idf):
+    """Fixture factory to build a dummy cadip session response.
+
+    :return: the factory function to build a cadip/aux product.
+    """
+    return {
+        "Id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+        "SessionId": id_,
+        "NumChannels": 2,
+        "PublicationDate": at_date,
+        "Satellite": satellite_idf,
+        "StationUnitId": "01",
+        "DownlinkOrbit": 53186,
+        "AcquisitionId": "53186_1",
+        "AntennaId": "MSP21",
+        "FrontEndId": "01",
+        "Retransfer": False,
+        "AntennaStatusOK": True,
+        "FrontEndStatusOK": True,
+        "PlannedDataStart": "2024-03-28T18:52:08.336Z",
+        "PlannedDataStop": "2024-03-28T19:00:51.075Z",
+        "DownlinkStart": "2024-03-28T18:52:08.000Z",
+        "DownlinkStop": "2024-03-28T19:00:52.000Z",
+        "DownlinkStatusOK": True,
+        "DeliveryPushOK": True,
+    }
+
+
+def expected_sessions_builder_fixture(session_id, publication_date, satellite):
+    """Function used to return a list of sessions."""
+    if isinstance(session_id, str):
+        return [a_session_fixture(session_id, publication_date, satellite)]
+    return [a_session_fixture(sid, pubd, satid) for sid, pubd, satid in zip(session_id, publication_date, satellite)]

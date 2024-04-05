@@ -118,7 +118,7 @@ def search_session(
     platform=None,
     start_date=None,
     stop_date=None,
-):  # pylint: disable=too-many-arguments
+):  # pylint: disable=too-many-arguments, too-many-locals
     """Endpoint to retrieve list of sessions from any CADIP station.
 
     Args:
@@ -134,12 +134,11 @@ def search_session(
     # Tbd - change list split with typing
     id = id.split(",") if id else None
     platform = platform.split(",") if platform else None
-    start_date, stop_date = (
-        validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else None
-    ), None
+    time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
+
     try:
         products = init_cadip_provider(f"{station}_session").search(
-            TimeRange(start_date, stop_date),
+            TimeRange(*time_interval),
             id=id,  # pylint: disable=redefined-builtin
             platform=platform,
             sessions_search=True,
@@ -154,8 +153,8 @@ def search_session(
             stac_mapper = json.loads(stac_map.read())
             cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
             return cadip_sessions_collection
-    except [OSError, FileNotFoundError] as exception:
-        return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
+    # except [OSError, FileNotFoundError] as exception:
+    #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
     except json.JSONDecodeError as exception:
         return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"JSON Map Error: {exception}")
     except ValueError:
