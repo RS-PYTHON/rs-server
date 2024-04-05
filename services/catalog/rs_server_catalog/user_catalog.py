@@ -192,8 +192,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                     )
         except KeyError as kerr:
             raise HTTPException(detail="Could not find S3 credentials", status_code=500) from kerr
-        except botocore.exceptions.EndpointConnectionError as exc:
-            raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from exc
+        except RuntimeError as rte:
+            raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from rte
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
@@ -340,6 +340,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
             raise HTTPException(detail=f"Missing key in request body! {kerr_msg}", status_code=400) from kerr_msg
+        except Exception as e:
+            raise HTTPException(detail=f"General exception {e}", status_code=400) from e
 
     async def manage_get_response(self, request: Request, response: StreamingResponse) -> Response:
         """Remove the user name from obects and adapt all links.

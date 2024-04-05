@@ -444,8 +444,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             # If so, files were correctly moved from temp-catalog to bucket catalog.
             assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
             # clean up
-            s3_handler.delete_bucket_completely(temp_bucket)
-            s3_handler.delete_bucket_completely(catalog_bucket)
+            s3_handler.delete_bucket(temp_bucket)
+            s3_handler.delete_bucket(catalog_bucket)
 
         finally:
             server.stop()
@@ -526,8 +526,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert not s3_handler.list_s3_files_obj(custom_bucket, "")
             assert s3_handler.list_s3_files_obj(catalog_bucket, "")
 
-            s3_handler.delete_bucket_completely(custom_bucket)
-            s3_handler.delete_bucket_completely(catalog_bucket)
+            s3_handler.delete_bucket(custom_bucket)
+            s3_handler.delete_bucket(catalog_bucket)
 
         finally:
             server.stop()
@@ -580,7 +580,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 )
 
         finally:
-            s3_handler.delete_bucket_completely(catalog_bucket)
+            s3_handler.delete_bucket(catalog_bucket)
             server.stop()
             # Remove bucket credentials form env variables / should create a s3_handler without credentials error
             clear_aws_credentials()
@@ -637,8 +637,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert s3_handler.list_s3_files_obj(temp_bucket, "")
             assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
             # clean up
-            s3_handler.delete_bucket_completely(temp_bucket)
-            s3_handler.delete_bucket_completely(catalog_bucket)
+            s3_handler.delete_bucket(temp_bucket)
+            s3_handler.delete_bucket(catalog_bucket)
 
         finally:
             server.stop()
