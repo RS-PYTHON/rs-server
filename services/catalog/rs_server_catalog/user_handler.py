@@ -13,7 +13,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
 
 
-def reroute_url(path: str, method: str) -> Tuple[str, dict]:
+def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=too-many-branches
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 
@@ -28,21 +28,25 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:
         str: Return the URL path with prefix removed.
         dict: Return a dictionary containing owner, collection and item ID.
     """
+    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*"]
 
-    if path in ["/", "/catalog"]:
+    if path == "/":
         raise ValueError(f"URL ({path}) is invalid.")
 
     ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
 
+    if path == "/catalog/":
+        return "/", ids_dict
+
     if path == "/catalog/search":
         return "/search", ids_dict
-
-    if path == "/catalog/collections":
-        return "/collections", ids_dict
 
     # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
     # To catch the endpoint /catalog/{owner_id}
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
+        groups = match.groupdict()
+        if groups["owner_id"] == "collections":  # To not confuse /catalog/{owner_id} with /catalog/collections
+            return "/collections", ids_dict
         return "/", ids_dict
 
     # To catch all the other endpoints.
@@ -67,6 +71,11 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:
                 ids_dict["item_id"] = ids_dict["item_id"][1:]
                 path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items/{ids_dict['item_id']}"
 
+    elif path == "/catalog/collections":
+        path = "/collections"
+
+    elif "catalog" not in path and not any(re.match(pattern, path) for pattern in patterns):
+        raise ValueError(f"Path {path} is invalid.")
     return path, ids_dict
 
 

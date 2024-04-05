@@ -84,16 +84,30 @@ def extract_openapi_specification():
     openapi_spec_paths = openapi_spec["paths"]
     for key in list(openapi_spec_paths.keys()):
         if key in TECH_ENDPOINTS:
+            del openapi_spec_paths[key]
             continue
-        new_key = f"/catalog{key}" if key == "/search" else "/catalog/{owner_id}" + key
+
+        new_key = f"/catalog{key}" if key in ["/search", "/"] else "/catalog/{owner_id}" + key
         openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
         endpoint = openapi_spec_paths[new_key]
         for method_key in endpoint.keys():
             method = endpoint[method_key]
-            if new_key != "/catalog/search":
+            if new_key not in ["/catalog/search", "/catalog/"]:
                 method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
             elif method["operationId"] == "Search_search_get":
                 method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+    catalog_collection = {
+        "get": {
+            "summary": "Get all collections accessible by the user calling it.",
+            "description": "Endpoint.",
+            "operationId": "Get_all_collections",
+            "responses": {
+                "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
+            },
+            "security": [{"API key passed in HTTP header": []}],
+        },
+    }
+    openapi_spec_paths["/catalog/collections"] = catalog_collection
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
