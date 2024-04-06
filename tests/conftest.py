@@ -221,9 +221,8 @@ def expected_products_fixture(a_product) -> list[dict]:
 
 
 def a_session_fixture(id_, at_date, satellite_idf):
-    """Fixture factory to build a dummy cadip session response.
-
-    :return: the factory function to build a cadip/aux product.
+    """
+        Function used to build full body of OData response from /Sessions.
     """
     return {
         "Id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
