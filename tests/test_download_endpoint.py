@@ -28,6 +28,8 @@ from .conftest import export_aws_credentials  # pylint: disable=no-name-in-modul
 RES_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
 S3_FOLDER = osp.join(RES_FOLDER, "s3")
 ENDPOINTS_FOLDER = osp.join(RES_FOLDER, "endpoints")
+TIME_TO_DOWNLOAD_FILE = 2
+TIME_TO_DOWNLOAD_FILES_IN_PARALLEL = 5
 
 
 # pylint: disable=too-many-arguments
@@ -93,8 +95,8 @@ def test_valid_endpoint_request_download(
         # send the request
         data = client.get(endpoint)
 
-        # let the file to be copied local
-        time.sleep(1)
+        # let the file to be copied
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         assert data.status_code == 200
         assert data.json() == {"started": "true"}
         # test file content
@@ -174,7 +176,7 @@ def test_exception_while_valid_download(
         # send the request
         assert db_handler.get(db, name=filename).status == EDownloadStatus.IN_PROGRESS
         client.get(endpoint)
-        time.sleep(0.4)
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         assert db_handler.get(db, name=filename).status == EDownloadStatus.FAILED
         assert db_handler.get(db, name=filename).status_fail_message == "Exception('Error while downloading')"
 
@@ -311,7 +313,7 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
         # send the request
         client.get(endpoint)
         # wait for eodag to fail in initialization
-        time.sleep(2)
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed
@@ -376,7 +378,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
         # send the request
         data = client.get(endpoint)
         # wait for eodag to start
-        time.sleep(3)
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed and download started
@@ -471,7 +473,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint
         # call the endpoint
         data = client.get(endpoint)
         # Wait in order to start byte-stream and write local
-        time.sleep(1)
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         # get the product status from db (It should be updated by the endpoint call)
         result = db_handler.get(db=db, name=filename)
         # Check that update_db function set the status to FAILED
@@ -561,7 +563,7 @@ def test_upload_to_s3(
             data = client.get(endpoint)
 
             # let the file to be copied local
-            time.sleep(2)
+            time.sleep(TIME_TO_DOWNLOAD_FILE)
             assert data.status_code == 200
             assert data.json() == {"started": "true"}
 
@@ -672,7 +674,7 @@ def test_valid_parallel_download(
     for req_thread in request_threads:
         req_thread.join()
     # wait for threads to download
-    time.sleep(5)
+    time.sleep(TIME_TO_DOWNLOAD_FILES_IN_PARALLEL)
     # Compare downloaded file with local files, to check if content is correctly streamed.
     assert all(
         filecmp.cmp(downloaded_file, local_file)
