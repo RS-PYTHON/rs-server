@@ -12,267 +12,267 @@ env:
 
 jobs:
 
-  # check-format:
-  #   runs-on: ubuntu-latest
-  #   name: Check format (pre-commit, black, isort)
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/install-python
-  #     - run: >
-  #         echo
-  #         ":information_source: This job checks that you have run \`pre-commit run --all-files\` in
-  #         your local git repository before committing."
-  #         >> $GITHUB_STEP_SUMMARY
-  #     - uses: pre-commit/action@v3.0.1
+  check-format:
+    runs-on: ubuntu-latest
+    name: Check format (pre-commit, black, isort)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/install-python
+      - run: >
+          echo
+          ":information_source: This job checks that you have run \`pre-commit run --all-files\` in
+          your local git repository before committing."
+          >> $GITHUB_STEP_SUMMARY
+      - uses: pre-commit/action@v3.0.1
 
-  # check-linting:
-  #   runs-on: ubuntu-latest
-  #   name: Check linting (pylint, flake8)
-  #   continue-on-error: true # run other jobs, resolve issues later
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/poetry-install
+  check-linting:
+    runs-on: ubuntu-latest
+    name: Check linting (pylint, flake8)
+    continue-on-error: true # run other jobs, resolve issues later
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
 
-  #     - name: Run pylint
-  #       if: always() # even if previous steps returned a non-zero exit code
-  #       run: |
-  #         set -x
+      - name: Run pylint
+        if: always() # even if previous steps returned a non-zero exit code
+        run: |
+          set -x
 
-  #         # TEMP: add dependencies from the catalog service.
-  #         # The catalog is a distinct project because we have dependency conflicts
-  #         # between the main application and the stac-fastapi-pgstac dependency.
-  #         # TODO: resolve them and remove these lines
-  #         poetry run pip install stac-fastapi-pgstac sqlalchemy-utils || true # this is really dirty
-  #         poetry run pip install pydantic==2.6.1 || true # stac-fastapi-pgstac has downgraded pydantic to v1
-  #         # Now our dependencies are all messed up but it's OK for now since this is only for pylint
+          # TEMP: add dependencies from the catalog service.
+          # The catalog is a distinct project because we have dependency conflicts
+          # between the main application and the stac-fastapi-pgstac dependency.
+          # TODO: resolve them and remove these lines
+          poetry run pip install stac-fastapi-pgstac sqlalchemy-utils || true # this is really dirty
+          poetry run pip install pydantic==2.6.1 || true # stac-fastapi-pgstac has downgraded pydantic to v1
+          # Now our dependencies are all messed up but it's OK for now since this is only for pylint
 
-  #         poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
+          poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
 
-  #     - name: Run flake8
-  #       if: always()
-  #       run: |
-  #         set -x
-  #         poetry run flake8 . || true # run next line even if fails
-  #         poetry run flake8 . --output-file ./flake8-report.txt
+      - name: Run flake8
+        if: always()
+        run: |
+          set -x
+          poetry run flake8 . || true # run next line even if fails
+          poetry run flake8 . --output-file ./flake8-report.txt
 
-  #     - name: Save reports
-  #       uses: actions/upload-artifact@v4
-  #       if: always()
-  #       with:
-  #         name: check-linting
-  #         path: |
-  #           ./flake8-report.txt
-  #           ./pylint-report.txt
-  #         retention-days: 1
+      - name: Save reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-linting
+          path: |
+            ./flake8-report.txt
+            ./pylint-report.txt
+          retention-days: 1
 
-  # check-typing:
-  #   runs-on: ubuntu-latest
-  #   name: Check typing (mypy)
-  #   continue-on-error: true # run other jobs, resolve issues later
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/poetry-install
-  #     - name: Run mypy
-  #       run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
-  #       shell: bash
+  check-typing:
+    runs-on: ubuntu-latest
+    name: Check typing (mypy)
+    continue-on-error: true # run other jobs, resolve issues later
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+      - name: Run mypy
+        run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
+        shell: bash
 
-  # check-security:
-  #   runs-on: ubuntu-latest
-  #   name: Check security (bandit, safety, trivy)
-  #   continue-on-error: true # run other jobs, resolve issues later
-  #   permissions: write-all
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/poetry-install
+  check-security:
+    runs-on: ubuntu-latest
+    name: Check security (bandit, safety, trivy)
+    continue-on-error: true # run other jobs, resolve issues later
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
 
-  #     - id: bandit
-  #       name: Run bandit
-  #       if: always() # even if previous steps returned a non-zero exit code
-  #       run: |
-  #         set -x
-  #         poetry run bandit -c pyproject.toml -r . || true # run next line even if fails
-  #         poetry run bandit -c pyproject.toml -r . -f json -o ./bandit-report.json
-  #       shell: bash
+      - id: bandit
+        name: Run bandit
+        if: always() # even if previous steps returned a non-zero exit code
+        run: |
+          set -x
+          poetry run bandit -c pyproject.toml -r . || true # run next line even if fails
+          poetry run bandit -c pyproject.toml -r . -f json -o ./bandit-report.json
+        shell: bash
 
-  #     - id: safety
-  #       name: Run safety
-  #       if: always()
-  #       run: poetry run safety check --full-report
-  #       shell: bash
+      - id: safety
+        name: Run safety
+        if: always()
+        run: poetry run safety check --full-report
+        shell: bash
 
-  #     - name: Run Trivy vulnerability scanner
-  #       if: always()
-  #       uses: aquasecurity/trivy-action@master
-  #       with:
-  #         scan-type: fs
-  #         ignore-unfixed: true
-  #         format: sarif
-  #         output: trivy-results-fs.sarif
-  #         exit-code: 1
-  #         #severity: 'CRITICAL'
+      - name: Run Trivy vulnerability scanner
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-results-fs.sarif
+          exit-code: 1
+          #severity: 'CRITICAL'
 
-  #     - name: Save reports as artifacts
-  #       if: always()
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: check-security
-  #         path: |
-  #           ./bandit-report.json
-  #           ./trivy-results-fs.sarif
-  #         retention-days: 1
+      - name: Save reports as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-security
+          path: |
+            ./bandit-report.json
+            ./trivy-results-fs.sarif
+          retention-days: 1
 
-  #     - name: Upload Trivy scan results to GitHub Security tab
-  #       if: always()
-  #       uses: github/codeql-action/upload-sarif@v3
-  #       with:
-  #         sarif_file: trivy-results-fs.sarif
-  #         category: git repository
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results-fs.sarif
+          category: git repository
 
-  #     - name: "Display link to Trivy results"
-  #       if: always()
-  #       run: |
+      - name: "Display link to Trivy results"
+        if: always()
+        run: |
 
-  #         set -x
+          set -x
 
-  #         # If this is not a pull request, the query is "is:open+branch:branch_name"
-  #         if [[ "${{ github.ref_name }}" != *merge* ]]; then
-  #           query="is:open+branch:${{ github.ref_name }}"
+          # If this is not a pull request, the query is "is:open+branch:branch_name"
+          if [[ "${{ github.ref_name }}" != *merge* ]]; then
+            query="is:open+branch:${{ github.ref_name }}"
 
-  #         # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
-  #         else
-  #           query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
-  #         fi
+          # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
+          else
+            query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+          fi
 
-  #         echo "Trivy scan results:" \
-  #         "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
-  #         >> $GITHUB_STEP_SUMMARY
-  #       shell: bash
+          echo "Trivy scan results:" \
+          "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
+          >> $GITHUB_STEP_SUMMARY
+        shell: bash
 
-  # run-all-pytests:
-  #   runs-on: ubuntu-latest
-  #   name: Run pytest # pytest unit and integration tests
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/poetry-install
-  #     - name: Run pytest
-  #       run: ./resources/all_pytests.sh
-  #       shell: bash
+  run-all-pytests:
+    runs-on: ubuntu-latest
+    name: Run pytest # pytest unit and integration tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+      - name: Run pytest
+        run: ./resources/all_pytests.sh
+        shell: bash
 
-  #     - name: Display code coverage summary in this console
-  #       uses: irongut/CodeCoverageSummary@v1.3.0
-  #       with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
-  #         filename: ./cov-report.xml
+      - name: Display code coverage summary in this console
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with: # see https://github.com/marketplace/actions/code-coverage-summary#inputs
+          filename: ./cov-report.xml
 
-  #     - name: Save reports
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: run-all-pytests
-  #         path: |
-  #           .coverage
-  #           ./cov-report.xml
-  #           ./junit-xml-report.xml
-  #         retention-days: 1
+      - name: Save reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-all-pytests
+          path: |
+            .coverage
+            ./cov-report.xml
+            ./junit-xml-report.xml
+          retention-days: 1
 
-  # generate-quality-report:
-  #   runs-on: ubuntu-latest
-  #   name: Quality report (sonarqube)
-  #   needs: [check-linting, check-security, run-all-pytests] # see actions/download-artifact below
-  #   permissions: write-all # write pull request comments
-  #   # Mark the job as OK even if the sonarqube quality gate doesn't pass.
-  #   # We will resolve these issues later.
-  #   continue-on-error: true
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Download linting reports
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name:
-  #           check-linting
-  #     - name: Download vulnerability reports
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name:
-  #           check-security
-  #     - name: Download pytest reports
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name:
-  #           run-all-pytests
+  generate-quality-report:
+    runs-on: ubuntu-latest
+    name: Quality report (sonarqube)
+    needs: [check-linting, check-security, run-all-pytests] # see actions/download-artifact below
+    permissions: write-all # write pull request comments
+    # Mark the job as OK even if the sonarqube quality gate doesn't pass.
+    # We will resolve these issues later.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download linting reports
+        uses: actions/download-artifact@v4
+        with:
+          name:
+            check-linting
+      - name: Download vulnerability reports
+        uses: actions/download-artifact@v4
+        with:
+          name:
+            check-security
+      - name: Download pytest reports
+        uses: actions/download-artifact@v4
+        with:
+          name:
+            run-all-pytests
 
-  #       # The sonarqube step will run a container docker with volume mounting: -v $(pwd):/github/workspace
-  #       # The coverage report files contain the hard-coded path to the current directory $(pwd).
-  #       # So we change $(pwd) for /github/workspace in these files.
-  #     - name: Fix paths in coverage report files
-  #       run: |
-  #         set -x
-  #         for f in ./cov-report.xml ./junit-xml-report.xml; do
-  #           sed -i "s|$(pwd)|/github/workspace|g" "$f"
-  #         done
-  #       shell: bash
+        # The sonarqube step will run a container docker with volume mounting: -v $(pwd):/github/workspace
+        # The coverage report files contain the hard-coded path to the current directory $(pwd).
+        # So we change $(pwd) for /github/workspace in these files.
+      - name: Fix paths in coverage report files
+        run: |
+          set -x
+          for f in ./cov-report.xml ./junit-xml-report.xml; do
+            sed -i "s|$(pwd)|/github/workspace|g" "$f"
+          done
+        shell: bash
 
-  #     - name: Get directory names
-  #       id: dir_names
-  #       run: |
-  #         echo sources=$(find . -type d -name "rs_server*" | paste -sd ",") >> $GITHUB_OUTPUT
-  #         echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
-  #       shell: bash
+      - name: Get directory names
+        id: dir_names
+        run: |
+          echo sources=$(find . -type d -name "rs_server*" | paste -sd ",") >> $GITHUB_OUTPUT
+          echo tests=$(find . -type d -name "tests" | paste -sd ",") >> $GITHUB_OUTPUT
+        shell: bash
 
-  #     - name: Run sonarqube
-  #       uses: sonarsource/sonarqube-scan-action@master
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-  #       with:
-  #         # See doc:
-  #         # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
-  #         # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/importing-external-issues/importing-third-party-issues/
-  #         # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-execution-parameters/
-  #         # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-coverage-parameters/
-  #         projectBaseDir: .
-  #         args: >
-  #           -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
-  #           -Dsonar.branch.name=${{ github.ref_name }}
-  #           -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
-  #           -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
-  #           -Dsonar.exclusions=
-  #           -Dsonar.sourceEncoding=UTF-8
-  #           -Dsonar.language=py
-  #           -Dsonar.python.version=${{ env.PYTHON_VERSION }}
-  #           -Dsonar.python.pylint.reportPaths="./pylint-report.txt"
-  #           -Dsonar.python.flake8.reportPaths="./flake8-report.txt"
-  #           -Dsonar.python.bandit.reportPaths="./bandit-report.json"
-  #           -Dsonar.python.coverage.reportPaths="./cov-report.xml"
-  #           -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
+      - name: Run sonarqube
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          # See doc:
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/languages/python/
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/importing-external-issues/importing-third-party-issues/
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-execution-parameters/
+          # https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/test-coverage/test-coverage-parameters/
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.branch.name=${{ github.ref_name }}
+            -Dsonar.sources=${{ steps.dir_names.outputs.sources }}
+            -Dsonar.tests=${{ steps.dir_names.outputs.tests }}
+            -Dsonar.exclusions=
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.language=py
+            -Dsonar.python.version=${{ env.PYTHON_VERSION }}
+            -Dsonar.python.pylint.reportPaths="./pylint-report.txt"
+            -Dsonar.python.flake8.reportPaths="./flake8-report.txt"
+            -Dsonar.python.bandit.reportPaths="./bandit-report.json"
+            -Dsonar.python.coverage.reportPaths="./cov-report.xml"
+            -Dsonar.python.xunit.reportPath="./junit-xml-report.xml"
 
-  #     - name: Wait for quality gate result
-  #       run: sleep 5
+      - name: Wait for quality gate result
+        run: sleep 5
 
-  #     - name: Report quality gate result in the pull request comment
-  #       uses: phwt/sonarqube-quality-gate-action@v1
-  #       id: quality-gate-result
-  #       with:
-  #         sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
-  #         sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
-  #         sonar-token: ${{ secrets.SONAR_TOKEN }}
-  #         github-token: ${{ secrets.GITHUB_TOKEN }}
-  #         branch: ${{ github.ref_name }}
+      - name: Report quality gate result in the pull request comment
+        uses: phwt/sonarqube-quality-gate-action@v1
+        id: quality-gate-result
+        with:
+          sonar-project-key: ${{ env.SONAR_PROJECT_KEY }}
+          sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}
 
-  #     - name: Output result
-  #       run: |
-  #         echo "${{ steps.quality-gate-result.outputs.project-status }}"
-  #         echo "${{ steps.quality-gate-result.outputs.quality-gate-result }}"
+      - name: Output result
+        run: |
+          echo "${{ steps.quality-gate-result.outputs.project-status }}"
+          echo "${{ steps.quality-gate-result.outputs.quality-gate-result }}"
 
-  #     - id: check-gate
-  #       name: Check quality gate status
-  #       uses: sonarsource/sonarqube-quality-gate-action@master
-  #       timeout-minutes: 5
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - id: check-gate
+        name: Check quality gate status
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  #     # http instead of https or the url appears as *** in github, I don't know why,
-  #     # it may be configurable. But http works as well.
-  #     - if: always()
-  #       run: >
-  #         echo "SonarQube report:
-  #         http://sonarqube.ops-csc.com/dashboard?branch=${{ github.ref_name }}&id=${{ env.SONAR_PROJECT_KEY }}"
-  #         >> $GITHUB_STEP_SUMMARY
+      # http instead of https or the url appears as *** in github, I don't know why,
+      # it may be configurable. But http works as well.
+      - if: always()
+        run: >
+          echo "SonarQube report:
+          http://sonarqube.ops-csc.com/dashboard?branch=${{ github.ref_name }}&id=${{ env.SONAR_PROJECT_KEY }}"
+          >> $GITHUB_STEP_SUMMARY
