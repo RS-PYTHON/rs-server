@@ -11,7 +11,7 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches:
-      - feat/test-demos-from-ci # pushes on the 'develop' branch # TODO use develop instead
+      - develop # pushes on the 'develop' branch
     tags:
       - '**' # for new git tags (including hierarchical tags like v1.0/beta)
   workflow_dispatch: # manually
@@ -26,15 +26,17 @@ env:
 
 jobs:
 
-
+  # Calculate variables for this workflow
   set-env:
     if: github.actor != 'dependabot' # ignore pull requests by github bot
     runs-on: ubuntu-latest
+    name: "Set environment"
     outputs:
       docker_tag: ${{ steps.set-env.outputs.docker_tag }}
       branch_name: ${{ steps.set-env.outputs.branch_name }}
     steps:
       - id: set-env
+        name: "Set environment"
         run: |
           set -x
 
@@ -71,14 +73,45 @@ jobs:
           echo "docker_tag=$docker_tag" >> $GITHUB_OUTPUT
         shell: bash
 
-  test:
+  # Test rs-demo with the new Docker images
+  test-demo:
+    if: github.actor != 'dependabot'
     runs-on: ubuntu-latest
+    name: "Test rs-demo"
     needs: [set-env]
     steps:
-      - run: echo "docker_tag=${{ needs.set-env.outputs.docker_tag }} branch_name=${{ needs.set-env.outputs.branch_name }}"
+      - name: Log into Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: test-demos
+        name: "Test rs-demo"
+        run: |
+          set -x
+
+          # Clone the rs-demo repository.
+          # Use the ssh public key from: https://github.com/RS-PYTHON/rs-demo/settings/keys
+          # and the private key from: https://github.com/RS-PYTHON/rs-server/settings/secrets/actions
+          eval "$(ssh-agent -s)"
+          ssh-add - <<< "${{ secrets.RS_DEMO_PRIVATE_SSH_KEY }}"
+          git clone git@github.com:RS-PYTHON/rs-demo.git
+
+          # Try to checkout in rs-demo the same branch name than in rs-server.
+          # If the branch doesn't exist, it's ok, we stay on the default branch.
+          cd rs-demo
+          git checkout ${{ needs.set-env.outputs.branch_name }} || true
+          git status
+
+          # Run the rs-demo local mode using the newly created docker images
+          cd local-mode
+          ./test-docker-tags.sh ${{ needs.set-env.outputs.docker_tag }}
+          docker compose up -d
+          ./run-notebooks.sh
+
         shell: bash
-
-
 
   # ##################
   # # Publish wheels #
@@ -207,7 +240,7 @@ jobs:
   #     - name: Log into Docker registry
   #       uses: docker/login-action@v3
   #       with:
-  #         registry: ghcr.io
+  #         registry: ${{ env.DOCKER_REGISTRY }}
   #         username: ${{ github.actor }}
   #         password: ${{ secrets.GITHUB_TOKEN }}
 
