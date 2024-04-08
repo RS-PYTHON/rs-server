@@ -294,7 +294,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
                 "accesskey": None,
                 "secretkey": None,
             }
-            S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+            S3StorageHandler.get_secrets_from_file(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
             os.environ["S3_ACCESSKEY"] = secrets["accesskey"]
             os.environ["S3_SECRETKEY"] = secrets["secretkey"]
             os.environ["S3_ENDPOINT"] = secrets["s3endpoint"]

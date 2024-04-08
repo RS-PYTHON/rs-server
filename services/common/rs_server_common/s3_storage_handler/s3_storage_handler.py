@@ -198,38 +198,8 @@ class S3StorageHandler:
 
     # helper functions
 
-    def delete_bucket(self, bucket_name):
-        """Completely deletion of an s3 bucket
-
-            Use it with care. This function deletes an
-            s3 bucket even if not empty, by recursively deleting all the objects within
-
-        Args:
-            bucket_name (str): The name of the bucket to be deleted.
-
-        Raises:
-            RuntimeError: If an error occurs during the bucket access check.
-        """
-        try:
-            response = self.s3_client.list_objects_v2(
-                Bucket=bucket_name,
-            )
-
-            while response["KeyCount"] > 0:
-                response = self.s3_client.delete_objects(
-                    Bucket=bucket_name,
-                    Delete={"Objects": [{"Key": obj["Key"]} for obj in response["Contents"]]},
-                )
-                response = self.s3_client.list_objects_v2(
-                    Bucket=bucket_name,
-                )
-            self.s3_client.delete_bucket(Bucket=bucket_name)
-        except Exception as e:
-            self.logger.exception(f"Failed to delete the whole bucket s3://{bucket_name}: {e}")
-            raise RuntimeError(f"Failed to delete key s3://{bucket_name}") from e
-
     @staticmethod
-    def get_secrets(secrets, secret_file):
+    def get_secrets_from_file(secrets, secret_file):
         """Read secrets from a specified file.
 
         It reads the secrets from .s3cfg or aws credentials files
@@ -246,17 +216,15 @@ class S3StorageHandler:
             for line in lines:
                 if dict_filled == len(secrets):
                     break
-                if secrets["s3endpoint"] is None and "host_bucket" in line:
+                if "host_bucket" in line:
                     dict_filled += 1
                     secrets["s3endpoint"] = line.strip().split("=")[1].strip()
-                elif secrets["accesskey"] is None and "access_key" in line:
+                elif "access_key" in line:
                     dict_filled += 1
                     secrets["accesskey"] = line.strip().split("=")[1].strip()
-                elif secrets["secretkey"] is None and "secret_" in line and "_key" in line:
+                elif "secret_" in line and "_key" in line:
                     dict_filled += 1
                     secrets["secretkey"] = line.strip().split("=")[1].strip()
-        if secrets["accesskey"] is None or secrets["secretkey"] is None:
-            raise RuntimeError("Secret fields not found")
 
     @staticmethod
     def get_basename(input_path):

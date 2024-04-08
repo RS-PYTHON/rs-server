@@ -79,8 +79,9 @@ def test_get_s3_client(endpoint: str):
     "s3cfg_file",
     [(("./USER/credentials_location/.s3cfg")), (("/path/to/none/.s3cfg"))],
 )
-def test_get_secrets(s3cfg_file: str):
-    """Docstring to be added."""
+def test_get_secrets_from_file(s3cfg_file: str):
+    """Test the get_secrets_from_file method of the S3StorageHandler class."""
+
     secrets = {
         "s3endpoint": None,
         "accesskey": None,
@@ -94,13 +95,36 @@ def test_get_secrets(s3cfg_file: str):
                 tmp.write("access_key = test_access_key\n")
                 tmp.write("secret_key = test_secret_key\n")
                 tmp.write("host_bucket = https://test_endpoint.com\n")
+                tmp.write("extra_line = test_text\n")
                 tmp.flush()
-            S3StorageHandler.get_secrets(secrets, tmp_path)
+            S3StorageHandler.get_secrets_from_file(secrets, tmp_path)
         finally:
             os.remove(tmp_path)
     else:
         with pytest.raises(FileNotFoundError):
-            S3StorageHandler.get_secrets(secrets, s3cfg_file)
+            S3StorageHandler.get_secrets_from_file(secrets, s3cfg_file)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "s3_url",
+    [
+        (("s3://test_bucket/test_prefix/test_file.tst")),
+        (("/no/path/_to#none_file")),
+    ],
+)
+def test_s3_path_parser(s3_url: str):
+    """Test the s3_path_parser method of the S3StorageHandler class."""
+
+    bucket, prefix, file = S3StorageHandler.s3_path_parser(s3_url)
+    if "s3" in s3_url:
+        assert bucket == "test_bucket"
+        assert prefix == "test_prefix"
+        assert file == "test_file.tst"
+    else:
+        assert bucket == ""
+        assert prefix == "/no/path"
+        assert file == "_to#none_file"
 
 
 @pytest.mark.unit
