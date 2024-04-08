@@ -111,18 +111,20 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
 
         # For each method (get, post, ...)
         for method in route.methods:
+            # Use default "cadip" station FIXME
+            endpoint = route.path.replace("/cadip/{station}", "/cadip/cadip")
             logger.debug(f"Test the {route.path!r} [{method}] authentication")
 
             # Check that without api key in headers, the endpoint is protected and we receive a 403
-            assert client.request(method, route.path).status_code == HTTP_403_FORBIDDEN
+            assert client.request(method, endpoint).status_code == HTTP_403_FORBIDDEN
 
             # Test a valid and wrong api key values in headers
             assert (
-                client.request(method, route.path, headers={APIKEY_HEADER: VALID_APIKEY}).status_code
+                client.request(method, endpoint, headers={APIKEY_HEADER: VALID_APIKEY}).status_code
                 != HTTP_403_FORBIDDEN
             )
             assert (
-                client.request(method, route.path, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
+                client.request(method, endpoint, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
                 == HTTP_403_FORBIDDEN
             )
 
