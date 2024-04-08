@@ -38,20 +38,28 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
 )
+from rs_server_common.utils.logging import Logging
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.status import HTTP_400_BAD_REQUEST
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
 
-class UserCatalogMiddleware(BaseHTTPMiddleware):
-    """The user catalog middleware."""
+logger = Logging.default(__name__)
 
-    handler: S3StorageHandler = None
-    temp_bucket_name: str = "temp-bucket"
-    request_ids: dict[Any, Any] = {}
+
+class UserCatalog:
+    """The user catalog middleware handler."""
+
+    def __init__(self):
+        """Constructor, called from the middleware"""
+
+        self.handler: S3StorageHandler = None
+        self.temp_bucket_name: str = ""
+        self.request_ids: dict[Any, Any] = {}
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -145,10 +153,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     def update_stac_item_publication(self, content: dict, user: str) -> Any:  # pylint: disable=too-many-locals
         """Update json body of feature push to catalog"""
+
+        # Unique set of temp bucket names
+        bucket_names = set()
+
         files_s3_key = []
         # 1 - update assets href
         for asset in content["assets"]:
             filename_str = content["assets"][asset]["href"]
+            logger.debug(f"HTTP request asset: {filename_str!r}")
             fid = filename_str.rsplit("/", maxsplit=1)[-1]
             new_href = (
                 f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
@@ -157,14 +170,26 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = filename_str.split("/")
-                self.temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
+                temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
+                bucket_names.add(temp_bucket_name)
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 new_s3_href = {"s3": {"href": s3_key}}
                 content["assets"][asset].update({"alternate": new_s3_href})
-                files_s3_key.append(filename_str.replace(f"s3://{self.temp_bucket_name}", ""))
+                files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
             except (IndexError, AttributeError, KeyError) as exc:
-                raise HTTPException(detail="Invalid obs bucket!", status_code=400) from exc
+                raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
+
+        # There should be a single temp bucket name
+        if not bucket_names:
+            raise HTTPException(detail="'assets' are missing from the request", status_code=HTTP_400_BAD_REQUEST)
+        if len(bucket_names) > 1:
+            raise HTTPException(
+                detail=f"A single s3 bucket should be used in the 'assets': {bucket_names!r}",
+                status_code=HTTP_400_BAD_REQUEST,
+            )
+        self.temp_bucket_name = bucket_names.pop()
+
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
@@ -197,7 +222,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         except KeyError as kerr:
             raise HTTPException(detail="Could not find S3 credentials", status_code=500) from kerr
         except botocore.exceptions.EndpointConnectionError as exc:
-            raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from exc
+            raise HTTPException(detail="Could not connect to obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
@@ -230,9 +255,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except KeyError:
-            return "Could not find s3 credentials", 400
+            return "Could not find s3 credentials", HTTP_400_BAD_REQUEST
         except botocore.exceptions.ClientError:
-            return "Could not generate presigned url", 400
+            return "Could not generate presigned url", HTTP_400_BAD_REQUEST
         return response, 302
 
     def find_owner_id(self, ecql_ast: Node) -> str:
@@ -343,7 +368,10 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
-            raise HTTPException(detail=f"Missing key in request body! {kerr_msg}", status_code=400) from kerr_msg
+            raise HTTPException(
+                detail=f"Missing key in request body! {kerr_msg}",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from kerr_msg
 
     def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
         """Return the list of all collections accessible by the user calling it.
@@ -508,9 +536,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 response_content = self.adapt_object_links(response_content, user)
             self.clear_temp_bucket(response_content)
         except RuntimeError as exc:
-            raise HTTPException(detail="Failed to clear temp-bucket", status_code=400) from exc
+            raise HTTPException(detail="Failed to clear temp-bucket", status_code=HTTP_400_BAD_REQUEST) from exc
         except Exception as exc:  # pylint: disable=broad-except
-            raise HTTPException(detail="Bad request", status_code=400) from exc
+            raise HTTPException(detail="Bad request", status_code=HTTP_400_BAD_REQUEST) from exc
         return JSONResponse(response_content, status_code=response.status_code)
 
     async def manage_response_error(self, response: StreamingResponse | Any) -> JSONResponse:
@@ -531,9 +559,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type:ignore
             self.clear_catalog_bucket(response_content)
-            raise HTTPException(detail=f"Bad request, {response_content}", status_code=400)
+            raise HTTPException(detail=f"Bad request, {response_content}", status_code=HTTP_400_BAD_REQUEST)
         # Otherwise just return the exception
-        raise HTTPException(detail="Bad request", status_code=400)
+        raise HTTPException(detail="Bad request", status_code=HTTP_400_BAD_REQUEST)
 
     async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
         """Change the name of the deleted collection by removing owner_id.
@@ -605,3 +633,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             response = await self.manage_delete_response(response, user)
 
         return response
+
+
+class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """The user catalog middleware."""
+
+    async def dispatch(self, request, call_next):
+        """Redirect the user catalog specific endpoint and adapt the response content."""
+
+        # NOTE: the same 'self' instance is reused by all requests so it must
+        # not be used by several requests at the same time or we'll have conflicts.
+        # Do everything in a specific object.
+        return await UserCatalog().dispatch(request, call_next)
