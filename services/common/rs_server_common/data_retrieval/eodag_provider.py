@@ -11,8 +11,6 @@ from eodag import EODataAccessGateway, EOProduct, SearchResult
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
-# from rs_server_common.utils.provider_ws_address import station_to_server_url
-
 
 class EodagProvider(Provider):
     """An EODAG provider.
@@ -144,7 +142,6 @@ class EodagProvider(Provider):
                     "title": filename,
                     "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
                     # TODO build from configuration (but how ?)
-                    # "downloadLink": f"{station_to_server_url(self.provider)}({product_id})/$value",
                     "downloadLink": f"{base_uri}({product_id})/$value",
                 },
             )

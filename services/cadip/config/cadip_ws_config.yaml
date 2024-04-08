@@ -76,3 +76,398 @@ cadip:
     metadata_mapping:
         uid: '$.Id'
         downloadLink: 'http://127.0.0.1:5000/Files({uid})/$value'
+
+ins:
+  auth:
+    type: GenericAuth
+    method: basic
+    credentials:
+        username: test
+        password: test
+  products:
+    GENERIC_PRODUCT_TYPE:
+      productType: '{productType}'
+
+  search:
+    type: ODataV4Search
+    api_endpoint: 'http://127.0.0.1:5100/Files'
+    need_auth: true
+    results_entry: responses | $
+    metadata_mapping:
+        id:
+            - null
+            - '$.Id'
+        Name:
+            - null
+            - '$.Name'
+        SessionID:
+            - null
+            - '$.SessionID'
+        Channel:
+            - null
+            - '$.Channel'
+        BlockNumber:
+            - null
+            - '$.BlockNumber'
+        FinalBlock:
+            - null
+            - '$.FinalBlock'
+        PublicationDate:
+            - null
+            - '$.PublicationDate'
+        EvictionDate:
+            - null
+            - '$.EvictionDate'
+        Size:
+            - null
+            - '$.Size'
+        Retransfer:
+            - null
+            - '$.Retransfer'
+        # Eodag Specific map
+        startTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        completionTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
+        downloadLink: 'http://127.0.0.1:5100/Files({id})/$value'
+        title: '$.Name'
+
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '"{}"'
+        operations:
+            and:
+              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
+              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
+
+    pagination:
+      max_items_per_page: 1000
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      total_items_nb_key_path: '$.total'
+
+  download:
+    type: HTTPDownload
+    base_uri: 'http://127.0.0.1:5100/Files'
+    metadata_mapping:
+        uid: '$.Id'
+        downloadLink: 'http://127.0.0.1:5100/Files({uid})/$value'
+
+mps:
+  auth:
+    type: GenericAuth
+    method: basic
+    credentials:
+        username: test
+        password: test
+  products:
+    GENERIC_PRODUCT_TYPE:
+      productType: '{productType}'
+
+  search:
+    type: ODataV4Search
+    api_endpoint: 'http://127.0.0.1:5101/Files'
+    need_auth: true
+    results_entry: responses | $
+    metadata_mapping:
+        id:
+            - null
+            - '$.Id'
+        Name:
+            - null
+            - '$.Name'
+        SessionID:
+            - null
+            - '$.SessionID'
+        Channel:
+            - null
+            - '$.Channel'
+        BlockNumber:
+            - null
+            - '$.BlockNumber'
+        FinalBlock:
+            - null
+            - '$.FinalBlock'
+        PublicationDate:
+            - null
+            - '$.PublicationDate'
+        EvictionDate:
+            - null
+            - '$.EvictionDate'
+        Size:
+            - null
+            - '$.Size'
+        Retransfer:
+            - null
+            - '$.Retransfer'
+        # Eodag Specific map
+        startTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        completionTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
+        downloadLink: 'http://127.0.0.1:5101/Files({id})/$value'
+        title: '$.Name'
+
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '"{}"'
+        operations:
+            and:
+              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
+              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
+
+    pagination:
+      max_items_per_page: 1000
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      total_items_nb_key_path: '$.total'
+
+  download:
+    type: HTTPDownload
+    base_uri: 'http://127.0.0.1:5101/Files'
+    metadata_mapping:
+        uid: '$.Id'
+        downloadLink: 'http://127.0.0.1:5101/Files({uid})/$value'
+
+mti:
+  auth:
+    type: GenericAuth
+    method: basic
+    credentials:
+        username: test
+        password: test
+  products:
+    GENERIC_PRODUCT_TYPE:
+      productType: '{productType}'
+
+  search:
+    type: ODataV4Search
+    api_endpoint: 'http://127.0.0.1:5102/Files'
+    need_auth: true
+    results_entry: responses | $
+    metadata_mapping:
+        id:
+            - null
+            - '$.Id'
+        Name:
+            - null
+            - '$.Name'
+        SessionID:
+            - null
+            - '$.SessionID'
+        Channel:
+            - null
+            - '$.Channel'
+        BlockNumber:
+            - null
+            - '$.BlockNumber'
+        FinalBlock:
+            - null
+            - '$.FinalBlock'
+        PublicationDate:
+            - null
+            - '$.PublicationDate'
+        EvictionDate:
+            - null
+            - '$.EvictionDate'
+        Size:
+            - null
+            - '$.Size'
+        Retransfer:
+            - null
+            - '$.Retransfer'
+        # Eodag Specific map
+        startTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        completionTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
+        downloadLink: 'http://127.0.0.1:5102/Files({id})/$value'
+        title: '$.Name'
+
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '"{}"'
+        operations:
+            and:
+              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
+              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
+
+    pagination:
+      max_items_per_page: 1000
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      total_items_nb_key_path: '$.total'
+
+  download:
+    type: HTTPDownload
+    base_uri: 'http://127.0.0.1:5102/Files'
+    metadata_mapping:
+        uid: '$.Id'
+        downloadLink: 'http://127.0.0.1:5102/Files({uid})/$value'
+
+nsg:
+  auth:
+    type: GenericAuth
+    method: basic
+    credentials:
+        username: test
+        password: test
+  products:
+    GENERIC_PRODUCT_TYPE:
+      productType: '{productType}'
+
+  search:
+    type: ODataV4Search
+    api_endpoint: 'http://127.0.0.1:5103/Files'
+    need_auth: true
+    results_entry: responses | $
+    metadata_mapping:
+        id:
+            - null
+            - '$.Id'
+        Name:
+            - null
+            - '$.Name'
+        SessionID:
+            - null
+            - '$.SessionID'
+        Channel:
+            - null
+            - '$.Channel'
+        BlockNumber:
+            - null
+            - '$.BlockNumber'
+        FinalBlock:
+            - null
+            - '$.FinalBlock'
+        PublicationDate:
+            - null
+            - '$.PublicationDate'
+        EvictionDate:
+            - null
+            - '$.EvictionDate'
+        Size:
+            - null
+            - '$.Size'
+        Retransfer:
+            - null
+            - '$.Retransfer'
+        # Eodag Specific map
+        startTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        completionTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
+        downloadLink: 'http://127.0.0.1:5103/Files({id})/$value'
+        title: '$.Name'
+
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '"{}"'
+        operations:
+            and:
+              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
+              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
+
+    pagination:
+      max_items_per_page: 1000
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      total_items_nb_key_path: '$.total'
+
+  download:
+    type: HTTPDownload
+    base_uri: 'http://127.0.0.1:5103/Files'
+    metadata_mapping:
+        uid: '$.Id'
+        downloadLink: 'http://127.0.0.1:5103/Files({uid})/$value'
+
+sgs:
+  auth:
+    type: GenericAuth
+    method: basic
+    credentials:
+        username: test
+        password: test
+  products:
+    GENERIC_PRODUCT_TYPE:
+      productType: '{productType}'
+
+  search:
+    type: ODataV4Search
+    api_endpoint: 'http://127.0.0.1:5104/Files'
+    need_auth: true
+    results_entry: responses | $
+    metadata_mapping:
+        id:
+            - null
+            - '$.Id'
+        Name:
+            - null
+            - '$.Name'
+        SessionID:
+            - null
+            - '$.SessionID'
+        Channel:
+            - null
+            - '$.Channel'
+        BlockNumber:
+            - null
+            - '$.BlockNumber'
+        FinalBlock:
+            - null
+            - '$.FinalBlock'
+        PublicationDate:
+            - null
+            - '$.PublicationDate'
+        EvictionDate:
+            - null
+            - '$.EvictionDate'
+        Size:
+            - null
+            - '$.Size'
+        Retransfer:
+            - null
+            - '$.Retransfer'
+        # Eodag Specific map
+        startTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        completionTimeFromAscendingNode:
+            - null
+            - '$.PublicationDate'
+        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
+        downloadLink: 'http://127.0.0.1:5104/Files({id})/$value'
+        title: '$.Name'
+
+    free_text_search_operations:
+      $filter:
+        union: ' OR '
+        wrapper: '"{}"'
+        operations:
+            and:
+              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
+              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
+
+    pagination:
+      max_items_per_page: 1000
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      total_items_nb_key_path: '$.total'
+
+  download:
+    type: HTTPDownload
+    base_uri: 'http://127.0.0.1:5104/Files'
+    metadata_mapping:
+        uid: '$.Id'
+        downloadLink: 'http://127.0.0.1:5104/Files({uid})/$value'
