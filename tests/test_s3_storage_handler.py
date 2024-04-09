@@ -7,8 +7,8 @@ import os.path as osp
 import shutil
 import tempfile
 from collections import Counter
+from datetime import datetime, timedelta
 
-# import yaml
 import pytest
 import requests
 from moto.server import ThreadedMotoServer
@@ -35,13 +35,14 @@ SHORT_FOLDER = RESOURCES_FOLDER / "s3" / "short_s3_storage_handler_test"
     "endpoint",
     [("false"), ("http://localhost:5000")],
 )
-def test_get_s3_client(endpoint: str):
+def test_get_s3_client_and_disconnect(endpoint: str):
     """Test the 'get_s3_client' method of the S3StorageHandler class.
 
-    This unit test evaluates the 'get_s3_client' method of the S3StorageHandler class.
+    This unit test evaluates both the 'get_s3_client' and 'disconnect' methods of the S3StorageHandler class.
     It uses the pytest.mark.parametrize decorator to run the test with different 'endpoint' values.
-    The method is expected to create an instance of the S3StorageHandler class when the
-    endpoint is 'http://localhost:5000', and it should raise an exception otherwise.
+    The 'get_s3_client" method is expected to create an instance of the S3StorageHandler class when the
+    endpoint is 'http://localhost:5000', and it should raise an exception otherwise. The 'disconnect' method should
+    call the close() method of the s3 client and to set this one to None
 
     Args:
         endpoint (str): The endpoint to be used for testing.
@@ -63,7 +64,17 @@ def test_get_s3_client(endpoint: str):
     secrets = {"s3endpoint": endpoint, "accesskey": "", "secretkey": "", "region": "sbg"}
     server.stop()
     if endpoint == "http://localhost:5000":
-        assert S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        assert s3_handler
+        s3_handler.disconnect_s3()
+        assert s3_handler.s3_client is None
+        s3_handler.disconnect_s3()
+        assert s3_handler.s3_client is None
     else:
         with pytest.raises(Exception):
             assert S3StorageHandler(
@@ -125,6 +136,37 @@ def test_s3_path_parser(s3_url: str):
         assert bucket == ""
         assert prefix == "/no/path"
         assert file == "_to#none_file"
+
+
+@pytest.mark.unit
+def test_wait_timeout():
+    """Test the wait_timeout method of the S3StorageHandler class."""
+    s3_handler = S3StorageHandler(
+        None,
+        None,
+        "http://localhost:5000",
+        None,
+    )
+    start_p = datetime.now()
+    s3_handler.wait_timeout(1)
+    assert (datetime.now() - start_p) >= timedelta(seconds=1)
+
+
+@pytest.mark.unit
+def test_check_file_overwriting():
+    """Test the check_file_overwriting method of the S3StorageHandler class."""
+
+    s3_handler = S3StorageHandler(
+        None,
+        None,
+        "http://localhost:5000",
+        None,
+    )
+    _, tmp_path = tempfile.mkstemp()
+    assert not s3_handler.check_file_overwriting(tmp_path, False)
+    assert os.path.isfile(tmp_path)
+    assert s3_handler.check_file_overwriting(tmp_path, True)
+    assert not os.path.isfile(tmp_path)
 
 
 @pytest.mark.unit

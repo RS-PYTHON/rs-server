@@ -125,8 +125,7 @@ class S3StorageHandler:
         Returns:
             boto3.client: An S3 client instance.
         """
-        if self.s3_client:
-            return self.s3_client
+
         client_config = botocore.config.Config(
             max_pool_connections=100,
             # timeout for connection
@@ -145,13 +144,10 @@ class S3StorageHandler:
                 region_name=region_name,
                 config=client_config,
             )
-        except botocore.client.ClientError as e:
-            if e.response["Error"]["Code"] == "EntityAlreadyExists":
-                raise RuntimeError("This clent already exists") from e
-            raise e  # for other errors, juste re-raise the exception
+
         except Exception as e:
-            self.logger.exception(f"{e}")
-            raise e
+            self.logger.exception(f"Client error exception: {e}")
+            raise RuntimeError("Client error exception ") from e
 
     def connect_s3(self):
         """Establish a connection to the S3 service.
@@ -214,17 +210,17 @@ class S3StorageHandler:
         with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
             lines = aws_credentials_file.readlines()
             for line in lines:
-                if dict_filled == len(secrets):
-                    break
-                if "host_bucket" in line:
+                if not secrets["s3endpoint"] and "host_bucket" in line:
                     dict_filled += 1
                     secrets["s3endpoint"] = line.strip().split("=")[1].strip()
-                elif "access_key" in line:
+                elif not secrets["accesskey"] and "access_key" in line:
                     dict_filled += 1
                     secrets["accesskey"] = line.strip().split("=")[1].strip()
-                elif "secret_" in line and "_key" in line:
+                elif not secrets["secretkey"] and "secret_" in line and "_key" in line:
                     dict_filled += 1
                     secrets["secretkey"] = line.strip().split("=")[1].strip()
+                if dict_filled == 3:
+                    break
 
     @staticmethod
     def get_basename(input_path):
@@ -386,8 +382,8 @@ class S3StorageHandler:
             RuntimeError: If an error occurs during the bucket access check.
         """
 
-        self.connect_s3()
         try:
+            self.connect_s3()
             self.s3_client.head_bucket(Bucket=bucket)
         except botocore.client.ClientError as error:
             # check that it was a 404 vs 403 errors
@@ -428,25 +424,23 @@ class S3StorageHandler:
             time_cnt += 0.2
 
     def check_file_overwriting(self, local_file, overwrite):
-        """Check whether a file already exists at the specified local path and handles overwriting.
+        """Check if file exists and determine if it should be overwritten.
 
-        Parameters:
-        - local_file (str): The local file path to check.
-        - overwrite (bool): A flag indicating whether to overwrite the existing file if found.
-        - logger (Logger): The logger object for logging messages.
+        Args:
+            local_file (str): Path to the local file.
+            overwrite (bool): Whether to overwrite the existing file.
 
         Returns:
-        bool: True if overwriting is allowed or if the file doesn't exist, False otherwise.
+            bool: True if the file should be overwritten, False otherwise.
 
         Note:
-        - If the file already exists and the overwrite flag is set to True, the function will log a message,
-        delete the existing file, and return True.
-        - If the file already exists and the overwrite flag is set to False, the function will log a warning
-        message, and return False. In this case, the existing file won't be deleted.
-        - If the file doesn't exist, the function will return True.
+        - If the file already exists and the overwrite flag is set to True, the function logs a message,
+        deletes the existing file, and returns True.
+        - If the file already exists and the overwrite flag is set to False, the function logs a warning
+        message, and returns False. In this case, the existing file won't be deleted.
+        - If the file doesn't exist, the function returns True.
 
         """
-        ret_overwrite = True
         if os.path.isfile(local_file):
             if overwrite:  # The file already exists, so delete it first
                 self.logger.info(
@@ -460,9 +454,9 @@ class S3StorageHandler:
     (use the overwrite flag if you want to overwrite this file)",
                     S3StorageHandler.get_basename(local_file),
                 )
-                ret_overwrite = False
+                return False
 
-        return ret_overwrite
+        return True
 
     def get_keys_from_s3(self, config: GetKeysFromS3Config) -> list:
         """Download S3 keys specified in the configuration.
