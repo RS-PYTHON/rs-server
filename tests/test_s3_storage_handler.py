@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 import pytest
 import requests
+from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     GetKeysFromS3Config,
@@ -141,6 +142,7 @@ def test_s3_path_parser(s3_url: str):
 @pytest.mark.unit
 def test_wait_timeout():
     """Test the wait_timeout method of the S3StorageHandler class."""
+
     s3_handler = S3StorageHandler(
         None,
         None,
@@ -150,6 +152,21 @@ def test_wait_timeout():
     start_p = datetime.now()
     s3_handler.wait_timeout(1)
     assert (datetime.now() - start_p) >= timedelta(seconds=1)
+
+
+@pytest.mark.unit
+def test_timeout(mocker):
+    """Test the wait_timeout method of the S3StorageHandler class."""
+
+    s3_handler = S3StorageHandler(
+        None,
+        None,
+        "http://localhost:5000",
+        None,
+    )
+    res = mocker.patch("time.sleep", side_effect=None)
+    s3_handler.wait_timeout(1)
+    assert res.call_count == 5  # 5 calls of 0.2 sec sleep = 1
 
 
 @pytest.mark.unit
@@ -887,3 +904,36 @@ def test_transfer_from_s3_to_s3(
         assert bucket_src == "non-existent-bucket"
     finally:
         server.stop()
+
+
+@pytest.mark.unit
+def test_client_exception_while_checking_access_handling():
+    """Test handling of client exceptions while checking access."""
+
+    export_aws_credentials()
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    boto_mocker = Stubber(s3_handler.s3_client)
+
+    boto_mocker.add_client_error("head_bucket", 403)
+    boto_mocker.activate()
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.check_bucket_access("some_s3_1")
+    assert str(exc.value) == "some_s3_1 is a private bucket. Forbidden access!"
+
+    boto_mocker.add_client_error("head_bucket", 404)
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.check_bucket_access("some_s3_2")
+    assert str(exc.value) == "some_s3_2 bucket does not exist!"
+    assert str(exc.value) != "Exception when checking the access to some_s3_1 bucket!"
+
+    boto_mocker.add_client_error("head_bucket", 500)
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.check_bucket_access("some_s3_3")
+    assert str(exc.value) == "Exception when checking the access to some_s3_3 bucket"
+    boto_mocker.deactivate()
