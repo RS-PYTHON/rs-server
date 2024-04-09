@@ -4,6 +4,14 @@ rs\_server\_catalog package
 Submodules
 ----------
 
+rs\_server\_catalog.landing\_page module
+----------------------------------------
+
+.. automodule:: rs_server_catalog.landing_page
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rs\_server\_catalog.main module
 -------------------------------
 

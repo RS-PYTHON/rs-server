@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "RS-Server",
-    "version": "0.1a7"
+    "version": "3.2a1"
   },
   "paths": {
     "/adgs/aux/search": {
@@ -480,27 +480,7 @@
         }
       }
     },
-    "/_mgmt/ping": {
-      "get": {
-        "tags": [
-          "Catalog (Liveliness/Readiness)"
-        ],
-        "summary": "Ping",
-        "description": "Liveliness/readiness probe.",
-        "operationId": "ping__mgmt_ping_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/catalog/{owner_id}/": {
+    "/catalog/": {
       "get": {
         "summary": "Landing Page",
         "description": "Endpoint.",
@@ -518,19 +498,6 @@
         "security": [
           {
             "API key passed in HTTP header": []
-          }
-        ],
-        "parameters": [
-          {
-            "description": "Catalog owner id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Catalog owner id",
-              "description": "Catalog owner id"
-            },
-            "name": "owner_id",
-            "in": "path"
           }
         ],
         "tags": [
@@ -1564,6 +1531,31 @@
             "name": "owner_id",
             "in": "path"
           }
+        ]
+      }
+    },
+    "/catalog/collections": {
+      "get": {
+        "summary": "Get all collections accessible by the user calling it.",
+        "description": "Endpoint.",
+        "operationId": "Get_all_collections",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key passed in HTTP header": []
+          }
+        ],
+        "tags": [
+          "Catalog"
         ]
       }
     },
