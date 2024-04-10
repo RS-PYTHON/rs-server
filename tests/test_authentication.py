@@ -111,7 +111,6 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
 
         # For each method (get, post, ...)
         for method in route.methods:
-            # Use default "cadip" station FIXME
             endpoint = route.path.replace("/cadip/{station}", "/cadip/cadip")
             logger.debug(f"Test the {route.path!r} [{method}] authentication")
 

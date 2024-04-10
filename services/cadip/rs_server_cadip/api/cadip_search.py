@@ -132,7 +132,6 @@ def search_session(
         stop_date (str): Stop date of the time interval
 
     """
-    # Tbd - change list split with typing
     session_id: Union[List[str], None] = id.split(",") if id else None
     satellite: Union[List[str], None] = platform.split(",") if platform else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
