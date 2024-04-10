@@ -5,7 +5,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, List
 
 import boto3
 import botocore
@@ -274,7 +274,7 @@ class S3StorageHandler:
             list: List of tuples (local_prefix, full_s3_key_path).
         """
         # declaration of the list
-        list_with_files = []
+        list_with_files: List[Any] = []
         # for each key, identify it as a file or a folder
         # in the case of a folder, the files will be recursively gathered
         for key in paths:
@@ -282,6 +282,7 @@ class S3StorageHandler:
             s3_files = self.list_s3_files_obj(bucket, path)
             if len(s3_files) == 0:
                 self.logger.warning("No key %s found.", path)
+                list_with_files.append((None, path))
                 continue
             self.logger.debug("total: %s | s3_files = %s", len(s3_files), s3_files)
             basename_part = self.get_basename(path)
