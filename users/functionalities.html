@@ -141,18 +141,175 @@ clients to straightforwardly discover and retrieve available data files through 
 </div>
 </div>
 <div class="sect2">
+<h3 id="_session_search_endpoint"><span class="green">Session search Endpoint</span></h3>
+<div class="paragraph">
+<p>This endpoint retrieves a list of sessions from the CADU system for a specified station within a given parameter and/or time range and return a STAC compatible FeatureCollection response.</p>
+</div>
+<div class="sect3">
+<h4 id="_api_reference_2">API Reference</h4>
+<div class="paragraph">
+<p><code>/cadip/{station}/session</code></p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_parameters_2">Parameters</h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>station</code> (str): Identifier for the CADIP station <span class="green">(e.g., MTI, SGS, MPU, INU, etc)</span>.</p>
+</li>
+<li>
+<p><code>id</code> (str, list[str], optional): DSIB SessionId value. Can be used with coma-separated values <span class="green">(e.g., S1A_20170501121534062343)</span>.</p>
+</li>
+<li>
+<p><code>platform</code> (str, list[str], optional): Platform / Satellite identifier. Can be used with coma-separated values  <span class="green">(e.g: platform = S1A or platform=S1A, S2B)</span>.</p>
+</li>
+<li>
+<p><code>start_date</code> (str, optional): Start time of session (PublicationTime). (format: <span class="red">YYYY-MM-DDThh:mm:sssZ</span>).</p>
+</li>
+<li>
+<p><code>stop_date</code> (str, optional): Stop time of session (PublicationTime). (format: <span class="red">YYYY-MM-DDThh:mm:sssZ</span>).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_request_example_2">Request example</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">GET /cadip/station123/session?id=S1A_20170501121534062343,S1A_20240328185208053186</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-http" data-lang="http">GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&amp;stop_date=2023-02-16T12:00:00Z&amp;platform=S1A</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_return_2">Return</h4>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-json" data-lang="json">{
+    "type": "FeatureCollection",
+    "numberMatched": 3,
+    "numberReturned": 3,
+    "features": [
+        {
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+            ],
+            "type": "Feature",
+            "id": "S1A_20240328185208053186",
+            "geometry": null,
+            "properties": {
+                "start_datetime": "2024-03-28T18:52:08.000Z",
+                "datetime": "2024-03-28T18:52:08.000Z",
+                "end_datetime": "2024-03-28T19:00:52.000Z",
+                "published": "2024-03-28T18:52:26Z",
+                "platform": "S1A",
+                "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                "cadip:num_channels": 2,
+                "cadip:station_unit_id": "01",
+                "cadip:downlink_orbit": 53186,
+                "cadip:acquisition_id": 531861,
+                "cadip:antenna_id": "MSP21",
+                "cadip:front_end_id": "01",
+                "cadip:retransfer": false,
+                "cadip:antenna_status_ok": true,
+                "cadip:front_end_status_ok": true,
+                "cadip:planned_data_start": "2024-03-28T18:52:08.336Z",
+                "cadip:planned_data_stop": "2024-03-28T19:00:51.075Z",
+                "cadip:downlink_status_ok": true,
+                "cadip:delivery_push_ok": true
+            },
+            "links": [],
+            "assets": {}
+        },
+        {
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+            ],
+            "type": "Feature",
+            "id": "S1A_20240328185208053186",
+            "geometry": null,
+            "properties": {
+                "start_datetime": "2024-03-28T18:52:08.000Z",
+                "datetime": "2024-03-28T18:52:08.000Z",
+                "end_datetime": "2024-03-28T19:00:52.000Z",
+                "published": "2024-03-28T18:52:26Z",
+                "platform": "S1A",
+                "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                "cadip:num_channels": 2,
+                "cadip:station_unit_id": "01",
+                "cadip:downlink_orbit": 53186,
+                "cadip:acquisition_id": 531861,
+                "cadip:antenna_id": "MSP21",
+                "cadip:front_end_id": "01",
+                "cadip:retransfer": false,
+                "cadip:antenna_status_ok": true,
+                "cadip:front_end_status_ok": true,
+                "cadip:planned_data_start": "2024-03-28T18:52:08.336Z",
+                "cadip:planned_data_stop": "2024-03-28T19:00:51.075Z",
+                "cadip:downlink_status_ok": true,
+                "cadip:delivery_push_ok": true
+            },
+            "links": [],
+            "assets": {}
+        },
+        {
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+            ],
+            "type": "Feature",
+            "id": "S1A_20240329083700053194",
+            "geometry": null,
+            "properties": {
+                "start_datetime": "2024-03-28T18:52:08.000Z",
+                "datetime": "2024-03-28T18:52:08.000Z",
+                "end_datetime": "2024-03-28T19:00:52.000Z",
+                "published": "2024-03-29T08:37:22Z",
+                "platform": "S2B",
+                "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                "cadip:num_channels": 2,
+                "cadip:station_unit_id": "01",
+                "cadip:downlink_orbit": 53186,
+                "cadip:acquisition_id": 531861,
+                "cadip:antenna_id": "MSP21",
+                "cadip:front_end_id": "01",
+                "cadip:retransfer": false,
+                "cadip:antenna_status_ok": true,
+                "cadip:front_end_status_ok": true,
+                "cadip:planned_data_start": "2024-03-28T18:52:08.336Z",
+                "cadip:planned_data_stop": "2024-03-28T19:00:51.075Z",
+                "cadip:downlink_status_ok": true,
+                "cadip:delivery_push_ok": true
+            },
+            "links": [],
+            "assets": {}
+        }
+    ]
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
 <h3 id="cadip-download"><span class="green">Download Endpoint</span></h3>
 <div class="paragraph">
 <p>This endpoint initiates an asynchronous download process for a CADU product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.</p>
 </div>
 <div class="sect3">
-<h4 id="_api_reference_2">API Reference</h4>
+<h4 id="_api_reference_3">API Reference</h4>
 <div class="paragraph">
 <p><code>/cadip/{station}/cadu</code></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_parameters_2">Parameters</h4>
+<h4 id="_parameters_3">Parameters</h4>
 <div class="ulist">
 <ul>
 <li>
@@ -183,7 +340,7 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_request_example_2">Request example</h4>
+<h4 id="_request_example_3">Request example</h4>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-http" data-lang="http">GET /cadip/station123/cadu?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw</code></pre>
@@ -217,14 +374,14 @@ Connection to S3 bucket is required, and should be written in the environmental 
 <p>This endpoint is used to query the download status of an CADU file.</p>
 </div>
 <div class="sect3">
-<h4 id="_api_reference_3">API Reference</h4>
+<h4 id="_api_reference_4">API Reference</h4>
 <div class="paragraph">
 <p><code>/cadip/{station}/cadu/status</code></p>
 </div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_parameters_3">Parameters</h3>
+<h3 id="_parameters_4">Parameters</h3>
 <div class="ulist">
 <ul>
 <li>
@@ -276,13 +433,13 @@ clients to discover and retrieve available auxiliary data files through a standa
 <p>This endpoint handles the search for products in the AUX station within a specified time interval and return a STAC compatible FeatureCollection response.</p>
 </div>
 <div class="sect3">
-<h4 id="_api_reference_4">API Reference</h4>
+<h4 id="_api_reference_5">API Reference</h4>
 <div class="paragraph">
 <p><code>/adgs/aux/search</code></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_parameters_4">Parameters</h4>
+<h4 id="_parameters_5">Parameters</h4>
 <div class="ulist">
 <ul>
 <li>
@@ -299,7 +456,7 @@ clients to discover and retrieve available auxiliary data files through a standa
 </div>
 </div>
 <div class="sect3">
-<h4 id="_request_example_3">Request Example</h4>
+<h4 id="_request_example_4">Request Example</h4>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-http" data-lang="http">GET /adgs/aux/search?datetime=2018-01-01T00:00:00Z/2023-01-02T23:59:59Z&amp;limit=10&amp;sortby=+properties.adgs:id</code></pre>
@@ -339,13 +496,13 @@ clients to discover and retrieve available auxiliary data files through a standa
 <p>This endpoint initiates an asynchronous download process for an AUX product using EODAG. If specific parameters are provided, endpoint also upload the file to an S3 bucket.</p>
 </div>
 <div class="sect3">
-<h4 id="_api_reference_5">API Reference</h4>
+<h4 id="_api_reference_6">API Reference</h4>
 <div class="paragraph">
 <p><code>/adgs/aux</code></p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="_parameters_5">Parameters</h4>
+<h4 id="_parameters_6">Parameters</h4>
 <div class="ulist">
 <ul>
 <li>
@@ -373,7 +530,7 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_request_example_4">Request Example</h4>
+<h4 id="_request_example_5">Request Example</h4>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-http" data-lang="http">GET /adgs/aux?name=S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_20190217T210000.TGZ</code></pre>
@@ -413,7 +570,7 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_parameters_6">Parameters</h4>
+<h4 id="_parameters_7">Parameters</h4>
 <div class="ulist">
 <ul>
 <li>
@@ -423,7 +580,7 @@ Connection to S3 bucket is required, and should be written in the environmental 
 </div>
 </div>
 <div class="sect3">
-<h4 id="_request_example_5">Request Example</h4>
+<h4 id="_request_example_6">Request Example</h4>
 <div class="listingblock">
 <div class="content">
 <pre class="highlight"><code class="language-http" data-lang="http">GET /adgs/aux/status?name=S2__OPER_AUX_ECMWFD_PDMC_20200216T120000_V20190217T090000_20190217T210000.TGZ</code></pre>
@@ -838,7 +995,7 @@ RS-Server Backend also move assets between s3 storages and updates hypertext ref
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-04-09 11:59:34 UTC
+Last updated 2024-04-10 14:17:39 UTC
 </div>
 </div>
 </body>
