@@ -1614,7 +1614,7 @@ dev = ["black (>=22.3.0)", "build (>=0.7.0)", "isort (>=5.11.4)", "pyflakes (>=2
 
 [[package]]
 name = "rs-server-common"
-version = "3.2a1.post25.dev0+6e6431a"
+version = "3.2a1.post45.dev0+bba320e"
 description = ""
 optional = false
 python-versions = "^3.11"

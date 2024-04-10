@@ -11,7 +11,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 
 (set -x; git fetch --all && git remote prune origin)
-bot_branches=$(git branch -r | grep origin/dependabot/pip || true) # all the bot dependency branches are called like this
+bot_branches=$(git branch -r | grep origin/dependabot/ || true) # all the bot dependency branches are called like this
 if [[ -z "$bot_branches" ]]; then
     echo "No bot dependency branches found with name: 'origin/dependabot/pip/...'"
     exit 0
@@ -22,7 +22,7 @@ fi
 target="fix/bot-dependency-updates" # branch issued from develop where we'll merge everything
 
 # Create or get the target branch, merge develop into it
-(set -x; git checkout "$target" && git pull) || \
+(set -x; git checkout "$target" && git pull || git push --set-upstream origin "$target") || \
 (set -x; git checkout -b "$target" && git push --set-upstream origin "$target")
 (set -x; git merge origin/develop)
 
@@ -61,8 +61,11 @@ if [[ "$lock_files" ]]; then
         git commit $lock_files -m "merge: rebuild the poetry.lock files" && git push)
 fi
 
-# Run git clean -f to remove merge conflict backup files
-# echo -e "\nRunning 'git clean -f': "
-# git clean -n # dry run
-
-# Now go to github, open a pull request, check that the ci/cd is ok and merge the pull request into develop.
+echo -e "
+Try 'git clean -n' then 'git clean -f' to remove your git merge backup files.
+Then:
+  - Go to github
+  - Open a pull request for '$target' into 'develop'
+  - Check that the CI/CD is ok
+  - Merge the pull request
+"
