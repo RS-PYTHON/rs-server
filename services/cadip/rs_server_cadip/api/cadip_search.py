@@ -4,11 +4,12 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
+# pylint: disable=redefined-builtin
 import json
 import os.path as osp
 import traceback
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, List, Union
 
 import requests
 import sqlalchemy
@@ -107,3 +108,54 @@ def search_products(  # pylint: disable=too-many-locals
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",
         ) from exception
+
+
+@router.get("/cadip/{station}/session")
+@apikey_validator(station="cadip", access_type="read")
+def search_session(
+    request: Request,  # pylint: disable=unused-argument
+    station,
+    id: Annotated[Union[str, None], Query(description="SessionID filter e.g 'S1A_20170501121534062343")] = None,
+    platform: Annotated[Union[str, None], Query(description="Satellite filter e.g 'S1A")] = None,
+    start_date: Annotated[Union[str, None], Query(description="Start time e.g. '2024-01-01T00:00:00Z'")] = None,
+    stop_date: Annotated[Union[str, None], Query(description="Stop time e.g. '2024-01-01T00:00:00Z'")] = None,
+):  # pylint: disable=too-many-arguments, too-many-locals
+    """Endpoint to retrieve list of sessions from any CADIP station.
+
+    Args:
+        station (str): CADIP station identifier (MTI, SGS, MPU, INU, etc)
+        id (str, list-like-str): Session identifier
+            (eg: "S1A_20170501121534062343" or "S1A_20170501121534062343, S1A_20240328185208053186")
+        platform (str, list-like-str): Satellite identifier
+            (eg: "S1A" or "S1A, S1B")
+        start_date (str): Start date of the time interval
+        stop_date (str): Stop date of the time interval
+
+    """
+    session_id: Union[List[str], None] = id.split(",") if id else None
+    satellite: Union[List[str], None] = platform.split(",") if platform else None
+    time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
+
+    try:
+        products = init_cadip_provider(f"{station}_session").search(
+            TimeRange(*time_interval),
+            id=session_id,  # pylint: disable=redefined-builtin
+            platform=satellite,
+            sessions_search=True,
+        )
+        feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
+        stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
+        with (
+            open(feature_template_path, encoding="utf-8") as template,
+            open(stac_mapper_path, encoding="utf-8") as stac_map,
+        ):
+            feature_template = json.loads(template.read())
+            stac_mapper = json.loads(stac_map.read())
+            cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
+            return cadip_sessions_collection
+    # except [OSError, FileNotFoundError] as exception:
+    #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
+    except json.JSONDecodeError as exception:
+        return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"JSON Map Error: {exception}")
+    except ValueError:
+        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unable to map OData to STAC.")

@@ -1,0 +1,22 @@
+{
+  "id": "SessionId",
+  "start_datetime": "DownlinkStart",
+  "datetime": "DownlinkStart",
+  "end_datetime": "DownlinkStop",
+  "published": "PublicationDate",
+  "platform": "platform",
+  "cadip:id": "id",
+  "cadip:num_channels": "NumChannels",
+  "cadip:station_unit_id": "StationUnitId",
+  "cadip:downlink_orbit": "DownlinkOrbit",
+  "cadip:acquisition_id": "AcquisitionId",
+  "cadip:antenna_id": "AntennaId",
+  "cadip:front_end_id": "FrontEndId",
+  "cadip:retransfer": "Retransfer",
+  "cadip:antenna_status_ok": "AntennaStatusOK",
+  "cadip:front_end_status_ok": "FrontEndStatusOK",
+  "cadip:planned_data_start": "PlannedDataStart",
+  "cadip:planned_data_stop": "PlannedDataStop",
+  "cadip:downlink_status_ok": "DownlinkStatusOK",
+  "cadip:delivery_push_ok": "DeliveryPushOK"
+}

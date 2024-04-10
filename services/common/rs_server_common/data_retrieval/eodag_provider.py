@@ -68,13 +68,39 @@ class EodagProvider(Provider):
         Raises:
             Exception: If the search encounters an error or fails, an exception is raised.
         """
-        products, _ = self.client.search(
-            start=str(between.start),
-            end=str(between.end),
-            provider=self.provider,
-            raise_errors=True,
-            **kwargs,
-        )
+        mapped_search_args = {}
+        if kwargs.pop("sessions_search", False):
+            if session_id := kwargs.pop("id", None):
+                if isinstance(session_id, list):
+                    mapped_search_args.update({"SessionIds": ", ".join(session_id)})
+                elif isinstance(session_id, str):
+                    mapped_search_args.update({"SessionId": session_id})
+            if platform := kwargs.pop("platform", None):
+                if isinstance(platform, list):
+                    mapped_search_args.update({"platforms": ", ".join(platform)})
+                elif isinstance(platform, str):
+                    mapped_search_args.update({"platform": platform})
+            if between:
+                mapped_search_args.update(
+                    {
+                        "startTimeFromAscendingNode": str(between.start),
+                        "completionTimeFromAscendingNode": str(between.end),
+                    },
+                )
+            products, _ = self.client.search(
+                **mapped_search_args,  # type: ignore
+                provider=self.provider,
+                raise_errors=True,
+                **kwargs,
+            )
+        else:
+            products, _ = self.client.search(
+                start=str(between.start),
+                end=str(between.end),
+                provider=self.provider,
+                raise_errors=True,
+                **kwargs,
+            )
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:

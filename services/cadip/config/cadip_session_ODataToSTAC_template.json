@@ -1,0 +1,32 @@
+{
+    "stac_version": "1.0.0",
+    "stac_extensions": [
+        "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+    ],
+    "type": "Feature",
+    "id": "PLACEHOLDER",
+    "geometry": null,
+    "properties": {
+        "start_datetime": "PLACEHOLDER",
+        "datetime": "PLACEHOLDER",
+        "end_datetime": "PLACEHOLDER",
+        "published": "PLACEHOLDER",
+        "platform": "PLACEHOLDER",
+        "cadip:id": "PLACEHOLDER",
+        "cadip:num_channels": "PLACEHOLDER",
+        "cadip:station_unit_id": "PLACEHOLDER",
+        "cadip:downlink_orbit": "PLACEHOLDER",
+        "cadip:acquisition_id": "PLACEHOLDER",
+        "cadip:antenna_id": "PLACEHOLDER",
+        "cadip:front_end_id": "PLACEHOLDER",
+        "cadip:retransfer": "PLACEHOLDER",
+        "cadip:antenna_status_ok": "PLACEHOLDER",
+        "cadip:front_end_status_ok": "PLACEHOLDER",
+        "cadip:planned_data_start": "PLACEHOLDER",
+        "cadip:planned_data_stop": "PLACEHOLDER",
+        "cadip:downlink_status_ok": "PLACEHOLDER",
+        "cadip:delivery_push_ok": "PLACEHOLDER"
+    },
+    "links": [],
+    "assets": {}
+}
