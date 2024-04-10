@@ -684,3 +684,73 @@ def test_valid_parallel_download(
     # Cleanup
     for local_file in local_temp_files:
         os.unlink(local_file)
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize(
+    "endpoint, db_handler",
+    [
+        ("/adgs/aux", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", CadipDownloadStatus),
+    ],
+)
+def test_endpoint_request_download_thread_timeout(
+    client,
+    endpoint,
+    db_handler,
+    mocker,
+):  # pylint: disable=unused-argument
+    """Test the behavior of a valid endpoint request for ADGS AUX / CADIP CADU download.
+
+    This unit test checks the behavior of the ADGS / CADIP download endpoint when provided with
+    valid parameters. It simulates the download process, verifies the status code, and checks
+    the content of the downloaded file.
+
+    Args:
+        client: The client fixture for the test.
+
+    Returns:
+        None
+
+    Raises:
+        AssertionError: If the test fails to assert the expected outcomes.
+    """
+    product_id = "id_1"
+    publication_date = "2023-10-10T00:00:00.111Z"
+    # Add cadip mock server response to eodag download request
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5000/Files(id_1)/$value",
+        body="some byte-array data\n",
+        status=200,
+    )
+    # Add adgs mock server response to eodag download request
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5001/Products(id_1)/$value",
+        body="some byte-array data\n",
+        status=200,
+    )
+
+    with tempfile.TemporaryDirectory() as download_dir, contextmanager(get_db)() as db:
+        # Add a download status to database
+        endpoint = f"{endpoint}?name=TEST.raw&local={download_dir}"
+        # Add adgs and cadip mock patch for start_eodag_download
+        # This doesn't work, why ??
+        # mocker.patch("rs_server_common.utils.utils.eodag_download", side_effect=Exception)
+        mocker.patch("rs_server_adgs.api.adgs_download.start_eodag_download", side_effect=None)
+        mocker.patch("rs_server_cadip.api.cadip_download.start_eodag_download", side_effect=None)
+        db_handler.create(
+            db=db,
+            product_id=product_id,
+            name="TEST.raw",
+            available_at_station=publication_date,
+            # FIXME
+            status=EDownloadStatus.IN_PROGRESS,
+        )
+        # send the request
+        # Raise an exception while downloading
+        data = client.get(endpoint)
+        assert data.status_code == 408
+        assert data.json() == {"started": "false"}

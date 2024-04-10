@@ -451,8 +451,7 @@ class S3StorageHandler:
                 os.remove(local_file)
             else:
                 self.logger.warning(
-                    "File %s already exists. Skipping it \
-    (use the overwrite flag if you want to overwrite this file)",
+                    "File %s already exists. Ignoring (use the overwrite flag if you want to overwrite this file)",
                     S3StorageHandler.get_basename(local_file),
                 )
                 return False
@@ -482,6 +481,7 @@ class S3StorageHandler:
         # collection_files: list of files to be downloaded
         #                   the list contains pair objects with the following
         #                   syntax: (local_path_to_be_added_to_the_local_prefix, s3_key)
+        #                   the local_path_to_be_added_to_the_local_prefix may be none if the file doesn't exist
         collection_files = self.files_to_be_downloaded(config.bucket, config.s3_files)
 
         self.logger.debug("collection_files = %s | bucket = %s", collection_files, config.bucket)
@@ -520,7 +520,7 @@ class S3StorageHandler:
                 except (botocore.client.ClientError, botocore.exceptions.EndpointConnectionError) as error:
                     self.logger.exception(
                         "Error when downloading the file %s. \
-    Exception: %s. Retrying in %s seconds for %s more times",
+Exception: %s. Retrying in %s seconds for %s more times",
                         s3_file,
                         error,
                         DWN_S3FILE_RETRY_TIMEOUT,
@@ -531,7 +531,7 @@ class S3StorageHandler:
                 except RuntimeError:
                     self.logger.exception(
                         "Error when downloading the file %s. \
-    Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+Couldn't get the s3 client. Retrying in %s seconds for %s more times",
                         s3_file,
                         DWN_S3FILE_RETRY_TIMEOUT,
                         config.max_retries - keep_trying,
@@ -541,7 +541,7 @@ class S3StorageHandler:
             if not downloaded:
                 self.logger.error(
                     "Could not download the file %s. The download was \
-    retried for %s times. Aborting",
+retried for %s times. Aborting",
                     s3_file,
                     config.max_retries,
                 )
@@ -590,13 +590,17 @@ class S3StorageHandler:
                         "Upload file %s to s3://%s/%s",
                         file_to_be_uploaded,
                         config.bucket,
-                        s3_obj,
+                        s3_obj.lstrip("/"),
                     )
 
                     self.s3_client.upload_file(file_to_be_uploaded, config.bucket, s3_obj)
                     uploaded = True
                     break
-                except (botocore.client.ClientError, botocore.exceptions.EndpointConnectionError) as error:
+                except (
+                    botocore.client.ClientError,
+                    botocore.exceptions.EndpointConnectionError,
+                    boto3.exceptions.S3UploadFailedError,
+                ) as error:
                     self.logger.exception(
                         "Error when uploading the file %s. \
 Exception: %s. Retrying in %s seconds for %s more times",
@@ -688,34 +692,32 @@ retried for %s times. Aborting",
                 except (botocore.client.ClientError, botocore.exceptions.EndpointConnectionError) as error:
                     self.logger.exception(
                         "Error when copying the file s3://%s/%s to s3://%s. \
-    Exception: %s. Retrying in %s seconds for %s more times",
+Exception: %s. Retrying in %s seconds for %s more times",
                         config.bucket_src,
                         collection_file[1],
                         config.bucket_dst,
                         error,
                         DWN_S3FILE_RETRY_TIMEOUT,
-                        config.max_retries - keep_trying - 1,
+                        config.max_retries - keep_trying,
                     )
-                    if config.max_retries - keep_trying - 1 != 0:
-                        self.disconnect_s3()
-                        self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
+                    self.disconnect_s3()
+                    self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
                 except RuntimeError:
                     self.logger.exception(
                         "Error when copying the file s3://%s/%s to s3://%s. \
-    Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+Couldn't get the s3 client. Retrying in %s seconds for %s more times",
                         config.bucket_src,
                         collection_file[1],
                         config.bucket_dst,
                         DWN_S3FILE_RETRY_TIMEOUT,
-                        config.max_retries - keep_trying - 1,
+                        config.max_retries - keep_trying,
                     )
-                    if config.max_retries - keep_trying - 1 != 0:
-                        self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
+                    self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
 
             if not copied:
                 self.logger.error(
                     "Could not copy the file s3://%s/%s to s3://%s. The copy was \
-    retried for %s times. Aborting",
+retried for %s times. Aborting",
                     config.bucket_src,
                     collection_file[1],
                     config.bucket_dst,

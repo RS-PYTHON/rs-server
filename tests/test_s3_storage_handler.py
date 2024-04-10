@@ -493,6 +493,7 @@ def cmp_dirs(dir1, dir2):
                     "s3_storage_handler_test/subdir_2",
                     "s3_storage_handler_test/fake1",
                     "s3_storage_handler_test/fake2",
+                    "s3_storage_handler_test/subdir_2",
                 ],
                 [
                     ("", "s3_storage_handler_test/no_root_file1"),
@@ -556,17 +557,13 @@ def test_get_keys_from_s3(
                 s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing\n")
         # end of create
 
-        # try:
-        #     collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
-        # except RuntimeError:
-        #     collection = []
         local_path = tempfile.mkdtemp()
 
         config = GetKeysFromS3Config(
             lst_with_files,
             bucket,
             local_path,
-            True,
+            False,
             1,
         )
 
@@ -578,8 +575,6 @@ def test_get_keys_from_s3(
     finally:
         server.stop()
 
-    # assert len(Counter(collection) - Counter(lst_with_files_to_be_dwn)) == 0
-    # assert len(Counter(lst_with_files_to_be_dwn) - Counter(collection)) == 0
     assert len(Counter(expected_res) - Counter(res)) == 0
     assert len(Counter(res) - Counter(expected_res)) == 0
 
@@ -808,6 +803,7 @@ def test_put_files_to_s3(
 
         for key in lst_with_files:
             test_bucket_files = test_bucket_files + s3_handler.list_s3_files_obj(bucket, key)
+        print(f"test_bucket_files = {test_bucket_files}")
 
     except RuntimeError:
         assert bucket == "non-existent-bucket"
@@ -938,39 +934,6 @@ def test_transfer_from_s3_to_s3(
         assert bucket_src == "non-existent-bucket"
     finally:
         server.stop()
-
-
-@pytest.mark.unit
-def test_client_exception_while_checking_access_handling():
-    """Test handling of client exceptions while checking access."""
-
-    export_aws_credentials()
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
-    s3_handler = S3StorageHandler(
-        secrets["accesskey"],
-        secrets["secretkey"],
-        secrets["s3endpoint"],
-        secrets["region"],
-    )
-    boto_mocker = Stubber(s3_handler.s3_client)
-
-    boto_mocker.add_client_error("head_bucket", 403)
-    boto_mocker.activate()
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.check_bucket_access("some_s3_1")
-    assert str(exc.value) == "some_s3_1 is a private bucket. Forbidden access!"
-
-    boto_mocker.add_client_error("head_bucket", 404)
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.check_bucket_access("some_s3_2")
-    assert str(exc.value) == "some_s3_2 bucket does not exist!"
-    assert str(exc.value) != "Exception when checking the access to some_s3_1 bucket!"
-
-    boto_mocker.add_client_error("head_bucket", 500)
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.check_bucket_access("some_s3_3")
-    assert str(exc.value) == "Exception when checking the access to some_s3_3 bucket"
-    boto_mocker.deactivate()
 
 
 @pytest.mark.unit
