@@ -554,11 +554,11 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             # Upload a file to catalog-bucket
             catalog_bucket = "catalog-bucket"
             s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-            object_cotent = "testing\n"
+            object_content = "testing\n"
             s3_handler.s3_client.put_object(
                 Bucket=catalog_bucket,
                 Key="S1_L1/images/may24C355000e4102500n.tif",
-                Body=object_cotent,
+                Body=object_content,
             )
 
             response = client.get(
@@ -566,13 +566,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             )
             assert response.status_code == 302
             # Check that response is a url not file content!
-            assert response.content != object_cotent
+            assert response.content != object_content
 
             # call the redirected url
             product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
             assert product_content.status_code == 200
             # check that content is the same as the original file
-            assert product_content.content.decode() == object_cotent
+            assert product_content.content.decode() == object_content
 
             with pytest.raises(fastapi.HTTPException):
                 assert (
@@ -695,6 +695,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
                 "/catalog/collections/fixture_owner:fixture_collection/items/incorrect_feature_id",
             )
             assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
@@ -725,6 +726,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Test that ID has changed, but other arbitrary field not
         assert updated_feature["bbox"] == updated_feature_sent["bbox"]
         assert updated_feature["geometry"] == a_correct_feature["geometry"]
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
@@ -745,6 +747,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
                 f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
                 json=updated_feature_sent,
             )
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
@@ -770,6 +773,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert collection_content_response.status_code == fastapi.status.HTTP_200_OK
         collection_content_response = json.loads(collection_content_response.content)
         assert collection_content_response["context"]["returned"] == 0
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_delete_a_non_existing_feature(self, client, a_minimal_collection):
         """
