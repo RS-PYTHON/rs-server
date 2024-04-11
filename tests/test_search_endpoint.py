@@ -12,6 +12,8 @@ from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
 
+from .conftest import expected_sessions_builder_fixture
+
 
 # TC-001 : User1 send a CURL request to a CADIP-Server on URL /cadip/{station}/cadu/list .
 # He receives the list of CADU in the interval.
@@ -325,3 +327,106 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         limit = -5
         test_endpoint = f"{endpoint}&limit={limit}"
         assert client.get(test_endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+# TEST SESSIONS ZONE
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint, pickup_point_translated_filter, expected_session_id, expected_publication_date, expected_platform",
+    [
+        # Test with a list of 2 SessionIds
+        (
+            "/cadip/cadip/session?id=S1A_20170501121534062343,S1A_20240328185208053186",
+            '"SessionId%20in%20S1A_20170501121534062343,%20S1A_20240328185208053186"&$top=20',
+            ["S1A_20170501121534062343", "S1A_20240328185208053186"],
+            ["2017-05-01T12:00:00", "2024-03-28T18:52:26Z"],
+            ["S1A", "S1A"],
+        ),
+        # TC001: Search one session only with a single id (ex: id=S1A_20240312192515052953).
+        # Check that response return 1 result in STAC format for the given id.
+        (
+            "/cadip/cadip/session?id=S1A_20240328185208053186",
+            '"SessionId%20in%20S1A_20240328185208053186"&$top=20',
+            "S1A_20240328185208053186",
+            "2024-03-28T18:52:26Z",
+            "S1A",
+        ),
+        # Test with a single platform
+        (
+            "/cadip/cadip/session?id=S1A_20240328185208053186&platform=S1A",
+            "%22SessionId%20in%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20",
+            "S1A_20240328185208053186",
+            "2024-03-28T18:52:26Z",
+            "S1A",
+        ),
+        # Test with a list of session ids and list of platforms
+        (
+            "/cadip/cadip/session?id=S1A_20240328185208053186,S1A_20240328185208053186&platform=S1A,S2B",
+            "%22SessionId%20in%20S1A_20240328185208053186,%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A,"
+            "%20S2B%22&$top=20"
+            "",
+            ["S1A_20240328185208053186", "S1A_20240328185208053186"],
+            ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
+            ["S1A", "S2B"],
+        ),
+        # Test only with a list of platforms
+        (
+            "/cadip/cadip/session?platform=S1A, S2B",
+            "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20",
+            ["S1A_20240328185208053186", "S1A_20240328185208053186"],
+            ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
+            ["S1A", "S2B"],
+        ),
+        # # TC002: Search several sessions by satellites and date
+        # # (ex: platform=S1A,S1B&start_date=2024-03-12T08:00:00.000Z&stop_date=2024-03-12T12:00:00.000Z.)
+        # # Check that response returns several results in STAC format for the sessions that match the criteria
+        (
+            "/cadip/cadip/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-16T12:00:00Z&platform=S1A",
+            "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+            "%20lt%202023-02-16T12:00:00.000Z%22&$top=20",
+            ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
+            ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
+            ["S1A", "S1A", "S2B"],
+        ),
+    ],
+    ids=[
+        "list_id",
+        "single_id",
+        "single_id_single_platform",
+        "list_id_list_platform",
+        "list_platform",
+        "start_stop_single_platform",
+    ],
+)
+@responses.activate
+def test_valid_sessions_endpoint_request_list(
+    client,
+    endpoint,
+    pickup_point_translated_filter,
+    expected_session_id,
+    expected_publication_date,
+    expected_platform,
+):  # pylint: disable=too-many-arguments
+    """Test cases for all valid endpoints requests of cadip session endpoint"""
+    # Note: All translated endpoints have been tested with simulators (rs-testmeans)
+    # Build the session result content with expected values
+    sessions_response = expected_sessions_builder_fixture(
+        expected_session_id,
+        expected_publication_date,
+        expected_platform,
+    )
+    # Mock EODAG request to pickup-point
+    responses.add(
+        responses.GET,
+        f"http://127.0.0.1:5000/Sessions?$filter={pickup_point_translated_filter}",
+        json={"responses": sessions_response},
+        status=200,
+    )
+    # Test that eodag correctly translates given endpoint to translated endpoint
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_200_OK
+    # Test that OData (dict) is translated to STAC.
+    assert response.json()["numberMatched"] == len(sessions_response)
+    assert response.json()["features"]

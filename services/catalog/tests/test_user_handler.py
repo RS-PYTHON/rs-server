@@ -98,9 +98,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert str(exc_info.value) == "URL (/) is invalid."
 
     def test_remove_the_catalog_prefix(self):
-        with pytest.raises(ValueError) as exc_info:
-            reroute_url("/catalog", "GET")
-        assert str(exc_info.value) == "URL (/catalog) is invalid."
+        assert reroute_url("/catalog/Toto", "GET")[0] == ("/")
 
     # Disabled for moment
     # def test_landing_page(self):
@@ -115,8 +113,13 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }
 
-    def test_ignore_if_unknown_endpoint(self):
-        assert reroute_url("/not/found", "GET")[0] == ("/not/found")
+    def test_fails_if_unknown_endpoint(self):
+        with pytest.raises(ValueError) as exc_info:
+            reroute_url("/not/found", "GET")
+        assert str(exc_info.value) == "Path /not/found is invalid."
+
+    def test_work_with_ping_endpoinst(self):
+        assert reroute_url("/_mgmt/ping", "GET")[0] == ("/_mgmt/ping")
 
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
@@ -167,6 +170,9 @@ class TestRemoveUserFromFeature:  # pylint: disable=missing-function-docstring
 class TestFilterCollections:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function filter_collections"""
 
+    def test_get_nothing_if_the_user_is_not_found(self, collections: list[dict]):
+        assert filter_collections(collections, "NOTFOUND") == []
+
     def test_get_all_collections_with_toto_in_the_id_property(
         self,
         collection_toto_1: dict,
@@ -174,6 +180,3 @@ class TestFilterCollections:  # pylint: disable=missing-function-docstring
         collections: list[dict],
     ):
         assert filter_collections(collections, "toto") == [collection_toto_1, collection_toto_2]
-
-    def test_get_nothing_if_the_user_is_not_found(self, collections: list[dict]):
-        assert filter_collections(collections, "NOTFOUND") == []
