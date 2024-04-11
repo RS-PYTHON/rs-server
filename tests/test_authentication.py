@@ -1,12 +1,19 @@
 """Unit tests for the authentication."""
 
+import json
+
 import pytest
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER, apikey_security, ttl_cache
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import State
-from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+)
 
 from tests.conftest import RSPY_LOCAL_MODE, Envs  # pylint: disable=no-name-in-module
 
@@ -128,8 +135,10 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
             )
 
 
+UNKNOWN_CADIP_STATION = "unknown-cadip-station"
+
 ADGS_STATIONS = ["adgs"]
-CADIP_STATIONS = ["ins", "mps", "mti", "nsg", "sgs", "cadip"]
+CADIP_STATIONS = ["ins", "mps", "mti", "nsg", "sgs", "cadip", UNKNOWN_CADIP_STATION]
 
 DATE_PARAM = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
 NAME_PARAM = {"name": "TEST_FILE.raw"}
@@ -197,9 +206,19 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
 
         logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
 
-        # With no roles, we should receive an unauthorized response
+        # With no roles ...
         mock_uac_response({"iam_roles": [], "config": {}, "user_login": {}})
-        assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
+        response = client_request(station_endpoint)
+
+        # Test the error message with an unknown cadip station
+        if station == UNKNOWN_CADIP_STATION:
+            assert response.status_code == HTTP_400_BAD_REQUEST
+            assert f"Unknown CADIP station: {station!r}" in json.loads(response.content)["detail"]
+            break  # no need to test the other endpoints
+
+        # With a valid station, we should receive an unauthorized response
+        else:
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
         # Idem with non-relevant roles
         mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}, "user_login": {}})

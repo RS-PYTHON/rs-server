@@ -120,7 +120,7 @@ def apikey_validator(station, access_type):
     """Decorator to validate API key access.
 
     Args:
-        station (str): The station name.
+        station (str): The station name = adgs or cadip
         access_type (str): The type of access.
 
     Raises:
@@ -137,12 +137,12 @@ def apikey_validator(station, access_type):
             if settings.cluster_mode():
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 if station == "cadip":
-                    cadip_station = kwargs["station"]
+                    cadip_station = kwargs["station"]  # ins, mps, mti, nsg, sgs, or cadip
                     try:
                         full_station = STATIONS_AUTH_LUT[cadip_station.lower()]
                     except KeyError:
                         raise HTTPException(
-                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Unknown CADIP station: {cadip_station!r}",
                         )
                 else:  # for adgs
