@@ -14,20 +14,30 @@ import httpx
 from asyncache import cached
 from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
-from fastapi.security import APIKeyHeader
+from fastapi.security import APIKeyHeader, APIKeyQuery
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
 
 # from functools import wraps
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
+from starlette.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_403_FORBIDDEN,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 logger = Logging.default(__name__)
 
-# HTTP header field for the api key
+# HTTP header and query parameter fields for the api key
 APIKEY_HEADER = "x-api-key"
+APIKEY_QUERY = "api-key"
 
-# API key authentication using a header.
-APIKEY_SECURITY = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=True)
+# API key authentication using a header and a query parameter.
+APIKEY_AUTH_HEADER = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed by HTTP headers", auto_error=False)
+APIKEY_AUTH_QUERY = APIKeyQuery(
+    name=APIKEY_QUERY,
+    scheme_name="API key passed by URL query parameter",
+    auto_error=False,
+)
 
 # Look up table for stations
 STATIONS_AUTH_LUT = {
@@ -43,17 +53,28 @@ STATIONS_AUTH_LUT = {
 
 async def apikey_security(
     request: Request,
-    apikey_value: Annotated[str, Security(APIKEY_SECURITY)],
+    apikey_header: Annotated[str, Security(APIKEY_AUTH_HEADER)],
+    apikey_query: Annotated[str, Security(APIKEY_AUTH_QUERY)],
 ) -> tuple[list, dict, str]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
 
     Args:
-        apikey_value (Security): API key passed in header,
+        apikey_header (Security): API key passed by HTTP headers
+        apikey_query (Security): API key passed by URL query parameter
 
     Returns:
         Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
     """
+
+    # Use the api key passed by either http headers or query parameter
+    apikey_value = apikey_header or apikey_query
+    if not apikey_value:
+        raise HTTPException(
+            status_code=HTTP_403_FORBIDDEN,
+            detail="An API key must be passed by either HTTP headers or URL query parameter",
+        )
+
     # Call the cached function (fastapi Depends doesn't work with @cached)
     auth_roles, auth_config, user_login = await __apikey_security_cached(str(apikey_value))
     request.state.auth_roles = auth_roles
@@ -76,7 +97,7 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict, dict]:
     except KeyError:
         raise HTTPException(HTTP_400_BAD_REQUEST, "UAC manager URL is undefined")  # pylint: disable=raise-missing-from
 
-    # Request the uac, pass user-defined credentials
+    # Request the uac, pass user-defined api key by http headers
     try:
         response = await settings.http_client().get(check_url, headers={APIKEY_HEADER: apikey_value or ""})
     except httpx.HTTPError as error:

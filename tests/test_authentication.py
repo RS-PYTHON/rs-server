@@ -5,7 +5,12 @@ import json
 import pytest
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import APIKEY_HEADER, apikey_security, ttl_cache
+from rs_server_common.authentication import (
+    APIKEY_HEADER,
+    APIKEY_QUERY,
+    apikey_security,
+    ttl_cache,
+)
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import State
 from starlette.status import (
@@ -134,6 +139,14 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
                 == HTTP_403_FORBIDDEN
             )
 
+            # Idem by passing the api key by url query parameter
+            assert (
+                client.request(method, endpoint, params={APIKEY_QUERY: VALID_APIKEY}).status_code != HTTP_403_FORBIDDEN
+            )
+            assert (
+                client.request(method, endpoint, params={APIKEY_QUERY: WRONG_APIKEY}).status_code == HTTP_403_FORBIDDEN
+            )
+
 
 UNKNOWN_CADIP_STATION = "unknown-cadip-station"
 
@@ -194,40 +207,51 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
             json=json,
         )
 
-    def client_request(station_endpoint: str):
-        """Request endpoint."""
-        return client.request(method, station_endpoint, params=query_params, headers={APIKEY_HEADER: VALID_APIKEY})
+    # Test the api key passed by http headers and url query parameters
+    for by_headers in [True, False]:
 
-    # for each cadip station or just "adgs"
-    for station in stations:
-        # Replace the station in the endpoint and expected role
-        station_endpoint = endpoint.format(station=station)
-        station_role = expected_role.format(station=station)
+        def client_request(station_endpoint: str):
+            """Request endpoint."""
+            if by_headers:
+                return client.request(
+                    method,
+                    station_endpoint,
+                    params=query_params,
+                    headers={APIKEY_HEADER: VALID_APIKEY},
+                )
+            else:
+                return client.request(method, station_endpoint, params={**query_params, APIKEY_QUERY: VALID_APIKEY})
 
-        logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
+        # for each cadip station or just "adgs"
+        for station in stations:
+            # Replace the station in the endpoint and expected role
+            station_endpoint = endpoint.format(station=station)
+            station_role = expected_role.format(station=station)
 
-        # With no roles ...
-        mock_uac_response({"iam_roles": [], "config": {}, "user_login": {}})
-        response = client_request(station_endpoint)
+            logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
 
-        # Test the error message with an unknown cadip station
-        if station == UNKNOWN_CADIP_STATION:
-            assert response.status_code == HTTP_400_BAD_REQUEST
-            assert f"Unknown CADIP station: {station!r}" in json.loads(response.content)["detail"]
-            break  # no need to test the other endpoints
+            # With no roles ...
+            mock_uac_response({"iam_roles": [], "config": {}, "user_login": {}})
+            response = client_request(station_endpoint)
 
-        # With a valid station, we should receive an unauthorized response
-        else:
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+            # Test the error message with an unknown cadip station
+            if station == UNKNOWN_CADIP_STATION:
+                assert response.status_code == HTTP_400_BAD_REQUEST
+                assert f"Unknown CADIP station: {station!r}" in json.loads(response.content)["detail"]
+                break  # no need to test the other endpoints
 
-        # Idem with non-relevant roles
-        mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}, "user_login": {}})
-        assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
+            # With a valid station, we should receive an unauthorized response
+            else:
+                assert response.status_code == HTTP_401_UNAUTHORIZED
 
-        # With the right expected role, we should be authorized (no 401 or 403)
-        mock_uac_response({"iam_roles": [station_role], "config": {}, "user_login": {}})
-        assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+            # Idem with non-relevant roles
+            mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}, "user_login": {}})
+            assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
 
-        # It should also work if other random roles are present
-        mock_uac_response({"iam_roles": [station_role, "any", "other", "role"], "config": {}, "user_login": {}})
-        assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+            # With the right expected role, we should be authorized (no 401 or 403)
+            mock_uac_response({"iam_roles": [station_role], "config": {}, "user_login": {}})
+            assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+
+            # It should also work if other random roles are present
+            mock_uac_response({"iam_roles": [station_role, "any", "other", "role"], "config": {}, "user_login": {}})
+            assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
