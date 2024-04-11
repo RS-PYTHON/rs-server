@@ -25,6 +25,7 @@ from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
+from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import manage_landing_page
 from rs_server_catalog.user_handler import (
     add_user_prefix,
@@ -41,6 +42,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
@@ -396,59 +398,66 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+        api_key = ""
+        auth_roles = []
+        user_login = ""
 
-        if "detail" not in content:  # Test if the user is authenticated.
-            if request.scope["path"] == "/":  # /catalog
-                try:
-                    api_key = request.headers["x-api-key"]
-                    auth_roles, _, user_login = await apikey_security(request, api_key)
-                    content = manage_landing_page(request, auth_roles, user_login, content)
-                except Exception as e:  # pylint: disable=broad-exception-caught
-                    logging.exception(  # pylint: disable=logging-fstring-interpolation
-                        f"apikey not available or local mode {e}",
-                    )
-                return JSONResponse(
-                    content,
-                    status_code=response.status_code,
-                )
-            if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
-                if user:
-                    content["collections"] = filter_collections(content["collections"], user)
-                    content = self.remove_user_from_objects(content, user, "collections")
-                    content = self.adapt_links(
-                        content,
-                        user,
-                        self.request_ids["collection_id"],
-                        "collections",
-                    )
-                else:
-                    try:
-                        api_key = request.headers["x-api-key"]
-                        auth_roles, _, user_login = await apikey_security(request, api_key)
-                        content["collections"] = self.manage_all_collections(
-                            content["collections"],
-                            auth_roles,
-                            user_login,
-                        )
-                    finally:
-                        pass
-            elif (
-                "/collection" in request.scope["path"] and "items" not in request.scope["path"]
-            ):  # /catalog/owner_id/collections/collection_id
-                content = remove_user_from_collection(content, user)
-                content = self.adapt_object_links(content, user)
-            elif (
-                "items" in request.scope["path"] and not self.request_ids["item_id"]
-            ):  # /catalog/owner_id/collections/collection_id/items
-                content = self.remove_user_from_objects(content, user, "features")
+        if os.environ.get("RSPY_LOCAL_MODE") == "False":
+            try:
+                api_key = request.headers["x-api-key"]
+                auth_roles, _, user_login = await apikey_security(request, api_key)
+            except RuntimeError as e:
+                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+
+        if request.scope["path"] == "/":  # /catalog
+            content = manage_landing_page(request, auth_roles, user_login, content)
+            return JSONResponse(
+                content,
+                status_code=response.status_code,
+            )
+        if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
+            if user:
+                content["collections"] = filter_collections(content["collections"], user)
+                content = self.remove_user_from_objects(content, user, "collections")
                 content = self.adapt_links(
                     content,
                     user,
                     self.request_ids["collection_id"],
-                    "features",
+                    "collections",
                 )
-            elif request.scope["path"] == "/search":
-                pass
+            else:
+                content["collections"] = self.manage_all_collections(
+                    content["collections"],
+                    auth_roles,
+                    user_login,
+                )
+        elif (
+            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+        ):  # /catalog/collections/owner_id:collection_id
+            if not get_authorisation(
+                self.request_ids["collection_id"],
+                auth_roles,
+                "read",
+                self.request_ids["owner_id"],
+                user_login,
+            ) and os.environ.get("RSPY_LOCAL_MODE") in ["False", "0"]:
+                detail = {"error": "Unauthorized access."}
+                return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+                # raise HTTPException(401, "Unauthorized Access.")
+            content = remove_user_from_collection(content, user)
+            content = self.adapt_object_links(content, user)
+        elif (
+            "items" in request.scope["path"] and not self.request_ids["item_id"]
+        ):  # /catalog/owner_id/collections/collection_id/items
+            content = self.remove_user_from_objects(content, user, "features")
+            content = self.adapt_links(
+                content,
+                user,
+                self.request_ids["collection_id"],
+                "features",
+            )
+        elif request.scope["path"] == "/search":
+            pass
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
@@ -570,6 +579,7 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)
+
         response = None
         try:
             response = await call_next(request)

@@ -98,7 +98,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert str(exc_info.value) == "URL (/) is invalid."
 
     def test_remove_the_catalog_prefix(self):
-        assert reroute_url("/catalog/Toto", "GET")[0] == ("/")
+        assert reroute_url("/catalog/catalogs/Toto", "GET")[0] == ("/")
 
     # Disabled for moment
     # def test_landing_page(self):

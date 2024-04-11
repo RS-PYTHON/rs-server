@@ -174,7 +174,7 @@ class TestCatalogPublishCollectionEndpoint:
         # Test that /catalog/collection GET endpoint returns the correct collection id
         response = client.get("/catalog/collections/test_owner:test_collection")
         assert response.status_code == fastapi.status.HTTP_200_OK
-        response_content = json.loads(response.content)["collections"][0]
+        response_content = json.loads(response.content)
         # Check that values are correctly written in catalogDB
         assert response_content["id"] == minimal_collection["id"]
         assert response_content["owner"] == minimal_collection["owner"]
@@ -231,7 +231,7 @@ class TestCatalogPublishCollectionEndpoint:
             assert response.status_code == fastapi.status.HTTP_409_CONFLICT
         # Check into catalogDB that values are not updated
         response = client.get("/catalog/collections/duplicate_owner:duplicate_collection")
-        response_content = json.loads(response.content)["collections"][0]
+        response_content = json.loads(response.content)
         assert response_content["description"] == "test_description"
 
     def test_update_a_created_collection(self, client):
@@ -252,8 +252,9 @@ class TestCatalogPublishCollectionEndpoint:
         assert post_collection_response.status_code == fastapi.status.HTTP_200_OK
         # test if is ok written in catalogDB
         get_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
-        response_content = json.loads(get_collection_response.content)["collections"][0]
+        response_content = json.loads(get_collection_response.content)
         assert response_content["description"] == "not_updated_test_description"
+
         # Update the collection description and PUT
         minimal_collection["description"] = "the_updated_test_description"
         updated_collection_response = client.put("/catalog/collections", json=minimal_collection)
@@ -261,7 +262,7 @@ class TestCatalogPublishCollectionEndpoint:
 
         # Check that collection is correctly updated
         get_check_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
-        response_content = json.loads(get_check_collection_response.content)["collections"][0]
+        response_content = json.loads(get_check_collection_response.content)
         assert response_content["description"] == "the_updated_test_description"
 
         # Update collection using PUT /catalog/collections/owner:collection
@@ -274,7 +275,7 @@ class TestCatalogPublishCollectionEndpoint:
 
         # Check that collection is correctly updated, use GET /catalog/collections/owner:collection
         second_check_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
-        second_check_response_content = json.loads(second_check_response.content)["collections"][0]
+        second_check_response_content = json.loads(second_check_response.content)
         assert second_check_response_content["description"] == "description_updated_again"
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
@@ -679,6 +680,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         specific_feature = json.loads(check_features_response.content)
         # Check that specific feature is exactly match for previous one
         assert specific_feature["features"][0] == returned_features["features"][0]
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_get_non_existent_feature(self, client, a_minimal_collection):
         """
