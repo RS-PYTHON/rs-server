@@ -6,7 +6,7 @@ from importlib import reload
 import pytest
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import APIKEY_HEADER
+from rs_server_common.authentication import APIKEY_HEADER, ttl_cache
 from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 # Dummy url for the uac manager check endpoint
@@ -44,6 +44,7 @@ async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
     monkeypatch.setenv("RSPY_LOCAL_MODE", False)
 
     # With a valid api key in headers, the uac manager will give access to the endpoint
+    ttl_cache.clear()  # clear the cached response
     httpx_mock.add_response(
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
@@ -251,137 +252,127 @@ class TestAuthenticationGetOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
     ):  # pylint: disable=missing-function-docstring
-        try:
-            import rs_server_catalog
+        import rs_server_catalog
 
-            with pytest.MonkeyPatch.context() as mp:
-                reload(rs_server_catalog.main)
-                # reload(HTTPXMock)
-            with TestClient(rs_server_catalog.main.app) as client:
-                # Mock the uac manager url
-                monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-                monkeypatch.setenv("RSPY_LOCAL_MODE", False)
+        with pytest.MonkeyPatch.context() as mp:
+            reload(rs_server_catalog.main)
+            # reload(HTTPXMock)
+        with TestClient(rs_server_catalog.main.app) as client:
+            # Mock the uac manager url
+            monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+            monkeypatch.setenv("RSPY_LOCAL_MODE", False)
 
-                # With a valid api key in headers, the uac manager will give access to the endpoint
-                httpx_mock.add_response(
-                    url=RSPY_UAC_CHECK_URL,
-                    match_headers={APIKEY_HEADER: VALID_APIKEY},
-                    status_code=HTTP_200_OK,
-                    json={
-                        "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
-                        "name": "toto",
-                        "user_login": "pyteam",
-                        "is_active": True,
-                        "never_expire": True,
-                        "expiration_date": "2024-04-10T13:57:28.475052",
-                        "total_queries": 0,
-                        "latest_sync_date": "2024-03-26T13:57:28.475058",
-                        "iam_roles": [
-                            "rs_catalog_toto:*_read",
-                        ],
-                        "config": {},
-                        "allowed_referers": ["toto"],
-                    },
-                )
-
-                response = client.request(
-                    "GET",
-                    "/catalog/collections/toto:S1_L1",
-                    headers={APIKEY_HEADER: VALID_APIKEY},
-                )
-
-                assert response.status_code == HTTP_200_OK
-
-                toto_collection = {
-                    "id": "S1_L1",
-                    "type": "Collection",
-                    "links": [
-                        {
-                            "rel": "items",
-                            "type": "application/geo+json",
-                            "href": "http://testserver/catalog/toto/collections/S1_L1/items",
-                        },
-                        {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/toto"},
-                        {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/toto"},
-                        {
-                            "rel": "self",
-                            "type": "application/json",
-                            "href": "http://testserver/catalog/toto/collections/S1_L1",
-                        },
-                        {
-                            "rel": "items",
-                            "href": "http://localhost:8082/collections/S1_L1/items",
-                            "type": "application/geo+json",
-                        },
-                        {
-                            "rel": "license",
-                            "href": "https://creativecommons.org/licenses/publicdomain/",
-                            "title": "public domain",
-                        },
+            # With a valid api key in headers, the uac manager will give access to the endpoint
+            ttl_cache.clear()  # clear the cached response
+            httpx_mock.add_response(
+                url=RSPY_UAC_CHECK_URL,
+                match_headers={APIKEY_HEADER: VALID_APIKEY},
+                status_code=HTTP_200_OK,
+                json={
+                    "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                    "name": "toto",
+                    "user_login": "pyteam",
+                    "is_active": True,
+                    "never_expire": True,
+                    "expiration_date": "2024-04-10T13:57:28.475052",
+                    "total_queries": 0,
+                    "latest_sync_date": "2024-03-26T13:57:28.475058",
+                    "iam_roles": [
+                        "rs_catalog_toto:*_read",
                     ],
-                    "owner": "toto",
-                    "extent": {
-                        "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                        "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-                    },
-                    "license": "public-domain",
-                    "description": "Some description",
-                    "stac_version": "1.0.0",
-                }
-                assert toto_collection == json.loads(response.content)
-                httpx_mock.reset(False)
+                    "config": {},
+                    "allowed_referers": ["toto"],
+                },
+            )
 
-        except Exception:
-            httpx_mock.reset(False)
-            assert False
+            response = client.request(
+                "GET",
+                "/catalog/collections/toto:S1_L1",
+                headers={APIKEY_HEADER: VALID_APIKEY},
+            )
+
+            assert response.status_code == HTTP_200_OK
+
+            toto_collection = {
+                "id": "S1_L1",
+                "type": "Collection",
+                "links": [
+                    {
+                        "rel": "items",
+                        "type": "application/geo+json",
+                        "href": "http://testserver/catalog/toto/collections/S1_L1/items",
+                    },
+                    {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/toto"},
+                    {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/toto"},
+                    {
+                        "rel": "self",
+                        "type": "application/json",
+                        "href": "http://testserver/catalog/toto/collections/S1_L1",
+                    },
+                    {
+                        "rel": "items",
+                        "href": "http://localhost:8082/collections/S1_L1/items",
+                        "type": "application/geo+json",
+                    },
+                    {
+                        "rel": "license",
+                        "href": "https://creativecommons.org/licenses/publicdomain/",
+                        "title": "public domain",
+                    },
+                ],
+                "owner": "toto",
+                "extent": {
+                    "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                    "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+                },
+                "license": "public-domain",
+                "description": "Some description",
+                "stac_version": "1.0.0",
+            }
+            assert toto_collection == json.loads(response.content)
 
     async def test_fails_without_good_perms(
         self,
         monkeypatch,
         httpx_mock: HTTPXMock,
     ):  # pylint: disable=missing-function-docstring
-        try:
-            import rs_server_catalog
+        import rs_server_catalog
 
-            with pytest.MonkeyPatch.context() as mp:
-                reload(rs_server_catalog.main)
-            with TestClient(rs_server_catalog.main.app) as client:
-                # Mock the uac manager url
-                monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-                monkeypatch.setenv("RSPY_LOCAL_MODE", False)
+        with pytest.MonkeyPatch.context() as mp:
+            reload(rs_server_catalog.main)
+        with TestClient(rs_server_catalog.main.app) as client:
+            # Mock the uac manager url
+            monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+            monkeypatch.setenv("RSPY_LOCAL_MODE", False)
 
-                # With a valid api key in headers, the uac manager will give access to the endpoint
-                httpx_mock.add_response(
-                    url=RSPY_UAC_CHECK_URL,
-                    match_headers={APIKEY_HEADER: VALID_APIKEY},
-                    status_code=HTTP_200_OK,
-                    json={
-                        "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
-                        "name": "toto",
-                        "user_login": "pyteam",
-                        "is_active": True,
-                        "never_expire": True,
-                        "expiration_date": "2024-04-10T13:57:28.475052",
-                        "total_queries": 0,
-                        "latest_sync_date": "2024-03-26T13:57:28.475058",
-                        "iam_roles": [
-                            "rs_catalog_toto:*_write",
-                            "rs_catalog_toto:S1_L2_read",
-                        ],
-                        "config": {},
-                        "allowed_referers": ["toto"],
-                    },
-                )
+            # With a valid api key in headers, the uac manager will give access to the endpoint
+            ttl_cache.clear()  # clear the cached response
+            httpx_mock.add_response(
+                url=RSPY_UAC_CHECK_URL,
+                match_headers={APIKEY_HEADER: VALID_APIKEY},
+                status_code=HTTP_200_OK,
+                json={
+                    "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                    "name": "toto",
+                    "user_login": "pyteam",
+                    "is_active": True,
+                    "never_expire": True,
+                    "expiration_date": "2024-04-10T13:57:28.475052",
+                    "total_queries": 0,
+                    "latest_sync_date": "2024-03-26T13:57:28.475058",
+                    "iam_roles": [
+                        "rs_catalog_toto:*_write",
+                        "rs_catalog_toto:S1_L2_read",
+                    ],
+                    "config": {},
+                    "allowed_referers": ["toto"],
+                },
+            )
 
-                response = client.request(
-                    "GET",
-                    "/catalog/collections/toto:S1_L1",
-                    headers={APIKEY_HEADER: VALID_APIKEY},
-                )
+            response = client.request(
+                "GET",
+                "/catalog/collections/toto:S1_L1",
+                headers={APIKEY_HEADER: VALID_APIKEY},
+            )
 
-                assert response.status_code == HTTP_401_UNAUTHORIZED
-                httpx_mock.reset(False)
-
-        except Exception:
-            httpx_mock.reset(False)
-            assert False
+            assert response.status_code == HTTP_401_UNAUTHORIZED
