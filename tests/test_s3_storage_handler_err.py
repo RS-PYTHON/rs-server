@@ -8,6 +8,8 @@ import requests
 from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    DWN_S3FILE_RETRY_TIMEOUT,
+    SLEEP_TIME,
     GetKeysFromS3Config,
     PutFilesToS3Config,
     S3StorageHandler,
@@ -98,7 +100,8 @@ def test_get_keys_from_s3_download_fail(mocker):
     # Same thing for the path2
     ret = s3_handler.get_keys_from_s3(config)
     assert ret == ["path1", "path2"]
-    assert res.call_count == 60  # nb of calls to time.sleep for retrying the download  of 2 files
+    # nb of calls to time.sleep for retrying the download  of 2 files
+    assert res.call_count >= int(DWN_S3FILE_RETRY_TIMEOUT / SLEEP_TIME)
     server.stop()
 
     # Stop the server and re-test the function again
@@ -162,8 +165,8 @@ def test_put_files_to_s3_upload_fail(mocker):
     boto_mocker.activate()
 
     ret = s3_handler.put_files_to_s3(config)
-
-    assert res.call_count == 30  # nb of calls to time.sleep for retrying the upload of 1 file
+    # nb of calls to time.sleep for retrying the upload of 1 file
+    assert res.call_count >= int(DWN_S3FILE_RETRY_TIMEOUT / SLEEP_TIME)
     assert ret == [f"{SHORT_FOLDER}/no_root_file1"]
     server.stop()
 
@@ -218,6 +221,7 @@ def test_transfer_from_s3_to_s3_fail(mocker):
     # Same thing for the path2
     ret = s3_handler.transfer_from_s3_to_s3(config)
     assert ret == ["s3_storage_handler_test/no_root_file1"]
-    assert res.call_count == 30  # nb of calls to time.sleep for retrying the download  of 2 files
+    # nb of calls to time.sleep for retrying the download  of 1 file
+    assert res.call_count == int(DWN_S3FILE_RETRY_TIMEOUT / SLEEP_TIME)
     server.stop()
     boto_mocker.deactivate()

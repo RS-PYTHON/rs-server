@@ -16,6 +16,7 @@ DWN_S3FILE_RETRY_TIMEOUT = 6
 DWN_S3FILE_RETRIES = 20
 UP_S3FILE_RETRY_TIMEOUT = 6
 UP_S3FILE_RETRIES = 20
+SLEEP_TIME = 0.2
 SET_PREFECT_LOGGING_LEVEL = "DEBUG"
 S3_ERR_FORBIDDEN_ACCESS = 403
 S3_ERR_NOT_FOUND = 404
@@ -421,8 +422,8 @@ class S3StorageHandler:
         """
         time_cnt = 0.0
         while time_cnt < timeout:
-            time.sleep(0.2)
-            time_cnt += 0.2
+            time.sleep(SLEEP_TIME)
+            time_cnt += SLEEP_TIME
 
     def check_file_overwriting(self, local_file, overwrite):
         """Check if file exists and determine if it should be overwritten.

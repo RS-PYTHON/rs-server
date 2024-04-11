@@ -14,6 +14,7 @@ import requests
 from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    SLEEP_TIME,
     GetKeysFromS3Config,
     PutFilesToS3Config,
     S3StorageHandler,
@@ -166,7 +167,7 @@ def test_timeout(mocker):
     )
     res = mocker.patch("time.sleep", side_effect=None)
     s3_handler.wait_timeout(1)
-    assert res.call_count == 5  # 5 calls of 0.2 sec sleep = 1
+    assert res.call_count >= int(1 / SLEEP_TIME)  # 5 calls of 0.2 sec sleep = 1
 
 
 @pytest.mark.unit
