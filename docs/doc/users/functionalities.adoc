@@ -52,6 +52,138 @@ GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59
     },
 }
 
+=== [.green]#Session search Endpoint#
+This endpoint retrieves a list of sessions from the CADU system for a specified station within a given parameter and/or time range and return a STAC compatible FeatureCollection response.
+
+==== API Reference
+`/cadip/{station}/session`
+
+==== Parameters
+* `station` (str): Identifier for the CADIP station [.green]#(e.g., MTI, SGS, MPU, INU, etc)#.
+* `id` (str, list[str], optional): DSIB SessionId value. Can be used with coma-separated values [.green]#(e.g., S1A_20170501121534062343)#.
+* `platform` (str, list[str], optional): Platform / Satellite identifier. Can be used with coma-separated values  [.green]#(e.g: platform = S1A or platform=S1A, S2B)#.
+* `start_date` (str, optional): Start time of session (PublicationTime). (format: [.red]#YYYY-MM-DDThh:mm:sssZ#).
+* `stop_date` (str, optional): Stop time of session (PublicationTime). (format: [.red]#YYYY-MM-DDThh:mm:sssZ#).
+
+
+==== Request example
+[source,http]
+----
+GET /cadip/station123/session?id=S1A_20170501121534062343,S1A_20240328185208053186
+----
+[source,http]
+----
+GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-16T12:00:00Z&platform=S1A
+----
+==== Return
+
+[source,json]
+
+{
+    "type": "FeatureCollection",
+    "numberMatched": 3,
+    "numberReturned": 3,
+    "features": [
+        {
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+            ],
+            "type": "Feature",
+            "id": "S1A_20240328185208053186",
+            "geometry": null,
+            "properties": {
+                "start_datetime": "2024-03-28T18:52:08.000Z",
+                "datetime": "2024-03-28T18:52:08.000Z",
+                "end_datetime": "2024-03-28T19:00:52.000Z",
+                "published": "2024-03-28T18:52:26Z",
+                "platform": "S1A",
+                "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                "cadip:num_channels": 2,
+                "cadip:station_unit_id": "01",
+                "cadip:downlink_orbit": 53186,
+                "cadip:acquisition_id": 531861,
+                "cadip:antenna_id": "MSP21",
+                "cadip:front_end_id": "01",
+                "cadip:retransfer": false,
+                "cadip:antenna_status_ok": true,
+                "cadip:front_end_status_ok": true,
+                "cadip:planned_data_start": "2024-03-28T18:52:08.336Z",
+                "cadip:planned_data_stop": "2024-03-28T19:00:51.075Z",
+                "cadip:downlink_status_ok": true,
+                "cadip:delivery_push_ok": true
+            },
+            "links": [],
+            "assets": {}
+        },
+        {
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+            ],
+            "type": "Feature",
+            "id": "S1A_20240328185208053186",
+            "geometry": null,
+            "properties": {
+                "start_datetime": "2024-03-28T18:52:08.000Z",
+                "datetime": "2024-03-28T18:52:08.000Z",
+                "end_datetime": "2024-03-28T19:00:52.000Z",
+                "published": "2024-03-28T18:52:26Z",
+                "platform": "S1A",
+                "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                "cadip:num_channels": 2,
+                "cadip:station_unit_id": "01",
+                "cadip:downlink_orbit": 53186,
+                "cadip:acquisition_id": 531861,
+                "cadip:antenna_id": "MSP21",
+                "cadip:front_end_id": "01",
+                "cadip:retransfer": false,
+                "cadip:antenna_status_ok": true,
+                "cadip:front_end_status_ok": true,
+                "cadip:planned_data_start": "2024-03-28T18:52:08.336Z",
+                "cadip:planned_data_stop": "2024-03-28T19:00:51.075Z",
+                "cadip:downlink_status_ok": true,
+                "cadip:delivery_push_ok": true
+            },
+            "links": [],
+            "assets": {}
+        },
+        {
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+            ],
+            "type": "Feature",
+            "id": "S1A_20240329083700053194",
+            "geometry": null,
+            "properties": {
+                "start_datetime": "2024-03-28T18:52:08.000Z",
+                "datetime": "2024-03-28T18:52:08.000Z",
+                "end_datetime": "2024-03-28T19:00:52.000Z",
+                "published": "2024-03-29T08:37:22Z",
+                "platform": "S2B",
+                "cadip:id": "726f387b-ad2d-3538-8834-95e3cf8894c6",
+                "cadip:num_channels": 2,
+                "cadip:station_unit_id": "01",
+                "cadip:downlink_orbit": 53186,
+                "cadip:acquisition_id": 531861,
+                "cadip:antenna_id": "MSP21",
+                "cadip:front_end_id": "01",
+                "cadip:retransfer": false,
+                "cadip:antenna_status_ok": true,
+                "cadip:front_end_status_ok": true,
+                "cadip:planned_data_start": "2024-03-28T18:52:08.336Z",
+                "cadip:planned_data_stop": "2024-03-28T19:00:51.075Z",
+                "cadip:downlink_status_ok": true,
+                "cadip:delivery_push_ok": true
+            },
+            "links": [],
+            "assets": {}
+        }
+    ]
+}
+
+
 [[cadip-download]]
 === [.green]#Download Endpoint#
 
@@ -284,7 +416,7 @@ POST /catalog/collections
 This endpoint returns a collection details based on parameters given in request.
 [source,http]
 ----
-GET /catalog/collections/{ownerId#collectionId}
+GET /catalog/collections/{ownerId:collectionId}
 ----
 .Get Collection result body example
 [%collapsible]
@@ -348,7 +480,7 @@ GET /catalog/collections/{ownerId#collectionId}
 This endpoint updates a collection from STAC if it exists and request body json data is STAC compatible.
 [source,http]
 ----
-PUT /catalog/collections/{ownerId#collectionId}
+PUT /catalog/collections/{ownerId:collectionId}
 ----
 
 .Updated collection JSON body example
@@ -372,7 +504,7 @@ PUT /catalog/collections/{ownerId#collectionId}
 This endpoint deletes a collection from STAC if it exists and owner has right to perform this action.
 [source,http]
 ----
-DELETE /catalog/collections/{ownerId#collectionId}
+DELETE /catalog/collections/{ownerId:collectionId}
 ----
 
 === [.green]#Create a Feature#
@@ -380,7 +512,7 @@ This endpoint converts a request with a correct JSON body feature descriptor to 
 RS-Server Backend also move assets between s3 storages and updates hypertext reference of each STAC Feature with s3 locations.
 [source,http]
 ----
-POST /catalog/collections/{ownerId#collectionId}/items
+POST /catalog/collections/{ownerId:collectionId}/items
 ----
 .Feature body example
 [%collapsible]
@@ -453,7 +585,7 @@ POST /catalog/collections/{ownerId#collectionId}/items
 This endpoint returns a feature details based on parameters given in request.
 [source,http]
 ----
-GET /catalog/collections/{ownerId#collectionId}/items/{featureID}
+GET /catalog/collections/{ownerId:collectionId}/items/{featureID}
 ----
 .Get Feature result body example
 [%collapsible]
@@ -554,5 +686,5 @@ GET /catalog/collections/{ownerId#collectionId}/items/{featureID}
 This endpoint updates content of a feature is request JSON data is completely STAC-compatible.
 [source,http]
 ----
-PUT /catalog/collections/{ownerId#collectionId}/items/{featureID}
+PUT /catalog/collections/{ownerId:collectionId}/items/{featureID}
 ----

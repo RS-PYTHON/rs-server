@@ -4,6 +4,8 @@ on:
   push:
   pull_request:
     types: [opened, synchronize, reopened]
+    # run this worflow only for code/test related changes (avoid it for documentation)
+    paths: ['**.json', '**.lock', '**.py', '**.raw', '**.toml', '**.yaml', '**.yml']
   workflow_dispatch:
 
 env:
@@ -11,10 +13,27 @@ env:
   SONAR_PROJECT_KEY: RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      conf: ${{ steps.filter.outputs.conf }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code: ['**.py']
+            conf: ['**.lock', '**.json', '**.raw', '**.toml', '**.yaml', '**.yml']
 
   check-format:
     runs-on: ubuntu-latest
     name: Check format (pre-commit, black, isort)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/install-python
@@ -23,11 +42,13 @@ jobs:
           ":information_source: This job checks that you have run \`pre-commit run --all-files\` in
           your local git repository before committing."
           >> $GITHUB_STEP_SUMMARY
-      - uses: pre-commit/action@v3.0.0
+      - uses: pre-commit/action@v3.0.1
 
   check-linting:
     runs-on: ubuntu-latest
     name: Check linting (pylint, flake8)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +89,8 @@ jobs:
   check-typing:
     runs-on: ubuntu-latest
     name: Check typing (mypy)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v4
@@ -176,7 +199,8 @@ jobs:
   generate-quality-report:
     runs-on: ubuntu-latest
     name: Quality report (sonarqube)
-    needs: [check-linting, check-security, run-all-pytests] # see actions/download-artifact below
+    needs: [changes, check-linting, check-security, run-all-pytests] # see actions/download-artifact below
+    if: ${{ needs.changes.outputs.code == 'true' }}
     permissions: write-all # write pull request comments
     # Mark the job as OK even if the sonarqube quality gate doesn't pass.
     # We will resolve these issues later.

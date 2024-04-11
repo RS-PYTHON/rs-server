@@ -44,7 +44,7 @@ STATIONS_AUTH_LUT = {
 async def apikey_security(
     request: Request,
     apikey_value: Annotated[str, Security(APIKEY_SECURITY)],
-) -> tuple[list, dict]:
+) -> tuple[list, dict, str]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
 
@@ -55,10 +55,10 @@ async def apikey_security(
         Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
     """
     # Call the cached function (fastapi Depends doesn't work with @cached)
-    auth_roles, auth_config = await __apikey_security_cached(str(apikey_value))
+    auth_roles, auth_config, user_login = await __apikey_security_cached(str(apikey_value))
     request.state.auth_roles = auth_roles
     request.state.auth_config = auth_config
-    return auth_roles, auth_config
+    return auth_roles, auth_config, user_login
 
 
 # The following variable is needed for the tests to pass
@@ -66,7 +66,7 @@ ttl_cache: TTLCache = TTLCache(maxsize=sys.maxsize, ttl=120)
 
 
 @cached(cache=ttl_cache)
-async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
+async def __apikey_security_cached(apikey_value) -> tuple[list, dict, dict]:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
     """
@@ -87,7 +87,18 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict]:
     # Read the api key info
     if response.is_success:
         contents = response.json()
-        return contents["iam_roles"], contents["config"]
+        str_roles, config, user_login = contents["iam_roles"], contents["config"], contents["user_login"]
+
+        # Convert IAM roles to enum
+        roles = []
+        for role in str_roles:
+            try:
+                roles.append(role)
+            except KeyError:
+                logger.warning(f"Unknown IAM role: {role!r}")
+
+        # Note: for now, config is an empty dict
+        return roles, config, user_login
 
     # Try to read the response detail or error
     try:

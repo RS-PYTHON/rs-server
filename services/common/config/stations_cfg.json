@@ -1,0 +1,10 @@
+{
+    "ins": "http://127.0.0.1:5100/Files",
+    "mps": "http://127.0.0.1:5101/Files",
+    "mti": "http://127.0.0.1:5102/Files",
+    "nsg": "http://127.0.0.1:5103/Files",
+    "sgs": "http://127.0.0.1:5104/Files",
+    "cadip": "http://127.0.0.1:5000/Files",
+    "cadip_session": "http://127.0.0.1:5000/Sessions",
+    "adgs": "http://127.0.0.1:5001/Products"
+}

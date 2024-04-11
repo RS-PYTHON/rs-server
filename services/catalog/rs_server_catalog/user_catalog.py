@@ -14,7 +14,9 @@ The middleware:
 """
 
 import json
+import logging
 import os
+import re
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -23,6 +25,7 @@ from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
+from rs_server_catalog.landing_page import manage_landing_page
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
@@ -30,24 +33,33 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
+from rs_server_common.authentication import apikey_security
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
 )
+from rs_server_common.utils.logging import Logging
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.status import HTTP_400_BAD_REQUEST
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
 
-class UserCatalogMiddleware(BaseHTTPMiddleware):
-    """The user catalog middleware."""
+logger = Logging.default(__name__)
 
-    handler: S3StorageHandler = None
-    temp_bucket_name: str = "temp-bucket"
-    request_ids: dict[Any, Any] = {}
+
+class UserCatalog:
+    """The user catalog middleware handler."""
+
+    def __init__(self):
+        """Constructor, called from the middleware"""
+
+        self.handler: S3StorageHandler = None
+        self.temp_bucket_name: str = ""
+        self.request_ids: dict[Any, Any] = {}
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -141,10 +153,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
     def update_stac_item_publication(self, content: dict, user: str) -> Any:  # pylint: disable=too-many-locals
         """Update json body of feature push to catalog"""
+
+        # Unique set of temp bucket names
+        bucket_names = set()
+
         files_s3_key = []
         # 1 - update assets href
         for asset in content["assets"]:
             filename_str = content["assets"][asset]["href"]
+            logger.debug(f"HTTP request asset: {filename_str!r}")
             fid = filename_str.rsplit("/", maxsplit=1)[-1]
             new_href = (
                 f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
@@ -153,14 +170,26 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = filename_str.split("/")
-                self.temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
+                temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
+                bucket_names.add(temp_bucket_name)
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 new_s3_href = {"s3": {"href": s3_key}}
                 content["assets"][asset].update({"alternate": new_s3_href})
-                files_s3_key.append(filename_str.replace(f"s3://{self.temp_bucket_name}", ""))
+                files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
             except (IndexError, AttributeError, KeyError) as exc:
-                raise HTTPException(detail="Invalid obs bucket!", status_code=400) from exc
+                raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
+
+        # There should be a single temp bucket name
+        if not bucket_names:
+            raise HTTPException(detail="'assets' are missing from the request", status_code=HTTP_400_BAD_REQUEST)
+        if len(bucket_names) > 1:
+            raise HTTPException(
+                detail=f"A single s3 bucket should be used in the 'assets': {bucket_names!r}",
+                status_code=HTTP_400_BAD_REQUEST,
+            )
+        self.temp_bucket_name = bucket_names.pop()
+
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
@@ -226,9 +255,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except KeyError:
-            return "Could not find s3 credentials", 400
+            return "Could not find s3 credentials", HTTP_400_BAD_REQUEST
         except botocore.exceptions.ClientError:
-            return "Could not generate presigned url", 400
+            return "Could not generate presigned url", HTTP_400_BAD_REQUEST
         return response, 302
 
     def find_owner_id(self, ecql_ast: Node) -> str:
@@ -339,52 +368,117 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
-            raise HTTPException(detail=f"Missing key in request body! {kerr_msg}", status_code=400) from kerr_msg
+            raise HTTPException(
+                detail=f"Missing key in request body! {kerr_msg}",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from kerr_msg
         except Exception as e:
-            raise HTTPException(detail=f"General exception {e}", status_code=400) from e
+            raise HTTPException(detail=f"General exception {e}", status_code=HTTP_400_BAD_REQUEST) from e
 
-    async def manage_get_response(self, request: Request, response: StreamingResponse) -> Response:
+    def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
+        """Return the list of all collections accessible by the user calling it.
+
+        Args:
+            collections (dict): List of all collections.
+            auth_roles (list): List of roles of the api-key.
+            user_login (str): The api-key owner.
+
+        Returns:
+            dict: The list of all collections accessible by the user.
+        """
+        catalog_read_right_pattern = (
+            r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
+        )
+        accessible_collections = []
+
+        # Filter roles for read access
+        read_roles = [role for role in auth_roles if re.match(catalog_read_right_pattern, role)]
+
+        for role in read_roles:
+            if match := re.match(catalog_read_right_pattern, role):
+                groups = match.groupdict()
+                if groups["right_type"] == "read":
+                    owner_id = groups["owner_id"]
+                    collection_id = groups["collection_id"]
+                    accessible_collections.extend(
+                        filter_collections(
+                            collections,
+                            owner_id if collection_id == "*" else f"{owner_id}_{collection_id}",
+                        ),
+                    )
+
+        accessible_collections.extend(filter_collections(collections, user_login))
+        return accessible_collections
+
+    async def manage_get_response(
+        self,
+        request: Request,
+        response: StreamingResponse,
+    ) -> Response:
         """Remove the user name from obects and adapt all links.
 
         Args:
             request (Request): The client request.
             response (Response | StreamingResponse): The response from the rs-catalog.
-            item_id if they exist.
-
         Returns:
             Response: The response updated.
         """
         user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
-        if request.scope["path"] == "/":  # /catalog/owner_id
-            return JSONResponse(content, status_code=response.status_code)
-        if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
-            content["collections"] = filter_collections(content["collections"], user)
-            content = self.remove_user_from_objects(content, user, "collections")
-            content = self.adapt_links(
-                content,
-                self.request_ids["owner_id"],
-                self.request_ids["collection_id"],
-                "collections",
-            )
-        elif (
-            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
-        ):  # /catalog/owner_id/collections/collection_id
-            content = remove_user_from_collection(content, user)
-            content = self.adapt_object_links(content, user)
-        elif (
-            "items" in request.scope["path"] and not self.request_ids["item_id"]
-        ):  # /catalog/owner_id/collections/collection_id/items
-            content = self.remove_user_from_objects(content, user, "features")
-            content = self.adapt_links(
-                content,
-                self.request_ids["owner_id"],
-                self.request_ids["collection_id"],
-                "features",
-            )
-        elif request.scope["path"] == "/search":
-            pass
+
+        if "detail" not in content:  # Test if the user is authenticated.
+            if request.scope["path"] == "/":  # /catalog
+                try:
+                    api_key = request.headers["x-api-key"]
+                    auth_roles, _, user_login = await apikey_security(request, api_key)
+                    content = manage_landing_page(request, auth_roles, user_login, content)
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logging.exception(  # pylint: disable=logging-fstring-interpolation
+                        f"apikey not available or local mode {e}",
+                    )
+                return JSONResponse(
+                    content,
+                    status_code=response.status_code,
+                )
+            if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
+                if user:
+                    content["collections"] = filter_collections(content["collections"], user)
+                    content = self.remove_user_from_objects(content, user, "collections")
+                    content = self.adapt_links(
+                        content,
+                        user,
+                        self.request_ids["collection_id"],
+                        "collections",
+                    )
+                else:
+                    try:
+                        api_key = request.headers["x-api-key"]
+                        auth_roles, _, user_login = await apikey_security(request, api_key)
+                        content["collections"] = self.manage_all_collections(
+                            content["collections"],
+                            auth_roles,
+                            user_login,
+                        )
+                    finally:
+                        pass
+            elif (
+                "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+            ):  # /catalog/owner_id/collections/collection_id
+                content = remove_user_from_collection(content, user)
+                content = self.adapt_object_links(content, user)
+            elif (
+                "items" in request.scope["path"] and not self.request_ids["item_id"]
+            ):  # /catalog/owner_id/collections/collection_id/items
+                content = self.remove_user_from_objects(content, user, "features")
+                content = self.adapt_links(
+                    content,
+                    user,
+                    self.request_ids["collection_id"],
+                    "features",
+                )
+            elif request.scope["path"] == "/search":
+                pass
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
@@ -430,23 +524,23 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
 
         """
         try:
+            user = self.request_ids["owner_id"]
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
             if request.scope["path"] == "/collections":
-                response_content = remove_user_from_collection(response_content, self.request_ids["owner_id"])
-                response_content = self.adapt_object_links(response_content, self.request_ids["owner_id"])
+                response_content = remove_user_from_collection(response_content, user)
+                response_content = self.adapt_object_links(response_content, user)
             elif (
                 request.scope["path"]
-                == f"/collections/{self.request_ids['owner_id']}_{self.request_ids['collection_id']}/items/\
-{self.request_ids['item_id']}"
+                == f"/collections/{user}_{self.request_ids['collection_id']}/items/{self.request_ids['item_id']}"
             ):
-                response_content = remove_user_from_feature(response_content, self.request_ids["owner_id"])
-                response_content = self.adapt_object_links(response_content, self.request_ids["owner_id"])
+                response_content = remove_user_from_feature(response_content, user)
+                response_content = self.adapt_object_links(response_content, user)
             self.clear_temp_bucket(response_content)
         except RuntimeError as exc:
-            raise HTTPException(detail="Failed to clear temp-bucket", status_code=400) from exc
+            raise HTTPException(detail="Failed to clear temp-bucket", status_code=HTTP_400_BAD_REQUEST) from exc
         except Exception as exc:  # pylint: disable=broad-except
-            raise HTTPException(detail="Bad request", status_code=400) from exc
+            raise HTTPException(detail="Bad request", status_code=HTTP_400_BAD_REQUEST) from exc
         return JSONResponse(response_content, status_code=response.status_code)
 
     async def manage_response_error(self, response: StreamingResponse | Any) -> JSONResponse:
@@ -467,9 +561,9 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type:ignore
             self.clear_catalog_bucket(response_content)
-            raise HTTPException(detail=f"Bad request, {response_content}", status_code=400)
+            raise HTTPException(detail=f"Bad request, {response_content}", status_code=HTTP_400_BAD_REQUEST)
         # Otherwise just return the exception
-        raise HTTPException(detail="Bad request", status_code=400)
+        raise HTTPException(detail="Bad request", status_code=HTTP_400_BAD_REQUEST)
 
     async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
         """Change the name of the deleted collection by removing owner_id.
@@ -506,7 +600,6 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)
-
         response = None
         try:
             response = await call_next(request)
@@ -527,8 +620,12 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
         elif request.method == "GET" and "download" in request.url.path:
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
-        elif request.method == "GET" and self.request_ids["owner_id"]:
+        elif request.method == "GET" and (
+            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections"]
+        ):
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
+            # URL: GET: '/catalog/'
+            # URL: GET: '/catalog/collections
             response = await self.manage_get_response(request, response)
         elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
@@ -538,3 +635,15 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):
             response = await self.manage_delete_response(response, user)
 
         return response
+
+
+class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """The user catalog middleware."""
+
+    async def dispatch(self, request, call_next):
+        """Redirect the user catalog specific endpoint and adapt the response content."""
+
+        # NOTE: the same 'self' instance is reused by all requests so it must
+        # not be used by several requests at the same time or we'll have conflicts.
+        # Do everything in a specific object.
+        return await UserCatalog().dispatch(request, call_next)

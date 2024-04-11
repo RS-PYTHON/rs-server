@@ -34,6 +34,8 @@ image::staticview.png[]
 
 image::python-components.png[]
 
+image::python-rs-client.png[]
+
 == Dynamic View
 
 The following schema highlights main interactions between the components.

@@ -1,0 +1,33 @@
+# Please see the documentation for all configuration options:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/services/adgs"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/services/cadip"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/services/catalog"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/services/common"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/services/frontend"
+    schedule:
+      interval: "daily"
