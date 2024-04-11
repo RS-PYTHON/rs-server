@@ -5,11 +5,10 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, List
 
 import boto3
 import botocore
-from botocore.exceptions import ClientError
 from rs_server_common.utils.logging import Logging
 
 # seconds
@@ -17,6 +16,7 @@ DWN_S3FILE_RETRY_TIMEOUT = 6
 DWN_S3FILE_RETRIES = 20
 UP_S3FILE_RETRY_TIMEOUT = 6
 UP_S3FILE_RETRIES = 20
+SLEEP_TIME = 0.2
 SET_PREFECT_LOGGING_LEVEL = "DEBUG"
 S3_ERR_FORBIDDEN_ACCESS = 403
 S3_ERR_NOT_FOUND = 404
@@ -105,7 +105,6 @@ class S3StorageHandler:
             RuntimeError: If the connection to the S3 storage cannot be established.
         """
         self.logger = Logging.default(__name__)
-        self.logger.debug("S3StorageHandler created !")
 
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
@@ -113,6 +112,7 @@ class S3StorageHandler:
         self.region_name = region_name
         self.s3_client: boto3.client = None
         self.connect_s3()
+        self.logger.debug("S3StorageHandler created !")
 
     def __get_s3_client(self, access_key_id, secret_access_key, endpoint_url, region_name):
         """Retrieve or create an S3 client instance.
@@ -126,8 +126,7 @@ class S3StorageHandler:
         Returns:
             boto3.client: An S3 client instance.
         """
-        if self.s3_client:
-            return self.s3_client
+
         client_config = botocore.config.Config(
             max_pool_connections=100,
             # timeout for connection
@@ -146,10 +145,10 @@ class S3StorageHandler:
                 region_name=region_name,
                 config=client_config,
             )
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "EntityAlreadyExists":
-                raise RuntimeError("This clent already exists") from e
-            raise e  # for other errors, juste re-raise the exception
+
+        except Exception as e:
+            self.logger.exception(f"Client error exception: {e}")
+            raise RuntimeError("Client error exception ") from e
 
     def connect_s3(self):
         """Establish a connection to the S3 service.
@@ -167,8 +166,9 @@ class S3StorageHandler:
 
     def disconnect_s3(self):
         """Close the connection to the S3 service."""
-        if self.s3_client is not None:
-            self.s3_client.close()
+        if self.s3_client is None:
+            return
+        self.s3_client.close()
         self.s3_client = None
 
     def delete_file_from_s3(self, bucket, s3_obj):
@@ -177,35 +177,26 @@ class S3StorageHandler:
         Args:
             bucket (str): The S3 bucket name.
             s3_obj (str): The S3 object key.
+
+        Raises:
+            RuntimeError: If an error occurs during the bucket access check.
         """
         if self.s3_client is None or bucket is None or s3_obj is None:
             raise RuntimeError("Input error for deleting the file")
         try:
             self.logger.info("Delete key s3://%s/%s", bucket, s3_obj)
             self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
-        except ClientError as e:
+        except botocore.client.ClientError as e:
+            self.logger.exception(f"Failed to delete key s3://{bucket}/{s3_obj}: {e}")
+            raise RuntimeError(f"Failed to delete key s3://{bucket}/{s3_obj}") from e
+        except Exception as e:
+            self.logger.exception(f"Failed to delete key s3://{bucket}/{s3_obj}: {e}")
             raise RuntimeError(f"Failed to delete key s3://{bucket}/{s3_obj}") from e
 
     # helper functions
 
-    def delete_bucket_completely(self, bucket_name):
-        """Utils function used to remove a s3 bucket even if not empty"""
-        response = self.s3_client.list_objects_v2(
-            Bucket=bucket_name,
-        )
-
-        while response["KeyCount"] > 0:
-            response = self.s3_client.delete_objects(
-                Bucket=bucket_name,
-                Delete={"Objects": [{"Key": obj["Key"]} for obj in response["Contents"]]},
-            )
-            response = self.s3_client.list_objects_v2(
-                Bucket=bucket_name,
-            )
-        response = self.s3_client.delete_bucket(Bucket=bucket_name)
-
     @staticmethod
-    def get_secrets(secrets, secret_file):
+    def get_secrets_from_file(secrets, secret_file):
         """Read secrets from a specified file.
 
         It reads the secrets from .s3cfg or aws credentials files
@@ -220,19 +211,17 @@ class S3StorageHandler:
         with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
             lines = aws_credentials_file.readlines()
             for line in lines:
-                if dict_filled == len(secrets):
-                    break
-                if secrets["s3endpoint"] is None and "host_bucket" in line:
+                if not secrets["s3endpoint"] and "host_bucket" in line:
                     dict_filled += 1
                     secrets["s3endpoint"] = line.strip().split("=")[1].strip()
-                elif secrets["accesskey"] is None and "access_key" in line:
+                elif not secrets["accesskey"] and "access_key" in line:
                     dict_filled += 1
                     secrets["accesskey"] = line.strip().split("=")[1].strip()
-                elif secrets["secretkey"] is None and "secret_" in line and "_key" in line:
+                elif not secrets["secretkey"] and "secret_" in line and "_key" in line:
                     dict_filled += 1
                     secrets["secretkey"] = line.strip().split("=")[1].strip()
-        if secrets["accesskey"] is None or secrets["secretkey"] is None:
-            raise RuntimeError("Secret fields not found")
+                if dict_filled == 3:
+                    break
 
     @staticmethod
     def get_basename(input_path):
@@ -248,7 +237,7 @@ class S3StorageHandler:
         return filename or ntpath.basename(path)
 
     @staticmethod
-    def get_s3_data(s3_url):
+    def s3_path_parser(s3_url):
         """
         Parses S3 URL to extract bucket, prefix, and file.
 
@@ -272,7 +261,7 @@ class S3StorageHandler:
         return bucket, prefix, s3_file
 
     def files_to_be_downloaded(self, bucket, paths):
-        """Create a list of S3 keys to be downloaded.
+        """Create a list with the S3 keys to be downloaded.
 
         The list will have the s3 keys to be downloaded from the bucket.
         It contains pairs (local_prefix_where_the_file_will_be_downloaded, full_s3_key_path)
@@ -286,7 +275,7 @@ class S3StorageHandler:
             list: List of tuples (local_prefix, full_s3_key_path).
         """
         # declaration of the list
-        list_with_files = []
+        list_with_files: List[Any] = []
         # for each key, identify it as a file or a folder
         # in the case of a folder, the files will be recursively gathered
         for key in paths:
@@ -294,6 +283,7 @@ class S3StorageHandler:
             s3_files = self.list_s3_files_obj(bucket, path)
             if len(s3_files) == 0:
                 self.logger.warning("No key %s found.", path)
+                list_with_files.append((None, path))
                 continue
             self.logger.debug("total: %s | s3_files = %s", len(s3_files), s3_files)
             basename_part = self.get_basename(path)
@@ -313,7 +303,7 @@ class S3StorageHandler:
         return list_with_files
 
     def files_to_be_uploaded(self, paths):
-        """Creates a list of local files to be uploaded.
+        """Creates a list with the local files to be uploaded.
 
         The list contains pairs (s3_path, absolute_local_file_path)
         If the local file doesn't exist, the pair will be (None, requested_file_to_upload)
@@ -379,7 +369,7 @@ class S3StorageHandler:
                     if item is not None:
                         s3_files.append(item["Key"])
         except Exception as error:
-            self.logger.error(f"Exception when trying to list files from s3://{bucket}/{prefix}: {error}")
+            self.logger.exception(f"Exception when trying to list files from s3://{bucket}/{prefix}: {error}")
             raise RuntimeError(f"Listing files from s3://{bucket}/{prefix}") from error
 
         return s3_files
@@ -394,19 +384,27 @@ class S3StorageHandler:
             RuntimeError: If an error occurs during the bucket access check.
         """
 
-        self.connect_s3()
         try:
+            self.connect_s3()
             self.s3_client.head_bucket(Bucket=bucket)
         except botocore.client.ClientError as error:
             # check that it was a 404 vs 403 errors
             # If it was a 404 error, then the bucket does not exist.
             error_code = int(error.response["Error"]["Code"])
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
-                self.logger.error((f"{bucket} is a private bucket. Forbidden access!"))
+                self.logger.exception((f"{bucket} is a private bucket. Forbidden access!"))
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
             if error_code == S3_ERR_NOT_FOUND:
-                self.logger.error((f"{bucket} bucket does not exist!"))
+                self.logger.exception((f"{bucket} bucket does not exist!"))
                 raise RuntimeError(f"{bucket} bucket does not exist!") from error
+            self.logger.exception("Exception when checking the access to {bucket} bucket: {error}")
+            raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
+        except botocore.exceptions.EndpointConnectionError as error:
+            self.logger.exception(f"Could not connect to the endpoint when trying to access {bucket}: {error}")
+            raise RuntimeError(f"Could not connect to the endpoint when trying to access {bucket}!") from error
+        except Exception as error:
+            self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
+            raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
 
     def wait_timeout(self, timeout):
         """
@@ -424,29 +422,27 @@ class S3StorageHandler:
         """
         time_cnt = 0.0
         while time_cnt < timeout:
-            time.sleep(0.2)
-            time_cnt += 0.2
+            time.sleep(SLEEP_TIME)
+            time_cnt += SLEEP_TIME
 
     def check_file_overwriting(self, local_file, overwrite):
-        """Check whether a file already exists at the specified local path and handles overwriting.
+        """Check if file exists and determine if it should be overwritten.
 
-        Parameters:
-        - local_file (str): The local file path to check.
-        - overwrite (bool): A flag indicating whether to overwrite the existing file if found.
-        - logger (Logger): The logger object for logging messages.
+        Args:
+            local_file (str): Path to the local file.
+            overwrite (bool): Whether to overwrite the existing file.
 
         Returns:
-        bool: True if overwriting is allowed or if the file doesn't exist, False otherwise.
+            bool: True if the file should be overwritten, False otherwise.
 
         Note:
-        - If the file already exists and the overwrite flag is set to True, the function will log a message,
-        delete the existing file, and return True.
-        - If the file already exists and the overwrite flag is set to False, the function will log a warning
-        message, and return False. In this case, the existing file won't be deleted.
-        - If the file doesn't exist, the function will return True.
+        - If the file already exists and the overwrite flag is set to True, the function logs a message,
+        deletes the existing file, and returns True.
+        - If the file already exists and the overwrite flag is set to False, the function logs a warning
+        message, and returns False. In this case, the existing file won't be deleted.
+        - If the file doesn't exist, the function returns True.
 
         """
-        ret_overwrite = True
         if os.path.isfile(local_file):
             if overwrite:  # The file already exists, so delete it first
                 self.logger.info(
@@ -456,13 +452,12 @@ class S3StorageHandler:
                 os.remove(local_file)
             else:
                 self.logger.warning(
-                    "File %s already exists. Skipping it \
-    (use the overwrite flag if you want to overwrite this file)",
+                    "File %s already exists. Ignoring (use the overwrite flag if you want to overwrite this file)",
                     S3StorageHandler.get_basename(local_file),
                 )
-                ret_overwrite = False
+                return False
 
-        return ret_overwrite
+        return True
 
     def get_keys_from_s3(self, config: GetKeysFromS3Config) -> list:
         """Download S3 keys specified in the configuration.
@@ -481,18 +476,13 @@ class S3StorageHandler:
 
         """
 
-        try:
-            self.check_bucket_access(config.bucket)
-        except RuntimeError as e:
-            self.logger.error(
-                "Could not download the file(s) because the \
-    bucket %s does not exist or is not accessible. Aborting",
-                config.bucket,
-            )
-            raise RuntimeError(f"The bucket {config.bucket} does not exist or is not accessible") from e
+        # check the access to the bucket first, or even if it does exist
+        self.check_bucket_access(config.bucket)
+
         # collection_files: list of files to be downloaded
         #                   the list contains pair objects with the following
         #                   syntax: (local_path_to_be_added_to_the_local_prefix, s3_key)
+        #                   the local_path_to_be_added_to_the_local_prefix may be none if the file doesn't exist
         collection_files = self.files_to_be_downloaded(config.bucket, config.s3_files)
 
         self.logger.debug("collection_files = %s | bucket = %s", collection_files, config.bucket)
@@ -528,10 +518,10 @@ class S3StorageHandler:
                     )
                     downloaded = True
                     break
-                except botocore.client.ClientError as error:
-                    self.logger.error(
+                except (botocore.client.ClientError, botocore.exceptions.EndpointConnectionError) as error:
+                    self.logger.exception(
                         "Error when downloading the file %s. \
-    Exception: %s. Retrying in %s seconds for %s more times",
+Exception: %s. Retrying in %s seconds for %s more times",
                         s3_file,
                         error,
                         DWN_S3FILE_RETRY_TIMEOUT,
@@ -540,9 +530,9 @@ class S3StorageHandler:
                     self.disconnect_s3()
                     self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
                 except RuntimeError:
-                    self.logger.error(
+                    self.logger.exception(
                         "Error when downloading the file %s. \
-    Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+Couldn't get the s3 client. Retrying in %s seconds for %s more times",
                         s3_file,
                         DWN_S3FILE_RETRY_TIMEOUT,
                         config.max_retries - keep_trying,
@@ -552,7 +542,7 @@ class S3StorageHandler:
             if not downloaded:
                 self.logger.error(
                     "Could not download the file %s. The download was \
-    retried for %s times. Aborting",
+retried for %s times. Aborting",
                     s3_file,
                     config.max_retries,
                 )
@@ -577,15 +567,8 @@ class S3StorageHandler:
 
         """
 
-        try:
-            self.check_bucket_access(config.bucket)
-        except RuntimeError as e:
-            self.logger.error(
-                "Could not upload any of the received files because the \
-bucket %s does not exist or is not accessible. Aborting",
-                config.bucket,
-            )
-            raise RuntimeError(f"The bucket {config.bucket} does not exist or is not accessible") from e
+        # check the access to the bucket first, or even if it does exist
+        self.check_bucket_access(config.bucket)
 
         collection_files = self.files_to_be_uploaded(config.files)
         failed_files = []
@@ -608,14 +591,18 @@ bucket %s does not exist or is not accessible. Aborting",
                         "Upload file %s to s3://%s/%s",
                         file_to_be_uploaded,
                         config.bucket,
-                        s3_obj,
+                        s3_obj.lstrip("/"),
                     )
 
                     self.s3_client.upload_file(file_to_be_uploaded, config.bucket, s3_obj)
                     uploaded = True
                     break
-                except botocore.client.ClientError as error:
-                    self.logger.error(
+                except (
+                    botocore.client.ClientError,
+                    botocore.exceptions.EndpointConnectionError,
+                    boto3.exceptions.S3UploadFailedError,
+                ) as error:
+                    self.logger.exception(
                         "Error when uploading the file %s. \
 Exception: %s. Retrying in %s seconds for %s more times",
                         file_to_be_uploaded,
@@ -626,7 +613,7 @@ Exception: %s. Retrying in %s seconds for %s more times",
                     self.disconnect_s3()
                     self.wait_timeout(UP_S3FILE_RETRY_TIMEOUT)
                 except RuntimeError:
-                    self.logger.error(
+                    self.logger.exception(
                         "Error when uploading the file %s. \
 Couldn't get the s3 client. Retrying in %s seconds for %s more times",
                         file_to_be_uploaded,
@@ -658,7 +645,7 @@ retried for %s times. Aborting",
         Raises:
             Exception: Any unexpected exception raised during the upload process.
         """
-
+        # check the access to both buckets first, or even if they do exist
         self.check_bucket_access(config.bucket_src)
         self.check_bucket_access(config.bucket_dst)
 
@@ -703,37 +690,35 @@ retried for %s times. Aborting",
                         self.logger.debug("Key deleted s3://%s/%s", config.bucket_src, collection_file[1])
                     copied = True
                     break
-                except botocore.client.ClientError as error:
-                    self.logger.error(
+                except (botocore.client.ClientError, botocore.exceptions.EndpointConnectionError) as error:
+                    self.logger.exception(
                         "Error when copying the file s3://%s/%s to s3://%s. \
-    Exception: %s. Retrying in %s seconds for %s more times",
+Exception: %s. Retrying in %s seconds for %s more times",
                         config.bucket_src,
                         collection_file[1],
                         config.bucket_dst,
                         error,
                         DWN_S3FILE_RETRY_TIMEOUT,
-                        config.max_retries - keep_trying - 1,
+                        config.max_retries - keep_trying,
                     )
-                    if config.max_retries - keep_trying - 1 != 0:
-                        self.disconnect_s3()
-                        self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
+                    self.disconnect_s3()
+                    self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
                 except RuntimeError:
-                    self.logger.error(
+                    self.logger.exception(
                         "Error when copying the file s3://%s/%s to s3://%s. \
-    Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+Couldn't get the s3 client. Retrying in %s seconds for %s more times",
                         config.bucket_src,
                         collection_file[1],
                         config.bucket_dst,
                         DWN_S3FILE_RETRY_TIMEOUT,
-                        config.max_retries - keep_trying - 1,
+                        config.max_retries - keep_trying,
                     )
-                    if config.max_retries - keep_trying - 1 != 0:
-                        self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
+                    self.wait_timeout(DWN_S3FILE_RETRY_TIMEOUT)
 
             if not copied:
                 self.logger.error(
                     "Could not copy the file s3://%s/%s to s3://%s. The copy was \
-    retried for %s times. Aborting",
+retried for %s times. Aborting",
                     config.bucket_src,
                     collection_file[1],
                     config.bucket_dst,

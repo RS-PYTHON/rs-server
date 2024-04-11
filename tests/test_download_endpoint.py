@@ -3,9 +3,13 @@
 import filecmp
 import os
 import os.path as osp
+import secrets as sec_generator
+import string
 import tempfile
 import time
 from contextlib import contextmanager
+from threading import Thread
+from typing import List
 
 import pytest
 import responses
@@ -24,6 +28,8 @@ from .conftest import export_aws_credentials  # pylint: disable=no-name-in-modul
 RES_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
 S3_FOLDER = osp.join(RES_FOLDER, "s3")
 ENDPOINTS_FOLDER = osp.join(RES_FOLDER, "endpoints")
+TIME_TO_DOWNLOAD_FILE = 2
+TIME_TO_DOWNLOAD_FILES_IN_PARALLEL = 5
 
 
 # pylint: disable=too-many-arguments
@@ -89,8 +95,8 @@ def test_valid_endpoint_request_download(
         # send the request
         data = client.get(endpoint)
 
-        # let the file to be copied local
-        time.sleep(1)
+        # let the file to be copied
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         assert data.status_code == 200
         assert data.json() == {"started": "true"}
         # test file content
@@ -170,6 +176,7 @@ def test_exception_while_valid_download(
         # send the request
         assert db_handler.get(db, name=filename).status == EDownloadStatus.IN_PROGRESS
         client.get(endpoint)
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         assert db_handler.get(db, name=filename).status == EDownloadStatus.FAILED
         assert db_handler.get(db, name=filename).status_fail_message == "Exception('Error while downloading')"
 
@@ -304,12 +311,13 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
             side_effect=CreateProviderFailed("Invalid station"),
         )
         # send the request
-        data = client.get(endpoint)
+        client.get(endpoint)
+        # wait for eodag to fail in initialization
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed
         assert result.status == EDownloadStatus.FAILED
-        assert data.json() == {"started": "false"}
 
 
 @pytest.mark.unit
@@ -362,17 +370,20 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
             status=EDownloadStatus.NOT_STARTED,
         )
         # Mock function data_retriever.download to raise an error
-        # In order to verify that download status is not set to in progress and set to false.
+        # Verify that the download status is set to false.
         mocker.patch(
             "rs_server_common.data_retrieval.eodag_provider.EodagProvider.download",
             side_effect=Exception("Some Runtime Error occured here."),
         )
         # send the request
         data = client.get(endpoint)
+        # wait for eodag to start
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed and download started
         # Error message is written into db
+
         assert result.status == EDownloadStatus.FAILED
         assert data.json() == {"started": "true"}
         assert result.status_fail_message == "Exception('Some Runtime Error occured here.')"
@@ -462,7 +473,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint
         # call the endpoint
         data = client.get(endpoint)
         # Wait in order to start byte-stream and write local
-        time.sleep(1)
+        time.sleep(TIME_TO_DOWNLOAD_FILE)
         # get the product status from db (It should be updated by the endpoint call)
         result = db_handler.get(db=db, name=filename)
         # Check that update_db function set the status to FAILED
@@ -552,7 +563,7 @@ def test_upload_to_s3(
             data = client.get(endpoint)
 
             # let the file to be copied local
-            time.sleep(2)
+            time.sleep(TIME_TO_DOWNLOAD_FILE)
             assert data.status_code == 200
             assert data.json() == {"started": "true"}
 
@@ -566,3 +577,180 @@ def test_upload_to_s3(
             assert found
         finally:
             moto_server_endpoint.stop()
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize(
+    # create some temp dirs that should exist during the scope of this function
+    "endpoint, local_filenames, db_handler",
+    [
+        (
+            "/adgs/aux",
+            [
+                ("AUX_1.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+                ("AUX_2.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+                ("AUX_3.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+            ],
+            AdgsDownloadStatus,
+        ),
+        (
+            "/cadip/CADIP/cadu",
+            [
+                ("CADIP_1.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+                ("CADIP_2.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+                ("CADIP_3.raw", tempfile.TemporaryDirectory().name),  # pylint: disable=consider-using-with
+            ],
+            CadipDownloadStatus,
+        ),
+    ],
+)
+def test_valid_parallel_download(
+    client,
+    endpoint,
+    local_filenames,
+    db_handler,
+):  # pylint: disable=unused-argument, too-many-locals
+    """
+    Test the parallel behaviour of download endpoint with 3 requests.
+    """
+    # To be added, also check os.environ["EODAG_CFG_DIR"] inside thread
+    publication_date = "2023-10-10T00:00:00.111Z"
+    # Set the ids of requested files, and their local name
+    requested_product_ids = ["id_1", "id_2", "id_3"]
+    # Cleanup
+    for local_file in requested_product_ids:
+        try:
+            os.unlink(local_file + ".raw")
+        except FileNotFoundError:
+            pass
+    # Mock local file for comparison / pickup point response
+    local_temp_files = []
+    for mock_resp_id in requested_product_ids:
+        # Generate a random file content, random dimension
+        file_content = "".join(sec_generator.choice(string.ascii_letters) for _ in range(250))
+        # Write the random generated content on file, for later comparison
+        with open(f"{mock_resp_id}.raw", "x", encoding="utf-8") as fp:
+            fp.write(file_content)
+        local_temp_files.append(f"{mock_resp_id}.raw")
+        # Mock cadip station response for each id
+        responses.add(
+            responses.GET,
+            f"http://127.0.0.1:5000/Files({mock_resp_id})/$value",
+            body=file_content,
+            status=200,
+        )
+        # Mock ADGS station responses for each id
+        responses.add(
+            responses.GET,
+            f"http://127.0.0.1:5001/Products({mock_resp_id})/$value",
+            body=file_content,
+            status=200,
+        )
+    with contextmanager(get_db)() as db:
+        # Add a download status to database
+        request_threads: List[Thread] = []
+        download_locations = []
+        for product_id, filename in zip(requested_product_ids, local_filenames):
+            # For each file, set DB status to IN_PROGRESS
+            db_handler.create(
+                db=db,
+                product_id=product_id,
+                name=filename[0],
+                available_at_station=publication_date,
+                status=EDownloadStatus.IN_PROGRESS,
+            )
+            # Save download location
+            # download_dir = tempfile.TemporaryDirectory().name  # pylint: disable=consider-using-with
+            download_locations.append(filename[1] + f"/{filename[0]}")
+            # Compose endpoint call and create a list of threads
+            request_threads.append(
+                Thread(target=client.get, args=(f"{endpoint}?name={filename[0]}&local={filename[1]}",)),
+            )
+    # Start all threads in parallel
+    for req_thread in request_threads:
+        req_thread.start()
+    # join threads
+    for req_thread in request_threads:
+        req_thread.join()
+    # wait for threads to download
+    time.sleep(TIME_TO_DOWNLOAD_FILES_IN_PARALLEL)
+    # Compare downloaded file with local files, to check if content is correctly streamed.
+    assert all(
+        filecmp.cmp(downloaded_file, local_file)
+        for downloaded_file, local_file in zip(download_locations, local_temp_files)
+    )
+
+    # Cleanup
+    for local_file in local_temp_files:
+        os.unlink(local_file)
+
+
+@pytest.mark.unit
+@responses.activate
+@pytest.mark.parametrize(
+    "endpoint, db_handler",
+    [
+        ("/adgs/aux", AdgsDownloadStatus),
+        ("/cadip/CADIP/cadu", CadipDownloadStatus),
+    ],
+)
+def test_endpoint_request_download_thread_timeout(
+    client,
+    endpoint,
+    db_handler,
+    mocker,
+):  # pylint: disable=unused-argument
+    """Test the behavior of a valid endpoint request for ADGS AUX / CADIP CADU download.
+
+    This unit test checks the behavior of the ADGS / CADIP download endpoint when provided with
+    valid parameters. It simulates the download process, verifies the status code, and checks
+    the content of the downloaded file.
+
+    Args:
+        client: The client fixture for the test.
+
+    Returns:
+        None
+
+    Raises:
+        AssertionError: If the test fails to assert the expected outcomes.
+    """
+    product_id = "id_1"
+    publication_date = "2023-10-10T00:00:00.111Z"
+    # Add cadip mock server response to eodag download request
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5000/Files(id_1)/$value",
+        body="some byte-array data\n",
+        status=200,
+    )
+    # Add adgs mock server response to eodag download request
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5001/Products(id_1)/$value",
+        body="some byte-array data\n",
+        status=200,
+    )
+
+    with tempfile.TemporaryDirectory() as download_dir, contextmanager(get_db)() as db:
+        # Add a download status to database
+        endpoint = f"{endpoint}?name=TEST.raw&local={download_dir}"
+        # Add adgs and cadip mock patch for start_eodag_download
+        # This doesn't work, why ??
+        # mocker.patch("rs_server_common.utils.utils.eodag_download", side_effect=Exception)
+        mocker.patch("rs_server_adgs.api.adgs_download.start_eodag_download", side_effect=None)
+        mocker.patch("rs_server_cadip.api.cadip_download.start_eodag_download", side_effect=None)
+        db_handler.create(
+            db=db,
+            product_id=product_id,
+            name="TEST.raw",
+            available_at_station=publication_date,
+            # FIXME
+            status=EDownloadStatus.IN_PROGRESS,
+        )
+        # send the request
+        # Raise an exception while downloading
+        data = client.get(endpoint)
+        assert data.status_code == 408
+        assert data.json() == {"started": "false"}

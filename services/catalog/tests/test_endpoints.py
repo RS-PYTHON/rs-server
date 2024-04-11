@@ -387,6 +387,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         server = ThreadedMotoServer(port=8077)
         server.start()
         try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
             s3_handler = S3StorageHandler(
                 secrets["accesskey"],
                 secrets["secretkey"],
@@ -443,9 +444,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             # Check if catalog bucket content match the initial temp-bucket content
             # If so, files were correctly moved from temp-catalog to bucket catalog.
             assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
-            # clean up
-            s3_handler.delete_bucket_completely(temp_bucket)
-            s3_handler.delete_bucket_completely(catalog_bucket)
 
         finally:
             server.stop()
@@ -500,6 +498,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         server = ThreadedMotoServer(port=8077)
         server.start()
         try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
             custom_bucket = "some-custom-bucket"
             catalog_bucket = "catalog-bucket"
             a_correct_feature["assets"]["zarr"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.zarr.zip"
@@ -526,9 +525,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert not s3_handler.list_s3_files_obj(custom_bucket, "")
             assert s3_handler.list_s3_files_obj(catalog_bucket, "")
 
-            s3_handler.delete_bucket_completely(custom_bucket)
-            s3_handler.delete_bucket_completely(catalog_bucket)
-
         finally:
             server.stop()
             clear_aws_credentials()
@@ -550,6 +546,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         server.start()
 
         try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
             # Upload a file to catalog-bucket
             catalog_bucket = "catalog-bucket"
             s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
@@ -580,7 +577,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 )
 
         finally:
-            s3_handler.delete_bucket_completely(catalog_bucket)
             server.stop()
             # Remove bucket credentials form env variables / should create a s3_handler without credentials error
             clear_aws_credentials()
@@ -599,6 +595,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         server = ThreadedMotoServer(port=8088)
         server.start()
         try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
             s3_handler = S3StorageHandler(
                 secrets["accesskey"],
                 secrets["secretkey"],
@@ -636,9 +633,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
             assert s3_handler.list_s3_files_obj(temp_bucket, "")
             assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-            # clean up
-            s3_handler.delete_bucket_completely(temp_bucket)
-            s3_handler.delete_bucket_completely(catalog_bucket)
 
         finally:
             server.stop()
