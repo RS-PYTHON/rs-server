@@ -157,17 +157,17 @@ def apikey_validator(station, access_type):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if settings.cluster_mode:
+            if settings.CLUSTER_MODE:
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 if station == "cadip":
                     cadip_station = kwargs["station"]  # ins, mps, mti, nsg, sgs, or cadip
                     try:
                         full_station = STATIONS_AUTH_LUT[cadip_station.lower()]
-                    except KeyError:
+                    except KeyError as exception:
                         raise HTTPException(
                             status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Unknown CADIP station: {cadip_station!r}",
-                        )
+                        ) from exception
                 else:  # for adgs
                     full_station = station
 

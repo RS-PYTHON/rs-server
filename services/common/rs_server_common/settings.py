@@ -25,10 +25,10 @@ def env_bool(var: str, default: bool) -> bool:
 
 # True if the 'RSPY_LOCAL_MODE' environemnt variable is set to 1, true or yes (case insensitive).
 # By default: if not set or set to a different value, return False.
-local_mode = env_bool("RSPY_LOCAL_MODE", False)
+LOCAL_MODE = env_bool("RSPY_LOCAL_MODE", False)
 
 # Cluster mode is the opposite of local mode
-cluster_mode = not local_mode
+CLUSTER_MODE = not LOCAL_MODE
 
 
 ###############

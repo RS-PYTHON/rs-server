@@ -33,7 +33,6 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
-from rs_server_common.authentication import apikey_security
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,

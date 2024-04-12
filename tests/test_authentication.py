@@ -178,7 +178,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         "/cadip/{station}/cadu/status",
     ],
 )
-async def test_authentication_roles(  # pylint: disable=too-many-arguments
+async def test_authentication_roles(  # pylint: disable=too-many-arguments,too-many-locals
     fastapi_app,  # pylint: disable=unused-argument
     client,
     monkeypatch,
@@ -197,30 +197,30 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
     # Mock the uac manager url
     monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
-    def mock_uac_response(json: dict):
+    def mock_uac_response(_json: dict):
         """Mock the UAC response. Clear the cached response everytime."""
         ttl_cache.clear()
         httpx_mock.add_response(
             url=RSPY_UAC_CHECK_URL,
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
-            json=json,
+            json=_json,
         )
+
+    def client_request(station_endpoint: str, by_headers: bool):
+        """Request endpoint."""
+        if by_headers:
+            return client.request(
+                method,
+                station_endpoint,
+                params=query_params,
+                headers={APIKEY_HEADER: VALID_APIKEY},
+            )
+        # Else, by query param
+        return client.request(method, station_endpoint, params={**query_params, APIKEY_QUERY: VALID_APIKEY})
 
     # Test the api key passed by http headers and url query parameters
     for by_headers in [True, False]:
-
-        def client_request(station_endpoint: str):
-            """Request endpoint."""
-            if by_headers:
-                return client.request(
-                    method,
-                    station_endpoint,
-                    params=query_params,
-                    headers={APIKEY_HEADER: VALID_APIKEY},
-                )
-            else:
-                return client.request(method, station_endpoint, params={**query_params, APIKEY_QUERY: VALID_APIKEY})
 
         # for each cadip station or just "adgs"
         for station in stations:
@@ -232,7 +232,7 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
 
             # With no roles ...
             mock_uac_response({"iam_roles": [], "config": {}, "user_login": {}})
-            response = client_request(station_endpoint)
+            response = client_request(station_endpoint, by_headers)
 
             # Test the error message with an unknown cadip station
             if station == UNKNOWN_CADIP_STATION:
@@ -240,18 +240,23 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
                 assert f"Unknown CADIP station: {station!r}" in json.loads(response.content)["detail"]
                 break  # no need to test the other endpoints
 
-            # With a valid station, we should receive an unauthorized response
-            else:
-                assert response.status_code == HTTP_401_UNAUTHORIZED
+            # Else, with a valid station, we should receive an unauthorized response
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
             # Idem with non-relevant roles
             mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}, "user_login": {}})
-            assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
+            assert client_request(station_endpoint, by_headers).status_code == HTTP_401_UNAUTHORIZED
 
             # With the right expected role, we should be authorized (no 401 or 403)
             mock_uac_response({"iam_roles": [station_role], "config": {}, "user_login": {}})
-            assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+            assert client_request(station_endpoint, by_headers).status_code not in (
+                HTTP_401_UNAUTHORIZED,
+                HTTP_403_FORBIDDEN,
+            )
 
             # It should also work if other random roles are present
             mock_uac_response({"iam_roles": [station_role, "any", "other", "role"], "config": {}, "user_login": {}})
-            assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+            assert client_request(station_endpoint, by_headers).status_code not in (
+                HTTP_401_UNAUTHORIZED,
+                HTTP_403_FORBIDDEN,
+            )

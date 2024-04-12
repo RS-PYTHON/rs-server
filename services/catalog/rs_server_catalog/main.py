@@ -12,7 +12,7 @@ from typing import Callable
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
@@ -41,7 +41,6 @@ from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.status import HTTP_403_FORBIDDEN
 
 logger = Logging.default(__name__)
 
@@ -149,7 +148,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         """
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (common_settings.cluster_mode) and request.url.path.startswith("/catalog"):
+        if (common_settings.CLUSTER_MODE) and request.url.path.startswith("/catalog"):
 
             # Check the api key validity, passed by HTTP headers or url query parameter
             await authentication.apikey_security(
@@ -183,7 +182,7 @@ app.openapi = extract_openapi_specification
 
 # In cluster mode, add the api key security dependency: the user must provide
 # an api key (generated from the apikey manager) to access the endpoints
-if common_settings.cluster_mode:
+if common_settings.CLUSTER_MODE:
     # One scope for each ApiRouter path and method
     scopes = []
     for route in api.app.router.routes:

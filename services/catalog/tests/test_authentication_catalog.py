@@ -1,10 +1,7 @@
 """Unit tests for the authentication."""
 
 import json
-from importlib import reload
 
-import pytest
-from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER, APIKEY_QUERY, ttl_cache
 from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
@@ -29,7 +26,7 @@ async def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client
     """
 
     # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-    mocker.patch("rs_server_common.settings.cluster_mode", new=True, autospec=False)
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
     # Mock the uac manager url
     monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
@@ -249,7 +246,7 @@ class TestAuthenticationGetOneCollection:
     ):  # pylint: disable=missing-function-docstring
 
         # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.cluster_mode", new=True, autospec=False)
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
         # Mock the uac manager url
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
@@ -332,7 +329,7 @@ class TestAuthenticationGetOneCollection:
     ):  # pylint: disable=missing-function-docstring
 
         # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.cluster_mode", new=True, autospec=False)
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
         # Mock the uac manager url
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
