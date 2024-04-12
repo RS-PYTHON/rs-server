@@ -25,13 +25,18 @@ def add_catalogs(request: Request, auth_roles: list, user_login: str, content: d
         if match := re.match(catalog_read_right_pattern, role):
             groups = match.groupdict()
             if user_login != groups["owner_id"] and groups["collection_id"] == "*" and groups["right_type"] == "read":
+
+                urls = str(request.url).split("?")  # split by query params
+                href = f"{urls[0]}{groups['owner_id']}"
+
+                # To be discussed: maybe we should add the query params (urls[1:])
+                # but I guess we should not add e.g. the apikey because it's confidential.
+
                 child_link = {
                     "rel": "child",
                     "type": "application/json",
-                    "href": "",
+                    "href": href,
                 }
-                url = request.url
-                child_link["href"] = f"{url}{groups['owner_id']}"
                 content["links"].append(child_link)
                 # content["links"] = [
                 #     link for link in content["links"] if f"{groups['owner_id']}_" not in link["href"]
