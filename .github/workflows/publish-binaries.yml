@@ -381,7 +381,7 @@ jobs:
           cd local-mode
           docker_tag="${{ needs.set-env.outputs.docker_tag }}"
           docker_tag="${docker_tag:-latest}" # latest by default
-          ./test-docker-tags.sh "$docker_tag"
+          ./test-docker-tag.sh "$docker_tag"
           docker compose -f docker-compose-test-tag.yml up -d
           ./run-notebooks.sh
 
