@@ -53,8 +53,8 @@ STATIONS_AUTH_LUT = {
 
 async def apikey_security(
     request: Request,
-    apikey_header: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",
-    apikey_query: Annotated[str, Security(APIKEY_AUTH_QUERY)] = "",
+    apikey_header: Annotated[str, Security(APIKEY_AUTH_HEADER)],
+    apikey_query: Annotated[str, Security(APIKEY_AUTH_QUERY)],
 ) -> tuple[list, dict, str]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.

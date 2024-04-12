@@ -60,7 +60,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     )
 
     # Check the apikey_security result
-    await apikey_security(dummy_request, VALID_APIKEY)
+    await apikey_security(dummy_request, VALID_APIKEY, "")
     assert dummy_request.state.auth_roles == initial_response["iam_roles"]
     assert dummy_request.state.auth_config == initial_response["config"]
 
@@ -75,13 +75,13 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
 
     # Still the initial response !
     for _ in range(100):
-        await apikey_security(dummy_request, VALID_APIKEY)
+        await apikey_security(dummy_request, VALID_APIKEY, "")
         assert dummy_request.state.auth_roles == initial_response["iam_roles"]
         assert dummy_request.state.auth_config == initial_response["config"]
 
     # We have to clear the cache to obtain the modified response
     ttl_cache.clear()
-    await apikey_security(dummy_request, VALID_APIKEY)
+    await apikey_security(dummy_request, VALID_APIKEY, "")
     assert dummy_request.state.auth_roles == modified_response["iam_roles"]
     assert dummy_request.state.auth_config == modified_response["config"]
 

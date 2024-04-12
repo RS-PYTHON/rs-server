@@ -4,7 +4,7 @@ import json
 
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER, APIKEY_QUERY, ttl_cache
-from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_200_OK
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"

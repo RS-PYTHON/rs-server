@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-from attr import dataclass
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
