@@ -220,8 +220,8 @@ class UserCatalog:
                     )
         except KeyError as kerr:
             raise HTTPException(detail="Could not find S3 credentials", status_code=500) from kerr
-        except botocore.exceptions.EndpointConnectionError as exc:
-            raise HTTPException(detail="Could not connect to obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
+        except RuntimeError as rte:
+            raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from rte
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
@@ -371,6 +371,8 @@ class UserCatalog:
                 detail=f"Missing key in request body! {kerr_msg}",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr_msg
+        except Exception as e:
+            raise HTTPException(detail=f"General exception {e}", status_code=HTTP_400_BAD_REQUEST) from e
 
     def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
         """Return the list of all collections accessible by the user calling it.

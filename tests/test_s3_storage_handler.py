@@ -7,12 +7,14 @@ import os.path as osp
 import shutil
 import tempfile
 from collections import Counter
+from datetime import datetime, timedelta
 
-# import yaml
 import pytest
 import requests
+from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    SLEEP_TIME,
     GetKeysFromS3Config,
     PutFilesToS3Config,
     S3StorageHandler,
@@ -35,13 +37,14 @@ SHORT_FOLDER = RESOURCES_FOLDER / "s3" / "short_s3_storage_handler_test"
     "endpoint",
     [("false"), ("http://localhost:5000")],
 )
-def test_get_s3_client(endpoint: str):
+def test_get_s3_client_and_disconnect(endpoint: str):
     """Test the 'get_s3_client' method of the S3StorageHandler class.
 
-    This unit test evaluates the 'get_s3_client' method of the S3StorageHandler class.
+    This unit test evaluates both the 'get_s3_client' and 'disconnect' methods of the S3StorageHandler class.
     It uses the pytest.mark.parametrize decorator to run the test with different 'endpoint' values.
-    The method is expected to create an instance of the S3StorageHandler class when the
-    endpoint is 'http://localhost:5000', and it should raise an exception otherwise.
+    The 'get_s3_client" method is expected to create an instance of the S3StorageHandler class when the
+    endpoint is 'http://localhost:5000', and it should raise an exception otherwise. The 'disconnect' method should
+    call the close() method of the s3 client and to set this one to None
 
     Args:
         endpoint (str): The endpoint to be used for testing.
@@ -63,7 +66,17 @@ def test_get_s3_client(endpoint: str):
     secrets = {"s3endpoint": endpoint, "accesskey": "", "secretkey": "", "region": "sbg"}
     server.stop()
     if endpoint == "http://localhost:5000":
-        assert S3StorageHandler(secrets["accesskey"], secrets["secretkey"], secrets["s3endpoint"], secrets["region"])
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        assert s3_handler
+        s3_handler.disconnect_s3()
+        assert s3_handler.s3_client is None
+        s3_handler.disconnect_s3()
+        assert s3_handler.s3_client is None
     else:
         with pytest.raises(Exception):
             assert S3StorageHandler(
@@ -79,8 +92,9 @@ def test_get_s3_client(endpoint: str):
     "s3cfg_file",
     [(("./USER/credentials_location/.s3cfg")), (("/path/to/none/.s3cfg"))],
 )
-def test_get_secrets(s3cfg_file: str):
-    """Docstring to be added."""
+def test_get_secrets_from_file(s3cfg_file: str):
+    """Test the get_secrets_from_file method of the S3StorageHandler class."""
+
     secrets = {
         "s3endpoint": None,
         "accesskey": None,
@@ -94,13 +108,83 @@ def test_get_secrets(s3cfg_file: str):
                 tmp.write("access_key = test_access_key\n")
                 tmp.write("secret_key = test_secret_key\n")
                 tmp.write("host_bucket = https://test_endpoint.com\n")
+                tmp.write("extra_line = test_text\n")
                 tmp.flush()
-            S3StorageHandler.get_secrets(secrets, tmp_path)
+            S3StorageHandler.get_secrets_from_file(secrets, tmp_path)
         finally:
             os.remove(tmp_path)
     else:
         with pytest.raises(FileNotFoundError):
-            S3StorageHandler.get_secrets(secrets, s3cfg_file)
+            S3StorageHandler.get_secrets_from_file(secrets, s3cfg_file)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "s3_url",
+    [
+        (("s3://test_bucket/test_prefix/test_file.tst")),
+        (("/no/path/_to#none_file")),
+    ],
+)
+def test_s3_path_parser(s3_url: str):
+    """Test the s3_path_parser method of the S3StorageHandler class."""
+
+    bucket, prefix, file = S3StorageHandler.s3_path_parser(s3_url)
+    if "s3" in s3_url:
+        assert bucket == "test_bucket"
+        assert prefix == "test_prefix"
+        assert file == "test_file.tst"
+    else:
+        assert bucket == ""
+        assert prefix == "/no/path"
+        assert file == "_to#none_file"
+
+
+@pytest.mark.unit
+def test_wait_timeout():
+    """Test the wait_timeout method of the S3StorageHandler class."""
+
+    s3_handler = S3StorageHandler(
+        None,
+        None,
+        "http://localhost:5000",
+        None,
+    )
+    start_p = datetime.now()
+    s3_handler.wait_timeout(1)
+    assert (datetime.now() - start_p) >= timedelta(seconds=1)
+
+
+@pytest.mark.unit
+def test_timeout(mocker):
+    """Test the wait_timeout method of the S3StorageHandler class."""
+
+    s3_handler = S3StorageHandler(
+        None,
+        None,
+        "http://localhost:5000",
+        None,
+    )
+    res = mocker.patch("time.sleep", side_effect=None)
+    s3_handler.wait_timeout(1)
+    assert res.call_count >= int(1 / SLEEP_TIME)  # 5 calls of 0.2 sec sleep = 1
+
+
+@pytest.mark.unit
+def test_check_file_overwriting():
+    """Test the check_file_overwriting method of the S3StorageHandler class."""
+
+    s3_handler = S3StorageHandler(
+        None,
+        None,
+        "http://localhost:5000",
+        None,
+    )
+    _, tmp_path = tempfile.mkstemp()
+    assert not s3_handler.check_file_overwriting(tmp_path, False)
+    assert os.path.isfile(tmp_path)
+    assert s3_handler.check_file_overwriting(tmp_path, True)
+    assert not os.path.isfile(tmp_path)
 
 
 @pytest.mark.unit
@@ -257,6 +341,8 @@ def test_check_bucket_access(endpoint: str, bucket: str):
                 "test-bucket",
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 [
+                    (None, "nonexistent_1"),
+                    (None, "nonexistent_2/file1"),
                     ("", "s3_storage_handler_test/no_root_file1"),
                 ],
             )
@@ -306,10 +392,12 @@ def test_files_to_be_downloaded(
             secrets["s3endpoint"],
             secrets["region"],
         )
+
         if bucket == "test-bucket":
             s3_handler.s3_client.create_bucket(Bucket=bucket)
             for obj in expected_res:
-                s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing")
+                if obj[0] is not None:
+                    s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing")
         logger.debug("Bucket created !")
         try:
             collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
@@ -383,7 +471,7 @@ def cmp_dirs(dir1, dir2):
                 "test-bucket",
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 [("", "s3_storage_handler_test/no_root_file1")],
-                [],
+                ["nonexistent_1", "nonexistent_2/file1"],
             )
         ),
         (
@@ -393,6 +481,33 @@ def cmp_dirs(dir1, dir2):
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 [],
                 [],
+            )
+        ),
+        (
+            (
+                "http://localhost:5000",
+                "test-bucket",
+                [
+                    "s3_storage_handler_test/no_root_file1",
+                    "s3_storage_handler_test/no_root_file2",
+                    "s3_storage_handler_test/subdir_1",
+                    "s3_storage_handler_test/subdir_2",
+                    "s3_storage_handler_test/fake1",
+                    "s3_storage_handler_test/fake2",
+                    "s3_storage_handler_test/subdir_2",
+                ],
+                [
+                    ("", "s3_storage_handler_test/no_root_file1"),
+                    ("", "s3_storage_handler_test/no_root_file2"),
+                    ("subdir_1", "s3_storage_handler_test/subdir_1/subdir_file"),
+                    ("subdir_1/subsubdir_1", "s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file1"),
+                    ("subdir_1/subsubdir_1", "s3_storage_handler_test/subdir_1/subsubdir_1/subsubdir_file2"),
+                    ("subdir_1/subsubdir_2", "s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file1"),
+                    ("subdir_1/subsubdir_2", "s3_storage_handler_test/subdir_1/subsubdir_2/subsubdir_2_file2"),
+                    ("subdir_2", "s3_storage_handler_test/subdir_2/subdir_2_file1"),
+                    ("subdir_2", "s3_storage_handler_test/subdir_2/subdir_2_file2"),
+                ],
+                ["s3_storage_handler_test/fake1", "s3_storage_handler_test/fake2"],
             )
         ),
     ],
@@ -436,23 +551,20 @@ def test_get_keys_from_s3(
             secrets["s3endpoint"],
             secrets["region"],
         )
+
         if bucket == "test-bucket":
             s3_handler.s3_client.create_bucket(Bucket=bucket)
             for obj in lst_with_files_to_be_dwn:
                 s3_handler.s3_client.put_object(Bucket=bucket, Key=obj[1], Body="testing\n")
         # end of create
 
-        try:
-            collection = s3_handler.files_to_be_downloaded(bucket, lst_with_files)
-        except RuntimeError:
-            collection = []
         local_path = tempfile.mkdtemp()
 
         config = GetKeysFromS3Config(
             lst_with_files,
             bucket,
             local_path,
-            True,
+            False,
             1,
         )
 
@@ -464,8 +576,6 @@ def test_get_keys_from_s3(
     finally:
         server.stop()
 
-    assert len(Counter(collection) - Counter(lst_with_files_to_be_dwn)) == 0
-    assert len(Counter(lst_with_files_to_be_dwn) - Counter(collection)) == 0
     assert len(Counter(expected_res) - Counter(res)) == 0
     assert len(Counter(res) - Counter(expected_res)) == 0
 
@@ -694,6 +804,7 @@ def test_put_files_to_s3(
 
         for key in lst_with_files:
             test_bucket_files = test_bucket_files + s3_handler.list_s3_files_obj(bucket, key)
+        print(f"test_bucket_files = {test_bucket_files}")
 
     except RuntimeError:
         assert bucket == "non-existent-bucket"
@@ -743,7 +854,10 @@ def test_put_files_to_s3(
                 ["nonexistent_1", "nonexistent_2/file1", "s3_storage_handler_test/no_root_file1"],
                 "destination-bucket",
                 ["s3_storage_handler_test/no_root_file1"],
-                [],
+                [
+                    "nonexistent_1",
+                    "nonexistent_2/file1",
+                ],
             )
         ),
         (
@@ -766,9 +880,9 @@ def test_transfer_from_s3_to_s3(
     lst_with_files_to_be_copied: list,
     expected_res: list,
 ):
-    """test_get_keys_from_s3 Function Documentation
+    """test_transfer_from_s3_to_s3 Function Documentation
 
-    Test the get_keys_from_s3 function.
+    Test the transfer_from_s3_to_s3  method of the S3StorageHandler class.
 
     Parameters:
     - endpoint (str): The S3 endpoint for testing.
@@ -821,3 +935,26 @@ def test_transfer_from_s3_to_s3(
         assert bucket_src == "non-existent-bucket"
     finally:
         server.stop()
+
+
+@pytest.mark.unit
+def test_delete_file_from_s3():
+    """Test handling of s3 client exceptions while deleting a file from a bucket"""
+
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.delete_file_from_s3("some_s3_2", None)
+    assert str(exc.value) == "Input error for deleting the file"
+
+    boto_mocker = Stubber(s3_handler.s3_client)
+    boto_mocker.add_client_error("delete_object", 500)
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.delete_file_from_s3("some_s3_1", "some_file_1")
+    assert str(exc.value) == "Failed to delete key s3://some_s3_1/some_file_1"
