@@ -6,8 +6,8 @@ from importlib import reload
 import pytest
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import APIKEY_HEADER
-from starlette.status import HTTP_200_OK
+from rs_server_common.authentication import APIKEY_HEADER, APIKEY_QUERY, ttl_cache
+from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -16,33 +16,26 @@ RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 VALID_APIKEY = "VALID_API_KEY"
 WRONG_APIKEY = "WRONG_APIKEY"
 
+# Test two ways of passing the api key: by HTTP headers and by url query parameter
+PASS_THE_APIKEY = [{"headers": {APIKEY_HEADER: VALID_APIKEY}}, {"params": {APIKEY_QUERY: VALID_APIKEY}}]
+
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
 
-# @pytest.mark.skip gives an error, I don't know why
-# @pytest.mark.skip(reason="Errors on certain endpoints and when reloading the fastapi app")
-async def test_authentification(monkeypatch, httpx_mock: HTTPXMock):
+async def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
     """
     Test that the http endpoints are protected and return 403 if not authenticated.
     Set RSPY_LOCAL_MODE to False before running the fastapi app.
     """
-    try:
-        import rs_server_catalog
 
-        with pytest.MonkeyPatch.context() as mp:
-            mp.setenv("RSPY_LOCAL_MODE", "False")
-            reload(rs_server_catalog.main)
-        with TestClient(rs_server_catalog.main.app) as local_client:
-            await sub_authentication(local_client, monkeypatch, httpx_mock)
-    except Exception:
-        assert False
+    # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+    mocker.patch("rs_server_common.settings.cluster_mode", new=True, autospec=False)
 
-
-async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
     # Mock the uac manager url
     monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
     # With a valid api key in headers, the uac manager will give access to the endpoint
+    ttl_cache.clear()  # clear the cached response
     httpx_mock.add_response(
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
@@ -74,11 +67,6 @@ async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
         },
     )
 
-    # Test a valid api key in headers
-    landing_page_response = client.request("GET", "/catalog/", headers={APIKEY_HEADER: VALID_APIKEY})
-    assert landing_page_response.status_code == HTTP_200_OK
-
-    content = json.loads(landing_page_response.content)
     valid_links = [
         {"rel": "self", "type": "application/json", "href": "http://testserver/"},
         {"rel": "root", "type": "application/json", "href": "http://testserver/"},
@@ -135,14 +123,15 @@ async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
         },
         {"rel": "child", "type": "application/json", "href": "http://testserver/catalog/toto"},
     ]
-    assert content["links"] == valid_links
+    # Pass the api key by HTTP headers and by url query parameter
+    for pass_the_apikey in PASS_THE_APIKEY:
+        landing_page_response = client.request("GET", "/catalog/", **pass_the_apikey)
+        assert landing_page_response.status_code == HTTP_200_OK
+        content = json.loads(landing_page_response.content)
+        assert content["links"] == valid_links
 
     # assert client.request("GET", "/catalog/collections").status_code == HTTP_403_FORBIDDEN
 
-    all_collections = client.request("GET", "/catalog/collections", headers={APIKEY_HEADER: VALID_APIKEY})
-    assert all_collections.status_code == HTTP_200_OK
-
-    content = json.loads(all_collections.content)
     valid_collections = [
         {
             "id": "toto_S1_L1",
@@ -241,4 +230,141 @@ async def sub_authentication(client, monkeypatch, httpx_mock: HTTPXMock):
             "stac_version": "1.0.0",
         },
     ]
-    assert content["collections"] == valid_collections
+    # Pass the api key by HTTP headers and by url query parameter
+    for pass_the_apikey in PASS_THE_APIKEY:
+        all_collections = client.request("GET", "/catalog/collections", **pass_the_apikey)
+
+        assert all_collections.status_code == HTTP_200_OK
+        content = json.loads(all_collections.content)
+        assert content["collections"] == valid_collections
+
+
+class TestAuthenticationGetOneCollection:
+    async def test_http200_with_good_authentication(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.cluster_mode", new=True, autospec=False)
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:*_read",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+
+        toto_collection = {
+            "id": "S1_L1",
+            "type": "Collection",
+            "links": [
+                {
+                    "rel": "items",
+                    "type": "application/geo+json",
+                    "href": "http://testserver/catalog/toto/collections/S1_L1/items",
+                },
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/toto"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/toto"},
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/toto/collections/S1_L1",
+                },
+                {
+                    "rel": "items",
+                    "href": "http://localhost:8082/collections/S1_L1/items",
+                    "type": "application/geo+json",
+                },
+                {
+                    "rel": "license",
+                    "href": "https://creativecommons.org/licenses/publicdomain/",
+                    "title": "public domain",
+                },
+            ],
+            "owner": "toto",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+            "license": "public-domain",
+            "description": "Some description",
+            "stac_version": "1.0.0",
+        }
+        # Pass the api key by HTTP headers and by url query parameter
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "GET",
+                "/catalog/collections/toto:S1_L1",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+            assert toto_collection == json.loads(response.content)
+
+    async def test_fails_without_good_perms(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.cluster_mode", new=True, autospec=False)
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:*_write",
+                    "rs_catalog_toto:S1_L2_read",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+        # Pass the api key by HTTP headers and by url query parameter
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "GET",
+                "/catalog/collections/toto:S1_L1",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED

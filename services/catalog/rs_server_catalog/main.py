@@ -149,18 +149,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         """
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (common_settings.cluster_mode()) and request.url.path.startswith("/catalog"):
+        if (common_settings.cluster_mode) and request.url.path.startswith("/catalog"):
 
-            # Read the api key passed in header
-            apikey_value = request.headers.get(authentication.APIKEY_HEADER, None)
-            if not apikey_value:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
-
-            # Check the api key validity, passed as an HTTP header.
-            apikey_info = await authentication.apikey_security(request, apikey_value)
-
-            # TODO: check api key rights before calling the next middleware
-            logger.debug(f"API key information: {apikey_info}")
+            # Check the api key validity, passed by HTTP headers or url query parameter
+            await authentication.apikey_security(
+                request=request,
+                apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
+                apikey_query=request.query_params.get(authentication.APIKEY_QUERY, None),
+            )
 
         # Call the next middleware
         return await call_next(request)
@@ -187,7 +183,7 @@ app.openapi = extract_openapi_specification
 
 # In cluster mode, add the api key security dependency: the user must provide
 # an api key (generated from the apikey manager) to access the endpoints
-if common_settings.cluster_mode():
+if common_settings.cluster_mode:
     # One scope for each ApiRouter path and method
     scopes = []
     for route in api.app.router.routes:

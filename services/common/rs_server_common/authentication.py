@@ -53,8 +53,8 @@ STATIONS_AUTH_LUT = {
 
 async def apikey_security(
     request: Request,
-    apikey_header: Annotated[str, Security(APIKEY_AUTH_HEADER)],
-    apikey_query: Annotated[str, Security(APIKEY_AUTH_QUERY)],
+    apikey_header: Annotated[str, Security(APIKEY_AUTH_HEADER)] = None,
+    apikey_query: Annotated[str, Security(APIKEY_AUTH_QUERY)] = None,
 ) -> tuple[list, dict, str]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
@@ -72,13 +72,15 @@ async def apikey_security(
     if not apikey_value:
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN,
-            detail="An API key must be passed by either HTTP headers or URL query parameter",
+            detail="Not authenticated",
         )
 
     # Call the cached function (fastapi Depends doesn't work with @cached)
     auth_roles, auth_config, user_login = await __apikey_security_cached(str(apikey_value))
     request.state.auth_roles = auth_roles
     request.state.auth_config = auth_config
+    request.state.user_login = user_login
+    logger.debug(f"API key information: {auth_roles, auth_config, user_login}")
     return auth_roles, auth_config, user_login
 
 
@@ -155,7 +157,7 @@ def apikey_validator(station, access_type):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if settings.cluster_mode():
+            if settings.cluster_mode:
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 if station == "cadip":
                     cadip_station = kwargs["station"]  # ins, mps, mti, nsg, sgs, or cadip
