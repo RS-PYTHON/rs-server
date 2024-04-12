@@ -428,8 +428,8 @@ class UserCatalog:
         if "detail" not in content:  # Test if the user is authenticated.
             if request.scope["path"] == "/":  # /catalog
                 try:
-                    api_key = request.headers["x-api-key"]
-                    auth_roles, _, user_login = await apikey_security(request, api_key)
+                    auth_roles = request.state.auth_roles
+                    user_login = request.state.user_login
                     content = manage_landing_page(request, auth_roles, user_login, content)
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     logging.exception(  # pylint: disable=logging-fstring-interpolation
@@ -451,8 +451,8 @@ class UserCatalog:
                     )
                 else:
                     try:
-                        api_key = request.headers["x-api-key"]
-                        auth_roles, _, user_login = await apikey_security(request, api_key)
+                        auth_roles = request.state.auth_roles
+                        user_login = request.state.user_login
                         content["collections"] = self.manage_all_collections(
                             content["collections"],
                             auth_roles,
