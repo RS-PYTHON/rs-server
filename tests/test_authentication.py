@@ -20,8 +20,6 @@ from starlette.status import (
     HTTP_403_FORBIDDEN,
 )
 
-from tests.conftest import RSPY_LOCAL_MODE, Envs  # pylint: disable=no-name-in-module
-
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 
@@ -29,8 +27,8 @@ RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 VALID_APIKEY = "VALID_API_KEY"
 WRONG_APIKEY = "WRONG_APIKEY"
 
-# Used to parametrize the fastapi_app fixture from conftest, with request.param.envs = {RSPY_LOCAL_MODE: False}
-CLUSTER_ENV = Envs(envs={RSPY_LOCAL_MODE: False})
+# Parametrize the fastapi_app fixture from conftest to enable authentication
+CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 
 logger = Logging.default(__name__)
 
@@ -88,12 +86,10 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     assert dummy_request.state.auth_config == modified_response["config"]
 
 
-# Use the fastapi_app fixture from conftest, parametrized with request.param.envs = {RSPY_LOCAL_MODE: False}
-@pytest.mark.parametrize("fastapi_app", [CLUSTER_ENV], indirect=["fastapi_app"], ids=["cluster_mode"])
+@pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
 async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPXMock):
     """
     Test that all the http endpoints are protected and return 403 if not authenticated.
-    Set RSPY_LOCAL_MODE to False before running the fastapi app.
     """
 
     # Mock the uac manager url
@@ -157,16 +153,22 @@ DATE_PARAM = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
 NAME_PARAM = {"name": "TEST_FILE.raw"}
 
 
-# Use the fastapi_app fixture from conftest, parametrized with request.param.envs = {RSPY_LOCAL_MODE: False}
 @pytest.mark.parametrize(
     "fastapi_app, endpoint, method, stations, query_params, expected_role",
     [
-        [CLUSTER_ENV, "/adgs/aux/search", "GET", ADGS_STATIONS, DATE_PARAM, "rs_adgs_read"],
-        [CLUSTER_ENV, "/adgs/aux", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
-        [CLUSTER_ENV, "/adgs/aux/status", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
-        [CLUSTER_ENV, "/cadip/{station}/cadu/search", "GET", CADIP_STATIONS, DATE_PARAM, "rs_cadip_{station}_read"],
-        [CLUSTER_ENV, "/cadip/{station}/cadu", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_{station}_download"],
-        [CLUSTER_ENV, "/cadip/{station}/cadu/status", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_{station}_download"],
+        [CLUSTER_MODE, "/adgs/aux/search", "GET", ADGS_STATIONS, DATE_PARAM, "rs_adgs_read"],
+        [CLUSTER_MODE, "/adgs/aux", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
+        [CLUSTER_MODE, "/adgs/aux/status", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
+        [CLUSTER_MODE, "/cadip/{station}/cadu/search", "GET", CADIP_STATIONS, DATE_PARAM, "rs_cadip_{station}_read"],
+        [CLUSTER_MODE, "/cadip/{station}/cadu", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_{station}_download"],
+        [
+            CLUSTER_MODE,
+            "/cadip/{station}/cadu/status",
+            "GET",
+            CADIP_STATIONS,
+            NAME_PARAM,
+            "rs_cadip_{station}_download",
+        ],
     ],
     indirect=["fastapi_app"],
     ids=[
@@ -191,7 +193,6 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments,too-m
 ):
     """
     Test that the api key has the right roles for the http endpoints.
-    Set RSPY_LOCAL_MODE to False before running the fastapi app.
     """
 
     # Mock the uac manager url
