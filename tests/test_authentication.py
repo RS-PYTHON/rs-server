@@ -220,7 +220,7 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments,too-m
         # Else, by query param
         return client.request(method, station_endpoint, params={**query_params, APIKEY_QUERY: VALID_APIKEY})
 
-    # Test the api key passed by http headers and url query parameters
+    # Test the api key passed in http header then url query parameter
     for by_headers in [True, False]:
 
         # for each cadip station or just "adgs"

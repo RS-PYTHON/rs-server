@@ -32,10 +32,10 @@ APIKEY_HEADER = "x-api-key"
 APIKEY_QUERY = "api-key"
 
 # API key authentication using a header and a query parameter.
-APIKEY_AUTH_HEADER = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed by HTTP headers", auto_error=False)
+APIKEY_AUTH_HEADER = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=False)
 APIKEY_AUTH_QUERY = APIKeyQuery(
     name=APIKEY_QUERY,
-    scheme_name="API key passed by URL query parameter",
+    scheme_name="API key passed in URL query parameter",
     auto_error=False,
 )
 
@@ -60,8 +60,8 @@ async def apikey_security(
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
 
     Args:
-        apikey_header (Security): API key passed by HTTP headers
-        apikey_query (Security): API key passed by URL query parameter
+        apikey_header (Security): API key passed in HTTP header
+        apikey_query (Security): API key passed in URL query parameter
 
     Returns:
         Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
@@ -99,7 +99,7 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict, dict]:
     except KeyError:
         raise HTTPException(HTTP_400_BAD_REQUEST, "UAC manager URL is undefined")  # pylint: disable=raise-missing-from
 
-    # Request the uac, pass user-defined api key by http headers
+    # Request the uac, pass user-defined api key in http header
     try:
         response = await settings.http_client().get(check_url, headers={APIKEY_HEADER: apikey_value or ""})
     except httpx.HTTPError as error:

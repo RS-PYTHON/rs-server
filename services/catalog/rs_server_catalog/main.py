@@ -150,7 +150,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         # Only in cluster mode (not local mode) and for the catalog endpoints
         if (common_settings.CLUSTER_MODE) and request.url.path.startswith("/catalog"):
 
-            # Check the api key validity, passed by HTTP headers or url query parameter
+            # Check the api key validity, passed in HTTP header or url query parameter
             await authentication.apikey_security(
                 request=request,
                 apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),

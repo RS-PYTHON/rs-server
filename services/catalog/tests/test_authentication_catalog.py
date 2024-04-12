@@ -13,7 +13,7 @@ RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 VALID_APIKEY = "VALID_API_KEY"
 WRONG_APIKEY = "WRONG_APIKEY"
 
-# Test two ways of passing the api key: by HTTP headers and by url query parameter
+# Test two ways of passing the api key: in HTTP header and in url query parameter
 PASS_THE_APIKEY = [{"headers": {APIKEY_HEADER: VALID_APIKEY}}, {"params": {APIKEY_QUERY: VALID_APIKEY}}]
 
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
@@ -119,7 +119,7 @@ async def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client
         },
         {"rel": "child", "type": "application/json", "href": "http://testserver/catalog/toto"},
     ]
-    # Pass the api key by HTTP headers and by url query parameter
+    # Pass the api key in HTTP headers then in url query parameter
     for pass_the_apikey in PASS_THE_APIKEY:
         landing_page_response = client.request("GET", "/catalog/", **pass_the_apikey)
         assert landing_page_response.status_code == HTTP_200_OK
@@ -226,7 +226,7 @@ async def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client
             "stac_version": "1.0.0",
         },
     ]
-    # Pass the api key by HTTP headers and by url query parameter
+    # Pass the api key in HTTP headers then in url query parameter
     for pass_the_apikey in PASS_THE_APIKEY:
         all_collections = client.request("GET", "/catalog/collections", **pass_the_apikey)
 
@@ -312,7 +312,7 @@ class TestAuthenticationGetOneCollection:
             "description": "Some description",
             "stac_version": "1.0.0",
         }
-        # Pass the api key by HTTP headers and by url query parameter
+        # Pass the api key in HTTP headers then in url query parameter
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "GET",
@@ -359,7 +359,7 @@ class TestAuthenticationGetOneCollection:
                 "allowed_referers": ["toto"],
             },
         )
-        # Pass the api key by HTTP headers and by url query parameter
+        # Pass the api key in HTTP headers then in url query parameter
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "GET",
