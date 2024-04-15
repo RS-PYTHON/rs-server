@@ -2353,7 +2353,7 @@ jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
 name = "rs-server-adgs"
-version = "3.2a1.post113.dev0+0a6021e"
+version = "3.2a1.post77.dev0+d070b90"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2369,7 +2369,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "3.2a1.post113.dev0+0a6021e"
+version = "3.2a1.post77.dev0+d070b90"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2385,7 +2385,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-common"
-version = "3.2a1.post113.dev0+0a6021e"
+version = "3.2a1.post77.dev0+d070b90"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2415,7 +2415,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "3.2a1.post113.dev0+0a6021e"
+version = "3.2a1.post77.dev0+d070b90"
 description = ""
 optional = false
 python-versions = "^3.11"
