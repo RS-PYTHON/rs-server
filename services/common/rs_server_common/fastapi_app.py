@@ -138,7 +138,7 @@ def init_app(
     # In cluster mode, add the api key security: the user must provide
     # an api key (generated from the apikey manager) to access the endpoints
     dependencies = []
-    if settings.cluster_mode():
+    if settings.CLUSTER_MODE:
         dependencies.append(Depends(apikey_security))
 
     # Add the authenticated routers (and not the technical routers) to a single bigger router

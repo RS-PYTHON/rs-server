@@ -118,6 +118,7 @@ class TestCatalogSearchEndpoint:
 
     def test_post_search_endpoint(self, client):  # pylint: disable=missing-function-docstring
         test_json = {
+            "collections": ["S1_L1"],
             "filter-lang": "cql2-json",
             "filter": {
                 "op": "and",
