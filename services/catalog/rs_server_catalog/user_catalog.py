@@ -283,7 +283,7 @@ class UserCatalog:
                 res = right
         return res
 
-    def manage_search_request(self, request: Request) -> Request:
+    async def manage_search_request(self, request: Request) -> Request:
         """find the user in the filter parameter and add it to the
         collection name.
 
@@ -294,16 +294,26 @@ class UserCatalog:
             Request: the new request with the collection name updated.
         """
 
-        query = parse_qs(request.url.query)
-        if "filter" in query:
-            if "filter-lang" not in query:
-                query["filter-lang"] = ["cql2-text"]
-            qs_filter = query["filter"][0]
-            filters = parse_ecql(qs_filter)
-            user = self.find_owner_id(filters)
-            if "collections" in query:
-                query["collections"] = [f"{user}_{query['collections'][0]}"]
-                request.scope["query_string"] = urlencode(query, doseq=True).encode()
+        if request.method == "POST":
+            content = await request.json()
+            if request.scope["path"] == "/search" and "filter" in content:
+                qs_filter = content["filter"]
+                filters = parse_cql2_json(qs_filter)
+                user = self.find_owner_id(filters)
+                if "collections" in content:
+                    content["collections"] = [f"{user}_{content['collections'][0]}"]
+                    request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+        else:
+            query = parse_qs(request.url.query)
+            if "filter" in query:
+                if "filter-lang" not in query:
+                    query["filter-lang"] = ["cql2-text"]
+                qs_filter = query["filter"][0]
+                filters = parse_ecql(qs_filter)
+                user = self.find_owner_id(filters)
+                if "collections" in query:
+                    query["collections"] = [f"{user}_{query['collections'][0]}"]
+                    request.scope["query_string"] = urlencode(query, doseq=True).encode()
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -357,13 +367,6 @@ class UserCatalog:
                 content["id"] = f"{user}_{content['id']}"
             if "items" in request.scope["path"]:
                 content = self.update_stac_item_publication(content, user)
-            elif request.scope["path"] == "/search" and "filter" in content:
-                qs_filter = content["filter"]
-                filters = parse_cql2_json(qs_filter)
-                user = self.find_owner_id(filters)
-                # May be duplicate?
-                if "collections" in content:
-                    content["collections"] = [f"{user}_{content['collections']}"]
             # update request body (better find the function that updates the body maybe?)c
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             return request  # pylint: disable=protected-access
@@ -591,9 +594,9 @@ class UserCatalog:
         self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
 
         # Handle requests
-        if request.method == "GET" and request.scope["path"] == "/search":
+        if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
-            request = self.manage_search_request(request)
+            request = await self.manage_search_request(request)
         elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
