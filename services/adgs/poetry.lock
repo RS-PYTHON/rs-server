@@ -1614,7 +1614,7 @@ dev = ["black (>=22.3.0)", "build (>=0.7.0)", "isort (>=5.11.4)", "pyflakes (>=2
 
 [[package]]
 name = "rs-server-common"
-version = "3.2a1.post73.dev0+83095fb"
+version = "3.2a1.post83.dev0+f304395"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -1975,4 +1975,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "3be654438ecb711061e5b3e7f6b071d5f9acdd29b52fc64c719c6f223ee846c7"
+content-hash = "22f26591b6490c712851926e2b1742e59544d10f208d7edfdf9539cafa81424b"
