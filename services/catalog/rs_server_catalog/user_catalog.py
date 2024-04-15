@@ -33,6 +33,7 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
+from rs_server_common import settings as common_settings
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
@@ -427,7 +428,7 @@ class UserCatalog:
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
 
         if "detail" not in content:  # Test if the user is authenticated.
-            if request.scope["path"] == "/":  # /catalog
+            if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog
                 try:
                     auth_roles = request.state.auth_roles
                     user_login = request.state.user_login
@@ -436,11 +437,7 @@ class UserCatalog:
                     logging.exception(  # pylint: disable=logging-fstring-interpolation
                         f"apikey not available or local mode {e}",
                     )
-                return JSONResponse(
-                    content,
-                    status_code=response.status_code,
-                )
-            if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
+            elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
                 if user:
                     content["collections"] = filter_collections(content["collections"], user)
                     content = self.remove_user_from_objects(content, user, "collections")
@@ -450,7 +447,7 @@ class UserCatalog:
                         self.request_ids["collection_id"],
                         "collections",
                     )
-                else:
+                elif common_settings.CLUSTER_MODE:
                     try:
                         auth_roles = request.state.auth_roles
                         user_login = request.state.user_login
@@ -459,8 +456,10 @@ class UserCatalog:
                             auth_roles,
                             user_login,
                         )
-                    finally:
-                        pass
+                    except Exception as e:  # pylint: disable=broad-exception-caught
+                        logging.exception(  # pylint: disable=logging-fstring-interpolation
+                            f"apikey not available or local mode {e}",
+                        )
             elif (
                 "/collection" in request.scope["path"] and "items" not in request.scope["path"]
             ):  # /catalog/owner_id/collections/collection_id
