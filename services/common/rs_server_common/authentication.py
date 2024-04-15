@@ -14,7 +14,7 @@ import httpx
 from asyncache import cached
 from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
-from fastapi.security import APIKeyHeader, APIKeyQuery
+from fastapi.security import APIKeyHeader
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
 
