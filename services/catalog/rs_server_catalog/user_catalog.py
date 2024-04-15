@@ -34,7 +34,7 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
-from rs_server_common.authentication import apikey_security
+from rs_server_common import settings as common_settings
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
@@ -284,7 +284,7 @@ class UserCatalog:
                 res = right
         return res
 
-    def manage_search_request(self, request: Request) -> Request:
+    async def manage_search_request(self, request: Request) -> Request:
         """find the user in the filter parameter and add it to the
         collection name.
 
@@ -295,16 +295,26 @@ class UserCatalog:
             Request: the new request with the collection name updated.
         """
 
-        query = parse_qs(request.url.query)
-        if "filter" in query:
-            if "filter-lang" not in query:
-                query["filter-lang"] = ["cql2-text"]
-            qs_filter = query["filter"][0]
-            filters = parse_ecql(qs_filter)
-            user = self.find_owner_id(filters)
-            if "collections" in query:
-                query["collections"] = [f"{user}_{query['collections'][0]}"]
-                request.scope["query_string"] = urlencode(query, doseq=True).encode()
+        if request.method == "POST":
+            content = await request.json()
+            if request.scope["path"] == "/search" and "filter" in content:
+                qs_filter = content["filter"]
+                filters = parse_cql2_json(qs_filter)
+                user = self.find_owner_id(filters)
+                if "collections" in content:
+                    content["collections"] = [f"{user}_{content['collections'][0]}"]
+                    request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+        else:
+            query = parse_qs(request.url.query)
+            if "filter" in query:
+                if "filter-lang" not in query:
+                    query["filter-lang"] = ["cql2-text"]
+                qs_filter = query["filter"][0]
+                filters = parse_ecql(qs_filter)
+                user = self.find_owner_id(filters)
+                if "collections" in query:
+                    query["collections"] = [f"{user}_{query['collections'][0]}"]
+                    request.scope["query_string"] = urlencode(query, doseq=True).encode()
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -358,13 +368,6 @@ class UserCatalog:
                 content["id"] = f"{user}_{content['id']}"
             if "items" in request.scope["path"]:
                 content = self.update_stac_item_publication(content, user)
-            elif request.scope["path"] == "/search" and "filter" in content:
-                qs_filter = content["filter"]
-                filters = parse_cql2_json(qs_filter)
-                user = self.find_owner_id(filters)
-                # May be duplicate?
-                if "collections" in content:
-                    content["collections"] = [f"{user}_{content['collections']}"]
             # update request body (better find the function that updates the body maybe?)c
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             return request  # pylint: disable=protected-access
@@ -427,24 +430,15 @@ class UserCatalog:
         user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
-        api_key = ""
-        auth_roles = []
-        user_login = ""
 
-        if os.environ.get("RSPY_LOCAL_MODE") == "False":
+        if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog
             try:
-                api_key = request.headers["x-api-key"]
-                auth_roles, _, user_login = await apikey_security(request, api_key)
+                auth_roles = request.state.auth_roles
+                user_login = request.state.user_login
+                content = manage_landing_page(request, auth_roles, user_login, content)
             except RuntimeError as e:
                 raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
-
-        if request.scope["path"] == "/":  # /catalog
-            content = manage_landing_page(request, auth_roles, user_login, content)
-            return JSONResponse(
-                content,
-                status_code=response.status_code,
-            )
-        if request.scope["path"] == "/collections":  # /catalog/owner_id/collections
+        elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
                 content = self.remove_user_from_objects(content, user, "collections")
@@ -454,12 +448,19 @@ class UserCatalog:
                     self.request_ids["collection_id"],
                     "collections",
                 )
-            else:
-                content["collections"] = self.manage_all_collections(
-                    content["collections"],
-                    auth_roles,
-                    user_login,
-                )
+            elif common_settings.CLUSTER_MODE:
+                try:
+                    auth_roles = request.state.auth_roles
+                    user_login = request.state.user_login
+                    content["collections"] = self.manage_all_collections(
+                        content["collections"],
+                        auth_roles,
+                        user_login,
+                    )
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logging.exception(  # pylint: disable=logging-fstring-interpolation
+                        f"apikey not available or local mode {e}",
+                    )
         elif (
             "/collection" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
@@ -601,9 +602,9 @@ class UserCatalog:
         self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
 
         # Handle requests
-        if request.method == "GET" and request.scope["path"] == "/search":
+        if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
-            request = self.manage_search_request(request)
+            request = await self.manage_search_request(request)
         elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'

@@ -100,6 +100,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
             i=$((i+1)); ((i>=10)) && >&2 echo "Error starting service '$app'" && exit 1
         done
         echo "Service '$app' is started"
+        return 0
     }
 
     # Use the same values as in services.json
