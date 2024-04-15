@@ -5,7 +5,9 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 
+import asyncio
 import os
+from os import environ as env
 from typing import Callable
 
 import httpx
@@ -210,12 +212,31 @@ if common_settings.cluster_mode():
     # But this dependency still adds the lock icon in swagger to enter the api key.
     api.add_route_dependencies(scopes=scopes, dependencies=[Depends(authentication.apikey_security)])
 
+# Pause and timeout to connect to database (hardcoded for now)
+app.state.pg_pause = 3  # seconds
+app.state.pg_timeout = None
+
 
 @app.on_event("startup")
 async def startup_event():
     """FastAPI startup events"""
-    # Connect to database on startup
-    await connect_to_db(app)
+
+    # Connect to database on startup. Loop until the connection works.
+    db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
+    while True:
+        try:
+            await connect_to_db(app)
+            logger.info(f"Reached {env['POSTGRES_DB']!r} database on {db_info}")
+            break
+        except ConnectionRefusedError:
+            logger.warning(f"Trying to reach {env['POSTGRES_DB']!r} database on {db_info}")
+
+            # Sleep for n seconds and raise exception if timeout is reached.
+            if app.state.pg_timeout is not None:
+                app.state.pg_timeout -= app.state.pg_pause
+                if app.state.pg_timeout < 0:
+                    raise
+            await asyncio.sleep(app.state.pg_pause)
 
     # Init objects for dependency injection
     common_settings.set_http_client(httpx.AsyncClient())
@@ -224,6 +245,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """FastAPI shutdown events"""
+
     # Close database connection
     await close_db_connection(app)
 

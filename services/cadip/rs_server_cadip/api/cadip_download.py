@@ -52,13 +52,16 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
     """
 
     # Open a database sessions in this thread, because the session from the root thread may have closed.
-    with tempfile.TemporaryDirectory() as default_temp_path, contextmanager(get_db)() as db:
-        eodag_download(
-            argument,
-            db,
-            init_cadip_provider,
-            default_path=default_temp_path,
-        )
+    try:
+        with tempfile.TemporaryDirectory() as default_temp_path, contextmanager(get_db)() as db:
+            eodag_download(
+                argument,
+                db,
+                init_cadip_provider,
+                default_path=default_temp_path,
+            )
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error(f"Exception caught: {e}")
 
 
 class CadipDownloadResponse(BaseModel):

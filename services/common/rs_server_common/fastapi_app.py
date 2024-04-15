@@ -1,6 +1,6 @@
 """Init the FastAPI application."""
 
-import time
+import asyncio
 import typing
 from contextlib import asynccontextmanager
 from os import environ as env
@@ -88,7 +88,7 @@ def init_app(
                         app.state.pg_timeout -= app.state.pg_pause
                         if app.state.pg_timeout < 0:
                             raise
-                    time.sleep(app.state.pg_pause)
+                    await asyncio.sleep(app.state.pg_pause)
 
         # Init objects for dependency injection
         settings.set_http_client(httpx.AsyncClient())

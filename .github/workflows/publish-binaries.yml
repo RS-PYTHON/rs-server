@@ -1,21 +1,19 @@
 name: Publish wheels and Docker images
 
-# TODO: is it possible to run this workflow only if the check-code-quality workflow has completed successfully ?
-# I've tried workflow_run but see:
-# https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
-# Note: This event will only trigger a workflow run if the workflow file is on the default branch.
-
-# Run workflow only for new git tags (including hierarchical tags like v1.0/beta), or manually
+# Run workflow only for ...
 on:
+  pull_request: # pull requests
+    types: [opened, synchronize, reopened]
   push:
+    branches:
+      - develop # pushes on the 'develop' branch
     tags:
-      - '**'
-  workflow_dispatch:
+      - '**' # new git tags (including hierarchical tags like v1.0/beta)
+  workflow_dispatch: # manual trigger
     inputs:
       docker_tag:
         description: Tag the docker images as e.g. 'latest' or 'feat-rspy123'
         required: false
-        default: latest
 
 env:
   PYTHON_VERSION: 3.11
@@ -23,11 +21,59 @@ env:
 
 jobs:
 
+  # Calculate variables for this workflow
+  set-env:
+    if: github.actor != 'dependabot[bot]' # ignore pull requests by github bot
+    runs-on: ubuntu-latest
+    name: "Set environment"
+    outputs:
+      docker_tag: ${{ steps.set-env.outputs.docker_tag }}
+      branch_name: ${{ steps.set-env.outputs.branch_name }}
+    steps:
+      - id: set-env
+        name: "Set environment"
+        run: |
+          set -x
+
+          # Get the current branch name (or source branch for a pull request)
+          if [[ ${{ github.event_name }} == pull_request ]]; then
+            branch_name=${{ github.event.pull_request.head.ref }}
+          else
+            branch_name=${{ github.ref_name }}
+          fi
+
+          # Determine the docker tag to set to new docker images.
+          # For a pull request, use the branch name
+          if [[ ${{ github.event_name }} == pull_request ]]; then
+            docker_tag="$branch_name"
+
+          # For a push on develop or a tag, use the docker tag :latest
+          elif [[ ${{ github.event_name }} == push ]]; then
+            docker_tag=latest
+
+          # For a manual trigger, use the user-defined tag
+          elif [[ ${{ github.event_name }} == workflow_dispatch ]]; then
+            docker_tag=${{ github.event.inputs.docker_tag }}
+
+          else
+            >&2 echo "Unknown trigger"
+            exit 1
+          fi
+
+          # Replace special characters by -
+          docker_tag=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$docker_tag")
+
+          # Save values
+          echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+          echo "docker_tag=$docker_tag" >> $GITHUB_OUTPUT
+        shell: bash
+
   ##################
   # Publish wheels #
   ##################
 
   services-common-whl:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/common' wheel"
     outputs:
@@ -42,6 +88,7 @@ jobs:
           package_directory: services/common
 
   services-adgs-whl:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/adgs' wheel"
     outputs:
@@ -66,6 +113,7 @@ jobs:
           package_directory: services/adgs
 
   services-cadip-whl:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/cadip' wheel"
     outputs:
@@ -90,6 +138,7 @@ jobs:
           package_directory: services/cadip
 
   services-catalog-whl:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/catalog' wheel"
     outputs:
@@ -107,10 +156,6 @@ jobs:
           cd services/catalog
           cp -r ../common/rs_server_common/ .
           sed -i "s|^\(\s*\).*include.*rs_server_common.*$|\1{include=\"rs_server_common\"},|g" pyproject.toml
-
-          # Also copy the common config files
-          mkdir -p ./config
-          cp -rf ../common/config/* ./config
         shell: bash
 
       # NOTE: when RSPY-155 is resolved, remove the above step and uncomment the below step.
@@ -130,6 +175,7 @@ jobs:
           package_directory: services/catalog
 
   services-frontend-whl:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/frontend' wheel"
     outputs:
@@ -145,7 +191,7 @@ jobs:
       - name: Log into Docker registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.DOCKER_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -166,9 +212,10 @@ jobs:
   #########################
 
   services-adgs-img:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/adgs' Docker image"
-    needs: [services-common-whl, services-adgs-whl]
+    needs: [set-env, services-common-whl, services-adgs-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
@@ -195,12 +242,13 @@ jobs:
           image_suffix: -adgs
           version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ github.event.inputs.docker_tag }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
   services-cadip-img:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/cadip' Docker image"
-    needs: [services-common-whl, services-cadip-whl]
+    needs: [set-env, services-common-whl, services-cadip-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
@@ -227,15 +275,16 @@ jobs:
           image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ github.event.inputs.docker_tag }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
   services-catalog-img:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/catalog' Docker image"
     # TODO: this has to be activated when Jira rspy-155 is solved
     #needs: [services-common-whl, services-catalog-whl]
     # TODO: this has to be deleted when Jira rspy-155 is solved
-    needs: [services-catalog-whl]
+    needs: [set-env, services-catalog-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
@@ -262,12 +311,13 @@ jobs:
           image_suffix: -catalog
           version_name: ${{ needs.services-catalog-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ github.event.inputs.docker_tag }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
   services-frontend-img:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/frontend' Docker image"
-    needs: [services-frontend-whl]
+    needs: [set-env, services-frontend-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
@@ -289,4 +339,50 @@ jobs:
           image_suffix: -frontend
           version_name: ${{ needs.services-frontend-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          docker_tag: ${{ github.event.inputs.docker_tag }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+
+  ###########
+  # TESTING #
+  ###########
+
+  # Test rs-demo with the new Docker images
+  test-demo:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "Test rs-demo"
+    needs: [set-env, services-adgs-img, services-cadip-img, services-catalog-img, services-frontend-img]
+    steps:
+      - name: Log into Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: test-demos
+        name: "Test rs-demo"
+        run: |
+          set -x
+
+          # Clone the rs-demo repository.
+          # Use the ssh public key from: https://github.com/RS-PYTHON/rs-demo/settings/keys
+          # and the private key from: https://github.com/RS-PYTHON/rs-server/settings/secrets/actions
+          eval "$(ssh-agent -s)"
+          ssh-add - <<< "${{ secrets.RS_DEMO_PRIVATE_SSH_KEY }}"
+          git clone git@github.com:RS-PYTHON/rs-demo.git
+
+          # Try to checkout in rs-demo the same branch name than in rs-server.
+          # If the branch doesn't exist, it's ok, we stay on the default branch.
+          cd rs-demo
+          git checkout ${{ needs.set-env.outputs.branch_name }} || true
+          git status
+
+          # Run the rs-demo local mode using the newly created docker images
+          cd local-mode
+          docker_tag="${{ needs.set-env.outputs.docker_tag }}"
+          docker_tag="${docker_tag:-latest}" # latest by default
+          ./test-docker-tag.sh "$docker_tag"
+          docker compose -f docker-compose-test-tag.yml up -d
+          ./run-notebooks.sh
+
+        shell: bash

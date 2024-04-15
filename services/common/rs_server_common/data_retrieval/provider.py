@@ -21,6 +21,9 @@ class TimeRange:
         """
         return self.end - self.start
 
+    def __bool__(self) -> bool:
+        return self.start is not None and self.end is not None
+
 
 @dataclass
 class Product:
@@ -64,10 +67,11 @@ class Provider(ABC):
             The files found indexed by file id. Specific to each provider.
 
         """
-        if between.duration() == timedelta(0):
-            return []
-        if between.duration() < timedelta(0):
-            raise SearchProductFailed(f"Search timerange is inverted : ({between.start} -> {between.end})")
+        if between:
+            if between.duration() == timedelta(0):
+                return []
+            if between.duration() < timedelta(0):
+                raise SearchProductFailed(f"Search timerange is inverted : ({between.start} -> {between.end})")
         return self._specific_search(between, **kwargs)
 
     @abstractmethod

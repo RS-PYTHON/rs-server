@@ -1,9 +1,13 @@
 """EODAG Provider."""
 
+import os
+import shutil
+import tempfile
 from pathlib import Path
+from threading import Lock
 
+import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
-from rs_server_common.utils.provider_ws_address import station_to_server_url
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
@@ -14,6 +18,8 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
+    lock = Lock()  # static Lock instance
+
     def __init__(self, config_file: Path, provider: str):
         """Create a EODAG provider.
 
@@ -21,9 +27,18 @@ class EodagProvider(Provider):
             config_file: the path to the eodag configuration file
             provider: the name of the eodag provider
         """
+        self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         self.provider: str = provider
+        self.config_file = config_file
         self.client: EODataAccessGateway = self.init_eodag_client(config_file)
         self.client.set_preferred_provider(self.provider)
+
+    def __del__(self):
+        """Destructor"""
+        try:
+            shutil.rmtree(self.eodag_cfg_dir.name)  # remove the unique /tmp dir
+        except FileNotFoundError:
+            pass
 
     def init_eodag_client(self, config_file: Path) -> EODataAccessGateway:
         """Initialize the eodag client.
@@ -37,7 +52,10 @@ class EodagProvider(Provider):
              the initialized eodag client
         """
         try:
-            return EODataAccessGateway(config_file.as_posix())
+            # Use thread-lock
+            with EodagProvider.lock:
+                os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
+                return EODataAccessGateway(config_file.as_posix())
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
@@ -68,13 +86,39 @@ class EodagProvider(Provider):
         Raises:
             Exception: If the search encounters an error or fails, an exception is raised.
         """
-        products, _ = self.client.search(
-            start=str(between.start),
-            end=str(between.end),
-            provider=self.provider,
-            raise_errors=True,
-            **kwargs,
-        )
+        mapped_search_args = {}
+        if kwargs.pop("sessions_search", False):
+            if session_id := kwargs.pop("id", None):
+                if isinstance(session_id, list):
+                    mapped_search_args.update({"SessionIds": ", ".join(session_id)})
+                elif isinstance(session_id, str):
+                    mapped_search_args.update({"SessionId": session_id})
+            if platform := kwargs.pop("platform", None):
+                if isinstance(platform, list):
+                    mapped_search_args.update({"platforms": ", ".join(platform)})
+                elif isinstance(platform, str):
+                    mapped_search_args.update({"platform": platform})
+            if between:
+                mapped_search_args.update(
+                    {
+                        "startTimeFromAscendingNode": str(between.start),
+                        "completionTimeFromAscendingNode": str(between.end),
+                    },
+                )
+            products, _ = self.client.search(
+                **mapped_search_args,  # type: ignore
+                provider=self.provider,
+                raise_errors=True,
+                **kwargs,
+            )
+        else:
+            products, _ = self.client.search(
+                start=str(between.start),
+                end=str(between.end),
+                provider=self.provider,
+                raise_errors=True,
+                **kwargs,
+            )
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:
@@ -114,13 +158,18 @@ class EodagProvider(Provider):
             the initialized EO Product
 
         """
-        return EOProduct(
-            self.provider,
-            {
-                "id": product_id,
-                "title": filename,
-                "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
-                # TODO build from configuration (but how ?)
-                "downloadLink": f"{station_to_server_url(self.provider)}({product_id})/$value",
-            },
-        )
+        try:
+            with open(self.config_file, "r", encoding="utf-8") as f:
+                base_uri = yaml.safe_load(f)[self.provider.lower()]["download"]["base_uri"]
+            return EOProduct(
+                self.provider,
+                {
+                    "id": product_id,
+                    "title": filename,
+                    "geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))",
+                    # TODO build from configuration (but how ?)
+                    "downloadLink": f"{base_uri}({product_id})/$value",
+                },
+            )
+        except Exception as e:
+            raise CreateProviderFailed(f"Can't initialize {self.provider} download provider") from e
