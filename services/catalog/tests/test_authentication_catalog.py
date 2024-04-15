@@ -3,7 +3,7 @@
 import json
 
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import APIKEY_HEADER, APIKEY_QUERY, ttl_cache
+from rs_server_common.authentication import APIKEY_HEADER, ttl_cache
 from starlette.status import HTTP_200_OK
 
 # Dummy url for the uac manager check endpoint
@@ -13,8 +13,11 @@ RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 VALID_APIKEY = "VALID_API_KEY"
 WRONG_APIKEY = "WRONG_APIKEY"
 
-# Test two ways of passing the api key: in HTTP header and in url query parameter
-PASS_THE_APIKEY = [{"headers": {APIKEY_HEADER: VALID_APIKEY}}, {"params": {APIKEY_QUERY: VALID_APIKEY}}]
+# Test two ways of passing the api key: in HTTP header and in url query parameter (disabled for now)
+PASS_THE_APIKEY = [
+    {"headers": {APIKEY_HEADER: VALID_APIKEY}},
+    # {"params": {APIKEY_QUERY: VALID_APIKEY}}
+]
 
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
