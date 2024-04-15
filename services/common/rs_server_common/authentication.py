@@ -29,15 +29,12 @@ logger = Logging.default(__name__)
 
 # HTTP header and query parameter fields for the api key
 APIKEY_HEADER = "x-api-key"
-APIKEY_QUERY = "api-key"
+# APIKEY_QUERY = "api-key" # disabled for now
 
-# API key authentication using a header and a query parameter.
+# API key authentication using a header and a query parameter (disabled for now)
 APIKEY_AUTH_HEADER = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=False)
-APIKEY_AUTH_QUERY = APIKeyQuery(
-    name=APIKEY_QUERY,
-    scheme_name="API key passed in URL query parameter",
-    auto_error=False,
-)
+# APIKEY_AUTH_QUERY = APIKeyQuery(
+#     name=APIKEY_QUERY, scheme_name="API key passed in URL query parameter", auto_error=False)
 
 # Look up table for stations
 STATIONS_AUTH_LUT = {
@@ -54,21 +51,20 @@ STATIONS_AUTH_LUT = {
 async def apikey_security(
     request: Request,
     apikey_header: Annotated[str, Security(APIKEY_AUTH_HEADER)],
-    apikey_query: Annotated[str, Security(APIKEY_AUTH_QUERY)],
+    # apikey_query: Annotated[str, Security(APIKEY_AUTH_QUERY)],
 ) -> tuple[list, dict, str]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
 
     Args:
         apikey_header (Security): API key passed in HTTP header
-        apikey_query (Security): API key passed in URL query parameter
 
     Returns:
         Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
     """
 
-    # Use the api key passed by either http headers or query parameter
-    apikey_value = apikey_header or apikey_query
+    # Use the api key passed by either http headers or query parameter (disabled for now)
+    apikey_value = apikey_header  # or apikey_query
     if not apikey_value:
         raise HTTPException(
             status_code=HTTP_403_FORBIDDEN,
