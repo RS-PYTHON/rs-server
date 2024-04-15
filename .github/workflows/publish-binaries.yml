@@ -23,7 +23,7 @@ jobs:
 
   # Calculate variables for this workflow
   set-env:
-    if: github.actor != 'dependabot' # ignore pull requests by github bot
+    if: github.actor != 'dependabot[bot]' # ignore pull requests by github bot
     runs-on: ubuntu-latest
     name: "Set environment"
     outputs:
@@ -73,7 +73,7 @@ jobs:
   ##################
 
   services-common-whl:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/common' wheel"
     outputs:
@@ -88,7 +88,7 @@ jobs:
           package_directory: services/common
 
   services-adgs-whl:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/adgs' wheel"
     outputs:
@@ -113,7 +113,7 @@ jobs:
           package_directory: services/adgs
 
   services-cadip-whl:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/cadip' wheel"
     outputs:
@@ -138,7 +138,7 @@ jobs:
           package_directory: services/cadip
 
   services-catalog-whl:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/catalog' wheel"
     outputs:
@@ -175,7 +175,7 @@ jobs:
           package_directory: services/catalog
 
   services-frontend-whl:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/frontend' wheel"
     outputs:
@@ -212,7 +212,7 @@ jobs:
   #########################
 
   services-adgs-img:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/adgs' Docker image"
     needs: [set-env, services-common-whl, services-adgs-whl]
@@ -245,7 +245,7 @@ jobs:
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
   services-cadip-img:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/cadip' Docker image"
     needs: [set-env, services-common-whl, services-cadip-whl]
@@ -278,7 +278,7 @@ jobs:
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
   services-catalog-img:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/catalog' Docker image"
     # TODO: this has to be activated when Jira rspy-155 is solved
@@ -314,7 +314,7 @@ jobs:
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
   services-frontend-img:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/frontend' Docker image"
     needs: [set-env, services-frontend-whl]
@@ -347,7 +347,7 @@ jobs:
 
   # Test rs-demo with the new Docker images
   test-demo:
-    if: github.actor != 'dependabot'
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "Test rs-demo"
     needs: [set-env, services-adgs-img, services-cadip-img, services-catalog-img, services-frontend-img]
