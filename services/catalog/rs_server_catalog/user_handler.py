@@ -55,7 +55,7 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
         return "/", ids_dict
 
     # To catch all the other endpoints.
-    if match := re.fullmatch(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
+    if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
         if groups["owner_collection_id"] and ":" in groups["owner_collection_id"]:
             ids_dict["owner_id"], ids_dict["collection_id"] = map(

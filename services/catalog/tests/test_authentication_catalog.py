@@ -4,7 +4,7 @@ import json
 
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER, ttl_cache
-from starlette.status import HTTP_200_OK
+from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -238,9 +238,6 @@ async def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client
         assert content["collections"] == valid_collections
 
 
-"""
-TODO for Youri, fix these tests
-
 class TestAuthenticationGetOneCollection:
     async def test_http200_with_good_authentication(
         self,
@@ -249,6 +246,8 @@ class TestAuthenticationGetOneCollection:
         httpx_mock: HTTPXMock,
         client,
     ):  # pylint: disable=missing-function-docstring
+
+        ttl_cache.clear()  # clear the cached response
 
         # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
         mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
@@ -370,4 +369,3 @@ class TestAuthenticationGetOneCollection:
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
-"""

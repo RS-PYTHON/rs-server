@@ -430,14 +430,17 @@ class UserCatalog:
         user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+        auth_roles = []
+        user_login = ""
 
-        if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog
+        if common_settings.CLUSTER_MODE:
             try:
                 auth_roles = request.state.auth_roles
                 user_login = request.state.user_login
-                content = manage_landing_page(request, auth_roles, user_login, content)
             except RuntimeError as e:
                 raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+        if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog
+            content = manage_landing_page(request, auth_roles, user_login, content)
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
@@ -448,29 +451,25 @@ class UserCatalog:
                     self.request_ids["collection_id"],
                     "collections",
                 )
-            elif common_settings.CLUSTER_MODE:
-                try:
-                    auth_roles = request.state.auth_roles
-                    user_login = request.state.user_login
-                    content["collections"] = self.manage_all_collections(
-                        content["collections"],
-                        auth_roles,
-                        user_login,
-                    )
-                except Exception as e:  # pylint: disable=broad-exception-caught
-                    logging.exception(  # pylint: disable=logging-fstring-interpolation
-                        f"apikey not available or local mode {e}",
-                    )
+            else:
+                content["collections"] = self.manage_all_collections(
+                    content["collections"],
+                    auth_roles,
+                    user_login,
+                )
         elif (
             "/collection" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
-            if not get_authorisation(
-                self.request_ids["collection_id"],
-                auth_roles,
-                "read",
-                self.request_ids["owner_id"],
-                user_login,
-            ) and os.environ.get("RSPY_LOCAL_MODE") in ["False", "0"]:
+            if (
+                not get_authorisation(
+                    self.request_ids["collection_id"],
+                    auth_roles,
+                    "read",
+                    self.request_ids["owner_id"],
+                    user_login,
+                )
+                and common_settings.CLUSTER_MODE
+            ):
                 detail = {"error": "Unauthorized access."}
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
                 # raise HTTPException(401, "Unauthorized Access.")
