@@ -1523,13 +1523,13 @@ crt = ["botocore[crt] (>=1.20.29,<2.0a.0)"]
 
 [[package]]
 name = "setuptools"
-version = "69.5.1"
+version = "69.3.0"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "setuptools-69.5.1-py3-none-any.whl", hash = "sha256:c636ac361bc47580504644275c9ad802c50415c7522212252c033bd15f301f32"},
-    {file = "setuptools-69.5.1.tar.gz", hash = "sha256:6c1fccdac05a97e598fb0ae3bbed5904ccb317337a51139dcd51453611bbb987"},
+    {file = "setuptools-69.3.0-py3-none-any.whl", hash = "sha256:48c518e350470d98cfa2944a31edbfc897c9a7d8fa4847da66d89f0f5fb64b57"},
+    {file = "setuptools-69.3.tar.gz", hash = "sha256:e1fd0ca7ba442e4be8a415dcca867b8018777dd5f95f4492bb4dc7d77dbc8bd8"},
 ]
 
 [package.extras]
