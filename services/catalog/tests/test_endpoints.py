@@ -221,15 +221,13 @@ class TestCatalogPublishCollectionEndpoint:
         response = client.post("/catalog/collections", json=minimal_collection)
         assert response.status_code == fastapi.status.HTTP_200_OK
         # Test that duplicate collection cannot be published
-        with pytest.raises(fastapi.HTTPException):
-            response = client.post("/catalog/collections", json=minimal_collection)
-            assert response.status_code == fastapi.status.HTTP_409_CONFLICT
+        response = client.post("/catalog/collections", json=minimal_collection)
+        assert response.status_code == fastapi.status.HTTP_409_CONFLICT
         # Change values from collection, try to publish again
         minimal_collection["description"] = "test_description_updated"
-        with pytest.raises(fastapi.HTTPException):
-            response = client.post("/catalog/collections", json=minimal_collection)
-            # Test that is not allowed
-            assert response.status_code == fastapi.status.HTTP_409_CONFLICT
+        response = client.post("/catalog/collections", json=minimal_collection)
+        # Test that is not allowed
+        assert response.status_code == fastapi.status.HTTP_409_CONFLICT
         # Check into catalogDB that values are not updated
         response = client.get("/catalog/collections/duplicate_owner:duplicate_collection")
         response_content = json.loads(response.content)
@@ -298,7 +296,7 @@ class TestCatalogPublishCollectionEndpoint:
 
         # Check that collection is correctly published
         first_check_response = client.get("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection")
-        first_response_content = json.loads(first_check_response.content)["collections"][0]
+        first_response_content = json.loads(first_check_response.content)
         assert first_response_content["description"] == minimal_collection["description"]
 
         # Delete the collection
@@ -314,9 +312,8 @@ class TestCatalogPublishCollectionEndpoint:
         Test DELETE collection endpoint on non existing collection
         """
         # Should call delete endpoint on a non existent collection id
-        with pytest.raises(fastapi.HTTPException):
-            delete_response = client.delete("/catalog/collections/non_existent_owner:non_existent_collection")
-            assert delete_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        delete_response = client.delete("/catalog/collections/non_existent_owner:non_existent_collection")
+        assert delete_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_delete_a_foreign_collection(self, client):
         """Test DELETE collection endpoint, with a user that has no rights to remove a existing collection."""
@@ -329,10 +326,9 @@ class TestCatalogPublishCollectionEndpoint:
         }
         response = client.post("/catalog/collections", json=minimal_collection)
         assert response.status_code == fastapi.status.HTTP_200_OK
-        with pytest.raises(fastapi.HTTPException):
-            delete_response = client.delete("/catalog/collections/owner_with_no_rights:correctly_created_collection")
-            # To be changed with 405 not allowed after UAC
-            assert delete_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        delete_response = client.delete("/catalog/collections/owner_with_no_rights:correctly_created_collection")
+        # To be changed with 405 not allowed after UAC
+        assert delete_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_delete_non_empty_collection(
         self,
@@ -362,8 +358,8 @@ class TestCatalogPublishCollectionEndpoint:
         delete_response = client.delete("/catalog/collections/fixture_owner:fixture_collection")
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
         # Test that collection is removed, request raises 404 exception
-        with pytest.raises(fastapi.HTTPException):
-            client.get("/catalog/collections/fixture_owner:fixture_collection/items")
+        response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
 
 class TestCatalogPublishFeatureWithBucketTransferEndpoint:
@@ -572,11 +568,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             # check that content is the same as the original file
             assert product_content.content.decode() == object_content
 
-            with pytest.raises(fastapi.HTTPException):
-                assert (
-                    client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code
-                    == 404
-                )
+            assert client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
 
         finally:
             server.stop()
@@ -682,14 +674,13 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         Testing GET feature endpoint with a non-existent feature ID.
         """
         # Try to get a non-existent feature from a non-existing collection
-        with pytest.raises(fastapi.HTTPException):
-            feature_post_response = client.get("/catalog/collections/non_owner:non_collection/items/non_feature_id")
-            assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-            # Try to get a non-existent feature from an existing collection
-            feature_post_response = client.get(
-                "/catalog/collections/fixture_owner:fixture_collection/items/incorrect_feature_id",
-            )
-            assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+        feature_post_response = client.get("/catalog/collections/non_owner:non_collection/items/non_feature_id")
+        assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+        # Try to get a non-existent feature from an existing collection
+        feature_post_response = client.get(
+            "/catalog/collections/fixture_owner:fixture_collection/items/incorrect_feature_id",
+        )
+        assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
@@ -737,11 +728,12 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = "Incorrect_bbox_value"
 
-        with pytest.raises(fastapi.HTTPException):
-            client.put(
-                f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
-                json=updated_feature_sent,
-            )
+        response = client.put(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+            json=updated_feature_sent,
+        )
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
@@ -761,8 +753,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         )
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
         # Test that feature was correctly removed from catalogDB
-        with pytest.raises(fastapi.HTTPException):
-            client.get(f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}")
+
+        response = client.get(f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}")
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+
         # Test that collection is now empty
         collection_content_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert collection_content_response.status_code == fastapi.status.HTTP_200_OK
@@ -774,5 +768,5 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         """
         Test DELETE feature endpoint on non-existing feature.
         """
-        with pytest.raises(fastapi.HTTPException):
-            client.delete("/catalog/collections/fixture_owner:fixture_collection/items/non_existent_feature")
+        response = client.delete("/catalog/collections/fixture_owner:fixture_collection/items/non_existent_feature")
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND

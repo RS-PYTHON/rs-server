@@ -618,9 +618,7 @@ class UserCatalog:
 
         # Don't forward responses that fail
         if response.status_code != 200:
-            body = [chunk async for chunk in response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())  # type:ignore
-            raise HTTPException(detail=response_content, status_code=response.status_code)
+            return response
 
         # Handle responses
         if request.scope["path"] == "/search":
