@@ -282,7 +282,7 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
     )
     yield
     # teardown cleanup
-    if json.loads(client.get("/catalog/collections/fixture_owner:fixture_collection").content)["collections"]:
+    if json.loads(client.get("/catalog/collections/fixture_owner:fixture_collection").content):
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
 
