@@ -974,6 +974,17 @@ class TestAuthenticationSearch:
         )
 
         search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner_id='toto'"}
+        test_json = {
+            "collections": ["S1_L1"],
+            "filter-lang": "cql2-json",
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner_id"}, "toto"]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "GET",
@@ -981,4 +992,6 @@ class TestAuthenticationSearch:
                 params=search_params,
                 **pass_the_apikey,
             )
+            assert response.status_code == HTTP_200_OK
+            response = client.request("POST", "/catalog/search", json=test_json, **pass_the_apikey)
             assert response.status_code == HTTP_200_OK
