@@ -163,7 +163,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         "description": "Some description",
         "stac_version": "1.0.0",
     }
-    post_response = client.post(f"/catalog/collections", json=pyteam_collection, **pass_the_apikey)
+    post_response = client.post("/catalog/collections", json=pyteam_collection, **pass_the_apikey)
     assert post_response.status_code == HTTP_200_OK
     valid_collections = [
         {
@@ -579,7 +579,7 @@ class TestAuthenticationGetOneItem:
             "type": "Feature",
             "assets": {
                 "COG": {
-                    "href": f"""s3://temp-bucket/toto_S1_L1/images/may24C355000e4102500n.tif""",
+                    "href": """s3://temp-bucket/toto_S1_L1/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
                 },
@@ -680,14 +680,14 @@ class TestAuthenticationPostOneCollection:
             {
                 "rel": "items",
                 "type": "application/geo+json",
-                "href": f"http://localhost:8082/collections/toto/items",
+                "href": "http://localhost:8082/collections/toto/items",
             },
             {"rel": "parent", "type": "application/json", "href": "http://localhost:8082/"},
             {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
             {
                 "rel": "self",
                 "type": "application/json",
-                "href": f"""http://localhost:8082/collections/toto""",
+                "href": """http://localhost:8082/collections/toto""",
             },
             {
                 "rel": "license",

@@ -310,7 +310,7 @@ class UserCatalog:
                         # to put/post returns a HTTP_401_UNAUTHORIZED status.
                         common_settings.CLUSTER_MODE
                         and not get_authorisation(
-                            query["collections"][0],
+                            content["collections"][0],
                             auth_roles,
                             "read",
                             user,
