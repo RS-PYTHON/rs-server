@@ -1,6 +1,7 @@
 """Init the FastAPI application."""
 
 import asyncio
+import os
 import typing
 from contextlib import asynccontextmanager
 from os import environ as env
@@ -9,6 +10,13 @@ from typing import Callable
 import httpx
 import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from rs_server_common import settings
 from rs_server_common.authentication import apikey_security
 from rs_server_common.db.database import sessionmanager
@@ -40,6 +48,7 @@ async def health() -> HealthSchema:
 @typing.no_type_check
 def init_app(
     api_version: str,
+    service_name: str,
     routers: list[APIRouter],
     init_db: bool = True,
     pause: int = 3,
@@ -54,6 +63,7 @@ def init_app(
     Args:
         api_version (str): version of our application (not the version of the OpenAPI specification
         nor the version of FastAPI being used)
+        service_name (str): service name for OpenTelemetry
         routers (list[APIRouter]): list of FastAPI routers to add to the application.
         init_db (bool): should we init the database session ?
         timeout (int): timeout in seconds to wait for the database connection.
@@ -149,5 +159,16 @@ def init_app(
     # Add routers to the FastAPI app
     app.include_router(auth_router)
     app.include_router(technical_router)
+
+    # OpenTelemetry configuration for FastAPI
+    # See: https://github.com/softwarebloat/python-tracing-demo/tree/main
+
+    otel_resource = Resource(attributes={"service.name": service_name})
+    otel_tracer = TracerProvider(resource=otel_resource)
+    trace.set_tracer_provider(otel_tracer)
+    otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=os.getenv("TEMPO_ENDPOINT"))))
+
+    LoggingInstrumentor().instrument()
+    FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
 
     return app

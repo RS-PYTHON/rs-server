@@ -19,6 +19,6 @@ runs:
     - uses: snok/install-poetry@v1
     - run: |
         poetry install ${{ inputs.options }} # don't use quotes around options
-        poetry run opentelemetry-bootstrap -a install || true # install otlp instrumentation packages for dependencies
+        poetry run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
       working-directory: ${{ inputs.working-directory }}
       shell: bash
