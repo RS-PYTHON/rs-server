@@ -1,7 +1,6 @@
 """Init the FastAPI application."""
 
 import asyncio
-import os
 import typing
 from contextlib import asynccontextmanager
 from os import environ as env
@@ -10,17 +9,11 @@ from typing import Callable
 import httpx
 import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.logging import LoggingInstrumentor
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from rs_server_common import settings
 from rs_server_common.authentication import apikey_security
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
+from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 
 # Add technical endpoints specific to the main application
@@ -138,6 +131,9 @@ def init_app(
     # Init the FastAPI application
     app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params)
 
+    # Configure OpenTelemetry
+    opentelemetry.for_fastapi(app, service_name)
+
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db
     app.state.pg_pause = pause
@@ -159,16 +155,5 @@ def init_app(
     # Add routers to the FastAPI app
     app.include_router(auth_router)
     app.include_router(technical_router)
-
-    # OpenTelemetry configuration for FastAPI
-    # See: https://github.com/softwarebloat/python-tracing-demo/tree/main
-
-    otel_resource = Resource(attributes={"service.name": service_name})
-    otel_tracer = TracerProvider(resource=otel_resource)
-    trace.set_tracer_provider(otel_tracer)
-    otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=os.getenv("TEMPO_ENDPOINT"))))
-
-    LoggingInstrumentor().instrument()
-    FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
 
     return app
