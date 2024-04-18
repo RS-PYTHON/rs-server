@@ -27,8 +27,11 @@ RUN \
     apt install -y libpq-dev && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
-# Copy the python installation from the build stage
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+# Copy the whole /usr/local dir (that contains the python installation) from the build stage
+COPY --from=builder /usr/local /usr/local
+
+# Install opentelemetry instrumentation packages for dependencies
+RUN opentelemetry-bootstrap -a install
 
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
