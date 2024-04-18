@@ -1,10 +1,23 @@
 """Unit tests for the authentication."""
 
 import json
+import os
 
+import requests
+import yaml
+from moto.server import ThreadedMotoServer
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER, ttl_cache
-from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED
+from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_302_FOUND,
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+    HTTP_404_NOT_FOUND,
+)
+
+from .conftest import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -129,7 +142,59 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         content = json.loads(landing_page_response.content)
         assert content["links"] == valid_links
 
-    # assert client.request("GET", "/catalog/collections").status_code == HTTP_403_FORBIDDEN
+    valid_links = [
+        {"rel": "self", "type": "application/json", "href": "http://testserver/"},
+        {"rel": "root", "type": "application/json", "href": "http://testserver/"},
+        {"rel": "data", "type": "application/json", "href": "http://testserver/collections"},
+        {
+            "rel": "conformance",
+            "type": "application/json",
+            "title": "STAC/WFS3 conformance classes implemented by this server",
+            "href": "http://testserver/conformance",
+        },
+        {
+            "rel": "search",
+            "type": "application/geo+json",
+            "title": "STAC search",
+            "href": "http://testserver/search",
+            "method": "GET",
+        },
+        {
+            "rel": "search",
+            "type": "application/geo+json",
+            "title": "STAC search",
+            "href": "http://testserver/search",
+            "method": "POST",
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "toto_S1_L1",
+            "href": "http://testserver/collections/toto_S1_L1",
+        },
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "toto_S2_L3",
+            "href": "http://testserver/collections/toto_S2_L3",
+        },
+        {
+            "rel": "service-desc",
+            "type": "application/vnd.oai.openapi+json;version=3.0",
+            "title": "OpenAPI service description",
+            "href": "http://testserver/api",
+        },
+        {
+            "rel": "service-doc",
+            "type": "text/html",
+            "title": "OpenAPI service documentation",
+            "href": "http://testserver/api.html",
+        },
+    ]
+
+    catalog_owner_id_response = client.request("GET", "/catalog/catalogs/toto", headers={APIKEY_HEADER: VALID_APIKEY})
+    content = json.loads(catalog_owner_id_response.content)
+    assert content["links"] == valid_links
 
     pyteam_collection = {
         "id": "S2_L1",
@@ -933,6 +998,19 @@ class TestAuthicationPutOneCollection:
 
 class TestAuthenticationSearch:
 
+    search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner_id='toto'"}
+    test_json = {
+        "collections": ["S1_L1"],
+        "filter-lang": "cql2-json",
+        "filter": {
+            "op": "and",
+            "args": [
+                {"op": "=", "args": [{"property": "owner_id"}, "toto"]},
+                {"op": "=", "args": [{"property": "width"}, 2500]},
+            ],
+        },
+    }
+
     def test_http200_with_good_authentication(
         self,
         mocker,
@@ -973,25 +1051,391 @@ class TestAuthenticationSearch:
             },
         )
 
-        search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner_id='toto'"}
-        test_json = {
-            "collections": ["S1_L1"],
-            "filter-lang": "cql2-json",
-            "filter": {
-                "op": "and",
-                "args": [
-                    {"op": "=", "args": [{"property": "owner_id"}, "toto"]},
-                    {"op": "=", "args": [{"property": "width"}, 2500]},
-                ],
-            },
-        }
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "GET",
                 "/catalog/search",
-                params=search_params,
+                params=self.search_params,
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_200_OK
-            response = client.request("POST", "/catalog/search", json=test_json, **pass_the_apikey)
+            response = client.request("POST", "/catalog/search", json=self.test_json, **pass_the_apikey)
             assert response.status_code == HTTP_200_OK
+
+    def test_fails_without_good_perms(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:S1_L2_read",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "GET",
+                "/catalog/search",
+                params=self.search_params,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+            response = client.request("POST", "/catalog/search", json=self.test_json, **pass_the_apikey)
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
+class TestAuthenticationDownload:
+
+    def export_aws_credentials(self):
+        """Export AWS credentials as environment variables for testing purposes.
+
+        This function sets the following environment variables with dummy values for AWS credentials:
+        - AWS_ACCESS_KEY_ID
+        - AWS_SECRET_ACCESS_KEY
+        - AWS_SECURITY_TOKEN
+        - AWS_SESSION_TOKEN
+        - AWS_DEFAULT_REGION
+
+        Note: This function is intended for testing purposes only, and it should not be used in production.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
+        with open(RESOURCES_FOLDER / "s3" / "s3.yml", "r", encoding="utf-8") as f:
+            s3_config = yaml.safe_load(f)
+            os.environ.update(s3_config["s3"])
+            os.environ.update(s3_config["boto"])
+
+    def clear_aws_credentials(self):
+        """Clear AWS credentials from environment variables."""
+        with open(RESOURCES_FOLDER / "s3" / "s3.yml", "r", encoding="utf-8") as f:
+            s3_config = yaml.safe_load(f)
+            for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
+                del os.environ[env_var]
+
+    def test_http200_with_good_authentication(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):
+        # pylint: disable=missing-function-docstring
+
+        ttl_cache.clear()  # clear the cached response
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:*_read",
+                    "rs_catalog_toto:*_write",
+                    "rs_catalog_toto:*_download",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+
+        """Test used to verify the generation of a presigned url for a download."""
+        # Start moto server
+        moto_endpoint = "http://localhost:8077"
+        self.export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+
+        try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+            # Upload a file to catalog-bucket
+            catalog_bucket = "catalog-bucket"
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            object_content = "testing\n"
+            s3_handler.s3_client.put_object(
+                Bucket=catalog_bucket,
+                Key="S1_L1/images/may24C355000e4102500n.tif",
+                Body=object_content,
+            )
+
+            for pass_the_apikey in PASS_THE_APIKEY:
+                response = client.request(
+                    "GET",
+                    "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
+                    **pass_the_apikey,
+                )
+                assert response.status_code == HTTP_302_FOUND
+
+                # Check that response is an url not file content!
+                assert response.content != object_content
+
+                # call the redirected url
+                product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
+
+                # product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
+                assert product_content.status_code == HTTP_200_OK
+                assert product_content.content.decode() == object_content
+                assert (
+                    client.get(
+                        "/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG",
+                        headers={APIKEY_HEADER: VALID_APIKEY},
+                    ).status_code
+                    == HTTP_404_NOT_FOUND
+                )
+
+        finally:
+            server.stop()
+            # Remove bucket credentials form env variables / should create a s3_handler without credentials error
+            self.clear_aws_credentials()
+
+        response = client.get(
+            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
+            headers={APIKEY_HEADER: VALID_APIKEY},
+        )
+        assert response.status_code == HTTP_400_BAD_REQUEST
+        assert response.content == b'"Could not find s3 credentials"'
+
+    def test_fails_without_good_perms(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):
+        # pylint: disable=missing-function-docstring
+
+        ttl_cache.clear()  # clear the cached response
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:*_read",
+                    "rs_catalog_toto:*_write",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+
+        """Test used to verify the generation of a presigned url for a download."""
+        # Start moto server
+        moto_endpoint = "http://localhost:8077"
+        self.export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        s3_handler = S3StorageHandler(
+            secrets["accesskey"],
+            secrets["secretkey"],
+            secrets["s3endpoint"],
+            secrets["region"],
+        )
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+
+        try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+            # Upload a file to catalog-bucket
+            catalog_bucket = "catalog-bucket"
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            object_content = "testing\n"
+            s3_handler.s3_client.put_object(
+                Bucket=catalog_bucket,
+                Key="S1_L1/images/may24C355000e4102500n.tif",
+                Body=object_content,
+            )
+
+            for pass_the_apikey in PASS_THE_APIKEY:
+                response = client.request(
+                    "GET",
+                    "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
+                    **pass_the_apikey,
+                )
+                assert response.status_code == HTTP_401_UNAUTHORIZED
+
+        finally:
+            server.stop()
+            # Remove bucket credentials form env variables / should create a s3_handler without credentials error
+            self.clear_aws_credentials()
+
+
+class TestAuthentiactionDelete:
+    def test_http200_with_good_authentication(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        ttl_cache.clear()  # clear the cached response
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:*_read",
+                    "rs_catalog_toto:*_write",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+
+        toto_new_collection = {
+            "id": "fixture_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "toto",
+        }
+
+        response = client.request(
+            "POST",
+            "/catalog/collections",
+            json=toto_new_collection,
+            headers={APIKEY_HEADER: VALID_APIKEY},
+        )
+        assert response.status_code == HTTP_200_OK
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "DELETE",
+                "/catalog/collections/toto:fixture_collection",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+
+    def test_fails_without_good_perms(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        ttl_cache.clear()  # clear the cached response
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:*_read",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "DELETE",
+                "/catalog/collections/toto:S1_L1",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED

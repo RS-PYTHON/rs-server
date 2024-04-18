@@ -10,7 +10,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"(?P<item_id>/.+?(?=/|$))?)?"
 )
 
-CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs(?P<owner_id>.+)"
+CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/(?P<owner_id>.+)"
 
 
 def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=too-many-branches

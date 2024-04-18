@@ -488,8 +488,8 @@ class UserCatalog:
                 user_login = request.state.user_login
             except RuntimeError as e:
                 raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
-        if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog
-            content = manage_landing_page(request, auth_roles, user_login, content)
+        if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
+            content = manage_landing_page(request, auth_roles, user_login, content, user)
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
@@ -556,6 +556,27 @@ class UserCatalog:
             the response content with the appropriate status code.
 
         """
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+            try:
+                auth_roles = request.state.auth_roles
+                user_login = request.state.user_login
+            except RuntimeError as e:
+                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+        if (  # If we are in cluster mode and the user_login is not authorized
+            # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and self.request_ids["collection_id"]
+            and self.request_ids["owner_id"]
+            and not get_authorisation(
+                self.request_ids["collection_id"],
+                auth_roles,
+                "download",
+                self.request_ids["owner_id"],
+                user_login,
+            )
+        ):
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
@@ -628,6 +649,7 @@ class UserCatalog:
         """Change the name of the deleted collection by removing owner_id.
 
         Args:
+
             response (StreamingResponse): The client response.
             user (str): The owner id.
 
@@ -639,6 +661,40 @@ class UserCatalog:
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         return JSONResponse(response_content)
+
+    def manage_delete_request(self, request: Request):
+        """Check if the deletion is allowed.
+
+        Args:
+            request (Request): The client request.
+
+        Raises:
+            HTTPException: If the user is not authenticated.
+
+        Returns:
+            bool: Return True if the deletion is allowed, False otherwise.
+        """
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+            try:
+                auth_roles = request.state.auth_roles
+                user_login = request.state.user_login
+            except RuntimeError as e:
+                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+        if (  # If we are in cluster mode and the user_login is not authorized
+            # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and self.request_ids["collection_id"]
+            and self.request_ids["owner_id"]
+            and not get_authorisation(
+                self.request_ids["collection_id"],
+                auth_roles,
+                "write",
+                self.request_ids["owner_id"],
+                user_login,
+            )
+        ):
+            return False
+        return True
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
@@ -663,6 +719,10 @@ class UserCatalog:
             request = await self.manage_put_post_request(request)
             if hasattr(request, "status_code"):  # Unauthorized
                 return request
+        elif request.method == "DELETE":
+            is_delete_allowed = self.manage_delete_request(request)
+            if not is_delete_allowed:
+                return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
 
         response = None
         try:
