@@ -283,7 +283,7 @@ class UserCatalog:
                 res = right
         return res
 
-    async def manage_search_request(self, request: Request) -> Request:
+    async def manage_search_request(self, request: Request) -> Request | JSONResponse:
         """find the user in the filter parameter and add it to the
         collection name.
 
@@ -696,7 +696,7 @@ class UserCatalog:
             return False
         return True
 
-    async def dispatch(self, request, call_next):
+    async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
 
