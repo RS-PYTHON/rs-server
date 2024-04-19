@@ -118,6 +118,27 @@ def extract_openapi_specification():
                     method["description"] = (
                         "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
                     )
+    catalog_owner_id = {
+        "get": {
+            "summary": "Landing page for the catalog owner id only.",
+            "description": "Endpoint.",
+            "operationId": "Get_landing_page_owner_id",
+            "responses": {
+                "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
+            },
+            "security": [{"API key passed in HTTP header": []}],
+            "parameters": [
+                {
+                    "description": "Owner ID",
+                    "required": True,
+                    "schema": {"type": "string", "title": "Owner ID", "description": "Owner ID"},
+                    "name": "owner_id",
+                    "in": "path",
+                },
+            ],
+        },
+    }
+    openapi_spec_paths["/catalog/catalogs/{owner_id}"] = catalog_owner_id
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
