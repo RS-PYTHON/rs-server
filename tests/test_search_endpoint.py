@@ -12,8 +12,8 @@ from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
 
-from .conftest import (
-    expected_sessions_builder_fixture,  # pylint: disable=no-name-in-module
+from .conftest import (  # pylint: disable=no-name-in-module
+    expected_sessions_builder_fixture,
 )
 
 
