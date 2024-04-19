@@ -12,7 +12,9 @@ from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
 
-from .conftest import expected_sessions_builder_fixture
+from .conftest import (
+    expected_sessions_builder_fixture,  # pylint: disable=no-name-in-module
+)
 
 
 # TC-001 : User1 send a CURL request to a CADIP-Server on URL /cadip/{station}/cadu/list .
