@@ -30,10 +30,14 @@ def for_fastapi(app: fastapi.FastAPI, service_name: str):
 
     # See: https://github.com/softwarebloat/python-tracing-demo/tree/main
 
+    tempo_endpoint = os.getenv("TEMPO_ENDPOINT")
+    if not tempo_endpoint:
+        return
+
     otel_resource = Resource(attributes={"service.name": service_name})
     otel_tracer = TracerProvider(resource=otel_resource)
     trace.set_tracer_provider(otel_tracer)
-    otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=os.getenv("TEMPO_ENDPOINT"))))
+    otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=tempo_endpoint)))
 
     FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
     logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")
@@ -68,9 +72,11 @@ def for_fastapi(app: fastapi.FastAPI, service_name: str):
                     if callable(_instrument):
 
                         # Call it with the same arguments than FastAPI
-                        _class().instrument(tracer_provider=otel_tracer)
-                        name = f"{module_str}.{_class.__name__}".removeprefix(prefix)
-                        logger.debug(f"OpenTelemetry instrumentation of {name!r}")
+                        _class_instance = _class()
+                        if not _class_instance.is_instrumented_by_opentelemetry:
+                            _class_instance.instrument(tracer_provider=otel_tracer)
+                        # name = f"{module_str}.{_class.__name__}".removeprefix(prefix)
+                        # logger.debug(f"OpenTelemetry instrumentation of {name!r}")
 
         # Ignore exceptions, don't load this module
         except Exception:
