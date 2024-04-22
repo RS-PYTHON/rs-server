@@ -467,7 +467,7 @@ class UserCatalog:
         self,
         request: Request,
         response: StreamingResponse,
-    ) -> Response:
+    ) -> Response | JSONResponse:
         """Remove the user name from obects and adapt all links.
 
         Args:
@@ -490,6 +490,8 @@ class UserCatalog:
                 raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
         if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
             content = manage_landing_page(request, auth_roles, user_login, content, user)
+            if hasattr(content, "status_code"):  # Unauthorized
+                return content
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
