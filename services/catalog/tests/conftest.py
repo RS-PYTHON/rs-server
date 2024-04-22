@@ -32,6 +32,7 @@ subprocess.run(
 )  # nosec ignore security issue
 
 app.openapi = extract_openapi_specification
+app.openapi()
 
 
 def is_db_up(db_url: str) -> bool:
