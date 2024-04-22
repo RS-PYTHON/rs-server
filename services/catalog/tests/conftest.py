@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
-from rs_server_catalog.main import app
+from rs_server_catalog.main import app, extract_openapi_specification
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
 
@@ -30,6 +30,8 @@ subprocess.run(
     check=False,
     shell=False,
 )  # nosec ignore security issue
+
+app.openapi = extract_openapi_specification
 
 
 def is_db_up(db_url: str) -> bool:
