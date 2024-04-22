@@ -53,7 +53,6 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         match_headers={APIKEY_HEADER: VALID_APIKEY},
         status_code=HTTP_200_OK,
         json={
-            "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
             "name": "toto",
             "user_login": "pyteam",
             "is_active": True,
@@ -394,7 +393,6 @@ class TestAuthenticationGetOneCollection:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -477,7 +475,6 @@ class TestAuthenticationGetOneCollection:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -527,7 +524,6 @@ class TestAuthenticationGetItems:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -572,7 +568,6 @@ class TestAuthenticationGetItems:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -622,7 +617,6 @@ class TestAuthenticationGetOneItem:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -710,7 +704,6 @@ class TestAuthenticationGetOneItem:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -792,7 +785,6 @@ class TestAuthenticationPostOneCollection:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -839,7 +831,6 @@ class TestAuthenticationPostOneCollection:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -923,7 +914,6 @@ class TestAuthicationPutOneCollection:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -970,7 +960,6 @@ class TestAuthicationPutOneCollection:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -1034,7 +1023,6 @@ class TestAuthenticationSearch:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -1083,7 +1071,6 @@ class TestAuthenticationSearch:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -1167,7 +1154,6 @@ class TestAuthenticationDownload:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -1272,7 +1258,6 @@ class TestAuthenticationDownload:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -1353,7 +1338,6 @@ class TestAuthentiactionDelete:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -1416,7 +1400,6 @@ class TestAuthentiactionDelete:
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
             json={
-                "api_key": "530e8b63-6551-414d-bb45-fc881f314cbd",
                 "name": "toto",
                 "user_login": "pyteam",
                 "is_active": True,
@@ -1436,6 +1419,146 @@ class TestAuthentiactionDelete:
             response = client.request(
                 "DELETE",
                 "/catalog/collections/toto:S1_L1",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
+class TestAuthenticationPostOneItem:
+    feature_to_post = {
+        "collection": "S1_L1",
+        "assets": {
+            "zarr": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip", "roles": ["data"]},
+            "cog": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip", "roles": ["data"]},
+            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+        },
+        "bbox": [0],
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-94.6334839, 37.0595608],
+                    [-94.6334839, 37.0332547],
+                    [-94.6005249, 37.0332547],
+                    [-94.6005249, 37.0595608],
+                    [-94.6334839, 37.0595608],
+                ],
+            ],
+        },
+        "id": "S1SIWOCN_20220412T054447_0024_S139",
+        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+        "other_metadata": {},
+        "properties": {
+            "gsd": 0.5971642834779395,
+            "width": 2500,
+            "height": 2500,
+            "datetime": "2000-02-02T00:00:00Z",
+            "proj:epsg": 3857,
+            "orientation": "nadir",
+        },
+        "stac_extensions": [
+            "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+        ],
+        "stac_version": "1.0.0",
+        "type": "Feature",
+    }
+
+    def te_st_http200_with_good_authentication(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        ttl_cache.clear()  # clear the cached response
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:*_read",
+                    "rs_catalog_toto:*_write",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "POST",
+                "/catalog/collections/toto:S1_L1/items",
+                json=self.feature_to_post,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+
+    def te_st_fails_without_good_perms(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=HTTP_200_OK,
+            json={
+                "name": "toto",
+                "user_login": "pyteam",
+                "is_active": True,
+                "never_expire": True,
+                "expiration_date": "2024-04-10T13:57:28.475052",
+                "total_queries": 0,
+                "latest_sync_date": "2024-03-26T13:57:28.475058",
+                "iam_roles": [
+                    "rs_catalog_toto:S1_L2_read",
+                ],
+                "config": {},
+                "allowed_referers": ["toto"],
+            },
+        )
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "POST",
+                "/catalog/collections",
+                json=self.collection_to_post,
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
