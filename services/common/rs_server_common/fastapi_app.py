@@ -134,7 +134,7 @@ def init_app(
     app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params)
 
     # Configure OpenTelemetry
-    opentelemetry.for_fastapi(app, service_name)
+    opentelemetry.init_traces(app, service_name)
 
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db

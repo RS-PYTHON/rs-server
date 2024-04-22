@@ -19,9 +19,9 @@ from rs_server_common.utils.logging import Logging
 logger = Logging.default(__name__)
 
 
-def for_fastapi(app: fastapi.FastAPI, service_name: str):
+def init_traces(app: fastapi.FastAPI, service_name: str):
     """
-    OpenTelemetry configuration for FastAPI.
+    Init instrumentation of OpenTelemetry traces.
 
     Args:
         app (fastapi.FastAPI): FastAPI application
@@ -40,17 +40,21 @@ def for_fastapi(app: fastapi.FastAPI, service_name: str):
     otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=tempo_endpoint)))
 
     FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
-    logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")
+    # logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")
 
     # Instrument all the dependencies under opentelemetry.instrumentation.*
+    # NOTE: we need 'poetry run opentelemetry-bootstrap -a install' to install these.
 
     # Don't instrument FastAPI (it has already been instrumented above)
     # or asyncio (it has error, we should see why)
-    ignored_classes = (AsyncioInstrumentor, FastAPIInstrumentor)
+    ignored_classes = [AsyncioInstrumentor, FastAPIInstrumentor]
 
     package = opentelemetry.instrumentation
     prefix = package.__name__ + "."
     classes = set()
+
+    # We need an empty PYTHONPATH if the env var is missing
+    os.environ["PYTHONPATH"] = os.getenv("PYTHONPATH", "")
 
     # Recursively find all package modules
     for _, module_str, _ in pkgutil.walk_packages(path=package.__path__, prefix=prefix, onerror=None):
@@ -78,6 +82,6 @@ def for_fastapi(app: fastapi.FastAPI, service_name: str):
                         # name = f"{module_str}.{_class.__name__}".removeprefix(prefix)
                         # logger.debug(f"OpenTelemetry instrumentation of {name!r}")
 
-        # Ignore exceptions, don't load this module
-        except Exception:
+        # Ignore these exceptions raised by some dependency, don't load the faulty module
+        except (TypeError, AttributeError, ModuleNotFoundError):
             pass

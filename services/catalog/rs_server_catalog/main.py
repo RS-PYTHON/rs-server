@@ -212,7 +212,7 @@ app = api.app
 app.openapi = extract_openapi_specification
 
 # Configure OpenTelemetry
-opentelemetry.for_fastapi(app, "rs.server.catalog")
+opentelemetry.init_traces(app, "rs.server.catalog")
 
 # In cluster mode, add the api key security dependency: the user must provide
 # an api key (generated from the apikey manager) to access the endpoints
