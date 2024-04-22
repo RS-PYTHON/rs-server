@@ -59,15 +59,34 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     Returns:
         dict: the new parameters list with the owner id parameter.
     """
+    description = "Catalog owner id"
     to_add = {
-        "description": "Catalog owner id",
+        "description": description,
         "required": True,
-        "schema": {"type": "string", "title": "Catalog owner id", "description": "Catalog owner id"},
+        "schema": {"type": "string", "title": description, "description": description},
         "name": "owner_id",
         "in": "path",
     }
     parameters.append(to_add)
     return parameters
+
+
+def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-docstring
+    res = ""
+    match original_key:
+        case "/":
+            res = "/catalog/"
+        case "/collections":
+            res = "/catalog/collections"
+        case "/collections/{collection_id}":
+            res = "/catalog/collections/{owner_id}:{collection_id}"
+        case "/collections/{collection_id}/items":
+            res = "/catalog/collections/{owner_id}:{collection_id}/items"
+        case "/collections/{collection_id}/items/{item_id}":
+            res = "/catalog/collections/{owner_id}:{collection_id}/items/{item_id}"
+        case "/search":
+            res = "/catalog/search"
+    return res
 
 
 def extract_openapi_specification():
@@ -89,27 +108,40 @@ def extract_openapi_specification():
             del openapi_spec_paths[key]
             continue
 
-        new_key = f"/catalog{key}" if key in ["/search", "/"] else "/catalog/{owner_id}" + key
-        openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
-        endpoint = openapi_spec_paths[new_key]
-        for method_key in endpoint.keys():
-            method = endpoint[method_key]
-            if new_key not in ["/catalog/search", "/catalog/"]:
-                method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-            elif method["operationId"] == "Search_search_get":
-                method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
-    catalog_collection = {
+        new_key = get_new_key(key)
+        if new_key:
+            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+            endpoint = openapi_spec_paths[new_key]
+            for method_key in endpoint.keys():
+                method = endpoint[method_key]
+                if new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]:
+                    method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
+                elif method["operationId"] == "Search_search_get":
+                    method["description"] = (
+                        "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+                    )
+    owner_id = "Owner ID"
+    catalog_owner_id = {
         "get": {
-            "summary": "Get all collections accessible by the user calling it.",
+            "summary": "Landing page for the catalog owner id only.",
             "description": "Endpoint.",
-            "operationId": "Get_all_collections",
+            "operationId": "Get_landing_page_owner_id",
             "responses": {
                 "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
             },
             "security": [{"API key passed in HTTP header": []}],
+            "parameters": [
+                {
+                    "description": owner_id,
+                    "required": True,
+                    "schema": {"type": "string", "title": owner_id, "description": owner_id},
+                    "name": "owner_id",
+                    "in": "path",
+                },
+            ],
         },
     }
-    openapi_spec_paths["/catalog/collections"] = catalog_collection
+    openapi_spec_paths["/catalog/catalogs/{owner_id}"] = catalog_owner_id
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
@@ -155,7 +187,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
             await authentication.apikey_security(
                 request=request,
                 apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
-                # apikey_query=request.query_params.get(authentication.APIKEY_QUERY, None),
             )
 
         # Call the next middleware
