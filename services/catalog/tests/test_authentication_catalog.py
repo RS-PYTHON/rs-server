@@ -1110,3 +1110,46 @@ class TestAuthenticationPostOneItem:
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
+class TestAuthenticationGetCatalogOwnerId:
+    def test_http200_with_good_authentication(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "GET",
+                "/catalog/catalogs/toto",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+
+    def test_fails_if_not_authorized(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = ["rs_catalog_toto:*_write"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "GET",
+                "/catalog/catalogs/toto",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED

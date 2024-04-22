@@ -3,6 +3,8 @@
 import re
 
 from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 
 def add_catalogs(request: Request, auth_roles: list, user_login: str, content: dict) -> dict:
@@ -96,12 +98,18 @@ def keep_only_owner_id_auth_role(auth_roles, owner_id):
     for role in auth_roles:
         if match := re.match(catalog_read_right_pattern, role):
             groups = match.groupdict()
-            if groups["owner_id"] == owner_id:
+            if groups["owner_id"] == owner_id and groups["right_type"] == "read":
                 new_auth_roles.append(role)
     return new_auth_roles
 
 
-def manage_landing_page(request: Request, auth_roles: list, user_login: str, content: dict, owner_id: str) -> dict:
+def manage_landing_page(
+    request: Request,
+    auth_roles: list,
+    user_login: str,
+    content: dict,
+    owner_id: str,
+) -> dict | JSONResponse:
     """All sub user catalogs accessible by the user calling it are returned as "child" links.
 
     Args:
@@ -119,6 +127,9 @@ def manage_landing_page(request: Request, auth_roles: list, user_login: str, con
         content = add_catalogs(request, auth_roles, user_login, content)
     else:
         auth_roles = keep_only_owner_id_auth_role(auth_roles, owner_id)
+        if not auth_roles:
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
     unauthorized_collections = get_unauthorized_collections_links(auth_roles, content)
 
     content["links"] = [link for link in content["links"] if link not in unauthorized_collections]
