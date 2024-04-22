@@ -32,14 +32,12 @@ PASS_THE_APIKEY = [
     # {"params": {APIKEY_QUERY: VALID_APIKEY}}
 ]
 
+
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
 
-def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
-    """
-    Test that the http endpoints are protected and return 403 if not authenticated.
-    """
-
+def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str]):
+    """init mocker for tests."""
     # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
@@ -60,23 +58,24 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "expiration_date": "2024-04-10T13:57:28.475052",
             "total_queries": 0,
             "latest_sync_date": "2024-03-26T13:57:28.475058",
-            "iam_roles": [
-                "rs_cadip_SGS_download",
-                "rs_cadip_MTI_read",
-                "rs_adgs_read",
-                "rs_cadip_cadip_read",
-                "rs_adgs_download",
-                "default-roles-rspy",
-                "rs_catalog_toto:*_read",
-                "rs_catalog_titi:S2_L1_read",
-                "rs_catalog_darius:*_write",
-                "rs_cadip_cadip_download",
-                "rs_catalog_toto:sentinel1-grd_read",
-            ],
+            "iam_roles": iam_roles,
             "config": {},
             "allowed_referers": ["toto"],
         },
     )
+
+
+def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
+    """
+    Test that the http endpoints are protected and return 403 if not authenticated.
+    """
+
+    iam_roles = [
+        "rs_catalog_toto:*_read",
+        "rs_catalog_titi:S2_L1_read",
+        "rs_catalog_darius:*_write",
+    ]
+    init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
     valid_links = [
         {"rel": "self", "type": "application/json", "href": "http://testserver/"},
@@ -378,35 +377,8 @@ class TestAuthenticationGetOneCollection:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = ["rs_catalog_toto:*_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         toto_collection = {
             "id": "S1_L1",
@@ -462,34 +434,12 @@ class TestAuthenticationGetOneCollection:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+        iam_roles = [
+            "rs_catalog_toto:*_write",
+            "rs_catalog_toto:S1_L2_read",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_write",
-                    "rs_catalog_toto:S1_L2_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
         # Pass the api key in HTTP headers then in url query parameter
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -509,35 +459,8 @@ class TestAuthenticationGetItems:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = ["rs_catalog_toto:*_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -555,34 +478,11 @@ class TestAuthenticationGetItems:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_write",
-                    "rs_catalog_toto:S1_L2_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_write",
+            "rs_catalog_toto:S1_L2_read",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -602,35 +502,10 @@ class TestAuthenticationGetOneItem:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         feature_toto_s1_l1_0 = {
             "id": "fe916452-ba6f-4631-9154-c249924a122d",
@@ -691,34 +566,11 @@ class TestAuthenticationGetOneItem:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_write",
-                    "rs_catalog_toto:S1_L2_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_write",
+            "rs_catalog_toto:S1_L2_read",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -770,36 +622,11 @@ class TestAuthenticationPostOneCollection:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                    "rs_catalog_toto:*_write",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -818,33 +645,8 @@ class TestAuthenticationPostOneCollection:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:S1_L2_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -899,36 +701,11 @@ class TestAuthicationPutOneCollection:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                    "rs_catalog_toto:*_write",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -947,33 +724,8 @@ class TestAuthicationPutOneCollection:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:S1_L2_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -1008,36 +760,11 @@ class TestAuthenticationSearch:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                    "rs_catalog_toto:*_write",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -1058,33 +785,8 @@ class TestAuthenticationSearch:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:S1_L2_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -1139,37 +841,12 @@ class TestAuthenticationDownload:
     ):
         # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                    "rs_catalog_toto:*_write",
-                    "rs_catalog_toto:*_download",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+            "rs_catalog_toto:*_download",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         """Test used to verify the generation of a presigned url for a download."""
         # Start moto server
@@ -1243,36 +920,11 @@ class TestAuthenticationDownload:
     ):
         # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                    "rs_catalog_toto:*_write",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         """Test used to verify the generation of a presigned url for a download."""
         # Start moto server
@@ -1323,36 +975,11 @@ class TestAuthentiactionDelete:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                    "rs_catalog_toto:*_write",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         toto_new_collection = {
             "id": "fixture_collection",
@@ -1385,35 +1012,8 @@ class TestAuthentiactionDelete:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = ["rs_catalog_toto:*_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -1476,38 +1076,11 @@ class TestAuthenticationPostOneItem:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        ttl_cache.clear()  # clear the cached response
-
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:*_read",
-                    "rs_catalog_toto:*_write",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
@@ -1526,39 +1099,14 @@ class TestAuthenticationPostOneItem:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-        # Mock the uac manager url
-        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "toto",
-                "user_login": "pyteam",
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": [
-                    "rs_catalog_toto:S1_L2_read",
-                ],
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
+        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "POST",
                 "/catalog/collections",
-                json=self.collection_to_post,
+                json=self.feature_to_post,
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
