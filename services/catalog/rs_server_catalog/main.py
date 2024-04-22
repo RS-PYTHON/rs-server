@@ -119,6 +119,7 @@ def extract_openapi_specification():
                     method["description"] = (
                         "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
                     )
+    owner_id = "Owner ID"
     catalog_owner_id = {
         "get": {
             "summary": "Landing page for the catalog owner id only.",
@@ -130,9 +131,9 @@ def extract_openapi_specification():
             "security": [{"API key passed in HTTP header": []}],
             "parameters": [
                 {
-                    "description": "Owner ID",
+                    "description": owner_id,
                     "required": True,
-                    "schema": {"type": "string", "title": "Owner ID", "description": "Owner ID"},
+                    "schema": {"type": "string", "title": owner_id, "description": owner_id},
                     "name": "owner_id",
                     "in": "path",
                 },
@@ -185,7 +186,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
             await authentication.apikey_security(
                 request=request,
                 apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
-                # apikey_query=request.query_params.get(authentication.APIKEY_QUERY, None),
             )
 
         # Call the next middleware
