@@ -1,6 +1,5 @@
 """Common fixture for catalog service."""
 
-import json
 import os
 import os.path as osp
 import subprocess  # nosec ignore security issue
