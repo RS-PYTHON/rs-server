@@ -3,6 +3,8 @@
 import re
 
 from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 
 def add_catalogs(request: Request, auth_roles: list, user_login: str, content: dict) -> dict:
@@ -77,7 +79,37 @@ def get_unauthorized_collections_links(auth_roles: list, content: dict) -> list:
     return unauthorized_collections
 
 
-def manage_landing_page(request: Request, auth_roles: list, user_login: str, content: dict) -> dict:
+def keep_only_owner_id_auth_role(auth_roles, owner_id):
+    """This function is called if the endpoint is /catalog/catalogs/owner_id.
+    The function will only keep the authorizations of the owner_id if they exist
+    all the others collections will be deleted.
+
+    Args:
+        auth_roles (list): list of roles of the api-key.
+        owner_id (_type_): The owner id found in the path.
+
+    Returns:
+        _type_: The updated auth_roles.
+    """
+    new_auth_roles = []
+    catalog_read_right_pattern = (
+        r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
+    )
+    for role in auth_roles:
+        if match := re.match(catalog_read_right_pattern, role):
+            groups = match.groupdict()
+            if groups["owner_id"] == owner_id and groups["right_type"] == "read":
+                new_auth_roles.append(role)
+    return new_auth_roles
+
+
+def manage_landing_page(
+    request: Request,
+    auth_roles: list,
+    user_login: str,
+    content: dict,
+    owner_id: str,
+) -> dict | JSONResponse:
     """All sub user catalogs accessible by the user calling it are returned as "child" links.
 
     Args:
@@ -85,11 +117,20 @@ def manage_landing_page(request: Request, auth_roles: list, user_login: str, con
         auth_roles (list): list of roles of the api-key.
         user_login (str): The api-key owner.
         content (dict): The landing page.
+        owner_id (str): The owner id found in the path.
+        (to differentiate /catalog/ to /catalog/catalogs/owner_id)
 
     Returns:
         dict: The updated landingpage.
     """
-    content = add_catalogs(request, auth_roles, user_login, content)
+    if not owner_id:
+        content = add_catalogs(request, auth_roles, user_login, content)
+    else:
+        auth_roles = keep_only_owner_id_auth_role(auth_roles, owner_id)
+        if not auth_roles:
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
     unauthorized_collections = get_unauthorized_collections_links(auth_roles, content)
+
     content["links"] = [link for link in content["links"] if link not in unauthorized_collections]
     return content

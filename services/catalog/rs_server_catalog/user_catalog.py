@@ -14,7 +14,6 @@ The middleware:
 """
 
 import json
-import logging
 import os
 import re
 from typing import Any
@@ -25,6 +24,7 @@ from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
+from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import manage_landing_page
 from rs_server_catalog.user_handler import (
     add_user_prefix,
@@ -42,7 +42,7 @@ from rs_server_common.utils.logging import Logging
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.status import HTTP_400_BAD_REQUEST
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
@@ -283,7 +283,7 @@ class UserCatalog:
                 res = right
         return res
 
-    async def manage_search_request(self, request: Request) -> Request:
+    async def manage_search_request(self, request: Request) -> Request | JSONResponse:
         """find the user in the filter parameter and add it to the
         collection name.
 
@@ -293,7 +293,12 @@ class UserCatalog:
         Returns:
             Request: the new request with the collection name updated.
         """
-
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+            try:
+                auth_roles = request.state.auth_roles
+                user_login = request.state.user_login
+            except RuntimeError as e:
+                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
         if request.method == "POST":
             content = await request.json()
             if request.scope["path"] == "/search" and "filter" in content:
@@ -301,6 +306,19 @@ class UserCatalog:
                 filters = parse_cql2_json(qs_filter)
                 user = self.find_owner_id(filters)
                 if "collections" in content:
+                    if (  # If we are in cluster mode and the user_login is not authorized
+                        # to put/post returns a HTTP_401_UNAUTHORIZED status.
+                        common_settings.CLUSTER_MODE
+                        and not get_authorisation(
+                            content["collections"][0],
+                            auth_roles,
+                            "read",
+                            user,
+                            user_login,
+                        )
+                    ):
+                        detail = {"error": "Unauthorized access."}
+                        return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
                     content["collections"] = [f"{user}_{content['collections'][0]}"]
                     request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         else:
@@ -312,6 +330,19 @@ class UserCatalog:
                 filters = parse_ecql(qs_filter)
                 user = self.find_owner_id(filters)
                 if "collections" in query:
+                    if (  # If we are in cluster mode and the user_login is not authorized
+                        # to put/post returns a HTTP_401_UNAUTHORIZED status.
+                        common_settings.CLUSTER_MODE
+                        and not get_authorisation(
+                            query["collections"][0],
+                            auth_roles,
+                            "read",
+                            user,
+                            user_login,
+                        )
+                    ):
+                        detail = {"error": "Unauthorized access."}
+                        return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
                     query["collections"] = [f"{user}_{query['collections'][0]}"]
                     request.scope["query_string"] = urlencode(query, doseq=True).encode()
         return request
@@ -360,13 +391,34 @@ class UserCatalog:
         Returns:
             Request: The request updated.
         """
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+            try:
+                auth_roles = request.state.auth_roles
+                user_login = request.state.user_login
+            except RuntimeError as e:
+                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
         try:
             user = self.request_ids["owner_id"]
             content = await request.json()
+            if (  # If we are in cluster mode and the user_login is not authorized
+                # to put/post returns a HTTP_401_UNAUTHORIZED status.
+                common_settings.CLUSTER_MODE
+                and not get_authorisation(
+                    self.request_ids["collection_id"],
+                    auth_roles,
+                    "write",
+                    self.request_ids["owner_id"],
+                    user_login,
+                )
+            ):
+                detail = {"error": "Unauthorized access."}
+                return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
-            if "items" in request.scope["path"]:
+            elif "items" in request.scope["path"]:
                 content = self.update_stac_item_publication(content, user)
+
             # update request body (better find the function that updates the body maybe?)c
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             return request  # pylint: disable=protected-access
@@ -375,8 +427,6 @@ class UserCatalog:
                 detail=f"Missing key in request body! {kerr_msg}",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr_msg
-        except Exception as e:
-            raise HTTPException(detail=f"General exception {e}", status_code=HTTP_400_BAD_REQUEST) from e
 
     def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
         """Return the list of all collections accessible by the user calling it.
@@ -417,7 +467,7 @@ class UserCatalog:
         self,
         request: Request,
         response: StreamingResponse,
-    ) -> Response:
+    ) -> Response | JSONResponse:
         """Remove the user name from obects and adapt all links.
 
         Args:
@@ -429,57 +479,67 @@ class UserCatalog:
         user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+        auth_roles = []
+        user_login = ""
 
-        if "detail" not in content:  # Test if the user is authenticated.
-            if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog
-                try:
-                    auth_roles = request.state.auth_roles
-                    user_login = request.state.user_login
-                    content = manage_landing_page(request, auth_roles, user_login, content)
-                except Exception as e:  # pylint: disable=broad-exception-caught
-                    logging.exception(  # pylint: disable=logging-fstring-interpolation
-                        f"apikey not available or local mode {e}",
-                    )
-            elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
-                if user:
-                    content["collections"] = filter_collections(content["collections"], user)
-                    content = self.remove_user_from_objects(content, user, "collections")
-                    content = self.adapt_links(
-                        content,
-                        user,
-                        self.request_ids["collection_id"],
-                        "collections",
-                    )
-                elif common_settings.CLUSTER_MODE:
-                    try:
-                        auth_roles = request.state.auth_roles
-                        user_login = request.state.user_login
-                        content["collections"] = self.manage_all_collections(
-                            content["collections"],
-                            auth_roles,
-                            user_login,
-                        )
-                    except Exception as e:  # pylint: disable=broad-exception-caught
-                        logging.exception(  # pylint: disable=logging-fstring-interpolation
-                            f"apikey not available or local mode {e}",
-                        )
-            elif (
-                "/collection" in request.scope["path"] and "items" not in request.scope["path"]
-            ):  # /catalog/owner_id/collections/collection_id
-                content = remove_user_from_collection(content, user)
-                content = self.adapt_object_links(content, user)
-            elif (
-                "items" in request.scope["path"] and not self.request_ids["item_id"]
-            ):  # /catalog/owner_id/collections/collection_id/items
-                content = self.remove_user_from_objects(content, user, "features")
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+            try:
+                auth_roles = request.state.auth_roles
+                user_login = request.state.user_login
+            except RuntimeError as e:
+                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+        if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
+            content = manage_landing_page(request, auth_roles, user_login, content, user)
+            if hasattr(content, "status_code"):  # Unauthorized
+                return content
+        elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
+            if user:
+                content["collections"] = filter_collections(content["collections"], user)
+                content = self.remove_user_from_objects(content, user, "collections")
                 content = self.adapt_links(
                     content,
                     user,
                     self.request_ids["collection_id"],
-                    "features",
+                    "collections",
                 )
-            elif request.scope["path"] == "/search":
-                pass
+            else:
+                content["collections"] = self.manage_all_collections(
+                    content["collections"],
+                    auth_roles,
+                    user_login,
+                )
+        elif (  # If we are in cluster mode and the user_login is not authorized
+            # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and self.request_ids["collection_id"]
+            and self.request_ids["owner_id"]
+            and not get_authorisation(
+                self.request_ids["collection_id"],
+                auth_roles,
+                "read",
+                self.request_ids["owner_id"],
+                user_login,
+            )
+        ):
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        elif (
+            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+        ):  # /catalog/collections/owner_id:collection_id
+            content = remove_user_from_collection(content, user)
+            content = self.adapt_object_links(content, user)
+        elif (
+            "items" in request.scope["path"] and not self.request_ids["item_id"]
+        ):  # /catalog/owner_id/collections/collection_id/items
+            content = self.remove_user_from_objects(content, user, "features")
+            content = self.adapt_links(
+                content,
+                user,
+                self.request_ids["collection_id"],
+                "features",
+            )
+        elif request.scope["path"] == "/search":
+            pass
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
@@ -498,6 +558,27 @@ class UserCatalog:
             the response content with the appropriate status code.
 
         """
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+            try:
+                auth_roles = request.state.auth_roles
+                user_login = request.state.user_login
+            except RuntimeError as e:
+                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+        if (  # If we are in cluster mode and the user_login is not authorized
+            # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and self.request_ids["collection_id"]
+            and self.request_ids["owner_id"]
+            and not get_authorisation(
+                self.request_ids["collection_id"],
+                auth_roles,
+                "download",
+                self.request_ids["owner_id"],
+                user_login,
+            )
+        ):
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(body).decode())  # type:ignore
         if content.get("code", True) != "NotFoundError":
@@ -570,6 +651,7 @@ class UserCatalog:
         """Change the name of the deleted collection by removing owner_id.
 
         Args:
+
             response (StreamingResponse): The client response.
             user (str): The owner id.
 
@@ -582,7 +664,41 @@ class UserCatalog:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         return JSONResponse(response_content)
 
-    async def dispatch(self, request, call_next):
+    def manage_delete_request(self, request: Request):
+        """Check if the deletion is allowed.
+
+        Args:
+            request (Request): The client request.
+
+        Raises:
+            HTTPException: If the user is not authenticated.
+
+        Returns:
+            bool: Return True if the deletion is allowed, False otherwise.
+        """
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+            try:
+                auth_roles = request.state.auth_roles
+                user_login = request.state.user_login
+            except RuntimeError as e:
+                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+        if (  # If we are in cluster mode and the user_login is not authorized
+            # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and self.request_ids["collection_id"]
+            and self.request_ids["owner_id"]
+            and not get_authorisation(
+                self.request_ids["collection_id"],
+                auth_roles,
+                "write",
+                self.request_ids["owner_id"],
+                user_login,
+            )
+        ):
+            return False
+        return True
+
+    async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
 
@@ -597,10 +713,19 @@ class UserCatalog:
         if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
             request = await self.manage_search_request(request)
+            if hasattr(request, "status_code"):  # Unauthorized
+                return request
         elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)
+            if hasattr(request, "status_code"):  # Unauthorized
+                return request
+        elif request.method == "DELETE":
+            is_delete_allowed = self.manage_delete_request(request)
+            if not is_delete_allowed:
+                return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
+
         response = None
         try:
             response = await call_next(request)
@@ -610,9 +735,7 @@ class UserCatalog:
 
         # Don't forward responses that fail
         if response.status_code != 200:
-            body = [chunk async for chunk in response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())  # type:ignore
-            raise HTTPException(detail=response_content, status_code=response.status_code)
+            return response
 
         # Handle responses
         if request.scope["path"] == "/search":
