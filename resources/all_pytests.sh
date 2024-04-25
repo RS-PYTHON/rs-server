@@ -25,7 +25,10 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     fi
 
     # Install dependencies
-    (set -x; cd "$proj_dir" && poetry install --with dev)
+    (set -x
+        cd "$proj_dir" && poetry install --with dev
+        poetry run opentelemetry-bootstrap -a install || true
+    )
 
     # Test if the directory has at least one test (see: https://stackoverflow.com/a/57014262)
     if [[ $(cd "$proj_dir" && poetry run pytest --collect-only -q | head -n -2 | wc -l) == 0 ]]; then

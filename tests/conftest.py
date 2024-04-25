@@ -106,7 +106,7 @@ def fastapi_app_(request, mocker, docker_ip, docker_services, docker_compose_fil
     except (AttributeError, KeyError):
         cluster_mode = False
 
-    # Patch the global variable. See: https://stackoverflow.com/a/69685866
+    # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
 

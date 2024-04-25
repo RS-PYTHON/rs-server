@@ -1,3 +1,0 @@
-[submodule "rs-client-libraries"]
-	path = libraries
-	url = https://github.com/RS-PYTHON/rs-client-libraries
