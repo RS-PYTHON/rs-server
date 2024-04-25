@@ -397,7 +397,7 @@ class S3StorageHandler:
             if error_code == S3_ERR_NOT_FOUND:
                 self.logger.exception((f"{bucket} bucket does not exist!"))
                 raise RuntimeError(f"{bucket} bucket does not exist!") from error
-            self.logger.exception("Exception when checking the access to {bucket} bucket: {error}")
+            self.logger.exception(f"Exception when checking the access to {bucket} bucket: {error}")
             raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
         except botocore.exceptions.EndpointConnectionError as error:
             self.logger.exception(f"Could not connect to the endpoint when trying to access {bucket}: {error}")

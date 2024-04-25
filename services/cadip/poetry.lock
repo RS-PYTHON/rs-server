@@ -1978,7 +1978,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "3.2a1.post125.dev0+540a1df"
+version = "3.2a1.post133.dev0+eafbd2d"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2436,4 +2436,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "78410e90d4882f771ad7a0b38dd0ea50d4357efb4cb345cfea381c356c164f86"
+content-hash = "3f2e5b4ab96c00ecc55d07a06535863290674094e4b472fcf010e9f9367cd1e6"
