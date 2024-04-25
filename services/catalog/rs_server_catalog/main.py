@@ -20,6 +20,7 @@ from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
 from rs_server_common import authentication
 from rs_server_common import settings as common_settings
+from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
@@ -210,6 +211,8 @@ api = StacApi(
 app = api.app
 app.openapi = extract_openapi_specification
 
+# Configure OpenTelemetry
+opentelemetry.init_traces(app, "rs.server.catalog")
 
 # In cluster mode, add the api key security dependency: the user must provide
 # an api key (generated from the apikey manager) to access the endpoints

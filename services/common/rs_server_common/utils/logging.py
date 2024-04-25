@@ -1,7 +1,13 @@
 """Logging utility."""
 
 import logging
+import logging.handlers
+import os
+from multiprocessing import Queue
 from threading import Lock
+
+import logging_loki
+from rs_server_common import settings
 
 
 class Logging:  # pylint: disable=too-few-public-methods
@@ -41,6 +47,19 @@ class Logging:  # pylint: disable=too-few-public-methods
             handler = logging.StreamHandler()
             handler.setFormatter(CustomFormatter())
             logger.addHandler(handler)
+
+            # Export logs to Loki, see: https://pypi.org/project/python-logging-loki/
+            loki_endpoint = os.getenv("LOKI_ENDPOINT")
+            if loki_endpoint and settings.SERVICE_NAME:
+                handler = logging_loki.LokiQueueHandler(
+                    Queue(-1),
+                    url=loki_endpoint,
+                    tags={"service": settings.SERVICE_NAME},
+                    # auth=("username", "password"),
+                    version="1",
+                )
+                handler.setFormatter(CustomFormatter())
+                logger.addHandler(handler)
 
             return logger
 

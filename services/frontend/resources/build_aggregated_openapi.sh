@@ -89,6 +89,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
         # Install the poetry environment and run uvicorn with the environment variables set above
         cd "$path"
         poetry install
+        poetry run opentelemetry-bootstrap -a install # install otel instrumentation packages for dependencies
         (poetry run uvicorn "$app" --host=localhost --port="$port" --workers=1)&
         on_exit="$on_exit; kill -9 $!" # kill the last process = unvicorn on exit
         cd -

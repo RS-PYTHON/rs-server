@@ -8,4 +8,10 @@ from rs_server_common.fastapi_app import init_app as init_app_with_args
 def init_app():
     """Run all routers for the tests."""
     routers = adgs_routers + cadip_routers
-    return init_app_with_args(api_version="test", routers=routers, init_db=True, pause=3, timeout=6)
+    return init_app_with_args(
+        api_version="test",
+        routers=routers,
+        init_db=True,
+        pause=3,
+        timeout=6,
+    )

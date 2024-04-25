@@ -13,6 +13,7 @@ from rs_server_common import settings
 from rs_server_common.authentication import apikey_security
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
+from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 
 # Add technical endpoints specific to the main application
@@ -38,7 +39,7 @@ async def health() -> HealthSchema:
 
 
 @typing.no_type_check
-def init_app(
+def init_app(  # pylint: disable=too-many-locals
     api_version: str,
     routers: list[APIRouter],
     init_db: bool = True,
@@ -127,6 +128,9 @@ def init_app(
 
     # Init the FastAPI application
     app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params)
+
+    # Configure OpenTelemetry
+    opentelemetry.init_traces(app, settings.SERVICE_NAME)
 
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db

@@ -71,6 +71,7 @@ You should first initialize the project locally
 ----
 cd $RSPY_ROOT/src/rs-server
 poetry install --with dev
+poetry run opentelemetry-bootstrap -a install
 ----
 This command initializes and activates a virtual environment for your project.
 It installs in this environment the project dependencies
