@@ -625,28 +625,6 @@ class UserCatalog:
             raise HTTPException(detail="Bad request", status_code=HTTP_400_BAD_REQUEST) from exc
         return JSONResponse(response_content, status_code=response.status_code)
 
-    async def manage_response_error(self, response: StreamingResponse | Any) -> JSONResponse:
-        """
-        Manage response error when sending a request to the catalog.
-
-        Args:
-            response (starlette.responses.StreamingResponse): The response object received from the failed request.
-
-        Raises:
-            HTTPException: If the response is not None, clears the catalog bucket and raises an HTTPException
-                with a status code of 400 and detailed information about the bad request.
-                If the response is None, raises an HTTPException with a status code of 400 and
-                a generic bad request detail.
-
-        """
-        if response is not None:
-            body = [chunk async for chunk in response.body_iterator]
-            response_content = json.loads(b"".join(body).decode())  # type:ignore
-            self.clear_catalog_bucket(response_content)
-            raise HTTPException(detail=f"Bad request, {response_content}", status_code=HTTP_400_BAD_REQUEST)
-        # Otherwise just return the exception
-        raise HTTPException(detail="Bad request", status_code=HTTP_400_BAD_REQUEST)
-
     async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
         """Change the name of the deleted collection by removing owner_id.
 
@@ -726,12 +704,7 @@ class UserCatalog:
             if not is_delete_allowed:
                 return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
 
-        response = None
-        try:
-            response = await call_next(request)
-        except Exception:  # pylint: disable=broad-except
-            response = await self.manage_response_error(response)
-            return response
+        response = await call_next(request)
 
         # Don't forward responses that fail
         if response.status_code != 200:
