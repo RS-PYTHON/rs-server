@@ -708,6 +708,10 @@ class UserCatalog:
 
         # Don't forward responses that fail
         if response.status_code != 200:
+            if response is not None:
+                body = [chunk async for chunk in response.body_iterator]
+                response_content = json.loads(b"".join(body).decode())  # type:ignore
+                self.clear_catalog_bucket(response_content)
             return response
 
         # Handle responses

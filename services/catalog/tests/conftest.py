@@ -284,8 +284,8 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
         },
     )
     yield
-    # teardown cleanup
-    if json.loads(client.get("/catalog/collections/fixture_owner:fixture_collection").content):
+    # teardown cleanup, delete collection only if it exists (was not removed in test => status is 200)
+    if client.get("/catalog/collections/fixture_owner:fixture_collection").status_code != 200:
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
 
