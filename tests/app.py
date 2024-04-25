@@ -10,7 +10,6 @@ def init_app():
     routers = adgs_routers + cadip_routers
     return init_app_with_args(
         api_version="test",
-        service_name="rs.server.tests",
         routers=routers,
         init_db=True,
         pause=3,

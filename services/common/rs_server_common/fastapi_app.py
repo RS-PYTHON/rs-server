@@ -41,7 +41,6 @@ async def health() -> HealthSchema:
 @typing.no_type_check
 def init_app(  # pylint: disable=too-many-locals
     api_version: str,
-    service_name: str,
     routers: list[APIRouter],
     init_db: bool = True,
     pause: int = 3,
@@ -56,7 +55,6 @@ def init_app(  # pylint: disable=too-many-locals
     Args:
         api_version (str): version of our application (not the version of the OpenAPI specification
         nor the version of FastAPI being used)
-        service_name (str): service name for logging and OpenTelemetry
         routers (list[APIRouter]): list of FastAPI routers to add to the application.
         init_db (bool): should we init the database session ?
         timeout (int): timeout in seconds to wait for the database connection.
@@ -64,8 +62,6 @@ def init_app(  # pylint: disable=too-many-locals
         startup_events (list[Callable]): list of functions that should be run before the application starts
         shutdown_events (list[Callable]): list of functions that should be run when the application is shutting down
     """
-
-    settings.SERVICE_NAME = service_name
 
     logger = Logging.default(__name__)
 
@@ -134,7 +130,7 @@ def init_app(  # pylint: disable=too-many-locals
     app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params)
 
     # Configure OpenTelemetry
-    opentelemetry.init_traces(app, service_name)
+    opentelemetry.init_traces(app, settings.SERVICE_NAME)
 
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db

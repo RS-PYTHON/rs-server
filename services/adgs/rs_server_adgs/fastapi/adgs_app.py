@@ -10,4 +10,4 @@ from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_common.fastapi_app import init_app
 
 # Init the FastAPI application with the adgs routers.
-app = init_app(__version__, "rs.server.adgs", adgs_routers, init_db=True)
+app = init_app(__version__, adgs_routers, init_db=True)
