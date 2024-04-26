@@ -488,10 +488,18 @@ class UserCatalog:
                 user_login = request.state.user_login
             except RuntimeError as e:
                 raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
-        if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
-            content = manage_landing_page(request, auth_roles, user_login, content, user)
-            if hasattr(content, "status_code"):  # Unauthorized
-                return content
+        if request.scope["path"] == "/":
+            if (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
+                content = manage_landing_page(request, auth_roles, user_login, content, user)
+                if hasattr(content, "status_code"):  # Unauthorized
+                    return content
+            else:
+                # Manage local landing page of the catalog
+                i = 0
+                for i, link in enumerate(content['links']):
+                    link_parser = urlparse(link["href"])
+                    new_path = add_user_prefix(link_parser.path, user, "")
+                    content['links'][i]["href"] = link_parser._replace(path=new_path).geturl()
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
