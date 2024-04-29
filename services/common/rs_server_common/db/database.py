@@ -21,6 +21,7 @@ from sqlalchemy import Connection, Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
 
@@ -163,7 +164,7 @@ class DatabaseSessionManager:
 
         if isinstance(exception, StarletteHTTPException):
             raise exception
-        raise HTTPException(status_code=400, detail=repr(exception))
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=repr(exception))
 
 
 sessionmanager = DatabaseSessionManager()
