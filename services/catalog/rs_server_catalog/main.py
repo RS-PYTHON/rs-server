@@ -12,7 +12,7 @@ from typing import Callable
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
@@ -20,6 +20,7 @@ from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
 from rs_server_common import authentication
 from rs_server_common import settings as common_settings
+from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
@@ -41,8 +42,6 @@ from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
-from starlette.status import HTTP_403_FORBIDDEN
 
 logger = Logging.default(__name__)
 
@@ -184,14 +183,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         # Only in cluster mode (not local mode) and for the catalog endpoints
         if (common_settings.CLUSTER_MODE) and request.url.path.startswith("/catalog"):
 
-            # Check the api key validity, passed in HTTP header or url query parameter
-            try:
-                await authentication.apikey_security(
-                    request=request,
-                    apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
-                )
-            except HTTPException as e:
-                return Response("error", status_code=HTTP_403_FORBIDDEN, headers={"error": e.detail})
+            # Check the api key validity, passed in HTTP header
+            await authentication.apikey_security(
+                request=request,
+                apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
+            )
 
         # Call the next middleware
         return await call_next(request)
@@ -215,6 +211,8 @@ api = StacApi(
 app = api.app
 app.openapi = extract_openapi_specification
 
+# Configure OpenTelemetry
+opentelemetry.init_traces(app, "rs.server.catalog")
 
 # In cluster mode, add the api key security dependency: the user must provide
 # an api key (generated from the apikey manager) to access the endpoints
