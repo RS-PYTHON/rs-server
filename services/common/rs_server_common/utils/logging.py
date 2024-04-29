@@ -49,6 +49,7 @@ class Logging:  # pylint: disable=too-few-public-methods
             logger.addHandler(handler)
 
             # Export logs to Loki, see: https://pypi.org/project/python-logging-loki/
+            # Note: on the cluster, this is not used. Promtail already forwards stdout to Loki.
             loki_endpoint = os.getenv("LOKI_ENDPOINT")
             if loki_endpoint and settings.SERVICE_NAME:
                 handler = logging_loki.LokiQueueHandler(
