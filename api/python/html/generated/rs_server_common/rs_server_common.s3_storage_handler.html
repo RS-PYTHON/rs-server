@@ -16,7 +16,7 @@
         <script src="../../_static/jquery.js?v=5d32c60e"></script>
         <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -341,19 +341,27 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.check_file_overwriting">
 <span class="sig-name descname"><span class="pre">check_file_overwriting</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.check_file_overwriting" title="Link to this definition"></a></dt>
-<dd><p>Check whether a file already exists at the specified local path and handles overwriting.</p>
-<p>Parameters:
-- local_file (str): The local file path to check.
-- overwrite (bool): A flag indicating whether to overwrite the existing file if found.
-- logger (Logger): The logger object for logging messages.</p>
-<p>Returns:
-bool: True if overwriting is allowed or if the file doesn’t exist, False otherwise.</p>
+<dd><p>Check if file exists and determine if it should be overwritten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_file</strong> (<em>str</em>) – Path to the local file.</p></li>
+<li><p><strong>overwrite</strong> (<em>bool</em>) – Whether to overwrite the existing file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the file should be overwritten, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
 <p>Note:
-- If the file already exists and the overwrite flag is set to True, the function will log a message,
-delete the existing file, and return True.
-- If the file already exists and the overwrite flag is set to False, the function will log a warning
-message, and return False. In this case, the existing file won’t be deleted.
-- If the file doesn’t exist, the function will return True.</p>
+- If the file already exists and the overwrite flag is set to True, the function logs a message,
+deletes the existing file, and returns True.
+- If the file already exists and the overwrite flag is set to False, the function logs a warning
+message, and returns False. In this case, the existing file won’t be deleted.
+- If the file doesn’t exist, the function returns True.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -362,12 +370,6 @@ message, and return False. In this case, the existing file won’t be deleted.
 <dd><p>Establish a connection to the S3 service.</p>
 <p>If the S3 client is not already instantiated, this method calls the private __get_s3_client
 method to create an S3 client instance using the provided credentials and configuration (see __init__).</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_bucket_completely">
-<span class="sig-name descname"><span class="pre">delete_bucket_completely</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_bucket_completely" title="Link to this definition"></a></dt>
-<dd><p>Utils function used to remove a s3 bucket even if not empty</p>
 </dd></dl>
 
 <dl class="py method">
@@ -381,6 +383,9 @@ method to create an S3 client instance using the provided credentials and config
 <li><p><strong>s3_obj</strong> (<em>str</em>) – The S3 object key.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>RuntimeError</strong> – If an error occurs during the bucket access check.</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -393,7 +398,7 @@ method to create an S3 client instance using the provided credentials and config
 <dl class="py method">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_downloaded">
 <span class="sig-name descname"><span class="pre">files_to_be_downloaded</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bucket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">paths</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_downloaded" title="Link to this definition"></a></dt>
-<dd><p>Create a list of S3 keys to be downloaded.</p>
+<dd><p>Create a list with the S3 keys to be downloaded.</p>
 <p>The list will have the s3 keys to be downloaded from the bucket.
 It contains pairs (local_prefix_where_the_file_will_be_downloaded, full_s3_key_path)
 If a s3 key doesn’t exist, the pair will be (None, requested_s3_key_path)</p>
@@ -416,7 +421,7 @@ If a s3 key doesn’t exist, the pair will be (None, requested_s3_key_path)</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_uploaded">
 <span class="sig-name descname"><span class="pre">files_to_be_uploaded</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">paths</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_uploaded" title="Link to this definition"></a></dt>
-<dd><p>Creates a list of local files to be uploaded.</p>
+<dd><p>Creates a list with the local files to be uploaded.</p>
 <p>The list contains pairs (s3_path, absolute_local_file_path)
 If the local file doesn’t exist, the pair will be (None, requested_file_to_upload)</p>
 <dl class="field-list simple">
@@ -472,25 +477,8 @@ It returns a list of S3 keys that couldn’t be downloaded successfully.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_s3_data">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_s3_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s3_url</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_s3_data" title="Link to this definition"></a></dt>
-<dd><p>Parses S3 URL to extract bucket, prefix, and file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>s3_url</strong> (<em>str</em>) – The S3 URL.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Tuple containing bucket, prefix, and file.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>tuple</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets">
-<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_secrets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">secrets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secret_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets_from_file">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_secrets_from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">secrets</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secret_file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets_from_file" title="Link to this definition"></a></dt>
 <dd><p>Read secrets from a specified file.</p>
 <p>It reads the secrets from .s3cfg or aws credentials files
 This function should not be used in production</p>
@@ -545,6 +533,23 @@ This function should not be used in production</p>
 </dl>
 <p>The function attempts to upload files to S3 according to the provided configuration.
 It returns a list of local files that couldn’t be uploaded successfully.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.s3_path_parser">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">s3_path_parser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s3_url</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.s3_path_parser" title="Link to this definition"></a></dt>
+<dd><p>Parses S3 URL to extract bucket, prefix, and file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>s3_url</strong> (<em>str</em>) – The S3 URL.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple containing bucket, prefix, and file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">

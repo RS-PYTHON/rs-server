@@ -15,7 +15,7 @@
         <script src="_static/jquery.js?v=5d32c60e"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="_static/documentation_options.js?v=5929fcd5"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
         <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="#" />
@@ -158,14 +158,12 @@
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.db.html#rs_server_common.db.database.DatabaseSessionManager.close">close() (rs_server_common.db.database.DatabaseSessionManager method)</a>
 </li>
-      <li><a href="generated/rs_server_common/rs_server_common.html#rs_server_common.settings.cluster_mode">cluster_mode() (in module rs_server_common.settings)</a>
-</li>
       <li><a href="generated/rs_server_common/rs_server_common.db.html#rs_server_common.db.database.DatabaseSessionManager.connect">connect() (rs_server_common.db.database.DatabaseSessionManager method)</a>
+</li>
+      <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.connect_s3">connect_s3() (rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.connect_s3">connect_s3() (rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler method)</a>
-</li>
       <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config.copy_only">copy_only (rs_server_common.s3_storage_handler.s3_storage_handler.TransferFromS3ToS3Config attribute)</a>
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.db.models.html#rs_server_common.db.models.download_status.DownloadStatus.create">create() (rs_server_common.db.models.download_status.DownloadStatus class method)</a>
@@ -203,8 +201,6 @@
       <li><a href="generated/rs_server_common/rs_server_common.utils.html#rs_server_common.utils.logging.Logging.default">default() (rs_server_common.utils.logging.Logging class method)</a>
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.html#rs_server_common.settings.del_http_client">del_http_client() (in module rs_server_common.settings)</a>
-</li>
-      <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_bucket_completely">delete_bucket_completely() (rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler method)</a>
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_file_from_s3">delete_file_from_s3() (rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler method)</a>
 </li>
@@ -332,9 +328,7 @@
 </li>
       <li><a href="generated/rs_server_frontend/rs_server_frontend.html#rs_server_frontend.main.Frontend.get_openapi">get_openapi() (rs_server_frontend.main.Frontend method)</a>
 </li>
-      <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_s3_data">get_s3_data() (rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler static method)</a>
-</li>
-      <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets">get_secrets() (rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler static method)</a>
+      <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets_from_file">get_secrets_from_file() (rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler static method)</a>
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.GetKeysFromS3Config">GetKeysFromS3Config (class in rs_server_common.s3_storage_handler.s3_storage_handler)</a>
 </li>
@@ -378,15 +372,17 @@
 </li>
       <li><a href="generated/rs_server_adgs/rs_server_adgs.html#rs_server_adgs.adgs_retriever.init_adgs_provider">init_adgs_provider() (in module rs_server_adgs.adgs_retriever)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/rs_server_common/rs_server_common.html#rs_server_common.fastapi_app.init_app">init_app() (in module rs_server_common.fastapi_app)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="generated/rs_server_cadip/rs_server_cadip.html#rs_server_cadip.cadip_retriever.init_cadip_provider">init_cadip_provider() (in module rs_server_cadip.cadip_retriever)</a>
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.data_retrieval.html#rs_server_common.data_retrieval.eodag_provider.EodagProvider.init_eodag_client">init_eodag_client() (rs_server_common.data_retrieval.eodag_provider.EodagProvider method)</a>
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.db.models.html#rs_server_common.db.models.download_status.DownloadStatus.init_on_load">init_on_load() (rs_server_common.db.models.download_status.DownloadStatus method)</a>
+</li>
+      <li><a href="generated/rs_server_common/rs_server_common.utils.html#rs_server_common.utils.opentelemetry.init_traces">init_traces() (in module rs_server_common.utils.opentelemetry)</a>
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.utils.html#rs_server_common.utils.utils.is_valid_date_format">is_valid_date_format() (in module rs_server_common.utils.utils)</a>
 </li>
@@ -406,13 +402,13 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="generated/rs_server_common/rs_server_common.html#rs_server_common.settings.local_mode">local_mode() (in module rs_server_common.settings)</a>
-</li>
       <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#id1">local_prefix (rs_server_common.s3_storage_handler.s3_storage_handler.GetKeysFromS3Config attribute)</a>, <a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.GetKeysFromS3Config.local_prefix">[1]</a>
 </li>
-      <li><a href="generated/rs_server_common/rs_server_common.db.html#rs_server_common.db.database.DatabaseSessionManager.lock">lock (rs_server_common.db.database.DatabaseSessionManager attribute)</a>
+      <li><a href="generated/rs_server_common/rs_server_common.data_retrieval.html#rs_server_common.data_retrieval.eodag_provider.EodagProvider.lock">lock (rs_server_common.data_retrieval.eodag_provider.EodagProvider attribute)</a>
 
       <ul>
+        <li><a href="generated/rs_server_common/rs_server_common.db.html#rs_server_common.db.database.DatabaseSessionManager.lock">(rs_server_common.db.database.DatabaseSessionManager attribute)</a>
+</li>
         <li><a href="generated/rs_server_common/rs_server_common.utils.html#id1">(rs_server_common.utils.logging.Logging attribute)</a>, <a href="generated/rs_server_common/rs_server_common.utils.html#rs_server_common.utils.logging.Logging.lock">[1]</a>
 </li>
       </ul></li>
@@ -556,7 +552,7 @@
 </li>
         <li><a href="generated/rs_server_common/rs_server_common.utils.html#module-rs_server_common.utils.logging">rs_server_common.utils.logging</a>
 </li>
-        <li><a href="generated/rs_server_common/rs_server_common.utils.html#module-rs_server_common.utils.provider_ws_address">rs_server_common.utils.provider_ws_address</a>
+        <li><a href="generated/rs_server_common/rs_server_common.utils.html#module-rs_server_common.utils.opentelemetry">rs_server_common.utils.opentelemetry</a>
 </li>
         <li><a href="generated/rs_server_common/rs_server_common.utils.html#module-rs_server_common.utils.utils">rs_server_common.utils.utils</a>
 </li>
@@ -918,10 +914,10 @@
 </li>
       </ul></li>
       <li>
-    rs_server_common.utils.provider_ws_address
+    rs_server_common.utils.opentelemetry
 
       <ul>
-        <li><a href="generated/rs_server_common/rs_server_common.utils.html#module-rs_server_common.utils.provider_ws_address">module</a>
+        <li><a href="generated/rs_server_common/rs_server_common.utils.html#module-rs_server_common.utils.opentelemetry">module</a>
 </li>
       </ul></li>
       <li>
@@ -961,6 +957,8 @@
       </ul></li>
       <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#id8">s3_path (rs_server_common.s3_storage_handler.s3_storage_handler.PutFilesToS3Config attribute)</a>, <a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.PutFilesToS3Config.s3_path">[1]</a>
 </li>
+      <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.s3_path_parser">s3_path_parser() (rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler static method)</a>
+</li>
       <li><a href="generated/rs_server_common/rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler">S3StorageHandler (class in rs_server_common.s3_storage_handler.s3_storage_handler)</a>
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.data_retrieval.html#rs_server_common.data_retrieval.provider.Provider.search">search() (rs_server_common.data_retrieval.provider.Provider method)</a>
@@ -983,10 +981,10 @@
 </li>
       <li><a href="generated/rs_server_common/rs_server_common.html#rs_server_common.settings.set_http_client">set_http_client() (in module rs_server_common.settings)</a>
 </li>
-      <li><a href="generated/rs_server_common/rs_server_common.utils.html#rs_server_common.utils.utils.sort_feature_collection">sort_feature_collection() (in module rs_server_common.utils.utils)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="generated/rs_server_common/rs_server_common.utils.html#rs_server_common.utils.utils.sort_feature_collection">sort_feature_collection() (in module rs_server_common.utils.utils)</a>
+</li>
       <li><a href="generated/rs_server_common/rs_server_common.data_retrieval.html#rs_server_common.data_retrieval.provider.TimeRange.start">start (rs_server_common.data_retrieval.provider.TimeRange attribute)</a>
 </li>
       <li><a href="generated/rs_server_frontend/rs_server_frontend.html#rs_server_frontend.main.start_app">start_app() (in module rs_server_frontend.main)</a>
@@ -1004,8 +1002,6 @@
 </li>
       </ul></li>
       <li><a href="generated/rs_server_common/rs_server_common.utils.html#id7">station (rs_server_common.utils.utils.EoDAGDownloadHandler attribute)</a>, <a href="generated/rs_server_common/rs_server_common.utils.html#rs_server_common.utils.utils.EoDAGDownloadHandler.station">[1]</a>
-</li>
-      <li><a href="generated/rs_server_common/rs_server_common.utils.html#rs_server_common.utils.provider_ws_address.station_to_server_url">station_to_server_url() (in module rs_server_common.utils.provider_ws_address)</a>
 </li>
       <li><a href="generated/rs_server_adgs/rs_server_adgs.html#rs_server_adgs.adgs_download_status.AdgsDownloadStatus.status">status (rs_server_adgs.adgs_download_status.AdgsDownloadStatus attribute)</a>
 

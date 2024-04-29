@@ -4,6 +4,14 @@ rs\_server\_catalog package
 Submodules
 ----------
 
+rs\_server\_catalog.authentication\_catalog module
+--------------------------------------------------
+
+.. automodule:: rs_server_catalog.authentication_catalog
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rs\_server\_catalog.landing\_page module
 ----------------------------------------
 
@@ -16,6 +24,14 @@ rs\_server\_catalog.main module
 -------------------------------
 
 .. automodule:: rs_server_catalog.main
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+rs\_server\_catalog.response\_manager module
+--------------------------------------------
+
+.. automodule:: rs_server_catalog.response_manager
    :members:
    :undoc-members:
    :show-inheritance:

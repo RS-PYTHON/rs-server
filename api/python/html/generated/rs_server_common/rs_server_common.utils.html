@@ -16,7 +16,7 @@
         <script src="../../_static/jquery.js?v=5d32c60e"></script>
         <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -167,29 +167,19 @@ it is formatted using formatException() and appended to the message.</p>
 </dd></dl>
 
 </section>
-<section id="module-rs_server_common.utils.provider_ws_address">
-<span id="rs-server-common-utils-provider-ws-address-module"></span><h2>rs_server_common.utils.provider_ws_address module<a class="headerlink" href="#module-rs_server_common.utils.provider_ws_address" title="Link to this heading"></a></h2>
-<p>TODO Docstring will be added here</p>
+<section id="module-rs_server_common.utils.opentelemetry">
+<span id="rs-server-common-utils-opentelemetry-module"></span><h2>rs_server_common.utils.opentelemetry module<a class="headerlink" href="#module-rs_server_common.utils.opentelemetry" title="Link to this heading"></a></h2>
+<p>OpenTelemetry utility</p>
 <dl class="py function">
-<dt class="sig sig-object py" id="rs_server_common.utils.provider_ws_address.station_to_server_url">
-<span class="sig-prename descclassname"><span class="pre">rs_server_common.utils.provider_ws_address.</span></span><span class="sig-name descname"><span class="pre">station_to_server_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">station</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#rs_server_common.utils.provider_ws_address.station_to_server_url" title="Link to this definition"></a></dt>
-<dd><p>Retrieve the configuration data (webserver address) for a CADIP station based on its identifier.</p>
-<p class="rubric">Notes</p>
-<ul class="simple">
-<li><p>The station identifier is case-insensitive and is converted to uppercase for matching.</p></li>
-<li><p>The function reads the station configuration data from a JSON file.</p></li>
-<li><p>If the station identifier is not found in the configuration data, the function returns None.</p></li>
-</ul>
+<dt class="sig sig-object py" id="rs_server_common.utils.opentelemetry.init_traces">
+<span class="sig-prename descclassname"><span class="pre">rs_server_common.utils.opentelemetry.</span></span><span class="sig-name descname"><span class="pre">init_traces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FastAPI</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">service_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.utils.opentelemetry.init_traces" title="Link to this definition"></a></dt>
+<dd><p>Init instrumentation of OpenTelemetry traces.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>station</strong> (<em>str</em>) – Identifier for the CADIP station.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A str containing the webserver address for the specified station,
-or None if the station identifier is not found.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str or None</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>app</strong> (<em>fastapi.FastAPI</em>) – FastAPI application</p></li>
+<li><p><strong>service_name</strong> (<em>str</em>) – service name</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>

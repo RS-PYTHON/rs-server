@@ -12,10 +12,10 @@ rs\_server\_common.utils.logging module
    :undoc-members:
    :show-inheritance:
 
-rs\_server\_common.utils.provider\_ws\_address module
------------------------------------------------------
+rs\_server\_common.utils.opentelemetry module
+---------------------------------------------
 
-.. automodule:: rs_server_common.utils.provider_ws_address
+.. automodule:: rs_server_common.utils.opentelemetry
    :members:
    :undoc-members:
    :show-inheritance:

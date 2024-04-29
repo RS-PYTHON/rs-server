@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "RS-Server",
-    "version": "0.0.0.post1.dev0+de89bee"
+    "version": "0.1a8"
   },
   "paths": {
     "/adgs/aux/search": {
@@ -597,6 +597,152 @@
         }
       }
     },
+    "/conformance": {
+      "get": {
+        "summary": "Conformance Classes",
+        "description": "Endpoint.",
+        "operationId": "Conformance_Classes_conformance_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key passed in HTTP header": []
+          }
+        ],
+        "tags": [
+          "Catalog"
+        ]
+      }
+    },
+    "/queryables": {
+      "get": {
+        "tags": [
+          "Catalog (Filter Extension)"
+        ],
+        "summary": "Queryables",
+        "description": "Endpoint.",
+        "operationId": "Queryables_queryables_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key passed in HTTP header": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection_id}/queryables": {
+      "get": {
+        "tags": [
+          "Catalog (Filter Extension)"
+        ],
+        "summary": "Collection Queryables",
+        "description": "Endpoint.",
+        "operationId": "Collection_Queryables_collections__collection_id__queryables_get",
+        "parameters": [
+          {
+            "description": "Collection ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Collection Id",
+              "description": "Collection ID"
+            },
+            "name": "collection_id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key passed in HTTP header": []
+          }
+        ]
+      }
+    },
+    "/collections/{collection_id}/bulk_items": {
+      "post": {
+        "tags": [
+          "Catalog (Bulk Transaction Extension)"
+        ],
+        "summary": "Bulk Create Item",
+        "description": "Endpoint.",
+        "operationId": "Bulk_Create_Item_collections__collection_id__bulk_items_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Items"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "title": "Response Bulk Create Item Collections  Collection Id  Bulk Items Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "API key passed in HTTP header": []
+          }
+        ]
+      }
+    },
     "/catalog/": {
       "get": {
         "summary": "Landing Page",
@@ -622,45 +768,7 @@
         ]
       }
     },
-    "/catalog/{owner_id}/conformance": {
-      "get": {
-        "summary": "Conformance Classes",
-        "description": "Endpoint.",
-        "operationId": "Conformance_Classes_conformance_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "API key passed in HTTP header": []
-          }
-        ],
-        "parameters": [
-          {
-            "description": "Catalog owner id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Catalog owner id",
-              "description": "Catalog owner id"
-            },
-            "name": "owner_id",
-            "in": "path"
-          }
-        ],
-        "tags": [
-          "Catalog"
-        ]
-      }
-    },
-    "/catalog/{owner_id}/collections/{collection_id}/items/{item_id}": {
+    "/catalog/collections/{owner_id}:{collection_id}/items/{item_id}": {
       "get": {
         "summary": "Get Item",
         "description": "Endpoint.",
@@ -1055,7 +1163,7 @@
         ]
       }
     },
-    "/catalog/{owner_id}/collections": {
+    "/catalog/collections": {
       "get": {
         "summary": "Get Collections",
         "description": "Endpoint.",
@@ -1073,19 +1181,6 @@
         "security": [
           {
             "API key passed in HTTP header": []
-          }
-        ],
-        "parameters": [
-          {
-            "description": "Catalog owner id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Catalog owner id",
-              "description": "Catalog owner id"
-            },
-            "name": "owner_id",
-            "in": "path"
           }
         ],
         "tags": [
@@ -1134,19 +1229,6 @@
           {
             "API key passed in HTTP header": []
           }
-        ],
-        "parameters": [
-          {
-            "description": "Catalog owner id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Catalog owner id",
-              "description": "Catalog owner id"
-            },
-            "name": "owner_id",
-            "in": "path"
-          }
         ]
       },
       "post": {
@@ -1191,23 +1273,10 @@
           {
             "API key passed in HTTP header": []
           }
-        ],
-        "parameters": [
-          {
-            "description": "Catalog owner id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Catalog owner id",
-              "description": "Catalog owner id"
-            },
-            "name": "owner_id",
-            "in": "path"
-          }
         ]
       }
     },
-    "/catalog/{owner_id}/collections/{collection_id}": {
+    "/catalog/collections/{owner_id}:{collection_id}": {
       "get": {
         "summary": "Get Collection",
         "description": "Endpoint.",
@@ -1323,7 +1392,7 @@
         ]
       }
     },
-    "/catalog/{owner_id}/collections/{collection_id}/items": {
+    "/catalog/collections/{owner_id}:{collection_id}/items": {
       "get": {
         "summary": "Get Itemcollection",
         "description": "Endpoint.",
@@ -1493,14 +1562,11 @@
         ]
       }
     },
-    "/catalog/{owner_id}/queryables": {
+    "/catalog/catalogs/{owner_id}": {
       "get": {
-        "tags": [
-          "Catalog (Filter Extension)"
-        ],
-        "summary": "Queryables",
+        "summary": "Landing page for the catalog owner id only.",
         "description": "Endpoint.",
-        "operationId": "Queryables_queryables_get",
+        "operationId": "Get_landing_page_owner_id",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1518,157 +1584,15 @@
         ],
         "parameters": [
           {
-            "description": "Catalog owner id",
+            "description": "Owner ID",
             "required": true,
             "schema": {
               "type": "string",
-              "title": "Catalog owner id",
-              "description": "Catalog owner id"
+              "title": "Owner ID",
+              "description": "Owner ID"
             },
             "name": "owner_id",
             "in": "path"
-          }
-        ]
-      }
-    },
-    "/catalog/{owner_id}/collections/{collection_id}/queryables": {
-      "get": {
-        "tags": [
-          "Catalog (Filter Extension)"
-        ],
-        "summary": "Collection Queryables",
-        "description": "Endpoint.",
-        "operationId": "Collection_Queryables_collections__collection_id__queryables_get",
-        "parameters": [
-          {
-            "description": "Collection ID",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Collection Id",
-              "description": "Collection ID"
-            },
-            "name": "collection_id",
-            "in": "path"
-          },
-          {
-            "description": "Catalog owner id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Catalog owner id",
-              "description": "Catalog owner id"
-            },
-            "name": "owner_id",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "API key passed in HTTP header": []
-          }
-        ]
-      }
-    },
-    "/catalog/{owner_id}/collections/{collection_id}/bulk_items": {
-      "post": {
-        "tags": [
-          "Catalog (Bulk Transaction Extension)"
-        ],
-        "summary": "Bulk Create Item",
-        "description": "Endpoint.",
-        "operationId": "Bulk_Create_Item_collections__collection_id__bulk_items_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Items"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string",
-                  "title": "Response Bulk Create Item Collections  Collection Id  Bulk Items Post"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "API key passed in HTTP header": []
-          }
-        ],
-        "parameters": [
-          {
-            "description": "Catalog owner id",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Catalog owner id",
-              "description": "Catalog owner id"
-            },
-            "name": "owner_id",
-            "in": "path"
-          }
-        ]
-      }
-    },
-    "/catalog/collections": {
-      "get": {
-        "summary": "Get all collections accessible by the user calling it.",
-        "description": "Endpoint.",
-        "operationId": "Get_all_collections",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "API key passed in HTTP header": []
           }
         ],
         "tags": [

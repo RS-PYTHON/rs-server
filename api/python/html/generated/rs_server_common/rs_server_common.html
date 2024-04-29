@@ -16,7 +16,7 @@
         <script src="../../_static/jquery.js?v=5d32c60e"></script>
         <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
         <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
@@ -73,11 +73,9 @@
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#module-rs_server_common.settings">rs_server_common.settings module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#rs_server_common.settings.cluster_mode"><code class="docutils literal notranslate"><span class="pre">cluster_mode()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rs_server_common.settings.del_http_client"><code class="docutils literal notranslate"><span class="pre">del_http_client()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rs_server_common.settings.env_bool"><code class="docutils literal notranslate"><span class="pre">env_bool()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rs_server_common.settings.http_client"><code class="docutils literal notranslate"><span class="pre">http_client()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#rs_server_common.settings.local_mode"><code class="docutils literal notranslate"><span class="pre">local_mode()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#rs_server_common.settings.set_http_client"><code class="docutils literal notranslate"><span class="pre">set_http_client()</span></code></a></li>
 </ul>
 </li>
@@ -126,6 +124,7 @@
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.data_retrieval.html#rs_server_common.data_retrieval.eodag_provider.EodagProvider.create_eodag_product"><code class="docutils literal notranslate"><span class="pre">EodagProvider.create_eodag_product()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.data_retrieval.html#rs_server_common.data_retrieval.eodag_provider.EodagProvider.download"><code class="docutils literal notranslate"><span class="pre">EodagProvider.download()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.data_retrieval.html#rs_server_common.data_retrieval.eodag_provider.EodagProvider.init_eodag_client"><code class="docutils literal notranslate"><span class="pre">EodagProvider.init_eodag_client()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.data_retrieval.html#rs_server_common.data_retrieval.eodag_provider.EodagProvider.lock"><code class="docutils literal notranslate"><span class="pre">EodagProvider.lock</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -222,17 +221,16 @@
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.check_bucket_access"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.check_bucket_access()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.check_file_overwriting"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.check_file_overwriting()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.connect_s3"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.connect_s3()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_bucket_completely"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.delete_bucket_completely()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.delete_file_from_s3"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.delete_file_from_s3()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.disconnect_s3"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.disconnect_s3()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_downloaded"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.files_to_be_downloaded()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.files_to_be_uploaded"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.files_to_be_uploaded()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_basename"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.get_basename()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_keys_from_s3"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.get_keys_from_s3()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_s3_data"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.get_s3_data()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.get_secrets()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_secrets_from_file"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.get_secrets_from_file()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.list_s3_files_obj"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.list_s3_files_obj()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.put_files_to_s3"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.put_files_to_s3()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.s3_path_parser"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.s3_path_parser()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.transfer_from_s3_to_s3"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.transfer_from_s3_to_s3()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="rs_server_common.s3_storage_handler.html#rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.wait_timeout"><code class="docutils literal notranslate"><span class="pre">S3StorageHandler.wait_timeout()</span></code></a></li>
 </ul>
@@ -310,8 +308,8 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="rs_server_common.utils.html#module-rs_server_common.utils.provider_ws_address">rs_server_common.utils.provider_ws_address module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="rs_server_common.utils.html#rs_server_common.utils.provider_ws_address.station_to_server_url"><code class="docutils literal notranslate"><span class="pre">station_to_server_url()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="rs_server_common.utils.html#module-rs_server_common.utils.opentelemetry">rs_server_common.utils.opentelemetry module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="rs_server_common.utils.html#rs_server_common.utils.opentelemetry.init_traces"><code class="docutils literal notranslate"><span class="pre">init_traces()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="rs_server_common.utils.html#module-rs_server_common.utils.utils">rs_server_common.utils.utils module</a><ul>
@@ -358,11 +356,11 @@
 <p>Note: calls <a class="reference external" href="https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manager">https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manager</a></p>
 <dl class="py function">
 <dt class="sig sig-object py" id="rs_server_common.authentication.apikey_security">
-<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server_common.authentication.</span></span><span class="sig-name descname"><span class="pre">apikey_security</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apikey_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#rs_server_common.authentication.apikey_security" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server_common.authentication.</span></span><span class="sig-name descname"><span class="pre">apikey_security</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Request</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apikey_header</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">list</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#rs_server_common.authentication.apikey_security" title="Link to this definition"></a></dt>
 <dd><p>FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>apikey_value</strong> (<em>Security</em>) – API key passed in header,</p>
+<dd class="field-odd"><p><strong>apikey_header</strong> (<em>Security</em>) – API key passed in HTTP header</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.</p>
@@ -377,7 +375,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>station</strong> (<em>str</em>) – The station name.</p></li>
+<li><p><strong>station</strong> (<em>str</em>) – The station name = adgs or cadip</p></li>
 <li><p><strong>access_type</strong> (<em>str</em>) – The type of access.</p></li>
 </ul>
 </dd>
@@ -420,7 +418,7 @@ See: <a class="reference external" href="https://praciano.com.br/fastapi-and-asy
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>api_version</strong> (<em>str</em>) – version of our application (not the version of the OpenAPI specification</p></li>
-<li><p><strong>used</strong><strong>)</strong> (<em>nor the version</em><em> of </em><em>FastAPI being</em>) – </p></li>
+<li><p><strong>used</strong><strong>)</strong> (<em>nor the version</em><em> of </em><em>FastAPI being</em>)</p></li>
 <li><p><strong>routers</strong> (<em>list</em><em>[</em><em>APIRouter</em><em>]</em>) – list of FastAPI routers to add to the application.</p></li>
 <li><p><strong>init_db</strong> (<em>bool</em>) – should we init the database session ?</p></li>
 <li><p><strong>timeout</strong> (<em>int</em>) – timeout in seconds to wait for the database connection.</p></li>
@@ -436,12 +434,6 @@ See: <a class="reference external" href="https://praciano.com.br/fastapi-and-asy
 <section id="module-rs_server_common.settings">
 <span id="rs-server-common-settings-module"></span><h2>rs_server_common.settings module<a class="headerlink" href="#module-rs_server_common.settings" title="Link to this heading"></a></h2>
 <p>Store diverse objects and values used throughout the application.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="rs_server_common.settings.cluster_mode">
-<span class="sig-prename descclassname"><span class="pre">rs_server_common.settings.</span></span><span class="sig-name descname"><span class="pre">cluster_mode</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.settings.cluster_mode" title="Link to this definition"></a></dt>
-<dd><p>Return ‘not local_mode()’</p>
-</dd></dl>
-
 <dl class="py function">
 <dt class="sig sig-object py" id="rs_server_common.settings.del_http_client">
 <em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">rs_server_common.settings.</span></span><span class="sig-name descname"><span class="pre">del_http_client</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.settings.del_http_client" title="Link to this definition"></a></dt>
@@ -460,13 +452,6 @@ Return the default value if not set or set to a different value.</p>
 <dt class="sig sig-object py" id="rs_server_common.settings.http_client">
 <span class="sig-prename descclassname"><span class="pre">rs_server_common.settings.</span></span><span class="sig-name descname"><span class="pre">http_client</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.settings.http_client" title="Link to this definition"></a></dt>
 <dd><p>Get HTTP client</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="rs_server_common.settings.local_mode">
-<span class="sig-prename descclassname"><span class="pre">rs_server_common.settings.</span></span><span class="sig-name descname"><span class="pre">local_mode</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#rs_server_common.settings.local_mode" title="Link to this definition"></a></dt>
-<dd><p>Return True if the ‘RSPY_LOCAL_MODE’ environemnt variable is set to 1, true or yes (case insensitive).
-By default: if not set or set to a different value, return False.</p>
 </dd></dl>
 
 <dl class="py function">
