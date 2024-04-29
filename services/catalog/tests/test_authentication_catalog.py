@@ -14,6 +14,7 @@ from starlette.status import (
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
 )
 
@@ -32,6 +33,7 @@ PASS_THE_APIKEY = [
     # {"params": {APIKEY_QUERY: VALID_APIKEY}}
 ]
 
+WRONG_HEADER = {APIKEY_HEADER: WRONG_APIKEY}
 
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
@@ -366,6 +368,9 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         assert all_collections.status_code == HTTP_200_OK
         content = json.loads(all_collections.content)
         assert content["collections"] == valid_collections
+
+    wrong_api_key_response = client.request("GET", "/catalog/", headers=WRONG_HEADER)
+    assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
 
 
 class TestAuthenticationGetOneCollection:
@@ -1068,7 +1073,7 @@ class TestAuthenticationPostOneItem:
         "type": "Feature",
     }
 
-    def te_st_http200_with_good_authentication(
+    def test_http200_with_good_authentication(
         self,
         mocker,
         monkeypatch,
@@ -1091,7 +1096,7 @@ class TestAuthenticationPostOneItem:
             )
             assert response.status_code == HTTP_200_OK
 
-    def te_st_fails_without_good_perms(
+    def test_fails_without_good_perms(
         self,
         mocker,
         monkeypatch,
@@ -1099,13 +1104,13 @@ class TestAuthenticationPostOneItem:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        iam_roles = ["rs_catalog_toto:S1_L1_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "POST",
-                "/catalog/collections",
+                "/catalog/collections/toto:S1_L1/items",
                 json=self.feature_to_post,
                 **pass_the_apikey,
             )
@@ -1153,3 +1158,18 @@ class TestAuthenticationGetCatalogOwnerId:
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
+class TestAuthenticationErrorHandling:
+    def test_error_when_not_authenticated(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        response = client.request("GET", "/catalog/")
+        assert response.status_code == HTTP_403_FORBIDDEN

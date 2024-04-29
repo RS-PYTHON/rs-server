@@ -196,9 +196,8 @@ class TestCatalogPublishCollectionEndpoint:
             "owner": "test_incorrect_owner",
         }
         # Test that response is 400 BAD Request
-        with pytest.raises(fastapi.HTTPException):
-            response = client.post("/catalog/collections", json=minimal_incorrect_collection)
-            assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        response = client.post("/catalog/collections", json=minimal_incorrect_collection)
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
         # Check that owner from this collection is not written in catalogDB
         test_params = {"filter-lang": "cql2-text", "filter": "owner_id='test_incorrect_owner'"}
         response = client.get("/catalog/search", params=test_params)
@@ -474,11 +473,10 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         a_correct_feature["assets"]["zarr"]["href"] = "incorrect_s3_url/some_file.zarr.zip"
         a_correct_feature["assets"]["cog"]["href"] = "incorrect_s3_url/some_file.cog.zip"
         a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
-        with pytest.raises(fastapi.HTTPException):
-            added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
-            assert added_feature.status_code == 400
-            assert added_feature.content == b'"Invalid obs bucket"'
-            clear_aws_credentials()
+        added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
+        assert added_feature.status_code == 400
+        assert added_feature.content == b'{"error":"Invalid obs bucket!"}'
+        clear_aws_credentials()
 
     @pytest.mark.unit
     def test_custom_bucket_publish(self, client, a_correct_feature):

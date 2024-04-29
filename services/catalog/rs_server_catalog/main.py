@@ -12,7 +12,7 @@ from typing import Callable
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
@@ -41,6 +41,8 @@ from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+from starlette.status import HTTP_403_FORBIDDEN
 
 logger = Logging.default(__name__)
 
@@ -182,11 +184,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         # Only in cluster mode (not local mode) and for the catalog endpoints
         if (common_settings.CLUSTER_MODE) and request.url.path.startswith("/catalog"):
 
-            # Check the api key validity, passed in HTTP header or url query parameter (disabled for now)
-            await authentication.apikey_security(
-                request=request,
-                apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
-            )
+            # Check the api key validity, passed in HTTP header or url query parameter
+            try:
+                await authentication.apikey_security(
+                    request=request,
+                    apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
+                )
+            except HTTPException as e:
+                return Response("error", status_code=HTTP_403_FORBIDDEN, headers={"error": e.detail})
 
         # Call the next middleware
         return await call_next(request)

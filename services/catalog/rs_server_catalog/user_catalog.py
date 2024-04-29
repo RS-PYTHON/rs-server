@@ -177,15 +177,18 @@ class UserCatalog:
                 new_s3_href = {"s3": {"href": s3_key}}
                 content["assets"][asset].update({"alternate": new_s3_href})
                 files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
-            except (IndexError, AttributeError, KeyError) as exc:
-                raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
+            except (IndexError, AttributeError, KeyError):
+                return JSONResponse(content={"error": "Invalid obs bucket!"}, status_code=HTTP_400_BAD_REQUEST)
 
         # There should be a single temp bucket name
         if not bucket_names:
-            raise HTTPException(detail="'assets' are missing from the request", status_code=HTTP_400_BAD_REQUEST)
+            return JSONResponse(
+                content={"error": "assets are missing from the request"},
+                status_code=HTTP_400_BAD_REQUEST,
+            )
         if len(bucket_names) > 1:
-            raise HTTPException(
-                detail=f"A single s3 bucket should be used in the 'assets': {bucket_names!r}",
+            return JSONResponse(
+                content={"error": f"A single s3 bucket should be used in the assets: {bucket_names!r}"},
                 status_code=HTTP_400_BAD_REQUEST,
             )
         self.temp_bucket_name = bucket_names.pop()
@@ -221,8 +224,8 @@ class UserCatalog:
                     )
         except KeyError as kerr:
             raise HTTPException(detail="Could not find S3 credentials", status_code=500) from kerr
-        except RuntimeError as rte:
-            raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from rte
+        except RuntimeError:
+            return JSONResponse(content={"error": "Could not connect to obs bucket!"}, status_code=HTTP_400_BAD_REQUEST)
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
@@ -298,7 +301,7 @@ class UserCatalog:
                 auth_roles = request.state.auth_roles
                 user_login = request.state.user_login
             except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+                raise HTTPException(detail=f"Not authenticated. {e}", status_code=403) from e
         if request.method == "POST":
             content = await request.json()
             if request.scope["path"] == "/search" and "filter" in content:
@@ -396,7 +399,7 @@ class UserCatalog:
                 auth_roles = request.state.auth_roles
                 user_login = request.state.user_login
             except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+                return JSONResponse(content={"error": f"Not authenticated. {e}"}, status_code=403)
         try:
             user = self.request_ids["owner_id"]
             content = await request.json()
@@ -418,15 +421,17 @@ class UserCatalog:
                 content["id"] = f"{user}_{content['id']}"
             elif "items" in request.scope["path"]:
                 content = self.update_stac_item_publication(content, user)
+                if hasattr(content, "status_code"):
+                    return content
 
             # update request body (better find the function that updates the body maybe?)c
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
-            raise HTTPException(
-                detail=f"Missing key in request body! {kerr_msg}",
+            return JSONResponse(
+                content={"error": f"Missing key in request body! {kerr_msg}"},
                 status_code=HTTP_400_BAD_REQUEST,
-            ) from kerr_msg
+            )
 
     def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
         """Return the list of all collections accessible by the user calling it.
@@ -487,7 +492,7 @@ class UserCatalog:
                 auth_roles = request.state.auth_roles
                 user_login = request.state.user_login
             except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+                raise HTTPException(detail=f"Not authenticated. {e}", status_code=403) from e
         if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
             content = manage_landing_page(request, auth_roles, user_login, content, user)
             if hasattr(content, "status_code"):  # Unauthorized
@@ -620,9 +625,9 @@ class UserCatalog:
                 response_content = self.adapt_object_links(response_content, user)
             self.clear_temp_bucket(response_content)
         except RuntimeError as exc:
-            raise HTTPException(detail="Failed to clear temp-bucket", status_code=HTTP_400_BAD_REQUEST) from exc
+            return JSONResponse(content=f"Failed to clean tem-bucket. {exc}", status_code=HTTP_400_BAD_REQUEST)
         except Exception as exc:  # pylint: disable=broad-except
-            raise HTTPException(detail="Bad request", status_code=HTTP_400_BAD_REQUEST) from exc
+            JSONResponse(content=f"Bad request. {exc}", status_code=HTTP_400_BAD_REQUEST)
         return JSONResponse(response_content, status_code=response.status_code)
 
     async def manage_response_error(self, response: StreamingResponse | Any) -> JSONResponse:
@@ -681,7 +686,7 @@ class UserCatalog:
                 auth_roles = request.state.auth_roles
                 user_login = request.state.user_login
             except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+                raise HTTPException(detail=f"Not authenticated. {e}", status_code=403) from e
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
@@ -721,6 +726,8 @@ class UserCatalog:
             request = await self.manage_put_post_request(request)
             if hasattr(request, "status_code"):  # Unauthorized
                 return request
+        elif request.method in ["POST", "PUT"] and not self.request_ids["owner_id"]:
+            return JSONResponse(content="Invalid body.", status_code=HTTP_400_BAD_REQUEST)
         elif request.method == "DELETE":
             is_delete_allowed = self.manage_delete_request(request)
             if not is_delete_allowed:
