@@ -22,6 +22,28 @@ None
 
 None
 
+== [0.1a8] - 2024-04-24
+
+=== Added
+
+* RSPY-69: Implement access control to the catalog (with UAC)
+* RSPY-99: Deploy JupyterHub on K8S cluster
+* RSPY-120: Implement a first S1L0 processing Prefect @flow
+* RSPY-123: Create Jupyter notebook to launch Prefect chains
+* RSPY-128: Deploy promtail and Grafana Loki on K8S cluster
+* RSPY-162: Python modules for log & trace
+* RSPY-167: New endpoint to get CADIP session information
+* RSPY-170: Platform deployment and start-stop playbook failed due to missing credential
+* RSPY-176: Platform deployment: first application deployment execution failed for the step cluster-issuer
+* RSPY-177: Platform Deployment: Failed to deployed application due to missing parameter in group_vars
+* RSPY-179: Platform deployment: no cinder controller for PVC
+* RSPY-180: Platform deployment: kubelet errors with cpu manager
+* RSPY-182: Wazuh agent is being reinstalled when cluster is restarted
+* RSPY-183: Prometheus is not accessible from the ingress
+* RSPY-185: Sprint 8 corrections of infrastructure issues
+* RSPY-186: Catalog application does crash properly during initialization
+* RSPY-219: Improve AUXIP & CADIP mockups representativeness
+
 == [0.1a7] - 2024-04-03
 
 === Added
