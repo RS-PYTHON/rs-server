@@ -475,7 +475,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
         added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
         assert added_feature.status_code == 400
-        assert added_feature.content == b'{"error":"Invalid obs bucket!"}'
+        assert added_feature.content == b'"Invalid obs bucket!"'
         clear_aws_credentials()
 
     @pytest.mark.unit

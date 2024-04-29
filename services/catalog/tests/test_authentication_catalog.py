@@ -38,7 +38,7 @@ WRONG_HEADER = {APIKEY_HEADER: WRONG_APIKEY}
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
 
-def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str]):
+def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], mock_wrong_apikey: bool = False):
     """init mocker for tests."""
     # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
@@ -66,6 +66,14 @@ def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str]):
         },
     )
 
+    # With a wrong api key, it returns 403
+    if mock_wrong_apikey:
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: WRONG_APIKEY},
+            status_code=HTTP_403_FORBIDDEN,
+        )
+
 
 def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
     """
@@ -77,7 +85,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         "rs_catalog_titi:S2_L1_read",
         "rs_catalog_darius:*_write",
     ]
-    init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+    init_test(mocker, monkeypatch, httpx_mock, iam_roles, True)
 
     valid_links = [
         {"rel": "self", "type": "application/json", "href": "http://testserver/"},
