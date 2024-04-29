@@ -1978,7 +1978,7 @@ files = [
 
 [[package]]
 name = "rs-server-common"
-version = "3.2a1.post180.dev0+8c3d5b1"
+version = "3.2a1.post181.dev0+da9620a"
 description = ""
 optional = false
 python-versions = "^3.11"

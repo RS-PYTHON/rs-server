@@ -14,6 +14,7 @@ from starlette.status import (
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
 )
 
@@ -32,11 +33,12 @@ PASS_THE_APIKEY = [
     # {"params": {APIKEY_QUERY: VALID_APIKEY}}
 ]
 
+WRONG_HEADER = {APIKEY_HEADER: WRONG_APIKEY}
 
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
 
-def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str]):
+def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], mock_wrong_apikey: bool = False):
     """init mocker for tests."""
     # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
@@ -64,6 +66,14 @@ def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str]):
         },
     )
 
+    # With a wrong api key, it returns 403
+    if mock_wrong_apikey:
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: WRONG_APIKEY},
+            status_code=HTTP_403_FORBIDDEN,
+        )
+
 
 def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
     """
@@ -75,7 +85,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         "rs_catalog_titi:S2_L1_read",
         "rs_catalog_darius:*_write",
     ]
-    init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+    init_test(mocker, monkeypatch, httpx_mock, iam_roles, True)
 
     valid_links = [
         {"rel": "self", "type": "application/json", "href": "http://testserver/"},
@@ -366,6 +376,9 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         assert all_collections.status_code == HTTP_200_OK
         content = json.loads(all_collections.content)
         assert content["collections"] == valid_collections
+
+    wrong_api_key_response = client.request("GET", "/catalog/", headers=WRONG_HEADER)
+    assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
 
 
 class TestAuthenticationGetOneCollection:
@@ -1068,7 +1081,7 @@ class TestAuthenticationPostOneItem:
         "type": "Feature",
     }
 
-    def te_st_http200_with_good_authentication(
+    def test_http200_with_good_authentication(
         self,
         mocker,
         monkeypatch,
@@ -1091,7 +1104,7 @@ class TestAuthenticationPostOneItem:
             )
             assert response.status_code == HTTP_200_OK
 
-    def te_st_fails_without_good_perms(
+    def test_fails_without_good_perms(
         self,
         mocker,
         monkeypatch,
@@ -1099,13 +1112,13 @@ class TestAuthenticationPostOneItem:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        iam_roles = ["rs_catalog_toto:S1_L1_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "POST",
-                "/catalog/collections",
+                "/catalog/collections/toto:S1_L1/items",
                 json=self.feature_to_post,
                 **pass_the_apikey,
             )
@@ -1153,3 +1166,14 @@ class TestAuthenticationGetCatalogOwnerId:
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
+class TestAuthenticationErrorHandling:
+    def test_error_when_not_authenticated(
+        self,
+        mocker,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+        response = client.request("GET", "/catalog/")
+        assert response.status_code == HTTP_403_FORBIDDEN
