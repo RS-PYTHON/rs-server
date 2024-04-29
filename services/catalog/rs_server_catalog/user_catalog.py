@@ -182,10 +182,10 @@ class UserCatalog:
 
         # There should be a single temp bucket name
         if not bucket_names:
-            raise HTTPException(detail="'assets' are missing from the request", status_code=HTTP_400_BAD_REQUEST)
+            raise HTTPException(detail="assets are missing from the request", status_code=HTTP_400_BAD_REQUEST)
         if len(bucket_names) > 1:
             raise HTTPException(
-                detail=f"A single s3 bucket should be used in the 'assets': {bucket_names!r}",
+                detail=f"A single s3 bucket should be used in the assets: {bucket_names!r}",
                 status_code=HTTP_400_BAD_REQUEST,
             )
         self.temp_bucket_name = bucket_names.pop()
@@ -294,11 +294,8 @@ class UserCatalog:
             Request: the new request with the collection name updated.
         """
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
-            try:
-                auth_roles = request.state.auth_roles
-                user_login = request.state.user_login
-            except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+            auth_roles = request.state.auth_roles
+            user_login = request.state.user_login
         if request.method == "POST":
             content = await request.json()
             if request.scope["path"] == "/search" and "filter" in content:
@@ -392,11 +389,8 @@ class UserCatalog:
             Request: The request updated.
         """
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
-            try:
-                auth_roles = request.state.auth_roles
-                user_login = request.state.user_login
-            except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+            auth_roles = request.state.auth_roles
+            user_login = request.state.user_login
         try:
             user = self.request_ids["owner_id"]
             content = await request.json()
@@ -418,6 +412,8 @@ class UserCatalog:
                 content["id"] = f"{user}_{content['id']}"
             elif "items" in request.scope["path"]:
                 content = self.update_stac_item_publication(content, user)
+                if hasattr(content, "status_code"):
+                    return content
 
             # update request body (better find the function that updates the body maybe?)c
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
@@ -483,11 +479,8 @@ class UserCatalog:
         user_login = ""
 
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
-            try:
-                auth_roles = request.state.auth_roles
-                user_login = request.state.user_login
-            except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+            auth_roles = request.state.auth_roles
+            user_login = request.state.user_login
         if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
             content = manage_landing_page(request, auth_roles, user_login, content, user)
             if hasattr(content, "status_code"):  # Unauthorized
@@ -559,11 +552,8 @@ class UserCatalog:
 
         """
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
-            try:
-                auth_roles = request.state.auth_roles
-                user_login = request.state.user_login
-            except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+            auth_roles = request.state.auth_roles
+            user_login = request.state.user_login
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
@@ -620,9 +610,9 @@ class UserCatalog:
                 response_content = self.adapt_object_links(response_content, user)
             self.clear_temp_bucket(response_content)
         except RuntimeError as exc:
-            raise HTTPException(detail="Failed to clear temp-bucket", status_code=HTTP_400_BAD_REQUEST) from exc
+            return JSONResponse(content=f"Failed to clean temporary bucket: {exc}", status_code=HTTP_400_BAD_REQUEST)
         except Exception as exc:  # pylint: disable=broad-except
-            raise HTTPException(detail="Bad request", status_code=HTTP_400_BAD_REQUEST) from exc
+            JSONResponse(content=f"Bad request: {exc}", status_code=HTTP_400_BAD_REQUEST)
         return JSONResponse(response_content, status_code=response.status_code)
 
     async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
@@ -655,11 +645,8 @@ class UserCatalog:
             bool: Return True if the deletion is allowed, False otherwise.
         """
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
-            try:
-                auth_roles = request.state.auth_roles
-                user_login = request.state.user_login
-            except RuntimeError as e:
-                raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
+            auth_roles = request.state.auth_roles
+            user_login = request.state.user_login
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
@@ -676,7 +663,7 @@ class UserCatalog:
             return False
         return True
 
-    async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches
+    async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
 
@@ -699,6 +686,8 @@ class UserCatalog:
             request = await self.manage_put_post_request(request)
             if hasattr(request, "status_code"):  # Unauthorized
                 return request
+        elif request.method in ["POST", "PUT"] and not self.request_ids["owner_id"]:
+            return JSONResponse(content="Invalid body.", status_code=HTTP_400_BAD_REQUEST)
         elif request.method == "DELETE":
             is_delete_allowed = self.manage_delete_request(request)
             if not is_delete_allowed:
