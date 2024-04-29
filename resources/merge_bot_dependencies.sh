@@ -54,8 +54,8 @@ for bot_branch in $bot_branches; do
     lock_files=$(git diff --name-only "$bot_branch" | grep -E "(^|/)poetry.lock$")
     if [[ "$lock_files" ]]; then
         (set -x;
-            git checkout "$bot_branch" -- $lock_files && \
-            git commit -m "merge: poetry.lock files from $bot_branch")
+            git checkout "$bot_branch" -- $lock_files; \
+            git diff-index --quiet HEAD || git commit -m "merge: poetry.lock files from $bot_branch")
     fi
 
     # Merge the bot branch into ours
