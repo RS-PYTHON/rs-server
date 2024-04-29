@@ -1164,12 +1164,8 @@ class TestAuthenticationErrorHandling:
     def test_error_when_not_authenticated(
         self,
         mocker,
-        monkeypatch,
-        httpx_mock: HTTPXMock,
         client,
     ):  # pylint: disable=missing-function-docstring
-
-        iam_roles = ["rs_catalog_toto:S1_L2_read"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
         response = client.request("GET", "/catalog/")
         assert response.status_code == HTTP_403_FORBIDDEN

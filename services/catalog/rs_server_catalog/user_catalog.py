@@ -703,7 +703,7 @@ class UserCatalog:
             return False
         return True
 
-    async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches
+    async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
 
