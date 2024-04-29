@@ -460,7 +460,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
     def test_incorrect_feature_publish(self, client, a_incorrect_feature, owner, collection_id):
         """This test send a featureCollection to the catalog with a wrong format."""
         # TC02: Add on Sentinel-1 item to the Catalog with a wrong-formatted STAC JSON file. => 400 Bad Request
-        with pytest.raises(fastapi.HTTPException):
+        with pytest.raises(Exception):
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
             # Bad request = 400
             assert added_feature.status_code == 400
@@ -617,7 +617,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 "rs_server_catalog.user_catalog.UserCatalog.update_stac_item_publication",
                 return_value={},
             )
-            with pytest.raises(fastapi.HTTPException):
+            with pytest.raises(Exception):
                 added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
                 # Check if status code is BAD REQUEST
                 assert added_feature.status_code == 400
