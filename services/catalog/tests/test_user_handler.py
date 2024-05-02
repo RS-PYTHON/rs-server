@@ -112,7 +112,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert str(exc_info.value) == "URL (/) is invalid."
 
     def test_remove_the_catalog_prefix(self):
-        assert reroute_url("/catalog/Toto", "GET")[0] == ("/")
+        assert reroute_url("/catalog/catalogs/Toto", "GET")[0] == ("/")
 
     # Disabled for moment
     # def test_landing_page(self):
@@ -134,6 +134,15 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
 
     def test_work_with_ping_endpoinst(self):
         assert reroute_url("/_mgmt/ping", "GET")[0] == ("/_mgmt/ping")
+
+    def test_reroute_catalog_catalogs_owner_id(self):
+        res = reroute_url("/catalog/catalogs/toto", "GET")
+        assert res[0] == "/"
+        assert res[1] == {
+            "owner_id": "toto",
+            "collection_id": "",
+            "item_id": "",
+        }
 
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring

@@ -35,6 +35,7 @@ from sqlalchemy import Connection, Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
 
@@ -78,7 +79,7 @@ class DatabaseSessionManager:
         # make sure to initialize the session only once.
         with DatabaseSessionManager.lock:
             if (self._engine is None) or (self._sessionmaker is None):
-                self._engine = create_engine(url or self.url(), poolclass=NullPool)
+                self._engine = create_engine(url or self.url(), poolclass=NullPool, pool_pre_ping=True)
                 self._sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=self._engine)
 
                 try:
@@ -177,7 +178,7 @@ class DatabaseSessionManager:
 
         if isinstance(exception, StarletteHTTPException):
             raise exception
-        raise HTTPException(status_code=400, detail=repr(exception))
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=repr(exception))
 
 
 sessionmanager = DatabaseSessionManager()

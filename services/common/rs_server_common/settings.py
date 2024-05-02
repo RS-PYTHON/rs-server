@@ -37,17 +37,19 @@ def env_bool(var: str, default: bool) -> bool:
     return default
 
 
-def local_mode():
-    """
-    Return True if the 'RSPY_LOCAL_MODE' environemnt variable is set to 1, true or yes (case insensitive).
-    By default: if not set or set to a different value, return False.
-    """
-    return env_bool("RSPY_LOCAL_MODE", False)
+# True if the 'RSPY_LOCAL_MODE' environemnt variable is set to 1, true or yes (case insensitive).
+# By default: if not set or set to a different value, return False.
+LOCAL_MODE: bool = env_bool("RSPY_LOCAL_MODE", False)
 
+# Cluster mode is the opposite of local mode
+CLUSTER_MODE: bool = not LOCAL_MODE
 
-def cluster_mode():
-    """Return 'not local_mode()'"""
-    return not local_mode()
+###################
+# Other variables #
+###################
+
+# Service name for logging and OpenTelemetry
+SERVICE_NAME: str | None = None
 
 
 ###############

@@ -21,19 +21,21 @@ If the variable is not set, enables all extensions.
 
 import asyncio
 import os
+import traceback
 from os import environ as env
 from typing import Callable
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, Request
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
 from rs_server_common import authentication
 from rs_server_common import settings as common_settings
+from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
@@ -54,8 +56,9 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.status import HTTP_403_FORBIDDEN
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
 
@@ -73,15 +76,34 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     Returns:
         dict: the new parameters list with the owner id parameter.
     """
+    description = "Catalog owner id"
     to_add = {
-        "description": "Catalog owner id",
+        "description": description,
         "required": True,
-        "schema": {"type": "string", "title": "Catalog owner id", "description": "Catalog owner id"},
+        "schema": {"type": "string", "title": description, "description": description},
         "name": "owner_id",
         "in": "path",
     }
     parameters.append(to_add)
     return parameters
+
+
+def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-docstring
+    res = ""
+    match original_key:
+        case "/":
+            res = "/catalog/"
+        case "/collections":
+            res = "/catalog/collections"
+        case "/collections/{collection_id}":
+            res = "/catalog/collections/{owner_id}:{collection_id}"
+        case "/collections/{collection_id}/items":
+            res = "/catalog/collections/{owner_id}:{collection_id}/items"
+        case "/collections/{collection_id}/items/{item_id}":
+            res = "/catalog/collections/{owner_id}:{collection_id}/items/{item_id}"
+        case "/search":
+            res = "/catalog/search"
+    return res
 
 
 def extract_openapi_specification():
@@ -103,27 +125,40 @@ def extract_openapi_specification():
             del openapi_spec_paths[key]
             continue
 
-        new_key = f"/catalog{key}" if key in ["/search", "/"] else "/catalog/{owner_id}" + key
-        openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
-        endpoint = openapi_spec_paths[new_key]
-        for method_key in endpoint.keys():
-            method = endpoint[method_key]
-            if new_key not in ["/catalog/search", "/catalog/"]:
-                method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-            elif method["operationId"] == "Search_search_get":
-                method["description"] = "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
-    catalog_collection = {
+        new_key = get_new_key(key)
+        if new_key:
+            openapi_spec_paths[new_key] = openapi_spec_paths.pop(key)
+            endpoint = openapi_spec_paths[new_key]
+            for method_key in endpoint.keys():
+                method = endpoint[method_key]
+                if new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]:
+                    method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
+                elif method["operationId"] == "Search_search_get":
+                    method["description"] = (
+                        "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+                    )
+    owner_id = "Owner ID"
+    catalog_owner_id = {
         "get": {
-            "summary": "Get all collections accessible by the user calling it.",
+            "summary": "Landing page for the catalog owner id only.",
             "description": "Endpoint.",
-            "operationId": "Get_all_collections",
+            "operationId": "Get_landing_page_owner_id",
             "responses": {
                 "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
             },
             "security": [{"API key passed in HTTP header": []}],
+            "parameters": [
+                {
+                    "description": owner_id,
+                    "required": True,
+                    "schema": {"type": "string", "title": owner_id, "description": owner_id},
+                    "name": "owner_id",
+                    "in": "path",
+                },
+            ],
         },
     }
-    openapi_spec_paths["/catalog/collections"] = catalog_collection
+    openapi_spec_paths["/catalog/catalogs/{owner_id}"] = catalog_owner_id
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
@@ -163,21 +198,48 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         """
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (common_settings.cluster_mode()) and request.url.path.startswith("/catalog"):
+        if (common_settings.CLUSTER_MODE) and request.url.path.startswith("/catalog"):
 
-            # Read the api key passed in header
-            apikey_value = request.headers.get(authentication.APIKEY_HEADER, None)
-            if not apikey_value:
-                raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail="Not authenticated")
-
-            # Check the api key validity, passed as an HTTP header.
-            apikey_info = await authentication.apikey_security(request, apikey_value)
-
-            # TODO: check api key rights before calling the next middleware
-            logger.debug(f"API key information: {apikey_info}")
+            # Check the api key validity, passed in HTTP header
+            await authentication.apikey_security(
+                request=request,
+                apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
+            )
 
         # Call the next middleware
         return await call_next(request)
+
+
+class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """
+    In FastAPI we can raise HttpExceptions in the middle of the python code, instead of returning a JSONResponse.
+    But that doesn't work well in the middlewares: a response with error 500 is returned instead of the
+    original HttpException status code. So we handle this by making the conversion manually.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """
+        Middleware implementation.
+        """
+
+        try:
+            return await call_next(request)  # Call the next middleware
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+
+            # Print the error with the stacktrace in the log
+            logger.error(traceback.format_exc())
+
+            # Get the status code and content from the HTTPException
+            if isinstance(exception, StarletteHTTPException):
+                status_code = exception.status_code
+                content = exception.detail
+
+            # Else use a generic status code, and content = exception message
+            else:
+                status_code = HTTP_500_INTERNAL_SERVER_ERROR
+                content = repr(exception)
+
+            return JSONResponse(status_code=status_code, content=content)
 
 
 api = StacApi(
@@ -193,15 +255,18 @@ api = StacApi(
         CORSMiddleware,
         ProxyHeaderMiddleware,
         AuthenticationMiddleware,
+        DontRaiseExceptions,
     ],
 )
 app = api.app
 app.openapi = extract_openapi_specification
 
+# Configure OpenTelemetry
+opentelemetry.init_traces(app, "rs.server.catalog")
 
 # In cluster mode, add the api key security dependency: the user must provide
 # an api key (generated from the apikey manager) to access the endpoints
-if common_settings.cluster_mode():
+if common_settings.CLUSTER_MODE:
     # One scope for each ApiRouter path and method
     scopes = []
     for route in api.app.router.routes:

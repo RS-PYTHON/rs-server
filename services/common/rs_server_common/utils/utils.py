@@ -267,9 +267,11 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
         # Update the status to IN_PROGRESS in the database
         db_product.in_progress(db)
         local = kwargs["default_path"] if not argument.local else argument.local
-        provider = init_provider(argument.station)
         # notify the main thread that the download will be started
+        # To be discussed: init_provider may fail, but in the same time it takes too much
+        # when properly initialized, and the timeout for download endpoint return is overpassed
         argument.thread_started.set()
+        provider = init_provider(argument.station)
         init = datetime.now()
         filename = Path(local) / argument.name
         provider.download(argument.product_id, filename)
@@ -306,7 +308,7 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
                 "accesskey": None,
                 "secretkey": None,
             }
-            S3StorageHandler.get_secrets(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
+            S3StorageHandler.get_secrets_from_file(secrets, "/home/" + os.environ["USER"] + "/.s3cfg")
             os.environ["S3_ACCESSKEY"] = secrets["accesskey"]
             os.environ["S3_SECRETKEY"] = secrets["secretkey"]
             os.environ["S3_ENDPOINT"] = secrets["s3endpoint"]
@@ -325,8 +327,8 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
                 "/".join(obs_array[3:]),
             )
             s3_handler.put_files_to_s3(s3_config)
-        except (RuntimeError, KeyError):
-            logger.error("Could not connect to the s3 storage")
+        except (RuntimeError, KeyError) as e:
+            logger.exception(f"Could not connect to the s3 storage: {e}")
             # Try n times to update the status to FAILED in the database
             update_db(
                 db,
@@ -334,6 +336,9 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
                 EDownloadStatus.FAILED,
                 "Could not connect to the s3 storage",
             )
+            return
+        except Exception as e:  # pylint: disable=broad-except
+            logger.exception(f"General exception: {e}")
             return
         finally:
             os.remove(filename)

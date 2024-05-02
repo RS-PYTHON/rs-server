@@ -20,7 +20,6 @@ from pathlib import Path
 
 from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
-from rs_server_common.utils.provider_ws_address import station_to_server_url
 
 DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "cadip_ws_config.yaml"
 
@@ -36,17 +35,16 @@ def init_cadip_provider(station: str) -> EodagProvider:
     a specific exception is raised to inform the caller of the issue.
 
     Args:
-        station: the station to interact with.
+        station: the station to interact with: ns, mps, mti, nsg, sgs, cadip(?)
 
     Returns:
         the EodagProvider initialized
     """
-    try:
-        if not station_to_server_url(station):
-            raise CreateProviderFailed("Invalid station")
-    except ValueError as exc:
-        raise CreateProviderFailed("Invalid station configuration") from exc
 
-    # Check if the config file path is overriden in the environment variables
-    eodag_config = Path(os.environ.get("EODAG_CADIP_CONFIG", DEFAULT_EODAG_CONFIG))
-    return EodagProvider(eodag_config, station.lower())  # default to eodag, just init here
+    try:
+        # Check if the config file path is overriden in the environment variables
+        eodag_config = Path(os.environ.get("EODAG_CADIP_CONFIG", DEFAULT_EODAG_CONFIG))
+        # default to eodag, stations may be ins, mps, mti, nsg, sgs, cadip(?)
+        return EodagProvider(eodag_config, station.lower())
+    except Exception as exception:
+        raise CreateProviderFailed("Failed to setup eodag") from exception

@@ -31,14 +31,33 @@ if [[ -z "$bot_branches" ]]; then
     exit 0
 fi
 
-# Start from develop (this will fail if you have non-commited modifications)
-(set -x; git checkout develop)
-target="fix/bot-dependency-updates" # branch issued from develop where we'll merge everything
+# Branch issued from develop where we'll merge everything
+target="fix/bot-dependency-updates"
 
-# Create or get the target branch, merge develop into it
-(set -x; git checkout "$target" && git pull || git push --set-upstream origin "$target") || \
-(set -x; git checkout -b "$target" && git push --set-upstream origin "$target")
-(set -x; git merge origin/develop)
+# Check if the local and remote target branch exist
+git rev-parse --verify "$target" >/dev/null 2>&1 && local_exist=1 || local_exist=
+git rev-parse --verify "origin/$target" >/dev/null 2>&1 && remote_exist=1 || remote_exist=
+
+if [[ -z $local_exist ]]; then
+    if [[ -z $remote_exist ]]; then
+        # Local and remote don't exist
+        # Start from develop (this will fail if you have non-commited modifications)
+        (set -x; git checkout develop && git checkout -b "$target" && git push --set-upstream origin "$target")
+
+    else
+        # Local doesn't exist, remote does exist
+        (set -x; git checkout "$target" && git pull && git merge origin/develop)
+    fi
+else
+    if [[ -z $remote_exist ]]; then
+        # Local does exist, remote doesn't exist
+        (set -x; git checkout "$target" && git merge origin/develop && git push --set-upstream origin "$target")
+
+    else
+        # Local and remote exist
+        (set -x; git checkout "$target" && git pull && git merge origin/develop)
+    fi
+fi
 
 # For each bot branch
 for bot_branch in $bot_branches; do
@@ -49,8 +68,8 @@ for bot_branch in $bot_branches; do
     lock_files=$(git diff --name-only "$bot_branch" | grep -E "(^|/)poetry.lock$")
     if [[ "$lock_files" ]]; then
         (set -x;
-            git checkout "$bot_branch" -- $lock_files && \
-            git commit -m "merge: poetry.lock files from $bot_branch")
+            git checkout "$bot_branch" -- $lock_files; \
+            git diff-index --quiet HEAD || git commit -m "merge: poetry.lock files from $bot_branch")
     fi
 
     # Merge the bot branch into ours

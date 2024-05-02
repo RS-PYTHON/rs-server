@@ -24,7 +24,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"(?P<item_id>/.+?(?=/|$))?)?"
 )
 
-CATALOG_OWNER_ID_REGEX = r"/catalog/(?P<owner_id>[^\/]+)"
+CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/(?P<owner_id>.+)"
 
 
 def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=too-many-branches
@@ -55,25 +55,32 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
     if path == "/catalog/search":
         return "/search", ids_dict
 
+    if path == "/catalog/collections" and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
+        return "/collections", ids_dict
+
+    if path == "/catalog/queryables":
+        return "/queryables", ids_dict
+
     # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
-    # To catch the endpoint /catalog/{owner_id}
+    # To catch the endpoint /catalog/catalogs/{owner_id}
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
         groups = match.groupdict()
-        if groups["owner_id"] == "collections":  # To not confuse /catalog/{owner_id} with /catalog/collections
-            return "/collections", ids_dict
+        ids_dict["owner_id"] = groups["owner_id"]
         return "/", ids_dict
 
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
-        if ":" in groups["owner_collection_id"]:
+        if groups["owner_collection_id"] and ":" in groups["owner_collection_id"]:
             ids_dict["owner_id"], ids_dict["collection_id"] = map(
                 lambda x: x.lstrip("/"),
                 groups["owner_collection_id"].split(":"),
             )
         # /catalog/collections/owner:collection case is the same for PUT / POST / DELETE, but needs different paths
-        if groups["items"] is None and method != "DELETE":
+        if groups["item_id"] is None and method == "PUT":
             path = "/collections"
+        elif groups["items"] is None and method != "DELETE":
+            path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}"
         else:
             ids_dict["item_id"] = groups["item_id"]
             if ids_dict["item_id"] is None:
@@ -108,13 +115,14 @@ def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = 
     if path == "/":
         return f"/catalog/{user}"
     if path == "/collections":
-        return f"/catalog/{user}/collections"
+        return f"/catalog/{user}/collections"  # /catalog/collections
     if path == f"/collections/{user}_{collection_id}":
-        return f"/catalog/{user}/collections/{collection_id}"
+        return f"/catalog/{user}/collections/{collection_id}"  # /catalog/collection/{user}:{collection_id}
     if path == f"/collections/{user}_{collection_id}/items":
-        return f"/catalog/{user}/collections/{collection_id}/items"
+        return f"/catalog/{user}/collections/{collection_id}/items"  # /catalog/collection/{user}:{collection_id}/items
     if f"/collections/{user}_{collection_id}/items" in path:  # /catalog/.../items/item_id
         return f"/catalog/{user}/collections/{collection_id}/items/{feature_id}"
+        # /catalog/collections/{user}:{collection_id}/items/{feature_id}
     return path
 
 

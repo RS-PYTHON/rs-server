@@ -14,15 +14,20 @@
 
 """Unit tests for the authentication."""
 
+import json
+
 import pytest
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import APIKEY_HEADER, apikey_security, ttl_cache
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import State
-from starlette.status import HTTP_200_OK, HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN
-
-from tests.conftest import RSPY_LOCAL_MODE, Envs  # pylint: disable=no-name-in-module
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+)
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -31,8 +36,8 @@ RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 VALID_APIKEY = "VALID_API_KEY"
 WRONG_APIKEY = "WRONG_APIKEY"
 
-# Used to parametrize the fastapi_app fixture from conftest, with request.param.envs = {RSPY_LOCAL_MODE: False}
-CLUSTER_ENV = Envs(envs={RSPY_LOCAL_MODE: False})
+# Parametrize the fastapi_app fixture from conftest to enable authentication
+CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 
 logger = Logging.default(__name__)
 
@@ -64,7 +69,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     )
 
     # Check the apikey_security result
-    await apikey_security(dummy_request, VALID_APIKEY)
+    await apikey_security(dummy_request, VALID_APIKEY)  # , "")
     assert dummy_request.state.auth_roles == initial_response["iam_roles"]
     assert dummy_request.state.auth_config == initial_response["config"]
 
@@ -79,23 +84,21 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
 
     # Still the initial response !
     for _ in range(100):
-        await apikey_security(dummy_request, VALID_APIKEY)
+        await apikey_security(dummy_request, VALID_APIKEY)  # , "")
         assert dummy_request.state.auth_roles == initial_response["iam_roles"]
         assert dummy_request.state.auth_config == initial_response["config"]
 
     # We have to clear the cache to obtain the modified response
     ttl_cache.clear()
-    await apikey_security(dummy_request, VALID_APIKEY)
+    await apikey_security(dummy_request, VALID_APIKEY)  # , "")
     assert dummy_request.state.auth_roles == modified_response["iam_roles"]
     assert dummy_request.state.auth_config == modified_response["config"]
 
 
-# Use the fastapi_app fixture from conftest, parametrized with request.param.envs = {RSPY_LOCAL_MODE: False}
-@pytest.mark.parametrize("fastapi_app", [CLUSTER_ENV], indirect=["fastapi_app"], ids=["cluster_mode"])
+@pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
 async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPXMock):
     """
     Test that all the http endpoints are protected and return 403 if not authenticated.
-    Set RSPY_LOCAL_MODE to False before running the fastapi app.
     """
 
     # Mock the uac manager url
@@ -141,24 +144,42 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
                 == HTTP_403_FORBIDDEN
             )
 
+            # Idem by passing the api key by url query parameter (disabled for now)
+            # assert (
+            #     client.request(method, endpoint, params={APIKEY_QUERY: VALID_APIKEY}).status_code \
+            #     != HTTP_403_FORBIDDEN
+            # )
+            # assert (
+            #     client.request(method, endpoint, params={APIKEY_QUERY: WRONG_APIKEY}).status_code \
+            #     == HTTP_403_FORBIDDEN
+            # )
+
+
+UNKNOWN_CADIP_STATION = "unknown-cadip-station"
 
 ADGS_STATIONS = ["adgs"]
-CADIP_STATIONS = ["ins", "mps", "mti", "nsg", "sgs", "cadip"]
+CADIP_STATIONS = ["ins", "mps", "mti", "nsg", "sgs", "cadip", UNKNOWN_CADIP_STATION]
 
 DATE_PARAM = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
 NAME_PARAM = {"name": "TEST_FILE.raw"}
 
 
-# Use the fastapi_app fixture from conftest, parametrized with request.param.envs = {RSPY_LOCAL_MODE: False}
 @pytest.mark.parametrize(
     "fastapi_app, endpoint, method, stations, query_params, expected_role",
     [
-        [CLUSTER_ENV, "/adgs/aux/search", "GET", ADGS_STATIONS, DATE_PARAM, "rs_adgs_read"],
-        [CLUSTER_ENV, "/adgs/aux", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
-        [CLUSTER_ENV, "/adgs/aux/status", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
-        [CLUSTER_ENV, "/cadip/{station}/cadu/search", "GET", CADIP_STATIONS, DATE_PARAM, "rs_cadip_{station}_read"],
-        [CLUSTER_ENV, "/cadip/{station}/cadu", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_{station}_download"],
-        [CLUSTER_ENV, "/cadip/{station}/cadu/status", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_{station}_download"],
+        [CLUSTER_MODE, "/adgs/aux/search", "GET", ADGS_STATIONS, DATE_PARAM, "rs_adgs_read"],
+        [CLUSTER_MODE, "/adgs/aux", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
+        [CLUSTER_MODE, "/adgs/aux/status", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
+        [CLUSTER_MODE, "/cadip/{station}/cadu/search", "GET", CADIP_STATIONS, DATE_PARAM, "rs_cadip_{station}_read"],
+        [CLUSTER_MODE, "/cadip/{station}/cadu", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_{station}_download"],
+        [
+            CLUSTER_MODE,
+            "/cadip/{station}/cadu/status",
+            "GET",
+            CADIP_STATIONS,
+            NAME_PARAM,
+            "rs_cadip_{station}_download",
+        ],
     ],
     indirect=["fastapi_app"],
     ids=[
@@ -170,7 +191,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         "/cadip/{station}/cadu/status",
     ],
 )
-async def test_authentication_roles(  # pylint: disable=too-many-arguments
+async def test_authentication_roles(  # pylint: disable=too-many-arguments,too-many-locals
     fastapi_app,  # pylint: disable=unused-argument
     client,
     monkeypatch,
@@ -183,25 +204,30 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
 ):
     """
     Test that the api key has the right roles for the http endpoints.
-    Set RSPY_LOCAL_MODE to False before running the fastapi app.
     """
 
     # Mock the uac manager url
     monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
-    def mock_uac_response(json: dict):
+    def mock_uac_response(_json: dict):
         """Mock the UAC response. Clear the cached response everytime."""
         ttl_cache.clear()
         httpx_mock.add_response(
             url=RSPY_UAC_CHECK_URL,
             match_headers={APIKEY_HEADER: VALID_APIKEY},
             status_code=HTTP_200_OK,
-            json=json,
+            json=_json,
         )
 
-    def client_request(station_endpoint: str):
+    def client_request(station_endpoint: str):  # , by_headers: bool):
         """Request endpoint."""
+        # if by_headers:
         return client.request(method, station_endpoint, params=query_params, headers={APIKEY_HEADER: VALID_APIKEY})
+        # # Else, by query param (disabled for now)
+        # return client.request(method, station_endpoint, params={**query_params, APIKEY_QUERY: VALID_APIKEY})
+
+    # Test the api key passed in http header then url query parameter (disabled for now)
+    # for by_headers in [True, False]:
 
     # for each cadip station or just "adgs"
     for station in stations:
@@ -211,9 +237,18 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
 
         logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
 
-        # With no roles, we should receive an unauthorized response
+        # With no roles ...
         mock_uac_response({"iam_roles": [], "config": {}, "user_login": {}})
-        assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
+        response = client_request(station_endpoint)
+
+        # Test the error message with an unknown cadip station
+        if station == UNKNOWN_CADIP_STATION:
+            assert response.status_code == HTTP_400_BAD_REQUEST
+            assert f"Unknown CADIP station: {station!r}" in json.loads(response.content)["detail"]
+            break  # no need to test the other endpoints
+
+        # Else, with a valid station, we should receive an unauthorized response
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
         # Idem with non-relevant roles
         mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}, "user_login": {}})
@@ -221,8 +256,14 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments
 
         # With the right expected role, we should be authorized (no 401 or 403)
         mock_uac_response({"iam_roles": [station_role], "config": {}, "user_login": {}})
-        assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+        assert client_request(station_endpoint).status_code not in (
+            HTTP_401_UNAUTHORIZED,
+            HTTP_403_FORBIDDEN,
+        )
 
         # It should also work if other random roles are present
         mock_uac_response({"iam_roles": [station_role, "any", "other", "role"], "config": {}, "user_login": {}})
-        assert client_request(station_endpoint).status_code not in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+        assert client_request(station_endpoint).status_code not in (
+            HTTP_401_UNAUTHORIZED,
+            HTTP_403_FORBIDDEN,
+        )

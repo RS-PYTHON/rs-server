@@ -14,7 +14,6 @@
 
 """Common fixture for catalog service."""
 
-import json
 import os
 import os.path as osp
 import subprocess  # nosec ignore security issue
@@ -32,7 +31,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
-from rs_server_catalog.main import app
+from rs_server_catalog.main import app, extract_openapi_specification
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
 
@@ -44,6 +43,9 @@ subprocess.run(
     check=False,
     shell=False,
 )  # nosec ignore security issue
+
+app.openapi = extract_openapi_specification
+app.openapi()
 
 
 def is_db_up(db_url: str) -> bool:
@@ -295,8 +297,8 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
         },
     )
     yield
-    # teardown cleanup
-    if json.loads(client.get("/catalog/collections/fixture_owner:fixture_collection").content)["collections"]:
+    # teardown cleanup, delete collection only if it exists (was not removed in test => status is 200)
+    if client.get("/catalog/collections/fixture_owner:fixture_collection").status_code != 200:
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
 
