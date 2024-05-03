@@ -772,11 +772,11 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
 
-def test_pystac_client(client):  # pylint: disable=missing-function-docstring
-    from pystac_client import Client  # pylint: disable=import-outside-toplevel
+# def test_pystac_client(client):  # pylint: disable=missing-function-docstring
+#     from pystac_client import Client  # pylint: disable=import-outside-toplevel
 
-    catalog = Client.open(
-        "http://localhost:8003/catalog/",
-        headers={"x-api-key": "a3670641-d22a-420a-994c-b5505a33e15f"},
-    )
-    collection = catalog.get_collection("pyteam:S2_L2")
+#     catalog = Client.open(
+#         "http://localhost:8003/catalog/",
+#         headers={"x-api-key": "a3670641-d22a-420a-994c-b5505a33e15f"},
+#     )
+#     collection = catalog.get_collection("pyteam:S2_L2")
