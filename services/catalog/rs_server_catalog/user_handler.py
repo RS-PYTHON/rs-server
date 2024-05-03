@@ -30,12 +30,12 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
     """
     patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*"]
 
-    if path == "/":
-        raise ValueError(f"URL ({path}) is invalid.")
+    # if path == "/":
+    #     raise ValueError(f"URL ({path}) is invalid.")
 
     ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
 
-    if path == "/catalog/":
+    if path in ["/catalog/", "/"]:
         return "/", ids_dict
 
     if path == "/catalog/search":
@@ -99,15 +99,17 @@ def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = 
         str: The RS server frontend endpoint.
     """
     if path == "/":
-        return f"/catalog/{user}"
+        return f"/catalog/catalogs/{user}"
     if path == "/collections":
-        return f"/catalog/{user}/collections"
+        return f"/catalog/collections"
     if path == f"/collections/{user}_{collection_id}":
         return f"/catalog/collections/{user}:{collection_id}"
     if path == f"/collections/{user}_{collection_id}/items":
         return f"/catalog/collections/{user}:{collection_id}/items"
-    if f"/collections/{user}_{collection_id}/items" in path:  # /catalog/.../items/item_id
-        return f"/catalog/collections/{user}{collection_id}/items/{feature_id}"
+    if (
+        f"/collections/{user}_{collection_id}/items" in path or f"/collections/{collection_id}/items" in path
+    ):  # /catalog/.../items/item_id
+        return f"/catalog/collections/{user}:{collection_id}/items/{feature_id}"
     return path
 
 

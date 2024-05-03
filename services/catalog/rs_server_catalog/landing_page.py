@@ -29,7 +29,7 @@ def add_catalogs(request: Request, auth_roles: list, user_login: str, content: d
             if user_login != groups["owner_id"] and groups["collection_id"] == "*" and groups["right_type"] == "read":
 
                 urls = str(request.url).split("?")  # split by query params
-                href = f"{urls[0]}{groups['owner_id']}"
+                href = f"{urls[0]}catalogs/{groups['owner_id']}"
 
                 # To be discussed: maybe we should add the query params (urls[1:])
                 # but I guess we should not add e.g. the apikey because it's confidential.
@@ -46,11 +46,12 @@ def add_catalogs(request: Request, auth_roles: list, user_login: str, content: d
     return content
 
 
-def get_unauthorized_collections_links(auth_roles: list, content: dict) -> list:
+def get_unauthorized_collections_links(auth_roles: list, user_login: str, content: dict) -> list:
     """This function uses the authorisation roles list to get all unauthorized collections.
 
     Args:
-        auth_roles (list): list of roles of the api-key.
+        auth_roles (list): List of roles of the api-key.
+        user_login (str): The api-key owner.
         content (dict): The landing page.
 
     Returns:
@@ -59,9 +60,14 @@ def get_unauthorized_collections_links(auth_roles: list, content: dict) -> list:
     catalog_read_right_pattern = (
         r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
     )
+    collection_pattern = r"(?P<owner_id>.*?)_(?P<collection_id>.*)"
     # Delete all collections that the user does not have access to.
     unauthorized_collections = []
     for link in content["links"]:  # Only check child links.
+        owner_id = ""
+        if "title" in link and (match := re.match(collection_pattern, link["title"])):
+            groups = match.groupdict()
+            owner_id = groups["owner_id"]
         authorized = 0
         if link["rel"] == "child":
             for role in auth_roles:  # Check in the authorisations list if the link is allowed to the user.
@@ -74,7 +80,7 @@ def get_unauthorized_collections_links(auth_roles: list, content: dict) -> list:
                     ):
                         authorized = 1
                         break
-            if not authorized:
+            if not authorized and user_login != owner_id:
                 unauthorized_collections.append(link)
     return unauthorized_collections
 
@@ -130,7 +136,7 @@ def manage_landing_page(
         if not auth_roles:
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-    unauthorized_collections = get_unauthorized_collections_links(auth_roles, content)
+    unauthorized_collections = get_unauthorized_collections_links(auth_roles, user_login, content)
 
     content["links"] = [link for link in content["links"] if link not in unauthorized_collections]
     return content

@@ -80,7 +80,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
     valid_links = [
         {"rel": "self", "type": "application/json", "href": "http://testserver/"},
         {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-        {"rel": "data", "type": "application/json", "href": "http://testserver/collections"},
+        {"rel": "data", "type": "application/json", "href": "http://testserver/catalog/collections"},
         {
             "rel": "conformance",
             "type": "application/json",
@@ -105,19 +105,19 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "child",
             "type": "application/json",
             "title": "toto_S1_L1",
-            "href": "http://testserver/collections/toto_S1_L1",
+            "href": "http://testserver/catalog/collections/toto:S1_L1",
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "toto_S2_L3",
-            "href": "http://testserver/collections/toto_S2_L3",
+            "href": "http://testserver/catalog/collections/toto:S2_L3",
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "titi_S2_L1",
-            "href": "http://testserver/collections/titi_S2_L1",
+            "href": "http://testserver/catalog/collections/titi:S2_L1",
         },
         {
             "rel": "service-desc",
@@ -131,7 +131,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "title": "OpenAPI service documentation",
             "href": "http://testserver/api.html",
         },
-        {"rel": "child", "type": "application/json", "href": "http://testserver/catalog/toto"},
+        {"rel": "child", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
     ]
     # Pass the api key in HTTP headers then in url query parameter
     for pass_the_apikey in PASS_THE_APIKEY:
@@ -143,7 +143,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
     valid_links = [
         {"rel": "self", "type": "application/json", "href": "http://testserver/"},
         {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-        {"rel": "data", "type": "application/json", "href": "http://testserver/collections"},
+        {"rel": "data", "type": "application/json", "href": "http://testserver/catalog/collections"},
         {
             "rel": "conformance",
             "type": "application/json",
@@ -168,13 +168,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "child",
             "type": "application/json",
             "title": "toto_S1_L1",
-            "href": "http://testserver/collections/toto_S1_L1",
+            "href": "http://testserver/catalog/collections/toto:S1_L1",
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "toto_S2_L3",
-            "href": "http://testserver/collections/toto_S2_L3",
+            "href": "http://testserver/catalog/collections/toto:S2_L3",
         },
         {
             "rel": "service-desc",
@@ -236,14 +236,14 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "items",
                     "type": "application/geo+json",
-                    "href": "http://testserver/collections/toto_S1_L1/items",
+                    "href": "http://testserver/catalog/collections/toto:S1_L1/items",
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-                {"rel": "self", "type": "application/json", "href": "http://testserver/collections/toto_S1_L1"},
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
+                {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/collections/toto:S1_L1"},
                 {
                     "rel": "items",
-                    "href": "http://localhost:8082/collections/S1_L1/items",
+                    "href": "http://localhost:8082/catalog/collections/toto:S1_L1/items/",
                     "type": "application/geo+json",
                 },
                 {
@@ -268,14 +268,14 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "items",
                     "type": "application/geo+json",
-                    "href": "http://testserver/collections/toto_S2_L3/items",
+                    "href": "http://testserver/catalog/collections/toto:S2_L3/items",
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-                {"rel": "self", "type": "application/json", "href": "http://testserver/collections/toto_S2_L3"},
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
+                {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/collections/toto:S2_L3"},
                 {
                     "rel": "items",
-                    "href": "http://localhost:8082/collections/S2_L3/items",
+                    "href": "http://localhost:8082/catalog/collections/toto:S2_L3/items/",
                     "type": "application/geo+json",
                 },
                 {
@@ -300,14 +300,14 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "items",
                     "type": "application/geo+json",
-                    "href": "http://testserver/collections/titi_S2_L1/items",
+                    "href": "http://testserver/catalog/collections/titi:S2_L1/items",
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-                {"rel": "self", "type": "application/json", "href": "http://testserver/collections/titi_S2_L1"},
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/titi"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/titi"},
+                {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/collections/titi:S2_L1"},
                 {
                     "rel": "items",
-                    "href": "http://localhost:8082/collections/S2_L1/items",
+                    "href": "http://localhost:8082/catalog/collections/titi:S2_L1/items/",
                     "type": "application/geo+json",
                 },
                 {
@@ -332,15 +332,23 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "items",
                     "type": "application/geo+json",
-                    "href": "http://testserver/collections/pyteam_S2_L1/items",
+                    "href": "http://testserver/catalog/collections/pyteam:S2_L1/items",
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-                {"rel": "self", "type": "application/json", "href": "http://testserver/collections/pyteam_S2_L1"},
-                {"rel": "items", "href": "http://testserver/collections/S2_L1/items", "type": "application/geo+json"},
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/pyteam"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/pyteam"},
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/collections/pyteam:S2_L1",
+                },
                 {
                     "rel": "items",
-                    "href": "http://localhost:8082/collections/S2_L1/items",
+                    "href": "http://testserver/catalog/collections/pyteam:S2_L1/items/",
+                    "type": "application/geo+json",
+                },
+                {
+                    "rel": "items",
+                    "href": "http://localhost:8082/catalog/collections/pyteam:S2_L1/items/",
                     "type": "application/geo+json",
                 },
                 {
@@ -387,18 +395,14 @@ class TestAuthenticationGetOneCollection:
                 {
                     "rel": "items",
                     "type": "application/geo+json",
-                    "href": "http://testserver/catalog/toto/collections/S1_L1/items",
+                    "href": "http://testserver/catalog/collections/toto:S1_L1/items",
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/toto"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/toto"},
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": "http://testserver/catalog/toto/collections/S1_L1",
-                },
+                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
+                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
+                {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/collections/toto:S1_L1"},
                 {
                     "rel": "items",
-                    "href": "http://localhost:8082/collections/S1_L1/items",
+                    "href": "http://localhost:8082/catalog/collections/toto:S1_L1/items/",
                     "type": "application/geo+json",
                 },
                 {

@@ -463,7 +463,7 @@ class UserCatalog:
         accessible_collections.extend(filter_collections(collections, user_login))
         return accessible_collections
 
-    async def manage_get_response(
+    async def manage_get_response(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
         request: Request,
         response: StreamingResponse,
@@ -489,17 +489,21 @@ class UserCatalog:
             except RuntimeError as e:
                 raise HTTPException(detail=f"Not authenticated... {e}", status_code=403) from e
         if request.scope["path"] == "/":
-            if (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
+            if common_settings.CLUSTER_MODE:  # /catalog and /catalog/catalogs/owner_id
                 content = manage_landing_page(request, auth_roles, user_login, content, user)
                 if hasattr(content, "status_code"):  # Unauthorized
                     return content
-            else:
-                # Manage local landing page of the catalog
-                i = 0
-                for i, link in enumerate(content['links']):
-                    link_parser = urlparse(link["href"])
-                    new_path = add_user_prefix(link_parser.path, user, "")
-                    content['links'][i]["href"] = link_parser._replace(path=new_path).geturl()
+            # Manage local landing page of the catalog
+            regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
+            for i, link in enumerate(content["links"]):
+                if link["rel"] == "data":
+                    collection = "/collections"
+                    link["href"] = link["href"][: (len(link["href"]) - len(collection))] + "/catalog/collections"
+                link_parser = urlparse(link["href"])
+                if match := re.match(regex_catalog, link_parser.path):
+                    groups = match.groupdict()
+                    new_path = add_user_prefix(link_parser.path, groups["owner_id"], groups["collection_id"])
+                    content["links"][i]["href"] = link_parser._replace(path=new_path).geturl()
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
@@ -516,6 +520,16 @@ class UserCatalog:
                     auth_roles,
                     user_login,
                 )
+                for collection in content["collections"]:
+                    owner_id = collection["owner"]
+                    collection_id = collection["id"][len(owner_id) + 1 :]
+                    for i, link in enumerate(collection["links"]):
+                        link_parser = urlparse(link["href"])
+                        new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
+                        collection["links"][i]["href"] = link_parser._replace(path=new_path).geturl()
+                self_parser = urlparse(content["links"][2]["href"])
+                content["links"][2]["href"] = self_parser._replace(path="/catalog/collections").geturl()
+
         elif (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
