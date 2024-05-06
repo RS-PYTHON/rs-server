@@ -101,7 +101,7 @@ def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = 
     if path == "/":
         return f"/catalog/catalogs/{user}"
     if path == "/collections":
-        return f"/catalog/collections"
+        return "/catalog/collections"
     if path == f"/collections/{user}_{collection_id}":
         return f"/catalog/collections/{user}:{collection_id}"
     if path == f"/collections/{user}_{collection_id}/items":
