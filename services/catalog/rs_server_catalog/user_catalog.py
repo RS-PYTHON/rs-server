@@ -522,7 +522,8 @@ class UserCatalog:
                 )
                 for collection in content["collections"]:
                     owner_id = collection["owner"]
-                    collection_id = collection["id"][len(owner_id) + 1 :]
+                    size_owner_id = len(owner_id) + 1
+                    collection_id = collection["id"][size_owner_id:]
                     for i, link in enumerate(collection["links"]):
                         link_parser = urlparse(link["href"])
                         new_path = add_user_prefix(link_parser.path, owner_id, collection_id)

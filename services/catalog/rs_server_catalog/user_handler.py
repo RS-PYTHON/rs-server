@@ -11,6 +11,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 )
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/(?P<owner_id>.+)"
+CATALOG_COLLECTION = "/catalog/collections"
 
 
 def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=too-many-branches
@@ -41,7 +42,7 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
     if path == "/catalog/search":
         return "/search", ids_dict
 
-    if path == "/catalog/collections" and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
+    if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
         return "/collections", ids_dict
 
     if path == "/catalog/queryables":
@@ -78,7 +79,7 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
                 ids_dict["item_id"] = ids_dict["item_id"][1:]
                 path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items/{ids_dict['item_id']}"
 
-    elif path == "/catalog/collections":
+    elif path == CATALOG_COLLECTION:
         path = "/collections"
 
     elif "catalog" not in path and not any(re.match(pattern, path) for pattern in patterns):
@@ -101,7 +102,7 @@ def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = 
     if path == "/":
         return f"/catalog/catalogs/{user}"
     if path == "/collections":
-        return "/catalog/collections"
+        return CATALOG_COLLECTION
     if path == f"/collections/{user}_{collection_id}":
         return f"/catalog/collections/{user}:{collection_id}"
     if path == f"/collections/{user}_{collection_id}/items":
