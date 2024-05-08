@@ -21,6 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import os.path as osp
+import pdb
 import traceback
 from pathlib import Path
 from typing import Annotated, List, Union
@@ -150,6 +151,9 @@ def search_session(
     satellite: Union[List[str], None] = platform.split(",") if platform else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
 
+    if not session_id or satellite or (time_interval[0] and time_interval[1]):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
+
     try:
         products = init_cadip_provider(f"{station}_session").search(
             TimeRange(*time_interval),
@@ -170,6 +174,6 @@ def search_session(
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
     except json.JSONDecodeError as exception:
-        return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"JSON Map Error: {exception}")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"JSON Map Error: {exception}")
     except ValueError:
-        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unable to map OData to STAC.")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unable to map OData to STAC.")
