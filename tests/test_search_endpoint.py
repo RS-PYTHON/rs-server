@@ -450,6 +450,7 @@ def test_valid_sessions_endpoint_request_list(
 
 @pytest.mark.unit
 def test_invalid_sessions_endpoint_request(client):
+    """Test cases with invalid requests send to /session endpoint"""
     # Test with missing all parameters
     assert client.get("/cadip/cadip/session").status_code == status.HTTP_400_BAD_REQUEST
     # Test only with start, without stop
