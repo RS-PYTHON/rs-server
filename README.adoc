@@ -57,3 +57,10 @@ It contains all the technical details to develop on the rs-server.
 == Licensing
 
 The code in this project is licensed under Apache License 2.0.
+
+
+'''
+
+image::/docs/images/banner_logo.jpg[71%, 71%]
+This project is funded by the EU and ESA.
+[.text-center]
