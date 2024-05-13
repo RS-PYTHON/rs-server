@@ -22,6 +22,7 @@ from threading import Lock
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
+from eodag.utils.exceptions import RequestError
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
@@ -119,20 +120,26 @@ class EodagProvider(Provider):
                         "completionTimeFromAscendingNode": str(between.end),
                     },
                 )
-            products, _ = self.client.search(
-                **mapped_search_args,  # type: ignore
-                provider=self.provider,
-                raise_errors=True,
-                **kwargs,
-            )
+            try:
+                products, _ = self.client.search(
+                    **mapped_search_args,  # type: ignore
+                    provider=self.provider,
+                    raise_errors=True,
+                    **kwargs,
+                )
+            except RequestError:
+                products = []
         else:
-            products, _ = self.client.search(
-                start=str(between.start),
-                end=str(between.end),
-                provider=self.provider,
-                raise_errors=True,
-                **kwargs,
-            )
+            try:
+                products, _ = self.client.search(
+                    start=str(between.start),
+                    end=str(between.end),
+                    provider=self.provider,
+                    raise_errors=True,
+                    **kwargs,
+                )
+            except RequestError:
+                products = []
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:
