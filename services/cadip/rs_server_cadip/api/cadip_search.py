@@ -150,7 +150,7 @@ def search_session(
     satellite: Union[List[str], None] = platform.split(",") if platform else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
 
-    if not session_id or satellite or (time_interval[0] and time_interval[1]):
+    if not (session_id or satellite or (time_interval[0] and time_interval[1])):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     try:
