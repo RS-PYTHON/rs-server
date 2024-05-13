@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check copyright license headers
     needs: changes
-    #if: ${{ needs.changes.outputs.code == 'true' }}
+    if: ${{ needs.changes.outputs.code == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - run: |
