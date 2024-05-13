@@ -58,6 +58,16 @@ jobs:
           >> $GITHUB_STEP_SUMMARY
       - uses: pre-commit/action@v3.0.1
 
+  check-license:
+    runs-on: ubuntu-latest
+    name: Check copyright license headers
+    needs: changes
+    #if: ${{ needs.changes.outputs.code == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          docker run -v ${{ github.workspace }}:/src ghcr.io/google/addlicense -check .
+
   check-linting:
     runs-on: ubuntu-latest
     name: Check linting (pylint, flake8)
