@@ -28,7 +28,7 @@ include = [
 python = "^3.11"
 stac-fastapi-pgstac = "==2.4.11" # TODO: update to 2.5.0
 uvicorn = "^0.29.0"
-moto = "==5.0.6"
+moto = "==5.0.7"
 flask = "^3.0.3"
 flask-cors = "^4.0.0"
 pytest-mock = "^3.14.0"
