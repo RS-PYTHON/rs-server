@@ -132,7 +132,8 @@ def search_session(
     id: Annotated[
         Union[str, None],
         Query(
-            description='Session identifier eg: "S1A_20200105072204051312" or "S1A_20200105072204051312, S1A_20220715090550123456"',
+            description='Session identifier eg: "S1A_20200105072204051312" or '
+            '"S1A_20200105072204051312, S1A_20220715090550123456"',
         ),
     ] = None,
     platform: Annotated[Union[str, None], Query(description='Satellite identifier eg: "S1A" or "S1A, S1B"')] = None,
