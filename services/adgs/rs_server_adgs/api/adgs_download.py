@@ -81,7 +81,7 @@ def download_products(
     request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="AUX product name")],
     local: Annotated[str | None, Query(description="Local download directory")] = None,
-    obs: Annotated[str | None, Query(description="Object storage path e.g. 's3://bucket-name/sub/dir'")] = None,
+    obs: Annotated[str | None, Query(description='Object storage path e.g. "s3://bucket-name/sub/dir"')] = None,
     db: Session = Depends(get_db),
 ):
     """Initiate an asynchronous download process for an ADGS product using EODAG.
