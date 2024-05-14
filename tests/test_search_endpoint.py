@@ -457,8 +457,7 @@ def test_invalid_sessions_endpoint_request(client):
     assert client.get("/cadip/cadip/session?start_date=2020-02-16T12:00:00Z").status_code == status.HTTP_400_BAD_REQUEST
     assert client.get("/cadip/cadip/session?stop_date=2020-02-16T12:00:00Z").status_code == status.HTTP_400_BAD_REQUEST
     # Test with platform and only start_date, should work since platform=S1A is valid
-    with pytest.raises(Exception):
-        assert (
-            client.get("/cadip/cadip/session?platform=S1A&start_date=2020-02-16T12:00:00Z").status_code
-            != status.HTTP_400_BAD_REQUEST
-        )
+    assert (
+        client.get("/cadip/cadip/session?platform=S1A&start_date=2020-02-16T12:00:00Z").status_code
+        != status.HTTP_400_BAD_REQUEST
+    )

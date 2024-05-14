@@ -19,9 +19,11 @@ import shutil
 import tempfile
 from pathlib import Path
 from threading import Lock
+from typing import List, Union
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
+from eodag.utils.exceptions import RequestError
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
@@ -73,7 +75,7 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
-    def _specific_search(self, between: TimeRange, **kwargs) -> SearchResult:
+    def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
         """
         Conducts a search for products within a specified time range.
 
@@ -119,20 +121,26 @@ class EodagProvider(Provider):
                         "completionTimeFromAscendingNode": str(between.end),
                     },
                 )
-            products, _ = self.client.search(
-                **mapped_search_args,  # type: ignore
-                provider=self.provider,
-                raise_errors=True,
-                **kwargs,
-            )
+            try:
+                products, _ = self.client.search(
+                    **mapped_search_args,  # type: ignore
+                    provider=self.provider,
+                    raise_errors=True,
+                    **kwargs,
+                )
+            except RequestError:
+                return []
         else:
-            products, _ = self.client.search(
-                start=str(between.start),
-                end=str(between.end),
-                provider=self.provider,
-                raise_errors=True,
-                **kwargs,
-            )
+            try:
+                products, _ = self.client.search(
+                    start=str(between.start),
+                    end=str(between.end),
+                    provider=self.provider,
+                    raise_errors=True,
+                    **kwargs,
+                )
+            except RequestError:
+                return []
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:
