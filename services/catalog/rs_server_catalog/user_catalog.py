@@ -491,13 +491,13 @@ class UserCatalog:
         return collection["id"][size_owner_id:]
 
     def update_links_for_all_collections(self, collections: list[dict]) -> list[dict]:
-        """_summary_
+        """Update the links for the endpoint /catalog/collections.
 
         Args:
-            collections (list[dict]): _description_
+            collections (list[dict]): all the collections to be updated.
 
         Returns:
-            list[dict]: _description_
+            list[dict]: all the collections after the links updated.
         """
         for collection in collections:
             owner_id = collection["owner"]
