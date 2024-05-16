@@ -1,3 +1,17 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """FastAPI application using PGStac.
 
 Enables the extensions specified as a comma-delimited list in
@@ -7,6 +21,7 @@ If the variable is not set, enables all extensions.
 
 import asyncio
 import os
+import traceback
 from os import environ as env
 from typing import Callable
 
@@ -14,7 +29,7 @@ import httpx
 from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, Request
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalogMiddleware
@@ -41,7 +56,9 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
 
@@ -183,7 +200,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         # Only in cluster mode (not local mode) and for the catalog endpoints
         if (common_settings.CLUSTER_MODE) and request.url.path.startswith("/catalog"):
 
-            # Check the api key validity, passed in HTTP header or url query parameter (disabled for now)
+            # Check the api key validity, passed in HTTP header
             await authentication.apikey_security(
                 request=request,
                 apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
@@ -191,6 +208,38 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
 
         # Call the next middleware
         return await call_next(request)
+
+
+class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """
+    In FastAPI we can raise HttpExceptions in the middle of the python code, instead of returning a JSONResponse.
+    But that doesn't work well in the middlewares: a response with error 500 is returned instead of the
+    original HttpException status code. So we handle this by making the conversion manually.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """
+        Middleware implementation.
+        """
+
+        try:
+            return await call_next(request)  # Call the next middleware
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+
+            # Print the error with the stacktrace in the log
+            logger.error(traceback.format_exc())
+
+            # Get the status code and content from the HTTPException
+            if isinstance(exception, StarletteHTTPException):
+                status_code = exception.status_code
+                content = exception.detail
+
+            # Else use a generic status code, and content = exception message
+            else:
+                status_code = HTTP_500_INTERNAL_SERVER_ERROR
+                content = repr(exception)
+
+            return JSONResponse(status_code=status_code, content=content)
 
 
 api = StacApi(
@@ -206,6 +255,7 @@ api = StacApi(
         CORSMiddleware,
         ProxyHeaderMiddleware,
         AuthenticationMiddleware,
+        DontRaiseExceptions,
     ],
 )
 app = api.app

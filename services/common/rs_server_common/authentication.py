@@ -1,3 +1,17 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Authentication functions implementation.
 
@@ -106,18 +120,8 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict, dict]:
     # Read the api key info
     if response.is_success:
         contents = response.json()
-        str_roles, config, user_login = contents["iam_roles"], contents["config"], contents["user_login"]
-
-        # Convert IAM roles to enum
-        roles = []
-        for role in str_roles:
-            try:
-                roles.append(role)
-            except KeyError:
-                logger.warning(f"Unknown IAM role: {role!r}")
-
         # Note: for now, config is an empty dict
-        return roles, config, user_login
+        return contents["iam_roles"], contents["config"], contents["user_login"]
 
     # Try to read the response detail or error
     try:

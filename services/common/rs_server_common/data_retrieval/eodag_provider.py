@@ -1,3 +1,17 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """EODAG Provider."""
 
 import os
@@ -5,9 +19,11 @@ import shutil
 import tempfile
 from pathlib import Path
 from threading import Lock
+from typing import List, Union
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
+from eodag.utils.exceptions import RequestError
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
@@ -59,7 +75,7 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
-    def _specific_search(self, between: TimeRange, **kwargs) -> SearchResult:
+    def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
         """
         Conducts a search for products within a specified time range.
 
@@ -105,20 +121,26 @@ class EodagProvider(Provider):
                         "completionTimeFromAscendingNode": str(between.end),
                     },
                 )
-            products, _ = self.client.search(
-                **mapped_search_args,  # type: ignore
-                provider=self.provider,
-                raise_errors=True,
-                **kwargs,
-            )
+            try:
+                products, _ = self.client.search(
+                    **mapped_search_args,  # type: ignore
+                    provider=self.provider,
+                    raise_errors=True,
+                    **kwargs,
+                )
+            except RequestError:
+                return []
         else:
-            products, _ = self.client.search(
-                start=str(between.start),
-                end=str(between.end),
-                provider=self.provider,
-                raise_errors=True,
-                **kwargs,
-            )
+            try:
+                products, _ = self.client.search(
+                    start=str(between.start),
+                    end=str(between.end),
+                    provider=self.provider,
+                    raise_errors=True,
+                    **kwargs,
+                )
+            except RequestError:
+                return []
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:

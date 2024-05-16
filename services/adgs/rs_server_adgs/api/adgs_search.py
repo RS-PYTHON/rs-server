@@ -1,3 +1,17 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Module for interacting with ADGS system through a FastAPI APIRouter.
 
 This module provides functionality to retrieve a list of products from the ADGS stations.
@@ -35,7 +49,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 @apikey_validator(station="adgs", access_type="read")
 def search_products(  # pylint: disable=too-many-locals
     request: Request,  # pylint: disable=unused-argument
-    datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
+    datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
 ) -> list[dict] | dict:
