@@ -758,11 +758,16 @@ class UserCatalog:
 
         # Don't forward responses that fail
         if response.status_code != 200:
-            if response is not None:
-                body = [chunk async for chunk in response.body_iterator]
-                response_content = json.loads(b"".join(body).decode())  # type:ignore
-                self.clear_catalog_bucket(response_content)
-            return response
+            if response is None:
+                return None
+
+            # Read the body. WARNING: after this, the body cannot be read a second time.
+            body = [chunk async for chunk in response.body_iterator]
+            response_content = json.loads(b"".join(body).decode())  # type:ignore
+            self.clear_catalog_bucket(response_content)
+
+            # Return a regular JSON response instead of StreamingResponse because the body cannot be read again.
+            return JSONResponse(status_code=response.status_code, content=response_content)
 
         # Handle responses
         if request.scope["path"] == "/search":
