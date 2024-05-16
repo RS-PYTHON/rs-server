@@ -30,7 +30,7 @@ The middleware:
 import json
 import os
 import re
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
@@ -307,6 +307,8 @@ class UserCatalog:
         Returns:
             Request: the new request with the collection name updated.
         """
+        auth_roles = []
+        user_login = ""
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
@@ -371,6 +373,7 @@ class UserCatalog:
         Returns:
             Response: The updated response.
         """
+        filters: Optional[Node] = None
         owner_id, collection_id = "", ""
         if request.method == "GET":
             query = parse_qs(request.url.query)
@@ -402,6 +405,8 @@ class UserCatalog:
         Returns:
             Request: The request updated.
         """
+        user_login = ""
+        auth_roles = []
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
@@ -615,6 +620,8 @@ class UserCatalog:
             the response content with the appropriate status code.
 
         """
+        user_login = ""
+        auth_roles = []
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
@@ -708,6 +715,8 @@ class UserCatalog:
         Returns:
             bool: Return True if the deletion is allowed, False otherwise.
         """
+        user_login = ""
+        auth_roles = []
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
