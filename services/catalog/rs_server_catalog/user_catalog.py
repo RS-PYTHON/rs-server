@@ -522,7 +522,7 @@ class UserCatalog:
                 )
                 for collection in content["collections"]:
                     owner_id = collection["owner"]
-                    size_owner_id = len(owner_id) + 1
+                    size_owner_id = int(len(owner_id) + 1)
                     collection_id = collection["id"][size_owner_id:]
                     for i, link in enumerate(collection["links"]):
                         link_parser = urlparse(link["href"])
