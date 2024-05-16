@@ -428,7 +428,7 @@ class UserCatalog:
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr_msg
 
-    def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
+    def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list[dict]:
         """Return the list of all collections accessible by the user calling it.
 
         Args:
@@ -522,8 +522,12 @@ class UserCatalog:
                 )
                 for collection in content["collections"]:
                     owner_id = collection["owner"]
-                    size_owner_id = int(len(owner_id) + 1)
-                    collection_id = collection["id"][size_owner_id:]
+                    size_owner_id = int(
+                        len(owner_id) + 1,
+                    )  # example: if collection['id']=='toto_S1_L1' then size_owner_id=len('toto_')==len('toto')+1.
+                    collection_id = collection["id"][
+                        size_owner_id:
+                    ]  # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
                     for i, link in enumerate(collection["links"]):
                         link_parser = urlparse(link["href"])
                         new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
