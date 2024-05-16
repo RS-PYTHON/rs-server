@@ -22,6 +22,30 @@ None
 
 None
 
+== [0.1a9] - 2024-05-15
+
+=== Added
+
+* RSPY-130: Deploy Grafana on K8S cluster
+* RSPY-133: Deploy Prefect Workers on K8S cluster
+* RSPY-148: CadipClient Class Python development
+* RSPY-149: AuxipClient Class Python development
+* RSPY-158: RsClient Class Python development
+* RSPY-174: [EODAG] download in parallel on the same machine or container
+* RSPY-181: Deployment: label not well set by deployment script
+* RSPY-196: Platform deployment: error keycloak realm import
+* RSPY-213: Improve error handling in catalog
+* RSPY-218: Sprint 9 corrections of issues
+* RSPY-220: Kubectl commands with kubectl OIDC not working
+* RSPY-224: RS-Server: missing resources tag in yaml
+* RSPY-225: RS-Server: No image version reference
+* RSPY-227: Add missing unit tests for * RSPY-120
+* RSPY-228: Add missing configuration for promtail
+* RSPY-229: Helm charts - Dynamic list based on values
+* RSPY-239: [Deployment] No JupiterHub image reachable from Validation platform
+* RSPY-240: [Deployment] No Secret Create during Wazuh Agent deployment
+* RSPY-242: [Cadip sessions] Unclear error message with GET /cadip/{station}/session
+
 == [0.1a8] - 2024-04-24
 
 === Added
