@@ -463,6 +463,40 @@ class UserCatalog:
         accessible_collections.extend(filter_collections(collections, user_login))
         return accessible_collections
 
+    def get_collection_id(self, collection: dict[str, str], size_owner_id: int) -> str:
+        """get the collection id with explicit typing
+
+        Args:
+            collection (dict[str, str]): The collection.
+            size_owner_id (int): The size of owner id.
+
+        Returns:
+            str: the collection id.
+        """
+        return collection["id"][size_owner_id:]
+
+    def update_links_for_all_collections(self, collections: list[dict]) -> list[dict]:
+        """_summary_
+
+        Args:
+            collections (list[dict]): _description_
+
+        Returns:
+            list[dict]: _description_
+        """
+        for collection in collections:
+            owner_id = collection["owner"]
+            size_owner_id = int(
+                len(owner_id) + 1,
+            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id=len('toto_')==len('toto')+1.
+            collection_id = self.get_collection_id(collection, size_owner_id)
+            # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
+            for i, link in enumerate(collection["links"]):
+                link_parser = urlparse(link["href"])
+                new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
+                collection["links"][i]["href"] = link_parser._replace(path=new_path).geturl()
+        return collections
+
     async def manage_get_response(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
         request: Request,
@@ -520,18 +554,7 @@ class UserCatalog:
                     auth_roles,
                     user_login,
                 )
-                for collection in content["collections"]:
-                    owner_id = collection["owner"]
-                    size_owner_id = int(
-                        len(owner_id) + 1,
-                    )  # example: if collection['id']=='toto_S1_L1' then size_owner_id=len('toto_')==len('toto')+1.
-                    collection_id = collection["id"][
-                        size_owner_id:
-                    ]  # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
-                    for i, link in enumerate(collection["links"]):
-                        link_parser = urlparse(link["href"])
-                        new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
-                        collection["links"][i]["href"] = link_parser._replace(path=new_path).geturl()
+                content["collections"] = self.update_links_for_all_collections(content["collections"])
                 self_parser = urlparse(content["links"][2]["href"])
                 content["links"][2]["href"] = self_parser._replace(path="/catalog/collections").geturl()
 
