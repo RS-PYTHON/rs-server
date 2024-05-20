@@ -3,7 +3,8 @@
 The following table describes the development technical stack
 and explains briefly the choices that have been made.
 
-[cols=3,options=header]
+
+[cols="3", options="header"]
 |===
 |Need
 |Chosen techno

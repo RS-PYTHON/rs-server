@@ -374,12 +374,12 @@ GET /adgs/aux/status?name=S2__OPER_AUX_ECMWFD_PDMC_20200216T120000_V20190217T090
 The following section groups all the endpoints a user can use to interact with a STAC-compatible database system.
 
 ---
-==== STAC Feature:
+=== STAC Feature:
 A STAC Feature represents a single geospatial asset or dataset. It encapsulates metadata describing the asset, including its spatial and temporal extent, properties, and links to associated data files. STAC Features provide a standardized way to describe individual geospatial datasets, making it easier to discover, access, and use such data across different platforms and tools.
 
 ---
 
-==== STAC Collection:
+=== STAC Collection:
 A STAC Collection is a logical grouping of related STAC Features. It serves as a container for organizing and categorizing similar datasets based on common characteristics, themes, or purposes. Collections can represent various geospatial data themes such as satellite imagery, aerial photography, or land cover classifications. They provide a structured framework for managing and querying multiple related datasets collectively, simplifying data organization and access workflows.
 
 ---
@@ -398,7 +398,7 @@ POST /catalog/collections
 ----
 
 .Collection body example
-[%collapsible]
+
 ====
 [source,json]
 ----
@@ -421,7 +421,7 @@ This endpoint returns a collection details based on parameters given in request.
 GET /catalog/collections/{ownerId:collectionId}
 ----
 .Get Collection result body example
-[%collapsible]
+
 ====
 [source,json]
 ----
@@ -486,7 +486,7 @@ PUT /catalog/collections/{ownerId:collectionId}
 ----
 
 .Updated collection JSON body example
-[%collapsible]
+
 ====
 [source,json]
 ----
@@ -517,7 +517,7 @@ RS-Server Backend also move assets between s3 storages and updates hypertext ref
 POST /catalog/collections/{ownerId:collectionId}/items
 ----
 .Feature body example
-[%collapsible]
+
 ====
 [source,json]
 ----
@@ -590,7 +590,7 @@ This endpoint returns a feature details based on parameters given in request.
 GET /catalog/collections/{ownerId:collectionId}/items/{featureID}
 ----
 .Get Feature result body example
-[%collapsible]
+
 ====
 [source,json]
 ----
