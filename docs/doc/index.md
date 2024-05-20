@@ -1,0 +1,48 @@
+User manual
+===========
+
+The overall architecture is described here:
+${include("users/architecture.adoc")}
+
+The main functionalities are explained here:
+${include("users/functionalities.adoc")}
+
+Developer manual
+================
+
+All you want to know when you are a rs-server developer.
+
+The documentation is organized in 4 sections:
+
+-   Tutorials to help you start coding on rs-server:
+
+    -   ${include("dev/environment/installation.adoc")}
+
+-   How to guides to provide practical common procedures
+
+    -   ${include("dev/doc-generation/how-to.adoc")}
+
+-   Reference guides give you technical information about the code and
+    software API:
+
+    -   ${include("dev/code-style.adoc")}
+
+    -   ${include("api/python/html/index.adoc")}
+
+    -   ${include("api/rest/index.adoc")}
+
+TODO include a link to the python API
+
+-   Additional information about the software, the team, the design,…
+
+    -   ${include("dev/background/tree-structure.adoc")}
+
+    -   ${include("dev/environment/description.adoc")}
+
+    -   ${include("dev/background/workflow.adoc")}
+
+    -   ${include("dev/background/ci.adoc")}
+
+    -   ${include("dev/design/design.adoc")}
+
+    -   ${include("dev/doc-generation/description.adoc")}
