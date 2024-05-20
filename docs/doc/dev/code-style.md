@@ -5,7 +5,7 @@ Pre-commit checks
 
 [pre-commit](https://pre-commit.com/) rules are configured to perform
 basic checks before each commit. You can install it on your workstation
-when [installing your environment](environment/installation.adoc). It is
+when [installing your environment](environment/installation.md). It is
 recommended to verify your code follows the project coding rules.
 
 Python style
@@ -64,7 +64,7 @@ Changelog
 
 The project changelog is produced following
 [keepchangelog](https://keepachangelog.com/) practices. Please keep the
-[changelog](../../CHANGELOG.adoc) up-to-date after each modification.
+[changelog](../../../CHANGELOG.adoc) up-to-date after each modification.
 
 Documentation
 =============

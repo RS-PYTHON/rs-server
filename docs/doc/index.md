@@ -2,10 +2,10 @@ User manual
 ===========
 
 The overall architecture is described here:
-${include("users/architecture.adoc")}
+[Architecture](users/architecture.md)
 
 The main functionalities are explained here:
-${include("users/functionalities.adoc")}
+[Functionalities](users/functionalities.md)
 
 Developer manual
 ================
@@ -16,33 +16,33 @@ The documentation is organized in 4 sections:
 
 -   Tutorials to help you start coding on rs-server:
 
-    -   ${include("dev/environment/installation.adoc")}
+    -   [Tutorials](dev/environment/installation.md)
 
 -   How to guides to provide practical common procedures
 
-    -   ${include("dev/doc-generation/how-to.adoc")}
+    -   [Guides](dev/doc-generation/how-to.md)
 
 -   Reference guides give you technical information about the code and
     software API:
 
-    -   ${include("dev/code-style.adoc")}
+    -   [Code style](dev/code-style.md)
 
-    -   ${include("api/python/html/index.adoc")}
+    -   [API Pyhton](api/python/html/index.md)
 
-    -   ${include("api/rest/index.adoc")}
+    -   [API Rest](api/rest/index.md)
 
 TODO include a link to the python API
 
 -   Additional information about the software, the team, the design,…
 
-    -   ${include("dev/background/tree-structure.adoc")}
+    -   [Tree structure](dev/background/tree-structure.md)
 
-    -   ${include("dev/environment/description.adoc")}
+    -   [Description](dev/environment/description.md)
 
-    -   ${include("dev/background/workflow.adoc")}
+    -   [Workflow](dev/background/workflow.md)
 
-    -   ${include("dev/background/ci.adoc")}
+    -   [CI](dev/background/ci.md)
 
-    -   ${include("dev/design/design.adoc")}
+    -   [Design](dev/design/design.md)
 
-    -   ${include("dev/doc-generation/description.adoc")}
+    -   [Description](dev/doc-generation/description.md)

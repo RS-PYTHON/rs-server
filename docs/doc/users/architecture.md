@@ -49,14 +49,14 @@ We can split the system into following Components:
 
     -   **Infrastructure security**
 
-![Static View](../images/staticview.png)
+![Static View](../../images/staticview.png)
 
 RS Client Libraries
 -------------------
 
-![Python Components](../images/python-components.png)
+![Python Components](../../images/python-components.png)
 
-![Python RS Client](../images/python-rs-client.png)
+![Python RS Client](../../images/python-rs-client.png)
 
 Dynamic View
 ============
@@ -64,9 +64,9 @@ Dynamic View
 The following schema highlights main interactions between the
 components.
 
-![Dynamic View](../images/dynamicview.png)
+![Dynamic View](../../images/dynamicview.png)
 
 STAC item lifecycle
 -------------------
 
-![Stac Item Lifecylce](../images/stac-item-lifecycle.png)
+![Stac Item Lifecylce](../../images/stac-item-lifecycle.png)
