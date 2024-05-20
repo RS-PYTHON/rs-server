@@ -52,7 +52,7 @@ We can split the system into following Components:
 ![Static View](../../images/staticview.png)
 
 RS Client Libraries
--------------------
+===================
 
 ![Python Components](../../images/python-components.png)
 
