@@ -1,4 +1,4 @@
-# RS-Server 
+# RS-Server
 Some short description here
 
 ## User manual
@@ -10,5 +10,3 @@ Here you can access the [documentation] for user
 
 Here you can access the [developer] manual
   [developer](developer_manual.md)
-
-

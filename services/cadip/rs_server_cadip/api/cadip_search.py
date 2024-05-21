@@ -77,7 +77,7 @@ def search_products(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
         HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
         HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
-        HTTPException (fastapi.exceptions): If there is a connection error to the station (requests.exceptions.ConnectionError).
+        HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
 
