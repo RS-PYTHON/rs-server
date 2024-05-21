@@ -119,7 +119,7 @@ class UserCatalog:
         """Used to clear specific files from catalog bucket."""
         if not self.handler:
             return
-        for asset in content["assets"]:
+        for asset in content.get("assets", {}):
             # For catalog bucket, data is already store into alternate:s3:href
             file_key = content["assets"][asset]["alternate"]["s3"]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
