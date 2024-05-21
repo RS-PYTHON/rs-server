@@ -371,7 +371,7 @@ class UserCatalog:
         Returns:
             Response: The updated response.
         """
-        owner_id, collection_id = "", ""
+        owner_id, collection_id, filters = "", "", ""
         if request.method == "GET":
             query = parse_qs(request.url.query)
             if "filter" in query:
