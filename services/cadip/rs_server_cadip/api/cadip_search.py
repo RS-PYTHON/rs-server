@@ -55,7 +55,7 @@ def search_products(  # pylint: disable=too-many-locals
     datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
+    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
