@@ -84,10 +84,11 @@ if [[ " $@ " == *" --run-services "* ]]; then
         -e OAUTH2_REALM=rspy \
         -e OAUTH2_CLIENT_ID=dummy_client_id \
         -e OAUTH2_CLIENT_SECRET=dummy_client_secret \
-        --health-cmd="wget --spider localhost:8000/health/status" --health-interval=2s --health-timeout=2s --health-retries=10 \
+        --health-cmd="wget --spider 127.0.0.1:8000/health/status" --health-interval=2s --health-timeout=2s --health-retries=10 \
 	    "$ak_image" \
     )&
     i=0
+    sleep 2
     while [[ $(docker inspect --format='{{.State.Health.Status}}' $ak_container) != healthy ]]; do
         sleep 2
         i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$ak_container'" && exit 1
