@@ -102,7 +102,21 @@ ttl_cache: TTLCache = TTLCache(maxsize=sys.maxsize, ttl=120)
 async def __apikey_security_cached(apikey_value) -> tuple[list, dict, dict]:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
+
+    This function serves as a cached version of apikey_security. It retrieves user access control information
+    from the User Authentication and Authorization Control (UAC) manager and caches the result for performance
+    optimization.
+
+    Args:
+        apikey_value (str): The API key value.
+
+    Returns:
+        tuple: A tuple containing user IAM roles, configuration data, and user login information.
+
+    Raises:
+        HTTPException: If there is an error connecting to the UAC manager or if the UAC manager returns an error.
     """
+
     # The uac manager check url is passed as an environment variable
     try:
         check_url = env["RSPY_UAC_CHECK_URL"]
@@ -140,18 +154,21 @@ async def __apikey_security_cached(apikey_value) -> tuple[list, dict, dict]:
 
 
 def apikey_validator(station, access_type):
-    """Decorator to validate API key access.
+    """Decorator to validate API key access for a specific station and access type.
+
+    This decorator checks if the authorization key contains the necessary role to access
+    the specified station with the specified access type.
 
     Args:
-        station (str): The station name = adgs or cadip
-        access_type (str): The type of access.
+        station (str): The name of the station, either "adgs" or "cadip".
+        access_type (str): The type of access, such as "download" or "read".
 
     Raises:
-        HTTPException: If the authorization key does not include the right role
-            to access the specified station.
+        HTTPException: If the authorization key does not include the required role
+            to access the specified station with the specified access type.
 
     Returns:
-        function: Decorator function.
+        function (Callable): The decorator function.
     """
 
     def decorator(func):

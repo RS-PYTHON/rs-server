@@ -36,10 +36,17 @@ def get_download_status(
 ):
     """
     Get a product download status from its ID or name.
-    \f
-    Args:
-        db (Session): database session
 
+    Args:
+        request (Request): The request object (unused).
+        name (str): The name of the AUX product.
+        db (Session): The database connection object.
+
+    Returns:
+        ReadDownloadStatus (DownloadStatus): The download status of the specified AUX product.
+
+    Raises:
+        HTTPException: If the product is not found in the database.
     """
 
     return AdgsDownloadStatus.get(name=name, db=db)
