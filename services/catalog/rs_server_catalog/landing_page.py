@@ -147,7 +147,7 @@ def manage_landing_page(
         content = add_catalogs(request, auth_roles, user_login, content)
     else:
         auth_roles = keep_only_owner_id_auth_role(auth_roles, owner_id)
-        if not auth_roles:
+        if not auth_roles and owner_id != user_login:
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
     unauthorized_collections = get_unauthorized_collections_links(auth_roles, user_login, content)
