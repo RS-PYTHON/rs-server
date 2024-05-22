@@ -1,5 +1,4 @@
-![Quality Gate
-Status](https://sonarqube.ops-csc.com/api/project_badges/measure?branch=develop&project=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&metric=alert_status&token=sqb_c9241ef82ea91a8e9a9b604570f834f622dfed05)
+![Quality Gate Status](https://sonarqube.ops-csc.com/api/project_badges/measure?branch=develop&project=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&metric=alert_status&token=sqb_c9241ef82ea91a8e9a9b604570f834f622dfed05)
 
 ---
 
@@ -8,7 +7,7 @@ Quick links
 
 -   Deployed services: <https://dev-rspy.esa-copernicus.eu/docs>
 
--   Online documentation: <https://rs-python.github.io/rs-server/>
+-   Online documentation: <https://rs-python.github.io/rs-documentation/rs-server/docs/doc/>
 
 -   SonarQube reports:
     <https://sonarqube.ops-csc.com/dashboard?id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&branch=develop>
