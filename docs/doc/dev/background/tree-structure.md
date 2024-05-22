@@ -11,11 +11,11 @@ The rs-server repository tree structure is given in the following graph
     |_ tests/
     |_ .gitignore
     |_ .pre-commit-config.yaml
-    |_ CHANGELOG.adoc
+    |_ CHANGELOG.md
     |_ LICENSE
     |_ poetry.lock
     |_ pyproject.toml
-    |_ README.adoc
+    |_ README.md
 
     end legend
 

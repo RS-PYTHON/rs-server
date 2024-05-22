@@ -1,6 +1,3 @@
-![Generate
-documentation](https://github.com/RS-PYTHON/rs-server/actions/workflows/generate-documentation.yml/badge.svg?branch=develop)
-
 ![Quality Gate
 Status](https://sonarqube.ops-csc.com/api/project_badges/measure?branch=develop&project=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&metric=alert_status&token=sqb_c9241ef82ea91a8e9a9b604570f834f622dfed05)
 
