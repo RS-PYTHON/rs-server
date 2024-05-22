@@ -59,9 +59,8 @@ Links
 
 -   Repository: <https://github.com/RS-PYTHON/rs-server>
 
--   Issue tracker:
-    [https://github.com/RS-PYTHON/rs-server/issues — In](https://github.com/RS-PYTHON/rs-server/issues — In)
-    case of sensitive bugs like security vulnerabilities, please contact
+-   Issue tracker: <(https://github.com/RS-PYTHON/rs-server/issues>
+    - In case of sensitive bugs like security vulnerabilities, please contact
     <my@email.com> directly instead of using issue tracker. We value
     your effort to improve the security and privacy of this project!
 
@@ -72,6 +71,6 @@ The code in this project is licensed under Apache License 2.0.
 
 ---
 
-![4%](/docs/images/banner_logo.jpg)
+![](/docs/images/banner_logo.jpg)
 
 This project is funded by the EU and ESA.
