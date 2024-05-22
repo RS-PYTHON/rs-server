@@ -41,7 +41,7 @@ We can split the system into following Components:
 -   **Infrastructure**: The infrastructure is a portable, extensible and
     open-source platform orchestrated by Kubernetes. We can isolate two
     specific layout which are monitoring and security. As a consequence,
-    we can distinguish following components:
+    we can distinguish the following components:
 
     -   **Infrastructure core**
 
@@ -50,13 +50,6 @@ We can split the system into following Components:
     -   **Infrastructure security**
 
 ![Static View](../../images/staticview.png)
-
-RS Client Libraries
-===================
-
-![Python Components](../../images/python-components.png)
-
-![Python RS Client](../../images/python-rs-client.png)
 
 Dynamic View
 ============
