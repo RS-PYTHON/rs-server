@@ -59,7 +59,7 @@ Links
 
 -   Repository: <https://github.com/RS-PYTHON/rs-server>
 
--   Issue tracker: <https://github.com/RS-PYTHON/rs-server/issues> In case of sensitive bugs like security vulnerabilities, please contact <my@email.com> directly instead of using issue tracker. We value your effort to improve the security and privacy of this project!
+-   Issue tracker: <https://github.com/RS-PYTHON/rs-server/issues>. In case of sensitive bugs like security vulnerabilities, please contact <my@email.com> directly instead of using issue tracker. We value your effort to improve the security and privacy of this project!
 
 Licensing
 =========
