@@ -7,8 +7,7 @@ discover and retrieve available data files through a standard OData
 RESTful API. The following endpoints have been implemented in RS-Server
 to interact with CADIP RESTful API
 
-Search Endpoint
----------------
+# Search Endpoint
 
 This endpoint retrieves a list of products from the CADU system for a
 specified station within a given time range and return a STAC compatible
