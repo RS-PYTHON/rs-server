@@ -7,11 +7,16 @@ discover and retrieve available data files through a standard OData
 RESTful API. The following endpoints have been implemented in RS-Server
 to interact with CADIP RESTful API
 
-# Search Endpoint
+Search Endpoint
+---------------
 
 This endpoint retrieves a list of products from the CADU system for a
 specified station within a given time range and return a STAC compatible
-FeatureCollection response.
+FeatureCollection response.  
+
+The data pickup-point response is a OData formatted content which is then converted to STAC format inside rs-server using a 
+configurable mapping between OData and STAC. The mapping file can be viewed 
+[here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_stac_mapper.json).  
 
 ### API Reference
 
@@ -214,7 +219,7 @@ Download Endpoint
 -----------------
 
 This endpoint initiates an asynchronous download process for a CADU
-product using EODAG. If specific parameters are provided, endpoint also
+file using EODAG. If specific parameters are provided, endpoint also
 upload the file to an S3 bucket.
 
 ### API Reference
@@ -226,13 +231,13 @@ upload the file to an S3 bucket.
 -   `station` (str): The EODAG station identifier (e.g., MTI, SGS, MPU,
     INU, etc).
 
--   `name` (str): The name of the CADU product to be downloaded.
+-   `name` (str): The name of the CADU file to be downloaded.
 
--   `local` (str, optional): The local path where the CADU product will
+-   `local` (str, optional): The local path where the CADU file will
     be downloaded.
 
 -   `obs` (str, optional): S3 storage path where the CADU file will be
-    uploaded. (e.g. s3://bucket/path/to/file.tif). Connection to S3
+    uploaded. (e.g. s3://bucket/path/to/file.raw). Connection to S3
     bucket is required, and should be written in the environmental
     variables, **S3\_ACCESSKEY**, **S3\_SECRETKEY**, **S3\_ENDPOINT**
     and **S3\_REGION**.
@@ -298,6 +303,11 @@ Sentinel auxiliary files. This service allows clients to discover and
 retrieve available auxiliary data files through a standard OData RESTful
 API. The following endpoints have been implemented in RS-Server to
 interact with ADGS RESTful API.
+
+The data pickup-point response is a OData formatted content which is then converted to STAC format inside rs-server using a 
+configurable mapping between OData and STAC. The mapping file can be viewed 
+[here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/adgs/config/adgs_stac_mapper.json).  
+
 
 Search Endpoint
 ---------------
@@ -425,13 +435,19 @@ This endpoint is used to query the download status of an AUX file.
 Catalog
 =======
 
-The following section groups all the endpoints a user can use to
-interact with a STAC-compatible database system.
+The following section groups all the endpoints used to
+interact with a [STAC](https://stacspec.org/)-compatible catalog of Sentinel products, auxiliary files and CADU chunks.
 
---- === STAC Feature: A STAC Feature represents a single geospatial
-asset or dataset. It encapsulates metadata describing the asset,
+--- 
+
+STAC Item:
+-------------
+
+A STAC Item represents a single geospatial
+asset or dataset. Items are built upon community [extensions](https://stac-extensions.github.io/) including the eo, eopf, sar, sat, processing, proj and 
+timestamps extensions. It encapsulates metadata describing the asset,
 including its spatial and temporal extent, properties, and links to
-associated data files. STAC Features provide a standardized way to
+associated data files. STAC Items provide a standardized way to
 describe individual geospatial datasets, making it easier to discover,
 access, and use such data across different platforms and tools.
 
@@ -452,11 +468,11 @@ collectively, simplifying data organization and access workflows.
 
 Using the endpoints described below, a user shall be able to:
 
--   Create / Read / Update / Delete a STAC feature.
+-   Create / Read / Update / Delete a STAC item.
 
--   Create / Read / Update / Delete a collection of STAC features.
+-   Create / Read / Update / Delete a collection of STAC items.
 
--   Search details of existing catalogs, features and collections.
+-   Search details of existing items and collections.
 
 Create a collection
 -------------------
@@ -557,7 +573,7 @@ right to perform this action.
 
     DELETE /catalog/collections/{ownerId:collectionId}
 
-Create a Feature
+Add an Item
 ----------------
 
 This endpoint converts a request with a correct JSON body feature
@@ -624,7 +640,7 @@ with s3 locations.
       "type": "Feature"
     }
 
-Get a Feature
+Get an Item
 -------------
 
 This endpoint returns a feature details based on parameters given in
@@ -719,10 +735,20 @@ request.
       ]
     }
 
-Update a Feature
+Update an Item
 ----------------
 
 This endpoint updates content of a feature is request JSON data is
 completely STAC-compatible.
 
     PUT /catalog/collections/{ownerId:collectionId}/items/{featureID}
+
+
+Download an Item
+----------------
+
+This endpoint returns a S3 presigned url that can directly download the file when accessed.
+
+    GET /catalog/collections/{ownerId:collectionId}/items/{featureID}/download/{assetId}
+
+
