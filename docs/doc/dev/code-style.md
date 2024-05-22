@@ -64,7 +64,7 @@ Changelog
 
 The project changelog is produced following
 [keepchangelog](https://keepachangelog.com/) practices. Please keep the
-[changelog](../../../CHANGELOG.adoc) up-to-date after each modification.
+[changelog](../../../CHANGELOG.md) up-to-date after each modification.
 
 Documentation
 =============
