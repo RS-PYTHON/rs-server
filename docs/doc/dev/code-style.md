@@ -70,5 +70,5 @@ Documentation
 =============
 
 The documentation is written in
-[asciidoctor](https://asciidoctor.org/docs/asciidoc-writers-guide/)
+[mkdocs](https://www.mkdocs.org/)
 following the [documentation system](https://documentation.divio.com/).

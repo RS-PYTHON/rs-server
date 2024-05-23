@@ -9,12 +9,6 @@ Tutorials to help you start coding on rs-server:
 
 -   [Tutorials](dev/environment/installation.md)
 
-## How to
-
-How to guides to provide practical common procedures
-
--   [Guides](dev/doc-generation/how-to.md)
-
 ## Technical Information
 
  Reference guides give you technical information about the code and software API:
@@ -27,11 +21,9 @@ How to guides to provide practical common procedures
 
 ## Additional information 
 
-Additional information about the software, the team, the design,…
+Additional information:
 
 -   [Tree structure](dev/background/tree-structure.md)
-
--   [Description](dev/environment/description.md)
 
 -   [Workflow](dev/background/workflow.md)
 
@@ -39,4 +31,3 @@ Additional information about the software, the team, the design,…
 
 -   [Design](dev/design/design.md)
 
--   [Description](dev/doc-generation/description.md)
