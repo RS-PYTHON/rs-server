@@ -546,6 +546,9 @@ class UserCatalog:
                     collection_suffix = "/collections"
                     link["href"] = link["href"][: -len(collection_suffix)] + "/catalog/collections"
 
+                if link["rel"] in ["root", "self"]:
+                    link["href"] += "catalog/"
+
                 link_parser = urlparse(link["href"])
 
                 if match := re.match(regex_catalog, link_parser.path):
@@ -570,6 +573,8 @@ class UserCatalog:
                 )
                 content["collections"] = self.update_links_for_all_collections(content["collections"])
                 self_parser = urlparse(content["links"][2]["href"])
+                content["links"][0]["href"] += "catalog/"
+                content["links"][1]["href"] += "catalog/"
                 content["links"][2]["href"] = self_parser._replace(path="/catalog/collections").geturl()
 
         elif (  # If we are in cluster mode and the user_login is not authorized
