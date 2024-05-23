@@ -506,10 +506,10 @@ class UserCatalog:
             )  # example: if collection['id']=='toto_S1_L1' then size_owner_id=len('toto_')==len('toto')+1.
             collection_id = self.get_collection_id(collection, size_owner_id)
             # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
-            for i, link in enumerate(collection["links"]):
+            for link in collection["links"]:
                 link_parser = urlparse(link["href"])
                 new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
-                collection["links"][i]["href"] = link_parser._replace(path=new_path).geturl()
+                link["href"] = link_parser._replace(path=new_path).geturl()
         return collections
 
     async def manage_get_response(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
@@ -541,15 +541,17 @@ class UserCatalog:
                     return content
             # Manage local landing page of the catalog
             regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
-            for i, link in enumerate(content["links"]):
+            for link in content["links"]:
                 if link["rel"] == "data":
-                    collection = "/collections"
-                    link["href"] = link["href"][: (len(link["href"]) - len(collection))] + "/catalog/collections"
+                    collection_suffix = "/collections"
+                    link["href"] = link["href"][: -len(collection_suffix)] + "/catalog/collections"
+
                 link_parser = urlparse(link["href"])
+
                 if match := re.match(regex_catalog, link_parser.path):
                     groups = match.groupdict()
                     new_path = add_user_prefix(link_parser.path, groups["owner_id"], groups["collection_id"])
-                    content["links"][i]["href"] = link_parser._replace(path=new_path).geturl()
+                    link["href"] = link_parser._replace(path=new_path).geturl()
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
