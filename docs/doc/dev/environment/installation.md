@@ -140,8 +140,8 @@ keep your code compliant with the coding style at any moment.
 The next steps
 ==============
 
-The ${cross\_document\_ref("description.adoc")} can provide you with
+The [development technical stack](description.md) document can provide you with
 more details about the environment. The
-${cross\_document\_ref("../background/workflow.adoc")} describes the
-workflow followed by developers to implement stories. You may also want
-to read the ${cross\_document\_ref("../code-style.adoc")}.
+[development workflow](../background/workflow.md) document describes the
+workflow followed by the developers to implement stories. You may also want
+to read the [code style](../code-style.md).
