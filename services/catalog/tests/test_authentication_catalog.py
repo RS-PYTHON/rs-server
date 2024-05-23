@@ -102,8 +102,8 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
     init_test(mocker, monkeypatch, httpx_mock, iam_roles, True)
 
     valid_links = [
-        {"rel": "self", "type": "application/json", "href": "http://testserver/"},
-        {"rel": "root", "type": "application/json", "href": "http://testserver/"},
+        {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/"},
+        {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/"},
         {"rel": "data", "type": "application/json", "href": "http://testserver/catalog/collections"},
         {
             "rel": "conformance",
@@ -165,8 +165,8 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         assert content["links"] == valid_links
 
     valid_links = [
-        {"rel": "self", "type": "application/json", "href": "http://testserver/"},
-        {"rel": "root", "type": "application/json", "href": "http://testserver/"},
+        {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/"},
+        {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/"},
         {"rel": "data", "type": "application/json", "href": "http://testserver/catalog/collections"},
         {
             "rel": "conformance",
