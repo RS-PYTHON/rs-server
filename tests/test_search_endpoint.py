@@ -446,3 +446,18 @@ def test_valid_sessions_endpoint_request_list(
     # Test that OData (dict) is translated to STAC.
     assert response.json()["numberMatched"] == len(sessions_response)
     assert response.json()["features"]
+
+
+@pytest.mark.unit
+def test_invalid_sessions_endpoint_request(client):
+    """Test cases with invalid requests send to /session endpoint"""
+    # Test with missing all parameters
+    assert client.get("/cadip/cadip/session").status_code == status.HTTP_400_BAD_REQUEST
+    # Test only with start, without stop
+    assert client.get("/cadip/cadip/session?start_date=2020-02-16T12:00:00Z").status_code == status.HTTP_400_BAD_REQUEST
+    assert client.get("/cadip/cadip/session?stop_date=2020-02-16T12:00:00Z").status_code == status.HTTP_400_BAD_REQUEST
+    # Test with platform and only start_date, should work since platform=S1A is valid
+    assert (
+        client.get("/cadip/cadip/session?platform=S1A&start_date=2020-02-16T12:00:00Z").status_code
+        != status.HTTP_400_BAD_REQUEST
+    )

@@ -52,7 +52,7 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 @apikey_validator(station="cadip", access_type="read")
 def search_products(  # pylint: disable=too-many-locals
     request: Request,  # pylint: disable=unused-argument
-    datetime: Annotated[str, Query(description="Time interval e.g. '2024-01-01T00:00:00Z/2024-01-02T23:59:59Z'")],
+    datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
@@ -128,27 +128,29 @@ def search_products(  # pylint: disable=too-many-locals
 @apikey_validator(station="cadip", access_type="read")
 def search_session(
     request: Request,  # pylint: disable=unused-argument
-    station,
-    id: Annotated[Union[str, None], Query(description="SessionID filter e.g 'S1A_20170501121534062343")] = None,
-    platform: Annotated[Union[str, None], Query(description="Satellite filter e.g 'S1A")] = None,
-    start_date: Annotated[Union[str, None], Query(description="Start time e.g. '2024-01-01T00:00:00Z'")] = None,
-    stop_date: Annotated[Union[str, None], Query(description="Stop time e.g. '2024-01-01T00:00:00Z'")] = None,
+    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    id: Annotated[
+        Union[str, None],
+        Query(
+            description='Session identifier eg: "S1A_20200105072204051312" or '
+            '"S1A_20200105072204051312, S1A_20220715090550123456"',
+        ),
+    ] = None,
+    platform: Annotated[Union[str, None], Query(description='Satellite identifier eg: "S1A" or "S1A, S1B"')] = None,
+    start_date: Annotated[Union[str, None], Query(description='Start time e.g. "2024-01-01T00:00:00Z"')] = None,
+    stop_date: Annotated[Union[str, None], Query(description='Stop time e.g. "2024-01-01T00:00:00Z"')] = None,
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Endpoint to retrieve list of sessions from any CADIP station.
 
-    Args:
-        station (str): CADIP station identifier (MTI, SGS, MPU, INU, etc)
-        id (str, list-like-str): Session identifier
-            (eg: "S1A_20170501121534062343" or "S1A_20170501121534062343, S1A_20240328185208053186")
-        platform (str, list-like-str): Satellite identifier
-            (eg: "S1A" or "S1A, S1B")
-        start_date (str): Start date of the time interval
-        stop_date (str): Stop date of the time interval
-
+    A valid session search request must contain at least a value for either *id* or *platform* or time interval
+    (*start_date* and *stop_date* correctly defined).
     """
     session_id: Union[List[str], None] = id.split(",") if id else None
     satellite: Union[List[str], None] = platform.split(",") if platform else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
+
+    if not (session_id or satellite or (time_interval[0] and time_interval[1])):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     try:
         products = init_cadip_provider(f"{station}_session").search(
@@ -170,6 +172,12 @@ def search_session(
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
     except json.JSONDecodeError as exception:
-        return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"JSON Map Error: {exception}")
-    except ValueError:
-        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unable to map OData to STAC.")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"JSON Map Error: {exception}",
+        ) from exception
+    except ValueError as exception:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unable to map OData to STAC.",
+        ) from exception

@@ -65,6 +65,8 @@ This endpoint retrieves a list of sessions from the CADU system for a specified 
 * `start_date` (str, optional): Start time of session (PublicationTime). (format: [.red]#YYYY-MM-DDThh:mm:sssZ#).
 * `stop_date` (str, optional): Stop time of session (PublicationTime). (format: [.red]#YYYY-MM-DDThh:mm:sssZ#).
 
+==== Note
+A valid session search request must contain at least a value for either *id* or *platform* or time interval (*start_date* and *stop_date* correctly defined).
 
 ==== Request example
 [source,http]
