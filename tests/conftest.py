@@ -63,8 +63,6 @@ def before_and_after(session_mocker):
     # After all tests #
     ###################
 
-    pass
-
 
 @pytest.fixture(scope="session", autouse=True)
 def read_cli(request):

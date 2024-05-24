@@ -19,7 +19,7 @@ from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 
 
-async def test_opentelemetry(monkeypatch, mocker):
+async def test_opentelemetry(mocker):
     """
     For now, just test that the otel init code passes without errors.
     Don't check the generated logs, traces and metrics.
