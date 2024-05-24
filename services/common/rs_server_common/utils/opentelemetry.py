@@ -49,14 +49,14 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
     # See: https://github.com/softwarebloat/python-tracing-demo/tree/main
 
     # Don't call this line from pytest because it causes errors:
-    # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ...s.
+    # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ..s.
     if not FROM_PYTEST:
         tempo_endpoint = os.getenv("TEMPO_ENDPOINT")
         if not tempo_endpoint:
             return
 
         # TODO: to avoid errors in local mode:
-        # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ...s.
+        # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ..s.
         #
         # The below line does not work either but at least we have less error messages.
         # See: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-221?focusedId=162092&

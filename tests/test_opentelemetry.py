@@ -19,14 +19,14 @@ from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 
 
-async def test_opentelemetry(monkeypatch, mocker):
+async def test_opentelemetry(mocker):
     """
     For now, just test that the otel init code passes without errors.
     Don't check the generated logs, traces and metrics.
     """
 
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
-    mocker.patch("rs_common.opentelemetry.FROM_PYTEST", new=True, autospec=False)
+    mocker.patch("rs_server_common.utils.opentelemetry.FROM_PYTEST", new=True, autospec=False)
 
     Logging.default(__name__)
     app = FastAPI()
