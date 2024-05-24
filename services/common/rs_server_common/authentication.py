@@ -74,7 +74,7 @@ async def apikey_security(
         apikey_header (Security): API key passed in HTTP header
 
     Returns:
-        Tuple of (IAM roles, config, user login) information from the keycloak account, associated with the api key.
+        Tuple of (IAM roles, config, user login) information from the keycloak account, associated to the api key.
     """
 
     # Use the api key passed by either http headers or query parameter (disabled for now)
