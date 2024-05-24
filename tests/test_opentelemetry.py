@@ -25,14 +25,8 @@ async def test_opentelemetry(monkeypatch, mocker):
     Don't check the generated logs, traces and metrics.
     """
 
-    monkeypatch.setenv("LOKI_ENDPOINT", "http://dummy:1234")
-    monkeypatch.setenv("TEMPO_ENDPOINT", "http://dummy:1234")
-
-    # Avoid errors:
-    # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in 1s
-    mocker.patch(  # pylint: disable=protected-access
-        "opentelemetry.exporter.otlp.proto.grpc.exporter.OTLPExporterMixin",
-    )._export.return_value = True
+    # Patch the global variables. See: https://stackoverflow.com/a/69685866
+    mocker.patch("rs_common.opentelemetry.FROM_PYTEST", new=True, autospec=False)
 
     Logging.default(__name__)
     app = FastAPI()
