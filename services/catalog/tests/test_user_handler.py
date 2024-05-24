@@ -106,10 +106,8 @@ def feature_output_fixture() -> dict:
 class TestRemovePrefix:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function remove_user_prefix."""
 
-    def test_fails_if_root_url(self):
-        with pytest.raises(ValueError) as exc_info:
-            reroute_url("/", "GET")
-        assert str(exc_info.value) == "URL (/) is invalid."
+    def test_root_url(self):
+        assert reroute_url("/", "GET")[0] == "/"
 
     def test_remove_the_catalog_prefix(self):
         assert reroute_url("/catalog/catalogs/Toto", "GET")[0] == ("/")
@@ -149,18 +147,18 @@ class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function add_user_prefix."""
 
     def test_return_catalog_if_no_user(self):
-        assert add_user_prefix("/", "toto", "") == "/catalog/toto"
+        assert add_user_prefix("/", "toto", "") == "/catalog/catalogs/toto"
 
     def test_add_prefix_and_user_prefix(self):
-        assert add_user_prefix("/collections", "toto", "") == "/catalog/toto/collections"
+        assert add_user_prefix("/collections", "toto", "") == "/catalog/collections"
 
     def test_add_prefix_and_replace_user(self):
         result = add_user_prefix("/collections/toto_joplin", "toto", "joplin")
-        assert result == "/catalog/toto/collections/joplin"
+        assert result == "/catalog/collections/toto:joplin"
 
     def test_add_prefix_replace_user_with_items(self):
         result = add_user_prefix("/collections/toto_joplin/items", "toto", "joplin")
-        assert result == "/catalog/toto/collections/joplin/items"
+        assert result == "/catalog/collections/toto:joplin/items"
 
     def test_does_nothing_if_url_not_found(self):
         assert add_user_prefix("/NOT/FOUND", "toto", "joplin") == "/NOT/FOUND"

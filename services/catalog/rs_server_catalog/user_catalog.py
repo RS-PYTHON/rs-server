@@ -30,7 +30,7 @@ The middleware:
 import json
 import os
 import re
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
@@ -307,6 +307,8 @@ class UserCatalog:
         Returns:
             Request: the new request with the collection name updated.
         """
+        auth_roles = []
+        user_login = ""
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
@@ -371,7 +373,8 @@ class UserCatalog:
         Returns:
             Response: The updated response.
         """
-        owner_id, collection_id, filters = "", "", ""
+        filters: Optional[Node] = None
+        owner_id, collection_id = "", ""
         if request.method == "GET":
             query = parse_qs(request.url.query)
             if "filter" in query:
@@ -402,6 +405,8 @@ class UserCatalog:
         Returns:
             Request: The request updated.
         """
+        user_login = ""
+        auth_roles = []
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
@@ -438,7 +443,7 @@ class UserCatalog:
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr_msg
 
-    def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list:
+    def manage_all_collections(self, collections: dict, auth_roles: list, user_login: str) -> list[dict]:
         """Return the list of all collections accessible by the user calling it.
 
         Args:
@@ -473,7 +478,41 @@ class UserCatalog:
         accessible_collections.extend(filter_collections(collections, user_login))
         return accessible_collections
 
-    async def manage_get_response(
+    def get_collection_id(self, collection: dict[str, str], size_owner_id: int) -> str:
+        """get the collection id with explicit typing
+
+        Args:
+            collection (dict[str, str]): The collection.
+            size_owner_id (int): The size of owner id.
+
+        Returns:
+            str: the collection id.
+        """
+        return collection["id"][size_owner_id:]
+
+    def update_links_for_all_collections(self, collections: list[dict]) -> list[dict]:
+        """Update the links for the endpoint /catalog/collections.
+
+        Args:
+            collections (list[dict]): all the collections to be updated.
+
+        Returns:
+            list[dict]: all the collections after the links updated.
+        """
+        for collection in collections:
+            owner_id = collection["owner"]
+            size_owner_id = int(
+                len(owner_id) + 1,
+            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id=len('toto_')==len('toto')+1.
+            collection_id = self.get_collection_id(collection, size_owner_id)
+            # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
+            for link in collection["links"]:
+                link_parser = urlparse(link["href"])
+                new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
+                link["href"] = link_parser._replace(path=new_path).geturl()
+        return collections
+
+    async def manage_get_response(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
         request: Request,
         response: StreamingResponse,
@@ -495,10 +534,27 @@ class UserCatalog:
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
-        if request.scope["path"] == "/" and (common_settings.CLUSTER_MODE):  # /catalog and /catalog/catalogs/owner_id
-            content = manage_landing_page(request, auth_roles, user_login, content, user)
-            if hasattr(content, "status_code"):  # Unauthorized
-                return content
+        if request.scope["path"] == "/":
+            if common_settings.CLUSTER_MODE:  # /catalog and /catalog/catalogs/owner_id
+                content = manage_landing_page(request, auth_roles, user_login, content, user)
+                if hasattr(content, "status_code"):  # Unauthorized
+                    return content
+            # Manage local landing page of the catalog
+            regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
+            for link in content["links"]:
+                if link["rel"] == "data":
+                    collection_suffix = "/collections"
+                    link["href"] = link["href"][: -len(collection_suffix)] + "/catalog/collections"
+
+                if link["rel"] in ["root", "self"]:
+                    link["href"] += "catalog/"
+
+                link_parser = urlparse(link["href"])
+
+                if match := re.match(regex_catalog, link_parser.path):
+                    groups = match.groupdict()
+                    new_path = add_user_prefix(link_parser.path, groups["owner_id"], groups["collection_id"])
+                    link["href"] = link_parser._replace(path=new_path).geturl()
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
@@ -515,6 +571,12 @@ class UserCatalog:
                     auth_roles,
                     user_login,
                 )
+                content["collections"] = self.update_links_for_all_collections(content["collections"])
+                self_parser = urlparse(content["links"][2]["href"])
+                content["links"][0]["href"] += "catalog/"
+                content["links"][1]["href"] += "catalog/"
+                content["links"][2]["href"] = self_parser._replace(path="/catalog/collections").geturl()
+
         elif (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
@@ -565,6 +627,8 @@ class UserCatalog:
             the response content with the appropriate status code.
 
         """
+        user_login = ""
+        auth_roles = []
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
@@ -658,6 +722,8 @@ class UserCatalog:
         Returns:
             bool: Return True if the deletion is allowed, False otherwise.
         """
+        user_login = ""
+        auth_roles = []
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
