@@ -57,7 +57,11 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     dummy_request.state = State()
 
     # Initial response expected from the function
-    initial_response = {"iam_roles": ["initial", "roles"], "config": {"initial": "config"}, "user_login": {}}
+    initial_response = {
+        "iam_roles": ["initial", "roles"],
+        "config": {"initial": "config"},
+        "user_login": "initial_login",
+    }
 
     # Clear the cached response and mock the uac manager response
     ttl_cache.clear()
@@ -72,9 +76,14 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     await apikey_security(dummy_request, VALID_APIKEY)  # , "")
     assert dummy_request.state.auth_roles == initial_response["iam_roles"]
     assert dummy_request.state.auth_config == initial_response["config"]
+    assert dummy_request.state.user_login == initial_response["user_login"]
 
     # If the UAC manager response changes, we won't see it because the previous result was cached
-    modified_response = {"iam_roles": ["modified", "roles"], "config": {"modified": "config"}, "user_login": {}}
+    modified_response = {
+        "iam_roles": ["modified", "roles"],
+        "config": {"modified": "config"},
+        "user_login": "modified_login",
+    }
     httpx_mock.add_response(
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
@@ -87,12 +96,14 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
         await apikey_security(dummy_request, VALID_APIKEY)  # , "")
         assert dummy_request.state.auth_roles == initial_response["iam_roles"]
         assert dummy_request.state.auth_config == initial_response["config"]
+        assert dummy_request.state.user_login == initial_response["user_login"]
 
     # We have to clear the cache to obtain the modified response
     ttl_cache.clear()
     await apikey_security(dummy_request, VALID_APIKEY)  # , "")
     assert dummy_request.state.auth_roles == modified_response["iam_roles"]
     assert dummy_request.state.auth_config == modified_response["config"]
+    assert dummy_request.state.user_login == modified_response["user_login"]
 
 
 @pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
