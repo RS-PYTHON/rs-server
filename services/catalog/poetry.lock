@@ -2523,13 +2523,13 @@ url = ["furl (>=0.4.1)"]
 
 [[package]]
 name = "stac-fastapi-api"
-version = "2.4.9"
+version = "2.5.5.post1"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "stac-fastapi.api-2.4.9.tar.gz", hash = "sha256:0150ca72d02f86911785aa8c2a907aa223088d137fd7987da9d88f0566d1adf3"},
-    {file = "stac_fastapi.api-2.4.9-py3-none-any.whl", hash = "sha256:db60e8ba2e6499ee8a02041110707891555f13d32ff19d5c75bb8f757ea2cf82"},
+    {file = "stac_fastapi.api-2.5.5.post1-py3-none-any.whl", hash = "sha256:aae88194d888e51c7816290a8415bd1309edbd3a4091ec9799710e5e4827ea18"},
+    {file = "stac_fastapi_api-2.5.5.post1.tar.gz", hash = "sha256:fe18e281dd68acf91c66196634efa1f759fde76ee63eb232a6100db959cabf19"},
 ]
 
 [package.dependencies]
@@ -2540,18 +2540,19 @@ pydantic = {version = "<2", extras = ["dotenv"]}
 stac-pydantic = "==2.0.*"
 
 [package.extras]
+benchmark = ["pytest-benchmark"]
 dev = ["httpx", "pre-commit", "pystac[validation] (==1.*)", "pytest", "pytest-asyncio", "pytest-cov", "requests"]
 docs = ["mkdocs", "mkdocs-material", "pdocs"]
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "2.4.9"
+version = "2.5.5.post1"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "stac-fastapi.extensions-2.4.9.tar.gz", hash = "sha256:a83e61df9c9af303f2d64badd580cd384430104a30fd66fd183e6449242e047c"},
-    {file = "stac_fastapi.extensions-2.4.9-py3-none-any.whl", hash = "sha256:799d5dc4a2603364c02db21eef8d0af07fd9f8b0cc5d366adb42232992dff97b"},
+    {file = "stac_fastapi.extensions-2.5.5.post1-py3-none-any.whl", hash = "sha256:62b7b71989daf0453846dda10179d8ade79ba8da3a838388498fb8808e076161"},
+    {file = "stac_fastapi_extensions-2.5.5.post1.tar.gz", hash = "sha256:bdd4caf1197a1761d2887d7cf18909a5819f3a427963b6de07c05e8798c5d897"},
 ]
 
 [package.dependencies]
@@ -2567,13 +2568,13 @@ docs = ["mkdocs", "mkdocs-material", "pdocs"]
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "2.4.11"
+version = "2.5.0"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "stac-fastapi.pgstac-2.4.11.tar.gz", hash = "sha256:01fa2f3016c1581b4966a87d22abfb9d79089587d97f3faf293abd24d12cc940"},
-    {file = "stac_fastapi.pgstac-2.4.11-py3-none-any.whl", hash = "sha256:8a91f57b8e1e0a01775585fa626bd25fc7161d7e0c41fe616341dc7d7b0c782b"},
+    {file = "stac_fastapi.pgstac-2.5.0-py3-none-any.whl", hash = "sha256:1be9fb4d81ed583f2e78956653b9745c0d6996c820a0128e3494d337bedcf833"},
+    {file = "stac_fastapi_pgstac-2.5.0.tar.gz", hash = "sha256:10a4c7efcab5b950375219a4572d00b205494e759d1b5cd9f800f61a34c43a2a"},
 ]
 
 [package.dependencies]
@@ -2585,26 +2586,26 @@ orjson = "*"
 pydantic = {version = ">=1.10.8", extras = ["dotenv"]}
 pygeofilter = ">=0.2"
 pypgstac = "==0.7.*"
-"stac-fastapi.api" = ">=2.4.9,<2.5.0"
-"stac-fastapi.extensions" = ">=2.4.9,<2.5.0"
-"stac-fastapi.types" = ">=2.4.9,<2.5.0"
+"stac-fastapi.api" = ">=2.5.5.post1,<2.6.0"
+"stac-fastapi.extensions" = ">=2.5.5.post1,<2.6.0"
+"stac-fastapi.types" = ">=2.5.5.post1,<2.6.0"
 stac-pydantic = "==2.0.*"
 
 [package.extras]
 awslambda = ["mangum"]
-dev = ["httpx", "pre-commit", "pypgstac[psycopg] (==0.7.*)", "pystac[validation]", "pytest", "pytest-asyncio (>=0.17,<0.23.0)", "pytest-cov", "requests", "shapely", "twine", "wheel"]
+dev = ["httpx", "pre-commit", "pypgstac[psycopg] (==0.7.*)", "pystac[validation]", "pytest", "pytest-asyncio (>=0.17,<0.23.0)", "pytest-cov", "pytest-postgresql", "requests", "shapely", "twine", "wheel"]
 docs = ["mkdocs", "mkdocs-material", "pdocs"]
 server = ["uvicorn[standard] (==0.19.0)"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "2.4.9"
+version = "2.5.5.post1"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "stac-fastapi.types-2.4.9.tar.gz", hash = "sha256:623fa59a724a6c467dd01f4bdd66ad5c527c1e27750d575b64d26b93cd41babb"},
-    {file = "stac_fastapi.types-2.4.9-py3-none-any.whl", hash = "sha256:0320190ba9a158fea4f94f2c67b00e450976ad3888d2f85c7d42ddb9b6cb8ec1"},
+    {file = "stac_fastapi.types-2.5.5.post1-py3-none-any.whl", hash = "sha256:bce75a9ad285718814102d81e82668b71ee815f7e348526b868e7fe9e7b770f3"},
+    {file = "stac_fastapi_types-2.5.5.post1.tar.gz", hash = "sha256:6a3aa66ca71b3d976b8643c11c6cfad7c17441a566171b2d01b1c9754db22e9d"},
 ]
 
 [package.dependencies]
@@ -3215,4 +3216,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "12f4ff2b4b0d87f781dd0943dc12df0157ec48afc4081101fe59448455525a52"
+content-hash = "f067ca7ae99d83838f9a4bd80ffdf2e394bcbd2cd8993ff5ad5324ccd5309674"
