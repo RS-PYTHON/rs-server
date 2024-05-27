@@ -115,14 +115,14 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "search",
             "type": "application/geo+json",
             "title": "STAC search",
-            "href": "http://testserver/search",
+            "href": "http://testserver/catalog/search",
             "method": "GET",
         },
         {
             "rel": "search",
             "type": "application/geo+json",
             "title": "STAC search",
-            "href": "http://testserver/search",
+            "href": "http://testserver/catalog/search",
             "method": "POST",
         },
         {
@@ -178,14 +178,14 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "search",
             "type": "application/geo+json",
             "title": "STAC search",
-            "href": "http://testserver/search",
+            "href": "http://testserver/catalog/search",
             "method": "GET",
         },
         {
             "rel": "search",
             "type": "application/geo+json",
             "title": "STAC search",
-            "href": "http://testserver/search",
+            "href": "http://testserver/catalog/search",
             "method": "POST",
         },
         {

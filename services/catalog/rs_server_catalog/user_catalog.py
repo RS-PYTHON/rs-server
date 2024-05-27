@@ -549,6 +549,9 @@ class UserCatalog:
                 if link["rel"] in ["root", "self"]:
                     link["href"] += "catalog/"
 
+                if link["rel"] == "search":
+                    search_suffix = "/search"
+                    link["href"] = link["href"][: -len(search_suffix)] + "/catalog/search"
                 link_parser = urlparse(link["href"])
 
                 if match := re.match(regex_catalog, link_parser.path):
