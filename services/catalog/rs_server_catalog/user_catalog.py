@@ -286,7 +286,7 @@ class UserCatalog:
         """
         res = ""
         if hasattr(ecql_ast, "lhs"):
-            if isinstance(ecql_ast.lhs, Attribute) and ecql_ast.lhs.name == "owner_id":
+            if isinstance(ecql_ast.lhs, Attribute) and ecql_ast.lhs.name == "owner":
                 if isinstance(ecql_ast, Like):
                     res = ecql_ast.pattern
                 elif isinstance(ecql_ast, Equal):
