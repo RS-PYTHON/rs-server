@@ -1,7 +1,7 @@
 Static View
 ===========
 
-We can split the system into following Components:
+We can split the system into the following Components:
 
 -   **RS-Server**: The RS-Server controls user access to all sensitive
     interfaces: Catalog, LTA, ADGS, PRIP, CADIP. As a consequence, we
@@ -20,9 +20,9 @@ We can split the system into following Components:
     -   **RS-Server Backend / AUXIP**
 
 -   **RS-Client libraries**: this is a set of python functions that
-    provide processing task and flows. Flows and tasks can be
+    provide processing tasks and flows. Flows and tasks can be
     orchestrated by Prefect server or executed from any Python
-    environment. On RS-Server side there will be also function to
+    environment. On RS-Server side, there will be also a function to
     compute performance indicator.
 
 -   **RS-Virtual environment**: Component that gives users access to
@@ -31,7 +31,7 @@ We can split the system into following Components:
 
 -   **Processing**: this group hosts all components to process Sentinel
     products. The CFI are not part of the group. Only wrappers,
-    preparation worker and Dask cluster to provide processing power.
+    preparation worker and Dask cluster provide processing power.
     Here are the components:
 
     -   **Dask cluster**
@@ -40,7 +40,7 @@ We can split the system into following Components:
 
 -   **Infrastructure**: The infrastructure is a portable, extensible and
     open-source platform orchestrated by Kubernetes. We can isolate two
-    specific layout which are monitoring and security. As a consequence,
+    specific layouts: monitoring and security. As a consequence,
     we can distinguish the following components:
 
     -   **Infrastructure core**
@@ -54,7 +54,7 @@ We can split the system into following Components:
 Dynamic View
 ============
 
-The following schema highlights main interactions between the
+The following schema highlights the main interactions between the
 components.
 
 ![Dynamic View](../../images/dynamicview.png)

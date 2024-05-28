@@ -1,9 +1,10 @@
-# User manual
 
-## Overall Architecture
+
+Overall Architecture
+====================
 
 The overall architecture is described here: [Architecture](users/architecture.md)
 
-## Main Functionalities
-
+Main Functionalities
+====================
 The main functionalities are explained here: [Functionalities](users/functionalities.md)
