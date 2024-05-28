@@ -770,14 +770,14 @@ class TestAuthicationPutOneCollection:
 
 class TestAuthenticationSearch:
 
-    search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner_id='toto'"}
+    search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
     test_json = {
         "collections": ["S1_L1"],
         "filter-lang": "cql2-json",
         "filter": {
             "op": "and",
             "args": [
-                {"op": "=", "args": [{"property": "owner_id"}, "toto"]},
+                {"op": "=", "args": [{"property": "owner"}, "toto"]},
                 {"op": "=", "args": [{"property": "width"}, 2500]},
             ],
         },
