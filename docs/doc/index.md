@@ -3,10 +3,9 @@ Some short description here
 
 ## User manual
 
-Here you can access the [documentation] for user
-  [documentation](user_manual.md)
+Here you can access the [documentation](user_manual.md) for user
 
 ## Developer manual
 
-Here you can access the [developer] manual
-  [developer](developer_manual.md)
+Here you can access the [developer](developer_manual.md) manual
+  

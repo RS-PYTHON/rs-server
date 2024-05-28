@@ -68,6 +68,6 @@ The code in this project is licensed under Apache License 2.0.
 
 ---
 
-![](/docs/images/banner_logo.jpg)
+![](docs/images/banner_logo.jpg)
 
 This project is funded by the EU and ESA.
