@@ -1,26 +1,27 @@
 # RS-Server
-RS-Server is a toolbox that allows users to retrieve external data used
-by Copernicus processing chains, store them in internal S3 buckets and
-catalog them.
 
-Its goal is to be used by the Copernicus processing chains to perform
-their works.
+RS-Server is a comprehensive toolbox designed to facilitate the retrieval of external data for Copernicus processing
+chains. It allows users to store data into object storages and index it into STAC compatible catalogs.
 
-The toolbox exposes REST endpoints enabling users to :
+The primary objective of RS-Server is to support Copernicus processing chains in executing their tasks efficiently.
 
-* search for external data
-* download external data into a S3 bucket
-* catalog data
-* search for data in the catalog
+## Features
 
-All these functionalities are reserve to authorized users only. The
-permissions are technical and/or functional.
+The toolbox provides REST endpoints that enable users to:
 
-## User manual
+* Search for external data.
+* Stage external data.
+* Index staged data into STAC compatible catalogs.
+* Search for data within the catalog.
+* Serve data to Copernicus [EOPF-CPM](https://cpm.pages.eopf.copernicus.eu/eopf-cpm/main/index.html) processors.
 
-Here you can access the [documentation](user_manual.md) for user
+All these functionalities are available exclusively to authorized users. Permissions can be both technical and
+functional.
 
-## Developer manual
+## User Manual
 
-Here you can access the [developer](developer_manual.md) manual
-  
+Access the [User Manual](user_manual.md) for detailed instructions and guidance.
+
+## Developer Manual
+
+Access the [Developer Manual](developer_manual.md) for technical documentation and developer guidelines.

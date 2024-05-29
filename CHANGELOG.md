@@ -71,7 +71,7 @@ Added
 -   RSPY-240: \[Deployment\] No Secret Create during Wazuh Agent
     deployment
 
--   
+-
 
 \[0.1a8\] - 2024-04-24
 ======================
@@ -191,7 +191,7 @@ Added
 
 -   RSPY-94: Implement a DPR mockup
 
--   
+-
 
 -   RSPY-121: Setup Ingress Controller
 

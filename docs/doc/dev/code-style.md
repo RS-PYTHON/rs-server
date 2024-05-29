@@ -1,12 +1,12 @@
-These are the coding style followed on the rs-server project.
+These are the coding style followed on the RS-Server project.
 
 Pre-commit checks
 =================
 
 [pre-commit](https://pre-commit.com/) rules are configured to perform
-basic checks before each commit. You can install it on your workstation
-when [installing your environment](environment/installation.md). It is
-recommended to verify your code follows the project coding rules.
+basic checks before each commit. It can be installed on local computer
+using [installing your environment](environment/installation.md). It is
+recommended to verify if code follows the project coding rules.
 
 Python style
 ============
@@ -18,10 +18,10 @@ All python files are formatted by
 pre-commit hooks and can be run after each file save. The line length is
 extended to 120 but keep lines as small and readable as possible.
 
-The lint is performed by pylint and flake8 in the CI workflow.
+The semantic and stylistic verifications are performed by pylint and flake8 in the CI workflow.
 
-The doc-strings are written using the reStructuredText because the
-python api is generated using Sphinx.
+The doc-strings are written using the markdown because the
+Python API is generated using mkdocs.
 
 The following file header should be added at the start of each python
 file.
@@ -45,7 +45,7 @@ file.
 Unit test style
 ===============
 
-The unittests are written with pytest.
+The unittests are written with [pytest](https://docs.pytest.org/en/8.2.x/).
 
 We use marks to categorize tests. The following marks are defined
 currently.

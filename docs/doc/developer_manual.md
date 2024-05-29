@@ -20,19 +20,19 @@ The RS-Server architecture is composed of several modular services, each designe
 The RS-Server's microservices architecture ensures robustness, scalability, and ease of management. By leveraging Docker for containerization and Kubernetes for orchestration, along with the rs-server-common package for shared functionalities, RS-Server offers a flexible and efficient solution for various deployment needs. This architecture supports both small-scale local deployments and large-scale production environments, providing the necessary tools and structures to handle a wide range of requests efficiently.
 
 Main Services, Common Structures and Mechanisms
-=============================================== 
-There are currently 3 main services implemented: 
- 
-1. CADIP service  
-It facilitates the download of files from a CADIP server to a S3 bucket. Each instance of this service is started for a given station and provides 3 endpoints :
+===============================================
+There are currently 3 main services implemented:
 
-    * A search endpoint that enables to search files for a time period
-    * A download endpoint that enables to download a file from its name
-    * A status endpoint that enables the check of the current status for a downloading file.
+1. CADIP service
+It facilitates the search and download of files from a CADIP server to a S3 bucket. Each instance of this service is started for a given station and provides 3 endpoints:
+
+    * A **search** endpoint that enables to search files for a time period
+    * A **download** endpoint that enables to download a file using own its name
+    * A **status** endpoint that enables the check of the current status for a downloading file.
 
 
-2. ADGS service - facilitates the download of files from an ADGS server to a S3 bucket
-3. Catalog service - facilitates the use of the main RS-Server catalog in pystac format
+2. ADGS service - Provides the same functionality as CADIP service, facilitates the search and download of files from an ADGS server to a S3 bucket
+3. Catalog service - facilitates the use of the main RS-Server catalog in [PySTAC](https://pystac.readthedocs.io/en/stable/) format
 
 To maintain consistency and streamline development, all services use shared components and mechanisms provided by the ```rs-server-common package```. This package includes:
 
@@ -103,7 +103,7 @@ Python API Library
 ==================
 Please check the ```Python API Library``` link in the sidebar navigation to access the generated documentation directly from the source code.
 
-Additional information 
+Additional information
 ======================
 
 Here are some additional information that may help you in finding the answer when coding on RS-Server:
@@ -113,6 +113,3 @@ Here are some additional information that may help you in finding the answer whe
 -   [Workflow](dev/background/workflow.md)
 
 -   [CI](dev/background/ci.md)
-
-
-

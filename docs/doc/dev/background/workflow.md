@@ -21,57 +21,57 @@ starts, the state becomes "IN PROGRESS" and the ticket is assigned to
 the responsible developer. When the implementation is completed, the
 state becomes "IMPLEMENTED".
 
-development DoR
-===============
+Development DoR (Definition of Ready)
+=====================================
 
--   development team understands what is expected
+-   Development team understands what is expected
 
--   test cases are writen and clear
+-   Test cases are writen and clear
 
--   identify the specific integration tests if needed
+-   Identify the specific integration tests if needed
 
--   technical documentation to write is identified
+-   Technical documentation to write is identified
 
--   user documentation to write is identified
+-   User documentation to write is identified
 
-development DoD
-===============
+Development DoD (Definition of Done)
+====================================
 
--   code written covers the functionality
+-   Code written covers the functionality
 
--   new code is covered by unit tests
+-   New code is covered by unit tests
 
--   new code is covered by integration tests if any
+-   New code is covered by integration tests if any
 
--   new test cases have been automated
+-   New test cases have been automated
 
--   documentation has been updated
+-   Documentation has been updated
 
--   changelog has been updated
+-   Changelog has been updated
 
--   all unit tests are green
+-   All unit tests are green
 
--   all integration tests are green
+-   All integration tests are green
 
--   all acceptance tests are green
+-   All acceptance tests are green
 
--   the best practices are followed
+-   The best practices are followed
 
-    -   the design is followed
+    -   The design is followed
 
-    -   the CI checks have been run and are green
+    -   The CI checks have been run and are green
 
-    -   the sonarqube errors have been fixed
+    -   The sonarqube errors have been fixed
 
--   a code review with a team member has been made
+-   A code review with a team member has been made
 
 Code review
 ===========
 
 The objectives of the code reviews are :
 
--   double-check the DoD completion
+-   Double-check the DoD completion
 
--   share knowledge accros development team
+-   Share knowledge accros development team
 
--   human feedback on written tests, code and documentation
+-   Human feedback on written tests, code and documentation
