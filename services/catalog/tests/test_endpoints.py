@@ -76,14 +76,14 @@ class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
 
     def test_search_endpoint_with_filter_owner_id_and_other(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner_id='toto'"}
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200
         content = json.loads(response.content)
-        assert len(content["features"]) == 2
+        assert len(content["features"]) == 3
 
-        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=3000 AND owner_id='toto'"}
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=3000 AND owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200
@@ -91,20 +91,20 @@ class TestCatalogSearchEndpoint:
         assert len(content["features"]) == 0
 
     def test_search_endpoint_with_filter_owner_id_only(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "owner_id='toto'"}
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200
         content = json.loads(response.content)
-        assert len(content["features"]) == 2
+        assert len(content["features"]) == 3
 
     def test_search_endpoint_without_collections(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"filter-lang": "cql2-text", "filter": "owner_id='toto'"}
+        test_params = {"filter-lang": "cql2-text", "filter": "owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200
         content = json.loads(response.content)
-        assert len(content["features"]) == 2
+        assert len(content["features"]) == 3
 
     def test_searh_endpoint_without_owner_id(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
@@ -123,7 +123,7 @@ class TestCatalogSearchEndpoint:
         assert len(content["features"]) == 0  # behavior to be determined
 
     def test_search_endpoint_without_filter_lang(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"collections": "S1_L1", "filter": "width=3000 AND owner_id='toto'"}
+        test_params = {"collections": "S1_L1", "filter": "width=3000 AND owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200
@@ -137,7 +137,7 @@ class TestCatalogSearchEndpoint:
             "filter": {
                 "op": "and",
                 "args": [
-                    {"op": "=", "args": [{"property": "owner_id"}, "toto"]},
+                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
                     {"op": "=", "args": [{"property": "width"}, 2500]},
                 ],
             },
@@ -146,7 +146,7 @@ class TestCatalogSearchEndpoint:
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == 200
         content = json.loads(response.content)
-        assert len(content["features"]) == 2
+        assert len(content["features"]) == 3
 
     def test_queryables(self, client):  # pylint: disable=missing-function-docstring
         try:
@@ -213,7 +213,7 @@ class TestCatalogPublishCollectionEndpoint:
         response = client.post("/catalog/collections", json=minimal_incorrect_collection)
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
         # Check that owner from this collection is not written in catalogDB
-        test_params = {"filter-lang": "cql2-text", "filter": "owner_id='test_incorrect_owner'"}
+        test_params = {"filter-lang": "cql2-text", "filter": "owner='test_incorrect_owner'"}
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200
         assert len(json.loads(response.content)["features"]) == 0
@@ -782,3 +782,13 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         """
         response = client.delete("/catalog/collections/fixture_owner:fixture_collection/items/non_existent_feature")
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+
+
+# def test_pystac_client(client):  # pylint: disable=missing-function-docstring
+#     from pystac_client import Client  # pylint: disable=import-outside-toplevel
+
+#     catalog = Client.open(
+#         "http://localhost:8003/catalog/",
+#         headers={"x-api-key": "a3670641-d22a-420a-994c-b5505a33e15f"},
+#     )
+#     collection = catalog.get_collection("pyteam:S2_L2")
