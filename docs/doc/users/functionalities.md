@@ -10,13 +10,13 @@ to interact with CADIP RESTful API
 Search Endpoint
 ---------------
 
-This endpoint retrieves a list of CADUs from a specified station within a given time range and returns a response 
+This endpoint retrieves a list of CADUs from a specified station within a given time range and returns a response
 compatible with the SpatioTemporal Asset Catalog (STAC) format.
 
-The response from the data pickup-point is in OData format, which is then transformed into the STAC format within 
-RS-Server using a configurable mapping between OData and STAC. The mapping file can be viewed to understand how the 
-conversion is performed and to customize it if needed. The mapping file can be viewed 
-[here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_stac_mapper.json).  
+The response from the data pickup-point is in OData format, which is then transformed into the STAC format within
+RS-Server using a configurable mapping between OData and STAC. The mapping file can be viewed to understand how the
+conversion is performed and to customize it if needed. The mapping file can be viewed
+[here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_stac_mapper.json).
 
 ### API Reference
 
@@ -27,7 +27,7 @@ conversion is performed and to customize it if needed. The mapping file can be v
 -   `station` (str): Identifier for the CADIP station (e.g., MTI, SGS,
     MPU, INU, etc).
 
--   `datetime` (str): Specifies a date interval for time series filtering, with the start and end dates separated by a 
+-   `datetime` (str): Specifies a date interval for time series filtering, with the start and end dates separated by a
 slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:sssZ**/**YYYY-MM-DDThh:mm:sssZ").
 
 -   `limit` (int, optional): Maximum number of products to return,
@@ -218,7 +218,7 @@ Download Endpoint
 -----------------
 
 This endpoint initiates an asynchronous download process for a CADU
-file using [EODAG](https://www.google.com/search?client=safari&rls=en&q=eodag&ie=UTF-8&oe=UTF-8). If specific parameters 
+file using [EODAG](https://www.google.com/search?client=safari&rls=en&q=eodag&ie=UTF-8&oe=UTF-8). If specific parameters
 are provided, endpoint also upload the file to an S3 bucket.
 
 ### API Reference
@@ -303,9 +303,9 @@ retrieve available auxiliary data files through a standard OData RESTful
 API. The following endpoints have been implemented in RS-Server to
 interact with ADGS RESTful API.
 
-The data pickup-point response is a OData formatted content which is then converted to STAC format inside rs-server using a 
-configurable mapping between OData and STAC. The mapping file can be viewed 
-[here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/adgs/config/adgs_stac_mapper.json).  
+The data pickup-point response is a OData formatted content which is then converted to STAC format inside rs-server using a
+configurable mapping between OData and STAC. The mapping file can be viewed
+[here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/adgs/config/adgs_stac_mapper.json).
 
 
 Search Endpoint
@@ -321,7 +321,7 @@ response.
 
 ### Parameters
 
--   `datetime` (str): Specifies a date interval for time series filtering, with the start and end dates separated by a 
+-   `datetime` (str): Specifies a date interval for time series filtering, with the start and end dates separated by a
 slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:sssZ**/**YYYY-MM-DDThh:mm:sssZ").
 
 -   `limit` (int, optional): Maximum number of products to return,
@@ -436,13 +436,13 @@ Catalog
 The following section groups all the endpoints used to
 interact with a [STAC](https://stacspec.org/)-compatible catalog of Sentinel products, auxiliary files and CADU chunks.
 
---- 
+---
 
 STAC Item:
 -------------
 
 A STAC Item represents a single geospatial
-asset or dataset. Items are built upon community [extensions](https://stac-extensions.github.io/) including the eo, eopf, sar, sat, processing, proj and 
+asset or dataset. Items are built upon community [extensions](https://stac-extensions.github.io/) including the eo, eopf, sar, sat, processing, proj and
 timestamps extensions. It encapsulates metadata describing the asset,
 including its spatial and temporal extent, properties, and links to
 associated data files. STAC Items provide a standardized way to
@@ -748,5 +748,3 @@ Download an Item
 This endpoint returns a S3 presigned url that can directly download the file when accessed.
 
     GET /catalog/collections/{ownerId:collectionId}/items/{featureID}/download/{assetId}
-
-

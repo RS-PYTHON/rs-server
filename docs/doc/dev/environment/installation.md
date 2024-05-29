@@ -61,7 +61,7 @@ The project is managed by poetry, and should be initialized locally first.
     poetry install --with dev
     poetry run opentelemetry-bootstrap -a install
 
-This command initializes and activates a virtual environment for project. 
+This command initializes and activates a virtual environment for project.
 It installs in this environment the project dependencies and
 the develop dependencies (--with dev).
 
@@ -128,6 +128,6 @@ keep your code compliant with the coding style at any moment.
 The next steps
 ==============
 
-The document titled [Development Technical Stack](description.md) provides additional details about the environment. 
-Additionally, the [Development Workflow](../background/workflow.md) document describes the workflow followed by developers to implement stories. 
+The document titled [Development Technical Stack](description.md) provides additional details about the environment.
+Additionally, the [Development Workflow](../background/workflow.md) document describes the workflow followed by developers to implement stories.
 The [Code Style](../code-style.md) document may also be useful for review.
