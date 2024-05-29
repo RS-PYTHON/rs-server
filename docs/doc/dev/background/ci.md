@@ -105,15 +105,15 @@ commit, or manually. It:
 
 The git tag name must conform to the following syntax examples:
 
--   `v2.0` is a version for a release with at least major updates.
+-   `v0.2` is a version for a release with at least major updates.
 
--   `v2.1` is a version for a release without any major updates.
+-   `v0.2.1` is a version for a release without any major updates.
 
--   `v2.1rc1` is the version for the first 2.1 release-candidate.
+-   `v0.1rc1` is the version for the first 0.1 release-candidate.
 
--   `v1.0a3` is the version for sprint 3 features integration.
+-   `v0.1a3` is the version for sprint 3 features integration.
 
--   `v1.0a3+dev9afcfc1` is dev commit version during the sprint 3.
+-   `v0.1a3+dev9afcfc1` is dev commit version during the sprint 3.
 
 The `Poetry dynamic versioning` python plugin is then used to determine
 automatically the wheels and Docker images version name. Note that it is
@@ -125,27 +125,27 @@ slighty different from the git tag name:
 
 So we have e.g. the wheel filenames:
 
--   `rs_server-2.0-py3-none-any.whl`
+-   `rs_server-0.2-py3-none-any.whl`
 
--   `rs_server-2.1-py3-none-any.whl`
+-   `rs_server-0.2.1-py3-none-any.whl`
 
--   `rs_server-2.1rc1-py3-none-any.whl`
+-   `rs_server-0.2.1rc1-py3-none-any.whl`
 
--   `rs_server-1.0a3-py3-none-any.whl`
+-   `rs_server-0.1a3-py3-none-any.whl`
 
--   `rs_server-1.0a3+dev9afcfc1-py3-none-any.whl`
+-   `rs_server-0.1a3+dev9afcfc1-py3-none-any.whl`
 
 And the Docker images:
 
--   `ghcr.io/rs-python/rs-server:2.0`
+-   `ghcr.io/rs-python/rs-server:0.2`
 
--   `ghcr.io/rs-python/rs-server:2.1`
+-   `ghcr.io/rs-python/rs-server:0.2.1`
 
--   `ghcr.io/rs-python/rs-server:2.1rc1`
+-   `ghcr.io/rs-python/rs-server:0.2.1rc1`
 
--   `ghcr.io/rs-python/rs-server:1.0a3`
+-   `ghcr.io/rs-python/rs-server:0.1a3`
 
--   `ghcr.io/rs-python/rs-server:1.0a3.dev9afcfc1`
+-   `ghcr.io/rs-python/rs-server:0.1a3.dev9afcfc1`
 
 When running manually the workflow, the version name is determined
 automatically as:

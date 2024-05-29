@@ -2,15 +2,13 @@ Prerequisites
 =============
 
 This tutorial assumes the developer has already basic knowledge and is
-using a ubuntu working station. This tutorial lets the user uses their
-preferred IDE. You could extend your environment with specific IDE
-integration.
+using a Ubuntu/macOS based computer. No specific IDE is recommended for the development process, user can extend
+their environment with specific IDE integration.
 
 Checkout the project
 ====================
 
-The source code is hosted on github. You should configure your github
-token access before.
+The source code is hosted on GitHub. Personal Access Token (PAT) with specific rights on RS-Server repository should be configured before this process.
 
 -   Create a project folder that will contain all useful files
 
@@ -31,31 +29,25 @@ token access before.
 Install Python
 ==============
 
-rs-server is using python 3.11. You should install a compatible python
-version on your working station.
+RS-Server is using Python 3.11.
 
-It is recommended to use [pyenv](https://github.com/pyenv/pyenv) to
-handle your python versions. Pyenv provides you an easy way to switch
-between different python versions.
+Using [pyenv](https://github.com/pyenv/pyenv) is recommended for managing Python versions. Pyenv offers a straightforward method to switch between various Python versions.
 
     cd $RSPY_ROOT/src
     pyenv install 3.11.3
     pyenv local 3.11.3
 
-The python version is an example. You could use more recent versions.
+The Python version is an example, more recent version can be used.
 
-These commands install python 3.11 on your workstation and enforces this
-version for rs-server only.
+The following commands install Python 3.11 on the workstation and ensure that this version is used exclusively for RS-Server.
 
 Install Poetry
 ==============
 
-The dependency management on rs-server is done with
+The dependency management on RS-Server is done with
 [Poetry](https://python-poetry.org/).
 
-Is it recommended to use [pipx](https://github.com/pypa/pipx) to install
-your python tools. Pipx provides you with isolated environment for your
-python tools.
+Is it recommended to use [pipx](https://github.com/pypa/pipx) to install Python tools. Pipx provides an isolated environment for any Python tool.
 
     cd $RSPY_ROOT/src
     pipx install poetry
@@ -63,30 +55,27 @@ python tools.
 Setup the project
 =================
 
-The project is managed by poetry.
-
-You should first initialize the project locally
+The project is managed by poetry, and should be initialized locally first.
 
     cd $RSPY_ROOT/src/rs-server
     poetry install --with dev
     poetry run opentelemetry-bootstrap -a install
 
-This command initializes and activates a virtual environment for your
-project. It installs in this environment the project dependencies and
+This command initializes and activates a virtual environment for project. 
+It installs in this environment the project dependencies and
 the develop dependencies (--with dev).
 
-Your IDE can provide poetry integration.
+An IDE can provide poetry integration.
 
 Verify your local environment
 =============================
 
-To verify your environment is correctly installed, you can run the
-unittests and verify that they run nominally
+To verify if the local environment is correctly installed, all unittests should run normally using this command:
 
     cd $RSPY_ROOT/src/rs-server
     pytest tests -m "unit"
 
-Your IDE can provide integration to run your unittests.
+An IDE can provide integration to run unittests.
 
 Install trivy
 =============
@@ -98,20 +87,19 @@ packages and the docker images.
 trivy is run on the pre-commit and the CI to verify the repository
 compliance with common vulnerabilities, secrets and licenses.
 
-To install trivy on your local environment, follow [the official
+To install trivy on the local environment, follow [the official
 procedure](https://aquasecurity.github.io/trivy/latest/getting-started/installation/).
 
 Install pre-commit hooks
 ========================
 
-pre-commit is used to check basic rules before each commit. You should
-activate them :
+pre-commit is used to check basic rules before each commit. Can be activated using:
 
     cd $RSPY_ROOT/src/rs-server
     poetry run pre-commit install
 
 Once installed, checks will be performed before each commit to ensure
-your code is compliant with project best practices :
+the code is compliant with project best practices :
 
 -   assert no unresolved merge conflicts
 
@@ -127,7 +115,7 @@ your code is compliant with project best practices :
 
 -   run trivy repo checks
 
-It is useful to configure your IDE to run black at each file saving so
+It is useful to configure an IDE to run [black](https://black.readthedocs.io/en/stable/) at each file saving so
 that you keep your code compliant with the project coding style.
 
 Additional IDE configuration
@@ -140,8 +128,6 @@ keep your code compliant with the coding style at any moment.
 The next steps
 ==============
 
-The [development technical stack](description.md) document can provide you with
-more details about the environment. The
-[development workflow](../background/workflow.md) document describes the
-workflow followed by the developers to implement stories. You may also want
-to read the [code style](../code-style.md).
+The document titled [Development Technical Stack](description.md) provides additional details about the environment. 
+Additionally, the [Development Workflow](../background/workflow.md) document describes the workflow followed by developers to implement stories. 
+The [Code Style](../code-style.md) document may also be useful for review.

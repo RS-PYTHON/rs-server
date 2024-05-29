@@ -10,12 +10,12 @@ to interact with CADIP RESTful API
 Search Endpoint
 ---------------
 
-This endpoint retrieves a list of products from the CADU system for a
-specified station within a given time range and return a STAC compatible
-FeatureCollection response.  
+This endpoint retrieves a list of CADUs from a specified station within a given time range and returns a response 
+compatible with the SpatioTemporal Asset Catalog (STAC) format.
 
-The data pickup-point response is a OData formatted content which is then converted to STAC format inside rs-server using a 
-configurable mapping between OData and STAC. The mapping file can be viewed 
+The response from the data pickup-point is in OData format, which is then transformed into the STAC format within 
+RS-Server using a configurable mapping between OData and STAC. The mapping file can be viewed to understand how the 
+conversion is performed and to customize it if needed. The mapping file can be viewed 
 [here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_stac_mapper.json).  
 
 ### API Reference
@@ -27,9 +27,8 @@ configurable mapping between OData and STAC. The mapping file can be viewed
 -   `station` (str): Identifier for the CADIP station (e.g., MTI, SGS,
     MPU, INU, etc).
 
--   `datetime` (str): Interval of date for time series filter joined by
-    a slash (*/*). (format:
-    "YYYY-MM-DDThh:mm:sssZ**/**YYYY-MM-DDThh:mm:sssZ").
+-   `datetime` (str): Specifies a date interval for time series filtering, with the start and end dates separated by a 
+slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:sssZ**/**YYYY-MM-DDThh:mm:sssZ").
 
 -   `limit` (int, optional): Maximum number of products to return,
     default set to 1000.
@@ -85,7 +84,7 @@ a STAC compatible FeatureCollection response.
     MPU, INU, etc).
 
 -   `id` (str, list\[str\], optional): DSIB SessionId value. Can be used
-    with coma-separated values (e.g., S1A\_20170501121534062343).
+    with coma-separated values (e.g., id=S1A_20170501121534062343 or id=S1A_20170501121534062343,S1A_20241212111534094212).
 
 -   `platform` (str, list\[str\], optional): Platform / Satellite
     identifier. Can be used with coma-separated values (e.g: platform =
@@ -219,8 +218,8 @@ Download Endpoint
 -----------------
 
 This endpoint initiates an asynchronous download process for a CADU
-file using EODAG. If specific parameters are provided, endpoint also
-upload the file to an S3 bucket.
+file using [EODAG](https://www.google.com/search?client=safari&rls=en&q=eodag&ie=UTF-8&oe=UTF-8). If specific parameters 
+are provided, endpoint also upload the file to an S3 bucket.
 
 ### API Reference
 
@@ -322,9 +321,8 @@ response.
 
 ### Parameters
 
--   `datetime` (str): Interval of date for time series filter joined by
-    a slash (*/*). (format:
-    "YYYY-MM-DDThh:mm:sssZ**/**YYYY-MM-DDThh:mm:sssZ").
+-   `datetime` (str): Specifies a date interval for time series filtering, with the start and end dates separated by a 
+slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:sssZ**/**YYYY-MM-DDThh:mm:sssZ").
 
 -   `limit` (int, optional): Maximum number of products to return,
     default set to 1000.

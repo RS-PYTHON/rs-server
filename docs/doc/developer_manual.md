@@ -24,15 +24,15 @@ Main Services, Common Structures and Mechanisms
 There are currently 3 main services implemented: 
  
 1. CADIP service  
-It facilitates the download of files from a CADIP server to a S3 bucket. Each instance of this service is started for a given station and provides 3 endpoints :
+It facilitates the search and download of files from a CADIP server to a S3 bucket. Each instance of this service is started for a given station and provides 3 endpoints:
 
-    * A search endpoint that enables to search files for a time period
-    * A download endpoint that enables to download a file from its name
-    * A status endpoint that enables the check of the current status for a downloading file.
+    * A **search** endpoint that enables to search files for a time period
+    * A **download** endpoint that enables to download a file using own its name
+    * A **status** endpoint that enables the check of the current status for a downloading file.
 
 
-2. ADGS service - facilitates the download of files from an ADGS server to a S3 bucket
-3. Catalog service - facilitates the use of the main RS-Server catalog in pystac format
+2. ADGS service - Provides the same functionality as CADIP service, facilitates the search and download of files from an ADGS server to a S3 bucket
+3. Catalog service - facilitates the use of the main RS-Server catalog in [PySTAC](https://pystac.readthedocs.io/en/stable/) format
 
 To maintain consistency and streamline development, all services use shared components and mechanisms provided by the ```rs-server-common package```. This package includes:
 
