@@ -8,13 +8,10 @@ their works.
 
 The toolbox exposes REST endpoints enabling users to :
 
--   search for external data
-
--   download external data into a S3 bucket
-
--   catalog data
-
--   search for data in the catalog
+* search for external data
+* download external data into a S3 bucket
+* catalog data
+* search for data in the catalog
 
 All these functionalities are reserve to authorized users only. The
 permissions are technical and/or functional.
