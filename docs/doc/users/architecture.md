@@ -1,12 +1,20 @@
-Static View
-===========
+RS-Server inside RS Python
+==========================
 
-We can split the system into the following Components:
+The **RS-Server** is the major component of **Reference-System Python**. 
+It controls user access to all sensitive interfaces: 
+    - Catalog (fine access control per Collection)
 
--   **RS-Server**: The RS-Server controls user access to all sensitive
-    interfaces: Catalog, LTA, ADGS, PRIP, CADIP. As a consequence, we
-    can distinguish following components:
+    - LTA
 
+    - ADGS
+
+    - PRIP 
+
+    - CADIP
+
+
+**RS-Server** components are the following ones:
     -   **RS-Server Frontend**
 
     -   **RS-Server Backend / Catalog**
@@ -19,47 +27,19 @@ We can split the system into the following Components:
 
     -   **RS-Server Backend / AUXIP**
 
--   **RS-Client libraries**: this is a set of python functions that
-    provide processing tasks and flows. Flows and tasks can be
-    orchestrated by Prefect server or executed from any Python
-    environment. On RS-Server side, there will be also a function to
-    compute performance indicator.
 
--   **RS-Virtual environment**: Component that gives users access to
-    computational environments and resources for executing processing
-    chains.
 
--   **Processing**: this group hosts all components to process Sentinel
-    products. The CFI are not part of the group. Only wrappers,
-    preparation worker and Dask cluster provide processing power.
-    Here are the components:
-
-    -   **Dask cluster**
-
-    -   **DPR libraries**
-
--   **Infrastructure**: The infrastructure is a portable, extensible and
-    open-source platform orchestrated by Kubernetes. We can isolate two
-    specific layouts: monitoring and security. As a consequence,
-    we can distinguish the following components:
-
-    -   **Infrastructure core**
-
-    -   **Infrastructure monitoring**
-
-    -   **Infrastructure security**
-
-![Static View](../../images/staticview.png)
 
 Dynamic View
 ============
 
-The following schema highlights the main interactions between the
-components.
+On the following schema we see that RS-Server is on the middle of the system with an access control to Copernicus sensitive interfaces.
 
 ![Dynamic View](../../images/dynamicview.png)
 
+
 STAC item lifecycle
 -------------------
+STAC standard is everywhere on RS. The following schema highligts where a STAC item is created, stored and updated.
 
 ![Stac Item Lifecylce](../../images/stac-item-lifecycle.png)
