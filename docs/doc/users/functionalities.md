@@ -1,5 +1,5 @@
 CADIP
-=====
+-----
 
 The CADU Interface delivery Point (CADIP) is a pick-up point for
 Sentinel CADU data. The CADIP allows clients to straightforwardly
@@ -7,8 +7,7 @@ discover and retrieve available data files through a standard OData
 RESTful API. The following endpoints have been implemented in RS-Server
 to interact with CADIP RESTful API
 
-Search Endpoint
----------------
+### Search Endpoint
 
 This endpoint retrieves a list of CADUs from a specified station within a given time range and returns a response
 compatible with the SpatioTemporal Asset Catalog (STAC) format.
@@ -18,11 +17,11 @@ RS-Server using a configurable mapping between OData and STAC. The mapping file 
 conversion is performed and to customize it if needed. The mapping file can be viewed
 [here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/config/cadip_stac_mapper.json).
 
-### API Reference
+#### API Reference
 
 `/cadip/{station}/cadu/search`
 
-### Parameters
+#### Parameters
 
 -   `station` (str): Identifier for the CADIP station (e.g., MTI, SGS,
     MPU, INU, etc).
@@ -37,11 +36,11 @@ slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:s
     ascending/descending order and field name (e.g. sortby=+datetime)
     Default no sorting is applied.
 
-### Request example
+#### Request example
 
     GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=50&sortby=-datetime
 
-### Return
+#### Return
 
     {
         "stac_version": "1.0.0",
@@ -67,18 +66,17 @@ slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:s
         },
     }
 
-Session search Endpoint
------------------------
+### Session search Endpoint
 
 This endpoint retrieves a list of sessions from the CADU system for a
 specified station within a given parameter and/or time range and return
 a STAC compatible FeatureCollection response.
 
-### API Reference
+#### API Reference
 
 `/cadip/{station}/session`
 
-### Parameters
+#### Parameters
 
 -   `station` (str): Identifier for the CADIP station (e.g., MTI, SGS,
     MPU, INU, etc).
@@ -96,19 +94,19 @@ a STAC compatible FeatureCollection response.
 -   `stop_date` (str, optional): Stop time of session (PublicationTime).
     (format: YYYY-MM-DDThh:mm:sssZ).
 
-### Note
+#### Note
 
 A valid session search request must contain at least a value for either
 **id** or **platform** or time interval (**start\_date** and
 **stop\_date** correctly defined).
 
-### Request example
+#### Request example
 
     GET /cadip/station123/session?id=S1A_20170501121534062343,S1A_20240328185208053186
 
     GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-16T12:00:00Z&platform=S1A
 
-### Return
+#### Return
 
     {
         "type": "FeatureCollection",
@@ -214,18 +212,17 @@ A valid session search request must contain at least a value for either
         ]
     }
 
-Download Endpoint
------------------
+### Download Endpoint
 
 This endpoint initiates an asynchronous download process for a CADU
 file using [EODAG](https://www.google.com/search?client=safari&rls=en&q=eodag&ie=UTF-8&oe=UTF-8). If specific parameters
 are provided, endpoint also upload the file to an S3 bucket.
 
-### API Reference
+#### API Reference
 
 `/cadip/{station}/cadu`
 
-### Parameters
+#### Parameters
 
 -   `station` (str): The EODAG station identifier (e.g., MTI, SGS, MPU,
     INU, etc).
@@ -241,12 +238,12 @@ are provided, endpoint also upload the file to an S3 bucket.
     variables, **S3\_ACCESSKEY**, **S3\_SECRETKEY**, **S3\_ENDPOINT**
     and **S3\_REGION**.
 
-### Returns
+#### Returns
 
 -   `dict`: A dictionary indicating whether the download process has
     started.
 
-### Request example
+#### Request example
 
     GET /cadip/station123/cadu?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw
 
@@ -254,34 +251,32 @@ are provided, endpoint also upload the file to an S3 bucket.
 
     GET /cadip/station123/cadu?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw&local=/tmp/file.raw&obs=s3://bucket/path/to/file.raw
 
-### Response
+#### Response
 
     {
       "started": "true"
     }
 
-Status Endpoint
----------------
+### Status Endpoint
 
 This endpoint is used to query the download status of an CADU file.
 
-### API Reference
+#### API Reference
 
 `/cadip/{station}/cadu/status`
 
-Parameters
-----------
+#### Parameters
 
 -   `station` (str): The EODAG station identifier (e.g., MTI, SGS, MPU,
     INU, etc).
 
 -   `name` (str): The name of the CADU file to be queried from database.
 
-### Request
+#### Request
 
     GET /cadip/{station}/cadu/status?name=DCS_04_S1A_20231121072204051312_ch1_DSDB_00001.raw
 
-### Response
+#### Response
 
     {
       "product_id": "2b17b57d-fff4-4645-b539-91f305c27c69",
@@ -295,7 +290,7 @@ Parameters
     }
 
 ADGS
-====
+----
 
 The Auxiliary Data Gathering Service (ADGS) is a pick-up point for
 Sentinel auxiliary files. This service allows clients to discover and
@@ -308,18 +303,17 @@ configurable mapping between OData and STAC. The mapping file can be viewed
 [here](https://github.com/RS-PYTHON/rs-server/blob/develop/services/adgs/config/adgs_stac_mapper.json).
 
 
-Search Endpoint
----------------
+### Search Endpoint
 
 This endpoint handles the search for products in the AUX station within
 a specified time interval and return a STAC compatible FeatureCollection
 response.
 
-### API Reference
+#### API Reference
 
 `/adgs/aux/search`
 
-### Parameters
+#### Parameters
 
 -   `datetime` (str): Specifies a date interval for time series filtering, with the start and end dates separated by a
 slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:sssZ**/**YYYY-MM-DDThh:mm:sssZ").
@@ -331,11 +325,11 @@ slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:s
     ascending/descending order and field name (e.g. sortby=+datetime)
     Default no sorting is applied.
 
-### Request Example
+#### Request Example
 
     GET /adgs/aux/search?datetime=2018-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=10&sortby=+properties.adgs:id
 
-### Response
+#### Response
 
     {
         "stac_version": "1.0.0",
@@ -357,18 +351,17 @@ slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:s
         }
     }
 
-Download Endpoint
------------------
+### Download Endpoint
 
 This endpoint initiates an asynchronous download process for an AUX
 product using EODAG. If specific parameters are provided, endpoint also
 upload the file to an S3 bucket.
 
-### API Reference
+#### API Reference
 
 `/adgs/aux`
 
-### Parameters
+#### Parameters
 
 -   `name` (str): The name of the AUX product to be downloaded
 
@@ -381,12 +374,12 @@ upload the file to an S3 bucket.
     variables, **S3\_ACCESSKEY**, **S3\_SECRETKEY**, **S3\_ENDPOINT**
     and **S3\_REGION**.
 
-### Returns
+#### Returns
 
 -   `dict`: A dictionary indicating whether the download process has
     started.
 
-### Request Example
+#### Request Example
 
     GET /adgs/aux?name=S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_20190217T210000.TGZ
 
@@ -394,30 +387,29 @@ upload the file to an S3 bucket.
 
     GET /adgs/aux?name=S2__OPER_AUX_ECMWFD_PDMC_20190216T120000_V20190217T090000_20190217T210000.TGZ&local=/tmp/aux.tar.gz&obs=s3://bucket/path/to/aux.tar.gz
 
-### Response
+#### Response
 
     {
       "started": "true"
     }
 
-Status Endpoint
----------------
+### Status Endpoint
 
 This endpoint is used to query the download status of an AUX file.
 
-### Endpoint
+#### Endpoint
 
 `/adgs/aux/status`
 
-### Parameters
+#### Parameters
 
 -   `name` (str): The name of the AUX file to be queried from database.
 
-### Request Example
+#### Request Example
 
     GET /adgs/aux/status?name=S2__OPER_AUX_ECMWFD_PDMC_20200216T120000_V20190217T090000_20190217T210000.TGZ
 
-### Response
+#### Response
 
     {
       "product_id": "id2",
@@ -431,15 +423,14 @@ This endpoint is used to query the download status of an AUX file.
     }
 
 Catalog
-=======
+-------
 
 The following section groups all the endpoints used to
 interact with a [STAC](https://stacspec.org/)-compatible catalog of Sentinel products, auxiliary files and CADU chunks.
 
 ---
 
-STAC Item:
--------------
+### STAC Item
 
 A STAC Item represents a single geospatial
 asset or dataset. Items are built upon community [extensions](https://stac-extensions.github.io/) including the eo, eopf, sar, sat, processing, proj and
@@ -451,8 +442,7 @@ access, and use such data across different platforms and tools.
 
 ---
 
-STAC Collection:
-----------------
+### STAC Collection
 
 A STAC Collection is a logical grouping of related STAC Features. It
 serves as a container for organizing and categorizing similar datasets
@@ -472,8 +462,7 @@ Using the endpoints described below, a user shall be able to:
 
 -   Search details of existing items and collections.
 
-Create a collection
--------------------
+### Create a collection
 
 This endpoint converts a request with a correct JSON body collection
 descriptor to a database entry.
@@ -488,8 +477,7 @@ descriptor to a database entry.
         "owner": "test_owner"
     }
 
-Get a collection
-----------------
+### Get a collection
 
 This endpoint returns a collection details based on parameters given in
 request.
@@ -547,8 +535,7 @@ request.
       ]
     }
 
-Update a collection
--------------------
+### Update a collection
 
 This endpoint updates a collection from STAC if it exists and request
 body json data is STAC compatible.
@@ -563,16 +550,14 @@ body json data is STAC compatible.
         "owner": "test_owner"
     }
 
-Delete a collection
--------------------
+### Delete a collection
 
 This endpoint deletes a collection from STAC if it exists and owner has
 right to perform this action.
 
     DELETE /catalog/collections/{ownerId:collectionId}
 
-Add an Item
-----------------
+### Add an Item
 
 This endpoint converts a request with a correct JSON body feature
 descriptor to a database entry. RS-Server Backend also move assets
@@ -638,8 +623,7 @@ with s3 locations.
       "type": "Feature"
     }
 
-Get an Item
--------------
+### Get an Item
 
 This endpoint returns a feature details based on parameters given in
 request.
@@ -733,8 +717,7 @@ request.
       ]
     }
 
-Update an Item
-----------------
+### Update an Item
 
 This endpoint updates content of a feature is request JSON data is
 completely STAC-compatible.
@@ -742,8 +725,7 @@ completely STAC-compatible.
     PUT /catalog/collections/{ownerId:collectionId}/items/{featureID}
 
 
-Download an Item
-----------------
+### Download an Item
 
 This endpoint returns a S3 presigned url that can directly download the file when accessed.
 
