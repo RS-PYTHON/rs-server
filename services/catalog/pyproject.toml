@@ -54,7 +54,7 @@ cachetools = "^5.3.3"
 asyncache = "^0.3.1"
 orjson = "3.10.3"
 opentelemetry-distro = "^0.45b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-exporter-otlp = "^1.24.0"
+opentelemetry-exporter-otlp = "^1.25.0"
 python-logging-loki = "^0.3.1"
 
 [tool.poetry.group.dev]
