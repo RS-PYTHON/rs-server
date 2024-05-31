@@ -7,6 +7,7 @@ RS-Server offers a catalog of Sentinel products compatible with the STAC (Spatio
 ## Features
 
 To achieve this, RS-Server exposes REST endpoints that allow users to:
+
 * Search CADU chunks from CADIP stations
 * Stage CADU chunks from CADIP stations
 * Search auxiliary data from AUXIP station
