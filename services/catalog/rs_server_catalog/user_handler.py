@@ -102,7 +102,12 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
     return path, ids_dict
 
 
-def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = "") -> str:
+def add_user_prefix(  # pylint: disable=too-many-return-statements
+    path: str,
+    user: str,
+    collection_id: str,
+    feature_id: str = "",
+) -> str:
     """
     Modify the RS server backend catalog endpoint to get the RS server frontend endpoint
 
