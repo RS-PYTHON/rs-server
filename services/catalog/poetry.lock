@@ -1344,13 +1344,13 @@ files = [
 
 [[package]]
 name = "moto"
-version = "5.0.9"
+version = "5.0.8"
 description = ""
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "moto-5.0.9-py2.py3-none-any.whl", hash = "sha256:21a13e02f83d6a18cfcd99949c96abb2e889f4bd51c4c6a3ecc8b78765cb854e"},
-    {file = "moto-5.0.9.tar.gz", hash = "sha256:eb71f1cba01c70fff1f16086acb24d6d9aeb32830d646d8989f98a29aeae24ba"},
+    {file = "moto-5.0.8-py2.py3-none-any.whl", hash = "sha256:7d1035e366434bfa9fcc0621f07d5aa724b6846408071d540137a0554c46f214"},
+    {file = "moto-5.0.8.tar.gz", hash = "sha256:517fb808dc718bcbdda54c6ffeaca0adc34cf6e10821bfb01216ce420a31765c"},
 ]
 
 [package.dependencies]
@@ -1414,22 +1414,22 @@ importlib-metadata = ">=6.0,<=7.0"
 
 [[package]]
 name = "opentelemetry-distro"
-version = "0.45b0"
+version = "0.46b0"
 description = "OpenTelemetry Python Distro"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "opentelemetry_distro-0.45b0-py3-none-any.whl", hash = "sha256:e57c670d1820ccaf2857064a392e006942deed340beecba75fc7ba4b7dfe789f"},
-    {file = "opentelemetry_distro-0.45b0.tar.gz", hash = "sha256:81864219f1ec5656973ef42074d27772b3e510c1bcfff09bf34f0c447251a867"},
+    {file = "opentelemetry_distro-0.46b0-py3-none-any.whl", hash = "sha256:ac0681ea97a313319212130826813bdc521bb6d07cdb5c4ad4bcede6eba80d3e"},
+    {file = "opentelemetry_distro-0.46b0.tar.gz", hash = "sha256:9bfc8a13f1bff2f1e88c3c75bdda8a6241db9c75d4adddb8709cf82b0390f363"},
 ]
 
 [package.dependencies]
 opentelemetry-api = ">=1.12,<2.0"
-opentelemetry-instrumentation = "0.45b0"
+opentelemetry-instrumentation = "0.46b0"
 opentelemetry-sdk = ">=1.13,<2.0"
 
 [package.extras]
-otlp = ["opentelemetry-exporter-otlp (==1.24.0)"]
+otlp = ["opentelemetry-exporter-otlp (==1.25.0)"]
 
 [[package]]
 name = "opentelemetry-exporter-otlp"
@@ -1505,13 +1505,13 @@ requests = ">=2.7,<3.0"
 
 [[package]]
 name = "opentelemetry-instrumentation"
-version = "0.45b0"
+version = "0.46b0"
 description = "Instrumentation Tools & Auto Instrumentation for OpenTelemetry Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "opentelemetry_instrumentation-0.45b0-py3-none-any.whl", hash = "sha256:06c02e2c952c1b076e8eaedf1b82f715e2937ba7eeacab55913dd434fbcec258"},
-    {file = "opentelemetry_instrumentation-0.45b0.tar.gz", hash = "sha256:6c47120a7970bbeb458e6a73686ee9ba84b106329a79e4a4a66761f933709c7e"},
+    {file = "opentelemetry_instrumentation-0.46b0-py3-none-any.whl", hash = "sha256:89cd721b9c18c014ca848ccd11181e6b3fd3f6c7669e35d59c48dc527408c18b"},
+    {file = "opentelemetry_instrumentation-0.46b0.tar.gz", hash = "sha256:974e0888fb2a1e01c38fbacc9483d024bb1132aad92d6d24e2e5543887a7adda"},
 ]
 
 [package.dependencies]
@@ -3215,4 +3215,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "f068b177611ee009d3f079f7d76f5a74c950979487a9caafc8fbf24290434d56"
+content-hash = "12008eb740c264486442f50e3a1aebb62462c4931e64f4c67c110afc9d3624fd"
