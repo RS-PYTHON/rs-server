@@ -33,12 +33,12 @@ slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:s
     default set to 1000.
 
 -   `sortby` (str, optional): Sorting criteria. +/-fieldName indicates
-    ascending/descending order and field name (e.g. sortby=+datetime)
+    ascending/descending order and field name (e.g. sortby=+created)
     Default no sorting is applied.
 
 #### Request example
 
-    GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=50&sortby=-datetime
+    GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=50&sortby=-created
 
 #### Return
 
@@ -322,7 +322,7 @@ slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:s
     default set to 1000.
 
 -   `sortby` (str, optional): Sorting criteria. +/-fieldName indicates
-    ascending/descending order and field name (e.g. sortby=+datetime)
+    ascending/descending order and field name (e.g. sortby=+created)
     Default no sorting is applied.
 
 #### Request Example
