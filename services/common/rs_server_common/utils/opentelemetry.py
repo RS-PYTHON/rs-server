@@ -34,6 +34,8 @@ from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
 
+FROM_PYTEST = False
+
 
 def init_traces(app: fastapi.FastAPI, service_name: str):
     """
@@ -46,25 +48,30 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
 
     # See: https://github.com/softwarebloat/python-tracing-demo/tree/main
 
-    tempo_endpoint = os.getenv("TEMPO_ENDPOINT")
-    if not tempo_endpoint:
-        return
+    # Don't call this line from pytest because it causes errors:
+    # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ..s.
+    if not FROM_PYTEST:
+        tempo_endpoint = os.getenv("TEMPO_ENDPOINT")
+        if not tempo_endpoint:
+            return
 
-    # TODO: to avoid errors in local mode:
-    # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ...s.
-    #
-    # The below line does not work either but at least we have less error messages.
-    # See: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-221?focusedId=162092&
-    # page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-162092
-    #
-    # Now we have a single line error, which is less worst:
-    # Failed to export metrics to tempo:4317, error code: StatusCode.UNIMPLEMENTED
-    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = tempo_endpoint
+        # TODO: to avoid errors in local mode:
+        # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ..s.
+        #
+        # The below line does not work either but at least we have less error messages.
+        # See: https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-221?focusedId=162092&
+        # page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel#comment-162092
+        #
+        # Now we have a single line error, which is less worst:
+        # Failed to export metrics to tempo:4317, error code: StatusCode.UNIMPLEMENTED
+        os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = tempo_endpoint
 
     otel_resource = Resource(attributes={"service.name": service_name})
     otel_tracer = TracerProvider(resource=otel_resource)
     trace.set_tracer_provider(otel_tracer)
-    otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=tempo_endpoint)))
+
+    if not FROM_PYTEST:
+        otel_tracer.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=tempo_endpoint)))
 
     FastAPIInstrumentor.instrument_app(app, tracer_provider=otel_tracer)
     # logger.debug(f"OpenTelemetry instrumentation of 'fastapi.FastAPIInstrumentor'")

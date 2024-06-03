@@ -119,7 +119,7 @@ class UserCatalog:
         """Used to clear specific files from catalog bucket."""
         if not self.handler:
             return
-        for asset in content["assets"]:
+        for asset in content.get("assets", {}):
             # For catalog bucket, data is already store into alternate:s3:href
             file_key = content["assets"][asset]["alternate"]["s3"]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
@@ -388,13 +388,12 @@ class UserCatalog:
         owner_id = self.find_owner_id(filters)
         if "collections" in query:
             collection_id = query["collections"][0].removeprefix(owner_id)
-        if owner_id and collection_id:
-            body = [chunk async for chunk in response.body_iterator]
-            content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
-            content = self.remove_user_from_objects(content, owner_id, "features")
-            content = self.adapt_links(content, owner_id, collection_id, "features")
-            return JSONResponse(content, status_code=response.status_code)
-        return response
+
+        body = [chunk async for chunk in response.body_iterator]
+        content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+        content = self.remove_user_from_objects(content, owner_id, "features")
+        content = self.adapt_links(content, owner_id, collection_id, "features")
+        return JSONResponse(content, status_code=response.status_code)
 
     async def manage_put_post_request(self, request: Request) -> Request | JSONResponse:
         """Adapt the request body for the STAC endpoint.

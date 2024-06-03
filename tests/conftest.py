@@ -38,9 +38,30 @@ from tests.app import init_app
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 
 
-###############################
-# READ COMMAND LINE ARGUMENTS #
-###############################
+##################
+# INITIALISATION #
+##################
+
+
+@pytest.fixture(scope="session", autouse=True)
+def before_and_after(session_mocker):
+    """This function is called before and after all the pytests have started/ended."""
+
+    ####################
+    # Before all tests #
+    ####################
+
+    # Avoid errors:
+    # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in 1s
+    session_mocker.patch(  # pylint: disable=protected-access
+        "opentelemetry.exporter.otlp.proto.grpc.exporter.OTLPExporterMixin",
+    )._export.return_value = True
+
+    yield
+
+    ###################
+    # After all tests #
+    ###################
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -66,7 +66,7 @@ async def apikey_security(
     request: Request,
     apikey_header: Annotated[str, Security(APIKEY_AUTH_HEADER)],
     # apikey_query: Annotated[str, Security(APIKEY_AUTH_QUERY)],
-) -> tuple[list, dict, str]:
+) -> tuple[list[str], dict, str]:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header.
 
@@ -74,7 +74,7 @@ async def apikey_security(
         apikey_header (Security): API key passed in HTTP header
 
     Returns:
-        Tuple of (IAM roles, config) information from the keycloak server, associated with the api key.
+        Tuple of (IAM roles, config, user login) information from the keycloak account, associated to the api key.
     """
 
     # Use the api key passed by either http headers or query parameter (disabled for now)
@@ -99,7 +99,7 @@ ttl_cache: TTLCache = TTLCache(maxsize=sys.maxsize, ttl=120)
 
 
 @cached(cache=ttl_cache)
-async def __apikey_security_cached(apikey_value) -> tuple[list, dict, dict]:
+async def __apikey_security_cached(apikey_value) -> tuple[list[str], dict, str]:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
     """
