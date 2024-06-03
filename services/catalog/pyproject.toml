@@ -27,7 +27,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.11"
 stac-fastapi-pgstac = "==2.4.11" # TODO: update to 2.5.0
-uvicorn = "^0.30.0"
+uvicorn = "^0.30.1"
 moto = "==5.0.8"
 flask = "^3.0.3"
 flask-cors = "^4.0.1"
