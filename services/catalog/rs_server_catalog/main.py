@@ -147,16 +147,20 @@ def extract_openapi_specification():
             endpoint = openapi_spec_paths[new_key]
             for method_key in endpoint.keys():
                 method = endpoint[method_key]
-                if (
-                    new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]
-                    and isinstance(method, dict)
-                    and "parameters" in method
-                ):
-                    method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-                elif method["operationId"] == "Search_search_get":
-                    method["description"] = (
-                        "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
-                    )
+                if isinstance(method, dict):
+                    if (
+                        new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]
+                        and "parameters" in method
+                    ):
+                        method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
+                    elif (
+                        "operationId" in method
+                        and isinstance(method["operationId"], str)
+                        and method["operationId"] == "Search_search_get"
+                    ):
+                        method["description"] = (
+                            "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
+                        )
     owner_id = "Owner ID"
     catalog_owner_id = {
         "get": {
