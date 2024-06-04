@@ -122,7 +122,7 @@ def extract_openapi_specification():
     )
     # add starlette routes
     for route in app.routes:  # pylint: disable=redefined-outer-name
-        if isinstance(route, Route):
+        if isinstance(route, Route) and route.path in ["/api", "/api.html", "/docs/oauth2-redirect"]:
             path = route.path
             method = "GET"
             openapi_spec["paths"].setdefault(path, {})[method.lower()] = {
@@ -147,7 +147,11 @@ def extract_openapi_specification():
             endpoint = openapi_spec_paths[new_key]
             for method_key in endpoint.keys():
                 method = endpoint[method_key]
-                if new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]:
+                if (
+                    new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]
+                    and isinstance(method, dict)
+                    and "parameters" in method
+                ):
                     method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
                 elif method["operationId"] == "Search_search_get":
                     method["description"] = (
