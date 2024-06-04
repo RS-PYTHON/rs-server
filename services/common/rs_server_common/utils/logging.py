@@ -42,7 +42,7 @@ class Logging:  # pylint: disable=too-few-public-methods
         Return a default Logger class instance.
 
         Args:
-            name: Logger name. You can pass __name__ to use your current module name.
+            name (str): Logger name. You can pass __name__ to use your current module name.
         """
         logger = logging.getLogger(name=name)
 

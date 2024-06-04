@@ -55,21 +55,25 @@ def search_products(  # pylint: disable=too-many-locals
 ) -> list[dict] | dict:
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
 
-    This function validates the input 'interval' format, performs a search for products using the ADGS provider,
+    This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
 
-    Note:
-        - The 'interval' parameter should be in ISO 8601 format.
-        - The function utilizes the ADGS provider for product search and EODAG for STAC Feature Collection creation.
-        - Errors during the process will result in appropriate HTTP status codes and error messages.
-    \f
     Args:
-        db (Database): The database connection object.
+        request (Request): The request object (unused).
+        datetime (str): Time interval in ISO 8601 format.
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
 
     Returns:
-        A list of (or a single) STAC Feature Collection or an error message.
-        If no products were found in the mentioned time range, output is an empty list.
+        list[dict] | dict: A list of STAC Feature Collections or an error message.
+                           If no products are found in the specified time range, returns an empty list.
 
+    Raises:
+        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
+        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
+        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
+        HTTPException (fastapi.exceptions): If there is a connection error to the station.
+        HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
 
     start_date, stop_date = validate_inputs_format(datetime)

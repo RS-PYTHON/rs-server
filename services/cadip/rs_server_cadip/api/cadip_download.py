@@ -58,10 +58,8 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
 
     Args:
         argument (EoDAGDownloadHandler): An instance of EoDAGDownloadHandler containing
-         the arguments used in the downloading process
+    the arguments used in the downloading process
 
-    Returns:
-        None
 
     """
 
@@ -99,9 +97,21 @@ def download_products(
     This endpoint triggers the download of a CADU product identified by the given
     name of the file. It starts the download process in a separate thread
     using the start_eodag_download function and updates the product's status in the database.
-    \f
+
     Args:
-        db (Database): The database connection object.
+        request (Request): The request object (unused).
+        name (str): CADU product name.
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        local (str, optional): Local download directory. Defaults to None.
+        obs (str, optional): Object storage path (e.g., "s3://bucket-name/sub/dir"). Defaults to None.
+        db (Session): The database connection object.
+
+    Returns:
+        JSONResponse (starlette.responses): A JSON response indicating whether the download process has started.
+
+    Raises:
+        HTTPException: If the product is not found in the database.
+        HTTPException: If the download thread fails to start.
     """
 
     # Get the product download status from database

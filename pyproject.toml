@@ -7,7 +7,7 @@ name = "rs-server"
 version = "0.0.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
-readme = "README.adoc"
+readme = "README.md"
 
 packages = [
 

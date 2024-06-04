@@ -40,10 +40,19 @@ def get_download_status(
     ),
 ):
     """
-    Get a product download status from its ID or name.
-    \f
+    Get the download status of a CADU product by its name.
+
+    This endpoint retrieves the download status of a CADU product from the database
+    using the provided product name.
+
     Args:
-        db (Session): database session
+        request (Request): The request object (unused).
+        name (str): CADU product name.
+        db (Session): The database connection object.
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+
+    Returns:
+        ReadDownloadStatus (DownloadStatus): The download status of the product.
     """
 
     return CadipDownloadStatus.get(name=name, db=db)

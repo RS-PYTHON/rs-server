@@ -49,11 +49,8 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
     the temporary directory where the files are to be downloaded and gets the database handler
 
     Args:
-        argument (EoDAGDownloadHandler): An instance of EoDAGDownloadHandler containing
-         the arguments used in the downloading process
-
-    Returns:
-        None
+        argument (EoDAGDownloadHandler): An instance of EoDAGDownloadHandler containing the arguments used in the
+    downloading process
 
     """
     # Open a database sessions in this thread, because the session from the root thread may have closed.
@@ -89,15 +86,17 @@ def download_products(
     This endpoint triggers the download of an ADGS product identified by the given
     name of the file. It starts the download process in a separate thread
     using the start_eodag_download function and updates the product's status in the database.
-    \f
+
     Args:
-        db (Database): The database connection object.
+        request (Request): The request object (unused).
+        name (str): AUX product name.
+        local (str, optional): Local download directory.
+        obs (str, optional): Object storage path (e.g., "s3://bucket-name/sub/dir").
+        db (Session): The database connection object.
 
     Returns:
-        dict: A dictionary indicating whether the download process has started.
+        JSONResponse (starlette.responses): A JSON response indicating whether the download process has started.
 
-    Raises:
-        None
     """
 
     try:

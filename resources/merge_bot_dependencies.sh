@@ -75,7 +75,7 @@ for bot_branch in $bot_branches; do
     # Merge the bot branch into ours
     (set -x; git merge "$bot_branch" -m "merge: $bot_branch") && error= || error=1
 
-    # # In case of merge conflict, try to run mergetool
+    # In case of merge conflict, try to run mergetool
     if [[ $error ]]; then
         (set -x; git mergetool && git commit -m "merge: $bot_branch")
     fi

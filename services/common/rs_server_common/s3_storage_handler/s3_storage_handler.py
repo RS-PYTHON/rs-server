@@ -138,7 +138,7 @@ class S3StorageHandler:
             region_name (str): The region name.
 
         Returns:
-            boto3.client: An S3 client instance.
+            client (boto3): An S3 client instance.
         """
 
         client_config = botocore.config.Config(
@@ -219,7 +219,6 @@ class S3StorageHandler:
         Args:
             secrets (dict): Dictionary to store retrieved secrets.
             secret_file (str): Path to the file containing secrets.
-            logger (Logger, optional): Logger instance for error logging.
         """
         dict_filled = 0
         with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
@@ -242,10 +241,10 @@ class S3StorageHandler:
         """Get the filename from a full path.
 
         Args:
-            int_path (str): The full path.
+            input_path (str): The full path.
 
         Returns:
-            str: The filename.
+            filename (str): The filename.
         """
         path, filename = ntpath.split(input_path)
         return filename or ntpath.basename(path)
@@ -259,7 +258,7 @@ class S3StorageHandler:
             s3_url (str): The S3 URL.
 
         Returns:
-            tuple: Tuple containing bucket, prefix, and file.
+            (bucket, prefix, s3_file) (tuple): Tuple containing bucket, prefix, and file.
         """
         s3_data = s3_url.replace("s3://", "").split("/")
         bucket = ""
@@ -286,7 +285,7 @@ class S3StorageHandler:
             paths (list): List of S3 object keys.
 
         Returns:
-            list: List of tuples (local_prefix, full_s3_key_path).
+            list_with_files (list): List of tuples (local_prefix, full_s3_key_path).
         """
         # declaration of the list
         list_with_files: List[Any] = []
@@ -326,7 +325,7 @@ class S3StorageHandler:
             paths (list): List of local file paths.
 
         Returns:
-            list: List of tuples (s3_path, absolute_local_file_path).
+            list_with_files (list): List of tuples (s3_path, absolute_local_file_path).
         """
 
         list_with_files = []
@@ -370,7 +369,7 @@ class S3StorageHandler:
             prefix (str): The S3 object key prefix.
 
         Returns:
-            list: List containing S3 object keys.
+            s3_files (list): List containing S3 object keys.
         """
 
         s3_files = []
@@ -430,9 +429,6 @@ class S3StorageHandler:
         Args:
             timeout (float): The total duration to wait in seconds.
 
-        Returns:
-            None
-
         """
         time_cnt = 0.0
         while time_cnt < timeout:
@@ -447,7 +443,7 @@ class S3StorageHandler:
             overwrite (bool): Whether to overwrite the existing file.
 
         Returns:
-            bool: True if the file should be overwritten, False otherwise.
+            bool (bool): True if the file should be overwritten, False otherwise.
 
         Note:
         - If the file already exists and the overwrite flag is set to True, the function logs a message,

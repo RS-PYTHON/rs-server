@@ -88,6 +88,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
 	    "$ak_image" \
     )&
     i=0
+    sleep 2
     while [[ $(docker inspect --format='{{.State.Health.Status}}' $ak_container) != healthy ]]; do
         sleep 2
         i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$ak_container'" && exit 1
