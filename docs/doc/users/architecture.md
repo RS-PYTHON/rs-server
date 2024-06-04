@@ -1,13 +1,13 @@
 RS-Server inside RS Python
 ==========================
 
-The **RS-Server** is the major component of **Reference-System Python**. 
+The **RS-Server** is the major component of **Reference-System Python**.
 It controls user access to all sensitive interfaces:
 
 * Catalog (fine access control per Collection)
 * LTA
 * ADGS
-* PRIP 
+* PRIP
 * CADIP
 
 The **RS-Server** components are the following ones:

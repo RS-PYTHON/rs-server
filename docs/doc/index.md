@@ -12,7 +12,7 @@ To achieve this, RS-Server exposes REST endpoints that allow users to:
 * Stage CADU chunks from CADIP stations
 * Search auxiliary data from AUXIP station
 * Stage auxiliary data from AUXIP station
-* Connect to ALL the endpoints from [SpatioTemporal Asset Catalog API](https://stacspec.org/) 
+* Connect to ALL the endpoints from [SpatioTemporal Asset Catalog API](https://stacspec.org/)
 
 Please note that the STAC catalog will also embed STAC extension to support Sentinel product format from [EOPF-CPM](https://cpm.pages.eopf.copernicus.eu/eopf-cpm/main/index.html).
 
@@ -33,5 +33,4 @@ Access the [Developer Manual](developer_manual.md) for technical documentation a
 
 
 
- 
 
