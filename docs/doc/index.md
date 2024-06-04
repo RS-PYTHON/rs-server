@@ -27,10 +27,3 @@ Access the [User Manual](user_manual.md) for detailed instructions and guidance.
 ## Developer Manual
 
 Access the [Developer Manual](developer_manual.md) for technical documentation and developer guidelines.
-
-
-
-
-
-
-
