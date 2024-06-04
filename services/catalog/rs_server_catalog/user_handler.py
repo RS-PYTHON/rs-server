@@ -25,6 +25,8 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 )
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/(?P<owner_id>.+)"
+CATALOG_COLLECTION = "/catalog/collections"
+CATALOG_SEARCH = "/catalog/search"
 
 
 def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=too-many-branches
@@ -42,20 +44,20 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
         str: Return the URL path with prefix removed.
         dict: Return a dictionary containing owner, collection and item ID.
     """
-    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*"]
+    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/favicon.ico"]
 
-    if path == "/":
-        raise ValueError(f"URL ({path}) is invalid.")
+    # if path == "/":
+    #     raise ValueError(f"URL ({path}) is invalid.")
 
     ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
 
-    if path == "/catalog/":
+    if path in ["/catalog/", "/"]:
         return "/", ids_dict
 
     if path == "/catalog/search":
         return "/search", ids_dict
 
-    if path == "/catalog/collections" and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
+    if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
         return "/collections", ids_dict
 
     if path == "/catalog/queryables":
@@ -92,7 +94,7 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
                 ids_dict["item_id"] = ids_dict["item_id"][1:]
                 path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items/{ids_dict['item_id']}"
 
-    elif path == "/catalog/collections":
+    elif path == CATALOG_COLLECTION:
         path = "/collections"
 
     elif "catalog" not in path and not any(re.match(pattern, path) for pattern in patterns):
@@ -100,8 +102,14 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
     return path, ids_dict
 
 
-def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = "") -> str:
-    """Modify the RS server backend catalog endpoint to get the RS server frontend endpoint.
+def add_user_prefix(  # pylint: disable=too-many-return-statements
+    path: str,
+    user: str,
+    collection_id: str,
+    feature_id: str = "",
+) -> str:
+    """
+    Modify the RS server backend catalog endpoint to get the RS server frontend endpoint
 
     Args:
         path (str): RS server backend endpoint.
@@ -112,17 +120,28 @@ def add_user_prefix(path: str, user: str, collection_id: str, feature_id: str = 
     Returns:
         str: The RS server frontend endpoint.
     """
-    if path == "/":
-        return f"/catalog/{user}"
     if path == "/collections":
-        return f"/catalog/{user}/collections"  # /catalog/collections
-    if path == f"/collections/{user}_{collection_id}":
-        return f"/catalog/{user}/collections/{collection_id}"  # /catalog/collection/{user}:{collection_id}
-    if path == f"/collections/{user}_{collection_id}/items":
-        return f"/catalog/{user}/collections/{collection_id}/items"  # /catalog/collection/{user}:{collection_id}/items
-    if f"/collections/{user}_{collection_id}/items" in path:  # /catalog/.../items/item_id
-        return f"/catalog/{user}/collections/{collection_id}/items/{feature_id}"
-        # /catalog/collections/{user}:{collection_id}/items/{feature_id}
+        return CATALOG_COLLECTION
+
+    if path == "/search":
+        return CATALOG_SEARCH
+
+    if user and (path == "/"):
+        return f"/catalog/catalogs/{user}"
+
+    if user and collection_id and (path == f"/collections/{user}_{collection_id}"):
+        return f"/catalog/collections/{user}:{collection_id}"
+
+    if user and collection_id and (path == f"/collections/{user}_{collection_id}/items"):
+        return f"/catalog/collections/{user}:{collection_id}/items"
+
+    if (
+        user
+        and collection_id
+        and (f"/collections/{user}_{collection_id}/items" in path or f"/collections/{collection_id}/items" in path)
+    ):  # /catalog/.../items/item_id
+        return f"/catalog/collections/{user}:{collection_id}/items/{feature_id}"
+
     return path
 
 

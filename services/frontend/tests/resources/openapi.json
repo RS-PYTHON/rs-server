@@ -147,7 +147,7 @@
             "schema": {
               "type": "string",
               "description": "Sort by +/-fieldName (ascending/descending)",
-              "default": "-datetime",
+              "default": "-created",
               "title": "Sortby"
             },
             "description": "Sort by +/-fieldName (ascending/descending)"
@@ -353,7 +353,7 @@
             "schema": {
               "type": "string",
               "description": "Sort by +/-fieldName (ascending/descending)",
-              "default": "-datetime",
+              "default": "-created",
               "title": "Sortby"
             },
             "description": "Sort by +/-fieldName (ascending/descending)"

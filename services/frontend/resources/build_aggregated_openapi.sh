@@ -105,13 +105,13 @@ if [[ " $@ " == *" --run-services "* ]]; then
         cd "$path"
         poetry install
         poetry run opentelemetry-bootstrap -a install # install otel instrumentation packages for dependencies
-        (poetry run uvicorn "$app" --host=localhost --port="$port" --workers=1)&
+        (poetry run uvicorn "$app" --host=127.0.0.1 --port="$port" --workers=1)&
         on_exit="$on_exit; kill -9 $!" # kill the last process = unvicorn on exit
         cd -
 
         # Call the health endpoint until it returns a status code OK
         local i=0
-        while [[ ! $(curl "localhost:$port/$health" 2>/dev/null) ]]; do
+        while [[ ! $(curl "127.0.0.1:$port/$health" 2>/dev/null) ]]; do
             sleep 2
             i=$((i+1)); ((i>=10)) && >&2 echo "Error starting service '$app'" && exit 1
         done
