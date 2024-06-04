@@ -58,6 +58,7 @@ from stac_fastapi.pgstac.transactions import BulkTransactionsClient, Transaction
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.routing import Route
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
@@ -119,6 +120,21 @@ def extract_openapi_specification():
         description=app.description,
         routes=app.routes,
     )
+    # add starlette routes
+    for route in app.routes:  # pylint: disable=redefined-outer-name
+        if isinstance(route, Route):
+            path = route.path
+            method = "GET"
+            openapi_spec["paths"].setdefault(path, {})[method.lower()] = {
+                "summary": f"Auto-generated {method} for {path}",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {"application/json": {"example": {"message": "Success"}}},
+                    },
+                },
+                "operationId": route.operation_id if hasattr(route, "operation_id") else route.path,
+            }
     openapi_spec_paths = openapi_spec["paths"]
     for key in list(openapi_spec_paths.keys()):
         if key in TECH_ENDPOINTS:
