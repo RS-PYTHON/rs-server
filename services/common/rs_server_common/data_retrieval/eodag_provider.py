@@ -165,7 +165,7 @@ class EodagProvider(Provider):
         # product.register_downloader(download_plugin, authent_plugin)
         self.client.download(product, outputs_prefix=to_file.parent)
 
-    def create_eodag_product(self, product_id, filename):
+    def create_eodag_product(self, product_id: str, filename: str):
         """Initialize an EO product with minimal properties.
 
         The title is used by EODAG as the name of the downloaded file.
@@ -173,11 +173,11 @@ class EodagProvider(Provider):
         The geometry is mandatory in an EO Product so we add the all earth as geometry.
 
         Args:
-            product_id: the id of EO Product
-            filename: the name of the downloaded file
+            product_id (str): the id of EO Product
+            filename (str): the name of the downloaded file
 
         Returns:
-            the initialized EO Product
+            product (EOProduct): the initialized EO Product
 
         """
         try:

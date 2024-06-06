@@ -55,23 +55,30 @@ def search_products(  # pylint: disable=too-many-locals
     datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
+    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
-    Notes:
-        - The 'interval' parameter should be in ISO 8601 format.
-        - The response includes a JSON representation of the list of products for the specified station.
-        - In case of an invalid station identifier, a 400 Bad Request response is returned.
-    \f
+    This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
+    writes the search results to the database, and generates a STAC Feature Collection from the products.
+
     Args:
-        db (Database): The database connection object.
+        request (Request): The request object (unused).
+        datetime (str): Time interval in ISO 8601 format.
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
 
     Returns:
-        A list of (or a single) STAC Feature Collection or an error message.
-        If the station identifier is invalid, a 400 Bad Request response is returned.
-        If no products were found in the mentioned time range, output is an empty list.
+        list[dict] | dict: A list of STAC Feature Collections or an error message.
+                           If no products are found in the specified time range, returns an empty list.
 
+    Raises:
+        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
+        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
+        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
+        HTTPException (fastapi.exceptions): If there is a connection error to the station.
+        HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
 
     start_date, stop_date = validate_inputs_format(datetime)
@@ -140,10 +147,26 @@ def search_session(
     start_date: Annotated[Union[str, None], Query(description='Start time e.g. "2024-01-01T00:00:00Z"')] = None,
     stop_date: Annotated[Union[str, None], Query(description='Stop time e.g. "2024-01-01T00:00:00Z"')] = None,
 ):  # pylint: disable=too-many-arguments, too-many-locals
-    """Endpoint to retrieve list of sessions from any CADIP station.
+    """Endpoint to retrieve a list of sessions from any CADIP station.
 
-    A valid session search request must contain at least a value for either *id* or *platform* or time interval
+    A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
     (*start_date* and *stop_date* correctly defined).
+
+    Args:
+        request (Request): The request object (unused).
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        id (str, optional): Session identifier(s), comma-separated. Defaults to None.
+        platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
+        start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
+        stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
+
+    Returns:
+        dict (dict): A STAC Feature Collection of the sessions.
+
+    Raises:
+        HTTPException (fastapi.exceptions): If search parameters are missing.
+        HTTPException (fastapi.exceptions): If there is a JSON mapping error.
+        HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
     session_id: Union[List[str], None] = id.split(",") if id else None
     satellite: Union[List[str], None] = platform.split(",") if platform else None

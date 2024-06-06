@@ -67,7 +67,7 @@ def validate_inputs_format(interval: str) -> Tuple[datetime, datetime]:
     whether the start and stop dates are in a valid ISO 8601 format.
 
     Args:
-        - interval (str): The time interval to be validated, with the following format:
+        interval (str): The time interval to be validated, with the following format:
             "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
 
     Returns:
@@ -119,27 +119,29 @@ class EoDAGDownloadHandler:
 
 def write_search_products_to_db(db_handler_class: DownloadStatus, products: EOProduct) -> None:
     """
-    Process a list of products by adding them to the database if not already present.
+    Processes a list of products by adding them to the database if not already present.
 
     This function iterates over a list of products. For each product, it checks whether the product
     is already registered in the database. If the product is not in the database, it is added with
     its relevant details. The function collects a list of product IDs and names for further processing.
 
     Args:
-        - products (List[Product]): A list of product objects to be processed.
-        - db_handler_class: The database handler class used for database operations.
+        db_handler_class (DownloadStatus): The database handler class used for database operations.
+        products (List[Product]): A list of product objects to be processed.
 
     Returns:
-        List[Tuple]: A list of tuples, each containing the 'id' and 'Name' properties of a product.
+        products (List[Tuple[str, str]]): A list of tuples, each containing the 'id' and 'Name' properties of a product.
 
     Raises:
-        - sqlalchemy.exc.OperationalError: If there's an issue connecting to the database.
+        sqlalchemy.exc.OperationalError: If there's an issue connecting to the database.
 
-    Note:
-        - The function assumes that 'products' is a list of objects with a 'properties' attribute,
-          which is a dictionary containing keys 'id', 'Name', and 'startTimeFromAscendingNode'.
-        - 'get_db' is a context manager that provides a database session.
-        - 'EDownloadStatus' is an enumeration representing download status.
+    Notes:
+    The function assumes that 'products' is a list of objects with a 'properties' attribute,
+    which is a dictionary containing keys 'id', 'Name', and 'startTimeFromAscendingNode'.
+
+    'get_db' is a context manager that provides a database session.
+
+    'EDownloadStatus' is an enumeration representing download status.
     """
     with contextmanager(get_db)() as db:
         try:
@@ -181,11 +183,8 @@ def update_db(
         estatus (EDownloadStatus): The new download status.
         status_fail_message (Optional[str]): An optional message associated with the failure status.
 
-    Returns:
-        None
-
     Raises:
-        sqlalchemy.exc.OperationalError: If the database update operation fails after multiple attempts.
+        OperationalError (sqlalchemy.exc): If the database update operation fails after multiple attempts.
 
     Example:
         >>> update_db(db_session, product_instance, EDownloadStatus.DONE)
@@ -224,25 +223,21 @@ def update_db(
 
 
 def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[str], Provider], **kwargs):
-    """Start the eodag download process.
-
-    This function initiates the eodag download process using the provided arguments. It sets up
-    the necessary configurations, starts the download thread, and updates the download status in the
-    database based on the outcome of the download.
+    """Initiates the eodag download process.
 
     Args:
-        argument (EoDAGDownloadHandler): An instance of EoDAGDownloadHandler containing
-         the arguments used in the downloading process
+        argument (EoDAGDownloadHandler): An instance of EoDAGDownloadHandler containing the arguments used in the
+    downloading process.
+        db: The database connection object.
+        init_provider (Callable[[str], Provider]): A function to initialize the provider for downloading.
+        **kwargs: Additional keyword arguments.
 
     Note:
-        The local and obs parameters are optionals:
+        The local and obs parameters are optional:
         - local (str | None): Local path where the product will be stored. If this
-            parameter is not given, the local path where the file is stored will be set to a temporary one
-        - obs (str | None): Path to S3 storage where the file will be uploaded, after a successfull download from CADIP
-            server. If this parameter is not given, the file will not be uploaded to the s3 storage.
-
-    Returns:
-        None
+            parameter is not given, the local path where the file is stored will be set to a temporary one.
+        - obs (str | None): Path to S3 storage where the file will be uploaded, after a successful download from CADIP
+            server. If this parameter is not given, the file will not be uploaded to the S3 storage.
 
     Raises:
         RuntimeError: If there is an issue connecting to the S3 storage during the download.
@@ -349,7 +344,20 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
 
 
 def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: dict) -> dict:
-    """This function is used to map odata values to a given STAC template"""
+    """
+    Maps OData values to a given STAC template.
+
+    Args:
+        feature_template (dict): The STAC feature template to be populated.
+        odata_dict (dict): The dictionary containing OData values.
+        odata_stac_mapper (dict): The mapping dictionary for converting OData keys to STAC properties.
+
+    Returns:
+        dict: The populated STAC feature template.
+
+    Raises:
+        ValueError: If the provided STAC feature template is invalid.
+    """
     if not all(item in feature_template.keys() for item in ["properties", "id", "assets"]):
         raise ValueError("Invalid stac feature template")
     for stac_key, eodag_key in odata_stac_mapper.items():
@@ -369,7 +377,17 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 
 
 def create_stac_collection(products: List[EOProduct], feature_template: dict, stac_mapper: dict) -> dict:
-    """This function create a STAC feature for each EOProduct based on a given template"""
+    """
+    Creates a STAC feature collection based on a given template for a list of EOProducts.
+
+    Args:
+        products (List[EOProduct]): A list of EOProducts to create STAC features for.
+        feature_template (dict): The template for generating STAC features.
+        stac_mapper (dict): The mapping dictionary for converting EOProduct data to STAC properties.
+
+    Returns:
+        dict: The STAC feature collection containing features for each EOProduct.
+    """
     stac_template: Dict[Any, Any] = {
         "type": "FeatureCollection",
         "numberMatched": 0,
@@ -386,7 +404,21 @@ def create_stac_collection(products: List[EOProduct], feature_template: dict, st
 
 
 def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
-    """This function sorts a STAC feature collection based on a given criteria"""
+    """
+    Sorts a STAC feature collection based on a given criteria.
+
+    Args:
+        feature_collection (dict): The STAC feature collection to be sorted.
+        sortby (str): The sorting criteria. Use "+fieldName" for ascending order
+            or "-fieldName" for descending order. Use "+doNotSort" to skip sorting.
+
+    Returns:
+        dict: The sorted STAC feature collection.
+
+    Note:
+        If sortby is not in the format of "+fieldName" or "-fieldName",
+        the function defaults to ascending order by the "datetime" field.
+    """
     # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
     if sortby != "+doNotSort":
         order = sortby[0]

@@ -18,12 +18,12 @@ This endpoint retrieves a list of products from the CADU system for a specified 
 * `datetime` (str): Interval of date for time series filter joined by a slash ('/'). (format: [.red]#"YYYY-MM-DDThh:mm:sssZ#*/*[.red]#YYYY-MM-DDThh:mm:sssZ"#).
 * `limit` (int, optional): Maximum number of products to return, default set to [.green]#1000#.
 * `sortby` (str, optional): Sorting criteria. +/-fieldName indicates ascending/descending order and field name
-[.green]#(e.g. sortby=+datetime)# Default no sorting is applied.
+[.green]#(e.g. sortby=+created)# Default no sorting is applied.
 
 ==== Request example
 [source,http]
 ----
-GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=50&sortby=-datetime
+GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59:59Z&limit=50&sortby=-created
 ----
 ==== Return
 
