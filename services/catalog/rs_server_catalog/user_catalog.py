@@ -34,6 +34,7 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
+import rs_server_catalog.timestamps_extension as timestamps_extension
 from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
@@ -430,6 +431,10 @@ class UserCatalog:
                 content["id"] = f"{user}_{content['id']}"
             elif "items" in request.scope["path"]:
                 content = self.update_stac_item_publication(content, user)
+                if content:
+                    if request.method == "POST":
+                        content = timestamps_extension.create_timestamps(content)
+                    content = timestamps_extension.set_updated_expires_timestamp(content)
                 if hasattr(content, "status_code"):
                     return content
 

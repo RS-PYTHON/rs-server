@@ -20,6 +20,7 @@ import json
 import os
 import os.path as osp
 import pathlib
+from datetime import datetime, timedelta
 
 import fastapi
 import pytest
@@ -377,6 +378,83 @@ class TestCatalogPublishCollectionEndpoint:
 
 class TestCatalogPublishFeatureWithBucketTransferEndpoint:
     """This class is used to group tests that just post a feature on catalogDB without moving assets."""
+
+    @pytest.mark.parametrize(
+        "owner, collection_id",
+        [
+            (
+                "darius",
+                "S1_L2",
+            ),
+        ],
+    )
+    def test_timestamps_extension_item(self, client, a_correct_feature, owner, collection_id):
+        """Test used to verify that the timestamps extension is correctly set up"""
+        # Create moto server and temp / catalog bucket
+        moto_endpoint = "http://localhost:8077"
+        export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        # Enable bucket transfer
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+        try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+            s3_handler = S3StorageHandler(
+                secrets["accesskey"],
+                secrets["secretkey"],
+                secrets["s3endpoint"],
+                secrets["region"],
+            )
+
+            temp_bucket = "temp-bucket"
+            catalog_bucket = "catalog-bucket"
+            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+
+            # Populate temp-bucket with some small files.
+            lst_with_files_to_be_copied = [
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+            ]
+            for obj in lst_with_files_to_be_copied:
+                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+
+            # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
+            # and a good OBS path. => 200 OK
+            # Check if that user darius have a collection (Added in conftest -> setup_database)
+            # Add a featureCollection to darius collection
+            added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
+            feature_data = json.loads(added_feature.content)
+
+            current_time = datetime.now().date()
+
+            assert "published" in feature_data["properties"]
+            published_datetime_format = datetime.strptime(
+                feature_data["properties"]["published"],
+                "%Y-%m-%dT%H:%M:%S.%fZ",
+            )
+            published_date_only = published_datetime_format.date()
+            assert published_date_only == current_time
+
+            assert "updated" in feature_data["properties"]
+            updated_datetime_format = datetime.strptime(feature_data["properties"]["updated"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            updated_date_only = updated_datetime_format.date()
+            assert updated_date_only == current_time
+
+            assert "expires" in feature_data["properties"]
+            plus_30_days = current_time + timedelta(days=30)
+            expires_datetime_format = datetime.strptime(feature_data["properties"]["expires"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            expires_date_only = expires_datetime_format.date()
+            assert expires_date_only == plus_30_days
+
+            client.delete(f"/catalog/collections/{owner}:{collection_id}/items/S1SIWOCN_20220412T054447_0024_S139")
+
+        finally:
+            server.stop()
+            clear_aws_credentials()
+            os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
     @pytest.mark.parametrize(
         "owner, collection_id",
