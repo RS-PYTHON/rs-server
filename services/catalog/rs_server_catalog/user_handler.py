@@ -44,7 +44,7 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
         str: Return the URL path with prefix removed.
         dict: Return a dictionary containing owner, collection and item ID.
     """
-    
+
     patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/docs/oauth2-redirect", r"/favicon.ico"]
 
     # if path == "/":
