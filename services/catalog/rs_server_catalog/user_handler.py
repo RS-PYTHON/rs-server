@@ -25,6 +25,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 )
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/(?P<owner_id>.+)"
+
 CATALOG_COLLECTION = "/catalog/collections"
 CATALOG_SEARCH = "/catalog/search"
 
@@ -45,7 +46,7 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
         dict: Return a dictionary containing owner, collection and item ID.
     """
 
-    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/favicon.ico"]
+    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/favicon.ico", r"/queryables"]
 
     # if path == "/":
     #     raise ValueError(f"URL ({path}) is invalid.")
