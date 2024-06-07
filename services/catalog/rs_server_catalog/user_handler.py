@@ -30,7 +30,10 @@ CATALOG_COLLECTION = "/catalog/collections"
 CATALOG_SEARCH = "/catalog/search"
 
 
-def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=too-many-branches
+def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
+    path: str,
+    method: str,
+) -> Tuple[str, dict]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 
