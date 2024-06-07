@@ -34,11 +34,11 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
-import rs_server_catalog.timestamps_extension as timestamps_extension
 from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
+from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import manage_landing_page
 from rs_server_catalog.user_handler import (

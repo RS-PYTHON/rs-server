@@ -388,7 +388,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             ),
         ],
     )
-    def test_timestamps_extension_item(self, client, a_correct_feature, owner, collection_id):
+    def test_timestamps_extension_item(
+        self,
+        client,
+        a_correct_feature,
+        owner,
+        collection_id,
+    ):  # pylint: disable=too-many-locals
         """Test used to verify that the timestamps extension is correctly set up"""
         # Create moto server and temp / catalog bucket
         moto_endpoint = "http://localhost:8077"
