@@ -56,26 +56,24 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
 
     ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
 
-    if path in ["/catalog/", "/"]:
-        return "/", ids_dict
-
-    if path == "/catalog/search":
-        return "/search", ids_dict
+    match path:
+        case "/catalog/":
+            return "/", ids_dict
+        case "/":
+            return "/", ids_dict
+        case "/catalog/search":
+            return "/search", ids_dict
+        case "/catalog/queryables":
+            return "/queryables", ids_dict
+        case "/catalog/api":
+            return "/api", ids_dict
+        case "/catalog/api.html":
+            return "/api.html", ids_dict
+        case "/catatalog/docs/oauth2-redirect":
+            return "/docs/oauth2-redirect", ids_dict
 
     if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
         return "/collections", ids_dict
-
-    if path == "/catalog/queryables":
-        return "/queryables", ids_dict
-
-    if path == "/catalog/api":
-        return "/api", ids_dict
-
-    if path == "/catalog/api.html":
-        return "/api.html", ids_dict
-
-    if path == "/catatalog/docs/oauth2-redirect":
-        return "/docs/oauth2-redirect", ids_dict
 
     # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
     # To catch the endpoint /catalog/catalogs/{owner_id}
