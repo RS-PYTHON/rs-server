@@ -53,6 +53,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     TransferFromS3ToS3Config,
 )
 from rs_server_common.utils.logging import Logging
+from rs_server_common.schemas.health_schema import HealthSchema
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -756,6 +757,9 @@ class UserCatalog:
         self.request_ids["owner_id"] = user if user else self.request_ids["owner_id"]
         self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
 
+        if request.scope['path'] == "/health":
+            # return true if up and running
+            return HealthSchema(healthy=True)
         # Handle requests
         if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
