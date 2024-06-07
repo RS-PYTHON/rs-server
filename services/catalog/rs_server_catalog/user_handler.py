@@ -45,7 +45,7 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
         dict: Return a dictionary containing owner, collection and item ID.
     """
 
-    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/docs/oauth2-redirect", r"/favicon.ico"]
+    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/favicon.ico"]
 
     # if path == "/":
     #     raise ValueError(f"URL ({path}) is invalid.")
@@ -63,6 +63,15 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
 
     if path == "/catalog/queryables":
         return "/queryables", ids_dict
+
+    if path == "/catalog/api":
+        return "/api", ids_dict
+
+    if path == "/catalog/api.html":
+        return "/api.html", ids_dict
+
+    if path == "/catatalog/docs/oauth2-redirect":
+        return "/docs/oauth2-redirect", ids_dict
 
     # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
     # To catch the endpoint /catalog/catalogs/{owner_id}

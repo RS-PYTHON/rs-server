@@ -123,7 +123,7 @@ def extract_openapi_specification():
     # add starlette routes
     for route in app.routes:  # pylint: disable=redefined-outer-name
         if isinstance(route, Route) and route.path in ["/api", "/api.html", "/docs/oauth2-redirect"]:
-            path = route.path
+            path = f"/catalog{route.path}"
             method = "GET"
             openapi_spec["paths"].setdefault(path, {})[method.lower()] = {
                 "summary": f"Auto-generated {method} for {path}",
@@ -133,6 +133,7 @@ def extract_openapi_specification():
                         "content": {"application/json": {"example": {"message": "Success"}}},
                     },
                 },
+                "security": [{"API key passed in HTTP header": []}],
                 "operationId": route.operation_id if hasattr(route, "operation_id") else route.path,
             }
     openapi_spec_paths = openapi_spec["paths"]
