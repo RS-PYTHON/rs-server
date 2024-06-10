@@ -137,7 +137,7 @@ def extract_openapi_specification():
                 "operationId": "/catalog" + route.operation_id if hasattr(route, "operation_id") else route.path,
                 "security": [{"API key passed in HTTP header": []}],
             }
-            if cluster_mode:
+            if cluster_mode and route.path != "/api":
                 to_add["security"] = [{"API key passed in HTTP header": []}]
             openapi_spec["paths"].setdefault(path, {})[method.lower()] = to_add
 
