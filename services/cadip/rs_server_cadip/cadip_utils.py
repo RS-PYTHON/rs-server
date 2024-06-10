@@ -18,8 +18,9 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
+from typing import Dict, List
+
 import eodag
-from typing import List
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
 
@@ -29,7 +30,7 @@ def rename_keys(product: dict) -> dict:
     if "Id" in product:
         product["id"] = product.pop("Id")
     if "PublicationDate" in product:
-        product["startTimeFromAscendingNode"] = product.pop("PublicationDate")
+        product["startTimeFromAscendingNode"] = product["PublicationDate"]
     return product
 
 
@@ -40,6 +41,14 @@ def update_product(product: dict) -> dict:
     return product
 
 
+def map_dag_file_to_asset(mapper, product):
+    asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
+    # TODO - href, roles to be added manually ?!
+    # Todo 2 - pop id
+
+    return {product.properties["Name"]: asset}
+
+
 def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct]) -> List[eodag.EOProduct]:
     """
     Convert a list of sessions containing expanded files metadata into a list of files for serialization into the DB.
@@ -47,5 +56,20 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
     return [
         eodag.EOProduct(provider="internal_session_product_file_from_cadip", properties=update_product(product))
         for session in input_sessions
-        for product in session.properties['Files']
+        for product in session.properties["Files"]
     ]
+
+
+def from_session_expand_to_assets_serializer(feature_collection, input_session: eodag.EOProduct, mapper: dict) -> Dict:
+    for session in feature_collection['features']:
+        session["assets"] = [
+            map_dag_file_to_asset(mapper, product)
+            for product in input_session
+            if product.properties['SessionID'] == session['id']
+        ]
+        input_session = [
+            product
+            for product in input_session
+            if product.properties['SessionID'] != session['id']
+        ]
+    return feature_collection
