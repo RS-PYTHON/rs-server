@@ -26,6 +26,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/(?P<owner_id>.+)"
 
+COLLECTIONS_QUERYABLES_REGEX = r"/catalog/collection/(?P<owner_id>.+):(?P<collection_id>.+)/queryables"
 CATALOG_COLLECTION = "/catalog/collections"
 CATALOG_SEARCH = "/catalog/search"
 
@@ -49,7 +50,7 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
         dict: Return a dictionary containing owner, collection and item ID.
     """
 
-    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/favicon.ico", r"/queryables"]
+    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/favicon.ico"]
 
     # if path == "/":
     #     raise ValueError(f"URL ({path}) is invalid.")
@@ -71,9 +72,17 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
             return "/api.html", ids_dict
         case "/catatalog/docs/oauth2-redirect":
             return "/docs/oauth2-redirect", ids_dict
+        case "/catalog/queryables":
+            return "/queryables"
 
     if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
         return "/collections", ids_dict
+
+    if match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
+        groups = match.groupdict()
+        ids_dict["owner_id"] = groups["owner_id"]
+        ids_dict["collection_id"] = groups["collection_id"]
+        return f"/collection/{groups['owner_id']}:{groups['collection_id']}/queryables", ids_dict
 
     # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
     # To catch the endpoint /catalog/catalogs/{owner_id}

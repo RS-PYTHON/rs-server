@@ -104,6 +104,10 @@ def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-d
             res = "/catalog/collections/{owner_id}:{collection_id}/items/{item_id}"
         case "/search":
             res = "/catalog/search"
+        case "/queryables":
+            res = "/catalog/queryables"
+        case "/collections/{collection_id}/queryables":
+            res = "/catalog/collections/{owner_id}:{collection_id}/queryables"
     return res
 
 
