@@ -121,6 +121,7 @@ def extract_openapi_specification():
         routes=app.routes,
     )
     # add starlette routes
+    cluster_mode = common_settings.CLUSTER_MODE
     for route in app.routes:  # pylint: disable=redefined-outer-name
         if isinstance(route, Route) and route.path in ["/api", "/api.html", "/docs/oauth2-redirect"]:
             path = f"/catalog{route.path}"
