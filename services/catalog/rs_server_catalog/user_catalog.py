@@ -757,7 +757,7 @@ class UserCatalog:
         self.request_ids["owner_id"] = user if user else self.request_ids["owner_id"]
         self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
 
-        if request.scope["path"] == "/health":
+        if "/health" in request.scope["path"]:
             # return true if up and running
             return HealthSchema(healthy=True)
         # Handle requests
