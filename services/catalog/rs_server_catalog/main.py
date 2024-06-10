@@ -134,9 +134,10 @@ def extract_openapi_specification():
                     },
                 },
                 "operationId": "/catalog" + route.operation_id if hasattr(route, "operation_id") else route.path,
+                "security": [{"API key passed in HTTP header": []}],
             }
-            if common_settings.CLUSTER_MODE:
-                to_add["security"] = [{"API key passed in HTTP header": []}]
+            # if common_settings.CLUSTER_MODE:
+            #     to_add["security"] = [{"API key passed in HTTP header": []}]
             openapi_spec["paths"].setdefault(path, {})[method.lower()] = to_add
 
     openapi_spec_paths = openapi_spec["paths"]
@@ -174,6 +175,7 @@ def extract_openapi_specification():
             "responses": {
                 "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
             },
+            "security": [{"API key passed in HTTP header": []}],
             "parameters": [
                 {
                     "description": owner_id,
@@ -185,8 +187,8 @@ def extract_openapi_specification():
             ],
         },
     }
-    if common_settings.CLUSTER_MODE:
-        catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
+    # if common_settings.CLUSTER_MODE:
+    #     catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
     openapi_spec_paths["/catalog/catalogs/{owner_id}"] = catalog_owner_id
     app.openapi_schema = openapi_spec
     return app.openapi_schema
