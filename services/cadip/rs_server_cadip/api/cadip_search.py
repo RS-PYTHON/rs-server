@@ -42,7 +42,7 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
     write_search_products_to_db,
 )
-
+from rs_server_cadip.cadip_utils import from_session_expand_to_dag_serializer
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
@@ -182,6 +182,8 @@ def search_session(
             platform=satellite,
             sessions_search=True,
         )
+        sessions_products = from_session_expand_to_dag_serializer(products)
+        write_search_products_to_db(CadipDownloadStatus, sessions_products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
         with (
