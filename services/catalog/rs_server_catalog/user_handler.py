@@ -52,6 +52,9 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
 
     ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
 
+    if "/health" in path:
+        return "/health", ids_dict
+
     if path in ["/catalog/", "/"]:
         return "/", ids_dict
 
