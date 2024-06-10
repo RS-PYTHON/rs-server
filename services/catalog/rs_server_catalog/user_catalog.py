@@ -52,12 +52,11 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
 )
-from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils.logging import Logging
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_200_OK
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
@@ -759,7 +758,7 @@ class UserCatalog:
 
         if "/health" in request.scope["path"]:
             # return true if up and running
-            return HealthSchema(healthy=True)
+            return JSONResponse(status_code=HTTP_200_OK)
         # Handle requests
         if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
