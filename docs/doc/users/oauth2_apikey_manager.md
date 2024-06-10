@@ -37,7 +37,10 @@ To do this:
 
 ![Create API key](../../images/oauth2_apikey_manager/apikey_manager_create.png)
 
-  7. Note your created API key value and save it for later.
+  7. Note your created API key value and save it for later. You will find it in the `Response body` frame. It must be saved without the quotes, like in the example below:
+
+![Save API key](../../images/oauth2_apikey_manager/apikey_manager_save.png)
+
   8. Try the other API Key Manager endpoints (they also need OAuth2 authentication using the lock icon on the right):
 
       * **Show My Information**: show my KeyCloak account information
