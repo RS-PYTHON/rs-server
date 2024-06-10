@@ -133,7 +133,7 @@ def extract_openapi_specification():
                         "content": {"application/json": {"example": {"message": "Success"}}},
                     },
                 },
-                "operationId": route.operation_id if hasattr(route, "operation_id") else route.path,
+                "operationId": "/catalog" + route.operation_id if hasattr(route, "operation_id") else route.path,
             }
             if common_settings.CLUSTER_MODE:
                 to_add["security"] = [{"API key passed in HTTP header": []}]
