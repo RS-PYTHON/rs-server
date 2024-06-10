@@ -121,7 +121,6 @@ def extract_openapi_specification():
         routes=app.routes,
     )
     # add starlette routes
-    cluster_mode = common_settings.CLUSTER_MODE
     for route in app.routes:  # pylint: disable=redefined-outer-name
         if isinstance(route, Route) and route.path in ["/api", "/api.html", "/docs/oauth2-redirect"]:
             path = f"/catalog{route.path}"
@@ -136,7 +135,7 @@ def extract_openapi_specification():
                 },
                 "operationId": "/catalog" + route.operation_id if hasattr(route, "operation_id") else route.path,
             }
-            if cluster_mode and route.path != "/api":
+            if common_settings.CLUSTER_MODE and "api" not in route.path:
                 to_add["security"] = [{"API key passed in HTTP header": []}]
             openapi_spec["paths"].setdefault(path, {})[method.lower()] = to_add
 
@@ -186,9 +185,11 @@ def extract_openapi_specification():
             ],
         },
     }
-    if cluster_mode:
+    path = "/catalog/catalogs/{owner_id}"
+    method = "GET"
+    if common_settings.CLUSTER_MODE:
         catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
-    openapi_spec_paths["/catalog/catalogs/{owner_id}"] = catalog_owner_id
+    openapi_spec["paths"].setdefault(path, {})[method.lower()] = catalog_owner_id
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
