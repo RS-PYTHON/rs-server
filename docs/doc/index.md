@@ -2,17 +2,16 @@
 
 The Reference System server provides a set of services necessary to build Copernicus processing workflows. All services are subject to access control.
 
-RS-Server offers a catalog of Sentinel products compatible with the STAC (SpatioTemporal Asset Catalog) standard, as well as functions to access data from AUXIP and CADIP stations.
+STAC is everywhere with RS-Server. RS-Server offers a catalog of Sentinel products compatible with the STAC (SpatioTemporal Asset Catalog) standard, but also on the next release the staging function to retrieve AUXIP and CADIP data will be provided with a STAC interface.
+
+![STAC](images/STAC-2.jpg)
 
 ## Features
 
 To achieve this, RS-Server exposes REST endpoints that allow users to:
-
-* Search CADU chunks from CADIP stations
-* Stage CADU chunks from CADIP stations
-* Search auxiliary data from AUXIP station
-* Stage auxiliary data from AUXIP station
-* Connect to ALL the endpoints from [SpatioTemporal Asset Catalog API](https://stacspec.org/)
+-   Search and stage **CADU chunks** from CADIP stations
+-   Search and stage **auxiliary data** from AUXIP station
+-   Connect to all the endpoints from [SpatioTemporal Asset Catalog API](https://stacspec.org/)
 
 Please note that the STAC catalog will also embed STAC extension to support Sentinel product format from [EOPF-CPM](https://cpm.pages.eopf.copernicus.eu/eopf-cpm/main/index.html).
 
