@@ -4,7 +4,7 @@ The Reference System server provides a set of services necessary to build Copern
 
 STAC is everywhere with RS-Server. RS-Server offers a catalog of Sentinel products compatible with the STAC (SpatioTemporal Asset Catalog) standard, but also on the next release the staging function to retrieve AUXIP and CADIP data will be provided with a STAC interface.
 
-![STAC](images/STAC-2.jpg)
+![STAC](../images/STAC-2.jpg)
 
 ## Features
 
