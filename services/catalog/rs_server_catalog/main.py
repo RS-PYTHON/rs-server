@@ -109,6 +109,8 @@ def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-d
             res = "/catalog/collections/{owner_id}:{collection_id}/queryables"
         case "/collections/{collection_id}/bulk_items":
             res = "/catalog/collections/{owner_id}:{collection_id}/bulk_items"
+        case "/conformance":
+            res = "/catalog/conformance"
     return res
 
 

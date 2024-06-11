@@ -51,7 +51,7 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
         dict: Return a dictionary containing owner, collection and item ID.
     """
 
-    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/favicon.ico"]
+    patterns = [r"/_mgmt/ping", r"/api.*", r"/favicon.ico"]
 
     # if path == "/":
     #     raise ValueError(f"URL ({path}) is invalid.")
@@ -75,6 +75,8 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
             return "/docs/oauth2-redirect", ids_dict
         case "/catalog/queryables":
             return "/queryables", ids_dict
+        case "/catalog/conformance":
+            return "/conformance", ids_dict
 
     if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
         return "/collections", ids_dict
