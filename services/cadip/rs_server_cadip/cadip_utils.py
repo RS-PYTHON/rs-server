@@ -61,6 +61,9 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
 
 
 def from_session_expand_to_assets_serializer(feature_collection, input_session: eodag.EOProduct, mapper: dict) -> Dict:
+    """
+    Associate all expanded files with session from feature_collection and create an asset for each file.
+    """
     for session in feature_collection['features']:
         session["assets"] = [
             map_dag_file_to_asset(mapper, product)
