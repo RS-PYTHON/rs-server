@@ -56,7 +56,7 @@ from rs_server_common.utils.logging import Logging
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
@@ -756,6 +756,9 @@ class UserCatalog:
         self.request_ids["owner_id"] = user if user else self.request_ids["owner_id"]
         self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
 
+        if "/health" in request.scope["path"]:
+            # return true if up and running
+            return JSONResponse(content="Healthy", status_code=HTTP_200_OK)
         # Handle requests
         if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
