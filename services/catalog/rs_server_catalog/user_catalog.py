@@ -758,7 +758,7 @@ class UserCatalog:
 
         if "/health" in request.scope["path"]:
             # return true if up and running
-            return JSONResponse(status_code=HTTP_200_OK)
+            return JSONResponse(content="Healthy", status_code=HTTP_200_OK)
         # Handle requests
         if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
