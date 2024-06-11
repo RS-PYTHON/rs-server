@@ -594,8 +594,10 @@ class UserCatalog:
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        elif "/collections" in request.scope["path"] and "/queryables" in request.scope["path"]:
+            content["$id"] = request.url._url  # pylint: disable=protected-access
         elif (
-            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+            "/collections" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
             content = remove_user_from_collection(content, user)
             content = self.adapt_object_links(content, user)

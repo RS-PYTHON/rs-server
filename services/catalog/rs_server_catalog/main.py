@@ -108,6 +108,8 @@ def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-d
             res = "/catalog/queryables"
         case "/collections/{collection_id}/queryables":
             res = "/catalog/collections/{owner_id}:{collection_id}/queryables"
+        case "/collections/{collection_id}/bulk_items":
+            res = "/catalog/collections/{owner_id}:{collection_id}/bulk_items"
     return res
 
 
@@ -233,7 +235,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         """
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (common_settings.CLUSTER_MODE) and request.url.path.startswith("/catalog"):
+        if (
+            (common_settings.CLUSTER_MODE)
+            and request.url.path.startswith("/catalog")
+            and request.url.path != "/catalog/api.html"
+        ):
 
             # Check the api key validity, passed in HTTP header
             await authentication.apikey_security(
