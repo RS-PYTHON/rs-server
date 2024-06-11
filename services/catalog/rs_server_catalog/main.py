@@ -18,12 +18,11 @@ Enables the extensions specified as a comma-delimited list in
 the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
-
 import asyncio
 import os
 import traceback
 from os import environ as env
-from typing import Callable
+from typing import Any, Callable, Dict
 
 import httpx
 from brotli_asgi import BrotliMiddleware
@@ -172,7 +171,7 @@ def extract_openapi_specification():
                             "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
                         )
     owner_id = "Owner ID"
-    catalog_owner_id = {
+    catalog_owner_id: Dict[str, Any] = {
         "get": {
             "summary": "Landing page for the catalog owner id only.",
             "description": "Endpoint.",
