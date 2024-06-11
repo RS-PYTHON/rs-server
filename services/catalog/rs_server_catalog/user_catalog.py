@@ -594,8 +594,10 @@ class UserCatalog:
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        elif "/queryables" in request.scope["path"]:
+            content["$id"] = request.url._url  # pylint: disable=protected-access
         elif (
-            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+            "/collections" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
             content = remove_user_from_collection(content, user)
             content = self.adapt_object_links(content, user)
@@ -801,7 +803,7 @@ class UserCatalog:
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
         elif request.method == "GET" and (
-            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections"]
+            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections", "/queryables"]
         ):
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             # URL: GET: '/catalog/'

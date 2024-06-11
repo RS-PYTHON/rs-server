@@ -112,10 +112,6 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
     def test_remove_the_catalog_prefix(self):
         assert reroute_url("/catalog/catalogs/Toto", "GET")[0] == ("/")
 
-    # Disabled for moment
-    # def test_landing_page(self):
-    #     assert reroute_url("/catalog/Toto", "GET") == "/", {"owner_id": "Toto", "collection_id": "", "item_id": ""}
-
     def test_item_id(self):
         result = reroute_url("/catalog/collections/Toto:joplin/items/fe916452-ba6f-4631-9154-c249924a122d", "GET")
         assert result[0] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
@@ -139,6 +135,30 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert res[1] == {
             "owner_id": "toto",
             "collection_id": "",
+            "item_id": "",
+        }
+
+    def test_reroute_oauth2(self):
+        assert reroute_url("/catalog/docs/oauth2-redirect", "GET")[0] == "/docs/oauth2-redirect"
+
+    def test_reroute_queryables(self):
+        assert reroute_url("/catalog/queryables", "GET")[0] == "/queryables"
+
+    def test_reroute_collections_queryables(self):
+        res = reroute_url("/catalog/collections/toto:S1_L1/queryables", "GET")
+        assert res[0] == "/collections/toto_S1_L1/queryables"
+        assert res[1] == {
+            "owner_id": "toto",
+            "collection_id": "S1_L1",
+            "item_id": "",
+        }
+
+    def test_reroute_bulk_items(self):
+        res = reroute_url("/catalog/collections/toto:S1_L1/bulk_items", "GET")
+        assert res[0] == "/collections/toto_S1_L1/bulk_items"
+        assert res[1] == {
+            "owner_id": "toto",
+            "collection_id": "S1_L1",
             "item_id": "",
         }
 
