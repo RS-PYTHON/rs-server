@@ -56,7 +56,7 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
     return [
         eodag.EOProduct(provider="internal_session_product_file_from_cadip", properties=update_product(product))
         for session in input_sessions
-        for product in session.properties["Files"]
+        for product in session.properties.get("Files", [])
     ]
 
 
