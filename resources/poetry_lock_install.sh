@@ -21,7 +21,9 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 # In each subproject, install dependencies with poetry
 for f in $(find "$ROOT_DIR" -name pyproject.toml); do
     (set -x
-        cd $(dirname $f) && poetry lock && poetry install --with dev
+        cd $(dirname $f)
+        poetry lock
+        poetry install --with dev || poetry install
         poetry run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
     )
 done
