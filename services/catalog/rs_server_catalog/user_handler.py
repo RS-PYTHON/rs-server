@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# pylint: disable=too-many-return-statements
 """This library contains all functions needed for the fastAPI middleware."""
 
 import re
@@ -57,6 +57,9 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     #     raise ValueError(f"URL ({path}) is invalid.")
 
     ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
+
+    if "/health" in path:
+        return "/health", ids_dict
 
     match path:
         case "/catalog/":
