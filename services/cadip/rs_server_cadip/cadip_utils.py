@@ -64,15 +64,23 @@ def from_session_expand_to_assets_serializer(feature_collection, input_session: 
     """
     Associate all expanded files with session from feature_collection and create an asset for each file.
     """
-    for session in feature_collection['features']:
+    for session in feature_collection["features"]:
         session["assets"] = [
             map_dag_file_to_asset(mapper, product)
             for product in input_session
-            if product.properties['SessionID'] == session['id']
+            if product.properties["SessionID"] == session["id"]
         ]
-        input_session = [
-            product
-            for product in input_session
-            if product.properties['SessionID'] != session['id']
-        ]
+        input_session = [product for product in input_session if product.properties["SessionID"] != session["id"]]
     return feature_collection
+
+
+def validate_products(products: eodag.EOProduct):
+    """Function used to remove all miconfigured outputs."""
+    valid_eo_products = []
+    for product in products:
+        try:
+            str(product)
+            valid_eo_products.append(product)
+        except eodag.utils.exceptions.MisconfiguredError:
+            continue
+    return valid_eo_products

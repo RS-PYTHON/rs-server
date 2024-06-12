@@ -36,6 +36,7 @@ from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
+    validate_products,
 )
 from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
@@ -186,6 +187,7 @@ def search_session(
             platform=satellite,
             sessions_search=True,
         )
+        products = validate_products(products)
         sessions_products = from_session_expand_to_dag_serializer(products)
         write_search_products_to_db(CadipDownloadStatus, sessions_products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
@@ -194,15 +196,17 @@ def search_session(
         with (
             open(feature_template_path, encoding="utf-8") as template,
             open(stac_mapper_path, encoding="utf-8") as stac_map,
-            open(expanded_session_mapper_path, encoding="utf-8") as expanded_session_mapper
+            open(expanded_session_mapper_path, encoding="utf-8") as expanded_session_mapper,
         ):
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
             cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
-            cadip_sessions_collection = from_session_expand_to_assets_serializer(cadip_sessions_collection,
-                                                                                 sessions_products,
-                                                                                 expanded_session_mapper)
+            cadip_sessions_collection = from_session_expand_to_assets_serializer(
+                cadip_sessions_collection,
+                sessions_products,
+                expanded_session_mapper,
+            )
             return cadip_sessions_collection
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")

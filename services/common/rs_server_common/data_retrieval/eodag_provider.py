@@ -14,6 +14,7 @@
 
 """EODAG Provider."""
 
+import json
 import os
 import shutil
 import tempfile
@@ -128,7 +129,7 @@ class EodagProvider(Provider):
                     raise_errors=True,
                     **kwargs,
                 )
-            except RequestError:
+            except (RequestError, json.JSONDecodeError):
                 return []
         else:
             try:
@@ -139,7 +140,7 @@ class EodagProvider(Provider):
                     raise_errors=True,
                     **kwargs,
                 )
-            except RequestError:
+            except (RequestError, json.JSONDecodeError):
                 return []
         return products
 
