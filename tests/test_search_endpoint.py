@@ -355,7 +355,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test with a list of 2 SessionIds
         (
             "/cadip/cadip/session?id=S1A_20170501121534062343,S1A_20240328185208053186",
-            '"SessionId%20in%20S1A_20170501121534062343,%20S1A_20240328185208053186"&$top=20',
+            '"SessionId%20in%20S1A_20170501121534062343,%20S1A_20240328185208053186"&$top=20&$expand=Files',
             ["S1A_20170501121534062343", "S1A_20240328185208053186"],
             ["2017-05-01T12:00:00", "2024-03-28T18:52:26Z"],
             ["S1A", "S1A"],
@@ -364,7 +364,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Check that response return 1 result in STAC format for the given id.
         (
             "/cadip/cadip/session?id=S1A_20240328185208053186",
-            '"SessionId%20in%20S1A_20240328185208053186"&$top=20',
+            '"SessionId%20in%20S1A_20240328185208053186"&$top=20&$expand=Files',
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
@@ -372,7 +372,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test with a single platform
         (
             "/cadip/cadip/session?id=S1A_20240328185208053186&platform=S1A",
-            "%22SessionId%20in%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20",
+            "%22SessionId%20in%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
@@ -381,7 +381,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         (
             "/cadip/cadip/session?id=S1A_20240328185208053186,S1A_20240328185208053186&platform=S1A,S2B",
             "%22SessionId%20in%20S1A_20240328185208053186,%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A,"
-            "%20S2B%22&$top=20"
+            "%20S2B%22&$top=20&$expand=Files"
             "",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
@@ -390,7 +390,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test only with a list of platforms
         (
             "/cadip/cadip/session?platform=S1A, S2B",
-            "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20",
+            "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
             ["S1A", "S2B"],
@@ -401,7 +401,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         (
             "/cadip/cadip/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-16T12:00:00Z&platform=S1A",
             "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
-            "%20lt%202023-02-16T12:00:00.000Z%22&$top=20",
+            "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
             ["S1A", "S1A", "S2B"],
@@ -607,7 +607,8 @@ def test_expanded_sessions_endpoint_request(
 
     Nominal: Test that an OData response with two files is mapped to a STAC response with two assets
     Degraded: Test that an OData response with an empty Files list is mapped to a STAC response with an empty asset list
-    Degraded: Test that an OData response with a Files list set to null is mapped to a STAC response with an empty asset list
+    Degraded: Test that an OData response with a Files list set to null is mapped to a STAC response with an empty asset
+     list
     Degraded: Test that an OData response without a Files element is mapped to a STAC response with an empty asset list
 
     """

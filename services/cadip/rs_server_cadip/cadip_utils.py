@@ -42,6 +42,7 @@ def update_product(product: dict) -> dict:
 
 
 def map_dag_file_to_asset(mapper, product):
+    """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
     # TODO - href, roles to be added manually ?!
     # Todo 2 - pop id
