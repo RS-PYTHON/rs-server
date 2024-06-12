@@ -18,12 +18,11 @@ Enables the extensions specified as a comma-delimited list in
 the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
-
 import asyncio
 import os
 import traceback
 from os import environ as env
-from typing import Callable
+from typing import Any, Callable, Dict
 
 import httpx
 from brotli_asgi import BrotliMiddleware
@@ -104,6 +103,14 @@ def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-d
             res = "/catalog/collections/{owner_id}:{collection_id}/items/{item_id}"
         case "/search":
             res = "/catalog/search"
+        case "/queryables":
+            res = "/catalog/queryables"
+        case "/collections/{collection_id}/queryables":
+            res = "/catalog/collections/{owner_id}:{collection_id}/queryables"
+        case "/collections/{collection_id}/bulk_items":
+            res = "/catalog/collections/{owner_id}:{collection_id}/bulk_items"
+        case "/conformance":
+            res = "/catalog/conformance"
     return res
 
 
@@ -123,9 +130,9 @@ def extract_openapi_specification():
     # add starlette routes
     for route in app.routes:  # pylint: disable=redefined-outer-name
         if isinstance(route, Route) and route.path in ["/api", "/api.html", "/docs/oauth2-redirect"]:
-            path = route.path
+            path = f"/catalog{route.path}"
             method = "GET"
-            openapi_spec["paths"].setdefault(path, {})[method.lower()] = {
+            to_add = {
                 "summary": f"Auto-generated {method} for {path}",
                 "responses": {
                     "200": {
@@ -133,8 +140,12 @@ def extract_openapi_specification():
                         "content": {"application/json": {"example": {"message": "Success"}}},
                     },
                 },
-                "operationId": route.operation_id if hasattr(route, "operation_id") else route.path,
+                "operationId": "/catalog" + route.operation_id if hasattr(route, "operation_id") else route.path,
             }
+            if common_settings.CLUSTER_MODE and "api.html" not in route.path:
+                to_add["security"] = [{"API key passed in HTTP header": []}]
+            openapi_spec["paths"].setdefault(path, {})[method.lower()] = to_add
+
     openapi_spec_paths = openapi_spec["paths"]
     for key in list(openapi_spec_paths.keys()):
         if key in TECH_ENDPOINTS:
@@ -162,7 +173,7 @@ def extract_openapi_specification():
                             "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
                         )
     owner_id = "Owner ID"
-    catalog_owner_id = {
+    catalog_owner_id: Dict[str, Any] = {
         "get": {
             "summary": "Landing page for the catalog owner id only.",
             "description": "Endpoint.",
@@ -170,7 +181,6 @@ def extract_openapi_specification():
             "responses": {
                 "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
             },
-            "security": [{"API key passed in HTTP header": []}],
             "parameters": [
                 {
                     "description": owner_id,
@@ -182,7 +192,11 @@ def extract_openapi_specification():
             ],
         },
     }
-    openapi_spec_paths["/catalog/catalogs/{owner_id}"] = catalog_owner_id
+    path = "/catalog/catalogs/{owner_id}"
+    method = "GET"
+    if common_settings.CLUSTER_MODE:
+        catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
+    openapi_spec["paths"].setdefault(path, {})[method.lower()] = catalog_owner_id
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
@@ -222,7 +236,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         """
 
         # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (common_settings.CLUSTER_MODE) and request.url.path.startswith("/catalog"):
+        if (
+            (common_settings.CLUSTER_MODE)
+            and request.url.path.startswith("/catalog")
+            and request.url.path != "/catalog/api.html"
+        ):
 
             # Check the api key validity, passed in HTTP header
             await authentication.apikey_security(

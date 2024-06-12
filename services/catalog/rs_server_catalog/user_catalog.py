@@ -57,7 +57,7 @@ from rs_server_common.utils.logging import Logging
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.status import HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
 
 PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
@@ -599,8 +599,10 @@ class UserCatalog:
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        elif "/queryables" in request.scope["path"]:
+            content["$id"] = request.url._url  # pylint: disable=protected-access
         elif (
-            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
+            "/collections" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
             content = remove_user_from_collection(content, user)
             content = self.adapt_object_links(content, user)
@@ -761,6 +763,9 @@ class UserCatalog:
         self.request_ids["owner_id"] = user if user else self.request_ids["owner_id"]
         self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
 
+        if "/health" in request.scope["path"]:
+            # return true if up and running
+            return JSONResponse(content="Healthy", status_code=HTTP_200_OK)
         # Handle requests
         if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
@@ -803,7 +808,7 @@ class UserCatalog:
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
         elif request.method == "GET" and (
-            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections"]
+            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections", "/queryables"]
         ):
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             # URL: GET: '/catalog/'
