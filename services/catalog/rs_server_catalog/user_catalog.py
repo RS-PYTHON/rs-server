@@ -434,7 +434,9 @@ class UserCatalog:
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.create_timestamps(content)
-                    content = timestamps_extension.set_updated_expires_timestamp(content)
+                        content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
+                    else:  # PUT
+                        content = timestamps_extension.set_updated_expires_timestamp(content, "update")
                 if hasattr(content, "status_code"):
                     return content
 

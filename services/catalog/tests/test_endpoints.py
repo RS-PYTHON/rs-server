@@ -14,12 +14,14 @@
 
 """Integration tests for user_catalog module."""
 
-# pylint: disable=unused-argument
 import copy
 import json
 import os
 import os.path as osp
 import pathlib
+
+# pylint: disable=unused-argument
+import time
 from datetime import datetime, timedelta
 
 import fastapi
@@ -427,10 +429,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             for obj in lst_with_files_to_be_copied:
                 s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
 
-            # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
-            # and a good OBS path. => 200 OK
-            # Check if that user darius have a collection (Added in conftest -> setup_database)
-            # Add a featureCollection to darius collection
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
             feature_data = json.loads(added_feature.content)
 
@@ -808,6 +806,36 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Test that ID has changed, but other arbitrary field not
         assert updated_feature["bbox"] == updated_feature_sent["bbox"]
         assert updated_feature["geometry"] == a_correct_feature["geometry"]
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+
+    def test_update_timestamp_feature(self, client, a_minimal_collection, a_correct_feature):
+        """
+        ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
+        """
+        # Change correct feature collection id to match with minimal collection and post it
+        a_correct_feature["collection"] = "fixture_collection"
+        # Post the correct feature to catalog
+        feature_post_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=a_correct_feature,
+        )
+        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        # Update the feature and PUT it into catalogDB
+        updated_feature_sent = copy.deepcopy(a_correct_feature)
+        updated_feature_sent["bbox"] = [77]
+        updated_timestamp = json.loads(feature_post_response.content)["properties"]["updated"]
+        time.sleep(1)
+        feature_put_response = client.put(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+            json=updated_feature_sent,
+        )
+        content = json.loads(feature_put_response.content)
+
+        new_updated_timestamp = content["properties"]["updated"]
+
+        assert updated_timestamp != new_updated_timestamp
+
+        assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):

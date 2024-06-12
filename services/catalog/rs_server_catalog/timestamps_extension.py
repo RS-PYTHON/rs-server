@@ -15,10 +15,14 @@
 """Contains all functions for timestamps extension management."""
 
 import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 
-def set_updated_expires_timestamp(item: dict, expiration: Optional[datetime.datetime] = None) -> dict:
+def set_updated_expires_timestamp(
+    item: dict,
+    operation: Literal["update", "insertion"],
+    expiration: Optional[datetime.datetime] = None,
+) -> dict:
     """This function set the timestamps for an item.
     If we want to insert a new item, it will update
     The sections "updated", and "expires".
@@ -34,11 +38,12 @@ def set_updated_expires_timestamp(item: dict, expiration: Optional[datetime.date
     """
     current_time = datetime.datetime.now()
     item["properties"]["updated"] = current_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    if expiration:
-        item["properties"]["expires"] = expiration.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    else:
-        plus_30_days = current_time + datetime.timedelta(days=30)
-        item["properties"]["expires"] = plus_30_days.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    if operation == "insertion":
+        if expiration:
+            item["properties"]["expires"] = expiration.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        else:
+            plus_30_days = current_time + datetime.timedelta(days=30)
+            item["properties"]["expires"] = plus_30_days.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     return item
 
 
