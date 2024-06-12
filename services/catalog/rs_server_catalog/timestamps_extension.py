@@ -1,9 +1,10 @@
 """Contains all functions for timestamps extension management."""
 
 import datetime
+from typing import Optional
 
 
-def set_updated_expires_timestamp(item: any, expiration: datetime.datetime = None) -> dict:
+def set_updated_expires_timestamp(item: dict, expiration: Optional[datetime.datetime] = None) -> dict:
     """This function set the timestamps for an item.
     If we want to insert a new item, it will update
     The sections "updated", and "expires".
@@ -27,7 +28,7 @@ def set_updated_expires_timestamp(item: any, expiration: datetime.datetime = Non
     return item
 
 
-def create_timestamps(item: any) -> dict:
+def create_timestamps(item: dict) -> dict:
     """Set the published section timestamp during the item creation.
 
     Args:
