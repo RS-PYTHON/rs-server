@@ -206,6 +206,7 @@ def search_session(
                 cadip_sessions_collection,
                 sessions_products,
                 expanded_session_mapper,
+                request,
             )
             return cadip_sessions_collection
     # except [OSError, FileNotFoundError] as exception:

@@ -21,6 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 from typing import Dict, List
 
 import eodag
+import starlette.requests
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
 
@@ -41,12 +42,11 @@ def update_product(product: dict) -> dict:
     return product
 
 
-def map_dag_file_to_asset(mapper, product):
+def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starlette.requests.Request):
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
-    # TODO - href, roles to be added manually ?!
-    # Todo 2 - pop id
-
+    asset["roles"] = ["cadu"]
+    asset["href"] = f'{str(request.url).split("session", maxsplit=1)[0]}cadu?name={asset.pop("id")}'
     return {product.properties["Name"]: asset}
 
 
@@ -61,13 +61,18 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
     ]
 
 
-def from_session_expand_to_assets_serializer(feature_collection, input_session: eodag.EOProduct, mapper: dict) -> Dict:
+def from_session_expand_to_assets_serializer(
+    feature_collection,
+    input_session: eodag.EOProduct,
+    mapper: dict,
+    request: starlette.requests.Request,
+) -> Dict:
     """
     Associate all expanded files with session from feature_collection and create an asset for each file.
     """
     for session in feature_collection["features"]:
         session["assets"] = [
-            map_dag_file_to_asset(mapper, product)
+            map_dag_file_to_asset(mapper, product, request)
             for product in input_session
             if product.properties["SessionID"] == session["id"]
         ]
