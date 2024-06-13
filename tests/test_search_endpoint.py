@@ -556,7 +556,6 @@ def test_invalid_sessions_endpoint_request(client):
                         "assets": [
                             {
                                 "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw": {
-                                    "id": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw",
                                     "cadip:id": "axd19d2f-29eb-4c18-bc1f-bf2769a3a16d",
                                     "cadip:retransfer": False,
                                     "cadip:final_block": False,
@@ -566,11 +565,13 @@ def test_invalid_sessions_endpoint_request(client):
                                     "created": "2023-11-17T18:52:29.165Z",
                                     "eviction_datetime": "2023-11-17T18:52:29.165Z",
                                     "file:size": "42",
+                                    "roles": ["cadu"],
+                                    "href": "http://testserver/cadip/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch"
+                                    "2_DSDB_00001.raw",
                                 },
                             },
                             {
                                 "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
-                                    "id": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw",
                                     "cadip:id": "a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1",
                                     "cadip:retransfer": False,
                                     "cadip:final_block": False,
@@ -580,6 +581,10 @@ def test_invalid_sessions_endpoint_request(client):
                                     "created": "2023-11-17T18:52:39.165Z",
                                     "eviction_datetime": "2023-11-17T18:52:39.165Z",
                                     "file:size": "42",
+                                    "roles": ["cadu"],
+                                    # Note: 127.0.0.1:8000 replaced with testserver due to TestClient usage
+                                    "href": "http://testserver/cadip/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch"
+                                    "2_DSDB_00002.raw",
                                 },
                             },
                         ],
