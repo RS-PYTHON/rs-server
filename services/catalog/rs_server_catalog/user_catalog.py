@@ -165,7 +165,9 @@ class UserCatalog:
             content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
         return content
 
-    def update_stac_item_publication(self, content: dict, user: str) -> Any:  # pylint: disable=too-many-locals
+    def update_stac_item_publication( # pylint: disable=too-many-locals
+        self, content: dict, user: str, netloc: str
+    ) -> Any:
         """Update json body of feature push to catalog"""
 
         # Unique set of temp bucket names
@@ -178,7 +180,7 @@ class UserCatalog:
             logger.debug(f"HTTP request asset: {filename_str!r}")
             fid = filename_str.rsplit("/", maxsplit=1)[-1]
             new_href = (
-                f'https://rs-server/catalog/{user}/collections/{content["collection"]}/items/{fid}/download/{asset}'
+                f'https://{netloc}/catalog/collections/{user}:{content["collection"]}/items/{fid}/download/{asset}'
             )
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
@@ -429,7 +431,7 @@ class UserCatalog:
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
             elif "items" in request.scope["path"]:
-                content = self.update_stac_item_publication(content, user)
+                content = self.update_stac_item_publication(content, user, request.url.netloc)
                 if hasattr(content, "status_code"):
                     return content
 
