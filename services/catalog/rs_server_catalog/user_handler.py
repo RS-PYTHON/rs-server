@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# pylint: disable=too-many-return-statements
 """This library contains all functions needed for the fastAPI middleware."""
 
 import re
@@ -25,11 +25,17 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 )
 
 CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/(?P<owner_id>.+)"
+
+COLLECTIONS_QUERYABLES_REGEX = r"/catalog/collections/(?P<owner_id>.+):(?P<collection_id>.+)/queryables"
+BULK_ITEMS_REGEX = r"/catalog/collections/(?P<owner_id>.+):(?P<collection_id>.+)/bulk_items"
 CATALOG_COLLECTION = "/catalog/collections"
 CATALOG_SEARCH = "/catalog/search"
 
 
-def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=too-many-branches
+def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
+    path: str,
+    method: str,
+) -> Tuple[str, dict]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 
@@ -45,26 +51,53 @@ def reroute_url(path: str, method: str) -> Tuple[str, dict]:  # pylint: disable=
         dict: Return a dictionary containing owner, collection and item ID.
     """
 
-    patterns = [r"/_mgmt/ping", r"/conformance", r"/api.*", r"/docs/oauth2-redirect", r"/favicon.ico"]
+    patterns = [r"/_mgmt/ping", r"/api.*", r"/favicon.ico"]
 
     # if path == "/":
     #     raise ValueError(f"URL ({path}) is invalid.")
 
     ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
 
-    if path in ["/catalog/", "/"]:
-        return "/", ids_dict
+    if "/health" in path:
+        return "/health", ids_dict
 
-    if path == "/catalog/search":
-        return "/search", ids_dict
+    match path:
+        case "/catalog/":
+            return "/", ids_dict
+        case "/":
+            return "/", ids_dict
+        case "/catalog/search":
+            return "/search", ids_dict
+        case "/catalog/queryables":
+            return "/queryables", ids_dict
+        case "/catalog/api":
+            return "/api", ids_dict
+        case "/catalog/api.html":
+            return "/api.html", ids_dict
+        case "/catalog/docs/oauth2-redirect":
+            return "/docs/oauth2-redirect", ids_dict
+        case "/catalog/queryables":
+            return "/queryables", ids_dict
+        case "/catalog/conformance":
+            return "/conformance", ids_dict
 
     if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
         return "/collections", ids_dict
 
-    if path == "/catalog/queryables":
-        return "/queryables", ids_dict
+    # To catch the endpoint /catalog/collections/{owner_id}:{collection_id}/bulk_items
+    if match := re.fullmatch(BULK_ITEMS_REGEX, path):
+        groups = match.groupdict()
+        ids_dict["owner_id"] = groups["owner_id"]
+        ids_dict["collection_id"] = groups["collection_id"]
+        return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/bulk_items", ids_dict
 
-    # Moved to /catalogs/ (still interesting to keep this endpoint) - disabled for now
+    # To catch the endpoint /catalog/collections/{owner_id}:{collection_id}/queryables
+    if match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
+        groups = match.groupdict()
+        ids_dict["owner_id"] = groups["owner_id"]
+        ids_dict["collection_id"] = groups["collection_id"]
+        return f"/collections/{groups['owner_id']}_{groups['collection_id']}/queryables", ids_dict
+
     # To catch the endpoint /catalog/catalogs/{owner_id}
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
         groups = match.groupdict()
