@@ -434,6 +434,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
             current_time = datetime.now().date()
 
+            # Test that published field is correctly added
             assert "published" in feature_data["properties"]
             published_datetime_format = datetime.strptime(
                 feature_data["properties"]["published"],
@@ -442,11 +443,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             published_date_only = published_datetime_format.date()
             assert published_date_only == current_time
 
+            # Test that updated field is correctly added
             assert "updated" in feature_data["properties"]
             updated_datetime_format = datetime.strptime(feature_data["properties"]["updated"], "%Y-%m-%dT%H:%M:%S.%fZ")
             updated_date_only = updated_datetime_format.date()
             assert updated_date_only == current_time
 
+            # Test that expires field is correctly added
             assert "expires" in feature_data["properties"]
             plus_30_days = current_time + timedelta(days=30)
             expires_datetime_format = datetime.strptime(feature_data["properties"]["expires"], "%Y-%m-%dT%H:%M:%S.%fZ")
@@ -819,10 +822,16 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=a_correct_feature,
         )
+
+        # published_timestamp_before_update = json.loads(feature_post_response.content)["properties"]["published"]
+        # expires_timestamp_before_update = json.loads(feature_post_response.content)["properties"]["expires"]
+
         assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = [77]
+
+        # Test that updated field is correctly updated.
         updated_timestamp = json.loads(feature_post_response.content)["properties"]["updated"]
         time.sleep(1)
         feature_put_response = client.put(
@@ -833,7 +842,12 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
 
         new_updated_timestamp = content["properties"]["updated"]
 
+        # Test that "updated" field is correctly updated.
         assert updated_timestamp != new_updated_timestamp
+
+        # Test that "published" and "expires" field are inchanged after the update.
+        # assert content["properties"]["published"] == published_timestamp_before_update
+        # assert content["properties"]["expires"] == expires_timestamp_before_update
 
         assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
