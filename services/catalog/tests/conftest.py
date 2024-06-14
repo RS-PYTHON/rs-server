@@ -90,7 +90,7 @@ def start_database_fixture(docker_services, db_url):
 def client_fixture(start_database):  # pylint: disable=missing-function-docstring, unused-argument
     # A .env file is read automatically
     # to setup the env to start the app.
-    with TestClient(app) as client:
+    with TestClient(app, follow_redirects=False) as client:
         yield client
 
 

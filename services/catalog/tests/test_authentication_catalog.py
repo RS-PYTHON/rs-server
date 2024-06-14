@@ -1159,22 +1159,21 @@ class TestAuthenticationDownload:
                     )
                     assert response.status_code == HTTP_302_FOUND
 
-                    # Check that response is an url not file content!
-                    assert response.content != object_content
+                # Check that response is empty
+                assert response.content == b""
 
-                    # call the redirected url
-                    product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
+                # call the redirected url
+                product_content = requests.get(response.headers["location"], timeout=10)
 
-                    # product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
-                    assert product_content.status_code == HTTP_200_OK
-                    assert product_content.content.decode() == object_content
-                    assert (
-                        client.get(
-                            f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/COG",
-                            headers={APIKEY_HEADER: VALID_APIKEY},
-                        ).status_code
-                        == HTTP_404_NOT_FOUND
-                    )
+                assert product_content.status_code == HTTP_200_OK
+                assert product_content.content.decode() == object_content
+                assert (
+                    client.get(
+                        f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/COG",
+                        headers={APIKEY_HEADER: VALID_APIKEY},
+                    ).status_code
+                    == HTTP_404_NOT_FOUND
+                )
 
         finally:
             server.stop()
