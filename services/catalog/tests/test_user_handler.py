@@ -14,7 +14,10 @@
 
 """Unit tests for user_handler module."""
 
+import getpass
+
 import pytest
+from pytest_httpx import HTTPXMock
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
@@ -22,6 +25,71 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
+from rs_server_common.authentication import APIKEY_HEADER, ttl_cache
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_302_FOUND,
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+    HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
+)
+
+from .conftest import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
+
+# Dummy url for the uac manager check endpoint
+RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
+
+# Dummy api key values
+VALID_APIKEY = "VALID_API_KEY"
+WRONG_APIKEY = "WRONG_APIKEY"
+
+# Test two ways of passing the api key: in HTTP header and in url query parameter (disabled for now)
+PASS_THE_APIKEY = [
+    {"headers": {APIKEY_HEADER: VALID_APIKEY}},
+    # {"params": {APIKEY_QUERY: VALID_APIKEY}}
+]
+
+WRONG_HEADER = {APIKEY_HEADER: WRONG_APIKEY}
+
+# pylint: skip-file # ignore pylint issues for this file, TODO remove this
+
+
+def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], mock_wrong_apikey: bool = False):
+    """init mocker for tests."""
+    # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+
+    # Mock the uac manager url
+    monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+    # With a valid api key in headers, the uac manager will give access to the endpoint
+    ttl_cache.clear()  # clear the cached response
+    httpx_mock.add_response(
+        url=RSPY_UAC_CHECK_URL,
+        match_headers={APIKEY_HEADER: VALID_APIKEY},
+        status_code=HTTP_200_OK,
+        json={
+            "name": "toto",
+            "user_login": "pyteam",
+            "is_active": True,
+            "never_expire": True,
+            "expiration_date": "2024-04-10T13:57:28.475052",
+            "total_queries": 0,
+            "latest_sync_date": "2024-03-26T13:57:28.475058",
+            "iam_roles": iam_roles,
+            "config": {},
+            "allowed_referers": ["toto"],
+        },
+    )
+
+    # With a wrong api key, it returns 403
+    if mock_wrong_apikey:
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: WRONG_APIKEY},
+            status_code=HTTP_403_FORBIDDEN,
+        )
 
 
 @pytest.fixture(name="collection_toto_1")
@@ -117,6 +185,18 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert result[0] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
         assert result[1] == {
             "owner_id": "Toto",
+            "collection_id": "joplin",
+            "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
+        }
+
+    # NOTE: The following function is the test for local mode, when there is no apikey and the ownerId
+    # is missing from the endpoint. The tests when the apikey exists (thus in cluster mode) are implemented
+    # in test_authetication_catalog. py
+    def test_item_id_without_user(self):
+        result = reroute_url("/catalog/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d", "GET")
+        assert result[0] == f"/collections/{getpass.getuser()}_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
+        assert result[1] == {
+            "owner_id": getpass.getuser(),
             "collection_id": "joplin",
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }

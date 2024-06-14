@@ -594,10 +594,8 @@ class UserCatalog:
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-        elif "/queryables" in request.scope["path"]:
-            content["$id"] = request.url._url  # pylint: disable=protected-access
         elif (
-            "/collections" in request.scope["path"] and "items" not in request.scope["path"]
+            "/collection" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
             content = remove_user_from_collection(content, user)
             content = self.adapt_object_links(content, user)
@@ -750,8 +748,11 @@ class UserCatalog:
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
-
-        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method)
+        # Get the the user_login calling the endpoint.
+        user_login = request.state.user_login if common_settings.CLUSTER_MODE else None
+        logger.debug(f"Received url request.url.path = {request.url.path}")
+        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
+        logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
         user = request_body.get("owner", None)
         collection_id = request_body.get("id", None)

@@ -14,27 +14,47 @@
 # pylint: disable=too-many-return-statements
 """This library contains all functions needed for the fastAPI middleware."""
 
+import getpass
 import re
 from typing import Tuple
 
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"/catalog/collections"
-    r"((?P<owner_collection_id>/.+?(?=/|$))"
+    r"(((?P<owner_collection_id>/.+?(?=/|$)))?"
     r"(?P<items>/.+?(?=/|$))?"
     r"(?P<item_id>/.+?(?=/|$))?)?"
 )
 
-CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/(?P<owner_id>.+)"
+CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/((?P<owner_id>.+))?"
 
-COLLECTIONS_QUERYABLES_REGEX = r"/catalog/collections/(?P<owner_id>.+):(?P<collection_id>.+)/queryables"
-BULK_ITEMS_REGEX = r"/catalog/collections/(?P<owner_id>.+):(?P<collection_id>.+)/bulk_items"
+COLLECTIONS_QUERYABLES_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/queryables"
+BULK_ITEMS_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/bulk_items"
 CATALOG_COLLECTION = "/catalog/collections"
 CATALOG_SEARCH = "/catalog/search"
+
+
+def get_user(endpoint_user: str, apikey_user: str):
+    """Retrieve the user identifier based on provided parameters. Default is the
+    current running user (used for local mode in general)
+
+    Args:
+        endpoint_user (str): User identifier from the endpoint.
+        apikey_user (str): User identifier from the API key.
+
+    Returns:
+        str: The user identifier.
+    """
+    if endpoint_user:
+        return endpoint_user
+    if apikey_user:
+        return apikey_user
+    return getpass.getuser()
 
 
 def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
     path: str,
     method: str,
+    user_login: str = None,
 ) -> Tuple[str, dict]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
@@ -84,35 +104,45 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
         return "/collections", ids_dict
 
-    # To catch the endpoint /catalog/collections/{owner_id}:{collection_id}/bulk_items
+    # To catch the endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items
     if match := re.fullmatch(BULK_ITEMS_REGEX, path):
         groups = match.groupdict()
-        ids_dict["owner_id"] = groups["owner_id"]
+        ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
         ids_dict["collection_id"] = groups["collection_id"]
         return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/bulk_items", ids_dict
 
-    # To catch the endpoint /catalog/collections/{owner_id}:{collection_id}/queryables
+    # To catch the endpoint /catalog/collections/[{owner_id}:]{collection_id}/queryables
     if match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
         groups = match.groupdict()
-        ids_dict["owner_id"] = groups["owner_id"]
+        ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
         ids_dict["collection_id"] = groups["collection_id"]
-        return f"/collections/{groups['owner_id']}_{groups['collection_id']}/queryables", ids_dict
+        return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/queryables", ids_dict
 
-    # To catch the endpoint /catalog/catalogs/{owner_id}
+    # To catch the endpoint /catalog/catalogs/[{owner_id}]
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
         groups = match.groupdict()
-        ids_dict["owner_id"] = groups["owner_id"]
+        ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
         return "/", ids_dict
 
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
-        if groups["owner_collection_id"] and ":" in groups["owner_collection_id"]:
-            ids_dict["owner_id"], ids_dict["collection_id"] = map(
-                lambda x: x.lstrip("/"),
-                groups["owner_collection_id"].split(":"),
-            )
-        # /catalog/collections/owner:collection case is the same for PUT / POST / DELETE, but needs different paths
+        if groups["owner_collection_id"]:
+            # protection for more than one : (example-> /catalog/collections/ownerId:collection:Id/items)
+            # the list owner_collection_id_split has one or at most two members (note the maxsplit = 1)
+            owner_collection_id_split = groups["owner_collection_id"].lstrip("/").split(":", 1)
+            if len(owner_collection_id_split) == 1:
+                # the following handles the absence of the ownerId param, for endpoints like:
+                # /catalog/collections/collectionId/items
+                ids_dict["owner_id"] = get_user(None, user_login)
+                ids_dict["collection_id"] = owner_collection_id_split[0]
+            else:
+                # the following handles the presence of the ownerId param, for endpoints like:
+                # /catalog/collections/ownerId:collectionId/items
+                ids_dict["owner_id"] = owner_collection_id_split[0]
+                ids_dict["collection_id"] = owner_collection_id_split[1]
+
+        # /catalog/collections/[owner:]collection case is the same for PUT / POST / DELETE, but needs different paths
         if groups["item_id"] is None and method == "PUT":
             path = "/collections"
         elif groups["items"] is None and method != "DELETE":
