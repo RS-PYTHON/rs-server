@@ -35,9 +35,12 @@ cadip:
         Name:
             - null
             - '$.Name'
-        SessionID:
-            - null
-            - '$.SessionID'
+        SessionIds:
+          - null
+          - "$.SessionID"
+        SessionId:
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -76,6 +79,8 @@ cadip:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -114,9 +119,12 @@ ins:
         Name:
             - null
             - '$.Name'
-        SessionID:
-            - null
-            - '$.SessionID'
+        SessionIds:
+          - null
+          - "$.SessionID"
+        SessionId:
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -155,6 +163,8 @@ ins:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -193,9 +203,12 @@ mps:
         Name:
             - null
             - '$.Name'
-        SessionID:
-            - null
-            - '$.SessionID'
+        SessionIds:
+          - null
+          - "$.SessionID"
+        SessionId:
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -234,6 +247,8 @@ mps:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -272,9 +287,12 @@ mti:
         Name:
             - null
             - '$.Name'
-        SessionID:
-            - null
-            - '$.SessionID'
+        SessionIds:
+          - null
+          - "$.SessionID"
+        SessionId:
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -313,6 +331,8 @@ mti:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -351,9 +371,12 @@ nsg:
         Name:
             - null
             - '$.Name'
-        SessionID:
-            - null
-            - '$.SessionID'
+        SessionIds:
+          - null
+          - "$.SessionID"
+        SessionId:
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -392,6 +415,8 @@ nsg:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -430,9 +455,12 @@ sgs:
         Name:
             - null
             - '$.Name'
-        SessionID:
-            - null
-            - '$.SessionID'
+        SessionIds:
+          - null
+          - "$.SessionID"
+        SessionId:
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -471,6 +499,8 @@ sgs:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 

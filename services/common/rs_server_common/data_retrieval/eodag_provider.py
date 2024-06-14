@@ -103,44 +103,41 @@ class EodagProvider(Provider):
             Exception: If the search encounters an error or fails, an exception is raised.
         """
         mapped_search_args = {}
-        if kwargs.pop("sessions_search", False):
-            if session_id := kwargs.pop("id", None):
-                if isinstance(session_id, list):
-                    mapped_search_args.update({"SessionIds": ", ".join(session_id)})
-                elif isinstance(session_id, str):
-                    mapped_search_args.update({"SessionId": session_id})
-            if platform := kwargs.pop("platform", None):
+        sessions_search = kwargs.pop("sessions_search", False)
+
+        session_id = kwargs.pop("id", None)
+        if session_id:
+            if isinstance(session_id, list):
+                mapped_search_args["SessionIds"] = ", ".join(session_id)
+            elif isinstance(session_id, str):
+                mapped_search_args["SessionId"] = session_id
+
+        if sessions_search:
+            platform = kwargs.pop("platform", None)
+            if platform:
                 if isinstance(platform, list):
-                    mapped_search_args.update({"platforms": ", ".join(platform)})
+                    mapped_search_args["platforms"] = ", ".join(platform)
                 elif isinstance(platform, str):
-                    mapped_search_args.update({"platform": platform})
-            if between:
-                mapped_search_args.update(
-                    {
-                        "startTimeFromAscendingNode": str(between.start),
-                        "completionTimeFromAscendingNode": str(between.end),
-                    },
-                )
-            try:
-                products, _ = self.client.search(
-                    **mapped_search_args,  # type: ignore
-                    provider=self.provider,
-                    raise_errors=True,
-                    **kwargs,
-                )
-            except RequestError:
-                return []
-        else:
-            try:
-                products, _ = self.client.search(
-                    start=str(between.start),
-                    end=str(between.end),
-                    provider=self.provider,
-                    raise_errors=True,
-                    **kwargs,
-                )
-            except RequestError:
-                return []
+                    mapped_search_args["platform"] = platform
+
+        if between:
+            mapped_search_args.update(
+                {
+                    "startTimeFromAscendingNode": str(between.start),
+                    "completionTimeFromAscendingNode": str(between.end),
+                },
+            )
+
+        try:
+            products, _ = self.client.search(
+                **mapped_search_args,  # type: ignore
+                provider=self.provider,
+                raise_errors=True,
+                **kwargs,
+            )
+        except RequestError:
+            return []
+
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:
