@@ -67,6 +67,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         request (Request): The request object (unused).
         datetime (str): Time interval in ISO 8601 format.
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        session_id (str): Session from which file belong.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
         sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
 
@@ -83,7 +84,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     """
     if not (datetime or session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
-    start_date, stop_date = validate_inputs_format(datetime) if datetime else None, None
+    start_date, stop_date = validate_inputs_format(datetime)
     session: Union[List[str], str] = session_id.split(",") if "," in session_id else session_id  # Split if list
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")

@@ -107,13 +107,19 @@ class EodagProvider(Provider):
 
         session_id = kwargs.pop("id", None)
         if session_id:
+            # If request contains session id, map it to eodag parameter accordingly (SessionID for single, Ids for list)
             if isinstance(session_id, list):
                 mapped_search_args["SessionIds"] = ", ".join(session_id)
             elif isinstance(session_id, str):
-                mapped_search_args["SessionId"] = session_id
+                mapped_search_args["SessionID"] = session_id
 
         if sessions_search:
+            # If request is for session search, handle platform - if any provided.
             platform = kwargs.pop("platform", None)
+
+            # Very annoying, for files odata is **SessionID**, for sessions is **SessionId**
+            if "SessionID" in mapped_search_args:
+                mapped_search_args["SessionId"] = mapped_search_args.pop("SessionID")
             if platform:
                 if isinstance(platform, list):
                     mapped_search_args["platforms"] = ", ".join(platform)
@@ -121,6 +127,7 @@ class EodagProvider(Provider):
                     mapped_search_args["platform"] = platform
 
         if between:
+            # Since now both for files and sessions, time interval is optional, map it if provided.
             mapped_search_args.update(
                 {
                     "startTimeFromAscendingNode": str(between.start),
@@ -129,6 +136,7 @@ class EodagProvider(Provider):
             )
 
         try:
+            # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
             products, _ = self.client.search(
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
@@ -136,6 +144,7 @@ class EodagProvider(Provider):
                 **kwargs,
             )
         except RequestError:
+            # Empty list if something goes wrong in eodag
             return []
 
         return products

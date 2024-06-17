@@ -58,7 +58,7 @@ from .conftest import (  # pylint: disable=no-name-in-module
                     "cadip:final_block": True,
                     "cadip:block_number": "BlockNumber_test_value",
                     "cadip:channel": "Channel_test_value",
-                    "cadip:session_id": "session_id_test_value",
+                    "cadip:session_id": "session_id1",
                 },
                 "links": [],
                 "assets": {"file": {"file:size": "size_test_value"}},
@@ -461,3 +461,37 @@ def test_invalid_sessions_endpoint_request(client):
         client.get("/cadip/cadip/session?platform=S1A&start_date=2020-02-16T12:00:00Z").status_code
         != status.HTTP_400_BAD_REQUEST
     )
+
+
+@pytest.mark.unit
+@responses.activate
+def test_valid_search_by_session_id(expected_products, client):
+    """Test used for searching a file by a given session id or ids."""
+    # Test with no parameters
+    assert client.get("/cadip/cadip/cadu/search").status_code == status.HTTP_400_BAD_REQUEST
+
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id1"&$top=1000',
+        json={"responses": expected_products[0]},
+        status=200,
+    )
+    # Test a request with only all files from session_id1
+    response = client.get("/cadip/cadip/cadu/search?session_id=session_id1")
+    assert response.status_code == status.HTTP_200_OK
+    # test that session_id1 is correctly mapped
+    assert response.json()["features"][0]["properties"]["cadip:session_id"] == "session_id1"
+
+    # Test a request with all files from multiple sessions
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Files?$filter="SessionID%20in%20session_id2,%20session_id3"&$top=1000',
+        json={"responses": expected_products[1:]},
+        status=200,
+    )
+    response = client.get("/cadip/cadip/cadu/search?session_id=session_id2,session_id3")
+    assert response.status_code == status.HTTP_200_OK
+
+    # test that returned products are from session_id2 and session_id3
+    assert response.json()["features"][0]["properties"]["cadip:session_id"] == "session_id2"
+    assert response.json()["features"][1]["properties"]["cadip:session_id"] == "session_id3"

@@ -38,7 +38,7 @@ cadip:
         SessionIds:
           - null
           - "$.SessionID"
-        SessionId:
+        SessionID:
           - null
           - "$.SessionID"
         Channel:
@@ -80,7 +80,7 @@ cadip:
         operations:
             and:
               - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionId}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -122,7 +122,7 @@ ins:
         SessionIds:
           - null
           - "$.SessionID"
-        SessionId:
+        SessionID:
           - null
           - "$.SessionID"
         Channel:
@@ -164,7 +164,7 @@ ins:
         operations:
             and:
               - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionId}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -206,7 +206,7 @@ mps:
         SessionIds:
           - null
           - "$.SessionID"
-        SessionId:
+        SessionID:
           - null
           - "$.SessionID"
         Channel:
@@ -248,7 +248,7 @@ mps:
         operations:
             and:
               - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionId}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -290,7 +290,7 @@ mti:
         SessionIds:
           - null
           - "$.SessionID"
-        SessionId:
+        SessionID:
           - null
           - "$.SessionID"
         Channel:
@@ -332,7 +332,7 @@ mti:
         operations:
             and:
               - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionId}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -374,7 +374,7 @@ nsg:
         SessionIds:
           - null
           - "$.SessionID"
-        SessionId:
+        SessionID:
           - null
           - "$.SessionID"
         Channel:
@@ -416,7 +416,7 @@ nsg:
         operations:
             and:
               - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionId}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -458,7 +458,7 @@ sgs:
         SessionIds:
           - null
           - "$.SessionID"
-        SessionId:
+        SessionID:
           - null
           - "$.SessionID"
         Channel:
@@ -500,7 +500,7 @@ sgs:
         operations:
             and:
               - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionId}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
