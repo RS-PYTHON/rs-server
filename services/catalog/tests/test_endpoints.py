@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# pylint: disable=too-many-lines
+
 """Integration tests for user_catalog module."""
 
 import copy
@@ -876,7 +879,12 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert updated_feature["geometry"] == a_correct_feature["geometry"]
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
-    def test_update_timestamp_feature(self, client, a_minimal_collection, a_correct_feature):
+    def test_update_timestamp_feature(  # pylint: disable=too-many-locals
+        self,
+        client,
+        a_minimal_collection,
+        a_correct_feature,
+    ):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
