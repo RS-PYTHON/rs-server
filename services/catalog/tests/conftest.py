@@ -18,6 +18,8 @@ import os
 import os.path as osp
 import subprocess  # nosec ignore security issue
 
+import responses
+
 # We are in local mode (no cluster).
 # Do this before any other imports.
 # pylint: disable=wrong-import-position

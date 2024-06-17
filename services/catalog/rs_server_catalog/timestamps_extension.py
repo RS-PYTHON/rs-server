@@ -22,6 +22,8 @@ def set_updated_expires_timestamp(
     item: dict,
     operation: Literal["update", "insertion"],
     expiration: Optional[datetime.datetime] = None,
+    original_published: Optional[str] = None,
+    original_expires: Optional[str] = None,
 ) -> dict:
     """This function set the timestamps for an item.
     If we want to insert a new item, it will update
@@ -38,12 +40,15 @@ def set_updated_expires_timestamp(
     """
     current_time = datetime.datetime.now()
     item["properties"]["updated"] = current_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    if operation == "insertion":
+    if operation == "insertion":  # We insert a new item so we create "expires" field for the first time.
         if expiration:
             item["properties"]["expires"] = expiration.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         else:
             plus_30_days = current_time + datetime.timedelta(days=30)
             item["properties"]["expires"] = plus_30_days.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    else:  # We update an existing item so we keep the original "expires" & "published" field.
+        item["properties"]["expires"] = original_expires
+        item["properties"]["published"] = original_published
     return item
 
 

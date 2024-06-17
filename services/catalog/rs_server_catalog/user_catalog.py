@@ -31,9 +31,10 @@ import json
 import os
 import re
 from typing import Any, Optional
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import botocore
+import requests
 from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
@@ -436,7 +437,13 @@ class UserCatalog:
                         content = timestamps_extension.create_timestamps(content)
                         content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
                     else:  # PUT
-                        content = timestamps_extension.set_updated_expires_timestamp(content, "update")
+                        published, expires = self.retrieve_timestamp(request)
+                        content = timestamps_extension.set_updated_expires_timestamp(
+                            content,
+                            "update",
+                            original_published=published,
+                            original_expires=expires,
+                        )
                 if hasattr(content, "status_code"):
                     return content
 
@@ -754,6 +761,26 @@ class UserCatalog:
             return False
         return True
 
+    def retrieve_timestamp(self, request: Request) -> tuple[str, str]:
+        """This function will retrieve the published and expires fields in the item
+        we want to update to keep them unchanged.
+
+        Args:
+            request (Request): The initial request that is a put item.
+
+        Returns:
+            tuple[str, str]: published field, expires field.
+        """
+
+        response = requests.get(
+            url=request._url._url,  # pylint: disable=protected-access
+            headers=request.headers,
+            timeout=10,
+        )
+
+        content = json.loads(response.content)
+        return (content["properties"]["published"], content["properties"]["expires"])
+
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
@@ -762,8 +789,14 @@ class UserCatalog:
         # Overwrite user and collection id with the ones provided in the request body
         user = request_body.get("owner", None)
         collection_id = request_body.get("id", None)
-        self.request_ids["owner_id"] = user if user else self.request_ids["owner_id"]
-        self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
+        self.request_ids["owner_id"] = (
+            user if user and not self.request_ids["owner_id"] else self.request_ids["owner_id"]
+        )
+        self.request_ids["collection_id"] = (
+            collection_id
+            if collection_id and not self.request_ids["collection_id"]
+            else self.request_ids["collection_id"]
+        )
 
         if "/health" in request.scope["path"]:
             # return true if up and running
