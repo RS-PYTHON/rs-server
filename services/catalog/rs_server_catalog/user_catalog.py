@@ -67,7 +67,7 @@ CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 logger = Logging.default(__name__)
 
 
-class UserCatalog:  # pylint: disable=too-many-public-method
+class UserCatalog:  # pylint: disable=too-many-public-methods
     """The user catalog middleware handler."""
 
     def __init__(self):
