@@ -60,7 +60,7 @@ flask = "^3.0.3"
 flask-cors = "^4.0.1"
 sphinx = "^7.3.7"
 sphinx-rtd-theme = "^2.0.0"
-orjson = "3.10.4"
+orjson = "3.10.5"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true

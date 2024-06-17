@@ -2232,7 +2232,7 @@ jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
 name = "rs-server-common"
-version = "0.1rc0.post58.dev0+d5f0bdd"
+version = "0.1rc0.post59.dev0+1a12523"
 description = ""
 optional = false
 python-versions = "^3.11"
