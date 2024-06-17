@@ -55,10 +55,15 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 from rs_server_common.utils.logging import Logging
 from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
-from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED
+from starlette.responses import JSONResponse, RedirectResponse, Response
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_302_FOUND,
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+)
 
-PRESIGNED_URL_EXPIRATION_TIME = 1800  # 30 minutes
+PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
 
@@ -165,8 +170,11 @@ class UserCatalog:
             content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
         return content
 
-    def update_stac_item_publication( # pylint: disable=too-many-locals
-        self, content: dict, user: str, netloc: str
+    def update_stac_item_publication(  # pylint: disable=too-many-locals
+        self,
+        content: dict,
+        user: str,
+        netloc: str,
     ) -> Any:
         """Update json body of feature push to catalog"""
 
@@ -274,7 +282,7 @@ class UserCatalog:
             return "Could not find s3 credentials", HTTP_400_BAD_REQUEST
         except botocore.exceptions.ClientError:
             return "Could not generate presigned url", HTTP_400_BAD_REQUEST
-        return response, 302
+        return response, HTTP_302_FOUND
 
     def find_owner_id(self, ecql_ast: Node) -> str:
         """Browse an abstract syntax tree (AST) to find the owner_id.
@@ -620,7 +628,7 @@ class UserCatalog:
             content = self.adapt_object_links(content, user)
         return JSONResponse(content, status_code=response.status_code)
 
-    async def manage_download_response(self, request: Request, response: StreamingResponse) -> JSONResponse:
+    async def manage_download_response(self, request: Request, response: StreamingResponse) -> Response:
         """
         Manage download response and handle requests that should generate a presigned URL.
 
@@ -658,6 +666,8 @@ class UserCatalog:
         if content.get("code", True) != "NotFoundError":
             # Only generate presigned url if the item is found
             content, code = self.generate_presigned_url(content, request.url.path)
+            if code == HTTP_302_FOUND:
+                return RedirectResponse(url=content, status_code=code)
             return JSONResponse(content, status_code=code)
         return JSONResponse(content, status_code=response.status_code)
 

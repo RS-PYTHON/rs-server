@@ -103,7 +103,7 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
             classes.add(_class)
 
             # Don't instrument these classes, they have errors, maybe we should see why
-            if _class in [AsyncioInstrumentor, AwsLambdaInstrumentor, BaseInstrumentor, FastAPIInstrumentor]:
+            if _class in [AsyncioInstrumentor, AwsLambdaInstrumentor, BaseInstrumentor]:
                 continue
 
             # If the "instrument" method exists, call it
