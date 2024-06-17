@@ -797,6 +797,9 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = [77]
+        url = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/"
+        url_1 = url + "S1SIWOCN_20220412T054447_0024_S139"
+        url_2 = url + "new_feature_id"
         with responses.RequestsMock() as rsps:
             json_item = {
                 "collection": "fixture_collection",
@@ -848,8 +851,6 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
                 "stac_version": "1.0.0",
                 "type": "Feature",
             }
-            url_1 = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139"
-            url_2 = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/new_feature_id"
             rsps.add(responses.GET, url=url_1, json=json_item, status=200)
             rsps.add(responses.GET, url=url_2, json=json_item, status=200)
 
@@ -949,8 +950,9 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
                 "type": "Feature",
             }
 
-            url_1 = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139"
-            url_2 = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/new_feature_id"
+            url = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/"
+            url_1 = url + "S1SIWOCN_20220412T054447_0024_S139"
+            url_2 = url + "new_feature_id"
             rsps.add(responses.GET, url=url_1, json=json_item, status=200)
             rsps.add(responses.GET, url=url_2, json=json_item, status=200)
 
@@ -1043,8 +1045,9 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
                 "stac_version": "1.0.0",
                 "type": "Feature",
             }
-            url_1 = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139"
-            url_2 = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/new_feature_id"
+            url = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/"
+            url_1 = url + "S1SIWOCN_20220412T054447_0024_S139"
+            url_2 = url + "new_feature_id"
             rsps.add(responses.GET, url=url_1, json=json_item, status=200)
             rsps.add(responses.GET, url=url_2, json=json_item, status=200)
 
