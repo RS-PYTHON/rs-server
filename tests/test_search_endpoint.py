@@ -495,3 +495,14 @@ def test_valid_search_by_session_id(expected_products, client):
     # test that returned products are from session_id2 and session_id3
     assert response.json()["features"][0]["properties"]["cadip:session_id"] == "session_id2"
     assert response.json()["features"][1]["properties"]["cadip:session_id"] == "session_id3"
+
+    # Nominal case, combined session_id and datetime
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id2%20and%20PublicationDate%20gt%20'
+        '2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z"&$top=1000',
+        json={"responses": expected_products},
+        status=200,
+    )
+    endpoint = "/cadip/CADIP/cadu/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z&session_id=session_id2"
+    assert client.get(endpoint).status_code == status.HTTP_200_OK
