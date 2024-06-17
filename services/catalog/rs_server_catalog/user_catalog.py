@@ -31,7 +31,7 @@ import json
 import os
 import re
 from typing import Any, Optional
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
 import requests
