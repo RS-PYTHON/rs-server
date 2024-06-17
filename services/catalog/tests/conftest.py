@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
+import responses
 from rs_server_catalog.main import app, extract_openapi_specification
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
@@ -407,7 +408,6 @@ def add_feature(client: TestClient, feature: Feature):
 @pytest.fixture
 def mock_item(a_correct_feature):
     """Mock a specific item to test features publishing"""
-    import responses
 
     with responses.RequestsMock() as resp:
         path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
