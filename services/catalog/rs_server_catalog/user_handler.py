@@ -33,7 +33,7 @@ CATALOG_COLLECTION = "/catalog/collections"
 CATALOG_SEARCH = "/catalog/search"
 
 
-def get_user(endpoint_user: str, apikey_user: str):
+def get_user(endpoint_user: str | None, apikey_user: str | None):
     """Retrieve the user identifier based on provided parameters. Default is the
     current running user (used for local mode in general)
 
@@ -54,7 +54,7 @@ def get_user(endpoint_user: str, apikey_user: str):
 def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
     path: str,
     method: str,
-    user_login: str = None,
+    user_login: str | None = None,
 ) -> Tuple[str, dict]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
