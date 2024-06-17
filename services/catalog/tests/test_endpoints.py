@@ -784,7 +784,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
-    def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
+    def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature, mock_item):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
@@ -800,75 +800,13 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = [77]
-        url = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/"
-        url_1 = url + "S1SIWOCN_20220412T054447_0024_S139"
-        url_2 = url + "new_feature_id"
-        with responses.RequestsMock() as rsps:
-            json_item = {
-                "collection": "fixture_collection",
-                "assets": {
-                    "zarr": {
-                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                        "roles": ["data"],
-                    },
-                    "cog": {
-                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-                        "roles": ["data"],
-                    },
-                    "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
-                },
-                "bbox": [0],
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [-94.6334839, 37.0595608],
-                            [-94.6334839, 37.0332547],
-                            [-94.6005249, 37.0332547],
-                            [-94.6005249, 37.0595608],
-                            [-94.6334839, 37.0595608],
-                        ],
-                    ],
-                },
-                "id": "S1SIWOCN_20220412T054447_0024_S139",
-                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-                "other_metadata": {},
-                "properties": {
-                    "gsd": 0.5971642834779395,
-                    "width": 2500,
-                    "height": 2500,
-                    "datetime": "2000-02-02T00:00:00Z",
-                    "proj:epsg": 3857,
-                    "orientation": "nadir",
-                    "published": "now",
-                    "expires": "later",
-                },
-                "stac_extensions": [
-                    "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-                    "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-                ],
-                "stac_version": "1.0.0",
-                "type": "Feature",
-            }
-            rsps.add(responses.GET, url=url_1, json=json_item, status=200)
-            rsps.add(responses.GET, url=url_2, json=json_item, status=200)
 
-            response1 = requests.get(url_1, timeout=10)
-            assert response1.status_code == 200
-
-            response2 = requests.get(url_2, timeout=10)
-            assert response2.status_code == 200
-
-            feature_put_response = client.put(
-                f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
-                json=updated_feature_sent,
-            )
-            assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
-            # Test the updated feature from catalog
+        feature_put_response = client.put(
+            mock_item,
+            json=updated_feature_sent,
+        )
+        assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
+        # Test the updated feature from catalog
         updated_feature = client.get(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
         )
@@ -884,6 +822,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         client,
         a_minimal_collection,
         a_correct_feature,
+        mock_item,
     ):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
@@ -906,89 +845,25 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         updated_timestamp = json.loads(feature_post_response.content)["properties"]["updated"]
         time.sleep(1)
 
-        with responses.RequestsMock() as rsps:
-            json_item = {
-                "collection": "fixture_collection",
-                "assets": {
-                    "zarr": {
-                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                        "roles": ["data"],
-                    },
-                    "cog": {
-                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-                        "roles": ["data"],
-                    },
-                    "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
-                },
-                "bbox": [0],
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [-94.6334839, 37.0595608],
-                            [-94.6334839, 37.0332547],
-                            [-94.6005249, 37.0332547],
-                            [-94.6005249, 37.0595608],
-                            [-94.6334839, 37.0595608],
-                        ],
-                    ],
-                },
-                "id": "S1SIWOCN_20220412T054447_0024_S139",
-                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-                "other_metadata": {},
-                "properties": {
-                    "gsd": 0.5971642834779395,
-                    "width": 2500,
-                    "height": 2500,
-                    "datetime": "2000-02-02T00:00:00Z",
-                    "proj:epsg": 3857,
-                    "orientation": "nadir",
-                    "published": "now",
-                    "expires": "later",
-                },
-                "stac_extensions": [
-                    "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-                    "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-                ],
-                "stac_version": "1.0.0",
-                "type": "Feature",
-            }
+        feature_put_response = client.put(
+            mock_item,
+            json=updated_feature_sent,
+        )
+        content = json.loads(feature_put_response.content)
 
-            url = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/"
-            url_1 = url + "S1SIWOCN_20220412T054447_0024_S139"
-            url_2 = url + "new_feature_id"
-            rsps.add(responses.GET, url=url_1, json=json_item, status=200)
-            rsps.add(responses.GET, url=url_2, json=json_item, status=200)
+        new_updated_timestamp = content["properties"]["updated"]
 
-            response1 = requests.get(url_1, timeout=10)
-            assert response1.status_code == 200
+        # Test that "updated" field is correctly updated.
+        assert updated_timestamp != new_updated_timestamp
 
-            response2 = requests.get(url_2, timeout=10)
-            assert response2.status_code == 200
+        # Test that "published" and "expires" field are inchanged after the update.
+        assert content["properties"]["published"] == "now"
+        assert content["properties"]["expires"] == "later"
 
-            feature_put_response = client.put(
-                f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
-                json=updated_feature_sent,
-            )
-            content = json.loads(feature_put_response.content)
-
-            new_updated_timestamp = content["properties"]["updated"]
-
-            # Test that "updated" field is correctly updated.
-            assert updated_timestamp != new_updated_timestamp
-
-            # Test that "published" and "expires" field are inchanged after the update.
-            assert content["properties"]["published"] == "now"
-            assert content["properties"]["expires"] == "later"
-
-            assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
+        assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
-    def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
+    def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature, mock_item):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
@@ -1002,76 +877,13 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = "Incorrect_bbox_value"
 
-        with responses.RequestsMock() as rsps:
-            json_item = {
-                "collection": "fixture_collection",
-                "assets": {
-                    "zarr": {
-                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                        "roles": ["data"],
-                    },
-                    "cog": {
-                        "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-                        "roles": ["data"],
-                    },
-                    "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
-                },
-                "bbox": [0],
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [-94.6334839, 37.0595608],
-                            [-94.6334839, 37.0332547],
-                            [-94.6005249, 37.0332547],
-                            [-94.6005249, 37.0595608],
-                            [-94.6334839, 37.0595608],
-                        ],
-                    ],
-                },
-                "id": "S1SIWOCN_20220412T054447_0024_S139",
-                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-                "other_metadata": {},
-                "properties": {
-                    "gsd": 0.5971642834779395,
-                    "width": 2500,
-                    "height": 2500,
-                    "datetime": "2000-02-02T00:00:00Z",
-                    "proj:epsg": 3857,
-                    "orientation": "nadir",
-                    "published": "now",
-                    "expires": "later",
-                },
-                "stac_extensions": [
-                    "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-                    "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-                    "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-                ],
-                "stac_version": "1.0.0",
-                "type": "Feature",
-            }
-            url = "http://testserver/catalog/collections/fixture_owner:fixture_collection/items/"
-            url_1 = url + "S1SIWOCN_20220412T054447_0024_S139"
-            url_2 = url + "new_feature_id"
-            rsps.add(responses.GET, url=url_1, json=json_item, status=200)
-            rsps.add(responses.GET, url=url_2, json=json_item, status=200)
+        response = client.put(
+            mock_item,
+            json=updated_feature_sent,
+        )
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
-            response1 = requests.get(url_1, timeout=10)
-            assert response1.status_code == 200
-
-            response2 = requests.get(url_2, timeout=10)
-            assert response2.status_code == 200
-
-            response = client.put(
-                f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
-                json=updated_feature_sent,
-            )
-            assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
-
-            client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
