@@ -659,11 +659,11 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
             )
             assert response.status_code == 302
-            # Check that response is a url not file content!
-            assert response.content != object_content
+            # Check that response body is empty
+            assert response.content == b""
 
             # call the redirected url
-            product_content = requests.get(response.content.decode().replace('"', "").strip("'"), timeout=10)
+            product_content = requests.get(response.headers["location"], timeout=10)
             assert product_content.status_code == 200
             # check that content is the same as the original file
             assert product_content.content.decode() == object_content
