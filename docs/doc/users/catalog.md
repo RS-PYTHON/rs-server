@@ -57,9 +57,12 @@ descriptor to a database entry.
 ### Get a collection
 
 This endpoint returns a collection details based on parameters given in
-request.
+request. The `ownerId` parameter is optional. If this is missing from the endpoint a default
+user is used, with the following priority:
+- the user found in the `apikey security` in the case when the process is running on `cluster`
+- the current user in the case when the process is running in `local mode`
 
-    GET /catalog/collections/{ownerId:collectionId}
+    GET /catalog/collections/{[ownerId:]collectionId}
 
     {
       "collections": [
@@ -115,9 +118,12 @@ request.
 ### Update a collection
 
 This endpoint updates a collection from STAC if it exists and request
-body json data is STAC compatible.
+body json data is STAC compatible. The `ownerId` parameter is optional. If this is missing from the endpoint
+a default user is used, with the following priority:
+- the user found in the `apikey security` in the case when the process is running on `cluster`
+- the current user in the case when the process is running in `local mode`
 
-    PUT /catalog/collections/{ownerId:collectionId}
+    PUT /catalog/collections/{[ownerId:]collectionId}
 
     {
         "id": "test_collection",
@@ -130,18 +136,24 @@ body json data is STAC compatible.
 ### Delete a collection
 
 This endpoint deletes a collection from STAC if it exists and owner has
-right to perform this action.
+right to perform this action. The `ownerId` parameter is optional. If this is missing from the endpoint a default
+user is used, with the following priority:
+- the user found in the `apikey security` in the case when the process is running on `cluster`
+- the current user in the case when the process is running in `local mode`
 
-    DELETE /catalog/collections/{ownerId:collectionId}
+    DELETE /catalog/collections/{[ownerId:]collectionId}
 
 ### Add an Item
 
 This endpoint converts a request with a correct JSON body feature
 descriptor to a database entry. RS-Server Backend also move assets
 between s3 storages and updates hypertext reference of each STAC Feature
-with s3 locations.
+with s3 locations. The `ownerId` parameter is optional. If this is missing from the endpoint a default
+user is used, with the following priority:
+- the user found in the `apikey security` in the case when the process is running on `cluster`
+- the current user in the case when the process is running in `local mode`
 
-    POST /catalog/collections/{ownerId:collectionId}/items
+    POST /catalog/collections/{[ownerId:]collectionId}/items
 
     {
       "collection": "S1_L2",
@@ -203,9 +215,12 @@ with s3 locations.
 ### Get an Item
 
 This endpoint returns a feature details based on parameters given in
-request.
+request. The `ownerId` parameter is optional. If this is missing from the endpoint a default
+user is used, with the following priority:
+- the user found in the `apikey security` in the case when the process is running on `cluster`
+- the current user in the case when the process is running in `local mode`
 
-    GET /catalog/collections/{ownerId:collectionId}/items/{featureID}
+    GET /catalog/collections/{[ownerId:]collectionId}/items/{featureID}
 
     {
       "id": "S1SIWOCN_20220412T054447_0024_S139",
@@ -297,13 +312,19 @@ request.
 ### Update an Item
 
 This endpoint updates content of a feature is request JSON data is
-completely STAC-compatible.
+completely STAC-compatible. The `ownerId` parameter is optional. If this is missing from the endpoint a default
+user is used, with the following priority:
+- the user found in the `apikey security` in the case when the process is running on `cluster`
+- the current user in the case when the process is running in `local mode`
 
-    PUT /catalog/collections/{ownerId:collectionId}/items/{featureID}
+    PUT /catalog/collections/{[ownerId:]collectionId}/items/{featureID}
 
 
 ### Download an Item
 
-This endpoint returns a S3 presigned url that can directly download the file when accessed.
+This endpoint returns a S3 presigned url that can directly download the file when accessed. The `ownerId` parameter is
+optional. If this is missing from the endpoint a default user is used, with the following priority:
+- the user found in the `apikey security` in the case when the process is running on `cluster`
+- the current user in the case when the process is running in `local mode`
 
-    GET /catalog/collections/{ownerId:collectionId}/items/{featureID}/download/{assetId}
+    GET /catalog/collections/{[ownerId:]collectionId}/items/{featureID}/download/{assetId}
