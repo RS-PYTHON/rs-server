@@ -547,7 +547,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             with responses.RequestsMock() as resp:
 
                 path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
-                url = f"http://testserver/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
+                url = f"http://testserver{path}"
                 json_item = {
                     "assets": {
                         "zarr": {
