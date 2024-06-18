@@ -153,6 +153,7 @@ descriptor to a database entry. RS-Server Backend also move assets
 between s3 storages and updates hypertext reference of each STAC Feature
 with s3 locations. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
 user is used with the following priority:
+
 * the user found in the `apikey security` in the case when the process is running on `cluster`
 * the current user in the case when the process is running in `local mode`
 
