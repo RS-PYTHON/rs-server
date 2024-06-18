@@ -85,7 +85,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     if not (datetime or session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
     start_date, stop_date = validate_inputs_format(datetime)
-    session: Union[List[str], str] = session_id.split(",") if "," in session_id else session_id  # Split if list
+    session: Union[List[str], str] = [sid.strip() for sid in session_id.split(",")] if "," in session_id else session_id
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
