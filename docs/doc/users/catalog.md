@@ -59,6 +59,7 @@ descriptor to a database entry.
 This endpoint returns a collection details based on parameters given in
 request. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
 user is used with the following priority:
+
 * the user found in the `apikey security` in the case when the process is running on `cluster`
 * the current user in the case when the process is running in `local mode`
 
@@ -120,6 +121,7 @@ user is used with the following priority:
 This endpoint updates a collection from STAC if it exists and request
 body json data is STAC compatible. The `ownerId` parameter is optional. If this is missing from the endpoint,
 a default user is used with the following priority:
+
 * the user found in the `apikey security` in the case when the process is running on `cluster`
 * the current user in the case when the process is running in `local mode`
 
@@ -138,6 +140,7 @@ a default user is used with the following priority:
 This endpoint deletes a collection from STAC if it exists and owner has
 right to perform this action. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
 user is used with the following priority:
+
 * the user found in the `apikey security` in the case when the process is running on `cluster`
 * the current user in the case when the process is running in `local mode`
 
@@ -217,6 +220,7 @@ user is used with the following priority:
 This endpoint returns a feature details based on parameters given in
 request. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
 user is used with the following priority:
+
 * the user found in the `apikey security` in the case when the process is running on `cluster`
 * the current user in the case when the process is running in `local mode`
 
@@ -314,6 +318,7 @@ user is used with the following priority:
 This endpoint updates content of a feature is request JSON data is
 completely STAC-compatible. The `ownerId` parameter is optional. If this is missing from the endpoint, a default
 user is used with the following priority:
+
 * the user found in the `apikey security` in the case when the process is running on `cluster`
 * the current user in the case when the process is running in `local mode`
 
@@ -324,6 +329,7 @@ user is used with the following priority:
 
 This endpoint returns a S3 presigned url that can directly download the file when accessed. The `ownerId` parameter is
 optional. If this is missing from the endpoint, a default user is used with the following priority:
+
 * the user found in the `apikey security` in the case when the process is running on `cluster`
 * the current user in the case when the process is running in `local mode`
 
