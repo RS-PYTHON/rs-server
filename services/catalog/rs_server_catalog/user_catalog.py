@@ -441,7 +441,8 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
             elif "items" in request.scope["path"]:
-                content = self.update_stac_item_publication(content, user, request.url.netloc)
+                if request.method == "POST":
+                    content = self.update_stac_item_publication(content, user, request.url.netloc)
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.create_timestamps(content)
