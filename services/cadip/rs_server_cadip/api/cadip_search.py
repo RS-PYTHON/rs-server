@@ -173,7 +173,7 @@ def search_session(
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-    session_id: Union[List[str], None] = id.split(",") if id else None
+    session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
     satellite: Union[List[str], None] = platform.split(",") if platform else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
 
