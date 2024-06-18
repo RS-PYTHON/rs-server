@@ -768,7 +768,7 @@ class UserCatalog:
         try:
             user_login = request.state.user_login
         except (NameError, AttributeError):
-            logger.warning("The current user will be used if needed in rerouting")
+            # "The current user will be used if needed in rerouting"
             user_login = None
         logger.debug(f"Received url request.url.path = {request.url.path}")
         request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)

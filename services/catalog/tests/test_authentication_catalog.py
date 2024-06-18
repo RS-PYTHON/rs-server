@@ -622,7 +622,8 @@ class TestAuthenticationGetOneItem:
     ):  # pylint: disable=missing-function-docstring
 
         iam_roles = [
-            f"rs_catalog_{user}:*_read",
+            "rs_catalog_pyteam:*_read",
+            "rs_catalog_toto:*_read",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
