@@ -1,0 +1,9 @@
+info:
+  description: |
+    any multiline
+    description
+services:
+  adgs:
+    openapi_url: http://localhost:8001/openapi.json
+  cadip:
+    openapi_url: http://localhost:8002/openapi.json

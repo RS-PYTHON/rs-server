@@ -1,0 +1,24 @@
+info:
+  description: |
+    Reference System Python implements and maintains a new version of the RS Software compatible with the new
+    Python-based processors, taking advantage of existing Python libraries (in particular Prefect) and novel tools to
+    maximise the flexibility and simplify the maintainability of the solution.
+
+    <a href="https://home.rs-python.eu/">Website</a>
+
+    <a href="https://home.rs-python.eu/rs-documentation/">Documentation</a>
+
+    <a href="${RSPY_UAC_HOMEPAGE}">API-Key Manager</a>
+services:
+  adgs:
+    openapi_url: http://localhost:8001/openapi.json
+  cadip:
+    openapi_url: http://localhost:8002/openapi.json
+  catalog:
+    openapi_url: http://localhost:8003/api
+    change_tags:
+      "": Catalog
+      Liveliness/Readiness: Catalog (Liveliness/Readiness)
+      Transaction Extension: Catalog (Transaction Extension)
+      Filter Extension: Catalog (Filter Extension)
+      Bulk Transaction Extension: Catalog (Bulk Transaction Extension)

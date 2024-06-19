@@ -38,6 +38,11 @@ FROM python:3.11-slim-bookworm
 # Copy the python installation from the build stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
+# Copy the script that is run as this image entrypoint
+RUN mkdir -p /scripts
+ADD ./entrypoint_frontend.sh /scripts
+RUN chmod ugo+x /scripts/entrypoint_frontend.sh
+
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
 
@@ -49,4 +54,4 @@ WORKDIR /home/user
 # Set env var to the aggregated openapi.json released in the .whl package
 ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.11/site-packages/resources/openapi.json
 
-ENTRYPOINT [ "python", "-m", "uvicorn", "--factory", "rs_server_frontend.main:start_app", "--host", "0.0.0.0", "--port", "8000" ]
+ENTRYPOINT [ /scripts/entrypoint_frontend.sh ]

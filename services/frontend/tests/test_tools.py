@@ -21,8 +21,10 @@ from pathlib import Path
 
 import pytest
 import responses
+import yaml
 from requests import HTTPError
 from tools.openapi import BuildOpenapiFailed, build_aggregated_openapi
+from yaml.scanner import ScannerError
 
 # pylint: disable=missing-class-docstring,missing-function-docstring,too-few-public-methods,redefined-outer-name
 
@@ -35,7 +37,7 @@ def tools_test_path(resources_test_path) -> Path:
 
 @dataclass
 class ServicesConfiguration:
-    """Service configuration json file and associated contents as a python dict."""
+    """Service configuration yaml file and associated contents as a python dict."""
 
     config: dict
     file: Path
@@ -47,13 +49,14 @@ class ServicesConfiguration:
 
 @pytest.fixture(scope="module")
 def services_conf_file(tools_test_path) -> Path:
-    return tools_test_path / "services.json"
+    return tools_test_path / "services.yml"
 
 
 @pytest.fixture(scope="module")
 def services_conf(services_conf_file) -> ServicesConfiguration:
+
     with open(services_conf_file, "r", encoding="utf-8") as file:
-        return ServicesConfiguration(config=json.load(file), file=services_conf_file)
+        return ServicesConfiguration(config=yaml.safe_load(file).get("services"), file=services_conf_file)
 
 
 def a_openapi_path(service: str, response_type: str) -> dict:
@@ -201,13 +204,13 @@ class TestGenerateAggregateRestDocFailsWhen:
         ["conf_file", "message"],
         [
             pytest.param(
-                "not_found.json",
-                "File .*/not_found.json was not found.",
+                "not_found.yml",
+                "File .*/not_found.yml was not found.",
                 id="file not found",
             ),
             pytest.param(
-                "invalid.json",
-                "File .*/invalid.json content is invalid.",
+                "invalid.yml",
+                "while scanning a simple key.*",
                 id="file with bad format",
             ),
         ],
@@ -227,7 +230,7 @@ class TestGenerateAggregateRestDocFailsWhen:
             )
 
         cause = exc_info.value.__cause__
-        assert isinstance(cause, IOError)
+        assert isinstance(cause, OSError) or isinstance(cause, ScannerError)
         p = re.compile(message)
         assert p.match(str(cause))
 

@@ -22,9 +22,10 @@ from functools import reduce
 from pathlib import Path
 
 import requests
+import yaml  # pylint: disable=redefined-builtin
 from attr import dataclass
 from requests import HTTPError
-from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
+from requests.exceptions import ConnectionError
 from rs_server_frontend import __version__
 
 
@@ -53,22 +54,13 @@ class ServiceConf:
     change_tags: dict = {}  # optional
 
     @staticmethod
-    def load_service_conf(conf_path: Path) -> dict[str, ServiceConf]:
+    def load_service_conf(conf_contents: dict) -> dict[str, ServiceConf]:
         """
         Load a json file that contains services configuration,
         return a dict with key=service name, value=service configuration + openapi.json contents.
         """
 
         services = {}
-
-        # Read the input configuration file
-        try:
-            with open(conf_path, "r", encoding="utf-8") as file:
-                conf_contents = json.load(file)
-        except IOError as e:
-            raise IOError(f"File {conf_path} was not found.") from e
-        except ValueError as e:
-            raise IOError(f"File {conf_path} content is invalid.") from e
 
         # For each service
         for service_name, service_json in conf_contents.items():
@@ -103,16 +95,24 @@ def merge_dicts(current: dict, other: dict) -> dict:
 class AggregatedOpenapi:
     """Build the aggregated openapi.json from a list of services."""
 
-    def __init__(self, services: dict[str, ServiceConf]):
+    def __init__(self, info: dict, services: dict[str, ServiceConf]):
         """Constructor"""
+        self.info = info
         self.services: dict[str, ServiceConf] = services
         self.all_openapi: list[dict] = [service.openapi_contents for service in self.services.values()]
 
     def build_openapi(self) -> dict:
         """Return the built openapi.json as a dict"""
+
+        # Default info
+        target_info = {"title": "RS-Server", "version": str(__version__)}
+
+        # Override with configuration
+        target_info.update(**self.info)
+
         return {
             "openapi": self.merge_openapi_versions(),
-            "info": {"title": "RS-Server", "version": str(__version__)},
+            "info": target_info,
             "paths": self.merge_paths(),
             "components": self.merge_components(),
         }
@@ -173,10 +173,20 @@ class AggregatedOpenapi:
 
 
 def build_aggregated_openapi(services_file: Path, to_path: Path):
-    """Build the aggregated openapi.json from a json file that contains services configuration."""
+    """Build the aggregated openapi.json from a yaml file that contains services configuration."""
     try:
-        services = ServiceConf.load_service_conf(services_file)
-        aggregated = AggregatedOpenapi(services).build_openapi()
+
+        # Read the input configuration file
+        try:
+            with open(services_file, "r", encoding="utf-8") as file:
+                conf_contents = yaml.safe_load(file)
+        except IOError as e:
+            raise IOError(f"File {services_file} was not found.") from e
+        except ValueError as e:
+            raise IOError(f"File {services_file} content is invalid.") from e
+
+        services = ServiceConf.load_service_conf(conf_contents.get("services", {}))
+        aggregated = AggregatedOpenapi(conf_contents.get("info", {}), services).build_openapi()
 
         try:
             with open(to_path, "w", encoding="utf-8") as file:
