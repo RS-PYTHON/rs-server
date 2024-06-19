@@ -449,6 +449,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                         content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
                     else:  # PUT
                         published, expires = self.retrieve_timestamp(request)
+                        if not published and not expires:
+                            detail = {"error": f"Item {content['id']} not found."}
+                            return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
                         content = timestamps_extension.set_updated_expires_timestamp(
                             content,
                             "update",
@@ -790,6 +793,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             headers=request.headers,
             timeout=10,
         )
+
+        if response.status_code != 200:
+            return ("", "")
 
         content = json.loads(response.content)
         return (content["properties"]["published"], content["properties"]["expires"])

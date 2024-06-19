@@ -1021,6 +1021,35 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
+    def test_update_timestamp_feature_fails_with_unfound_item(
+        self,
+        client,
+        a_minimal_collection,
+        a_correct_feature,
+    ):
+        """
+        ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
+        """
+
+        # Change correct feature collection id to match with minimal collection and post it
+        a_correct_feature["collection"] = "fixture_collection"
+        # Post the correct feature to catalog
+
+        # Update the feature and PUT it into catalogDB
+        updated_feature_sent = copy.deepcopy(a_correct_feature)
+        updated_feature_sent["bbox"] = [77]
+        del updated_feature_sent["collection"]
+
+        with responses.RequestsMock() as resp:
+            path = "/catalog/collections/fixture_owner:fixture_collections/items/NOT_FOUND_ITEM"
+            url = f"http://testserver{path}"
+            resp.add(responses.GET, url=url, json={}, status=404)
+            feature_put_response = client.put(
+                path,
+                json=updated_feature_sent,
+            )
+            assert feature_put_response.status_code == 400
+
     def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature, mock_item):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
         # Change correct feature collection id to match with minimal collection and post it
