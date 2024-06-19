@@ -20,6 +20,7 @@ If the variable is not set, enables all extensions.
 """
 import asyncio
 import os
+import sys
 import traceback
 from os import environ as env
 from typing import Any, Callable, Dict
@@ -326,7 +327,7 @@ if common_settings.CLUSTER_MODE:
 
 # Pause and timeout to connect to database (hardcoded for now)
 app.state.pg_pause = 3  # seconds
-app.state.pg_timeout = None
+app.state.pg_timeout = 30
 
 
 @app.on_event("startup")
@@ -347,7 +348,6 @@ async def startup_event():
             if app.state.pg_timeout is not None:
                 app.state.pg_timeout -= app.state.pg_pause
                 if app.state.pg_timeout < 0:
-                    import sys
                     sys.exit("Unable to start up catalog service")
                     # raise SystemExit("Unable to start up catalog service")
             await asyncio.sleep(app.state.pg_pause)
