@@ -162,6 +162,8 @@ class TestCatalogSearchEndpoint:
             with open("queryables.json", "w", encoding="utf-8") as f:
                 json.dump(content, f, indent=2)
             assert response.status_code == 200
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             pathlib.Path("queryables.json").unlink(missing_ok=True)
 
@@ -461,7 +463,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert expires_date_only == plus_30_days
 
             client.delete(f"/catalog/collections/{owner}:{collection_id}/items/S1SIWOCN_20220412T054447_0024_S139")
-
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             server.stop()
             clear_aws_credentials()
@@ -618,6 +621,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             client.delete(
                 "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
             )
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             server.stop()
             clear_aws_credentials()
@@ -700,7 +705,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             # Check if catalog bucket content match the initial temp-bucket content
             # If so, files were correctly moved from temp-catalog to bucket catalog.
             assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
-
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             server.stop()
             clear_aws_credentials()
@@ -826,7 +832,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert product_content.content.decode() == object_content
 
             assert client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
-
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             server.stop()
             # Remove bucket credentials form env variables / should create a s3_handler without credentials error
@@ -884,7 +891,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
             assert s3_handler.list_s3_files_obj(temp_bucket, "")
             assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             server.stop()
             clear_aws_credentials()
