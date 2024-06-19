@@ -445,7 +445,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                     content = self.update_stac_item_publication(content, user, request.url.netloc)
                 if content:
                     if request.method == "POST":
-                        content = timestamps_extension.create_timestamps(content)
+                        content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
                         content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
                     else:  # PUT
                         published, expires = self.retrieve_timestamp(request)

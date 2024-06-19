@@ -23,7 +23,7 @@ ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 def set_updated_expires_timestamp(
     item: dict,
-    operation: Literal["update", "insertion"],
+    operation: Literal["update", "insertion", "creation"],
     expiration: Optional[datetime.datetime] = None,
     original_published: Optional[str] = None,
     original_expires: Optional[str] = None,
@@ -50,21 +50,10 @@ def set_updated_expires_timestamp(
             expiration_range = int(os.environ.get("RANGE_EXPIRATION_DATE_IN_DAYS", "30"))
             plus_30_days = current_time + datetime.timedelta(days=expiration_range)
             item["properties"]["expires"] = plus_30_days.strftime(ISO_8601_FORMAT)
-    else:  # We update an existing item so we keep the original "expires" & "published" field.
+    elif operation == "update":  # We update an existing item so we keep the original "expires" & "published" field.
         item["properties"]["expires"] = original_expires
         item["properties"]["published"] = original_published
-    return item
-
-
-def create_timestamps(item: dict) -> dict:
-    """Set the published section timestamp during the item creation.
-
-    Args:
-        item (dict): The item to be updated.
-
-    Returns:
-        dict: The updated item.
-    """
-    current_time = datetime.datetime.now()
-    item["properties"]["published"] = current_time.strftime(ISO_8601_FORMAT)
+    else:  # We create a new item so we create "published" field for the first time.
+        current_time = datetime.datetime.now()
+        item["properties"]["published"] = current_time.strftime(ISO_8601_FORMAT)
     return item
