@@ -25,7 +25,7 @@ import requests
 import yaml  # pylint: disable=redefined-builtin
 from attr import dataclass
 from requests import HTTPError
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError as ConnectionException
 from rs_server_frontend import __version__
 
 
@@ -74,7 +74,7 @@ class ServiceConf:
                 response = requests.get(service_json["openapi_url"], timeout=30)
                 response.raise_for_status()
                 service_conf.openapi_contents = json.loads(response.content)
-            except (ConnectionError, HTTPError) as e:
+            except (ConnectionException, HTTPError) as e:
                 # TODO check what kind of base exception is relevant here
                 raise type(e)(
                     f"Unable to retrieve the openapi documentation for {service_name}.",

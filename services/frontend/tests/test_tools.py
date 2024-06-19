@@ -230,7 +230,7 @@ class TestGenerateAggregateRestDocFailsWhen:
             )
 
         cause = exc_info.value.__cause__
-        assert isinstance(cause, OSError) or isinstance(cause, ScannerError)
+        assert isinstance(cause, (OSError, ScannerError))
         p = re.compile(message)
         assert p.match(str(cause))
 
