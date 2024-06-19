@@ -470,12 +470,12 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             clear_aws_credentials()
             os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
-    def test_updating_timestamp_item(
+    def test_updating_timestamp_item(  # pylint: disable=too-many-locals, too-many-statements
         self,
         client,
         a_correct_feature,
         a_minimal_collection,
-    ):  # pylint: disable=too-many-locals
+    ):
         """Test used to verify update of an item to the catalog."""
         # Create moto server and temp / catalog bucket
         moto_endpoint = "http://localhost:8077"
@@ -637,7 +637,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             ),
         ],
     )
-    def test_publish_item_update(self, client, a_correct_feature, owner, collection_id):
+    def test_publish_item_update(  # pylint: disable=too-many-locals
+        self,
+        client,
+        a_correct_feature,
+        owner,
+        collection_id,
+    ):
         """Test used to verify publication of a featureCollection to the catalog."""
         # Create moto server and temp / catalog bucket
         moto_endpoint = "http://localhost:8077"
