@@ -7,7 +7,7 @@ Quick links
 
 -   Deployed services: <https://dev-rspy.esa-copernicus.eu/docs>
 
--   Online documentation: <https://rs-python.github.io/rs-documentation/rs-server/docs/doc/>
+-   Online documentation: <https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/>
 
 -   SonarQube reports:
     <https://sonarqube.ops-csc.com/dashboard?id=RS-PYTHON_rs-server_AYw0m7ixvQv-JMsowILQ&branch=develop>
@@ -49,7 +49,7 @@ Developing the rs-server
 ========================
 
 Look at the [technical
-documentation](https://rs-python.github.io/rs-server/). It contains all
+documentation](https://home.rs-python.eu/rs-server/). It contains all
 the technical details to develop on the rs-server.
 
 Links
