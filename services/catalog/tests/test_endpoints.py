@@ -39,6 +39,7 @@ from .conftest import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
 
 # Resource folders specified from the parent directory of this current script
 S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
+ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 # Moved here, since this functions utility not fixtures.
@@ -438,29 +439,28 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
             feature_data = json.loads(added_feature.content)
 
-            current_time = datetime.now().date()
+            current_time = datetime.now()
 
             # Test that published field is correctly added
             assert "published" in feature_data["properties"]
             published_datetime_format = datetime.strptime(
                 feature_data["properties"]["published"],
-                "%Y-%m-%dT%H:%M:%S.%fZ",
+                ISO_8601_FORMAT,
             )
-            published_date_only = published_datetime_format.date()
-            assert published_date_only == current_time
+            assert (
+                abs(published_datetime_format - current_time).total_seconds() < 1
+            )  # Check that values are close enough.
 
             # Test that updated field is correctly added
             assert "updated" in feature_data["properties"]
-            updated_datetime_format = datetime.strptime(feature_data["properties"]["updated"], "%Y-%m-%dT%H:%M:%S.%fZ")
-            updated_date_only = updated_datetime_format.date()
-            assert updated_date_only == current_time
+            updated_datetime_format = datetime.strptime(feature_data["properties"]["updated"], ISO_8601_FORMAT)
+            assert abs(updated_datetime_format - current_time).total_seconds() < 1
 
             # Test that expires field is correctly added
             assert "expires" in feature_data["properties"]
-            plus_30_days = current_time + timedelta(days=30)
-            expires_datetime_format = datetime.strptime(feature_data["properties"]["expires"], "%Y-%m-%dT%H:%M:%S.%fZ")
-            expires_date_only = expires_datetime_format.date()
-            assert expires_date_only == plus_30_days
+            plus_30_days = current_time + timedelta(days=int(os.environ.get("RANGE_EXPIRATION_DATE_IN_DAYS", "30")))
+            expires_datetime_format = datetime.strptime(feature_data["properties"]["expires"], ISO_8601_FORMAT)
+            assert abs(expires_datetime_format - plus_30_days).total_seconds() < 1
 
             client.delete(f"/catalog/collections/{owner}:{collection_id}/items/S1SIWOCN_20220412T054447_0024_S139")
         except Exception as e:
