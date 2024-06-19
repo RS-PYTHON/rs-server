@@ -16,6 +16,7 @@
 # Run the rs-server-frontend docker container
 
 set -euo pipefail
+set -x
 
 # Replace environment variables in the openapi.json file
 sed -i "s|\${RSPY_UAC_HOMEPAGE}|${RSPY_UAC_HOMEPAGE:-}|g" $RSPY_OPENAPI_FILE

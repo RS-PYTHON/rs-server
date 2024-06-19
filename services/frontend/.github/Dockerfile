@@ -38,10 +38,17 @@ FROM python:3.11-slim-bookworm
 # Copy the python installation from the build stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
-# Copy the script that is run as this image entrypoint
+# Set env var to the aggregated openapi.json released in the .whl package
+ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.11/site-packages/resources/openapi.json
+
+# Copy the script that will be run as this image entrypoint
 RUN mkdir -p /scripts
 ADD ./entrypoint_frontend.sh /scripts
+
+# Allow the user to execute and modify these files.
 RUN chmod ugo+x /scripts/entrypoint_frontend.sh
+# Give write permissions to the parent directory so sed can work.
+RUN chmod -R ugo+w $(dirname "${RSPY_OPENAPI_FILE}")
 
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
@@ -51,7 +58,4 @@ RUN useradd -m user
 USER user
 WORKDIR /home/user
 
-# Set env var to the aggregated openapi.json released in the .whl package
-ENV RSPY_OPENAPI_FILE=/usr/local/lib/python3.11/site-packages/resources/openapi.json
-
-ENTRYPOINT [ /scripts/entrypoint_frontend.sh ]
+ENTRYPOINT [ "/bin/bash", "-c", "set -x; /scripts/entrypoint_frontend.sh" ]
