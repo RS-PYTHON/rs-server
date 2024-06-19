@@ -347,7 +347,9 @@ async def startup_event():
             if app.state.pg_timeout is not None:
                 app.state.pg_timeout -= app.state.pg_pause
                 if app.state.pg_timeout < 0:
-                    raise
+                    import sys
+                    sys.exit("Unable to start up catalog service")
+                    # raise SystemExit("Unable to start up catalog service")
             await asyncio.sleep(app.state.pg_pause)
 
     # Init objects for dependency injection
