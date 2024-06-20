@@ -33,6 +33,11 @@ from fastapi import Query, Request, status
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
+from rs_server_cadip.cadip_utils import (
+    from_session_expand_to_assets_serializer,
+    from_session_expand_to_dag_serializer,
+    validate_products,
+)
 from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
@@ -168,7 +173,7 @@ def search_session(
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-    session_id: Union[List[str], None] = id.split(",") if id else None
+    session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
     satellite: Union[List[str], None] = platform.split(",") if platform else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
 
@@ -182,15 +187,27 @@ def search_session(
             platform=satellite,
             sessions_search=True,
         )
+        products = validate_products(products)
+        sessions_products = from_session_expand_to_dag_serializer(products)
+        write_search_products_to_db(CadipDownloadStatus, sessions_products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
+        expanded_session_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
         with (
             open(feature_template_path, encoding="utf-8") as template,
             open(stac_mapper_path, encoding="utf-8") as stac_map,
+            open(expanded_session_mapper_path, encoding="utf-8") as expanded_session_mapper,
         ):
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
+            expanded_session_mapper = json.loads(expanded_session_mapper.read())
             cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
+            cadip_sessions_collection = from_session_expand_to_assets_serializer(
+                cadip_sessions_collection,
+                sessions_products,
+                expanded_session_mapper,
+                request,
+            )
             return cadip_sessions_collection
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
