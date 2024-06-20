@@ -109,7 +109,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "conformance",
             "type": "application/json",
             "title": "STAC/WFS3 conformance classes implemented by this server",
-            "href": "http://testserver/conformance",
+            "href": "http://testserver/catalog/conformance",
         },
         {
             "rel": "search",
@@ -147,13 +147,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "service-desc",
             "type": "application/vnd.oai.openapi+json;version=3.0",
             "title": "OpenAPI service description",
-            "href": "http://testserver/api",
+            "href": "http://testserver/catalog/api",
         },
         {
             "rel": "service-doc",
             "type": "text/html",
             "title": "OpenAPI service documentation",
-            "href": "http://testserver/api.html",
+            "href": "http://testserver/catalog/api.html",
         },
         {"rel": "child", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
     ]
@@ -172,7 +172,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "conformance",
             "type": "application/json",
             "title": "STAC/WFS3 conformance classes implemented by this server",
-            "href": "http://testserver/conformance",
+            "href": "http://testserver/catalog/conformance",
         },
         {
             "rel": "search",
@@ -204,13 +204,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "service-desc",
             "type": "application/vnd.oai.openapi+json;version=3.0",
             "title": "OpenAPI service description",
-            "href": "http://testserver/api",
+            "href": "http://testserver/catalog/api",
         },
         {
             "rel": "service-doc",
             "type": "text/html",
             "title": "OpenAPI service documentation",
-            "href": "http://testserver/api.html",
+            "href": "http://testserver/catalog/api.html",
         },
     ]
 
