@@ -364,7 +364,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Check that response return 1 result in STAC format for the given id.
         (
             "/cadip/cadip/session?id=S1A_20240328185208053186",
-            '"SessionId%20in%20S1A_20240328185208053186"&$top=20&$expand=Files',
+            '"SessionId%20eq%20S1A_20240328185208053186"&$top=20&$expand=Files',
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
@@ -372,7 +372,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test with a single platform
         (
             "/cadip/cadip/session?id=S1A_20240328185208053186&platform=S1A",
-            "%22SessionId%20in%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
+            "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
