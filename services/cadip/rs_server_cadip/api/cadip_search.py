@@ -55,10 +55,11 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 @router.get("/cadip/{station}/cadu/search")
 @apikey_validator(station="cadip", access_type="read")
-def search_products(  # pylint: disable=too-many-locals
+def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     request: Request,  # pylint: disable=unused-argument
-    datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
+    datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
 ) -> list[dict] | dict:
@@ -71,6 +72,7 @@ def search_products(  # pylint: disable=too-many-locals
         request (Request): The request object (unused).
         datetime (str): Time interval in ISO 8601 format.
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        session_id (str): Session from which file belong.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
         sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
 
@@ -85,13 +87,19 @@ def search_products(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-
+    if not (datetime or session_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
     start_date, stop_date = validate_inputs_format(datetime)
+    session: Union[List[str], str] = [sid.strip() for sid in session_id.split(",")] if "," in session_id else session_id
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
-        products = init_cadip_provider(station).search(TimeRange(start_date, stop_date), items_per_page=limit)
+        products = init_cadip_provider(station).search(
+            TimeRange(start_date, stop_date),
+            id=session,
+            items_per_page=limit,
+        )
         write_search_products_to_db(CadipDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"

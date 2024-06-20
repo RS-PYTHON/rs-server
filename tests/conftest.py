@@ -197,12 +197,13 @@ def a_product_fixture():
     :return: the factory function to build a cadip/aux product.
     """
 
-    def build(id_: str, name: str, at_date: str):
+    def build(id_: str, name: str, at_date: str, session_id: str):
         """Build a dummy cadip/adgs product.
 
         :param id_: the id of the product
         :param name: the name of the product
         :param at_date: the time of the product.
+        :param session_id: the product session id to wich belongs
         :return: the cadip/ags product.
         """
         return {
@@ -210,7 +211,7 @@ def a_product_fixture():
             "Name": name,
             "PublicationDate": at_date,
             "Size": "size_test_value",
-            "SessionID": "session_id_test_value",
+            "SessionID": session_id,
             "Retransfer": False,
             "FinalBlock": True,
             "EvictionDate": "eviction_date_test_value",
@@ -238,9 +239,10 @@ def expected_products_fixture(a_product) -> list[dict]:
             "2b17b57d-fff4-4645-b539-91f305c27c69",
             "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
             "2021-02-16T12:00:00.000Z",
+            "session_id1",
         ),
-        a_product("some_id_2", "S1A.raw", "2023-02-16T12:00:00.000Z"),
-        a_product("some_id_3", "S2L1C.raw", "2019-02-16T12:00:00.000Z"),
+        a_product("some_id_2", "S1A.raw", "2023-02-16T12:00:00.000Z", "session_id2"),
+        a_product("some_id_3", "S2L1C.raw", "2019-02-16T12:00:00.000Z", "session_id3"),
     ]
 
 
