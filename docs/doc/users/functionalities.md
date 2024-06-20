@@ -29,8 +29,11 @@ conversion is performed and to customize it if needed. The mapping file can be v
 -   `datetime` (str): Specifies a date interval for time series filtering, with the start and end dates separated by a
 slash ('/'). The format follows ISO 8601 standards. (format: "YYYY-MM-DDThh:mm:sssZ**/**YYYY-MM-DDThh:mm:sssZ").
 
+-   `session_id` (str): Session from which file belong. Can be a single value or a comma-separated list.
+(**?session_id=S1A_20231120061537234567**) or (**?session_id=S1A_20231120061537234567, S2B_20231117033237234567**) to
+search files comming from multiple acquisition sessions.
 -   `limit` (int, optional): Maximum number of products to return,
-    default set to 1000.
+   default set to 1000.
 
 -   `sortby` (str, optional): Sorting criteria. +/-fieldName indicates
     ascending/descending order and field name (e.g. sortby=+created)
