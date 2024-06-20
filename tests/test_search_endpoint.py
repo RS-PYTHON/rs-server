@@ -506,6 +506,8 @@ def test_valid_search_by_session_id(expected_products, client):
     )
     endpoint = "/cadip/CADIP/cadu/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z&session_id=session_id2"
     assert client.get(endpoint).status_code == status.HTTP_200_OK
+
+
 @pytest.mark.parametrize(
     "odata_request, rs_server_request, odata_response, rs_server_response",
     [

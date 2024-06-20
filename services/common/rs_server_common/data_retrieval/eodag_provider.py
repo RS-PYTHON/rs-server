@@ -14,7 +14,6 @@
 
 """EODAG Provider."""
 
-import json
 import os
 import shutil
 import tempfile
@@ -104,44 +103,50 @@ class EodagProvider(Provider):
             Exception: If the search encounters an error or fails, an exception is raised.
         """
         mapped_search_args = {}
-        if kwargs.pop("sessions_search", False):
-            if session_id := kwargs.pop("id", None):
-                if isinstance(session_id, list):
-                    mapped_search_args.update({"SessionIds": ", ".join(session_id)})
-                elif isinstance(session_id, str):
-                    mapped_search_args.update({"SessionId": session_id})
-            if platform := kwargs.pop("platform", None):
+        sessions_search = kwargs.pop("sessions_search", False)
+
+        session_id = kwargs.pop("id", None)
+        if session_id:
+            # If request contains session id, map it to eodag parameter accordingly (SessionID for single, Ids for list)
+            if isinstance(session_id, list):
+                mapped_search_args["SessionIds"] = ", ".join(session_id)
+            elif isinstance(session_id, str):
+                mapped_search_args["SessionID"] = session_id
+
+        if sessions_search:
+            # If request is for session search, handle platform - if any provided.
+            platform = kwargs.pop("platform", None)
+
+            # Very annoying, for files odata is **SessionID**, for sessions is **SessionId**
+            if "SessionID" in mapped_search_args:
+                mapped_search_args["SessionId"] = mapped_search_args.pop("SessionID")
+            if platform:
                 if isinstance(platform, list):
-                    mapped_search_args.update({"platforms": ", ".join(platform)})
+                    mapped_search_args["platforms"] = ", ".join(platform)
                 elif isinstance(platform, str):
-                    mapped_search_args.update({"platform": platform})
-            if between:
-                mapped_search_args.update(
-                    {
-                        "startTimeFromAscendingNode": str(between.start),
-                        "completionTimeFromAscendingNode": str(between.end),
-                    },
-                )
-            try:
-                products, _ = self.client.search(
-                    **mapped_search_args,  # type: ignore
-                    provider=self.provider,
-                    raise_errors=True,
-                    **kwargs,
-                )
-            except (RequestError, json.JSONDecodeError):
-                return []
-        else:
-            try:
-                products, _ = self.client.search(
-                    start=str(between.start),
-                    end=str(between.end),
-                    provider=self.provider,
-                    raise_errors=True,
-                    **kwargs,
-                )
-            except (RequestError, json.JSONDecodeError):
-                return []
+                    mapped_search_args["platform"] = platform
+
+        if between:
+            # Since now both for files and sessions, time interval is optional, map it if provided.
+            mapped_search_args.update(
+                {
+                    "startTimeFromAscendingNode": str(between.start),
+                    "completionTimeFromAscendingNode": str(between.end),
+                },
+            )
+
+        try:
+            # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
+            products, _ = self.client.search(
+                **mapped_search_args,  # type: ignore
+                provider=self.provider,
+                raise_errors=True,
+                **kwargs,
+            )
+        except RequestError:
+            # Empty list if something goes wrong in eodag
+            return []
+
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:
