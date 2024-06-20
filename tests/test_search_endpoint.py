@@ -355,7 +355,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test with a list of 2 SessionIds
         (
             "/cadip/cadip/session?id=S1A_20170501121534062343,S1A_20240328185208053186",
-            '"SessionId%20in%20S1A_20170501121534062343,%20S1A_20240328185208053186"&$top=20',
+            '"SessionId%20in%20S1A_20170501121534062343,%20S1A_20240328185208053186"&$top=20&$expand=Files',
             ["S1A_20170501121534062343", "S1A_20240328185208053186"],
             ["2017-05-01T12:00:00", "2024-03-28T18:52:26Z"],
             ["S1A", "S1A"],
@@ -364,7 +364,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Check that response return 1 result in STAC format for the given id.
         (
             "/cadip/cadip/session?id=S1A_20240328185208053186",
-            '"SessionId%20in%20S1A_20240328185208053186"&$top=20',
+            '"SessionId%20in%20S1A_20240328185208053186"&$top=20&$expand=Files',
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
@@ -372,7 +372,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test with a single platform
         (
             "/cadip/cadip/session?id=S1A_20240328185208053186&platform=S1A",
-            "%22SessionId%20in%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20",
+            "%22SessionId%20in%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
@@ -381,7 +381,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         (
             "/cadip/cadip/session?id=S1A_20240328185208053186,S1A_20240328185208053186&platform=S1A,S2B",
             "%22SessionId%20in%20S1A_20240328185208053186,%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A,"
-            "%20S2B%22&$top=20"
+            "%20S2B%22&$top=20&$expand=Files"
             "",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
@@ -390,7 +390,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test only with a list of platforms
         (
             "/cadip/cadip/session?platform=S1A, S2B",
-            "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20",
+            "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
             ["S1A", "S2B"],
@@ -401,7 +401,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         (
             "/cadip/cadip/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-16T12:00:00Z&platform=S1A",
             "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
-            "%20lt%202023-02-16T12:00:00.000Z%22&$top=20",
+            "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
             ["S1A", "S1A", "S2B"],
@@ -506,3 +506,166 @@ def test_valid_search_by_session_id(expected_products, client):
     )
     endpoint = "/cadip/CADIP/cadu/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z&session_id=session_id2"
     assert client.get(endpoint).status_code == status.HTTP_200_OK
+@pytest.mark.parametrize(
+    "odata_request, rs_server_request, odata_response, rs_server_response",
+    [
+        (
+            "%22Satellite%20in%20S2B%22&$top=20&$expand=Files",
+            "cadip/cadip/session?platform=S2B",
+            # Note: The following JSON were modified due to compliance of HTTP/1.1 protocol
+            # "Retransfer": false -> "Retransfer": False,
+            # "geometry": null -> "geometry": None,
+            {
+                "Id": "3f8d5c2e-a9b1-4d6f-87ce-1a240b9d5e72",
+                "SessionId": "S2B_20231117033237234567",
+                "NumChannels": 2,
+                "PublicationDate": "2023-11-17T06:15:37.234Z",
+                "Satellite": "S2B",
+                "StationUnitId": "01",
+                "DownlinkOrbit": 53186,
+                "AcquisitionId": "53186_1",
+                "AntennaId": "MSP21",
+                "FrontEndId": "01",
+                "Retransfer": False,
+                "AntennaStatusOK": True,
+                "FrontEndStatusOK": True,
+                "PlannedDataStart": "2023-11-17T06:05:37.234Z",
+                "PlannedDataStop": "2023-11-17T06:15:37.234Z",
+                "DownlinkStart": "2023-11-17T06:05:37.234Z",
+                "DownlinkStop": "2023-11-17T06:15:37.234Z",
+                "DownlinkStatusOK": True,
+                "DeliveryPushOK": True,
+                "Files": [
+                    {
+                        "Id": "axd19d2f-29eb-4c18-bc1f-bf2769a3a16d",
+                        "Name": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw",
+                        "SessionID": "S2B_20231117033237234567",
+                        "Channel": 1,
+                        "BlockNumber": 1,
+                        "FinalBlock": False,
+                        "PublicationDate": "2023-11-17T18:52:29.165Z",
+                        "EvictionDate": "2023-11-17T18:52:29.165Z",
+                        "Size": "42",
+                        "Retransfer": False,
+                    },
+                    {
+                        "Id": "a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1",
+                        "Name": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw",
+                        "SessionID": "S2B_20231117033237234567",
+                        "Channel": 1,
+                        "BlockNumber": 1,
+                        "FinalBlock": False,
+                        "PublicationDate": "2023-11-17T18:52:39.165Z",
+                        "EvictionDate": "2023-11-17T18:52:39.165Z",
+                        "Size": "42",
+                        "Retransfer": False,
+                    },
+                ],
+            },
+            {
+                "type": "FeatureCollection",
+                "numberMatched": 1,
+                "numberReturned": 1,
+                "features": [
+                    {
+                        "stac_version": "1.0.0",
+                        "stac_extensions": ["https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"],
+                        "type": "Feature",
+                        "id": "S2B_20231117033237234567",
+                        "geometry": None,
+                        "properties": {
+                            "start_datetime": "2023-11-17T06:05:37.234Z",
+                            "datetime": "2023-11-17T06:05:37.234Z",
+                            "end_datetime": "2023-11-17T06:15:37.234Z",
+                            "published": "2023-11-17T06:15:37.234Z",
+                            "platform": "S2B",
+                            "cadip:id": "3f8d5c2e-a9b1-4d6f-87ce-1a240b9d5e72",
+                            "cadip:num_channels": 2,
+                            "cadip:station_unit_id": "01",
+                            "cadip:downlink_orbit": 53186,
+                            "cadip:acquisition_id": 531861,
+                            "cadip:antenna_id": "MSP21",
+                            "cadip:front_end_id": "01",
+                            "cadip:retransfer": False,
+                            "cadip:antenna_status_ok": True,
+                            "cadip:front_end_status_ok": True,
+                            "cadip:planned_data_start": "2023-11-17T06:05:37.234Z",
+                            "cadip:planned_data_stop": "2023-11-17T06:15:37.234Z",
+                            "cadip:downlink_status_ok": True,
+                            "cadip:delivery_push_ok": True,
+                        },
+                        "links": [],
+                        "assets": [
+                            {
+                                "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw": {
+                                    "cadip:id": "axd19d2f-29eb-4c18-bc1f-bf2769a3a16d",
+                                    "cadip:retransfer": False,
+                                    "cadip:final_block": False,
+                                    "cadip:block_number": 1,
+                                    "cadip:channel": 1,
+                                    "cadip:session_id": "S2B_20231117033237234567",
+                                    "created": "2023-11-17T18:52:29.165Z",
+                                    "eviction_datetime": "2023-11-17T18:52:29.165Z",
+                                    "file:size": "42",
+                                    "roles": ["cadu"],
+                                    "href": "http://testserver/cadip/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch"
+                                    "2_DSDB_00001.raw",
+                                },
+                            },
+                            {
+                                "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
+                                    "cadip:id": "a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1",
+                                    "cadip:retransfer": False,
+                                    "cadip:final_block": False,
+                                    "cadip:block_number": 1,
+                                    "cadip:channel": 1,
+                                    "cadip:session_id": "S2B_20231117033237234567",
+                                    "created": "2023-11-17T18:52:39.165Z",
+                                    "eviction_datetime": "2023-11-17T18:52:39.165Z",
+                                    "file:size": "42",
+                                    "roles": ["cadu"],
+                                    # Note: 127.0.0.1:8000 replaced with testserver due to TestClient usage
+                                    "href": "http://testserver/cadip/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch"
+                                    "2_DSDB_00002.raw",
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+        ),
+        (
+            '"Satellite%20in%20incorrect_platform"&$top=20&$expand=Files',
+            "/cadip/cadip/session?platform=incorrect_platform",
+            {},
+            {"type": "FeatureCollection", "numberMatched": 0, "numberReturned": 0, "features": []},
+        ),
+    ],
+)
+@responses.activate
+def test_expanded_sessions_endpoint_request(
+    client,
+    odata_request,
+    rs_server_request,
+    odata_response,
+    rs_server_response,
+):
+    """Test cases on how rs-server process the sessions responses that contains multiple assets
+
+    Nominal: Test that an OData response with two files is mapped to a STAC response with two assets
+    Degraded: Test that an OData response with an empty Files list is mapped to a STAC response with an empty asset list
+    Degraded: Test that an OData response with a Files list set to null is mapped to a STAC response with an empty asset
+     list
+    Degraded: Test that an OData response without a Files element is mapped to a STAC response with an empty asset list
+
+    """
+    responses.add(
+        responses.GET,
+        f"http://127.0.0.1:5000/Sessions?$filter={odata_request}",
+        json={"responses": odata_response},
+        status=200,
+    )
+    response = client.get(rs_server_request)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == rs_server_response
+    # assert responses.assert_call_count(f"http://127.0.0.1:5000/Sessions?$filter={odata_request}", 1)
