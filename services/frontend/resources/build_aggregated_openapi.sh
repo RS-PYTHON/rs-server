@@ -22,7 +22,7 @@ set -x
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 FRONT_DIR="$(realpath $SCRIPT_DIR/..)"
 
-# Use this option to run locally all the services (defined in services.json)
+# Use this option to run locally all the services (defined in services.yml)
 if [[ " $@ " == *" --run-services "* ]]; then
 
     # NOTE: we need to run the services only so we can load their openapi.json file.
@@ -75,7 +75,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
         i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$ak_container'" && exit 1
     done
 
-    # Run the apikey manager. Use the same port as in services.json.
+    # Run the apikey manager. Use the same port as in services.yml.
     (docker run --rm --network=$network --name=$ak_container -p 8004:8000 \
         -e APIKEYMAN_URL_PREFIX \
         -e API_KEYS_DB_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${db_container}:5432/${POSTGRES_DB} \
@@ -119,14 +119,14 @@ if [[ " $@ " == *" --run-services "* ]]; then
         return 0
     }
 
-    # Use the same values as in services.json
+    # Use the same values as in services.yml
     run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "health"
     run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health"
     run_local_service "../catalog" "rs_server_catalog.main:app" 8003 "_mgmt/ping"
 
 fi
 
-services_file="${SCRIPT_DIR}/services.json" # input file = describe services
+services_file="${SCRIPT_DIR}/services.yml" # input file = describe services
 to_file="${SCRIPT_DIR}/openapi.json" # output file = aggregated json
 
 # Build the aggregated openapi.json

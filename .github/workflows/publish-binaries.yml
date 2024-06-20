@@ -345,6 +345,11 @@ jobs:
           name: ${{ needs.services-frontend-whl.outputs.package_name }}
           path: ./whl
 
+      # Also copy the entrypoint script under the same dir
+      - name: Copy entrypoint script
+        run: cp ./services/frontend/.github/entrypoint_frontend.sh ./whl
+        shell: bash
+
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
