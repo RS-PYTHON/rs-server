@@ -80,7 +80,7 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     description = "Catalog owner id"
     to_add = {
         "description": description,
-        "required": True,
+        "required": False,
         "schema": {"type": "string", "title": description, "description": description},
         "name": "owner_id",
         "in": "path",
