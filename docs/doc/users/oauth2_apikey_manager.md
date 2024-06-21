@@ -17,18 +17,15 @@ This is why we use an API key: after being authenticated with OAuth2, you can cr
 
 To do this:
 
-  1. Go to the [API Key Manager section of the RS-Server frontend](https://rspy.ops.rs-python.eu/docs#/API-Key%20Manager):
+  1. Go to the [API Key Manager section of the RS-Server frontend](https://apikeymanager.rspy.ops.rs-python.eu/docs):
 
 ![API Key Manager](../../images/oauth2_apikey_manager/apikey_manager.png)
 
-  2. Click on the lock icon on the right of the `Create Api Key` endpoint to do a first manual authentication using OAuth2 and KeyCloak.
-  3. In the window that opens, click on the green `Authorize` button.
+  * Notes:
+      * You will need to login to your KeyCloak account if requested (i.e. if your last session has expired).
+      * To login using a different KeyCloak account, either remove your cookies from your browser settings, or use an incognito/private browser session.
 
-![API Key Manager OAuth2](../../images/oauth2_apikey_manager/apikey_manager_oauth2.png)
-
-  4. Login to your KeyCloak account if requested (i.e. if your last session has expired).
-  5. Note: to login using a different KeyCloak account, either remove your cookies from your browser settings, or use an incognito/private browser session.
-  6. Expand the `Create Api Key` endpoint, click the `Try it out` button on the right, fill your API key parameters and click the `Execute` button on the bottom. The parameters are:
+  2. Expand the `Create Api Key` endpoint, click the `Try it out` button on the right, fill your API key parameters and click the `Execute` button on the bottom. The parameters are:
 
       * **name**: free text.
       * **never_expires**: if false, this API key will expire in 15 days.
@@ -37,17 +34,17 @@ To do this:
 
 ![Create API key](../../images/oauth2_apikey_manager/apikey_manager_create.png)
 
-  7. Note your created API key value and save it for later. You will find it in the `Response body` frame. It must be saved without the quotes, like in the example below:
+  3. Note your created API key value and save it for later. You will find it in the `Response body` frame. It must be saved without the quotes, like in the example below:
 
 ![Save API key](../../images/oauth2_apikey_manager/apikey_manager_save.png)
 
-  8. Try the other API Key Manager endpoints (they also need OAuth2 authentication using the lock icon on the right):
+  4. Try the other API Key Manager endpoints:
 
       * **Show My Information**: show my KeyCloak account information
       * **List My Api Keys**: list all API keys and usage information associated with my account.
       * **Revoke Api Key**: Revoke an API key associated with my account.
       * **Renew Api Key**: Renew an API key associated with my account, reactivate it if it was revoked.
 
-Now you can use your API key to authenticate to RS-Server and call the Auxip, Cadip and STAC catalog HTTP endpoints. If you want to call them from the website, click once again on the lock icons on the right, but this time enter your API key value:
+Now you can use your API key to authenticate to RS-Server and call the Auxip, Cadip and STAC catalog HTTP endpoints. If you want to call them from the website, click on the lock icons on the right and enter your API key value:
 
 ![Enter API key](../../images/oauth2_apikey_manager/enter_apikey.png)
