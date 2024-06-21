@@ -438,6 +438,9 @@ class UserCatalog:
 
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
+                if not content.get("owner"):
+                    content["owner"] = user
+                # TODO update the links also?
             elif "items" in request.scope["path"]:
                 content = self.update_stac_item_publication(content, user, request.url.netloc)
                 if hasattr(content, "status_code"):
