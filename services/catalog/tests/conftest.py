@@ -31,7 +31,6 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
-import responses
 from rs_server_catalog.main import app, extract_openapi_specification
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
