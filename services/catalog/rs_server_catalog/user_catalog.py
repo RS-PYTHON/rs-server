@@ -27,7 +27,6 @@ The middleware:
 * modifies the response to update the links.
 """
 
-import copy
 import json
 import os
 import re
@@ -35,7 +34,6 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
-import requests
 from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
@@ -800,7 +798,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 request=request,
             )
             return (item["properties"]["published"], item["properties"]["expires"])
-        except Exception as e:  # pylint: disable=unused-variable, broad-exception-caught
+        except Exception:  # pylint: disable=broad-exception-caught
             return ("", "")
 
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
