@@ -27,6 +27,7 @@ The middleware:
 * modifies the response to update the links.
 """
 
+import copy
 import json
 import os
 import re
@@ -55,7 +56,8 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     TransferFromS3ToS3Config,
 )
 from rs_server_common.utils.logging import Logging
-from starlette.middleware.base import BaseHTTPMiddleware, StreamingResponse
+from stac_fastapi.pgstac.core import CoreCrudClient
+from starlette.middleware.base import StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.status import (
@@ -75,12 +77,15 @@ logger = Logging.default(__name__)
 class UserCatalog:  # pylint: disable=too-many-public-methods
     """The user catalog middleware handler."""
 
-    def __init__(self):
+    client: CoreCrudClient
+
+    def __init__(self, client: CoreCrudClient):
         """Constructor, called from the middleware"""
 
         self.handler: S3StorageHandler = None
         self.temp_bucket_name: str = ""
         self.request_ids: dict[Any, Any] = {}
+        self.client = client
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -448,7 +453,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                         content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
                         content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
                     else:  # PUT
-                        published, expires = self.retrieve_timestamp(request)
+                        published, expires = await self.retrieve_timestamp(request)
                         if not published and not expires:
                             detail = {"error": f"Item {content['id']} not found."}
                             return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
@@ -777,7 +782,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             return False
         return True
 
-    def retrieve_timestamp(self, request: Request) -> tuple[str, str]:
+    async def retrieve_timestamp(self, request: Request) -> tuple[str, str]:
         """This function will retrieve the published and expires fields in the item
         we want to update to keep them unchanged.
 
@@ -788,17 +793,15 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             tuple[str, str]: published field, expires field.
         """
 
-        response = requests.get(
-            url=request._url._url,  # pylint: disable=protected-access
-            headers=request.headers,
-            timeout=10,
-        )
-
-        if response.status_code != 200:
+        try:
+            item = await self.client.get_item(
+                item_id=self.request_ids["item_id"],
+                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
+                request=request,
+            )
+            return (item["properties"]["published"], item["properties"]["expires"])
+        except Exception as e:  # pylint: disable=unused-variable, broad-exception-caught
             return ("", "")
-
-        content = json.loads(response.content)
-        return (content["properties"]["published"], content["properties"]["expires"])
 
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
@@ -876,15 +879,3 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             response = await self.manage_delete_response(response, user)
 
         return response
-
-
-class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
-    """The user catalog middleware."""
-
-    async def dispatch(self, request, call_next):
-        """Redirect the user catalog specific endpoint and adapt the response content."""
-
-        # NOTE: the same 'self' instance is reused by all requests so it must
-        # not be used by several requests at the same time or we'll have conflicts.
-        # Do everything in a specific object.
-        return await UserCatalog().dispatch(request, call_next)

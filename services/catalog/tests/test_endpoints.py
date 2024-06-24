@@ -532,6 +532,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
             content = json.loads(added_feature.content)
             updated_timestamp = content["properties"]["updated"]
+            published_timestamp = content["properties"]["published"]
+            expires_timestamps = content["properties"]["expires"]
 
             # Files were moved, check that catalog_bucket is not empty
             assert s3_handler.list_s3_files_obj(catalog_bucket, "")
@@ -547,77 +549,22 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             updated_feature_sent["bbox"] = [77]
             del updated_feature_sent["collection"]
 
-            with responses.RequestsMock() as resp:
+            path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
+            modified_feature = client.put(path, json=updated_feature_sent)
 
-                path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
-                url = f"http://testserver{path}"
-                json_item = {
-                    "assets": {
-                        "zarr": {
-                            "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                            "roles": ["data"],
-                        },
-                        "cog": {
-                            "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-                            "roles": ["data"],
-                        },
-                        "ncdf": {
-                            "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
-                            "roles": ["data"],
-                        },
-                    },
-                    "bbox": [0],
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [
-                            [
-                                [-94.6334839, 37.0595608],
-                                [-94.6334839, 37.0332547],
-                                [-94.6005249, 37.0332547],
-                                [-94.6005249, 37.0595608],
-                                [-94.6334839, 37.0595608],
-                            ],
-                        ],
-                    },
-                    "id": "S1SIWOCN_20220412T054447_0024_S139",
-                    "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-                    "other_metadata": {},
-                    "properties": {
-                        "gsd": 0.5971642834779395,
-                        "width": 2500,
-                        "height": 2500,
-                        "datetime": "2000-02-02T00:00:00Z",
-                        "proj:epsg": 3857,
-                        "orientation": "nadir",
-                        "published": "now",
-                        "expires": "later",
-                    },
-                    "stac_extensions": [
-                        "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-                        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-                        "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-                        "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-                        "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-                        "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-                    ],
-                    "stac_version": "1.0.0",
-                    "type": "Feature",
-                }
-                resp.add(responses.GET, url=url, json=json_item, status=200)
-                modified_feature = client.put(path, json=updated_feature_sent)
+            assert modified_feature.status_code == 200
 
-                assert modified_feature.status_code == 200
+            updated_content = json.loads(modified_feature.content)
 
-                updated_content = json.loads(modified_feature.content)
+            new_updated_timestamp = updated_content["properties"]["updated"]
 
-                new_updated_timestamp = updated_content["properties"]["updated"]
+            # Test that "updated" field is correctly updated.
+            assert updated_timestamp != new_updated_timestamp
 
-                # Test that "updated" field is correctly updated.
-                assert updated_timestamp != new_updated_timestamp
+            # Test that "published" and "expires" field are inchanged after the update.
+            assert updated_content["properties"]["published"] == published_timestamp
+            assert updated_content["properties"]["expires"] == expires_timestamps
 
-                # Test that "published" and "expires" field are inchanged after the update.
-                assert updated_content["properties"]["published"] == "now"
-                assert updated_content["properties"]["expires"] == "later"
             client.delete(
                 "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
             )
@@ -954,7 +901,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
-    def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature, mock_item):
+    def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
@@ -973,7 +920,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         del updated_feature_sent["collection"]
 
         feature_put_response = client.put(
-            mock_item,
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
             json=updated_feature_sent,
         )
         assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
@@ -993,7 +940,6 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         client,
         a_minimal_collection,
         a_correct_feature,
-        mock_item,
     ):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
@@ -1008,6 +954,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         )
 
         assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+
+        content = json.loads(feature_post_response.content)
+        first_published_date = content["properties"]["published"]
+        first_expires_date = content["properties"]["expires"]
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = [77]
@@ -1018,7 +968,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         time.sleep(1)
 
         feature_put_response = client.put(
-            mock_item,
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
             json=updated_feature_sent,
         )
         content = json.loads(feature_put_response.content)
@@ -1029,11 +979,13 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert updated_timestamp != new_updated_timestamp
 
         # Test that "published" and "expires" field are inchanged after the update.
-        assert content["properties"]["published"] == "now"
-        assert content["properties"]["expires"] == "later"
+        assert content["properties"]["published"] == first_published_date
+        assert content["properties"]["expires"] == first_expires_date
 
         assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        # client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        deletion = client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        assert deletion.status_code == fastapi.status.HTTP_200_OK
 
     def test_update_timestamp_feature_fails_with_unfound_item(
         self,
@@ -1048,27 +1000,37 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
+        feature_post_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=a_correct_feature,
+        )
+
+        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
 
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = [77]
         del updated_feature_sent["collection"]
 
-        with responses.RequestsMock() as resp:
-            path = "/catalog/collections/fixture_owner:fixture_collections/items/NOT_FOUND_ITEM"
-            url = f"http://testserver{path}"
-            resp.add(responses.GET, url=url, json={}, status=404)
-            feature_put_response = client.put(
-                path,
-                json=updated_feature_sent,
-            )
-            assert feature_put_response.status_code == 400
+        path = "/catalog/collections/fixture_owner:fixture_collections/items/NOT_FOUND_ITEM"
+        feature_put_response = client.put(
+            path,
+            json=updated_feature_sent,
+        )
+        assert feature_put_response.status_code == 400
 
-    def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature, mock_item):
+    def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
+        get_response = client.get(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+        )
+
+        if get_response.status_code == fastapi.status.HTTP_200_OK:
+            client.delete(f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}")
+
         feature_post_response = client.post(
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=a_correct_feature,
@@ -1080,18 +1042,24 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         del updated_feature_sent["collection"]
 
         response = client.put(
-            mock_item,
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
             json=updated_feature_sent,
         )
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
-
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
     def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: DELETE: /catalog/collections/{user:collection}/items/{featureID}
         """
         a_correct_feature["collection"] = "fixture_collection"
+
+        get_response = client.get(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+        )
+
+        if get_response.status_code == fastapi.status.HTTP_200_OK:
+            client.delete(f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}")
+
         # Post the correct feature to catalog
         feature_post_response = client.post(
             "/catalog/collections/fixture_owner:fixture_collection/items",

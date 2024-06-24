@@ -31,7 +31,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
-from rs_server_catalog.user_catalog import UserCatalogMiddleware
+from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import authentication
 from rs_server_common import settings as common_settings
 from rs_server_common.utils import opentelemetry
@@ -282,6 +282,21 @@ class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public
                 content = repr(exception)
 
             return JSONResponse(status_code=status_code, content=content)
+
+
+client = CoreCrudClient(post_request_model=post_request_model)
+
+
+class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """The user catalog middleware."""
+
+    async def dispatch(self, request, call_next):
+        """Redirect the user catalog specific endpoint and adapt the response content."""
+
+        # NOTE: the same 'self' instance is reused by all requests so it must
+        # not be used by several requests at the same time or we'll have conflicts.
+        # Do everything in a specific object.
+        return await UserCatalog(client).dispatch(request, call_next)
 
 
 api = StacApi(
