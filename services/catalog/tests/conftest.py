@@ -31,7 +31,6 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
-import responses
 from rs_server_catalog.main import app, extract_openapi_specification
 from sqlalchemy_utils import database_exists
 from starlette.testclient import TestClient
@@ -413,67 +412,6 @@ def add_feature(client: TestClient, feature: Feature):
         json=feature.properties,
     )
     response.raise_for_status()
-
-
-@pytest.fixture
-def mock_item(a_correct_feature):
-    """Mock a specific item to test features publishing"""
-
-    with responses.RequestsMock() as resp:
-        path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
-        url = f"http://testserver/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
-        json_item = {
-            "collection": "fixture_collection",
-            "assets": {
-                "zarr": {
-                    "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                    "roles": ["data"],
-                },
-                "cog": {
-                    "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
-                    "roles": ["data"],
-                },
-                "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
-            },
-            "bbox": [0],
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [-94.6334839, 37.0595608],
-                        [-94.6334839, 37.0332547],
-                        [-94.6005249, 37.0332547],
-                        [-94.6005249, 37.0595608],
-                        [-94.6334839, 37.0595608],
-                    ],
-                ],
-            },
-            "id": "S1SIWOCN_20220412T054447_0024_S139",
-            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-            "other_metadata": {},
-            "properties": {
-                "gsd": 0.5971642834779395,
-                "width": 2500,
-                "height": 2500,
-                "datetime": "2000-02-02T00:00:00Z",
-                "proj:epsg": 3857,
-                "orientation": "nadir",
-                "published": "now",
-                "expires": "later",
-            },
-            "stac_extensions": [
-                "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-                "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-                "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-                "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-                "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-                "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-            ],
-            "stac_version": "1.0.0",
-            "type": "Feature",
-        }
-        resp.add(responses.GET, url=url, json=json_item, status=200)
-        yield path
 
 
 @pytest.mark.integration

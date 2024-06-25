@@ -47,7 +47,7 @@ def set_updated_expires_timestamp(
         if expiration:
             item["properties"]["expires"] = expiration.strftime(ISO_8601_FORMAT)
         else:
-            expiration_range = int(os.environ.get("RANGE_EXPIRATION_DATE_IN_DAYS", "30"))
+            expiration_range = int(os.environ.get("ITEM_EXPIRATION_DAYS", "30"))
             plus_30_days = current_time + datetime.timedelta(days=expiration_range)
             item["properties"]["expires"] = plus_30_days.strftime(ISO_8601_FORMAT)
     elif operation == "update":  # We update an existing item so we keep the original "expires" & "published" field.
