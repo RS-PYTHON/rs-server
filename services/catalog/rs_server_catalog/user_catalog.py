@@ -443,6 +443,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
 
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
+                if not content.get("owner"):
+                    content["owner"] = user
+                # TODO update the links also?
             elif "items" in request.scope["path"]:
                 if request.method == "POST":
                     content = self.update_stac_item_publication(content, user, request.url.netloc)
@@ -625,8 +628,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-        elif "/queryables" in request.scope["path"]:
-            content["$id"] = request.url._url  # pylint: disable=protected-access
         elif (
             "/collections" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
@@ -804,8 +805,19 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
-
-        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method)
+        # Get the the user_login calling the endpoint. If this is not set (the authentication.apikey_security function
+        # is not called), the local user shall be used (later on, in rereoute_url)
+        # The common_settings.CLUSTER_MODE may not be used because for some endpoints like /api
+        # the apikey_security is not called even if common_settings.CLUSTER_MODE is True. Thus, the presence of
+        # user_login has to be checked instead
+        try:
+            user_login = request.state.user_login
+        except (NameError, AttributeError):
+            # "The current user will be used if needed in rerouting"
+            user_login = None
+        logger.debug(f"Received url request.url.path = {request.url.path}")
+        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
+        logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
         user = request_body.get("owner", None)
         collection_id = request_body.get("id", None)

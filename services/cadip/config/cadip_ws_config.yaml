@@ -35,9 +35,12 @@ cadip:
         Name:
             - null
             - '$.Name'
+        SessionIds:
+          - null
+          - "$.SessionID"
         SessionID:
-            - null
-            - '$.SessionID'
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -76,6 +79,8 @@ cadip:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -114,9 +119,12 @@ ins:
         Name:
             - null
             - '$.Name'
+        SessionIds:
+          - null
+          - "$.SessionID"
         SessionID:
-            - null
-            - '$.SessionID'
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -155,6 +163,8 @@ ins:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -193,9 +203,12 @@ mps:
         Name:
             - null
             - '$.Name'
+        SessionIds:
+          - null
+          - "$.SessionID"
         SessionID:
-            - null
-            - '$.SessionID'
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -234,6 +247,8 @@ mps:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -272,9 +287,12 @@ mti:
         Name:
             - null
             - '$.Name'
+        SessionIds:
+          - null
+          - "$.SessionID"
         SessionID:
-            - null
-            - '$.SessionID'
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -313,6 +331,8 @@ mti:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -351,9 +371,12 @@ nsg:
         Name:
             - null
             - '$.Name'
+        SessionIds:
+          - null
+          - "$.SessionID"
         SessionID:
-            - null
-            - '$.SessionID'
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -392,6 +415,8 @@ nsg:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -430,9 +455,12 @@ sgs:
         Name:
             - null
             - '$.Name'
+        SessionIds:
+          - null
+          - "$.SessionID"
         SessionID:
-            - null
-            - '$.SessionID'
+          - null
+          - "$.SessionID"
         Channel:
             - null
             - '$.Channel'
@@ -471,6 +499,8 @@ sgs:
         wrapper: '"{}"'
         operations:
             and:
+              - 'SessionID in {SessionIds}'
+              - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -566,6 +596,9 @@ cadip_session:
       DeliveryPushOK:
         - null
         - "$.DeliveryPushOK"
+      Files:
+        - null
+        - "$.Files"
       # Eodag Specific map
       startTimeFromAscendingNode:
         - null
@@ -591,7 +624,7 @@ cadip_session:
 
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Files"
       total_items_nb_key_path: "$.total"
 
   download:

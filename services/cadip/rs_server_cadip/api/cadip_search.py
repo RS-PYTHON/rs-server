@@ -33,6 +33,11 @@ from fastapi import Query, Request, status
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
+from rs_server_cadip.cadip_utils import (
+    from_session_expand_to_assets_serializer,
+    from_session_expand_to_dag_serializer,
+    validate_products,
+)
 from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
@@ -50,10 +55,11 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 @router.get("/cadip/{station}/cadu/search")
 @apikey_validator(station="cadip", access_type="read")
-def search_products(  # pylint: disable=too-many-locals
+def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     request: Request,  # pylint: disable=unused-argument
-    datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
+    datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
 ) -> list[dict] | dict:
@@ -66,6 +72,7 @@ def search_products(  # pylint: disable=too-many-locals
         request (Request): The request object (unused).
         datetime (str): Time interval in ISO 8601 format.
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        session_id (str): Session from which file belong.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
         sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
 
@@ -80,13 +87,19 @@ def search_products(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-
+    if not (datetime or session_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
     start_date, stop_date = validate_inputs_format(datetime)
+    session: Union[List[str], str] = [sid.strip() for sid in session_id.split(",")] if "," in session_id else session_id
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
-        products = init_cadip_provider(station).search(TimeRange(start_date, stop_date), items_per_page=limit)
+        products = init_cadip_provider(station).search(
+            TimeRange(start_date, stop_date),
+            id=session,
+            items_per_page=limit,
+        )
         write_search_products_to_db(CadipDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
@@ -168,7 +181,7 @@ def search_session(
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-    session_id: Union[List[str], None] = id.split(",") if id else None
+    session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
     satellite: Union[List[str], None] = platform.split(",") if platform else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
 
@@ -182,15 +195,27 @@ def search_session(
             platform=satellite,
             sessions_search=True,
         )
+        products = validate_products(products)
+        sessions_products = from_session_expand_to_dag_serializer(products)
+        write_search_products_to_db(CadipDownloadStatus, sessions_products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
+        expanded_session_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
         with (
             open(feature_template_path, encoding="utf-8") as template,
             open(stac_mapper_path, encoding="utf-8") as stac_map,
+            open(expanded_session_mapper_path, encoding="utf-8") as expanded_session_mapper,
         ):
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
+            expanded_session_mapper = json.loads(expanded_session_mapper.read())
             cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
+            cadip_sessions_collection = from_session_expand_to_assets_serializer(
+                cadip_sessions_collection,
+                sessions_products,
+                expanded_session_mapper,
+                request,
+            )
             return cadip_sessions_collection
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")

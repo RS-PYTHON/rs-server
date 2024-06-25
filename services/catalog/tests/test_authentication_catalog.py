@@ -17,6 +17,7 @@
 import json
 import os
 
+import pytest
 import requests
 import yaml
 from moto.server import ThreadedMotoServer
@@ -144,6 +145,12 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "href": "http://testserver/catalog/collections/titi:S2_L1",
         },
         {
+            "rel": "child",
+            "type": "application/json",
+            "title": "pyteam_S1_L1",
+            "href": "http://testserver/catalog/collections/pyteam:S1_L1",
+        },
+        {
             "rel": "service-desc",
             "type": "application/vnd.oai.openapi+json;version=3.0",
             "title": "OpenAPI service description",
@@ -199,6 +206,12 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "type": "application/json",
             "title": "toto_S2_L3",
             "href": "http://testserver/catalog/collections/toto:S2_L3",
+        },
+        {
+            "rel": "child",
+            "title": "pyteam_S1_L1",
+            "type": "application/json",
+            "href": "http://testserver/catalog/collections/pyteam:S1_L1",
         },
         {
             "rel": "service-desc",
@@ -350,6 +363,50 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "stac_version": "1.0.0",
         },
         {
+            "id": "pyteam_S1_L1",
+            "type": "Collection",
+            "links": [
+                {
+                    "href": "http://testserver/catalog/collections/pyteam:S1_L1/items",
+                    "rel": "items",
+                    "type": "application/geo+json",
+                },
+                {
+                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "rel": "parent",
+                    "type": "application/json",
+                },
+                {
+                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "rel": "root",
+                    "type": "application/json",
+                },
+                {
+                    "href": "http://testserver/catalog/collections/pyteam:S1_L1",
+                    "rel": "self",
+                    "type": "application/json",
+                },
+                {
+                    "href": "http://localhost:8082/catalog/collections/pyteam:S1_L1/items/",
+                    "rel": "items",
+                    "type": "application/geo+json",
+                },
+                {
+                    "href": "https://creativecommons.org/licenses/publicdomain/",
+                    "rel": "license",
+                    "title": "public domain",
+                },
+            ],
+            "owner": "pyteam",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+            "license": "public-domain",
+            "description": "Some description",
+            "stac_version": "1.0.0",
+        },
+        {
             "id": "pyteam_S2_L1",
             "type": "Collection",
             "links": [
@@ -404,32 +461,44 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
 
 
 class TestAuthenticationGetOneCollection:
+    @pytest.mark.parametrize(
+        ("user", "user_str_for_endpoint_call"),
+        [
+            ("toto", "toto:"),
+            ("pyteam", ""),
+        ],
+    )
     def test_http200_with_good_authentication(
         self,
+        user,
+        user_str_for_endpoint_call,
         mocker,
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):  # pylint: disable=missing-function-docstring
-
-        iam_roles = ["rs_catalog_toto:*_read"]
+        iam_roles = [f"rs_catalog_{user}:*_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        toto_collection = {
+        collection = {
             "id": "S1_L1",
             "type": "Collection",
             "links": [
                 {
                     "rel": "items",
                     "type": "application/geo+json",
-                    "href": "http://testserver/catalog/collections/toto:S1_L1/items",
+                    "href": f"http://testserver/catalog/collections/{user}:S1_L1/items",
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
-                {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/collections/toto:S1_L1"},
+                {"rel": "parent", "type": "application/json", "href": f"http://testserver/catalog/catalogs/{user}"},
+                {"rel": "root", "type": "application/json", "href": f"http://testserver/catalog/catalogs/{user}"},
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": f"http://testserver/catalog/collections/{user}:S1_L1",
+                },
                 {
                     "rel": "items",
-                    "href": "http://localhost:8082/catalog/collections/toto:S1_L1/items/",
+                    "href": f"http://localhost:8082/catalog/collections/{user}:S1_L1/items/",
                     "type": "application/geo+json",
                 },
                 {
@@ -438,7 +507,7 @@ class TestAuthenticationGetOneCollection:
                     "title": "public domain",
                 },
             ],
-            "owner": "toto",
+            "owner": user,
             "extent": {
                 "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
                 "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
@@ -451,11 +520,11 @@ class TestAuthenticationGetOneCollection:
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "GET",
-                "/catalog/collections/toto:S1_L1",
+                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1",
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_200_OK
-            assert toto_collection == json.loads(response.content)
+            assert collection == json.loads(response.content)
 
     def test_fails_without_good_perms(
         self,
@@ -482,21 +551,30 @@ class TestAuthenticationGetOneCollection:
 
 
 class TestAuthenticationGetItems:
+    @pytest.mark.parametrize(
+        ("user", "user_str_for_endpoint_call"),
+        [
+            ("toto", "toto:"),
+            ("pyteam", ""),
+        ],
+    )
     def test_http200_with_good_authentication(
         self,
+        user,
+        user_str_for_endpoint_call,
         mocker,
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        iam_roles = ["rs_catalog_toto:*_read"]
+        iam_roles = [f"rs_catalog_{user}:*_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "GET",
-                "/catalog/collections/toto:S1_L1/items/",
+                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/",
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_200_OK
@@ -525,8 +603,18 @@ class TestAuthenticationGetItems:
 
 
 class TestAuthenticationGetOneItem:
+    @pytest.mark.parametrize(
+        ("user", "user_str_for_endpoint_call", "feature"),
+        [
+            ("toto", "toto:", "fe916452-ba6f-4631-9154-c249924a122d"),
+            ("pyteam", "", "hi916451-ca6f-4631-9154-4249924a133d"),
+        ],
+    )
     def test_http200_with_good_authentication(
         self,
+        user,
+        user_str_for_endpoint_call,
+        feature,
         mocker,
         monkeypatch,
         httpx_mock: HTTPXMock,
@@ -534,17 +622,18 @@ class TestAuthenticationGetOneItem:
     ):  # pylint: disable=missing-function-docstring
 
         iam_roles = [
+            "rs_catalog_pyteam:*_read",
             "rs_catalog_toto:*_read",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        feature_toto_s1_l1_0 = {
-            "id": "fe916452-ba6f-4631-9154-c249924a122d",
+        feature_s1_l1_0 = {
+            "id": feature,
             "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
             "type": "Feature",
             "assets": {
                 "COG": {
-                    "href": """s3://temp-bucket/toto_S1_L1/images/may24C355000e4102500n.tif""",
+                    "href": f"""s3://temp-bucket/{user}_S1_L1/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
                 },
@@ -564,11 +653,11 @@ class TestAuthenticationGetOneItem:
             "collection": "S1_L1",
             "properties": {
                 "gsd": 0.5971642834779395,
-                "owner": "toto",
+                "owner": user,
                 "width": 2500,
                 "height": 2500,
                 "datetime": "2000-02-02T00:00:00Z",
-                "owner_id": "toto",
+                "owner_id": user,
                 "proj:epsg": 3857,
                 "orientation": "nadir",
             },
@@ -582,12 +671,12 @@ class TestAuthenticationGetOneItem:
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "GET",
-                "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
+                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/{feature}",
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_200_OK
             id = json.loads(response.content)["id"]
-            assert id == feature_toto_s1_l1_0["id"]
+            assert id == feature_s1_l1_0["id"]
 
     def test_fails_without_good_perms(
         self,
@@ -691,7 +780,7 @@ class TestAuthenticationPostOneCollection:
 
 class TestAuthicationPutOneCollection:
 
-    updated_collection = {
+    updated_collection_toto = {
         "id": "S1_L1",
         "type": "Collection",
         "links": [
@@ -724,6 +813,39 @@ class TestAuthicationPutOneCollection:
         "stac_version": "1.0.0",
     }
 
+    updated_collection_pyteam = {
+        "id": "S1_L1",
+        "type": "Collection",
+        "links": [
+            {
+                "rel": "items",
+                "type": "application/geo+json",
+                "href": "http://testserver/collections/pyteam_S1_L1/items",
+            },
+            {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
+            {"rel": "root", "type": "application/json", "href": "http://testserver/"},
+            {"rel": "self", "type": "application/json", "href": "http://testserver/collections/pyteam_S1_L1"},
+            {
+                "rel": "items",
+                "href": "http://localhost:8082/collections/S1_L1/items",
+                "type": "application/geo+json",
+            },
+            {
+                "rel": "license",
+                "href": "https://creativecommons.org/licenses/publicdomain/",
+                "title": "public domain",
+            },
+        ],
+        "owner": "pyteam",
+        "extent": {
+            "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+            "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+        },
+        "license": "public-domain",
+        "description": "This is the description from the updated S1_L1 collection.",
+        "stac_version": "1.0.0",
+    }
+
     def test_http200_with_good_authentication(
         self,
         mocker,
@@ -742,7 +864,30 @@ class TestAuthicationPutOneCollection:
             response = client.request(
                 "PUT",
                 "/catalog/collections/toto:S1_L1",
-                json=self.updated_collection,
+                json=self.updated_collection_toto,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+
+    def test_http200_with_good_authentication_without_user_in_endpoint(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = [
+            "rs_catalog_pyteam:*_read",
+            "rs_catalog_pyteam:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "PUT",
+                "/catalog/collections/S1_L1",
+                json=self.updated_collection_pyteam,
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_200_OK
@@ -762,7 +907,7 @@ class TestAuthicationPutOneCollection:
             response = client.request(
                 "PUT",
                 "/catalog/collections/toto:S1_L1",
-                json=self.updated_collection,
+                json=self.updated_collection_toto,
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
@@ -892,7 +1037,7 @@ class TestAuthenticationDownload:
         )
         server = ThreadedMotoServer(port=8077)
         server.start()
-
+        users_map = {"toto:": "fe916452-ba6f-4631-9154-c249924a122d", "": "hi916451-ca6f-4631-9154-4249924a133d"}
         try:
             requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
             # Upload a file to catalog-bucket
@@ -906,12 +1051,13 @@ class TestAuthenticationDownload:
             )
 
             for pass_the_apikey in PASS_THE_APIKEY:
-                response = client.request(
-                    "GET",
-                    "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
-                    **pass_the_apikey,
-                )
-                assert response.status_code == HTTP_302_FOUND
+                for user, file in users_map.items():
+                    response = client.request(
+                        "GET",
+                        f"/catalog/collections/{user}S1_L1/items/{file}/download/COG",
+                        **pass_the_apikey,
+                    )
+                    assert response.status_code == HTTP_302_FOUND
 
                 # Check that response is empty
                 assert response.content == b""
@@ -923,7 +1069,7 @@ class TestAuthenticationDownload:
                 assert product_content.content.decode() == object_content
                 assert (
                     client.get(
-                        "/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG",
+                        f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/COG",
                         headers={APIKEY_HEADER: VALID_APIKEY},
                     ).status_code
                     == HTTP_404_NOT_FOUND
@@ -1011,28 +1157,32 @@ class TestAuthentiactionDelete:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        toto_new_collection = {
-            "id": "fixture_collection",
-            "type": "Collection",
-            "description": "test_description",
-            "stac_version": "1.0.0",
-            "owner": "toto",
-        }
+        collections = ["toto_fixture_collection", "pyteam_fixture_collection"]
+        for collection in collections:
+            new_collection = {
+                "id": f"{collection}",
+                "type": "Collection",
+                "description": "test_description",
+                "stac_version": "1.0.0",
+                "owner": collection.split("_", 1)[0],
+            }
 
-        response = client.request(
-            "POST",
-            "/catalog/collections",
-            json=toto_new_collection,
-            headers={APIKEY_HEADER: VALID_APIKEY},
-        )
-        assert response.status_code == HTTP_200_OK
-        for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
-                "DELETE",
-                "/catalog/collections/toto:fixture_collection",
-                **pass_the_apikey,
+                "POST",
+                "/catalog/collections",
+                json=new_collection,
+                headers={APIKEY_HEADER: VALID_APIKEY},
             )
             assert response.status_code == HTTP_200_OK
+        users_map = {"toto": "toto:", "pyteam": ""}
+        for pass_the_apikey in PASS_THE_APIKEY:
+            for user, val in users_map.items():
+                response = client.request(
+                    "DELETE",
+                    f"/catalog/collections/{val}{user}_fixture_collection",
+                    **pass_the_apikey,
+                )
+                assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -1111,15 +1261,16 @@ class TestAuthenticationPostOneItem:
             "rs_catalog_toto:*_write",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
+        users_map = {"toto": "toto:", "pyteam": ""}
         for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections/toto:S1_L1/items",
-                json=self.feature_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+            for _, val in users_map.items():
+                response = client.request(
+                    "POST",
+                    f"/catalog/collections/{val}S1_L1/items",
+                    json=self.feature_to_post,
+                    **pass_the_apikey,
+                )
+                assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -1156,14 +1307,15 @@ class TestAuthenticationGetCatalogOwnerId:
             "rs_catalog_toto:*_write",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
+        users_map = {"toto": "toto", "pyteam": ""}
         for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/catalogs/toto",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+            for _, val in users_map.items():
+                response = client.request(
+                    "GET",
+                    f"/catalog/catalogs/{val}",
+                    **pass_the_apikey,
+                )
+                assert response.status_code == HTTP_200_OK
 
     def test_fails_if_not_authorized(
         self,
