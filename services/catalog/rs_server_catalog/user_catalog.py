@@ -440,6 +440,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
 
             if request.scope["path"] == "/collections":
                 content["id"] = f"{user}_{content['id']}"
+                if not content.get("owner"):
+                    content["owner"] = user
+                # TODO update the links also?
             elif "items" in request.scope["path"]:
                 if request.method == "POST":
                     content = self.update_stac_item_publication(content, user, request.url.netloc)
