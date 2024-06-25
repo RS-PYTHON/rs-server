@@ -34,10 +34,12 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
+import requests
 from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
+from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import manage_landing_page
 from rs_server_catalog.user_handler import (
@@ -70,7 +72,7 @@ CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 logger = Logging.default(__name__)
 
 
-class UserCatalog:
+class UserCatalog:  # pylint: disable=too-many-public-methods
     """The user catalog middleware handler."""
 
     def __init__(self):
@@ -442,7 +444,23 @@ class UserCatalog:
                     content["owner"] = user
                 # TODO update the links also?
             elif "items" in request.scope["path"]:
-                content = self.update_stac_item_publication(content, user, request.url.netloc)
+                if request.method == "POST":
+                    content = self.update_stac_item_publication(content, user, request.url.netloc)
+                if content:
+                    if request.method == "POST":
+                        content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
+                        content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
+                    else:  # PUT
+                        published, expires = self.retrieve_timestamp(request)
+                        if not published and not expires:
+                            detail = {"error": f"Item {content['id']} not found."}
+                            return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
+                        content = timestamps_extension.set_updated_expires_timestamp(
+                            content,
+                            "update",
+                            original_published=published,
+                            original_expires=expires,
+                        )
                 if hasattr(content, "status_code"):
                     return content
 
@@ -760,6 +778,29 @@ class UserCatalog:
             return False
         return True
 
+    def retrieve_timestamp(self, request: Request) -> tuple[str, str]:
+        """This function will retrieve the published and expires fields in the item
+        we want to update to keep them unchanged.
+
+        Args:
+            request (Request): The initial request that is a put item.
+
+        Returns:
+            tuple[str, str]: published field, expires field.
+        """
+
+        response = requests.get(
+            url=request._url._url,  # pylint: disable=protected-access
+            headers=request.headers,
+            timeout=10,
+        )
+
+        if response.status_code != 200:
+            return ("", "")
+
+        content = json.loads(response.content)
+        return (content["properties"]["published"], content["properties"]["expires"])
+
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
@@ -779,8 +820,14 @@ class UserCatalog:
         # Overwrite user and collection id with the ones provided in the request body
         user = request_body.get("owner", None)
         collection_id = request_body.get("id", None)
-        self.request_ids["owner_id"] = user if user else self.request_ids["owner_id"]
-        self.request_ids["collection_id"] = collection_id if collection_id else self.request_ids["collection_id"]
+        self.request_ids["owner_id"] = (
+            user if user and not self.request_ids["owner_id"] else self.request_ids["owner_id"]
+        )
+        self.request_ids["collection_id"] = (
+            collection_id
+            if collection_id and not self.request_ids["collection_id"]
+            else self.request_ids["collection_id"]
+        )
 
         if "/health" in request.scope["path"]:
             # return true if up and running
