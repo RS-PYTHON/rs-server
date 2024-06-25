@@ -102,7 +102,6 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
             return "/conformance", ids_dict
 
     if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
-        ids_dict["owner_id"] = get_user(None, user_login)
         return "/collections", ids_dict
 
     # To catch the endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items
