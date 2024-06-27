@@ -22,12 +22,13 @@ import asyncio
 import os
 import sys
 import traceback
+from contextlib import asynccontextmanager
 from os import environ as env
 from typing import Any, Callable, Dict
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
@@ -304,6 +305,46 @@ api = StacApi(
 app = api.app
 app.openapi = extract_openapi_specification
 
+
+@asynccontextmanager
+async def lifespan(my_app: FastAPI):
+    """The lifespan function."""
+    try:
+        # Code à exécuter au démarrage de l'application
+        # Connecter à la base de données
+        db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
+        while True:
+            try:
+                await connect_to_db(my_app)
+                logger.info("Reached %r database on %s", env["POSTGRES_DB"], db_info)
+                break
+            except ConnectionRefusedError:
+                logger.warning("Trying to reach %r database on %s", env["POSTGRES_DB"], db_info)
+
+                # Gestion du timeout si spécifié
+                if my_app.state.pg_timeout is not None:
+                    my_app.state.pg_timeout -= my_app.state.pg_pause
+                    if my_app.state.pg_timeout < 0:
+                        sys.exit("Unable to start up catalog service")
+                await asyncio.sleep(my_app.state.pg_pause)
+
+        # Initialisation des objets pour l'injection de dépendances
+        common_settings.set_http_client(httpx.AsyncClient())
+
+        # Yield pour exécuter le code après le démarrage de l'application
+        yield
+
+    finally:
+        # Code à exécuter à l'arrêt de l'application
+        # Fermer la connexion à la base de données
+        await close_db_connection(my_app)
+
+        # Nettoyer les objets pour l'injection de dépendances
+        await common_settings.del_http_client()
+
+
+app.router.lifespan_context = lifespan
+
 # Configure OpenTelemetry
 opentelemetry.init_traces(app, "rs.server.catalog")
 
@@ -328,43 +369,6 @@ if common_settings.CLUSTER_MODE:
 # Pause and timeout to connect to database (hardcoded for now)
 app.state.pg_pause = 3  # seconds
 app.state.pg_timeout = 30
-
-
-@app.on_event("startup")
-async def startup_event():
-    """FastAPI startup events"""
-
-    # Connect to database on startup. Loop until the connection works.
-    db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
-    while True:
-        try:
-            await connect_to_db(app)
-            logger.info(f"Reached {env['POSTGRES_DB']!r} database on {db_info}")
-            break
-        except ConnectionRefusedError:
-            logger.warning(f"Trying to reach {env['POSTGRES_DB']!r} database on {db_info}")
-
-            # Sleep for n seconds and raise exception if timeout is reached.
-            if app.state.pg_timeout is not None:
-                app.state.pg_timeout -= app.state.pg_pause
-                if app.state.pg_timeout < 0:
-                    sys.exit("Unable to start up catalog service")
-                    # raise SystemExit("Unable to start up catalog service")
-            await asyncio.sleep(app.state.pg_pause)
-
-    # Init objects for dependency injection
-    common_settings.set_http_client(httpx.AsyncClient())
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """FastAPI shutdown events"""
-
-    # Close database connection
-    await close_db_connection(app)
-
-    # Close objects for dependency injection
-    await common_settings.del_http_client()
 
 
 def run():
