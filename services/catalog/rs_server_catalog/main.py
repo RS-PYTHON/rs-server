@@ -285,7 +285,7 @@ class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public
             return JSONResponse(status_code=status_code, content=content)
 
 
-client = CoreCrudClient(post_request_model=post_request_model)
+client = CoreCrudClient(post_request_model=post_request_model, extensions=extensions)
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods

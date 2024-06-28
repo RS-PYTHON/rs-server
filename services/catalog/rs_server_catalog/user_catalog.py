@@ -572,6 +572,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 content = manage_landing_page(request, auth_roles, user_login, content, user)
                 if hasattr(content, "status_code"):  # Unauthorized
                     return content
+                extensions = self.client.extensions  # Add extensions
+                for extension in extensions:
+                    if extension.conformance_classes and "stac_extension":
+                        content["stac_extensions"].append(extension.conformance_classes[0])
             # Manage local landing page of the catalog
             regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
             for link in content["links"]:
