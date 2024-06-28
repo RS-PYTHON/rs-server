@@ -576,6 +576,17 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 for extension in extensions:
                     if extension.conformance_classes:
                         content["stac_extensions"].append(extension.conformance_classes[0])
+                content["stac_extensions"].extend(
+                    [
+                        "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json",
+                        "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
+                        "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+                        "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+                        "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+                        "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+                        "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+                    ],
+                )
             # Manage local landing page of the catalog
             regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
             for link in content["links"]:
