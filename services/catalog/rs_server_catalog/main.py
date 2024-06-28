@@ -310,8 +310,7 @@ app.openapi = extract_openapi_specification
 async def lifespan(my_app: FastAPI):
     """The lifespan function."""
     try:
-        # Code à exécuter au démarrage de l'application
-        # Connecter à la base de données
+        # Connect to the databse
         db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
         while True:
             try:
@@ -321,25 +320,20 @@ async def lifespan(my_app: FastAPI):
             except ConnectionRefusedError:
                 logger.warning("Trying to reach %r database on %s", env["POSTGRES_DB"], db_info)
 
-                # Gestion du timeout si spécifié
+                # timeout gestion if specified
                 if my_app.state.pg_timeout is not None:
                     my_app.state.pg_timeout -= my_app.state.pg_pause
                     if my_app.state.pg_timeout < 0:
                         sys.exit("Unable to start up catalog service")
                 await asyncio.sleep(my_app.state.pg_pause)
 
-        # Initialisation des objets pour l'injection de dépendances
         common_settings.set_http_client(httpx.AsyncClient())
 
-        # Yield pour exécuter le code après le démarrage de l'application
         yield
 
     finally:
-        # Code à exécuter à l'arrêt de l'application
-        # Fermer la connexion à la base de données
         await close_db_connection(my_app)
 
-        # Nettoyer les objets pour l'injection de dépendances
         await common_settings.del_http_client()
 
 
