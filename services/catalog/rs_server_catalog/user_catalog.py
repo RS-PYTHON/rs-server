@@ -185,7 +185,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
 
         # Unique set of temp bucket names
         bucket_names = set()
-
         files_s3_key = []
         # 1 - update assets href
         for asset in content["assets"]:
@@ -211,14 +210,15 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
 
         # There should be a single temp bucket name
         if not bucket_names:
-            raise HTTPException(detail="assets are missing from the request", status_code=HTTP_400_BAD_REQUEST)
+            raise HTTPException(detail="Assets are missing from the request", status_code=HTTP_400_BAD_REQUEST)
         if len(bucket_names) > 1:
             raise HTTPException(
                 detail=f"A single s3 bucket should be used in the assets: {bucket_names!r}",
                 status_code=HTTP_400_BAD_REQUEST,
             )
         self.temp_bucket_name = bucket_names.pop()
-
+        err_message = f"Failed to transfer file(s) from '{self.temp_bucket_name}' bucket to \
+'{CATALOG_BUCKET}' catalog bucket!"
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
@@ -245,13 +245,16 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
 
                 if failed_files:
                     raise HTTPException(
-                        detail=f"Could not transfer files to catalog bucket: {failed_files}",
-                        status_code=500,
+                        detail=f"{err_message} {failed_files}",
+                        status_code=HTTP_400_BAD_REQUEST,
                     )
         except KeyError as kerr:
-            raise HTTPException(detail="Could not find S3 credentials", status_code=500) from kerr
+            raise HTTPException(
+                detail=f"{err_message} Could not find S3 credentials.",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from kerr
         except RuntimeError as rte:
-            raise HTTPException(detail="Could not connect to obs bucket!", status_code=400) from rte
+            raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
@@ -815,7 +818,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         except (NameError, AttributeError):
             # "The current user will be used if needed in rerouting"
             user_login = None
-        logger.debug(f"Received url request.url.path = {request.url.path}")
+        logger.debug(f"Received {request.method} url request.url.path = {request.url.path}")
         request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
