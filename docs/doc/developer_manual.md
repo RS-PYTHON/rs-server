@@ -57,7 +57,7 @@ The following is the code style used in developing for RS-Server:
 RS-Server REST API Documentation
 ================================
 
-The frontend of the RS-Server ecosystem is a specialized service that primarily provides [REST API](api/rest/index.md) documentation. Here’s a detailed overview of its features and functionality:
+The frontend of the RS-Server ecosystem is a specialized service that primarily provides a REST API documentation. Here’s a detailed overview of its features and functionality:
 **Service Overview**
 
 1. Purpose:
