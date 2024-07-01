@@ -75,7 +75,7 @@ def clear_aws_credentials():
 
 
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
-    response = client.get("/api.html")
+    response = client.get("/catalog/api.html")
     assert response.status_code == 200
 
 

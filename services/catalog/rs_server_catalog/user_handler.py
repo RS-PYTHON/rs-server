@@ -71,7 +71,7 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
         dict: Return a dictionary containing owner, collection and item ID.
     """
 
-    patterns = [r"/_mgmt/ping", r"/api.*", r"/favicon.ico"]
+    patterns = [r"/_mgmt/ping", r"/api", r"/favicon.ico"]
 
     # if path == "/":
     #     raise ValueError(f"URL ({path}) is invalid.")
@@ -161,7 +161,7 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     elif path == CATALOG_COLLECTION:
         path = "/collections"
 
-    elif "catalog" not in path and not any(re.match(pattern, path) for pattern in patterns):
+    elif "catalog" not in path and not any(re.fullmatch(pattern, path) for pattern in patterns):
         raise ValueError(f"Path {path} is invalid.")
     return path, ids_dict
 

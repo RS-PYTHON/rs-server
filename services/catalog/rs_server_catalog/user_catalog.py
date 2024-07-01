@@ -40,7 +40,10 @@ from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
 from pygeofilter.parsers.ecql import parse as parse_ecql
 from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
-from rs_server_catalog.landing_page import manage_landing_page
+from rs_server_catalog.landing_page import (
+    add_prefix_link_landing_page,
+    manage_landing_page,
+)
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
@@ -578,22 +581,15 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             # Manage local landing page of the catalog
             regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
             for link in content["links"]:
-                if link["rel"] == "data":
-                    collection_suffix = "/collections"
-                    link["href"] = link["href"][: -len(collection_suffix)] + "/catalog/collections"
-
-                if link["rel"] in ["root", "self"]:
-                    link["href"] += "catalog/"
-
-                if link["rel"] == "search":
-                    search_suffix = "/search"
-                    link["href"] = link["href"][: -len(search_suffix)] + "/catalog/search"
                 link_parser = urlparse(link["href"])
 
                 if match := re.match(regex_catalog, link_parser.path):
                     groups = match.groupdict()
                     new_path = add_user_prefix(link_parser.path, groups["owner_id"], groups["collection_id"])
                     link["href"] = link_parser._replace(path=new_path).geturl()
+            url = request.url._url  # pylint: disable=protected-access
+            url = url[: len(url) - len(request.url.path)]
+            content = add_prefix_link_landing_page(content, url)
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)

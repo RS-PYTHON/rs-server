@@ -154,3 +154,18 @@ def manage_landing_page(
 
     content["links"] = [link for link in content["links"] if link not in unauthorized_collections]
     return content
+
+
+def add_prefix_link_landing_page(content: dict, url: str):
+    """add the prefix '/catalog' if it is not present
+
+    Args:
+        content (dict): the landing page
+        url (str): the url
+    """
+    for link in content["links"]:
+        if "href" in link and "/catalog" not in link["href"]:
+            href = link["href"]
+            url_size = len(url)
+            link["href"] = href[:url_size] + "/catalog" + href[url_size:]
+    return content
