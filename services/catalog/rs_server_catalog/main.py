@@ -116,7 +116,7 @@ def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-d
     return res
 
 
-def extract_openapi_specification():
+def extract_openapi_specification():  # pylint: disable=too-many-locals
     """Extract the openapi specifications and modify the content to be conform
     to the rs catalog specifications. Then, apply the changes in the application.
     """
