@@ -175,6 +175,7 @@ def extract_openapi_specification():
                             "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
                         )
     owner_id = "Owner ID"
+    collection_id = "Collection ID"
     catalog_owner_id: Dict[str, Any] = {
         "get": {
             "summary": "Landing page for the catalog owner id only.",
@@ -194,11 +195,43 @@ def extract_openapi_specification():
             ],
         },
     }
-    path = "/catalog/catalogs/{owner_id}"
+    catalog_catalogs_path = "/catalog/catalogs/{owner_id}"
     method = "GET"
+
+    catalog_collection_search: Dict[str, Any] = {
+        "get": {
+            "summary": "search endpoint to search only inside a specific collection.",
+            "description": "Endpoint.",
+            "operationId": "Get_search_collection",
+            "responses": {
+                "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
+            },
+            "parameters": [
+                {
+                    "description": owner_id,
+                    "required": True,
+                    "schema": {"type": "string", "title": owner_id, "description": owner_id},
+                    "name": "owner_id",
+                    "in": "path",
+                },
+                {
+                    "description": collection_id,
+                    "required": True,
+                    "schema": {"type": "string", "title": collection_id, "description": collection_id},
+                    "name": "collection_id",
+                    "in": "path",
+                },
+            ],
+        },
+    }
+
+    catalog_collection_search_path = "/catalog/collections/{owner_id}:{collection_id}/search"
+
     if common_settings.CLUSTER_MODE:
         catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
-    openapi_spec["paths"].setdefault(path, {})[method.lower()] = catalog_owner_id
+        catalog_collection_search["security"] = [{"API key passed in HTTP header": []}]
+    openapi_spec["paths"].setdefault(catalog_catalogs_path, {})[method.lower()] = catalog_owner_id
+    openapi_spec["paths"].setdefault(catalog_collection_search_path, {})[method.lower()] = catalog_collection_search
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
