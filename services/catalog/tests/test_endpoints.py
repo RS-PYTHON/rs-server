@@ -80,7 +80,7 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
 
 
 class TestCatalogCollectionSearchEndpoint:
-    """This class contains integration tests for the endpoit '/catalog/collections/{owner_id}:{collection_id}/search'."""
+    """This class contains integration tests for the endpoit '/catalog/collections/{owner_id}:{collection_id}/search'"""
 
     def test_search_in_toto_s1_l1_collection(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"filter": "width=2500"}
