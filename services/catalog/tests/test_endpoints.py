@@ -79,6 +79,25 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
     assert response.status_code == 200
 
 
+class TestCatalogCollectionSearchEndpoint:
+    """This class contains integration tests for the endpoit '/catalog/collections/{owner_id}:{collection_id}/search'."""
+
+    def test_search_in_toto_s1_l1_collection(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"filter": "width=2500"}
+
+        response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 3
+
+        test_params = {"filter": "width=300"}
+
+        response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 0
+
+
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
 

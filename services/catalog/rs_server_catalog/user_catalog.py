@@ -357,7 +357,14 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                     request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
         else:
             query = parse_qs(request.url.query)
-            if "filter" in query:
+            if self.request_ids["owner_id"] and self.request_ids["collection_id"]:
+                new_query = {
+                    "collections": f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
+                    "filter-lang": "cql2-text",
+                    "filter": query["filter"][0],
+                }
+                request.scope["query_string"] = urlencode(new_query, doseq=True).encode()
+            elif "filter" in query:
                 if "filter-lang" not in query:
                     query["filter-lang"] = ["cql2-text"]
                 qs_filter = query["filter"][0]
