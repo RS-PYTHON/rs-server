@@ -361,9 +361,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 new_query = {
                     "collections": f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
                     "filter-lang": "cql2-text",
-                    "filter": query["filter"][0],
                 }
-                request.scope["query_string"] = urlencode(new_query, doseq=True).encode()
+                query.update(new_query)
+                request.scope["query_string"] = urlencode(query, doseq=True).encode()
             elif "filter" in query:
                 if "filter-lang" not in query:
                     query["filter-lang"] = ["cql2-text"]

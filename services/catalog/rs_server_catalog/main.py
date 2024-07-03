@@ -19,6 +19,7 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 import asyncio
+import copy
 import os
 import sys
 import traceback
@@ -177,54 +178,51 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     owner_id = "Owner ID"
     collection_id = "Collection ID"
     catalog_owner_id: Dict[str, Any] = {
-        "get": {
-            "summary": "Landing page for the catalog owner id only.",
-            "description": "Endpoint.",
-            "operationId": "Get_landing_page_owner_id",
-            "responses": {
-                "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
-            },
-            "parameters": [
-                {
-                    "description": owner_id,
-                    "required": True,
-                    "schema": {"type": "string", "title": owner_id, "description": owner_id},
-                    "name": "owner_id",
-                    "in": "path",
-                },
-            ],
+        "summary": "Landing page for the catalog owner id only.",
+        "description": "Endpoint.",
+        "operationId": "Get_landing_page_owner_id",
+        "responses": {
+            "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
         },
+        "parameters": [
+            {
+                "description": owner_id,
+                "required": True,
+                "schema": {"type": "string", "title": owner_id, "description": owner_id},
+                "name": "owner_id",
+                "in": "path",
+            },
+        ],
     }
     catalog_catalogs_path = "/catalog/catalogs/{owner_id}"
     method = "GET"
 
+    search_parameters = copy.deepcopy(openapi_spec["paths"]["/catalog/search"]["get"]["parameters"])
     catalog_collection_search: Dict[str, Any] = {
-        "get": {
-            "summary": "search endpoint to search only inside a specific collection.",
-            "description": "Endpoint.",
-            "operationId": "Get_search_collection",
-            "responses": {
-                "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
-            },
-            "parameters": [
-                {
-                    "description": owner_id,
-                    "required": True,
-                    "schema": {"type": "string", "title": owner_id, "description": owner_id},
-                    "name": "owner_id",
-                    "in": "path",
-                },
-                {
-                    "description": collection_id,
-                    "required": True,
-                    "schema": {"type": "string", "title": collection_id, "description": collection_id},
-                    "name": "collection_id",
-                    "in": "path",
-                },
-            ],
+        "summary": "search endpoint to search only inside a specific collection.",
+        "description": "Endpoint.",
+        "operationId": "Get_search_collection",
+        "responses": {
+            "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
         },
+        "parameters": [
+            {
+                "description": owner_id,
+                "required": True,
+                "schema": {"type": "string", "title": owner_id, "description": owner_id},
+                "name": "owner_id",
+                "in": "path",
+            },
+            {
+                "description": collection_id,
+                "required": True,
+                "schema": {"type": "string", "title": collection_id, "description": collection_id},
+                "name": "collection_id",
+                "in": "path",
+            },
+        ],
     }
-
+    catalog_collection_search["parameters"].extend(search_parameters)
     catalog_collection_search_path = "/catalog/collections/{owner_id}:{collection_id}/search"
 
     if common_settings.CLUSTER_MODE:
