@@ -30,7 +30,7 @@ The middleware:
 import json
 import os
 import re
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
@@ -358,7 +358,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         else:
             query = parse_qs(request.url.query)
             if self.request_ids["owner_id"] and self.request_ids["collection_id"]:
-                new_query = {
+                new_query: Dict[str, Any] = {
                     "collections": f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
                     "filter-lang": "cql2-text",
                 }
