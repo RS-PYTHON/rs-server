@@ -458,7 +458,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 if user != user_login:
                     detail = {
                         "error": f"The '{user_login}' user cannot create a \
-collection with another user '{user}' as the owner",
+collection owned by the '{user}' user",
                     }
                     logger.error(detail["error"])
                     return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
@@ -796,7 +796,7 @@ collection with another user '{user}' as the owner",
         if self.request_ids["owner_id"] != user_login:
             # Manage a collection creation. The apikey user (or local user if in local mode)
             # should be the same as the owner field in the body request. In other words, the
-            # apikey user can't create a collection that has another user as owner
+            # apikey user can't create a collection owned by another user
             logger.error(
                 f"The '{user_login}' user cannot delete a \
 collection or an item from a collection owned by the user '{self.request_ids['owner_id']}'",
