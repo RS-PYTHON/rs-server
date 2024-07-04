@@ -29,6 +29,7 @@ os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator
+from unittest import mock
 
 import pytest
 from rs_server_catalog.main import app, extract_openapi_specification
@@ -179,7 +180,7 @@ def pyteam_s1_l1_fixture() -> Collection:  # pylint: disable=missing-function-do
     return a_collection("pyteam", "S1_L1")
 
 
-def add_collection(client: TestClient, collection: Collection):
+def add_collection(user: str, client: TestClient, collection: Collection):
     """Add the given collection in the STAC catalog.
 
     Args:
@@ -192,11 +193,14 @@ def add_collection(client: TestClient, collection: Collection):
     Raises:
         Error if the collection addition failed.
     """
-    response = client.post(
-        "/catalog/collections",
-        json=collection.properties,
-    )
-    response.raise_for_status()
+    # mock the getpass.getuser function, otherwise the local user can't create
+    # collection for other users (toto, titi, pyteam)
+    with mock.patch("getpass.getuser", return_value=user):
+        response = client.post(
+            "/catalog/collections",
+            json=collection.properties,
+        )
+        response.raise_for_status()
 
 
 @dataclass
@@ -296,19 +300,27 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
     """
     This fixture is used to return the minimal form of accepted collection
     """
-    client.post(
-        "/catalog/collections",
-        json={
-            "id": "fixture_collection",
-            "type": "Collection",
-            "description": "test_description",
-            "stac_version": "1.0.0",
-            "owner": "fixture_owner",
-        },
-    )
+    # Mock the getpass.getuser function, otherwise the local user can't create
+    # collection for another user. Another solution would be to delete the "owner"
+    # field from the body of the collection, because the rs-server-catalog will fill it
+    # with the current user
+    with mock.patch("getpass.getuser", return_value="fixture_owner"):
+        assert (
+            client.post(
+                "/catalog/collections",
+                json={
+                    "id": "fixture_collection",
+                    "type": "Collection",
+                    "description": "test_description",
+                    "stac_version": "1.0.0",
+                    "owner": "fixture_owner",
+                },
+            ).status_code
+            == 200
+        )
     yield
-    # teardown cleanup, delete collection only if it exists (was not removed in test => status is 200)
-    if client.get("/catalog/collections/fixture_owner:fixture_collection").status_code != 200:
+    # teardown cleanup, delete collection (doesn't matter if it exists or not)
+    with mock.patch("getpass.getuser", return_value="fixture_owner"):
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
 
@@ -442,11 +454,11 @@ def setup_database(
         feature_titi_S2_L1_0 (_type_): a feature from the collection S2_L1 with the
         user id titi.
     """
-    add_collection(client, toto_s1_l1)
-    add_collection(client, toto_s2_l3)
-    add_collection(client, titi_s2_l1)
-    add_collection(client, darius_s1_l2)
-    add_collection(client, pyteam_s1_l1)
+    add_collection("toto", client, toto_s1_l1)
+    add_collection("toto", client, toto_s2_l3)
+    add_collection("titi", client, titi_s2_l1)
+    add_collection("darius", client, darius_s1_l2)
+    add_collection("pyteam", client, pyteam_s1_l1)
     add_feature(client, feature_toto_s1_l1_0)
     add_feature(client, feature_toto_s1_l1_1)
     add_feature(client, feature_titi_s2_l1_0)

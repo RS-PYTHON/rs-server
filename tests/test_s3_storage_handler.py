@@ -818,7 +818,7 @@ def test_put_files_to_s3(
 
         for key in lst_with_files:
             test_bucket_files = test_bucket_files + s3_handler.list_s3_files_obj(bucket, key)
-        print(f"test_bucket_files = {test_bucket_files}")
+        # print(f"test_bucket_files = {test_bucket_files}")
 
     except RuntimeError:
         assert bucket == "non-existent-bucket"
