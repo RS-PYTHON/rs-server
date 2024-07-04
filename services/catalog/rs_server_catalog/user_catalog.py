@@ -30,7 +30,6 @@ The middleware:
 import json
 import os
 import re
-from collections import OrderedDict
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
