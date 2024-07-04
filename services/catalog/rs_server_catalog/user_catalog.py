@@ -319,7 +319,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 res = right
         return res
 
-    async def manage_search_request(self, request: Request) -> Request | JSONResponse:
+    async def manage_search_request(  # pylint: disable = too-many-branches
+        self,
+        request: Request,
+    ) -> Request | JSONResponse:
         """find the user in the filter parameter and add it to the
         collection name.
 
@@ -329,8 +332,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         Returns:
             Request: the new request with the collection name updated.
         """
-        auth_roles = []
-        user_login = ""
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
@@ -339,57 +340,36 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             if (
                 "filter-lang" not in content
             ):  # The user needs to specify the filter-lang otherwise the code raise an error
-                detail = {"error": "filter-lang is missing"}
+                detail = {"error": "filter-lang is missing."}
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
             if self.request_ids["owner_id"] and self.request_ids["collection_id"]:  # /catalog/collections/.../search
-                if (  # If we are in cluster mode and the user_login is not authorized
-                    # to put/post returns a HTTP_401_UNAUTHORIZED status.
-                    common_settings.CLUSTER_MODE
-                    and not get_authorisation(
-                        self.request_ids["collection_id"],
-                        auth_roles,
-                        "read",
-                        self.request_ids["owner_id"],
-                        user_login,
-                    )
-                ):
-                    detail = {"error": "Unauthorized access."}
-                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-                if "collections" in content:
-                    content["collections"] = [f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"]
+                owner_id = self.request_ids["owner_id"]
+                collection_id = self.request_ids["collection_id"]
+                if "collections" in content:  # If "collections" field exists, just update the existing field.
+                    content["collections"] = [f"{owner_id}_{collection_id}"]
                 else:
                     # "collections" field has to be before "filter" field, so we need to create a new dict and insert
                     # "collections" field before "filter" field.
                     collections = {
-                        "collections": [f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"],
+                        "collections": [f"{owner_id}_{collection_id}"],
                     }
                     content = {**collections, **content}
-
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-
-            elif request.scope["path"] == "/search" and "filter" in content:
+            elif request.scope["path"] == "/search" and "filter" in content:  # /catalog/search
+                # We have to get the owner_id in the cql2-json query so we can update de "collections" field.
                 qs_filter = content["filter"]
                 filters = parse_cql2_json(qs_filter)
-                user = self.find_owner_id(filters)
+                owner_id = self.find_owner_id(filters)
+                collection_id = content["collections"][0]
                 if "collections" in content:
-                    if (  # If we are in cluster mode and the user_login is not authorized
-                        # to put/post returns a HTTP_401_UNAUTHORIZED status.
-                        common_settings.CLUSTER_MODE
-                        and not get_authorisation(
-                            content["collections"][0],
-                            auth_roles,
-                            "read",
-                            user,
-                            user_login,
-                        )
-                    ):
-                        detail = {"error": "Unauthorized access."}
-                        return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-                    content["collections"] = [f"{user}_{content['collections'][0]}"]
+                    content["collections"] = [f"{owner_id}_{collection_id}"]
                     request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+
         else:
             query = parse_qs(request.url.query)
-            if self.request_ids["owner_id"] and self.request_ids["collection_id"]:
+            if self.request_ids["owner_id"] and self.request_ids["collection_id"]:  # /catalog/collections/.../search
+                owner_id = self.request_ids["owner_id"]
+                collection_id = self.request_ids["collection_id"]
                 new_query: Dict[str, Any] = {
                     "collections": f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
                     "filter-lang": "cql2-text",
@@ -398,26 +378,31 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 request.scope["query_string"] = urlencode(query, doseq=True).encode()
             elif "filter" in query:
                 if "filter-lang" not in query:
-                    query["filter-lang"] = ["cql2-text"]
+                    detail = {"error": "filter-lang is missing."}
+                    return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
                 qs_filter = query["filter"][0]
                 filters = parse_ecql(qs_filter)
-                user = self.find_owner_id(filters)
                 if "collections" in query:
-                    if (  # If we are in cluster mode and the user_login is not authorized
-                        # to put/post returns a HTTP_401_UNAUTHORIZED status.
-                        common_settings.CLUSTER_MODE
-                        and not get_authorisation(
-                            query["collections"][0],
-                            auth_roles,
-                            "read",
-                            user,
-                            user_login,
-                        )
-                    ):
-                        detail = {"error": "Unauthorized access."}
-                        return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-                    query["collections"] = [f"{user}_{query['collections'][0]}"]
+                    # We have to get the owner_id in the query so we can update de "collections" field.
+                    owner_id = self.find_owner_id(filters)
+                    collection_id = query["collections"][0]
+                    query["collections"] = [f"{owner_id}_{collection_id}"]
                     request.scope["query_string"] = urlencode(query, doseq=True).encode()
+                else:
+                    return request
+        if (  # If we are in cluster mode and the user_login is not authorized
+            # to put/post returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and not get_authorisation(
+                collection_id,
+                auth_roles,
+                "read",
+                owner_id,
+                user_login,
+            )
+        ):
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
