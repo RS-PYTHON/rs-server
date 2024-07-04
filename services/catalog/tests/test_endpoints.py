@@ -149,7 +149,7 @@ class TestCatalogSearchEndpoint:
         content = json.loads(response.content)
         assert len(content["features"]) == 3
 
-    def test_search_endpoint_without_filter(self, client):
+    def test_search_endpoint_without_filter(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "limit": "5"}
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200

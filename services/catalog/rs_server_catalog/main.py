@@ -225,11 +225,22 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     catalog_collection_search["parameters"].extend(search_parameters)
     catalog_collection_search_path = "/catalog/collections/{owner_id}:{collection_id}/search"
 
+    catalog_collection_search_post: Dict[str, Any] = {
+        "summary": "search endpoint to search only inside a specific collection.",
+        "description": "Endpoint.",
+        "operationId": "Post_search_collection",
+        "responses": {
+            "200": {"description": "Successful Response", "content": {"application/geojson": {"schema": {}}}},
+        },
+    }
+
     if common_settings.CLUSTER_MODE:
         catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
         catalog_collection_search["security"] = [{"API key passed in HTTP header": []}]
+        catalog_collection_search_post["security"] = [{"API key passed in HTTP header": []}]
     openapi_spec["paths"].setdefault(catalog_catalogs_path, {})["get"] = catalog_owner_id
     openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["get"] = catalog_collection_search
+    openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["post"] = catalog_collection_search_post
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
