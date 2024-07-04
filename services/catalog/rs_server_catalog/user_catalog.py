@@ -338,7 +338,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         if request.method == "POST":
             content = await request.json()
             if (
-                "filter-lang" not in content
+                "filter-lang" not in content and "filter" in content
             ):  # The user needs to specify the filter-lang otherwise the code raise an error
                 detail = {"error": "filter-lang is missing."}
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
