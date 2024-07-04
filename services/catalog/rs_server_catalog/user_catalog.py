@@ -339,9 +339,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             content = await request.json()
             if (
                 "filter-lang" not in content and "filter" in content
-            ):  # The user needs to specify the filter-lang otherwise the code raise an error
-                detail = {"error": "filter-lang is missing."}
-                return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
+            ):  # If not specified, the default value of filter_lang in a post method is cql2-json.
+                filter_lang = {"filter-lang": "cql2-json"}
+                content = {**filter_lang, **content}  # The "filter_lang" field has to be placed BEFORE the filter.
             if self.request_ids["owner_id"] and self.request_ids["collection_id"]:  # /catalog/collections/.../search
                 owner_id = self.request_ids["owner_id"]
                 collection_id = self.request_ids["collection_id"]
@@ -377,9 +377,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 query.update(new_query)
                 request.scope["query_string"] = urlencode(query, doseq=True).encode()
             elif "filter" in query:
-                if "filter-lang" not in query:
-                    detail = {"error": "filter-lang is missing."}
-                    return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
+                # if "filter-lang" not in query:
+                #     detail = {"error": "filter-lang is missing."}
+                #     return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
                 qs_filter = query["filter"][0]
                 filters = parse_ecql(qs_filter)
                 if "collections" in query:

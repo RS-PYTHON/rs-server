@@ -149,13 +149,10 @@ class TestCatalogSearchEndpoint:
         content = json.loads(response.content)
         assert len(content["features"]) == 3
 
-    def test_search_endpoint_fails_without_filter_lang(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"filter": "owner='toto'"}
-
+    def test_search_endpoint_without_filter(self, client):
+        test_params = {"collections": "S1_L1", "limit": "5"}
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 400
-        content = json.loads(response.content)
-        assert content == {"error": "filter-lang is missing."}
+        assert response.status_code == 200
 
     def test_searh_endpoint_without_owner_id(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
@@ -191,10 +188,10 @@ class TestCatalogSearchEndpoint:
         content = json.loads(response.content)
         assert len(content["features"]) == 3
 
-    def test_post_search_endpoint_fails_if_no_filter_lang(self, client):  # pylint: disable=missing-function-docstring
+    def test_post_search_endpoint_with_no_filter_lang(self, client):  # pylint: disable=missing-function-docstring
         test_json = {
             "collections": ["S1_L1"],
-            # "filter-lang": "cql2-json" # Here we remove the filter-lang field and check that we return a clean error response
+            # Here we remove the filter-lang field and check that we insert a default filter-lang.
             "filter": {
                 "op": "and",
                 "args": [
@@ -205,9 +202,7 @@ class TestCatalogSearchEndpoint:
         }
 
         response = client.post("/catalog/search", json=test_json)
-        assert response.status_code == 400
-        content = json.loads(response.content)
-        assert content == {"error": "filter-lang is missing."}
+        assert response.status_code == 200
 
     def test_queryables(self, client):  # pylint: disable=missing-function-docstring
         try:
