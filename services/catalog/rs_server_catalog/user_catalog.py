@@ -30,6 +30,7 @@ The middleware:
 import json
 import os
 import re
+from collections import OrderedDict
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -335,6 +336,11 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             user_login = request.state.user_login
         if request.method == "POST":
             content = await request.json()
+            if (
+                "filter-lang" not in content
+            ):  # The user needs to specify the filter-lang otherwise the code raise an error
+                detail = {"error": "filter-lang is missing"}
+                return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
             if self.request_ids["owner_id"] and self.request_ids["collection_id"]:  # /catalog/collections/.../search
                 if (  # If we are in cluster mode and the user_login is not authorized
                     # to put/post returns a HTTP_401_UNAUTHORIZED status.
@@ -349,7 +355,16 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 ):
                     detail = {"error": "Unauthorized access."}
                     return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-                content["collections"] = f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"
+                if "collections" in content:
+                    content["collections"] = [f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"]
+                else:
+                    # "collections" field has to be before "filter" field, so we need to create a new dict and insert
+                    # "collections" field before "filter" field.
+                    collections = {
+                        "collections": [f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"],
+                    }
+                    content = {**collections, **content}
+
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
 
             elif request.scope["path"] == "/search" and "filter" in content:

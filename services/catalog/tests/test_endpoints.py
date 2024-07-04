@@ -99,7 +99,6 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
 
     def test_post_search_in_toto_s1_l1_collection(self, client):  # pylint: disable=missing-function-docstring
         cql2_json_query = {
-            "collections": ["S1_L1"],
             "filter-lang": "cql2-json",
             "filter": {
                 "op": "and",
@@ -191,6 +190,24 @@ class TestCatalogSearchEndpoint:
         assert response.status_code == 200
         content = json.loads(response.content)
         assert len(content["features"]) == 3
+
+    def test_post_search_endpoint_fails_if_no_filter_lang(self, client):  # pylint: disable=missing-function-docstring
+        test_json = {
+            "collections": ["S1_L1"],
+            # "filter-lang": "cql2-json" # Here we remove the filter-lang field and check that we return a clean error response
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == 400
+        content = json.loads(response.content)
+        assert content == {"error": "filter-lang is missing"}
 
     def test_queryables(self, client):  # pylint: disable=missing-function-docstring
         try:
