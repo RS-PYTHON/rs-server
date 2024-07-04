@@ -799,7 +799,7 @@ collection owned by the '{user}' user",
             # apikey user can't create a collection owned by another user
             logger.error(
                 f"The '{user_login}' user cannot delete a \
-collection or an item from a collection owned by the user '{self.request_ids['owner_id']}'",
+collection or an item from a collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
         return True
