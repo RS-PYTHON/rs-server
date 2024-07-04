@@ -195,8 +195,8 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
         ],
     }
     catalog_catalogs_path = "/catalog/catalogs/{owner_id}"
-    method = "GET"
 
+    # We copy the parameters from the original search endpoint and we add new parameters.
     search_parameters = copy.deepcopy(openapi_spec["paths"]["/catalog/search"]["get"]["parameters"])
     catalog_collection_search: Dict[str, Any] = {
         "summary": "search endpoint to search only inside a specific collection.",
@@ -228,8 +228,8 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     if common_settings.CLUSTER_MODE:
         catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
         catalog_collection_search["security"] = [{"API key passed in HTTP header": []}]
-    openapi_spec["paths"].setdefault(catalog_catalogs_path, {})[method.lower()] = catalog_owner_id
-    openapi_spec["paths"].setdefault(catalog_collection_search_path, {})[method.lower()] = catalog_collection_search
+    openapi_spec["paths"].setdefault(catalog_catalogs_path, {})["get"] = catalog_owner_id
+    openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["get"] = catalog_collection_search
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 

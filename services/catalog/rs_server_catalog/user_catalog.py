@@ -335,7 +335,24 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             user_login = request.state.user_login
         if request.method == "POST":
             content = await request.json()
-            if request.scope["path"] == "/search" and "filter" in content:
+            if self.request_ids["owner_id"] and self.request_ids["collection_id"]:  # /catalog/collections/.../search
+                if (  # If we are in cluster mode and the user_login is not authorized
+                    # to put/post returns a HTTP_401_UNAUTHORIZED status.
+                    common_settings.CLUSTER_MODE
+                    and not get_authorisation(
+                        self.request_ids["collection_id"],
+                        auth_roles,
+                        "read",
+                        self.request_ids["owner_id"],
+                        user_login,
+                    )
+                ):
+                    detail = {"error": "Unauthorized access."}
+                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+                content["collections"] = f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"
+                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+
+            elif request.scope["path"] == "/search" and "filter" in content:
                 qs_filter = content["filter"]
                 filters = parse_cql2_json(qs_filter)
                 user = self.find_owner_id(filters)
