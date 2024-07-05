@@ -429,7 +429,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         Returns:
             Request: The request updated.
         """
-        user_login = getpass.getuser()
+        user_login = ""
         auth_roles = []
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
@@ -452,10 +452,11 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
             if request.scope["path"] == "/collections":
-                # Manage a collection creation. The apikey user (or local user if in local mode)
-                # should be the same as the owner field in the body request. In other words, the
-                # apikey user cannot create a collection owned by another user
-                if user != user_login:
+                # Manage a collection creation. The apikey user should be the same as the owner
+                # field in the body request. In other words, an apikey user cannot create a
+                # collection owned by another user.
+                # We don't care for local mode, any user may create / delete collection owned by another user
+                if common_settings.CLUSTER_MODE and user != user_login:
                     detail = {
                         "error": f"The '{user_login}' user cannot create a \
 collection owned by the '{user}' user",
@@ -793,7 +794,8 @@ collection owned by the '{user}' user",
             )
         ):
             return False
-        if self.request_ids["owner_id"] != user_login:
+        # we don't care for local mode, any user may create / delete collection owned by another user
+        if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != user_login:
             # Manage a collection creation. The apikey user (or local user if in local mode)
             # should be the same as the owner field in the body request. In other words, the
             # apikey user can't create a collection owned by another user

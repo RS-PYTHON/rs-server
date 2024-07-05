@@ -172,7 +172,7 @@ class TestCatalogSearchEndpoint:
 class TestCatalogPublishCollectionEndpoint:
     """This class is used to group all tests for publishing a collection into catalog DB."""
 
-    def test_create_new_minimal_collection(self, client, mocker):
+    def test_create_new_minimal_collection(self, client):
         """
         Test endpoint POST /catalog/collections.
         """
@@ -183,11 +183,6 @@ class TestCatalogPublishCollectionEndpoint:
             "stac_version": "1.0.0",
             "owner": "test_owner",
         }
-        # Mock the getpass.getuser function, otherwise the local user can't create
-        # a collection owned by another user. Another solution would be to delete the "owner"
-        # field from the body of the collection, because the rs-server-catalog will fill it
-        # with the current user
-        mocker.patch("getpass.getuser", return_value="test_owner")
         response = client.post("/catalog/collections", json=minimal_collection)
         # Check that collection status code is 200
         assert response.status_code == fastapi.status.HTTP_200_OK
@@ -211,7 +206,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert response_content["type"] == minimal_collection["type"]
         assert response_content["stac_version"] == minimal_collection["stac_version"]
 
-    def test_failure_to_create_collection(self, client, mocker):
+    def test_failure_to_create_collection(self, client):
         """
         Test endpoint POST /catalog/collections with incorrect collection.
         Endpoint: POST /catalog/collections
@@ -223,11 +218,6 @@ class TestCatalogPublishCollectionEndpoint:
             "stac_version": "1.0.0",
             "owner": "test_incorrect_owner",
         }
-        # Mock the getpass.getuser function, otherwise the local user can't create
-        # a collection owned by another user. Another solution would be to delete the "owner"
-        # field from the body of the collection, because the rs-server-catalog will fill it
-        # with the current user
-        mocker.patch("getpass.getuser", return_value="test_incorrect_owner")
         # Test that response is 400 BAD Request
         response = client.post("/catalog/collections", json=minimal_incorrect_collection)
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
@@ -237,7 +227,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 0
 
-    def test_create_a_collection_already_created(self, client, mocker):
+    def test_create_a_collection_already_created(self, client):
         """
         Test that endpoint POST /catalog/collections returns 409 Conflict if collection already exists.
         This action can be performed only by PUT or PATCH /catalog/collections.
@@ -249,11 +239,6 @@ class TestCatalogPublishCollectionEndpoint:
             "stac_version": "1.0.0",
             "owner": "duplicate_owner",
         }
-        # Mock the getpass.getuser function, otherwise the local user can't create
-        # a collection owned by another user. Another solution would be to delete the "owner"
-        # field from the body of the collection, because the rs-server-catalog will fill it
-        # with the current user
-        mocker.patch("getpass.getuser", return_value="duplicate_owner")
         # Test that collection is correctly published
         response = client.post("/catalog/collections", json=minimal_collection)
         assert response.status_code == fastapi.status.HTTP_200_OK
@@ -270,7 +255,7 @@ class TestCatalogPublishCollectionEndpoint:
         response_content = json.loads(response.content)
         assert response_content["description"] == "test_description"
 
-    def test_update_a_created_collection(self, client, mocker):
+    def test_update_a_created_collection(self, client):
         """
         Test that endpoint PUT /catalog/collections updates a collection.
         Endpoint: PUT /catalog/collections.
@@ -283,11 +268,6 @@ class TestCatalogPublishCollectionEndpoint:
             "stac_version": "1.0.0",
             "owner": "second_test_owner",
         }
-        # Mock the getpass.getuser function, otherwise the local user can't create
-        # a collection owned by another user. Another solution would be to delete the "owner"
-        # field from the body of the collection, because the rs-server-catalog will fill it
-        # with the current user
-        mocker.patch("getpass.getuser", return_value="second_test_owner")
         # Post the collection
         post_collection_response = client.post("/catalog/collections", json=minimal_collection)
         assert post_collection_response.status_code == fastapi.status.HTTP_200_OK
@@ -321,7 +301,7 @@ class TestCatalogPublishCollectionEndpoint:
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
 
-    def test_delete_a_created_collection(self, client, mocker):
+    def test_delete_a_created_collection(self, client):
         """
         Test that a created collection can be deleted
         Endpoint: DELETE /catalog/collections.
@@ -333,11 +313,6 @@ class TestCatalogPublishCollectionEndpoint:
             "stac_version": "1.0.0",
             "owner": "will_be_deleted_owner",
         }
-        # Mock the getpass.getuser function, otherwise the local user can't create
-        # a collection owned by another user. Another solution would be to delete the "owner"
-        # field from the body of the collection, because the rs-server-catalog will fill it
-        # with the current user
-        mocker.patch("getpass.getuser", return_value="will_be_deleted_owner")
         response = client.post("/catalog/collections", json=minimal_collection)
         assert response.status_code == fastapi.status.HTTP_200_OK
 
@@ -353,21 +328,16 @@ class TestCatalogPublishCollectionEndpoint:
         second_check_response = client.get("/catalog/collections/", params={"owner": "will_be_deleted_owner"})
         assert second_check_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
-    def test_delete_a_non_existent_collection(self, client, mocker):
+    def test_delete_a_non_existent_collection(self, client):
         """
         Test DELETE collection endpoint on non existing collection
         """
-        # Mock the getpass.getuser function, otherwise the local user can't create
-        # a collection owned by another user. Another solution would be to delete the "owner"
-        # field from the body of the collection, because the rs-server-catalog will fill it
-        # with the current user
-        mocker.patch("getpass.getuser", return_value="non_existent_owner")
         # Should call delete endpoint on a non existent collection id
         delete_response = client.delete("/catalog/collections/non_existent_owner:non_existent_collection")
         assert delete_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
-    def test_delete_a_foreign_collection(self, client, mocker):
-        """Test DELETE collection endpoint, with a user that has no rights to remove a existing collection."""
+    def test_delete_a_foreign_collection(self, client):
+        """Test DELETE collection endpoint, with a user that has no rights to remove an existing collection."""
         minimal_collection = {
             "id": "correctly_created_collection",
             "type": "Collection",
@@ -375,29 +345,16 @@ class TestCatalogPublishCollectionEndpoint:
             "stac_version": "1.0.0",
             "owner": "owner_with_rights",
         }
-        # Mock the getpass.getuser function to create a collection owned by the 'owner_with_rights' user
-        # the mocking stage should be up only for the creation of the collection
-        mocker_patch = mocker.patch("getpass.getuser", return_value="owner_with_rights")
         response = client.post("/catalog/collections", json=minimal_collection)
         assert response.status_code == fastapi.status.HTTP_200_OK
-        # now try to delete the collection 'correctly_created_collection' owned by 'owner_with_rights',
-        # but this time don't mock the  getpass.getuser function. Thus, the rs-server-catalog
-        # will check the local running user which would be different than the 'owner_with_rights' user
-        # it should return an error
-        mocker.stop(mocker_patch)
-        delete_response = client.delete("/catalog/collections/owner_with_rights:correctly_created_collection")
+        delete_response = client.delete("/catalog/collections/owner_with_no_rights:correctly_created_collection")
         # To be changed with 405 not allowed after UAC
-        assert delete_response.status_code == fastapi.status.HTTP_401_UNAUTHORIZED
+        assert delete_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
-    def test_delete_non_empty_collection(self, client, a_minimal_collection, a_correct_feature, mocker):
+    def test_delete_non_empty_collection(self, client, a_minimal_collection, a_correct_feature):
         """
         Test that a collection than contain features can be successfully deleted.
         """
-        # Mock the getpass.getuser function, otherwise the local user can't create
-        # a collection owned by another user. Another solution would be to delete the "owner"
-        # field from the body of the collection, because the rs-server-catalog will fill it
-        # with the current user
-        mocker.patch("getpass.getuser", return_value="fixture_owner")
         first_get_collection_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert first_get_collection_response.status_code == fastapi.status.HTTP_200_OK
         assert json.loads(first_get_collection_response.content)["context"]["returned"] == 0
@@ -442,7 +399,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         a_correct_feature,
         owner,
         collection_id,
-        mocker,
     ):  # pylint: disable=too-many-locals, too-many-arguments
         """Test used to verify that the timestamps extension is correctly set up"""
         # Create moto server and temp / catalog bucket
@@ -473,9 +429,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             ]
             for obj in lst_with_files_to_be_copied:
                 s3_handler.s3_client.put_object(Bucket=self.temp_bucket, Key=obj, Body="testing\n")
-            # Mock the getpass.getuser function, otherwise the local user can't delete something
-            # from a collection owned by another user.(see the last client.delete call)
-            mocker.patch("getpass.getuser", return_value=owner)
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
             feature_data = json.loads(added_feature.content)
 
@@ -519,7 +472,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         client,
         a_correct_feature,
         a_minimal_collection,
-        mocker,
     ):
         """Test used to verify update of an item to the catalog."""
         # Create moto server and temp / catalog bucket
@@ -559,9 +511,6 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert sorted(s3_handler.list_s3_files_obj(self.temp_bucket, "")) != sorted(
                 s3_handler.list_s3_files_obj(self.catalog_bucket, ""),
             )
-            # Mock the getpass.getuser function, otherwise the local user can't delete something
-            # from a collection owned by another user.(see the last client.delete call)
-            mocker.patch("getpass.getuser", return_value="fixture_owner")
             # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
             # and a good OBS path. => 200 OK
             # Check if that user darius have a collection (Added in conftest -> setup_database)
@@ -906,14 +855,11 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
     """Class used to group tests that publish a collection and move assets between buckets."""
 
-    def test_create_new_minimal_feature(self, client, a_minimal_collection, a_correct_feature, mocker):
+    def test_create_new_minimal_feature(self, client, a_minimal_collection, a_correct_feature):
         """Test that a feature is correctly published into catalogDB
         ENDPOINT: POST /catalog/collections/{user:collection}/items
         ENDPOINT: GET /catalog/collections/{user:collection}/items
         ENDPOINT: GET /catalog/collections/{user:collection}/items/{featureID}"""
-        # Mock the getpass.getuser function, otherwise the local user can't delete
-        # a collection owned by another user (see below when client.delete is called)
-        mocker.patch("getpass.getuser", return_value="fixture_owner")
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         feature_post_response = client.post(
@@ -945,13 +891,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             == fastapi.status.HTTP_200_OK
         )
 
-    def test_get_non_existent_feature(self, client, a_minimal_collection, mocker):
+    def test_get_non_existent_feature(self, client, a_minimal_collection):
         """
         Testing GET feature endpoint with a non-existent feature ID.
         """
-        # Mock the getpass.getuser function, otherwise the local user can't delete
-        # a collection owned by another user (see below when client.delete is called)
-        mocker.patch("getpass.getuser", return_value="fixture_owner")
         # Try to get a non-existent feature from a non-existing collection
         feature_post_response = client.get("/catalog/collections/non_owner:non_collection/items/non_feature_id")
         assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
@@ -965,13 +908,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             == fastapi.status.HTTP_200_OK
         )
 
-    def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature, mocker):
+    def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
-        # Mock the getpass.getuser function, otherwise the local user can't delete
-        # a collection owned by another user (see below when client.delete is called)
-        mocker.patch("getpass.getuser", return_value="fixture_owner")
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
@@ -1009,14 +949,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         client,
         a_minimal_collection,
         a_correct_feature,
-        mocker,
     ):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
-        # Mock the getpass.getuser function, otherwise the local user can't delete
-        # a collection owned by another user (see below when client.delete is called)
-        mocker.patch("getpass.getuser", return_value="fixture_owner")
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
@@ -1119,13 +1055,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         )
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
-    def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature, mocker):
+    def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: DELETE: /catalog/collections/{user:collection}/items/{featureID}
         """
-        # Mock the getpass.getuser function, otherwise the local user can't delete
-        # a collection owned by another user (see below when client.delete is called)
-        mocker.patch("getpass.getuser", return_value="fixture_owner")
         a_correct_feature["collection"] = "fixture_collection"
 
         get_response = client.get(
@@ -1161,13 +1094,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             == fastapi.status.HTTP_200_OK
         )
 
-    def test_delete_a_non_existing_feature(self, client, a_minimal_collection, mocker):
+    def test_delete_a_non_existing_feature(self, client, a_minimal_collection):
         """
         Test DELETE feature endpoint on non-existing feature.
         """
-        # Mock the getpass.getuser function, otherwise the local user can't delete
-        # a collection owned by another user (see below when client.delete is called)
-        mocker.patch("getpass.getuser", return_value="fixture_owner")
         response = client.delete("/catalog/collections/fixture_owner:fixture_collection/items/non_existent_feature")
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
