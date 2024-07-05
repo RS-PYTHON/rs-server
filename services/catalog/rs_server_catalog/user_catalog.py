@@ -331,6 +331,8 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         Returns:
             Request: the new request with the collection name updated.
         """
+        auth_roles = []
+        user_login = ""
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
