@@ -118,6 +118,14 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
 
+    def test_search_endpoint_with_ids_and_collections(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"ids": "fe916452-ba6f-4631-9154-c249924a122d", "collections": "toto_S1_L1"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 1
+
     def test_search_endpoint_with_filter_owner_id_and_other(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
 
