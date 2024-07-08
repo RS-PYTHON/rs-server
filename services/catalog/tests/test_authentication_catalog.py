@@ -68,7 +68,7 @@ def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], 
         match_headers={APIKEY_HEADER: VALID_APIKEY},
         status_code=HTTP_200_OK,
         json={
-            "name": "toto",
+            "name": "test_apikey",
             "user_login": "pyteam",
             "is_active": True,
             "never_expire": True,
@@ -705,7 +705,7 @@ class TestAuthenticationPostOneCollection:
     collection_to_post = {
         "id": "MY_SPECIAL_COLLECTION",
         "type": "Collection",
-        "owner": "toto",
+        "owner": "pyteam",
         "links": [
             {
                 "rel": "items",
@@ -743,8 +743,8 @@ class TestAuthenticationPostOneCollection:
     ):  # pylint: disable=missing-function-docstring
 
         iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
+            "rs_catalog_pyteam:*_read",
+            "rs_catalog_pyteam:*_write",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
@@ -767,7 +767,30 @@ class TestAuthenticationPostOneCollection:
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        self.collection_to_post["owner"] = "toto"
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "POST",
+                "/catalog/collections",
+                json=self.collection_to_post,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
+    def test_fails_user_creates_collection_owned_by_another_user(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        self.collection_to_post["owner"] = "toto"
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "POST",
@@ -779,41 +802,7 @@ class TestAuthenticationPostOneCollection:
 
 
 class TestAuthicationPutOneCollection:
-
-    updated_collection_toto = {
-        "id": "S1_L1",
-        "type": "Collection",
-        "links": [
-            {
-                "rel": "items",
-                "type": "application/geo+json",
-                "href": "http://testserver/collections/toto_S1_L1/items",
-            },
-            {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
-            {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-            {"rel": "self", "type": "application/json", "href": "http://testserver/collections/toto_S1_L1"},
-            {
-                "rel": "items",
-                "href": "http://localhost:8082/collections/S1_L1/items",
-                "type": "application/geo+json",
-            },
-            {
-                "rel": "license",
-                "href": "https://creativecommons.org/licenses/publicdomain/",
-                "title": "public domain",
-            },
-        ],
-        "owner": "toto",
-        "extent": {
-            "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-            "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-        },
-        "license": "public-domain",
-        "description": "This is the description from the updated S1_L1 collection.",
-        "stac_version": "1.0.0",
-    }
-
-    updated_collection_pyteam = {
+    updated_collection = {
         "id": "S1_L1",
         "type": "Collection",
         "links": [
@@ -855,39 +844,26 @@ class TestAuthicationPutOneCollection:
     ):  # pylint: disable=missing-function-docstring
 
         iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "PUT",
-                "/catalog/collections/toto:S1_L1",
-                json=self.updated_collection_toto,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-
-    def test_http200_with_good_authentication_without_user_in_endpoint(
-        self,
-        mocker,
-        monkeypatch,
-        httpx_mock: HTTPXMock,
-        client,
-    ):  # pylint: disable=missing-function-docstring
-
-        iam_roles = [
             "rs_catalog_pyteam:*_read",
             "rs_catalog_pyteam:*_write",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
+            # user is used in the endpoint, format is user:collection
+            response = client.request(
+                "PUT",
+                "/catalog/collections/pyteam:S1_L1",
+                json=self.updated_collection,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+            # request the endpoint by using just "collection" (the user is
+            # loaded by the rs-server-catalog directly from the apikey)
             response = client.request(
                 "PUT",
                 "/catalog/collections/S1_L1",
-                json=self.updated_collection_pyteam,
+                json=self.updated_collection,
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_200_OK
@@ -900,14 +876,37 @@ class TestAuthicationPutOneCollection:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        iam_roles = ["rs_catalog_pyteam:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "PUT",
                 "/catalog/collections/toto:S1_L1",
-                json=self.updated_collection_toto,
+                json=self.updated_collection,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+
+    def test_fails_user_updates_collection_owned_by_another_user(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        self.updated_collection["owner"] = "toto"
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "PUT",
+                "/catalog/collections",
+                json=self.updated_collection,
                 **pass_the_apikey,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
@@ -1151,20 +1150,17 @@ class TestAuthentiactionDelete:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
+        iam_roles: list[str] = []
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
-        collections = ["toto_fixture_collection", "pyteam_fixture_collection"]
+        # create the collections first
+        collections = ["pyteam_fixture_collection_1", "pyteam_fixture_collection_2"]
         for collection in collections:
             new_collection = {
                 "id": f"{collection}",
                 "type": "Collection",
                 "description": "test_description",
                 "stac_version": "1.0.0",
-                "owner": collection.split("_", 1)[0],
+                "owner": "pyteam",
             }
 
             response = client.request(
@@ -1174,15 +1170,23 @@ class TestAuthentiactionDelete:
                 headers={APIKEY_HEADER: VALID_APIKEY},
             )
             assert response.status_code == HTTP_200_OK
-        users_map = {"toto": "toto:", "pyteam": ""}
+
         for pass_the_apikey in PASS_THE_APIKEY:
-            for user, val in users_map.items():
-                response = client.request(
-                    "DELETE",
-                    f"/catalog/collections/{val}{user}_fixture_collection",
-                    **pass_the_apikey,
-                )
-                assert response.status_code == HTTP_200_OK
+            # request the endpoint by using "user:collection"
+            response = client.request(
+                "DELETE",
+                f"/catalog/collections/pyteam:{collections[0]}",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+            # request the endpoint by using just "collection" (the user is
+            # loaded by the rs-server-catalog directly from the apikey)
+            response = client.request(
+                "DELETE",
+                f"/catalog/collections/{collections[1]}",
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -1192,9 +1196,14 @@ class TestAuthentiactionDelete:
         client,
     ):  # pylint: disable=missing-function-docstring
 
-        iam_roles = ["rs_catalog_toto:*_read"]
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
+        # sending a request from user pyteam (loaded from the apikey) to delete
+        # the S1_L1 collection owned by the `toto` user.
+        # 401 unauthorized reponse should be received
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "DELETE",
@@ -1205,6 +1214,7 @@ class TestAuthentiactionDelete:
 
 
 class TestAuthenticationPostOneItem:
+    item_id = "S1SIWOCN_20220412T054447_0024_S139"
     feature_to_post = {
         "collection": "S1_L1",
         "assets": {
@@ -1225,7 +1235,7 @@ class TestAuthenticationPostOneItem:
                 ],
             ],
         },
-        "id": "S1SIWOCN_20220412T054447_0024_S139",
+        "id": item_id,
         "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
         "other_metadata": {},
         "properties": {
@@ -1261,16 +1271,26 @@ class TestAuthenticationPostOneItem:
             "rs_catalog_toto:*_write",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-        users_map = {"toto": "toto:", "pyteam": ""}
+
         for pass_the_apikey in PASS_THE_APIKEY:
-            for _, val in users_map.items():
-                response = client.request(
-                    "POST",
-                    f"/catalog/collections/{val}S1_L1/items",
-                    json=self.feature_to_post,
-                    **pass_the_apikey,
-                )
-                assert response.status_code == HTTP_200_OK
+            response = client.request(
+                "POST",
+                "/catalog/collections/S1_L1/items",
+                json=self.feature_to_post,
+                **pass_the_apikey,
+            )
+            # check if the item was well added to the collection
+            assert response.status_code == HTTP_200_OK
+            # delete the item, don't change the collection, because it is used
+            # by other tests also
+            response = client.request(
+                "DELETE",
+                f"/catalog/collections/S1_L1/items/{self.item_id}",
+                json=self.feature_to_post,
+                **pass_the_apikey,
+            )
+            # check if the item was deleted from the collection
+            assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,

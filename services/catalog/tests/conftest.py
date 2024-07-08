@@ -296,6 +296,7 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
     """
     This fixture is used to return the minimal form of accepted collection
     """
+
     client.post(
         "/catalog/collections",
         json={
@@ -306,10 +307,10 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
             "owner": "fixture_owner",
         },
     )
+
     yield
-    # teardown cleanup, delete collection only if it exists (was not removed in test => status is 200)
-    if client.get("/catalog/collections/fixture_owner:fixture_collection").status_code != 200:
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+    # teardown cleanup, delete collection (doesn't matter if it exists or not, so no assertion here)
+    client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
 
 @pytest.fixture(scope="session", name="a_correct_feature")
