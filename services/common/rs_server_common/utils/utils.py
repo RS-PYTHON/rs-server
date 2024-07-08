@@ -22,7 +22,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
@@ -59,7 +59,7 @@ def is_valid_date_format(date: str) -> bool:
         return False
 
 
-def validate_inputs_format(interval: str) -> Tuple[datetime, datetime]:
+def validate_inputs_format(interval: str) -> Tuple[Union[None, datetime], Union[None, datetime]]:
     """
     Validate the format of the input time interval.
 
@@ -71,10 +71,11 @@ def validate_inputs_format(interval: str) -> Tuple[datetime, datetime]:
             "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
 
     Returns:
-        Tuple[datetime, datetime]:
+        Tuple[Union[None, datetime], Union[None, datetime]]:
             A tuple containing:
             - start_date (datetime): The start date of the interval.
             - stop_date (datetime): The stop date of the interval.
+        Or [None, None] if the provided interval is empty.
 
     Note:
         - The input interval should be in the format "start_date/stop_date"
@@ -82,6 +83,8 @@ def validate_inputs_format(interval: str) -> Tuple[datetime, datetime]:
         - This function checks for missing start/stop and validates the ISO 8601 format of start and stop dates.
         - If there is an error, err_code and err_text provide information about the issue.
     """
+    if not interval:
+        return None, None
     try:
         start_date, stop_date = interval.split("/")
     except ValueError as exc:

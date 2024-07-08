@@ -24,6 +24,30 @@ Changed
 
 None
 
+[0.2a1] - Sprint 11 - 2024-06-26
+================================
+
+Added
+-----
+
+* RSPY-141: Implement the STAC timestamps extension in Catalog
+* RSPY-153: Implicit collection owner when calling catalog endpoints
+* RSPY-161: Map CADIP session files as STAC assets for stations that support Expand=Files
+* RSPY-186: Catalog application does crash properly during initialization
+* RSPY-192: Update CADU search endpoint to search by session_id:
+* RSPY-210: Deploy Grafana Tempo on K8S cluster:
+* RSPY-254: [Safety] Errors displayed on Wazuh UI:
+* RSPY-256: [rs-testmeans] document how to add mock data:
+* RSPY-277: Missing probes in some RS-Server components:
+* RSPY-286: STAC OpenAPI links not working:
+* RSPY-288: Update CADIP/AUXIP mocks to support PVC:
+* RSPY-292: API Key manager wipes IAM roles of existing keys:
+* RSPY-294: Umbrella to collect all ISSUES points (sprint 11):
+* RSPY-296: Simplify authentication to RS frontend:
+* RSPY-300: Internal error when calling /cadip/{station}/session without params:
+* RSPY-303: Catalog asset download links are invalid:
+* RSPY-304: Response of catalog asset download is invalid
+
 [0.1a10] - 2024-06-05
 ======================
 

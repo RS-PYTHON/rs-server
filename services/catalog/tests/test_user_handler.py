@@ -14,10 +14,13 @@
 
 """Unit tests for user_handler module."""
 
+import getpass
+
 import pytest
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
+    get_user,
     remove_user_from_collection,
     remove_user_from_feature,
     reroute_url,
@@ -103,6 +106,13 @@ def feature_output_fixture() -> dict:
     }
 
 
+def test_get_user():
+    """This function tests the get_user()"""
+    assert get_user("pyteam", "apikey_user") == "pyteam"
+    assert get_user(None, "apikey_user") == "apikey_user"
+    assert get_user(None, None) == getpass.getuser()
+
+
 class TestRemovePrefix:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function remove_user_prefix."""
 
@@ -117,6 +127,18 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert result[0] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
         assert result[1] == {
             "owner_id": "Toto",
+            "collection_id": "joplin",
+            "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
+        }
+
+    # NOTE: The following function is the test for local mode, when there is no apikey and the ownerId
+    # is missing from the endpoint. The tests when the apikey exists (thus in cluster mode) are implemented
+    # in test_authetication_catalog.py
+    def test_item_id_without_user(self):
+        result = reroute_url("/catalog/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d", "GET")
+        assert result[0] == f"/collections/{getpass.getuser()}_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
+        assert result[1] == {
+            "owner_id": getpass.getuser(),
             "collection_id": "joplin",
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }

@@ -45,8 +45,22 @@ logger = Logging.default(__name__)
 APIKEY_HEADER = "x-api-key"
 # APIKEY_QUERY = "api-key" # disabled for now
 
+# Just print the plain RSPY_UAC_HOMEPAGE environment variable name.
+# When the rs-server-frontend container will start, it will replace it with its associated value.
+APIKEY_DESCRIPTION = """
+<h3><a href="${RSPY_UAC_HOMEPAGE}">Create it from here</a></h3>
+
+<h3><a href="https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/users/oauth2_apikey_manager">
+See the documentation</a></h3>
+"""
+
 # API key authentication using a header and a query parameter (disabled for now)
-APIKEY_AUTH_HEADER = APIKeyHeader(name=APIKEY_HEADER, scheme_name="API key passed in HTTP header", auto_error=False)
+APIKEY_AUTH_HEADER = APIKeyHeader(
+    name=APIKEY_HEADER,
+    scheme_name="You need an API key to use these endpoints",
+    auto_error=False,
+    description=APIKEY_DESCRIPTION,
+)
 # APIKEY_AUTH_QUERY = APIKeyQuery(
 #     name=APIKEY_QUERY, scheme_name="API key passed in URL query parameter", auto_error=False)
 

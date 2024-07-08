@@ -14,9 +14,9 @@
 
 info:
   description: |
-    Reference System Python implements and maintains a new version of the RS Software compatible with the new
-    Python-based processors, taking advantage of existing Python libraries (in particular Prefect) and novel tools to
-    maximise the flexibility and simplify the maintainability of the solution.
+    The Copernicus Space Component Reference System is an open-source software solution allowing to implement,
+    maintain, deploy, operate and monitor Sentinel data processing workflows based on the future re-engineered Level
+    0, 1, 2 Sentinel Data processors (Q3 2024/2025).
 
     <a href="https://home.rs-python.eu/">Website</a>
 

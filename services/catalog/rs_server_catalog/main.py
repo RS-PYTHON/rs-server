@@ -20,18 +20,20 @@ If the variable is not set, enables all extensions.
 """
 import asyncio
 import os
+import sys
 import traceback
+from contextlib import asynccontextmanager
 from os import environ as env
 from typing import Any, Callable, Dict
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
-from rs_server_catalog.user_catalog import UserCatalogMiddleware
+from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import authentication
 from rs_server_common import settings as common_settings
 from rs_server_common.utils import opentelemetry
@@ -79,7 +81,7 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
     description = "Catalog owner id"
     to_add = {
         "description": description,
-        "required": True,
+        "required": False,
         "schema": {"type": "string", "title": description, "description": description},
         "name": "owner_id",
         "in": "path",
@@ -284,6 +286,21 @@ class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public
             return JSONResponse(status_code=status_code, content=content)
 
 
+client = CoreCrudClient(post_request_model=post_request_model)
+
+
+class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """The user catalog middleware."""
+
+    async def dispatch(self, request, call_next):
+        """Redirect the user catalog specific endpoint and adapt the response content."""
+
+        # NOTE: the same 'self' instance is reused by all requests so it must
+        # not be used by several requests at the same time or we'll have conflicts.
+        # Do everything in a specific object.
+        return await UserCatalog(client).dispatch(request, call_next)
+
+
 api = StacApi(
     settings=settings,
     extensions=extensions,
@@ -302,6 +319,40 @@ api = StacApi(
 )
 app = api.app
 app.openapi = extract_openapi_specification
+
+
+@asynccontextmanager
+async def lifespan(my_app: FastAPI):
+    """The lifespan function."""
+    try:
+        # Connect to the databse
+        db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
+        while True:
+            try:
+                await connect_to_db(my_app)
+                logger.info("Reached %r database on %s", env["POSTGRES_DB"], db_info)
+                break
+            except ConnectionRefusedError:
+                logger.warning("Trying to reach %r database on %s", env["POSTGRES_DB"], db_info)
+
+                # timeout gestion if specified
+                if my_app.state.pg_timeout is not None:
+                    my_app.state.pg_timeout -= my_app.state.pg_pause
+                    if my_app.state.pg_timeout < 0:
+                        sys.exit("Unable to start up catalog service")
+                await asyncio.sleep(my_app.state.pg_pause)
+
+        common_settings.set_http_client(httpx.AsyncClient())
+
+        yield
+
+    finally:
+        await close_db_connection(my_app)
+
+        await common_settings.del_http_client()
+
+
+app.router.lifespan_context = lifespan
 
 # Configure OpenTelemetry
 opentelemetry.init_traces(app, "rs.server.catalog")
@@ -326,43 +377,7 @@ if common_settings.CLUSTER_MODE:
 
 # Pause and timeout to connect to database (hardcoded for now)
 app.state.pg_pause = 3  # seconds
-app.state.pg_timeout = None
-
-
-@app.on_event("startup")
-async def startup_event():
-    """FastAPI startup events"""
-
-    # Connect to database on startup. Loop until the connection works.
-    db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
-    while True:
-        try:
-            await connect_to_db(app)
-            logger.info(f"Reached {env['POSTGRES_DB']!r} database on {db_info}")
-            break
-        except ConnectionRefusedError:
-            logger.warning(f"Trying to reach {env['POSTGRES_DB']!r} database on {db_info}")
-
-            # Sleep for n seconds and raise exception if timeout is reached.
-            if app.state.pg_timeout is not None:
-                app.state.pg_timeout -= app.state.pg_pause
-                if app.state.pg_timeout < 0:
-                    raise
-            await asyncio.sleep(app.state.pg_pause)
-
-    # Init objects for dependency injection
-    common_settings.set_http_client(httpx.AsyncClient())
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """FastAPI shutdown events"""
-
-    # Close database connection
-    await close_db_connection(app)
-
-    # Close objects for dependency injection
-    await common_settings.del_http_client()
+app.state.pg_timeout = 30
 
 
 def run():

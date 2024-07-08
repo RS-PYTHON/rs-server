@@ -95,7 +95,7 @@ if [[ "$lock_files" ]]; then
 fi
 
 echo -e "
-Try \`find . -name "*.orig"\` then \`find . -name "*.orig" -exec rm {} \;\` to remove your git merge backup files.
+Try \"find . -name "*.orig" -exec rm {} \;\" to remove your git merge backup files.
 Then:
   - Go to github
   - Open a pull request for '$target' into 'develop'

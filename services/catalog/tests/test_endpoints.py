@@ -12,14 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# pylint: disable=too-many-lines
+
 """Integration tests for user_catalog module."""
 
-# pylint: disable=unused-argument
 import copy
 import json
 import os
 import os.path as osp
 import pathlib
+
+# pylint: disable=unused-argument
+import time
+from datetime import datetime, timedelta
 
 import fastapi
 import pytest
@@ -32,6 +38,7 @@ from .conftest import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
 
 # Resource folders specified from the parent directory of this current script
 S3_RSC_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources", "s3"))
+ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
 # Moved here, since this functions utility not fixtures.
@@ -68,7 +75,7 @@ def clear_aws_credentials():
 
 
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
-    response = client.get("/api.html")
+    response = client.get("/catalog/api.html")
     assert response.status_code == 200
 
 
@@ -155,6 +162,8 @@ class TestCatalogSearchEndpoint:
             with open("queryables.json", "w", encoding="utf-8") as f:
                 json.dump(content, f, indent=2)
             assert response.status_code == 200
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             pathlib.Path("queryables.json").unlink(missing_ok=True)
 
@@ -387,7 +396,200 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             ),
         ],
     )
-    def test_publish_item_update(self, client, a_correct_feature, owner, collection_id):
+    def test_timestamps_extension_item(
+        self,
+        client,
+        a_correct_feature,
+        owner,
+        collection_id,
+    ):  # pylint: disable=too-many-locals
+        """Test used to verify that the timestamps extension is correctly set up"""
+        # Create moto server and temp / catalog bucket
+        moto_endpoint = "http://localhost:8077"
+        export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        # Enable bucket transfer
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+        try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+            s3_handler = S3StorageHandler(
+                secrets["accesskey"],
+                secrets["secretkey"],
+                secrets["s3endpoint"],
+                secrets["region"],
+            )
+
+            temp_bucket = "temp-bucket"
+            catalog_bucket = "catalog-bucket"
+            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+
+            # Populate temp-bucket with some small files.
+            lst_with_files_to_be_copied = [
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+            ]
+            for obj in lst_with_files_to_be_copied:
+                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+
+            added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
+            feature_data = json.loads(added_feature.content)
+
+            current_time = datetime.now()
+
+            # Test that published field is correctly added
+            assert "published" in feature_data["properties"]
+            published_datetime_format = datetime.strptime(
+                feature_data["properties"]["published"],
+                ISO_8601_FORMAT,
+            )
+            assert (
+                abs(published_datetime_format - current_time).total_seconds() < 1
+            )  # Check that values are close enough.
+
+            # Test that updated field is correctly added
+            assert "updated" in feature_data["properties"]
+            updated_datetime_format = datetime.strptime(feature_data["properties"]["updated"], ISO_8601_FORMAT)
+            assert abs(updated_datetime_format - current_time).total_seconds() < 1
+
+            # Test that expires field is correctly added
+            assert "expires" in feature_data["properties"]
+            plus_30_days = current_time + timedelta(days=int(os.environ.get("RANGE_EXPIRATION_DATE_IN_DAYS", "30")))
+            expires_datetime_format = datetime.strptime(feature_data["properties"]["expires"], ISO_8601_FORMAT)
+            assert abs(expires_datetime_format - plus_30_days).total_seconds() < 1
+
+            client.delete(f"/catalog/collections/{owner}:{collection_id}/items/S1SIWOCN_20220412T054447_0024_S139")
+        except Exception as e:
+            raise RuntimeError("error") from e
+        finally:
+            server.stop()
+            clear_aws_credentials()
+            os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+    def test_updating_timestamp_item(  # pylint: disable=too-many-locals, too-many-statements
+        self,
+        client,
+        a_correct_feature,
+        a_minimal_collection,
+    ):
+        """Test used to verify update of an item to the catalog."""
+        # Create moto server and temp / catalog bucket
+        moto_endpoint = "http://localhost:8077"
+        export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        # Enable bucket transfer
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+        try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+            s3_handler = S3StorageHandler(
+                secrets["accesskey"],
+                secrets["secretkey"],
+                secrets["s3endpoint"],
+                secrets["region"],
+            )
+
+            temp_bucket = "temp-bucket"
+            catalog_bucket = "catalog-bucket"
+            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+
+            # Populate temp-bucket with some small files.
+            lst_with_files_to_be_copied = [
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+            ]
+            for obj in lst_with_files_to_be_copied:
+                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+
+            # check that temp_bucket is not empty
+            assert s3_handler.list_s3_files_obj(temp_bucket, "")
+            # check if temp_bucket content is different from catalog_bucket
+            assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
+                s3_handler.list_s3_files_obj(catalog_bucket, ""),
+            )
+
+            # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
+            # and a good OBS path. => 200 OK
+            # Check if that user darius have a collection (Added in conftest -> setup_database)
+            # Add a featureCollection to darius collection
+            a_correct_feature_copy = copy.deepcopy(a_correct_feature)
+            a_correct_feature_copy["collection"] = "fixture_collection"
+            added_feature = client.post(
+                "/catalog/collections/fixture_owner:fixture_collection/items",
+                json=a_correct_feature_copy,
+            )
+
+            assert added_feature.status_code == 200
+
+            content = json.loads(added_feature.content)
+            updated_timestamp = content["properties"]["updated"]
+            published_timestamp = content["properties"]["published"]
+            expires_timestamps = content["properties"]["expires"]
+
+            # Files were moved, check that catalog_bucket is not empty
+            assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+            # Check if temp_bucket is now empty
+            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+            # Check if buckets content is different
+            assert s3_handler.list_s3_files_obj(temp_bucket, "") != s3_handler.list_s3_files_obj(catalog_bucket, "")
+            # Check if catalog bucket content match the initial temp-bucket content
+            # If so, files were correctly moved from temp-catalog to bucket catalog.
+            assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+
+            updated_feature_sent = copy.deepcopy(a_correct_feature_copy)
+            updated_feature_sent["bbox"] = [77]
+            del updated_feature_sent["collection"]
+
+            path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
+            modified_feature = client.put(path, json=updated_feature_sent)
+
+            assert modified_feature.status_code == 200
+
+            updated_content = json.loads(modified_feature.content)
+
+            new_updated_timestamp = updated_content["properties"]["updated"]
+
+            # Test that "updated" field is correctly updated.
+            assert updated_timestamp != new_updated_timestamp
+
+            # Test that "published" and "expires" field are inchanged after the update.
+            assert updated_content["properties"]["published"] == published_timestamp
+            assert updated_content["properties"]["expires"] == expires_timestamps
+
+            client.delete(
+                "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
+            )
+        except Exception as e:
+            raise RuntimeError("error") from e
+        finally:
+            server.stop()
+            clear_aws_credentials()
+            os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+    @pytest.mark.parametrize(
+        "owner, collection_id",
+        [
+            (
+                "darius",
+                "S1_L2",
+            ),
+        ],
+    )
+    def test_publish_item_update(  # pylint: disable=too-many-locals
+        self,
+        client,
+        a_correct_feature,
+        owner,
+        collection_id,
+    ):
         """Test used to verify publication of a featureCollection to the catalog."""
         # Create moto server and temp / catalog bucket
         moto_endpoint = "http://localhost:8077"
@@ -455,7 +657,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             # Check if catalog bucket content match the initial temp-bucket content
             # If so, files were correctly moved from temp-catalog to bucket catalog.
             assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
-
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             server.stop()
             clear_aws_credentials()
@@ -581,7 +784,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert product_content.content.decode() == object_content
 
             assert client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
-
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             server.stop()
             # Remove bucket credentials form env variables / should create a s3_handler without credentials error
@@ -639,7 +843,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
             assert s3_handler.list_s3_files_obj(temp_bucket, "")
             assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
-
+        except Exception as e:
+            raise RuntimeError("error") from e
         finally:
             server.stop()
             clear_aws_credentials()
@@ -699,6 +904,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
+
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
@@ -710,6 +916,8 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = [77]
+        del updated_feature_sent["collection"]
+
         feature_put_response = client.put(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
             json=updated_feature_sent,
@@ -726,11 +934,102 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert updated_feature["geometry"] == a_correct_feature["geometry"]
         client.delete("/catalog/collections/fixture_owner:fixture_collection")
 
+    def test_update_timestamp_feature(  # pylint: disable=too-many-locals
+        self,
+        client,
+        a_minimal_collection,
+        a_correct_feature,
+    ):
+        """
+        ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
+        """
+
+        # Change correct feature collection id to match with minimal collection and post it
+        a_correct_feature["collection"] = "fixture_collection"
+        # Post the correct feature to catalog
+        feature_post_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=a_correct_feature,
+        )
+
+        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+
+        content = json.loads(feature_post_response.content)
+        first_published_date = content["properties"]["published"]
+        first_expires_date = content["properties"]["expires"]
+        # Update the feature and PUT it into catalogDB
+        updated_feature_sent = copy.deepcopy(a_correct_feature)
+        updated_feature_sent["bbox"] = [77]
+        del updated_feature_sent["collection"]
+
+        # Test that updated field is correctly updated.
+        updated_timestamp = json.loads(feature_post_response.content)["properties"]["updated"]
+        time.sleep(1)
+
+        feature_put_response = client.put(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+            json=updated_feature_sent,
+        )
+        content = json.loads(feature_put_response.content)
+
+        new_updated_timestamp = content["properties"]["updated"]
+
+        # Test that "updated" field is correctly updated.
+        assert updated_timestamp != new_updated_timestamp
+
+        # Test that "published" and "expires" field are inchanged after the update.
+        assert content["properties"]["published"] == first_published_date
+        assert content["properties"]["expires"] == first_expires_date
+
+        assert feature_put_response.status_code == fastapi.status.HTTP_200_OK
+        # client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        deletion = client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        assert deletion.status_code == fastapi.status.HTTP_200_OK
+
+    def test_update_timestamp_feature_fails_with_unfound_item(
+        self,
+        client,
+        a_minimal_collection,
+        a_correct_feature,
+    ):
+        """
+        ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
+        """
+
+        # Change correct feature collection id to match with minimal collection and post it
+        a_correct_feature["collection"] = "fixture_collection"
+        # Post the correct feature to catalog
+        feature_post_response = client.post(
+            "/catalog/collections/fixture_owner:fixture_collection/items",
+            json=a_correct_feature,
+        )
+
+        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+
+        # Update the feature and PUT it into catalogDB
+        updated_feature_sent = copy.deepcopy(a_correct_feature)
+        updated_feature_sent["bbox"] = [77]
+        del updated_feature_sent["collection"]
+
+        path = "/catalog/collections/fixture_owner:fixture_collections/items/NOT_FOUND_ITEM"
+        feature_put_response = client.put(
+            path,
+            json=updated_feature_sent,
+        )
+        assert feature_put_response.status_code == 400
+
     def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
+        get_response = client.get(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+        )
+
+        if get_response.status_code == fastapi.status.HTTP_200_OK:
+            client.delete(f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}")
+
         feature_post_response = client.post(
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=a_correct_feature,
@@ -739,6 +1038,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Update the feature with an incorrect value and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = "Incorrect_bbox_value"
+        del updated_feature_sent["collection"]
 
         response = client.put(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
@@ -746,13 +1046,19 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         )
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
-
     def test_delete_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: DELETE: /catalog/collections/{user:collection}/items/{featureID}
         """
         a_correct_feature["collection"] = "fixture_collection"
+
+        get_response = client.get(
+            f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",
+        )
+
+        if get_response.status_code == fastapi.status.HTTP_200_OK:
+            client.delete(f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}")
+
         # Post the correct feature to catalog
         feature_post_response = client.post(
             "/catalog/collections/fixture_owner:fixture_collection/items",
