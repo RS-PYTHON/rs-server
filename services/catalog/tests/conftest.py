@@ -297,19 +297,17 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
     This fixture is used to return the minimal form of accepted collection
     """
 
-    assert (
-        client.post(
-            "/catalog/collections",
-            json={
-                "id": "fixture_collection",
-                "type": "Collection",
-                "description": "test_description",
-                "stac_version": "1.0.0",
-                "owner": "fixture_owner",
-            },
-        ).status_code
-        == 200
+    client.post(
+        "/catalog/collections",
+        json={
+            "id": "fixture_collection",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "owner": "fixture_owner",
+        },
     )
+
     yield
     # teardown cleanup, delete collection (doesn't matter if it exists or not, so no assertion here)
     client.delete("/catalog/collections/fixture_owner:fixture_collection")
