@@ -777,6 +777,29 @@ class TestAuthenticationPostOneCollection:
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
 
+    def test_fails_user_creates_collection_owned_by_another_user(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        self.collection_to_post["owner"] = "toto"
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "POST",
+                "/catalog/collections",
+                json=self.collection_to_post,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+
 
 class TestAuthicationPutOneCollection:
     updated_collection = {
@@ -1155,7 +1178,9 @@ class TestAuthentiactionDelete:
             "rs_catalog_toto:*_write",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
+        # sending a request from user pyteam (loaded from the apikey) to delete
+        # the S1_L1 collection owned by the `toto` user.
+        # 401 unauthorized reponse should be received
         for pass_the_apikey in PASS_THE_APIKEY:
             response = client.request(
                 "DELETE",
