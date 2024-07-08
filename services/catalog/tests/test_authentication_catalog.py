@@ -787,7 +787,7 @@ class TestAuthenticationPostOneCollection:
 
         iam_roles = [
             "rs_catalog_toto:*_read",
-            "rs_catalog_toto*_write",
+            "rs_catalog_toto:*_write",
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
         self.collection_to_post["owner"] = "toto"
@@ -883,6 +883,29 @@ class TestAuthicationPutOneCollection:
             response = client.request(
                 "PUT",
                 "/catalog/collections/toto:S1_L1",
+                json=self.updated_collection,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+
+    def test_fails_user_updates_collection_owned_by_another_user(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        self.updated_collection["owner"] = "toto"
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "PUT",
+                "/catalog/collections",
                 json=self.updated_collection,
                 **pass_the_apikey,
             )

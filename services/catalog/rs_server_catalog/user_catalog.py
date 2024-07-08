@@ -459,10 +459,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 if common_settings.CLUSTER_MODE and user != user_login:
                     detail = {
                         "error": f"The '{user_login}' user cannot create a \
-collection owned by the '{user}' user",
+collection owned by the '{user}' user. Additionally, modifying the 'owner' field is not permitted also.",
                     }
                     logger.error(detail["error"])
-                    return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
+                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
                 content["id"] = f"{user}_{content['id']}"
                 if not content.get("owner"):
                     content["owner"] = user
@@ -796,9 +796,9 @@ collection owned by the '{user}' user",
             return False
         # we don't care for local mode, any user may create / delete collection owned by another user
         if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != user_login:
-            # Manage a collection creation. The apikey user (or local user if in local mode)
+            # Manage a collection deletion. The apikey user (or local user if in local mode)
             # should be the same as the owner field in the body request. In other words, the
-            # apikey user can't create a collection owned by another user
+            # apikey user cannot delete a collection owned by another user
             logger.error(
                 f"The '{user_login}' user cannot delete a \
 collection or an item from a collection owned by the '{self.request_ids['owner_id']}' user",
