@@ -33,20 +33,11 @@ if [[ " $@ " == *" --run-services "* ]]; then
 
     # On exit, kill the containers and network and send the exit signal to subprocesses
     db_container="postgres"
-    ak_container="apikey-manager"
-    on_exit="docker rm -f $db_container $ak_container || true; docker network rm $network || true"
+    on_exit="docker rm -f $db_container || true; docker network rm $network || true"
     trap 'eval $on_exit' EXIT # use simple quotes so the string is interpreted when we exit
-
-    # First we need to pull the apikey manager docker image.
-    # TODO: to be changed with the :latest tag
-    # TODO: to be changed when the apikey manager will have its own container registry.
-    # docker login https://ghcr.io/v2/rs-python # you may need this if running locally
-    ak_image="ghcr.io/rs-python/apikey-manager:rspy15-uac"
-    docker pull "$ak_image"
 
     # Use the same configuration as in the cluster deployment.
     #export RSPY_DOCS_URL= # used to define the /docs swagger page (not used)
-    export APIKEYMAN_URL_PREFIX="/apikeymanager" # used to prefix endpoints on the apikey manager
     export RSPY_LOCAL_MODE=0 # cluster mode with authentication needed
 
     # Use the env vars defined for the rs-server-catalog pytests.
@@ -72,26 +63,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     i=0
     while [[ $(docker inspect --format='{{.State.Health.Status}}' $db_container) != healthy ]]; do
         sleep 2
-        i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$ak_container'" && exit 1
-    done
-
-    # Run the apikey manager. Use the same port as in services.yml.
-    (docker run --rm --network=$network --name=$ak_container -p 8004:8000 \
-        -e APIKEYMAN_URL_PREFIX \
-        -e API_KEYS_DB_URL=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${db_container}:5432/${POSTGRES_DB} \
-        -e VERIFY_AUDIENCE=0 \
-        -e OAUTH2_SERVER_URL=https://iam.dev-rspy.esa-copernicus.eu \
-        -e OAUTH2_REALM=rspy \
-        -e OAUTH2_CLIENT_ID=dummy_client_id \
-        -e OAUTH2_CLIENT_SECRET=dummy_client_secret \
-        --health-cmd="wget --spider 127.0.0.1:8000/health/status" --health-interval=2s --health-timeout=2s --health-retries=10 \
-	    "$ak_image" \
-    )&
-    i=0
-    sleep 2
-    while [[ $(docker inspect --format='{{.State.Health.Status}}' $ak_container) != healthy ]]; do
-        sleep 2
-        i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$ak_container'" && exit 1
+        i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$db_container'" && exit 1
     done
 
     # Run local fastapi services
