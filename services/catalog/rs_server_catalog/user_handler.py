@@ -119,6 +119,7 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
         ids_dict["collection_id"] = groups["collection_id"]
         return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/queryables", ids_dict
 
+    # To catch the endpoint /catalog/collections/{owner_id}:{collection_id}/search
     if match := re.fullmatch(COLLECTIONS_SEARCH_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
