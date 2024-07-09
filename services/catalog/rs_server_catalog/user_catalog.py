@@ -567,6 +567,21 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                 link["href"] = link_parser._replace(path=new_path).geturl()
         return collections
 
+    def update_stac_catalog_metadata(self, metadata: dict):
+        """Update the metadata fields from a catalog, following the US RSPY-282
+
+        Args:
+            metadata (dict): The metdata that has to be updated. The fields id, title,
+                            description and stac_version are to be updated, by using the env vars which have
+                            to be set before starting the app/pod. The existing values are used if
+                            the env vars are not found
+        """
+        if metadata.get("type") != "Catalog":
+            return
+        for key in ["id", "title", "description", "stac_version"]:
+            if key in metadata:
+                metadata[key] = os.environ.get(f"CATALOG_METADATA_{key.upper()}", metadata[key])
+
     async def manage_get_response(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
         request: Request,
@@ -583,6 +598,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+        self.update_stac_catalog_metadata(content)
         auth_roles = []
         user_login = ""
 
