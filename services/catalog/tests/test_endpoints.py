@@ -88,7 +88,7 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
         assert response.status_code == 200
         content = json.loads(response.content)
-        assert len(content["features"]) == 3
+        assert len(content["features"]) == 2
 
         test_params = {"filter": "width=300"}
 
@@ -112,7 +112,7 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         response = client.post("/catalog/collections/toto:S1_L1/search", json=cql2_json_query)
         assert response.status_code == 200
         content = json.loads(response.content)
-        assert len(content["features"]) == 3
+        assert len(content["features"]) == 2
 
 
 class TestCatalogSearchEndpoint:
