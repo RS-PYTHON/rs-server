@@ -27,6 +27,7 @@ The middleware:
 * modifies the response to update the links.
 """
 
+import getpass
 import json
 import os
 import re
@@ -441,7 +442,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         content = self.adapt_links(content, owner_id, collection_id, "features")
         return JSONResponse(content, status_code=response.status_code)
 
-    async def manage_put_post_request(self, request: Request) -> Request | JSONResponse:
+    async def manage_put_post_request(  # pylint: disable=too-many-branches
+        self,
+        request: Request,
+    ) -> Request | JSONResponse:
         """Adapt the request body for the STAC endpoint.
 
         Args:
@@ -473,6 +477,17 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
             if request.scope["path"] == "/collections":
+                # Manage a collection creation. The apikey user should be the same as the owner
+                # field in the body request. In other words, an apikey user cannot create a
+                # collection owned by another user.
+                # We don't care for local mode, any user may create / delete collection owned by another user
+                if common_settings.CLUSTER_MODE and user != user_login:
+                    detail = {
+                        "error": f"The '{user_login}' user cannot create a \
+collection owned by the '{user}' user. Additionally, modifying the 'owner' field is not permitted also.",
+                    }
+                    logger.error(detail["error"])
+                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
                 content["id"] = f"{user}_{content['id']}"
                 if not content.get("owner"):
                     content["owner"] = user
@@ -500,6 +515,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
 
             # update request body (better find the function that updates the body maybe?)c
             request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+
             return request  # pylint: disable=protected-access
         except KeyError as kerr_msg:
             raise HTTPException(
@@ -784,7 +800,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         Returns:
             bool: Return True if the deletion is allowed, False otherwise.
         """
-        user_login = ""
+        user_login = getpass.getuser()
         auth_roles = []
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
@@ -802,6 +818,16 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 user_login,
             )
         ):
+            return False
+        # we don't care for local mode, any user may create / delete collection owned by another user
+        if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != user_login:
+            # Manage a collection deletion. The apikey user (or local user if in local mode)
+            # should be the same as the owner field in the body request. In other words, the
+            # apikey user cannot delete a collection owned by another user
+            logger.error(
+                f"The '{user_login}' user cannot delete a \
+collection or an item from a collection owned by the '{self.request_ids['owner_id']}' user",
+            )
             return False
         return True
 
@@ -839,7 +865,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         except (NameError, AttributeError):
             # "The current user will be used if needed in rerouting"
             user_login = None
-        logger.debug(f"Received {request.method} url request.url.path = {request.url.path}")
+        logger.debug(
+            f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
+        )
         request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
@@ -872,8 +900,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         elif request.method in ["POST", "PUT"] and not self.request_ids["owner_id"]:
             return JSONResponse(content="Invalid body.", status_code=HTTP_400_BAD_REQUEST)
         elif request.method == "DELETE":
-            is_delete_allowed = self.manage_delete_request(request)
-            if not is_delete_allowed:
+            if not self.manage_delete_request(request):
                 return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
 
         response = await call_next(request)

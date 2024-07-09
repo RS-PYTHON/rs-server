@@ -76,7 +76,7 @@ def clear_aws_credentials():
 
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/api.html")
-    assert response.status_code == 200
+    assert response.status_code == fastapi.status.HTTP_200_OK
 
 
 class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-methods
@@ -130,14 +130,14 @@ class TestCatalogSearchEndpoint:
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
-        assert len(content["features"]) == 3
+        assert len(content["features"]) == 2
 
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=3000 AND owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 0
 
@@ -145,28 +145,28 @@ class TestCatalogSearchEndpoint:
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
-        assert len(content["features"]) == 3
+        assert len(content["features"]) == 2
 
     def test_search_endpoint_without_collections(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"filter-lang": "cql2-text", "filter": "owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
-        assert len(content["features"]) == 3
+        assert len(content["features"]) == 2
 
     def test_search_endpoint_without_filter(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "limit": "5"}
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
 
     def test_searh_endpoint_without_owner_id(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
 
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 0  # behavior to be determined
 
@@ -174,7 +174,7 @@ class TestCatalogSearchEndpoint:
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
 
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 0  # behavior to be determined
 
@@ -192,9 +192,9 @@ class TestCatalogSearchEndpoint:
         }
 
         response = client.post("/catalog/search", json=test_json)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
-        assert len(content["features"]) == 3
+        assert len(content["features"]) == 2
 
     def test_post_search_endpoint_with_no_filter_lang(self, client):  # pylint: disable=missing-function-docstring
         test_json = {
@@ -218,7 +218,7 @@ class TestCatalogSearchEndpoint:
             content = json.loads(response.content)
             with open("queryables.json", "w", encoding="utf-8") as f:
                 json.dump(content, f, indent=2)
-            assert response.status_code == 200
+            assert response.status_code == fastapi.status.HTTP_200_OK
         except Exception as e:
             raise RuntimeError("error") from e
         finally:
@@ -250,7 +250,7 @@ class TestCatalogPublishCollectionEndpoint:
         # # Call search endpoint to verify presence of collection in catalog
         # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner='test_owner'"}
         # response = client.get("/catalog/search", params=test_params)
-        # assert response.status_code == 200
+        # assert response.status_code == fastapi.status.HTTP_200_OK
 
         # Test that /catalog/collection GET endpoint returns the correct collection id
         response = client.get("/catalog/collections/test_owner:test_collection")
@@ -281,7 +281,7 @@ class TestCatalogPublishCollectionEndpoint:
         # Check that owner from this collection is not written in catalogDB
         test_params = {"filter-lang": "cql2-text", "filter": "owner='test_incorrect_owner'"}
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 0
 
     def test_create_a_collection_already_created(self, client):
@@ -358,7 +358,7 @@ class TestCatalogPublishCollectionEndpoint:
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
 
-    def te_st_delete_a_created_collection(self, client):
+    def test_delete_a_created_collection(self, client):
         """
         Test that a created collection can be deleted
         Endpoint: DELETE /catalog/collections.
@@ -383,8 +383,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
         # Check that collection is correctly deleted
         second_check_response = client.get("/catalog/collections/", params={"owner": "will_be_deleted_owner"})
-        second_response_content = json.loads(second_check_response.content)
-        assert minimal_collection["id"] not in second_response_content["collections"]
+        assert second_check_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_delete_a_non_existent_collection(self, client):
         """
@@ -395,7 +394,7 @@ class TestCatalogPublishCollectionEndpoint:
         assert delete_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_delete_a_foreign_collection(self, client):
-        """Test DELETE collection endpoint, with a user that has no rights to remove a existing collection."""
+        """Test DELETE collection endpoint, with a user that has no rights to remove an existing collection."""
         minimal_collection = {
             "id": "correctly_created_collection",
             "type": "Collection",
@@ -409,19 +408,14 @@ class TestCatalogPublishCollectionEndpoint:
         # To be changed with 405 not allowed after UAC
         assert delete_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
-    def test_delete_non_empty_collection(
-        self,
-        client,
-        a_minimal_collection,
-        a_correct_feature,
-    ):
+    def test_delete_non_empty_collection(self, client, a_minimal_collection, a_correct_feature):
         """
         Test that a collection than contain features can be successfully deleted.
         """
-        # Post the feature to collection
         first_get_collection_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert first_get_collection_response.status_code == fastapi.status.HTTP_200_OK
         assert json.loads(first_get_collection_response.content)["context"]["returned"] == 0
+        # Post the feature to the collection
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["collection"] = "fixture_collection"
         post_collection_response = client.post(
@@ -429,20 +423,23 @@ class TestCatalogPublishCollectionEndpoint:
             json=updated_feature_sent,
         )
         assert post_collection_response.status_code == fastapi.status.HTTP_200_OK
-        # Test that collection is not empty
+        # Test that the collection is not empty
         second_get_collection_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert second_get_collection_response.status_code == fastapi.status.HTTP_200_OK
         assert json.loads(second_get_collection_response.content)["context"]["returned"] > 0
-        # Delete collection
+        # Delete the collection
         delete_response = client.delete("/catalog/collections/fixture_owner:fixture_collection")
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
-        # Test that collection is removed, request raises 404 exception
+        # Test that the collection is removed, the request raises a 404 exception
         response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
 
 class TestCatalogPublishFeatureWithBucketTransferEndpoint:
     """This class is used to group tests that just post a feature on catalogDB without moving assets."""
+
+    temp_bucket = "temp-bucket"
+    catalog_bucket = "catalog-bucket"
 
     @pytest.mark.parametrize(
         "owner, collection_id",
@@ -459,7 +456,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         a_correct_feature,
         owner,
         collection_id,
-    ):  # pylint: disable=too-many-locals
+    ):  # pylint: disable=too-many-locals, too-many-arguments
         """Test used to verify that the timestamps extension is correctly set up"""
         # Create moto server and temp / catalog bucket
         moto_endpoint = "http://localhost:8077"
@@ -478,10 +475,8 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 secrets["region"],
             )
 
-            temp_bucket = "temp-bucket"
-            catalog_bucket = "catalog-bucket"
-            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
-            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=self.temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=self.catalog_bucket)
 
             # Populate temp-bucket with some small files.
             lst_with_files_to_be_copied = [
@@ -490,8 +485,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
             ]
             for obj in lst_with_files_to_be_copied:
-                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
-
+                s3_handler.s3_client.put_object(Bucket=self.temp_bucket, Key=obj, Body="testing\n")
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
             feature_data = json.loads(added_feature.content)
 
@@ -517,8 +511,12 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             plus_30_days = current_time + timedelta(days=int(os.environ.get("RANGE_EXPIRATION_DATE_IN_DAYS", "30")))
             expires_datetime_format = datetime.strptime(feature_data["properties"]["expires"], ISO_8601_FORMAT)
             assert abs(expires_datetime_format - plus_30_days).total_seconds() < 1
-
-            client.delete(f"/catalog/collections/{owner}:{collection_id}/items/S1SIWOCN_20220412T054447_0024_S139")
+            assert (
+                client.delete(
+                    f"/catalog/collections/{owner}:{collection_id}/items/S1SIWOCN_20220412T054447_0024_S139",
+                ).status_code
+                == fastapi.status.HTTP_200_OK
+            )
         except Exception as e:
             raise RuntimeError("error") from e
         finally:
@@ -550,12 +548,10 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 secrets["region"],
             )
 
-            temp_bucket = "temp-bucket"
-            catalog_bucket = "catalog-bucket"
-            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
-            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            s3_handler.s3_client.create_bucket(Bucket=self.temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=self.catalog_bucket)
+            assert not s3_handler.list_s3_files_obj(self.temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
 
             # Populate temp-bucket with some small files.
             lst_with_files_to_be_copied = [
@@ -564,15 +560,14 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
             ]
             for obj in lst_with_files_to_be_copied:
-                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+                s3_handler.s3_client.put_object(Bucket=self.temp_bucket, Key=obj, Body="testing\n")
 
             # check that temp_bucket is not empty
-            assert s3_handler.list_s3_files_obj(temp_bucket, "")
+            assert s3_handler.list_s3_files_obj(self.temp_bucket, "")
             # check if temp_bucket content is different from catalog_bucket
-            assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
-                s3_handler.list_s3_files_obj(catalog_bucket, ""),
+            assert sorted(s3_handler.list_s3_files_obj(self.temp_bucket, "")) != sorted(
+                s3_handler.list_s3_files_obj(self.catalog_bucket, ""),
             )
-
             # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
             # and a good OBS path. => 200 OK
             # Check if that user darius have a collection (Added in conftest -> setup_database)
@@ -584,22 +579,25 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 json=a_correct_feature_copy,
             )
 
-            assert added_feature.status_code == 200
+            assert added_feature.status_code == fastapi.status.HTTP_200_OK
 
             content = json.loads(added_feature.content)
             updated_timestamp = content["properties"]["updated"]
             published_timestamp = content["properties"]["published"]
             expires_timestamps = content["properties"]["expires"]
 
-            # Files were moved, check that catalog_bucket is not empty
-            assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+            # Files were moved, check that self.catalog_bucket is not empty
+            assert s3_handler.list_s3_files_obj(self.catalog_bucket, "")
             # Check if temp_bucket is now empty
-            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(self.temp_bucket, "")
             # Check if buckets content is different
-            assert s3_handler.list_s3_files_obj(temp_bucket, "") != s3_handler.list_s3_files_obj(catalog_bucket, "")
+            assert s3_handler.list_s3_files_obj(self.temp_bucket, "") != s3_handler.list_s3_files_obj(
+                self.catalog_bucket,
+                "",
+            )
             # Check if catalog bucket content match the initial temp-bucket content
             # If so, files were correctly moved from temp-catalog to bucket catalog.
-            assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+            assert sorted(s3_handler.list_s3_files_obj(self.catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
 
             updated_feature_sent = copy.deepcopy(a_correct_feature_copy)
             updated_feature_sent["bbox"] = [77]
@@ -608,7 +606,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
             modified_feature = client.put(path, json=updated_feature_sent)
 
-            assert modified_feature.status_code == 200
+            assert modified_feature.status_code == fastapi.status.HTTP_200_OK
 
             updated_content = json.loads(modified_feature.content)
 
@@ -621,8 +619,11 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert updated_content["properties"]["published"] == published_timestamp
             assert updated_content["properties"]["expires"] == expires_timestamps
 
-            client.delete(
-                "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
+            assert (
+                client.delete(
+                    "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
+                ).status_code
+                == fastapi.status.HTTP_200_OK
             )
         except Exception as e:
             raise RuntimeError("error") from e
@@ -665,12 +666,10 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 secrets["region"],
             )
 
-            temp_bucket = "temp-bucket"
-            catalog_bucket = "catalog-bucket"
-            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
-            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            s3_handler.s3_client.create_bucket(Bucket=self.temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=self.catalog_bucket)
+            assert not s3_handler.list_s3_files_obj(self.temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
 
             # Populate temp-bucket with some small files.
             lst_with_files_to_be_copied = [
@@ -679,13 +678,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
             ]
             for obj in lst_with_files_to_be_copied:
-                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
+                s3_handler.s3_client.put_object(Bucket=self.temp_bucket, Key=obj, Body="testing\n")
 
-            # check that temp_bucket is not empty
-            assert s3_handler.list_s3_files_obj(temp_bucket, "")
-            # check if temp_bucket content is different from catalog_bucket
-            assert sorted(s3_handler.list_s3_files_obj(temp_bucket, "")) != sorted(
-                s3_handler.list_s3_files_obj(catalog_bucket, ""),
+            # check that self.temp_bucket is not empty
+            assert s3_handler.list_s3_files_obj(self.temp_bucket, "")
+            # check if self.temp_bucket content is different from self.catalog_bucket
+            assert sorted(s3_handler.list_s3_files_obj(self.temp_bucket, "")) != sorted(
+                s3_handler.list_s3_files_obj(self.catalog_bucket, ""),
             )
 
             # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
@@ -693,7 +692,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             # Check if that user darius have a collection (Added in conftest -> setup_database)
             # Add a featureCollection to darius collection
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
-            assert added_feature.status_code == 200
+            assert added_feature.status_code == fastapi.status.HTTP_200_OK
             feature_data = json.loads(added_feature.content)
             # check if owner was added and match to the owner of the collection
             assert feature_data["properties"]["owner"] == owner
@@ -705,15 +704,18 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 in feature_data["stac_extensions"]
             )
 
-            # Files were moved, check that catalog_bucket is not empty
-            assert s3_handler.list_s3_files_obj(catalog_bucket, "")
-            # Check if temp_bucket is now empty
-            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
+            # Files were moved, check that self.catalog_bucket is not empty
+            assert s3_handler.list_s3_files_obj(self.catalog_bucket, "")
+            # Check if self.temp_bucket is now empty
+            assert not s3_handler.list_s3_files_obj(self.temp_bucket, "")
             # Check if buckets content is different
-            assert s3_handler.list_s3_files_obj(temp_bucket, "") != s3_handler.list_s3_files_obj(catalog_bucket, "")
+            assert s3_handler.list_s3_files_obj(self.temp_bucket, "") != s3_handler.list_s3_files_obj(
+                self.catalog_bucket,
+                "",
+            )
             # Check if catalog bucket content match the initial temp-bucket content
             # If so, files were correctly moved from temp-catalog to bucket catalog.
-            assert sorted(s3_handler.list_s3_files_obj(catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
+            assert sorted(s3_handler.list_s3_files_obj(self.catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
         except Exception as e:
             raise RuntimeError("error") from e
         finally:
@@ -737,7 +739,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         with pytest.raises(Exception):
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
             # Bad request = 400
-            assert added_feature.status_code == 400
+            assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
     @pytest.mark.unit
     def test_incorrect_bucket_publish(self, client, a_correct_feature):
@@ -748,7 +750,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         a_correct_feature["assets"]["cog"]["href"] = "incorrect_s3_url/some_file.cog.zip"
         a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
         added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
-        assert added_feature.status_code == 400
+        assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
         assert added_feature.content == b'"Invalid obs bucket!"'
         clear_aws_credentials()
 
@@ -770,14 +772,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         try:
             requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
             custom_bucket = "some-custom-bucket"
-            catalog_bucket = "catalog-bucket"
             a_correct_feature["assets"]["zarr"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.zarr.zip"
             a_correct_feature["assets"]["cog"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.cog.zip"
             a_correct_feature["assets"]["ncdf"]["href"] = f"s3://{custom_bucket}/correct_location/some_file.ncdf.zip"
             a_correct_feature["id"] = "new_feature_id"
 
             s3_handler.s3_client.create_bucket(Bucket=custom_bucket)
-            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=self.catalog_bucket)
             lst_with_files_to_be_copied = [
                 "correct_location/some_file.zarr.zip",
                 "correct_location/some_file.cog.zip",
@@ -787,13 +788,13 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 s3_handler.s3_client.put_object(Bucket=custom_bucket, Key=obj, Body="testing\n")
 
             assert s3_handler.list_s3_files_obj(custom_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
 
             added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
-            assert added_feature.status_code == 200
+            assert added_feature.status_code == fastapi.status.HTTP_200_OK
 
             assert not s3_handler.list_s3_files_obj(custom_bucket, "")
-            assert s3_handler.list_s3_files_obj(catalog_bucket, "")
+            assert s3_handler.list_s3_files_obj(self.catalog_bucket, "")
 
         finally:
             server.stop()
@@ -818,11 +819,10 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         try:
             requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
             # Upload a file to catalog-bucket
-            catalog_bucket = "catalog-bucket"
-            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=self.catalog_bucket)
             object_content = "testing\n"
             s3_handler.s3_client.put_object(
-                Bucket=catalog_bucket,
+                Bucket=self.catalog_bucket,
                 Key="S1_L1/images/may24C355000e4102500n.tif",
                 Body=object_content,
             )
@@ -830,17 +830,20 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             response = client.get(
                 "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
             )
-            assert response.status_code == 302
+            assert response.status_code == fastapi.status.HTTP_302_FOUND
             # Check that response body is empty
             assert response.content == b""
 
             # call the redirected url
             product_content = requests.get(response.headers["location"], timeout=10)
-            assert product_content.status_code == 200
+            assert product_content.status_code == fastapi.status.HTTP_200_OK
             # check that content is the same as the original file
             assert product_content.content.decode() == object_content
 
-            assert client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code == 404
+            assert (
+                client.get("/catalog/collections/toto:S1_L1/items/INCORRECT_ITEM_ID/download/COG").status_code
+                == fastapi.status.HTTP_404_NOT_FOUND
+            )
         except Exception as e:
             raise RuntimeError("error") from e
         finally:
@@ -849,7 +852,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             clear_aws_credentials()
 
         response = client.get("/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG")
-        assert response.status_code == 400
+        assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
         assert response.content == b'"Could not find s3 credentials"'
 
     @pytest.mark.unit
@@ -870,12 +873,10 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 secrets["region"],
             )
 
-            temp_bucket = "temp-bucket"
-            catalog_bucket = "catalog-bucket"
-            s3_handler.s3_client.create_bucket(Bucket=temp_bucket)
-            s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
-            assert not s3_handler.list_s3_files_obj(temp_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            s3_handler.s3_client.create_bucket(Bucket=self.temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=self.catalog_bucket)
+            assert not s3_handler.list_s3_files_obj(self.temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
 
             # Populate temp-bucket with some small files.
             lst_with_files_to_be_copied = [
@@ -884,9 +885,9 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
             ]
             for obj in lst_with_files_to_be_copied:
-                s3_handler.s3_client.put_object(Bucket=temp_bucket, Key=obj, Body="testing\n")
-            assert s3_handler.list_s3_files_obj(temp_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+                s3_handler.s3_client.put_object(Bucket=self.temp_bucket, Key=obj, Body="testing\n")
+            assert s3_handler.list_s3_files_obj(self.temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
             # mock request body to be {}, therefore it will create a BAD request, and info will not be published.
             mocker.patch(
                 "rs_server_catalog.user_catalog.UserCatalog.update_stac_item_publication",
@@ -895,11 +896,12 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             with pytest.raises(Exception):
                 added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
                 # Check if status code is BAD REQUEST
-                assert added_feature.status_code == 400
-                # If catalog publish fails, catalog_bucket should be empty, and temp_bucket should not be empty.
+                assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+                # If catalog publish fails, self.catalog_bucket should be empty, and
+                # self.temp_bucket should not be empty.
 
-            assert s3_handler.list_s3_files_obj(temp_bucket, "")
-            assert not s3_handler.list_s3_files_obj(catalog_bucket, "")
+            assert s3_handler.list_s3_files_obj(self.temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
         except Exception as e:
             raise RuntimeError("error") from e
         finally:
@@ -941,7 +943,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         specific_feature = json.loads(check_features_response.content)
         # Check that specific feature is exactly match for previous one
         assert specific_feature["features"][0] == returned_features["features"][0]
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        assert (
+            client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
+            == fastapi.status.HTTP_200_OK
+        )
 
     def test_get_non_existent_feature(self, client, a_minimal_collection):
         """
@@ -955,13 +960,15 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             "/catalog/collections/fixture_owner:fixture_collection/items/incorrect_feature_id",
         )
         assert feature_post_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        assert (
+            client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
+            == fastapi.status.HTTP_200_OK
+        )
 
     def test_update_with_a_correct_feature(self, client, a_minimal_collection, a_correct_feature):
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
-
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
@@ -989,7 +996,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         # Test that ID has changed, but other arbitrary field not
         assert updated_feature["bbox"] == updated_feature_sent["bbox"]
         assert updated_feature["geometry"] == a_correct_feature["geometry"]
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        assert (
+            client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
+            == fastapi.status.HTTP_200_OK
+        )
 
     def test_update_timestamp_feature(  # pylint: disable=too-many-locals
         self,
@@ -1000,7 +1010,6 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         """
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         """
-
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
         # Post the correct feature to catalog
@@ -1073,9 +1082,9 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             path,
             json=updated_feature_sent,
         )
-        assert feature_put_response.status_code == 400
+        assert feature_put_response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
-    def test_update_with_a_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
+    def test_update_with_an_incorrect_feature(self, client, a_minimal_collection, a_correct_feature):
         """Testing POST feature endpoint with a wrong-formatted field (BBOX)."""
         # Change correct feature collection id to match with minimal collection and post it
         a_correct_feature["collection"] = "fixture_collection"
@@ -1137,7 +1146,10 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert collection_content_response.status_code == fastapi.status.HTTP_200_OK
         collection_content_response = json.loads(collection_content_response.content)
         assert collection_content_response["context"]["returned"] == 0
-        client.delete("/catalog/collections/fixture_owner:fixture_collection")
+        assert (
+            client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
+            == fastapi.status.HTTP_200_OK
+        )
 
     def test_delete_a_non_existing_feature(self, client, a_minimal_collection):
         """

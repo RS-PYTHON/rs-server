@@ -71,6 +71,8 @@ class EodagProvider(Provider):
             # Use thread-lock
             with EodagProvider.lock:
                 os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
+                # disable product types discovery
+                os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
                 return EODataAccessGateway(config_file.as_posix())
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
