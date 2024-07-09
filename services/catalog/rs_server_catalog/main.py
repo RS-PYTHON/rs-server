@@ -92,6 +92,7 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
 
 
 def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-docstring
+    """For all existing endpoints, add prefix and owner_id parameter."""
     res = ""
     match original_key:
         case "/":
@@ -130,7 +131,7 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
         description=app.description,
         routes=app.routes,
     )
-    # add starlette routes
+    # add starlette routes: /api, /api.html and /docs/oauth2-redirect and add /catalog prefix
     for route in app.routes:  # pylint: disable=redefined-outer-name
         if isinstance(route, Route) and route.path in ["/api", "/api.html", "/docs/oauth2-redirect"]:
             path = f"/catalog{route.path}"
@@ -162,12 +163,12 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
             for method_key in endpoint.keys():
                 method = endpoint[method_key]
                 if isinstance(method, dict):
-                    if (
+                    if (  # Add the parameter owner_id in the endpoint if needed.
                         new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]
                         and "parameters" in method
                     ):
                         method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-                    elif (
+                    elif (  # Add description to the /catalog/search endpoint.
                         "operationId" in method
                         and isinstance(method["operationId"], str)
                         and method["operationId"] == "Search_search_get"
@@ -175,6 +176,7 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
                         method["description"] = (
                             "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
                         )
+    # Create the endpoint /catalog/catalogs/owner_id
     owner_id = "Owner ID"
     collection_id = "Collection ID"
     catalog_owner_id: Dict[str, Any] = {
@@ -196,7 +198,8 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     }
     catalog_catalogs_path = "/catalog/catalogs/{owner_id}"
 
-    # We copy the parameters from the original search endpoint and we add new parameters.
+    # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. GET METHOD
+    # We copy the parameters from the original /catalog/search endpoint and we add new parameters.
     search_parameters = copy.deepcopy(openapi_spec["paths"]["/catalog/search"]["get"]["parameters"])
     catalog_collection_search: Dict[str, Any] = {
         "summary": "search endpoint to search only inside a specific collection.",
@@ -225,6 +228,7 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     catalog_collection_search["parameters"].extend(search_parameters)
     catalog_collection_search_path = "/catalog/collections/{owner_id}:{collection_id}/search"
 
+    # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. GET METHOD
     catalog_collection_search_post: Dict[str, Any] = {
         "summary": "search endpoint to search only inside a specific collection.",
         "description": "Endpoint.",
@@ -234,10 +238,12 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
         },
     }
 
+    # Add security parameters.
     if common_settings.CLUSTER_MODE:
         catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
         catalog_collection_search["security"] = [{"API key passed in HTTP header": []}]
         catalog_collection_search_post["security"] = [{"API key passed in HTTP header": []}]
+    # Add all previous created endpoints.
     openapi_spec["paths"].setdefault(catalog_catalogs_path, {})["get"] = catalog_owner_id
     openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["get"] = catalog_collection_search
     openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["post"] = catalog_collection_search_post
