@@ -1,0 +1,47 @@
+@startuml auxip-stac
+
+actor John
+collections RS_Server_AUXIP
+activate RS_Server_AUXIP
+
+note over John, RS_Server_AUXIP: John has access to 2 AUXIP delivery points: adgs and adgs2
+
+John -> RS_Server_AUXIP: GET /auxip
+RS_Server_AUXIP --> John: STAC landing page
+
+John -> RS_Server_AUXIP: GET /auxip/collections
+RS_Server_AUXIP --> John: {s1_adgs_AUX_PP1, s1_adgs_AUX_CAL, s1_adgs_AUX_INS, s2_adgs2_AUX_ECMWFD}
+
+newpage
+
+John -> RS_Server_AUXIP: GET /auxip/collections/s1_adgs_AUX_PP1/items
+RS_Server_AUXIP -> auxip_adgs ++ : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'productType' and\natt/OData.CSC.StringAttribute/Value eq 'AUX_PP1')\n&$expand=Attributes&$orderby=PublicationDate desc
+auxip_adgs --> RS_Server_AUXIP : <OData response/>
+RS_Server_AUXIP -> RS_Server_AUXIP : OData > STAC mapping
+RS_Server_AUXIP --> John : {STAC response}
+
+John -> RS_Server_AUXIP: GET /auxip/collections/s2_adgs2_AUX_ECMWFD/items
+RS_Server_AUXIP -> auxip_adgs2 ++ : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'productType' and\natt/OData.CSC.StringAttribute/Value eq 'AUX_ECMWFD')\n&$expand=Attributes&$orderby=PublicationDate desc
+auxip_adgs2 --> RS_Server_AUXIP : <OData response/>
+RS_Server_AUXIP -> RS_Server_AUXIP : OData > STAC mapping
+RS_Server_AUXIP --> John : {STAC response}
+
+newpage
+
+John -> RS_Server_AUXIP: POST /auxip/search?platform=sentinel-1a
+RS_Server_AUXIP -> auxip_adgs : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'platformShortName' and\natt/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and any(\natt:att/Name eq 'platformSerialIdentifier' and\natt/OData.CSC.StringAttribute/Value eq 'A')\n&$expand=Attributes&$orderby=PublicationDate desc
+RS_Server_AUXIP -> auxip_adgs2 : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'platformShortName' and\natt/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and any(\natt:att/Name eq 'platformSerialIdentifier' and\natt/OData.CSC.StringAttribute/Value eq 'A')\n&$expand=Attributes&$orderby=PublicationDate desc
+RS_Server_AUXIP -> RS_Server_AUXIP : OData > STAC mapping
+RS_Server_AUXIP --> John : {STAC response}
+
+newpage
+
+John -> RS_Server_AUXIP: GET /auxip/queryables
+RS_Server_AUXIP --> John: {platform}
+
+John -> RS_Server_AUXIP: POST /auxip/search?collection=s1_adgs_AUX_PP1&platform=sentinel-1a
+RS_Server_AUXIP -> auxip_adgs : GET Products?$filter=Attributes/OData.CSC.StringAttribute/any(\natt:att/Name eq 'productType' and\natt/OData.CSC.StringAttribute/Value eq 'AUX_PP1') and any(\natt:att/Name eq 'platformShortName' and\natt/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and any(\natt:att/Name eq 'platformSerialIdentifier' and\natt/OData.CSC.StringAttribute/Value eq 'A')\n&$expand=Attributes&$orderby=PublicationDate desc
+RS_Server_AUXIP -> RS_Server_AUXIP : OData > STAC mapping
+RS_Server_AUXIP --> John : {STAC response}
+
+@enduml
