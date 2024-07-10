@@ -79,6 +79,40 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
     assert response.status_code == fastapi.status.HTTP_200_OK
 
 
+def test_update_stac_catalog_metadata(client):
+    """
+    Test the update of the stac catalog metadata when the `/catalog/ endpoint is called
+    """
+    default_txt = "stac-fastapi"
+    id_txt = "rs-python"
+    title_txt = "RS-PYTHON STAC Catalog"
+    description_txt = "STAC catalog of Copernicus Reference System Python"
+
+    response = client.get("/catalog/")
+    assert response.status_code == fastapi.status.HTTP_200_OK
+    resp_dict = json.loads(response.content)
+    assert resp_dict["id"] == default_txt
+    assert resp_dict["title"] == default_txt
+    assert resp_dict["description"] == default_txt
+
+    os.environ["CATALOG_METADATA_ID"] = id_txt
+    response = client.get("/catalog/")
+    assert response.status_code == fastapi.status.HTTP_200_OK
+    resp_dict = json.loads(response.content)
+    assert resp_dict["id"] == id_txt
+    assert resp_dict["title"] == default_txt
+    assert resp_dict["description"] == default_txt
+
+    os.environ["CATALOG_METADATA_TITLE"] = title_txt
+    os.environ["CATALOG_METADATA_DESCRIPTION"] = description_txt
+    response = client.get("/catalog/")
+    assert response.status_code == fastapi.status.HTTP_200_OK
+    resp_dict = json.loads(response.content)
+    assert resp_dict["id"] == id_txt
+    assert resp_dict["title"] == title_txt
+    assert resp_dict["description"] == description_txt
+
+
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
 
