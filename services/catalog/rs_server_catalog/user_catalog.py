@@ -31,8 +31,8 @@ import getpass
 import json
 import os
 import re
-from typing import Any, Dict, Optional
-from urllib.parse import parse_qs, urlencode, urlparse
+from typing import Any, Optional
+from urllib.parse import parse_qs, urlparse
 
 import botocore
 from fastapi import HTTPException
