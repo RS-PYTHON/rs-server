@@ -1,0 +1,61 @@
+@startuml stac-item-staging
+
+actor John
+activate RS_Staging
+John -> RS_Staging: POST /processes/staging/execute\n(ItemCollection id1,id2 / collection=foo)
+note over John, RS_Staging: Each STAC item contains 2 assets\n(idN_asset1, idN_asset2)
+RS_Staging -> RS_Staging: Check UAC (execute: ok)
+RS_Staging -> RS_Staging_Job ++ : Create async job
+RS_Staging --> John: Job id
+RS_Staging_Job -> RS_Staging_Job: Check inputs (ok)
+activate RS_Catalog
+RS_Staging_Job -> RS_Catalog: POST /catalog/search?ids=id1,id2
+RS_Catalog --> RS_Staging_Job: ItemCollection (empty)
+loop per asset (RSPY-350)
+RS_Staging_Job -> RS_Staging_Job: Check UAC (download: ok)
+end
+RS_Staging_Job -> Dask_Cluster ++ : submit(download_assets, auth_info)
+activate External_Data_Source
+activate S3_Catalog_Bucket
+
+par
+Dask_Cluster -> External_Data_Source: get id1_asset1
+External_Data_Source --> Dask_Cluster
+Dask_Cluster -> S3_Catalog_Bucket: write id1_asset1 (streaming)
+Dask_Cluster -> RS_Staging_Job: progress += 25% (100/4)
+else
+Dask_Cluster -> External_Data_Source: get id1_asset2
+External_Data_Source --> Dask_Cluster
+Dask_Cluster -> S3_Catalog_Bucket: write id1_asset2 (streaming)
+Dask_Cluster -> RS_Staging_Job: progress += 25% (100/4)
+else
+Dask_Cluster -> External_Data_Source: get id2_asset1
+External_Data_Source --> Dask_Cluster
+Dask_Cluster -> S3_Catalog_Bucket: write id2_asset1 (streaming)
+Dask_Cluster -> RS_Staging_Job: progress += 25% (100/4)
+else
+Dask_Cluster -> External_Data_Source: get id2_asset2
+External_Data_Source --> Dask_Cluster: id2_asset2 data
+Dask_Cluster -> S3_Catalog_Bucket: write id2_asset2 (streaming)
+Dask_Cluster -> RS_Staging_Job: progress += 25% (100/4)
+end
+
+deactivate Dask_Cluster
+deactivate External_Data_Source
+deactivate S3_Catalog_Bucket
+
+RS_Staging_Job -> RS_Catalog: POST /catalog/collections/foo/items/id1
+RS_Catalog --> RS_Staging_Job
+RS_Staging_Job -> RS_Catalog: POST /catalog/collections/foo/items/id2
+RS_Catalog --> RS_Staging_Job
+
+deactivate RS_Catalog
+
+RS_Staging_Job -> RS_Staging_Job: Progress = 100%
+RS_Staging_Job --> RS_Staging: ItemCollection id1,id2
+deactivate RS_Staging_Job
+
+John -> RS_Staging: GET /jobs/{job-id}
+RS_Staging --> John: progress 100%, ItemCollection id1,id2
+
+@enduml

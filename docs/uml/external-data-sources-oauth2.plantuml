@@ -1,0 +1,25 @@
+@startuml external-data-sources-oauth2
+
+actor John
+collections RS_Server_CADIP
+activate RS_Server_CADIP
+
+John -> RS_Server_CADIP: GET /cadip/collections/s1_nsg/items
+
+alt cluster mode
+RS_Server_CADIP -> Kubernetes ++ : find K8S secrets (nsg + cadip)
+Kubernetes --> RS_Server_CADIP
+deactivate Kubernetes
+else local mode
+RS_Server_CADIP -> RS_Server_CADIP: read config.yaml (nsg + cadip)
+end
+
+RS_Server_CADIP -> CADIP_nsg ++ : POST OAuth2 token (grant_type=password)
+CADIP_nsg --> RS_Server_CADIP : Token
+
+RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite in ('S1A', 'S1C')\n&$orderby=PublicationDate desc (+ token)
+CADIP_nsg --> RS_Server_CADIP : <OData response/>
+RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
+RS_Server_CADIP --> John : {STAC response}
+
+@enduml
