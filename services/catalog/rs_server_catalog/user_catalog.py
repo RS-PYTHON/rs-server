@@ -42,8 +42,8 @@ from pygeofilter.parsers.ecql import parse as parse_ecql
 from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import (
-    AUTH_REF,
     add_prefix_link_landing_page,
+    get_auth_ref,
     manage_landing_page,
 )
 from rs_server_catalog.user_handler import (
@@ -214,7 +214,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
 
             # Add the authentication schema
-            content["assets"][asset].update(AUTH_REF)
+            content["assets"][asset].update(get_auth_ref())
 
         # There should be a single temp bucket name
         if not bucket_names:
@@ -603,7 +603,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             content.setdefault("auth:schemes", {})["apikey"] = {
                 "type": "apiKey",
                 "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
-                "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",  # add anchor to the "new api key" endpoint
+                # add anchor to the "new api key" endpoint
+                "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
                 "name": "x-api-key",
                 "in": "header",
             }
@@ -687,8 +688,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             content = self.adapt_object_links(content, user)
 
         # Add the authentication schema in each link
-        for link in content["links"]:
-            link.update(AUTH_REF)
+        for link in content.get("links", []):
+            link.update(get_auth_ref())
 
         return JSONResponse(content, status_code=response.status_code)
 
