@@ -20,8 +20,9 @@ cadip:
         username: test
         password: test
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
+    S1_SAR_RAW:
+      productType: RAW
+      collection: Sentinel1
 
   search:
     type: ODataV4Search
@@ -104,8 +105,9 @@ ins:
         username: test
         password: test
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
+    S1_SAR_RAW:
+      productType: RAW
+      collection: Sentinel1
 
   search:
     type: ODataV4Search
@@ -188,8 +190,9 @@ mps:
         username: test
         password: test
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
+    S1_SAR_RAW:
+      productType: RAW
+      collection: Sentinel1
 
   search:
     type: ODataV4Search
@@ -272,8 +275,9 @@ mti:
         username: test
         password: test
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
+    S1_SAR_RAW:
+      productType: RAW
+      collection: Sentinel1
 
   search:
     type: ODataV4Search
@@ -356,8 +360,9 @@ nsg:
         username: test
         password: test
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
+    S1_SAR_RAW:
+      productType: RAW
+      collection: Sentinel1
 
   search:
     type: ODataV4Search
@@ -440,8 +445,9 @@ sgs:
         username: test
         password: test
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
+    S1_SAR_RAW:
+      productType: RAW
+      collection: Sentinel1
 
   search:
     type: ODataV4Search
@@ -525,8 +531,9 @@ cadip_session:
           username: test
           password: test
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
+    S1_SAR_RAW:
+      productType: RAW
+      collection: Sentinel1
   search:
     type: ODataV4Search
     api_endpoint: "http://127.0.0.1:5000/Sessions"

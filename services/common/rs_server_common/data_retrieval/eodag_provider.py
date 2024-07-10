@@ -139,10 +139,11 @@ class EodagProvider(Provider):
 
         try:
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
-            products, _ = self.client.search(
+            products = self.client.search(
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
                 raise_errors=True,
+                productType="S1_SAR_RAW",
                 **kwargs,
             )
         except RequestError:
