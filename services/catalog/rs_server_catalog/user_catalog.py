@@ -45,6 +45,12 @@ from rs_server_catalog.landing_page import (
     add_prefix_link_landing_page,
     manage_landing_page,
 )
+from rs_server_catalog.search import (
+    search_endpoint_get,
+    search_endpoint_in_collection_get,
+    search_endpoint_in_collection_post,
+    search_endpoint_post,
+)
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
@@ -337,61 +343,38 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
-        if request.method == "POST":
+        if request.method == "POST":  # POST method.
             content = await request.json()
             if (
                 "filter-lang" not in content and "filter" in content
             ):  # If not specified, the default value of filter_lang in a post method is cql2-json.
                 filter_lang = {"filter-lang": "cql2-json"}
                 content = {**filter_lang, **content}  # The "filter_lang" field has to be placed BEFORE the filter.
-            if self.request_ids["owner_id"] and self.request_ids["collection_id"]:  # /catalog/collections/.../search
-                owner_id = self.request_ids["owner_id"]
+            if self.request_ids["collection_id"]:  # /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
+                owner_id = (
+                    user_login if not self.request_ids["owner_id"] else self.request_ids["owner_id"]
+                )  # Implicit owner_id.
                 collection_id = self.request_ids["collection_id"]
-                if "collections" in content:  # If "collections" field exists, just update the existing field.
-                    content["collections"] = [f"{owner_id}_{collection_id}"]
-                else:
-                    # "collections" field has to be before "filter" field, so we need to create a new dict and insert
-                    # "collections" field before "filter" field.
-                    collections = {
-                        "collections": [f"{owner_id}_{collection_id}"],
-                    }
-                    content = {**collections, **content}
-                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-            elif request.scope["path"] == "/search" and "filter" in content:  # /catalog/search
-                # We have to get the owner_id in the cql2-json query so we can update de "collections" field.
-                qs_filter = content["filter"]
-                filters = parse_cql2_json(qs_filter)
-                owner_id = self.find_owner_id(filters)
-                collection_id = content["collections"][0]
-                if "collections" in content:
-                    content["collections"] = [f"{owner_id}_{collection_id}"]
-                    request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-
-        else:
+                if not owner_id:  # We don't have owner_id in local mode --> error.
+                    detail = {"error": "Owner Id can't be implicit in local mode"}
+                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+                request = search_endpoint_in_collection_post(content, request, owner_id, collection_id)
+            elif "filter" in content and "collections" in content:  # /catalo/search ENDPOINT.
+                owner_id, collection_id, request = search_endpoint_post(content=content, request=request)
+            else:  # TODO find a solution to get authorisations in this case for next stories
+                return request
+        else:  # GET method.
             query = parse_qs(request.url.query)
-            if self.request_ids["owner_id"] and self.request_ids["collection_id"]:  # /catalog/collections/.../search
-                owner_id = self.request_ids["owner_id"]
+            if self.request_ids["collection_id"]:  # /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
+                owner_id = (
+                    user_login if not self.request_ids["owner_id"] else self.request_ids["owner_id"]
+                )  # Implicit owner_id.
                 collection_id = self.request_ids["collection_id"]
-                new_query: Dict[str, Any] = {
-                    "collections": f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
-                    "filter-lang": "cql2-text",
-                }
-                query.update(new_query)
-                request.scope["query_string"] = urlencode(query, doseq=True).encode()
-            elif "filter" in query:
-                # if "filter-lang" not in query:
-                #     detail = {"error": "filter-lang is missing."}
-                #     return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
-                qs_filter = query["filter"][0]
-                filters = parse_ecql(qs_filter)
-                if "collections" in query:
-                    # We have to get the owner_id in the query so we can update de "collections" field.
-                    owner_id = self.find_owner_id(filters)
-                    collection_id = query["collections"][0]
-                    query["collections"] = [f"{owner_id}_{collection_id}"]
-                    request.scope["query_string"] = urlencode(query, doseq=True).encode()
-                else:
-                    return request
+                request = search_endpoint_in_collection_get(query, request, owner_id, collection_id)
+            elif "filter" in query and "collections" in query:  # /catalog/search ENDPOINT.
+                owner_id, collection_id, request = search_endpoint_get(query=query, request=request)
+            else:  # TODO find a solution to get authorisations in this case for next stories
+                return request
         if (  # If we are in cluster mode and the user_login is not authorized
             # to put/post returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
