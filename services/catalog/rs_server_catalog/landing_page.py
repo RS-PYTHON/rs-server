@@ -20,6 +20,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_401_UNAUTHORIZED
 
+# Property that specifies which schemes in auth:schemes may be used to access an Asset or Link
+AUTH_REF = {"auth:refs": ["apikey"]}
+
 
 def add_catalogs(request: Request, auth_roles: list, user_login: str, content: dict) -> dict:
     """This function returns a list of links with all catalogs that the user has access to.
@@ -48,11 +51,7 @@ def add_catalogs(request: Request, auth_roles: list, user_login: str, content: d
                 # To be discussed: maybe we should add the query params (urls[1:])
                 # but I guess we should not add e.g. the apikey because it's confidential.
 
-                child_link = {
-                    "rel": "child",
-                    "type": "application/json",
-                    "href": href,
-                }
+                child_link = {"rel": "child", "type": "application/json", "href": href, **AUTH_REF}
                 content["links"].append(child_link)
                 # content["links"] = [
                 #     link for link in content["links"] if f"{groups['owner_id']}_" not in link["href"]

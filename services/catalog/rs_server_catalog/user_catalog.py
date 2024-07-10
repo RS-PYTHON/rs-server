@@ -42,6 +42,7 @@ from pygeofilter.parsers.ecql import parse as parse_ecql
 from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import (
+    AUTH_REF,
     add_prefix_link_landing_page,
     manage_landing_page,
 )
@@ -211,6 +212,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
             except (IndexError, AttributeError, KeyError) as exc:
                 raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
+
+            # Add the authentication schema
+            content["assets"][asset].update(AUTH_REF)
 
         # There should be a single temp bucket name
         if not bucket_names:
@@ -595,7 +599,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         )
         content.setdefault("auth:schemes", {})["apikey"] = {
             "type": "apiKey",
-            "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}/apikeymanager/auth/api_key/new",
+            "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
+            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",  # add anchor to the "new api key" endpoint
             "name": "x-api-key",
             "in": "header",
         }
@@ -677,6 +682,11 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
+
+        # Add the authentication schema in each link
+        for link in content["links"]:
+            link.update(AUTH_REF)
+
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_download_response(self, request: Request, response: StreamingResponse) -> Response:
