@@ -16,12 +16,14 @@
 
 import re
 
+from rs_server_common import settings as common_settings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-# Property that specifies which schemes in auth:schemes may be used to access an Asset or Link
-AUTH_REF = {"auth:refs": ["apikey"]}
+# Property that specifies which schemes in auth:schemes may be used to access an Asset or Link.
+# Set only on cluster mode.
+AUTH_REF = {"auth:refs": ["apikey"]} if common_settings.CLUSTER_MODE else {}
 
 
 def add_catalogs(request: Request, auth_roles: list, user_login: str, content: dict) -> dict:

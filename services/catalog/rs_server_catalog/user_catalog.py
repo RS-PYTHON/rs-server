@@ -590,20 +590,23 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         auth_roles = []
         user_login = ""
 
-        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+        if common_settings.CLUSTER_MODE:
+
+            # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
 
-        content.setdefault("stac_extensions", []).append(
-            "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
-        )
-        content.setdefault("auth:schemes", {})["apikey"] = {
-            "type": "apiKey",
-            "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
-            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",  # add anchor to the "new api key" endpoint
-            "name": "x-api-key",
-            "in": "header",
-        }
+            # Add stac authentication extension, see: https://github.com/stac-extensions/authentication
+            content.setdefault("stac_extensions", []).append(
+                "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
+            )
+            content.setdefault("auth:schemes", {})["apikey"] = {
+                "type": "apiKey",
+                "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
+                "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",  # add anchor to the "new api key" endpoint
+                "name": "x-api-key",
+                "in": "header",
+            }
 
         if request.scope["path"] == "/":
 
