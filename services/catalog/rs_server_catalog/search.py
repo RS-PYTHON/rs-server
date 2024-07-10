@@ -56,7 +56,7 @@ def search_endpoint_get(query: dict[str, list[str]], request: Request) -> Union[
     return owner_id, collection_id, request
 
 
-def search_endpoint_post(content: json, request: Request) -> Union[str, str, Request]:
+def search_endpoint_post(content: Dict[str, Any], request: Request) -> Union[str, str, Request]:
     """Endpoint /catalog/search with POST method.
 
     Args:
@@ -106,7 +106,7 @@ def search_endpoint_in_collection_get(
 
 
 def search_endpoint_in_collection_post(
-    content: json,
+    content: Dict[str, Any],
     request: Request,
     owner_id: str,
     collection_id: str | None = None,
