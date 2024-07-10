@@ -81,7 +81,7 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
 
 def test_update_stac_catalog_metadata(client):
     """
-    Test the update od the stac catalog metdata when the /catalog/ endpoint is called
+    Test the update of the stac catalog metadata when the `/catalog/ endpoint is called
     """
     default_txt = "stac-fastapi"
     id_txt = "rs-python"
