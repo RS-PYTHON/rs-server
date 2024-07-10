@@ -42,13 +42,9 @@ RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 VALID_APIKEY = "VALID_API_KEY"
 WRONG_APIKEY = "WRONG_APIKEY"
 
-# Test two ways of passing the api key: in HTTP header and in url query parameter (disabled for now)
-PASS_THE_APIKEY = [
-    {"headers": {APIKEY_HEADER: VALID_APIKEY}},
-    # {"params": {APIKEY_QUERY: VALID_APIKEY}}
-]
-
-WRONG_HEADER = {APIKEY_HEADER: WRONG_APIKEY}
+# Pass the api key in HTTP header
+HEADER = {"headers": {APIKEY_HEADER: VALID_APIKEY}}
+WRONG_HEADER = {"headers": {APIKEY_HEADER: WRONG_APIKEY}}
 
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
@@ -164,12 +160,10 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         },
         {"rel": "child", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
     ]
-    # Pass the api key in HTTP headers then in url query parameter
-    for pass_the_apikey in PASS_THE_APIKEY:
-        landing_page_response = client.request("GET", "/catalog/", **pass_the_apikey)
-        assert landing_page_response.status_code == HTTP_200_OK
-        content = json.loads(landing_page_response.content)
-        assert content["links"] == valid_links
+    landing_page_response = client.request("GET", "/catalog/", **HEADER)
+    assert landing_page_response.status_code == HTTP_200_OK
+    content = json.loads(landing_page_response.content)
+    assert content["links"] == valid_links
 
     valid_links = [
         {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/"},
@@ -263,7 +257,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         "description": "Some description",
         "stac_version": "1.0.0",
     }
-    post_response = client.post("/catalog/collections", json=pyteam_collection, **pass_the_apikey)
+    post_response = client.post("/catalog/collections", json=pyteam_collection, **HEADER)
     assert post_response.status_code == HTTP_200_OK
     valid_collections = [
         {
@@ -448,15 +442,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "stac_version": "1.0.0",
         },
     ]
-    # Pass the api key in HTTP headers then in url query parameter
-    for pass_the_apikey in PASS_THE_APIKEY:
-        all_collections = client.request("GET", "/catalog/collections", **pass_the_apikey)
+    all_collections = client.request("GET", "/catalog/collections", **HEADER)
 
-        assert all_collections.status_code == HTTP_200_OK
-        content = json.loads(all_collections.content)
-        assert content["collections"] == valid_collections
+    assert all_collections.status_code == HTTP_200_OK
+    content = json.loads(all_collections.content)
+    assert content["collections"] == valid_collections
 
-    wrong_api_key_response = client.request("GET", "/catalog/", headers=WRONG_HEADER)
+    wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_HEADER)
     assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
 
 
@@ -516,15 +508,13 @@ class TestAuthenticationGetOneCollection:
             "description": "Some description",
             "stac_version": "1.0.0",
         }
-        # Pass the api key in HTTP headers then in url query parameter
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            assert collection == json.loads(response.content)
+        response = client.request(
+            "GET",
+            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        assert collection == json.loads(response.content)
 
     def test_fails_without_good_perms(
         self,
@@ -540,14 +530,12 @@ class TestAuthenticationGetOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        # Pass the api key in HTTP headers then in url query parameter
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/collections/toto:S1_L1",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationGetItems:
@@ -571,13 +559,12 @@ class TestAuthenticationGetItems:
         iam_roles = [f"rs_catalog_{user}:*_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+        response = client.request(
+            "GET",
+            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -593,13 +580,12 @@ class TestAuthenticationGetItems:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/collections/toto:S1_L1/items/",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/items/",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationGetOneItem:
@@ -668,15 +654,14 @@ class TestAuthenticationGetOneItem:
             ],
         }
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/{feature}",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            id = json.loads(response.content)["id"]
-            assert id == feature_s1_l1_0["id"]
+        response = client.request(
+            "GET",
+            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/{feature}",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        id = json.loads(response.content)["id"]
+        assert id == feature_s1_l1_0["id"]
 
     def test_fails_without_good_perms(
         self,
@@ -692,13 +677,12 @@ class TestAuthenticationGetOneItem:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationPostOneCollection:
@@ -748,14 +732,13 @@ class TestAuthenticationPostOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections",
-                json=self.collection_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+        response = client.request(
+            "POST",
+            "/catalog/collections",
+            json=self.collection_to_post,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -768,14 +751,13 @@ class TestAuthenticationPostOneCollection:
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
         self.collection_to_post["owner"] = "toto"
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections",
-                json=self.collection_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "POST",
+            "/catalog/collections",
+            json=self.collection_to_post,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
     def test_fails_user_creates_collection_owned_by_another_user(
         self,
@@ -791,14 +773,13 @@ class TestAuthenticationPostOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
         self.collection_to_post["owner"] = "toto"
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections",
-                json=self.collection_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "POST",
+            "/catalog/collections",
+            json=self.collection_to_post,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthicationPutOneCollection:
@@ -849,24 +830,23 @@ class TestAuthicationPutOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            # user is used in the endpoint, format is user:collection
-            response = client.request(
-                "PUT",
-                "/catalog/collections/pyteam:S1_L1",
-                json=self.updated_collection,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            # request the endpoint by using just "collection" (the user is
-            # loaded by the rs-server-catalog directly from the apikey)
-            response = client.request(
-                "PUT",
-                "/catalog/collections/S1_L1",
-                json=self.updated_collection,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+        # user is used in the endpoint, format is user:collection
+        response = client.request(
+            "PUT",
+            "/catalog/collections/pyteam:S1_L1",
+            json=self.updated_collection,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        # request the endpoint by using just "collection" (the user is
+        # loaded by the rs-server-catalog directly from the apikey)
+        response = client.request(
+            "PUT",
+            "/catalog/collections/S1_L1",
+            json=self.updated_collection,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -879,14 +859,13 @@ class TestAuthicationPutOneCollection:
         iam_roles = ["rs_catalog_pyteam:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "PUT",
-                "/catalog/collections/toto:S1_L1",
-                json=self.updated_collection,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "PUT",
+            "/catalog/collections/toto:S1_L1",
+            json=self.updated_collection,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
     def test_fails_user_updates_collection_owned_by_another_user(
         self,
@@ -902,14 +881,13 @@ class TestAuthicationPutOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
         self.updated_collection["owner"] = "toto"
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "PUT",
-                "/catalog/collections",
-                json=self.updated_collection,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "PUT",
+            "/catalog/collections",
+            json=self.updated_collection,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationSearch:
@@ -941,16 +919,15 @@ class TestAuthenticationSearch:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/search",
-                params=self.search_params,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            response = client.request("POST", "/catalog/search", json=self.test_json, **pass_the_apikey)
-            assert response.status_code == HTTP_200_OK
+        response = client.request(
+            "GET",
+            "/catalog/search",
+            params=self.search_params,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        response = client.request("POST", "/catalog/search", json=self.test_json, **HEADER)
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -963,16 +940,15 @@ class TestAuthenticationSearch:
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/search",
-                params=self.search_params,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
-            response = client.request("POST", "/catalog/search", json=self.test_json, **pass_the_apikey)
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/search",
+            params=self.search_params,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request("POST", "/catalog/search", json=self.test_json, **HEADER)
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationDownload:
@@ -1049,30 +1025,29 @@ class TestAuthenticationDownload:
                 Body=object_content,
             )
 
-            for pass_the_apikey in PASS_THE_APIKEY:
-                for user, file in users_map.items():
-                    response = client.request(
-                        "GET",
-                        f"/catalog/collections/{user}S1_L1/items/{file}/download/COG",
-                        **pass_the_apikey,
-                    )
-                    assert response.status_code == HTTP_302_FOUND
-
-                # Check that response is empty
-                assert response.content == b""
-
-                # call the redirected url
-                product_content = requests.get(response.headers["location"], timeout=10)
-
-                assert product_content.status_code == HTTP_200_OK
-                assert product_content.content.decode() == object_content
-                assert (
-                    client.get(
-                        f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/COG",
-                        headers={APIKEY_HEADER: VALID_APIKEY},
-                    ).status_code
-                    == HTTP_404_NOT_FOUND
+            for user, file in users_map.items():
+                response = client.request(
+                    "GET",
+                    f"/catalog/collections/{user}S1_L1/items/{file}/download/COG",
+                    **HEADER,
                 )
+                assert response.status_code == HTTP_302_FOUND
+
+            # Check that response is empty
+            assert response.content == b""
+
+            # call the redirected url
+            product_content = requests.get(response.headers["location"], timeout=10)
+
+            assert product_content.status_code == HTTP_200_OK
+            assert product_content.content.decode() == object_content
+            assert (
+                client.get(
+                    f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/COG",
+                    headers={APIKEY_HEADER: VALID_APIKEY},
+                ).status_code
+                == HTTP_404_NOT_FOUND
+            )
 
         finally:
             server.stop()
@@ -1127,13 +1102,12 @@ class TestAuthenticationDownload:
                 Body=object_content,
             )
 
-            for pass_the_apikey in PASS_THE_APIKEY:
-                response = client.request(
-                    "GET",
-                    "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
-                    **pass_the_apikey,
-                )
-                assert response.status_code == HTTP_401_UNAUTHORIZED
+            response = client.request(
+                "GET",
+                "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
+                **HEADER,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
         finally:
             server.stop()
@@ -1171,22 +1145,21 @@ class TestAuthentiactionDelete:
             )
             assert response.status_code == HTTP_200_OK
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            # request the endpoint by using "user:collection"
-            response = client.request(
-                "DELETE",
-                f"/catalog/collections/pyteam:{collections[0]}",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            # request the endpoint by using just "collection" (the user is
-            # loaded by the rs-server-catalog directly from the apikey)
-            response = client.request(
-                "DELETE",
-                f"/catalog/collections/{collections[1]}",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+        # request the endpoint by using "user:collection"
+        response = client.request(
+            "DELETE",
+            f"/catalog/collections/pyteam:{collections[0]}",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        # request the endpoint by using just "collection" (the user is
+        # loaded by the rs-server-catalog directly from the apikey)
+        response = client.request(
+            "DELETE",
+            f"/catalog/collections/{collections[1]}",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -1204,13 +1177,12 @@ class TestAuthentiactionDelete:
         # sending a request from user pyteam (loaded from the apikey) to delete
         # the S1_L1 collection owned by the `toto` user.
         # 401 unauthorized reponse should be received
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "DELETE",
-                "/catalog/collections/toto:S1_L1",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "DELETE",
+            "/catalog/collections/toto:S1_L1",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationPostOneItem:
@@ -1272,25 +1244,24 @@ class TestAuthenticationPostOneItem:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections/S1_L1/items",
-                json=self.feature_to_post,
-                **pass_the_apikey,
-            )
-            # check if the item was well added to the collection
-            assert response.status_code == HTTP_200_OK
-            # delete the item, don't change the collection, because it is used
-            # by other tests also
-            response = client.request(
-                "DELETE",
-                f"/catalog/collections/S1_L1/items/{self.item_id}",
-                json=self.feature_to_post,
-                **pass_the_apikey,
-            )
-            # check if the item was deleted from the collection
-            assert response.status_code == HTTP_200_OK
+        response = client.request(
+            "POST",
+            "/catalog/collections/S1_L1/items",
+            json=self.feature_to_post,
+            **HEADER,
+        )
+        # check if the item was well added to the collection
+        assert response.status_code == HTTP_200_OK
+        # delete the item, don't change the collection, because it is used
+        # by other tests also
+        response = client.request(
+            "DELETE",
+            f"/catalog/collections/S1_L1/items/{self.item_id}",
+            json=self.feature_to_post,
+            **HEADER,
+        )
+        # check if the item was deleted from the collection
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -1303,14 +1274,13 @@ class TestAuthenticationPostOneItem:
         iam_roles = ["rs_catalog_toto:S1_L1_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections/toto:S1_L1/items",
-                json=self.feature_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "POST",
+            "/catalog/collections/toto:S1_L1/items",
+            json=self.feature_to_post,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationGetCatalogOwnerId:
@@ -1328,14 +1298,13 @@ class TestAuthenticationGetCatalogOwnerId:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
         users_map = {"toto": "toto", "pyteam": ""}
-        for pass_the_apikey in PASS_THE_APIKEY:
-            for _, val in users_map.items():
-                response = client.request(
-                    "GET",
-                    f"/catalog/catalogs/{val}",
-                    **pass_the_apikey,
-                )
-                assert response.status_code == HTTP_200_OK
+        for _, val in users_map.items():
+            response = client.request(
+                "GET",
+                f"/catalog/catalogs/{val}",
+                **HEADER,
+            )
+            assert response.status_code == HTTP_200_OK
 
     def test_fails_if_not_authorized(
         self,
@@ -1348,13 +1317,12 @@ class TestAuthenticationGetCatalogOwnerId:
         iam_roles = ["rs_catalog_toto:*_write"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/catalogs/toto",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/catalogs/toto",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationErrorHandling:
