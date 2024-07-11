@@ -28,6 +28,7 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
 CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/((?P<owner_id>.+))?"
 
 COLLECTIONS_QUERYABLES_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/queryables"
+COLLECTIONS_SEARCH_REGEX = r"/catalog/collections/((?P<owner_id>.+)):(?P<collection_id>.+)/search"
 BULK_ITEMS_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/bulk_items"
 CATALOG_COLLECTION = "/catalog/collections"
 CATALOG_SEARCH = "/catalog/search"
@@ -117,6 +118,13 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
         ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
         ids_dict["collection_id"] = groups["collection_id"]
         return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/queryables", ids_dict
+
+    # To catch the endpoint /catalog/collections/{owner_id}:{collection_id}/search
+    if match := re.fullmatch(COLLECTIONS_SEARCH_REGEX, path):
+        groups = match.groupdict()
+        ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
+        ids_dict["collection_id"] = groups["collection_id"]
+        return "/search", ids_dict
 
     # To catch the endpoint /catalog/catalogs/[{owner_id}]
     if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):

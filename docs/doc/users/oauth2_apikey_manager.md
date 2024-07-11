@@ -17,7 +17,7 @@ This is why we use an API key: after being authenticated with OAuth2, you can cr
 
 To do this:
 
-  1. Go to the [API Key Manager section of the RS-Server frontend](https://apikeymanager.rspy.ops.rs-python.eu/docs):
+  1. Go to the [API Key Manager section of the RS-Server frontend](https://apikeymanager.ops.rs-python.eu/docs):
 
 ![API Key Manager](../../images/oauth2_apikey_manager/apikey_manager.png)
 

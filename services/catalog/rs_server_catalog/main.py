@@ -19,6 +19,7 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 import asyncio
+import copy
 import os
 import sys
 import traceback
@@ -91,6 +92,7 @@ def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
 
 
 def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-docstring
+    """For all existing endpoints, add prefix and owner_id parameter."""
     res = ""
     match original_key:
         case "/":
@@ -116,7 +118,7 @@ def get_new_key(original_key: str) -> str:  # pylint: disable=missing-function-d
     return res
 
 
-def extract_openapi_specification():
+def extract_openapi_specification():  # pylint: disable=too-many-locals
     """Extract the openapi specifications and modify the content to be conform
     to the rs catalog specifications. Then, apply the changes in the application.
     """
@@ -129,7 +131,7 @@ def extract_openapi_specification():
         description=app.description,
         routes=app.routes,
     )
-    # add starlette routes
+    # add starlette routes: /api, /api.html and /docs/oauth2-redirect and add /catalog prefix
     for route in app.routes:  # pylint: disable=redefined-outer-name
         if isinstance(route, Route) and route.path in ["/api", "/api.html", "/docs/oauth2-redirect"]:
             path = f"/catalog{route.path}"
@@ -161,12 +163,12 @@ def extract_openapi_specification():
             for method_key in endpoint.keys():
                 method = endpoint[method_key]
                 if isinstance(method, dict):
-                    if (
+                    if (  # Add the parameter owner_id in the endpoint if needed.
                         new_key not in ["/catalog/search", "/catalog/", "/catalog/collections"]
                         and "parameters" in method
                     ):
                         method["parameters"] = add_parameter_owner_id(method.get("parameters", []))
-                    elif (
+                    elif (  # Add description to the /catalog/search endpoint.
                         "operationId" in method
                         and isinstance(method["operationId"], str)
                         and method["operationId"] == "Search_search_get"
@@ -174,31 +176,77 @@ def extract_openapi_specification():
                         method["description"] = (
                             "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
                         )
+    # Create the endpoint /catalog/catalogs/owner_id
     owner_id = "Owner ID"
+    collection_id = "Collection ID"
     catalog_owner_id: Dict[str, Any] = {
-        "get": {
-            "summary": "Landing page for the catalog owner id only.",
-            "description": "Endpoint.",
-            "operationId": "Get_landing_page_owner_id",
-            "responses": {
-                "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
+        "summary": "Landing page for the catalog owner id only.",
+        "description": "Endpoint.",
+        "operationId": "Get_landing_page_owner_id",
+        "responses": {
+            "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
+        },
+        "parameters": [
+            {
+                "description": owner_id,
+                "required": True,
+                "schema": {"type": "string", "title": owner_id, "description": owner_id},
+                "name": "owner_id",
+                "in": "path",
             },
-            "parameters": [
-                {
-                    "description": owner_id,
-                    "required": True,
-                    "schema": {"type": "string", "title": owner_id, "description": owner_id},
-                    "name": "owner_id",
-                    "in": "path",
-                },
-            ],
+        ],
+    }
+    catalog_catalogs_path = "/catalog/catalogs/{owner_id}"
+
+    # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. GET METHOD
+    # We copy the parameters from the original /catalog/search endpoint and we add new parameters.
+    search_parameters = copy.deepcopy(openapi_spec["paths"]["/catalog/search"]["get"]["parameters"])
+    catalog_collection_search: Dict[str, Any] = {
+        "summary": "search endpoint to search only inside a specific collection.",
+        "description": "Endpoint.",
+        "operationId": "Get_search_collection",
+        "responses": {
+            "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
+        },
+        "parameters": [
+            {
+                "description": owner_id,
+                "required": True,
+                "schema": {"type": "string", "title": owner_id, "description": owner_id},
+                "name": "owner_id",
+                "in": "path",
+            },
+            {
+                "description": collection_id,
+                "required": True,
+                "schema": {"type": "string", "title": collection_id, "description": collection_id},
+                "name": "collection_id",
+                "in": "path",
+            },
+        ],
+    }
+    catalog_collection_search["parameters"].extend(search_parameters)
+    catalog_collection_search_path = "/catalog/collections/{owner_id}:{collection_id}/search"
+
+    # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. GET METHOD
+    catalog_collection_search_post: Dict[str, Any] = {
+        "summary": "search endpoint to search only inside a specific collection.",
+        "description": "Endpoint.",
+        "operationId": "Post_search_collection",
+        "responses": {
+            "200": {"description": "Successful Response", "content": {"application/geojson": {"schema": {}}}},
         },
     }
-    path = "/catalog/catalogs/{owner_id}"
-    method = "GET"
+
+    # Add security parameters.
     if common_settings.CLUSTER_MODE:
         catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
-    openapi_spec["paths"].setdefault(path, {})[method.lower()] = catalog_owner_id
+        catalog_collection_search["security"] = [{"API key passed in HTTP header": []}]
+        catalog_collection_search_post["security"] = [{"API key passed in HTTP header": []}]
+    # Add all previous created endpoints.
+    openapi_spec["paths"].setdefault(catalog_catalogs_path, {})["get"] = catalog_owner_id
+    openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["get"] = catalog_collection_search
+    openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["post"] = catalog_collection_search_post
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
