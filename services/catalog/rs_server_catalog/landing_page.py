@@ -16,7 +16,6 @@
 
 import re
 
-from rs_server_common import settings as common_settings
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_401_UNAUTHORIZED
