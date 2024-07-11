@@ -166,7 +166,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
     def test_reroute_queryables(self):
         assert reroute_url("/catalog/queryables", "GET")[0] == "/queryables"
 
-    def test_seach_in_specific_collection_endpoint(self):
+    def test_search_collection(self):
         res = reroute_url("/catalog/collections/toto:S1_L1/search", "GET")
         assert res[0] == "/search"
         assert res[1] == {
@@ -174,6 +174,10 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
             "collection_id": "S1_L1",
             "item_id": "",
         }
+
+    def test_search_collection_with_implicit_owner(self):
+        res = reroute_url("/catalog/collections/S1_L1/search", "GET")
+        assert res[0] == "/search"
 
     def test_reroute_collections_queryables(self):
         res = reroute_url("/catalog/collections/toto:S1_L1/queryables", "GET")
