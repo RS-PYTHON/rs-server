@@ -613,19 +613,14 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         auth_roles = []
         user_login = ""
 
-        if common_settings.CLUSTER_MODE:
-
-            # Get the list of access and the user_login calling the endpoint.
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
-
         if request.scope["path"] == "/":
-
             if common_settings.CLUSTER_MODE:  # /catalog and /catalog/catalogs/owner_id
                 content = manage_landing_page(request, auth_roles, user_login, content, user)
                 if hasattr(content, "status_code"):  # Unauthorized
                     return content
-
             # Manage local landing page of the catalog
             regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
             for link in content["links"]:
@@ -638,7 +633,6 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             url = request.url._url  # pylint: disable=protected-access
             url = url[: len(url) - len(request.url.path)]
             content = add_prefix_link_landing_page(content, url)
-
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
