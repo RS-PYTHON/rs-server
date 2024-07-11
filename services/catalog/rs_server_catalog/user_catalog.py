@@ -43,7 +43,6 @@ from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import (
     add_prefix_link_landing_page,
-    get_auth_ref,
     manage_landing_page,
 )
 from rs_server_catalog.search import (
@@ -218,9 +217,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
             except (IndexError, AttributeError, KeyError) as exc:
                 raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
-
-            # Add the authentication schema
-            content["assets"][asset].update(get_auth_ref())
 
         # There should be a single temp bucket name
         if not bucket_names:
@@ -427,6 +423,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
         content = self.remove_user_from_objects(content, owner_id, "features")
         content = self.adapt_links(content, owner_id, collection_id, "features")
+
+        # Add the stac authentication extension
+        self.add_authentication_extension(content)
+
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_put_post_request(  # pylint: disable=too-many-branches
@@ -604,19 +604,6 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
 
-            # Add stac authentication extension, see: https://github.com/stac-extensions/authentication
-            content.setdefault("stac_extensions", []).append(
-                "https://stac-extensions.github.io/authentication/v1.1.0/schema.json",
-            )
-            content.setdefault("auth:schemes", {})["apikey"] = {
-                "type": "apiKey",
-                "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
-                # add anchor to the "new api key" endpoint
-                "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
-                "name": "x-api-key",
-                "in": "header",
-            }
-
         if request.scope["path"] == "/":
 
             if common_settings.CLUSTER_MODE:  # /catalog and /catalog/catalogs/owner_id
@@ -695,9 +682,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
 
-        # Add the authentication schema in each link
-        for link in content.get("links", []):
-            link.update(get_auth_ref())
+        # Add the stac authentication extension
+        self.add_authentication_extension(content)
 
         return JSONResponse(content, status_code=response.status_code)
 
@@ -951,3 +937,36 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             response = await self.manage_delete_response(response, user)
 
         return response
+
+    def add_authentication_extension(self, content: dict):
+        """Add the stac authentication extension, see: https://github.com/stac-extensions/authentication"""
+
+        # Only on cluster mode
+        if not common_settings.CLUSTER_MODE:
+            return
+
+        # Add the STAC extension
+        extensions = content.setdefault("stac_extensions", [])
+        url = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+        if url not in extensions:
+            extensions.append(url)
+
+        # Add the authentication schemes
+        content.setdefault("auth:schemes", {})["apikey"] = {
+            "type": "apiKey",
+            "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
+            # add anchor to the "new api key" endpoint
+            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
+            "name": "x-api-key",
+            "in": "header",
+        }
+
+        # Add the authentication reference to each link and asset
+        for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
+            link_or_asset["auth:refs"] = ["apikey"]
+
+        # Add the extension to the response root and to nested collections, items, ...
+        # Do recursive calls to all nested fields, if defined
+        for nested_field in ["collections", "features"]:
+            for nested_content in content.get(nested_field, []):
+                self.add_authentication_extension(nested_content)

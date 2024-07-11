@@ -46,7 +46,30 @@ WRONG_APIKEY = "WRONG_APIKEY"
 HEADER = {"headers": {APIKEY_HEADER: VALID_APIKEY}}
 WRONG_HEADER = {"headers": {APIKEY_HEADER: WRONG_APIKEY}}
 
-AUTH_REF = {"auth:refs": ["apikey"]}
+AUTHENT_EXTENSION = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+AUTHENT_SCHEME = {
+    "auth:schemes": {
+        "apikey": {
+            "type": "apiKey",
+            "description": "API key generated using http://test_apikey_manager/docs"
+            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
+            "name": "x-api-key",
+            "in": "header",
+        },
+    },
+}
+AUTHENT_REF = {"auth:refs": ["apikey"]}
+COMMON_FIELDS = {
+    "extent": {
+        "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+        "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+    },
+    "license": "public-domain",
+    "description": "Some description",
+    "stac_version": "1.0.0",
+    "stac_extensions": [AUTHENT_EXTENSION],
+    **AUTHENT_SCHEME,
+}
 
 # pylint: skip-file # ignore pylint issues for this file, TODO remove this
 
@@ -105,26 +128,26 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "self",
             "type": "application/json",
             "href": "http://testserver/catalog/",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "root",
             "type": "application/json",
             "href": "http://testserver/catalog/",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "data",
             "type": "application/json",
             "href": "http://testserver/catalog/collections",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "conformance",
             "type": "application/json",
             "title": "STAC/WFS3 conformance classes implemented by this server",
             "href": "http://testserver/catalog/conformance",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "search",
@@ -132,7 +155,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "title": "STAC search",
             "href": "http://testserver/catalog/search",
             "method": "GET",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "search",
@@ -140,55 +163,55 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "title": "STAC search",
             "href": "http://testserver/catalog/search",
             "method": "POST",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "toto_S1_L1",
             "href": "http://testserver/catalog/collections/toto:S1_L1",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "toto_S2_L3",
             "href": "http://testserver/catalog/collections/toto:S2_L3",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "titi_S2_L1",
             "href": "http://testserver/catalog/collections/titi:S2_L1",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "pyteam_S1_L1",
             "href": "http://testserver/catalog/collections/pyteam:S1_L1",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "service-desc",
             "type": "application/vnd.oai.openapi+json;version=3.0",
             "title": "OpenAPI service description",
             "href": "http://testserver/catalog/api",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "service-doc",
             "type": "text/html",
             "title": "OpenAPI service documentation",
             "href": "http://testserver/catalog/api.html",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "href": "http://testserver/catalog/catalogs/toto",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
     ]
     landing_page_response = client.request("GET", "/catalog/", **HEADER)
@@ -201,26 +224,26 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "rel": "self",
             "type": "application/json",
             "href": "http://testserver/catalog/",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "root",
             "type": "application/json",
             "href": "http://testserver/catalog/",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "data",
             "type": "application/json",
             "href": "http://testserver/catalog/collections",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "conformance",
             "type": "application/json",
             "title": "STAC/WFS3 conformance classes implemented by this server",
             "href": "http://testserver/catalog/conformance",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "search",
@@ -228,7 +251,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "title": "STAC search",
             "href": "http://testserver/catalog/search",
             "method": "GET",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "search",
@@ -236,42 +259,42 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "title": "STAC search",
             "href": "http://testserver/catalog/search",
             "method": "POST",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "toto_S1_L1",
             "href": "http://testserver/catalog/collections/toto:S1_L1",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "toto_S2_L3",
             "href": "http://testserver/catalog/collections/toto:S2_L3",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "title": "pyteam_S1_L1",
             "type": "application/json",
             "href": "http://testserver/catalog/collections/pyteam:S1_L1",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "service-desc",
             "type": "application/vnd.oai.openapi+json;version=3.0",
             "title": "OpenAPI service description",
             "href": "http://testserver/catalog/api",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
         {
             "rel": "service-doc",
             "type": "text/html",
             "title": "OpenAPI service documentation",
             "href": "http://testserver/catalog/api.html",
-            **AUTH_REF,
+            **AUTHENT_REF,
         },
     ]
 
@@ -287,47 +310,35 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 "rel": "items",
                 "type": "application/geo+json",
                 "href": "http://testserver/collections/S2_L1/items",
-                **AUTH_REF,
             },
             {
                 "rel": "parent",
                 "type": "application/json",
                 "href": "http://testserver/",
-                **AUTH_REF,
             },
             {
                 "rel": "root",
                 "type": "application/json",
                 "href": "http://testserver/",
-                **AUTH_REF,
             },
             {
                 "rel": "self",
                 "type": "application/json",
                 "href": "http://testserver/collections/S2_L1",
-                **AUTH_REF,
             },
             {
                 "rel": "items",
                 "href": "http://localhost:8082/collections/S2_L1/items",
                 "type": "application/geo+json",
-                **AUTH_REF,
             },
             {
                 "rel": "license",
                 "href": "https://creativecommons.org/licenses/publicdomain/",
                 "title": "public domain",
-                **AUTH_REF,
             },
         ],
         "owner": "pyteam",
-        "extent": {
-            "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-            "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-        },
-        "license": "public-domain",
-        "description": "Some description",
-        "stac_version": "1.0.0",
+        **COMMON_FIELDS,
     }
     post_response = client.post("/catalog/collections", json=pyteam_collection, **HEADER)
     assert post_response.status_code == HTTP_200_OK
@@ -340,47 +351,41 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": "http://testserver/catalog/collections/toto:S1_L1/items",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "parent",
                     "type": "application/json",
                     "href": "http://testserver/catalog/catalogs/toto",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
                     "href": "http://testserver/catalog/catalogs/toto",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/catalog/collections/toto:S1_L1",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": "http://localhost:8082/catalog/collections/toto:S1_L1/items/",
                     "type": "application/geo+json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "toto",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
         {
             "id": "toto_S2_L3",
@@ -390,47 +395,41 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": "http://testserver/catalog/collections/toto:S2_L3/items",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "parent",
                     "type": "application/json",
                     "href": "http://testserver/catalog/catalogs/toto",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
                     "href": "http://testserver/catalog/catalogs/toto",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/catalog/collections/toto:S2_L3",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": "http://localhost:8082/catalog/collections/toto:S2_L3/items/",
                     "type": "application/geo+json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "toto",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
         {
             "id": "titi_S2_L1",
@@ -440,47 +439,41 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": "http://testserver/catalog/collections/titi:S2_L1/items",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "parent",
                     "type": "application/json",
                     "href": "http://testserver/catalog/catalogs/titi",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
                     "href": "http://testserver/catalog/catalogs/titi",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/catalog/collections/titi:S2_L1",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": "http://localhost:8082/catalog/collections/titi:S2_L1/items/",
                     "type": "application/geo+json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "titi",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
         {
             "id": "pyteam_S1_L1",
@@ -490,47 +483,41 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "href": "http://testserver/catalog/collections/pyteam:S1_L1/items",
                     "rel": "items",
                     "type": "application/geo+json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "href": "http://testserver/catalog/catalogs/pyteam",
                     "rel": "parent",
                     "type": "application/json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "href": "http://testserver/catalog/catalogs/pyteam",
                     "rel": "root",
                     "type": "application/json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "href": "http://testserver/catalog/collections/pyteam:S1_L1",
                     "rel": "self",
                     "type": "application/json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "href": "http://localhost:8082/catalog/collections/pyteam:S1_L1/items/",
                     "rel": "items",
                     "type": "application/geo+json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "rel": "license",
                     "title": "public domain",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "pyteam",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
         {
             "id": "pyteam_S2_L1",
@@ -540,53 +527,47 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": "http://testserver/catalog/collections/pyteam:S2_L1/items",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "parent",
                     "type": "application/json",
                     "href": "http://testserver/catalog/catalogs/pyteam",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
                     "href": "http://testserver/catalog/catalogs/pyteam",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/catalog/collections/pyteam:S2_L1",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": "http://testserver/catalog/collections/pyteam:S2_L1/items/",
                     "type": "application/geo+json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": "http://localhost:8082/catalog/collections/pyteam:S2_L1/items/",
                     "type": "application/geo+json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "pyteam",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
     ]
     all_collections = client.request("GET", "/catalog/collections", **HEADER)
@@ -627,57 +608,41 @@ class TestAuthenticationGetOneCollection:
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": f"http://testserver/catalog/collections/{user}:S1_L1/items",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "parent",
                     "type": "application/json",
                     "href": f"http://testserver/catalog/catalogs/{user}",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
                     "href": f"http://testserver/catalog/catalogs/{user}",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "self",
                     "type": "application/json",
                     "href": f"http://testserver/catalog/collections/{user}:S1_L1",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": f"http://localhost:8082/catalog/collections/{user}:S1_L1/items/",
                     "type": "application/geo+json",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
-                    **AUTH_REF,
+                    **AUTHENT_REF,
                 },
             ],
             "owner": user,
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
-            "stac_extensions": ["https://stac-extensions.github.io/authentication/v1.1.0/schema.json"],
-            "auth:schemes": {
-                "apikey": {
-                    "type": "apiKey",
-                    "description": "API key generated using http://test_apikey_manager/docs"
-                    "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
-                    "name": "x-api-key",
-                    "in": "header",
-                },
-            },
+            **COMMON_FIELDS,
         }
         response = client.request(
             "GET",
@@ -793,6 +758,7 @@ class TestAuthenticationGetOneItem:
                     "href": f"""s3://temp-bucket/{user}_S1_L1/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
+                    **AUTHENT_REF,
                 },
             },
             "geometry": {
@@ -822,7 +788,9 @@ class TestAuthenticationGetOneItem:
             "stac_extensions": [
                 "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
                 "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+                AUTHENT_EXTENSION,
             ],
+            **AUTHENT_SCHEME,
         }
 
         response = client.request(
@@ -880,13 +848,7 @@ class TestAuthenticationPostOneCollection:
                 "title": "public domain",
             },
         ],
-        "extent": {
-            "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-            "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-        },
-        "license": "public-domain",
-        "description": "Some description",
-        "stac_version": "1.0.0",
+        **COMMON_FIELDS,
     }
 
     def test_http200_with_good_authentication(
@@ -953,7 +915,7 @@ class TestAuthenticationPostOneCollection:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthicationPutOneCollection:
+class TestAuthenticationPutOneCollection:
     updated_collection = {
         "id": "S1_L1",
         "type": "Collection",
@@ -978,13 +940,7 @@ class TestAuthicationPutOneCollection:
             },
         ],
         "owner": "pyteam",
-        "extent": {
-            "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-            "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-        },
-        "license": "public-domain",
-        "description": "This is the description from the updated S1_L1 collection.",
-        "stac_version": "1.0.0",
+        **COMMON_FIELDS,
     }
 
     def test_http200_with_good_authentication(
@@ -1150,26 +1106,25 @@ class TestAuthenticationSearchInCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/collections/toto:S1_L1/search",
-                params=self.search_params,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            content = json.loads(response.content)
-            assert content["context"] == {"limit": 10, "returned": 2}
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/search",
+            params=self.search_params,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        content = json.loads(response.content)
+        assert content["context"] == {"limit": 10, "returned": 2}
 
-            response = client.request(
-                "POST",
-                "/catalog/collections/toto:S1_L1/search",
-                json=self.test_json,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            content = json.loads(response.content)
-            assert content["context"] == {"limit": 10, "returned": 2}
+        response = client.request(
+            "POST",
+            "/catalog/collections/toto:S1_L1/search",
+            json=self.test_json,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        content = json.loads(response.content)
+        assert content["context"] == {"limit": 10, "returned": 2}
 
     def test_fails_without_good_perms(
         self,
@@ -1182,21 +1137,20 @@ class TestAuthenticationSearchInCollection:
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/collections/toto:S1_L1/search",
-                params=self.search_params,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
-            response = client.request(
-                "POST",
-                "/catalog/collections/toto:S1_L1/search",
-                json=self.test_json,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/search",
+            params=self.search_params,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "POST",
+            "/catalog/collections/toto:S1_L1/search",
+            json=self.test_json,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationDownload:
@@ -1363,7 +1317,7 @@ class TestAuthenticationDownload:
             self.clear_aws_credentials()
 
 
-class TestAuthentiactionDelete:
+class TestAuthenticationDelete:
     def test_http200_with_good_authentication(
         self,
         mocker,

@@ -49,7 +49,7 @@ def add_catalogs(request: Request, auth_roles: list, user_login: str, content: d
                 # To be discussed: maybe we should add the query params (urls[1:])
                 # but I guess we should not add e.g. the apikey because it's confidential.
 
-                child_link = {"rel": "child", "type": "application/json", "href": href, **get_auth_ref()}
+                child_link = {"rel": "child", "type": "application/json", "href": href}
                 content["links"].append(child_link)
                 # content["links"] = [
                 #     link for link in content["links"] if f"{groups['owner_id']}_" not in link["href"]
@@ -166,13 +166,3 @@ def add_prefix_link_landing_page(content: dict, url: str):
             url_size = len(url)
             link["href"] = href[:url_size] + "/catalog" + href[url_size:]
     return content
-
-
-def get_auth_ref():
-    """
-    Property that specifies which schemes in auth:schemes may be used to access an Asset or Link.
-    Set only on cluster mode.
-    """
-    # Note: use a function so we have the right value in pytest
-    # when we change the CLUSTER_MODE mocked value between tests.
-    return {"auth:refs": ["apikey"]} if common_settings.CLUSTER_MODE else {}
