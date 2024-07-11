@@ -143,7 +143,7 @@ class EodagProvider(Provider):
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
                 raise_errors=True,
-                productType="S1_SAR_RAW",
+                productType="S1_SAR_RAW" if "adgs" not in self.provider.lower() else "GENERIC_PRODUCT_TYPE",
                 **kwargs,
             )
         except RequestError:
