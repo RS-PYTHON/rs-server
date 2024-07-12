@@ -977,7 +977,7 @@ class TestAuthenticationSearch:
 
 class TestAuthenticationSearchInCollection:
 
-    search_params = {"filter-lang": "cql2-text", "filter": "width=2500"}
+    search_params = {"ids": "fe916452-ba6f-4631-9154-c249924a122d", "filter-lang": "cql2-text", "filter": "width=2500"}
     test_json = {
         "filter-lang": "cql2-json",
         "filter": {
@@ -1012,7 +1012,7 @@ class TestAuthenticationSearchInCollection:
             )
             assert response.status_code == HTTP_200_OK
             content = json.loads(response.content)
-            assert content["context"] == {"limit": 10, "returned": 2}
+            assert content["context"] == {"limit": 10, "returned": 1}
 
             response = client.request(
                 "POST",
