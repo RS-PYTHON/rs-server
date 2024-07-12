@@ -340,6 +340,8 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         """
         auth_roles = []
         user_login = ""
+        owner_id = ""
+        collection_id = ""
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
@@ -349,7 +351,13 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 "filter-lang" not in content and "filter" in content
             ):  # If not specified, the default value of filter_lang in a post method is cql2-json.
                 filter_lang = {"filter-lang": "cql2-json"}
-                content = {**filter_lang, **content}  # The "filter_lang" field has to be placed BEFORE the filter.
+                stac_filter = {}
+                stac_filter["filter"] = content.pop("filter")
+                content = {
+                    **content,
+                    **filter_lang,
+                    **stac_filter,
+                }  # The "filter_lang" field has to be placed BEFORE the filter.
             if self.request_ids["collection_id"]:  # /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
                 owner_id = (
                     user_login if not self.request_ids["owner_id"] else self.request_ids["owner_id"]
@@ -361,7 +369,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 request = search_endpoint_in_collection_post(content, request, owner_id, collection_id)
             elif "filter" in content and "collections" in content:  # /catalo/search ENDPOINT.
                 owner_id, collection_id, request = search_endpoint_post(content=content, request=request)
-            else:  # TODO find a solution to get authorisations in this case for next stories
+            if (
+                not owner_id or not collection_id
+            ):  # TODO find a solution to get authorisations in this case for next stories
                 return request
         else:  # GET method.
             query = parse_qs(request.url.query)
@@ -373,7 +383,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 request = search_endpoint_in_collection_get(query, request, owner_id, collection_id)
             elif "filter" in query and "collections" in query:  # /catalog/search ENDPOINT.
                 owner_id, collection_id, request = search_endpoint_get(query=query, request=request)
-            else:  # TODO find a solution to get authorisations in this case for next stories
+            if (
+                not owner_id or not collection_id
+            ):  # TODO find a solution to get authorisations in this case for next stories
                 return request
         if (  # If we are in cluster mode and the user_login is not authorized
             # to put/post returns a HTTP_401_UNAUTHORIZED status.

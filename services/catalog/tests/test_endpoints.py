@@ -246,6 +246,26 @@ class TestCatalogSearchEndpoint:
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == 200
 
+    def test_search_with_collections_and_filter(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"collections": ["toto_S1_L1"], "filter": "width=2500"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 2
+
+        test_json = {
+            "collections": ["toto_S1_L1"],
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                    {"op": "=", "args": [{"property": "height"}, 2500]},
+                ],
+            },
+        }
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == 200
+
     def test_queryables(self, client):  # pylint: disable=missing-function-docstring
         try:
             response = client.get("/catalog/queryables")

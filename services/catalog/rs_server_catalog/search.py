@@ -65,7 +65,8 @@ def search_endpoint_get(query: dict[str, list[str]], request: Request) -> Union[
     filters = parse_ecql(qs_filter)
     owner_id = find_owner_id(filters)
     collection_id = query["collections"][0]
-    query["collections"] = [f"{owner_id}_{collection_id}"]
+    if owner_id:
+        query["collections"] = [f"{owner_id}_{collection_id}"]
     request.scope["query_string"] = urlencode(query, doseq=True).encode()
     return owner_id, collection_id, request
 
@@ -87,7 +88,8 @@ def search_endpoint_post(content: Dict[str, Any], request: Request) -> Union[str
     filters = parse_cql2_json(qs_filter)
     owner_id = find_owner_id(filters)
     collection_id = content["collections"][0]
-    content["collections"] = [f"{owner_id}_{collection_id}"]
+    if owner_id:
+        content["collections"] = [f"{owner_id}_{collection_id}"]
     request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
     return owner_id, collection_id, request
 
