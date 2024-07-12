@@ -244,9 +244,9 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
         catalog_collection_search["security"] = [{"API key passed in HTTP header": []}]
         catalog_collection_search_post["security"] = [{"API key passed in HTTP header": []}]
     # Add all previous created endpoints.
-    openapi_spec["paths"].setdefault(catalog_catalogs_path, {})["get"] = catalog_owner_id
-    openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["get"] = catalog_collection_search
-    openapi_spec["paths"].setdefault(catalog_collection_search_path, {})["post"] = catalog_collection_search_post
+    openapi_spec["paths"][catalog_catalogs_path] = {"get": catalog_owner_id}
+    openapi_spec["paths"][catalog_collection_search_path] = {"get": catalog_collection_search}
+    openapi_spec["paths"][catalog_collection_search_path]["post"] = catalog_collection_search_post
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 
