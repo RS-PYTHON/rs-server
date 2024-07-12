@@ -228,7 +228,7 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     catalog_collection_search["parameters"].extend(search_parameters)
     catalog_collection_search_path = "/catalog/collections/{owner_id}:{collection_id}/search"
 
-    # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. GET METHOD
+    # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. POST METHOD
     catalog_collection_search_post: Dict[str, Any] = {
         "summary": "search endpoint to search only inside a specific collection.",
         "description": "Endpoint.",
