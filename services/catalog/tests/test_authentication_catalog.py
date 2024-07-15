@@ -71,7 +71,7 @@ COMMON_FIELDS = {
     **AUTHENT_SCHEME,
 }
 
-# pylint: skip-file # ignore pylint issues for this file, TODO remove this
+# pylint: disable=too-many-lines
 
 
 def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], mock_wrong_apikey: bool = False):
@@ -581,6 +581,8 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
 
 
 class TestAuthenticationGetOneCollection:
+    """Contains authentication tests when the user wants to get a single collection."""
+
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call"),
         [
@@ -596,7 +598,8 @@ class TestAuthenticationGetOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):  # pylint: disable=too-many-arguments
+        """Test that the user gets the right collection when he does a good request with right permissions."""
         iam_roles = [f"rs_catalog_{user}:*_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
@@ -658,7 +661,9 @@ class TestAuthenticationGetOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right authorisations."""
 
         iam_roles = [
             "rs_catalog_toto:*_write",
@@ -675,6 +680,8 @@ class TestAuthenticationGetOneCollection:
 
 
 class TestAuthenticationGetItems:
+    """Contains authentication tests when the user wants to get items."""
+
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call"),
         [
@@ -690,7 +697,9 @@ class TestAuthenticationGetItems:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):  # pylint: disable=too-many-arguments
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does a good request with right permissions."""
 
         iam_roles = [f"rs_catalog_{user}:*_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -708,7 +717,10 @@ class TestAuthenticationGetItems:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user get a HTTP_401_UNAUTHORIZED status code response
+        when he does a good requests without the right authorisations.
+        """
 
         iam_roles = [
             "rs_catalog_toto:*_write",
@@ -725,6 +737,8 @@ class TestAuthenticationGetItems:
 
 
 class TestAuthenticationGetOneItem:
+    """Contains authentication tests when the user wants to one item."""
+
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call", "feature"),
         [
@@ -741,7 +755,8 @@ class TestAuthenticationGetOneItem:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):  # pylint: disable=too-many-arguments
+        """Test that the user gets the right item when he does a good request with right permissions."""
 
         iam_roles = [
             "rs_catalog_pyteam:*_read",
@@ -799,8 +814,8 @@ class TestAuthenticationGetOneItem:
             **HEADER,
         )
         assert response.status_code == HTTP_200_OK
-        id = json.loads(response.content)["id"]
-        assert id == feature_s1_l1_0["id"]
+        feature_id = json.loads(response.content)["id"]
+        assert feature_id == feature_s1_l1_0["id"]
 
     def test_fails_without_good_perms(
         self,
@@ -808,7 +823,10 @@ class TestAuthenticationGetOneItem:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions.
+        """
 
         iam_roles = [
             "rs_catalog_toto:*_write",
@@ -825,6 +843,8 @@ class TestAuthenticationGetOneItem:
 
 
 class TestAuthenticationPostOneCollection:
+    """Contains authentication tests when a user wants to post one collection."""
+
     collection_to_post = {
         "id": "MY_SPECIAL_COLLECTION",
         "type": "Collection",
@@ -857,7 +877,9 @@ class TestAuthenticationPostOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does a good request with right permissions."""
 
         iam_roles = [
             "rs_catalog_pyteam:*_read",
@@ -879,7 +901,9 @@ class TestAuthenticationPostOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -945,6 +969,8 @@ class TestAuthenticationPostOneCollection:
 
 
 class TestAuthenticationPutOneCollection:
+    """Contains authentication tests when a user wants to update one collection."""
+
     updated_collection = {
         "id": "S1_L1",
         "type": "Collection",
@@ -978,7 +1004,10 @@ class TestAuthenticationPutOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does good requests (one with the owner_id parameter and the other one
+        without the owner_id parameter) with right permissions."""
 
         iam_roles = [
             "rs_catalog_pyteam:*_read",
@@ -986,7 +1015,7 @@ class TestAuthenticationPutOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        # user is used in the endpoint, format is user:collection
+        # owner_id is used in the endpoint, format is owner_id:collection
         response = client.request(
             "PUT",
             "/catalog/collections/pyteam:S1_L1",
@@ -994,7 +1023,7 @@ class TestAuthenticationPutOneCollection:
             **HEADER,
         )
         assert response.status_code == HTTP_200_OK
-        # request the endpoint by using just "collection" (the user is
+        # request the endpoint by using just "collection" (the owner_id is
         # loaded by the rs-server-catalog directly from the apikey)
         response = client.request(
             "PUT",
@@ -1010,7 +1039,9 @@ class TestAuthenticationPutOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_pyteam:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -1075,6 +1106,7 @@ class TestAuthenticationPutOneCollection:
 
 
 class TestAuthenticationSearch:
+    """Contains authentication tests when a user wants to do a search request."""
 
     search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
     test_json = {
@@ -1095,7 +1127,9 @@ class TestAuthenticationSearch:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does good requests (GET and POST method) with right permissions."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1119,7 +1153,9 @@ class TestAuthenticationSearch:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -1136,6 +1172,7 @@ class TestAuthenticationSearch:
 
 
 class TestAuthenticationSearchInCollection:
+    """Contains authentication tests when a user wants to do a search request inside a specific collection."""
 
     search_params = {"ids": "fe916452-ba6f-4631-9154-c249924a122d", "filter-lang": "cql2-text", "filter": "width=2500"}
     test_json = {
@@ -1155,7 +1192,10 @@ class TestAuthenticationSearchInCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does good requests (GET and POST method) with right permissions.
+        Also test that the user gets the right number of items matching the search request parameters."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1189,7 +1229,9 @@ class TestAuthenticationSearchInCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -1211,6 +1253,7 @@ class TestAuthenticationSearchInCollection:
 
 
 class TestAuthenticationDownload:
+    """Contains authentication tests when a user wants to do a download."""
 
     def export_aws_credentials(self):
         """Export AWS credentials as environment variables for testing purposes.
@@ -1248,8 +1291,8 @@ class TestAuthenticationDownload:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):
-        # pylint: disable=missing-function-docstring
+    ):  # pylint: disable=too-many-locals
+        """Test used to verify the generation of a presigned url for a download."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1258,7 +1301,6 @@ class TestAuthenticationDownload:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        """Test used to verify the generation of a presigned url for a download."""
         # Start moto server
         moto_endpoint = "http://localhost:8077"
         self.export_aws_credentials()
@@ -1283,6 +1325,7 @@ class TestAuthenticationDownload:
                 Key="S1_L1/images/may24C355000e4102500n.tif",
                 Body=object_content,
             )
+            user = ""
 
             for user, file in users_map.items():
                 response = client.request(
@@ -1327,7 +1370,7 @@ class TestAuthenticationDownload:
         httpx_mock: HTTPXMock,
         client,
     ):
-        # pylint: disable=missing-function-docstring
+        """Test used to verify the generation of a presigned url for a download."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1335,7 +1378,6 @@ class TestAuthenticationDownload:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        """Test used to verify the generation of a presigned url for a download."""
         # Start moto server
         moto_endpoint = "http://localhost:8077"
         self.export_aws_credentials()
@@ -1375,13 +1417,17 @@ class TestAuthenticationDownload:
 
 
 class TestAuthenticationDelete:
+    """Contains authentication tests when a user wants to delete a collection."""
+
     def test_http200_with_good_authentication(
         self,
         mocker,
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he deletes a collection with right permissions"""
 
         iam_roles: list[str] = []
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -1426,7 +1472,9 @@ class TestAuthenticationDelete:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he tries to delete a collection without right permissions."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1445,6 +1493,8 @@ class TestAuthenticationDelete:
 
 
 class TestAuthenticationPostOneItem:
+    """Contains authentication tests when a user wants to post one item."""
+
     item_id = "S1SIWOCN_20220412T054447_0024_S139"
     feature_to_post = {
         "collection": "S1_L1",
@@ -1495,7 +1545,9 @@ class TestAuthenticationPostOneItem:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does a good request with right permissions."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1528,7 +1580,9 @@ class TestAuthenticationPostOneItem:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L1_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -1543,13 +1597,17 @@ class TestAuthenticationPostOneItem:
 
 
 class TestAuthenticationGetCatalogOwnerId:
+    """Contains authentication tests when a user wants to get a specific catalog."""
+
     def test_http200_with_good_authentication(
         self,
         mocker,
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does a good request with right permissions"""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1571,7 +1629,9 @@ class TestAuthenticationGetCatalogOwnerId:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without right permissions."""
 
         iam_roles = ["rs_catalog_toto:*_write"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -1584,12 +1644,12 @@ class TestAuthenticationGetCatalogOwnerId:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationErrorHandling:
-    def test_error_when_not_authenticated(
-        self,
-        mocker,
-        client,
-    ):  # pylint: disable=missing-function-docstring
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-        response = client.request("GET", "/catalog/")
-        assert response.status_code == HTTP_403_FORBIDDEN
+def test_error_when_not_authenticated(
+    mocker,
+    client,
+):
+    """Test that the user gets a HTPP_403_FORBIDDEN status code response
+    when he tries to call an endpoint without being authenticated."""
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+    response = client.request("GET", "/catalog/")
+    assert response.status_code == HTTP_403_FORBIDDEN
