@@ -898,7 +898,36 @@ class TestAuthenticationPostOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test to verify that creating a collection owned by another user returns HTTP 401 Unauthorized.
+
+        This test checks the scenario where the user 'pyteam' attempts to create a collection that
+        is owned by the user 'toto'. It ensures that the appropriate HTTP 401 Unauthorized status
+        code is returned. The rs-server-catalog receives the apikey from the HEADER parameter,
+        which is created for the user 'pyteam'. It then tries to create a collection with the
+        info received in the body, but it sees that the owner is the 'toto' user, which doesn't
+        correspond with the apikey owner
+
+        Args:
+            self: The test case instance.
+            mocker: pytest-mock fixture for mocking objects.
+            monkeypatch: pytest fixture for modifying module or environment attributes.
+            httpx_mock (HTTPXMock): Fixture for mocking HTTPX requests.
+            client: Test client for making HTTP requests to the application.
+
+        Returns:
+            None
+
+        Raises:
+            AssertionError: If the response status code is not HTTP 401 Unauthorized.
+
+        Notes:
+        - The `iam_roles` variable simulates the roles assigned to the user 'pyteam'.
+        - The `init_test` function is called to set up the test environment with mocked roles and configurations.
+        - The `self.collection_to_post` dictionary is modified to set the 'owner' field to 'toto'.
+        - The `client.request` method sends a POST request to create a collection.
+        - The test asserts that the response status code is HTTP 401 Unauthorized.
+        """
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1000,7 +1029,35 @@ class TestAuthenticationPutOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """This test evaluates the scenario where the user 'pyteam' attempts to update his
+        own collection by altering the owner field to another user, 'toto'. The primary objective
+        is to ensure that an appropriate HTTP 401 Unauthorized status code is returned. The rs-server-catalog
+        retrieves the apikey from the HEADER parameter, which is associated with the user 'pyteam'. When
+        attempting to update the collection with the information provided in the body, the
+        system detects that the owner is specified as 'toto'. Since 'toto' does not match the owner of the apikey,
+        the update is correctly rejected, resulting in the expected unauthorized status.
+
+        Args:
+            self: The test case instance.
+            mocker: pytest-mock fixture for mocking objects.
+            monkeypatch: pytest fixture for modifying module or environment attributes.
+            httpx_mock (HTTPXMock): Fixture for mocking HTTPX requests.
+            client: Test client for making HTTP requests to the application.
+
+        Returns:
+            None
+
+        Raises:
+            AssertionError: If the response status code is not HTTP 401 Unauthorized.
+
+        Notes:
+        - The `iam_roles` variable simulates the roles assigned to the user 'pyteam'.
+        - The `init_test` function is called to set up the test environment with mocked roles and configurations.
+        - The `self.collection_to_post` dictionary is modified to set the 'owner' field to 'toto'.
+        - The `client.request` method sends a PUT request to update a collection.
+        - The test asserts that the response status code is HTTP 401 Unauthorized.
+        """
 
         iam_roles = [
             "rs_catalog_toto:*_read",
