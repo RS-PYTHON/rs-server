@@ -435,6 +435,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
         content = self.remove_user_from_objects(content, owner_id, "features")
         content = self.adapt_links(content, owner_id, collection_id, "features")
+
+        # Add the stac authentication extension
+        self.add_authentication_extension(content)
+
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_put_post_request(  # pylint: disable=too-many-branches
@@ -698,6 +702,10 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
+
+        # Add the stac authentication extension
+        self.add_authentication_extension(content)
+
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_download_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -950,3 +958,36 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             response = await self.manage_delete_response(response, user)
 
         return response
+
+    def add_authentication_extension(self, content: dict):
+        """Add the stac authentication extension, see: https://github.com/stac-extensions/authentication"""
+
+        # Only on cluster mode
+        if not common_settings.CLUSTER_MODE:
+            return
+
+        # Add the STAC extension
+        extensions = content.setdefault("stac_extensions", [])
+        url = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+        if url not in extensions:
+            extensions.append(url)
+
+        # Add the authentication schemes
+        content.setdefault("auth:schemes", {})["apikey"] = {
+            "type": "apiKey",
+            "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
+            # add anchor to the "new api key" endpoint
+            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
+            "name": "x-api-key",
+            "in": "header",
+        }
+
+        # Add the authentication reference to each link and asset
+        for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
+            link_or_asset["auth:refs"] = ["apikey"]
+
+        # Add the extension to the response root and to nested collections, items, ...
+        # Do recursive calls to all nested fields, if defined
+        for nested_field in ["collections", "features"]:
+            for nested_content in content.get(nested_field, []):
+                self.add_authentication_extension(nested_content)
