@@ -113,8 +113,52 @@ def test_update_stac_catalog_metadata(client):
     assert resp_dict["description"] == description_txt
 
 
+class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-methods
+    """This class contains integration tests for the endpoit '/catalog/collections/{owner_id}:{collection_id}/search'"""
+
+    def test_get_search_in_toto_s1_l1_collection(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"filter": "width=2500"}
+
+        response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 2
+
+        test_params = {"filter": "width=300"}
+
+        response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 0
+
+    def test_post_search_in_toto_s1_l1_collection(self, client):  # pylint: disable=missing-function-docstring
+        cql2_json_query = {
+            "filter-lang": "cql2-json",
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "height"}, 2500]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/collections/toto:S1_L1/search", json=cql2_json_query)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 2
+
+
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
+
+    def test_search_endpoint_with_ids_and_collections(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"ids": "fe916452-ba6f-4631-9154-c249924a122d", "collections": "toto_S1_L1"}
+
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 1
 
     def test_search_endpoint_with_filter_owner_id_and_other(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
@@ -147,6 +191,11 @@ class TestCatalogSearchEndpoint:
         content = json.loads(response.content)
         assert len(content["features"]) == 2
 
+    def test_search_endpoint_without_filter(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"collections": "S1_L1", "limit": "5"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+
     def test_searh_endpoint_without_owner_id(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
 
@@ -157,14 +206,6 @@ class TestCatalogSearchEndpoint:
 
     def test_search_endpoint_with_specific_filter(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
-
-        response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == fastapi.status.HTTP_200_OK
-        content = json.loads(response.content)
-        assert len(content["features"]) == 0  # behavior to be determined
-
-    def test_search_endpoint_without_filter_lang(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"collections": "S1_L1", "filter": "width=3000 AND owner='toto'"}
 
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
@@ -188,6 +229,42 @@ class TestCatalogSearchEndpoint:
         assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 2
+
+    def test_post_search_endpoint_with_no_filter_lang(self, client):  # pylint: disable=missing-function-docstring
+        test_json = {
+            "collections": ["S1_L1"],
+            # Here we remove the filter-lang field and check that we insert a default filter-lang.
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == 200
+
+    def test_search_with_collections_and_filter(self, client):  # pylint: disable=missing-function-docstring
+        test_params = {"collections": ["toto_S1_L1"], "filter": "width=2500"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
+        content = json.loads(response.content)
+        assert len(content["features"]) == 2
+
+        test_json = {
+            "collections": ["toto_S1_L1"],
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                    {"op": "=", "args": [{"property": "height"}, 2500]},
+                ],
+            },
+        }
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == 200
 
     def test_queryables(self, client):  # pylint: disable=missing-function-docstring
         try:

@@ -975,6 +975,83 @@ class TestAuthenticationSearch:
             assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
+class TestAuthenticationSearchInCollection:
+
+    search_params = {"ids": "fe916452-ba6f-4631-9154-c249924a122d", "filter-lang": "cql2-text", "filter": "width=2500"}
+    test_json = {
+        "filter-lang": "cql2-json",
+        "filter": {
+            "op": "and",
+            "args": [
+                {"op": "=", "args": [{"property": "height"}, 2500]},
+                {"op": "=", "args": [{"property": "width"}, 2500]},
+            ],
+        },
+    }
+
+    def test_http200_with_good_authentication(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "GET",
+                "/catalog/collections/toto:S1_L1/search",
+                params=self.search_params,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+            content = json.loads(response.content)
+            assert content["context"] == {"limit": 10, "returned": 1}
+
+            response = client.request(
+                "POST",
+                "/catalog/collections/toto:S1_L1/search",
+                json=self.test_json,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_200_OK
+            content = json.loads(response.content)
+            assert content["context"] == {"limit": 10, "returned": 2}
+
+    def test_fails_without_good_perms(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):  # pylint: disable=missing-function-docstring
+
+        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+
+        for pass_the_apikey in PASS_THE_APIKEY:
+            response = client.request(
+                "GET",
+                "/catalog/collections/toto:S1_L1/search",
+                params=self.search_params,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+            response = client.request(
+                "POST",
+                "/catalog/collections/toto:S1_L1/search",
+                json=self.test_json,
+                **pass_the_apikey,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
 class TestAuthenticationDownload:
 
     def export_aws_credentials(self):
