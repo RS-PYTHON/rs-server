@@ -1250,7 +1250,7 @@ class TestAuthenticationSearchInCollection:
         response = client.request(
             "GET",
             "/catalog/collections/toto:S1_L1/search",
-            params=self.search_params,
+            params=self.search_params_filter,
             **HEADER,
         )
         assert response.status_code == HTTP_401_UNAUTHORIZED
