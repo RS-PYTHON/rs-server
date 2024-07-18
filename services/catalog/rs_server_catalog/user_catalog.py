@@ -325,7 +325,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 res = right
         return res
 
-    async def manage_search_request(  # pylint: disable = too-many-branches
+    async def manage_search_request(
         self,
         request: Request,
     ) -> Request | JSONResponse:
