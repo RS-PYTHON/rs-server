@@ -1222,6 +1222,9 @@ def test_queryables(client):
 
 
 def test_catalog_catalogs_owner_id_is_disabled(client):
+    """
+    Test that the endpoint /catalog/catalogs/{owner_id} is no longer working as expected.
+    """
 
     response = client.get("/catalog/catalogs/toto")
     assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST

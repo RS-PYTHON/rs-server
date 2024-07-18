@@ -18,7 +18,6 @@ import re
 
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.status import HTTP_401_UNAUTHORIZED
 
 
 def add_catalogs(request: Request, auth_roles: list, user_login: str, content: dict) -> dict:
