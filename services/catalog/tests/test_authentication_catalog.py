@@ -1503,7 +1503,7 @@ class TestAuthenticationDelete:
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationPostOneItem:
+class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
     """Contains authentication tests when a user wants to post one item."""
 
     item_id = "S1SIWOCN_20220412T054447_0024_S139"
