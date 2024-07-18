@@ -582,7 +582,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             owner_id = collection["owner"]
             size_owner_id = int(
                 len(owner_id) + 1,
-            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id=len('toto_')==len('toto')+1.
+            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id==len('toto_')==len('toto')+1.
             collection_id = self.get_collection_id(collection, size_owner_id)
             # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
             for link in collection["links"]:
@@ -629,8 +629,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
         if request.scope["path"] == "/":
-            if common_settings.CLUSTER_MODE:  # /catalog and /catalog/catalogs/owner_id
-                content = manage_landing_page(request, auth_roles, user_login, content, user)
+            if common_settings.CLUSTER_MODE:  # /catalog
+                content = manage_landing_page(auth_roles, user_login, content)
                 if hasattr(content, "status_code"):  # Unauthorized
                     return content
             # Manage local landing page of the catalog
@@ -887,6 +887,8 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
         )
         request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
+        if not request.scope["path"]:  # Invalid endpoint
+            return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
         user = request_body.get("owner", None)

@@ -207,99 +207,10 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "href": "http://testserver/catalog/api.html",
             **AUTHENT_REF,
         },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "href": "http://testserver/catalog/catalogs/toto",
-            **AUTHENT_REF,
-        },
     ]
     landing_page_response = client.request("GET", "/catalog/", **HEADER)
     assert landing_page_response.status_code == HTTP_200_OK
     content = json.loads(landing_page_response.content)
-    assert content["links"] == valid_links
-
-    valid_links = [
-        {
-            "rel": "self",
-            "type": "application/json",
-            "href": "http://testserver/catalog/",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "root",
-            "type": "application/json",
-            "href": "http://testserver/catalog/",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "data",
-            "type": "application/json",
-            "href": "http://testserver/catalog/collections",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "conformance",
-            "type": "application/json",
-            "title": "STAC/WFS3 conformance classes implemented by this server",
-            "href": "http://testserver/catalog/conformance",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "search",
-            "type": "application/geo+json",
-            "title": "STAC search",
-            "href": "http://testserver/catalog/search",
-            "method": "GET",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "search",
-            "type": "application/geo+json",
-            "title": "STAC search",
-            "href": "http://testserver/catalog/search",
-            "method": "POST",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "toto_S1_L1",
-            "href": "http://testserver/catalog/collections/toto:S1_L1",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "toto_S2_L3",
-            "href": "http://testserver/catalog/collections/toto:S2_L3",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "title": "pyteam_S1_L1",
-            "type": "application/json",
-            "href": "http://testserver/catalog/collections/pyteam:S1_L1",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "service-desc",
-            "type": "application/vnd.oai.openapi+json;version=3.0",
-            "title": "OpenAPI service description",
-            "href": "http://testserver/catalog/api",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "service-doc",
-            "type": "text/html",
-            "title": "OpenAPI service documentation",
-            "href": "http://testserver/catalog/api.html",
-            **AUTHENT_REF,
-        },
-    ]
-
-    catalog_owner_id_response = client.request("GET", "/catalog/catalogs/toto", headers={APIKEY_HEADER: VALID_APIKEY})
-    content = json.loads(catalog_owner_id_response.content)
     assert content["links"] == valid_links
 
     pyteam_collection = {
@@ -356,13 +267,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/toto",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/toto",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -400,13 +311,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/toto",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/toto",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -444,13 +355,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/titi",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/titi",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -486,13 +397,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     "rel": "parent",
                     "type": "application/json",
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     "rel": "root",
                     "type": "application/json",
                     **AUTHENT_REF,
@@ -532,13 +443,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -616,13 +527,13 @@ class TestAuthenticationGetOneCollection:
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": f"http://testserver/catalog/catalogs/{user}",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": f"http://testserver/catalog/catalogs/{user}",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -1602,54 +1513,6 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
             "POST",
             "/catalog/collections/toto:S1_L1/items",
             json=self.feature_to_post,
-            **HEADER,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
-
-
-class TestAuthenticationGetCatalogOwnerId:
-    """Contains authentication tests when a user wants to get a specific catalog."""
-
-    def test_http200_with_good_authentication(
-        self,
-        mocker,
-        monkeypatch,
-        httpx_mock: HTTPXMock,
-        client,
-    ):
-        """Test that the user gets a HTTP_200_OK status code response
-        when he does a good request with right permissions"""
-
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-        users_map = {"toto": "toto", "pyteam": ""}
-        for _, val in users_map.items():
-            response = client.request(
-                "GET",
-                f"/catalog/catalogs/{val}",
-                **HEADER,
-            )
-            assert response.status_code == HTTP_200_OK
-
-    def test_fails_if_not_authorized(
-        self,
-        mocker,
-        monkeypatch,
-        httpx_mock: HTTPXMock,
-        client,
-    ):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does a good request without right permissions."""
-
-        iam_roles = ["rs_catalog_toto:*_write"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
-        response = client.request(
-            "GET",
-            "/catalog/catalogs/toto",
             **HEADER,
         )
         assert response.status_code == HTTP_401_UNAUTHORIZED
