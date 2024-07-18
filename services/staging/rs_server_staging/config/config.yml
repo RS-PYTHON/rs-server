@@ -1,0 +1,34 @@
+server:
+  url: http://localhost:8000
+  bind:
+    host: 0.0.0.0
+    port: 8000
+  admin: False
+  languages:
+    - en-US
+
+logging:
+  level: DEBUG
+
+metadata:
+  identification:
+    title: RS-Staging Service
+    description: A service to ingest external data as STAC items.
+    keywords:
+      - ogc
+      - api
+      - processes
+
+manager:
+  name: TinyDB
+  connection: /tmp/pygeoapi-process-manager.db
+  output_dir: /tmp/
+
+resources:
+  staging:
+    type: process
+    processor:
+      name: HelloWorld
+
+openapi:
+  path: /openapi.json
