@@ -37,14 +37,14 @@ app.add_middleware(
 )
 
 # Initialize pygeoapi API
-config_path = pathlib.Path("rs_server_staging/config/config.yml").absolute()
-openapi_path = pathlib.Path("rs_server_staging/config/openapi.json").absolute()
-os.environ['PYGEOAPI_CONFIG']  = str(config_path)
-os.environ['PYGEOAPI_OPENAPI'] = str(openapi_path)
-config = get_config(config_path)
-openapi = openapi_path  # You should load the actual content of your OpenAPI spec here if it's not a file path
+# config_path = pathlib.Path("rs_server_staging/config/config.yml").absolute()
+# openapi_path = pathlib.Path("rs_server_staging/config/openapi.json").absolute()
+# os.environ['PYGEOAPI_CONFIG']  = str(config_path)
+# os.environ['PYGEOAPI_OPENAPI'] = str(openapi_path)
+# config = get_config(config_path)
+# openapi = openapi_path  # You should load the actual content of your OpenAPI spec here if it's not a file path
 
-api = API(config, openapi)
+api = API(get_config(os.environ['PYGEOAPI_CONFIG']), os.environ['PYGEOAPI_OPENAPI'])
 
 # Exception handlers
 @app.exception_handler(StarletteHTTPException)
