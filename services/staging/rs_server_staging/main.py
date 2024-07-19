@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""rs server staging main module."""
 import os
-import pathlib
 import uuid
-from typing import Dict
 
 from fastapi import FastAPI, HTTPException, Path
 from pydantic import BaseModel
@@ -34,7 +33,9 @@ jobs_table = db.table("jobs")
 
 
 # Use if you want to impose shaped-design of request
-class ExecuteRequest(BaseModel):
+class ExecuteRequest(BaseModel):  # pylint: disable = too-few-public-methods
+    """Class used to describe request structure."""
+
     job_id: str
     parameters: dict
     # Add any other fields you expect in the request body
@@ -65,19 +66,25 @@ api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAP
 
 # Exception handlers
 @app.exception_handler(StarletteHTTPException)
-async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+async def custom_http_exception_handler(
+    request: Request,
+    exc: StarletteHTTPException,
+):  # pylint: disable= unused-argument
+    """HTTP handler"""
     return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
 
 
 # Health check route
 @app.get("/_mgmt/ping")
 async def ping():
+    """Liveliness probe."""
     return {"status": "healthy"}
 
 
 # Endpoint to execute the staging process and generate a job ID
 @app.post("/processes/staging/execution")
 async def execute_staging_process(request: dict):
+    """Used to execute processing jobs."""
     job_id = str(uuid.uuid4())  # Generate a unique job ID
     parameters = request.get("parameters", {})
     processor_name = "HelloWorld"
@@ -97,13 +104,13 @@ async def execute_staging_process(request: dict):
 # Endpoint to get the status of a job by job_id
 @app.get("/jobs/{job_id}")
 async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
-    Job = Query()
-    job = jobs_table.get(Job.job_id == job_id)
+    """Used to get status of processing job."""
+    job = jobs_table.get(Query().job_id == job_id)
 
     if job:
         return job
-    else:
-        raise HTTPException(status_code=404, detail="Job not found")
+
+    raise HTTPException(status_code=404, detail="Job not found")
 
 
 # Mount pygeoapi endpoints
