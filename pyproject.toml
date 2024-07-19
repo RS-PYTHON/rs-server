@@ -58,7 +58,7 @@ httpx = "^0.27.0"
 moto = "==5.0.10"
 flask = "^3.0.3"
 flask-cors = "^4.0.1"
-sphinx = "^7.3.7"
+sphinx = "^7.4.6"
 sphinx-rtd-theme = "^2.0.0"
 orjson = "3.10.6"
 
