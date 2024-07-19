@@ -151,6 +151,21 @@ jobs:
         with:
           package_directory: services/cadip
 
+  services-staging-whl:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "'services/staging' wheel"
+    outputs:
+      version_name: ${{ steps.publish-wheel.outputs.version_name }}
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/staging
+
   services-catalog-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
