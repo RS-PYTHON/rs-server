@@ -29,7 +29,7 @@ RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
 
 
-COPY ./config /opt/config
+#COPY ./config /opt/config
 
 # Set environment variables for pygeoapi
 ENV PYGEOAPI_CONFIG=/opt/config/config.yml
