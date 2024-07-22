@@ -59,7 +59,7 @@ AUTHENT_SCHEME = {
     },
 }
 AUTHENT_REF = {
-    "properties": {"auth:refs": ["apikey"]},
+    "auth:refs": ["apikey"],
 }
 COMMON_FIELDS = {
     "extent": {
@@ -69,10 +69,8 @@ COMMON_FIELDS = {
     "license": "public-domain",
     "description": "Some description",
     "stac_version": "1.0.0",
-    "properties": {
-        "stac_extensions": [AUTHENT_EXTENSION],
-        **AUTHENT_SCHEME,
-    },
+    "stac_extensions": [AUTHENT_EXTENSION],
+    **AUTHENT_SCHEME,
 }
 
 # pylint: disable=too-many-lines
