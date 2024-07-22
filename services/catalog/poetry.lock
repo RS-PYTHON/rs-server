@@ -1801,13 +1801,13 @@ email = ["email-validator (>=1.0.3)"]
 
 [[package]]
 name = "pygeofilter"
-version = "0.2.4"
+version = "0.2.1"
 description = "pygeofilter is a pure Python parser implementation of OGC filtering standards"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pygeofilter-0.2.4-py2.py3-none-any.whl", hash = "sha256:3462e7d6d08e27da281b3de6f360bb6cf09b6dedafd2c630474d4900c1d89abf"},
-    {file = "pygeofilter-0.2.4.tar.gz", hash = "sha256:265a0a5d47e8421b7f07710d66422e94c4ee2590ce3fad6bd4b61a248e4e816b"},
+    {file = "pygeofilter-0.2.1-py2.py3-none-any.whl", hash = "sha256:6cbfd46edefee421cae6d338942a0f4f8bbb00f1a6d979914420a300aa0845a6"},
+    {file = "pygeofilter-0.2.1.tar.gz", hash = "sha256:cafc961a5cab5f2836605a43b82b05e799500223d19d2d8d8acb85ba263e954c"},
 ]
 
 [package.dependencies]
@@ -1819,7 +1819,7 @@ pygeoif = ">=1.0.0"
 backend-django = ["django"]
 backend-elasticsearch = ["elasticsearch", "elasticsearch-dsl"]
 backend-native = ["shapely"]
-backend-sqlalchemy = ["geoalchemy2", "sqlalchemy"]
+backend-sqlalchemy = ["geoalchemy2", "sqlalchemy (<2.0.0)"]
 fes = ["pygml (>=0.2)"]
 
 [[package]]
@@ -1910,20 +1910,20 @@ validation = ["jsonschema (>=4.18,<5.0)"]
 
 [[package]]
 name = "pytest"
-version = "8.2.2"
+version = "8.3.1"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pytest-8.2.2-py3-none-any.whl", hash = "sha256:c434598117762e2bd304e526244f67bf66bbd7b5d6cf22138be51ff661980343"},
-    {file = "pytest-8.2.2.tar.gz", hash = "sha256:de4bb8104e201939ccdc688b27a89a7be2079b22e2bd2b07f806b6ba71117977"},
+    {file = "pytest-8.3.1-py3-none-any.whl", hash = "sha256:e9600ccf4f563976e2c99fa02c7624ab938296551f280835ee6516df8bc4ae8c"},
+    {file = "pytest-8.3.1.tar.gz", hash = "sha256:7e8e5c5abd6e93cb1cc151f23e57adc31fcf8cfd2a3ff2da63e23f732de35db6"},
 ]
 
 [package.dependencies]
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
 iniconfig = "*"
 packaging = "*"
-pluggy = ">=1.5,<2.0"
+pluggy = ">=1.5,<2"
 
 [package.extras]
 dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
@@ -3227,4 +3227,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "ee806dbb0f9d282dd8118e93fbc0f1b47979fa4a4097afcc17c190bc79e69fe9"
+content-hash = "a40053bac52e3a51e05d2bfe05d52a9bac870d9232176efaed3b3a1321976c28"
