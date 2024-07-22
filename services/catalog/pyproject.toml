@@ -32,7 +32,7 @@ moto = "==5.0.11"
 flask = "^3.0.3"
 flask-cors = "^4.0.1"
 pytest-mock = "^3.14.0"
-pygeofilter = "^0.2.1"
+pygeofilter = "^0.2.4"
 
 # TEMP for https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-155
 # we also need the rs-server-common dependencies. We duplicate them here
