@@ -58,7 +58,9 @@ AUTHENT_SCHEME = {
         },
     },
 }
-AUTHENT_REF = {"auth:refs": ["apikey"]}
+AUTHENT_REF = {
+    "properties": {"auth:refs": ["apikey"]},
+}
 COMMON_FIELDS = {
     "extent": {
         "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
@@ -67,8 +69,10 @@ COMMON_FIELDS = {
     "license": "public-domain",
     "description": "Some description",
     "stac_version": "1.0.0",
-    "stac_extensions": [AUTHENT_EXTENSION],
-    **AUTHENT_SCHEME,
+    "properties": {
+        "stac_extensions": [AUTHENT_EXTENSION],
+        **AUTHENT_SCHEME,
+    },
 }
 
 # pylint: disable=too-many-lines
@@ -798,6 +802,7 @@ class TestAuthenticationGetOneItem:
                 "owner_id": user,
                 "proj:epsg": 3857,
                 "orientation": "nadir",
+                **AUTHENT_SCHEME,
             },
             "stac_version": "1.0.0",
             "stac_extensions": [
@@ -805,7 +810,6 @@ class TestAuthenticationGetOneItem:
                 "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
                 AUTHENT_EXTENSION,
             ],
-            **AUTHENT_SCHEME,
         }
 
         response = client.request(

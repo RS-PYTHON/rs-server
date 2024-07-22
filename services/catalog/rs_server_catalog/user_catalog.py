@@ -966,14 +966,17 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         if not common_settings.CLUSTER_MODE:
             return
 
+        # Get or set the "properties" field
+        properties = content.setdefault("properties", {})
+
         # Add the STAC extension
-        extensions = content.setdefault("stac_extensions", [])
+        extensions = properties.setdefault("stac_extensions", [])
         url = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
         if url not in extensions:
             extensions.append(url)
 
         # Add the authentication schemes
-        content.setdefault("auth:schemes", {})["apikey"] = {
+        properties.setdefault("auth:schemes", {})["apikey"] = {
             "type": "apiKey",
             "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
             # add anchor to the "new api key" endpoint
@@ -984,7 +987,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         # Add the authentication reference to each link and asset
         for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
-            link_or_asset["auth:refs"] = ["apikey"]
+            link_or_asset.setdefault("properties", {})["auth:refs"] = ["apikey"]
 
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
