@@ -65,6 +65,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.pgstac.core import CoreCrudClient
+from stac_fastapi.types.errors import NotFoundError
 from starlette.middleware.base import StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -185,25 +186,77 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
         return content
 
+    async def get_item_from_collection(self, request: Request):
+        """Get an item from the collection.
+
+        Args:
+            request (Request): The request object.
+
+        Returns:
+            Optional[Dict]: The item from the collection if found, else None.
+        """
+        try:
+            item = await self.client.get_item(
+                item_id=self.request_ids["item_id"],
+                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
+                request=request,
+            )
+            return item
+        except NotFoundError:
+            logger.exception(
+                f"The element {self.request_ids['item_id']} does not \
+exist in collection {self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
+            )
+            return None
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Exception: {e}")
+            raise HTTPException(
+                detail=f"Exception when trying to get the item {item['id']} \
+from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} collection",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from e
+
     def update_stac_item_publication(  # pylint: disable=too-many-locals
         self,
         content: dict,
         user: str,
-        netloc: str,
+        request: Request,
+        item: dict,
     ) -> Any:
         """Update json body of feature push to catalog"""
-
+        # protection in case of POST request and an already exisiting item in the database
+        if request.method == "POST" and item:
+            raise HTTPException(
+                detail=f"Conflict error! The item {item['id']} \
+already exists in the {user}_{content['collection']} collection",
+                status_code=HTTP_400_BAD_REQUEST,
+            )
+        if request.method in ["PUT", "PATCH"] and not item:
+            raise HTTPException(
+                detail=f"The item {item['id']} \
+does not exist in the {user}_{content['collection']} collection for an update (POST/PATCH request received)",
+                status_code=HTTP_400_BAD_REQUEST,
+            )
+        # in case of an update (PUT request), prepare an array with all the assets
+        # this will be used to check for the newly added or removable assets
         # Unique set of temp bucket names
         bucket_names = set()
         files_s3_key = []
+        self.handler = S3StorageHandler(
+            os.environ["S3_ACCESSKEY"],
+            os.environ["S3_SECRETKEY"],
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_REGION"],
+        )
         # 1 - update assets href
         for asset in content["assets"]:
             filename_str = content["assets"][asset]["href"]
+            existing_asset = None
+            if item:
+                existing_asset = item["assets"].get(asset, None)
             logger.debug(f"HTTP request asset: {filename_str!r}")
             fid = filename_str.rsplit("/", maxsplit=1)[-1]
-            new_href = (
-                f'https://{netloc}/catalog/collections/{user}:{content["collection"]}/items/{fid}/download/{asset}'
-            )
+            new_href = f'https://{request.url.netloc}/catalog/collections/{user}:{content["collection"]}/items/{fid}/download/{asset}'
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
             try:
@@ -213,6 +266,12 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 new_s3_href = {"s3": {"href": s3_key}}
+                transfer_it = True
+                if existing_asset:
+                    # check if there is the same path. If yes, verify if the file is already copied
+                    if existing_asset["alternate"] == new_s3_href:
+                        # check the file
+                        self.handler.list_s3_files_obj
                 content["assets"][asset].update({"alternate": new_s3_href})
                 files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
             except (IndexError, AttributeError, KeyError) as exc:
@@ -237,12 +296,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         # 4 bucket movement
         try:
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
-                self.handler = S3StorageHandler(
-                    os.environ["S3_ACCESSKEY"],
-                    os.environ["S3_SECRETKEY"],
-                    os.environ["S3_ENDPOINT"],
-                    os.environ["S3_REGION"],
-                )
                 config = TransferFromS3ToS3Config(
                     files_s3_key,
                     self.temp_bucket_name,
@@ -491,15 +544,22 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                 if not content.get("owner"):
                     content["owner"] = user
                 # TODO update the links also?
+            # The following section handles the request to create/update an item
             elif "items" in request.scope["path"]:
+                # try to get the item if it is already part from the collection
+                item = await self.get_item_from_collection(request)
+                # protection when a request to create an item already present in the collection
                 if request.method == "POST":
-                    content = self.update_stac_item_publication(content, user, request.url.netloc)
+                    content = self.update_stac_item_publication(content, user, request, item)
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
                         content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
                     else:  # PUT
-                        published, expires = await self.retrieve_timestamp(request)
+                        published = expires = ""
+                        if item and item.get("properties"):
+                            published = item["properties"].get("published", "")
+                            expires = item["properties"].get("expires", "")
                         if not published and not expires:
                             detail = {"error": f"Item {content['id']} not found."}
                             return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
@@ -872,7 +932,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
+        request_body = None if request.method not in ["POST", "PUT", "PATCH"] else await request.json()
         # Get the the user_login calling the endpoint. If this is not set (the authentication.apikey_security function
         # is not called), the local user shall be used (later on, in rereoute_url)
         # The common_settings.CLUSTER_MODE may not be used because for some endpoints like /api
@@ -881,7 +941,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         try:
             user_login = request.state.user_login
         except (NameError, AttributeError):
-            # "The current user will be used if needed in rerouting"
+            # The current running user (if in local mode) will be used if needed in rerouting
             user_login = None
         logger.debug(
             f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
@@ -889,16 +949,15 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
-        user = request_body.get("owner", None)
-        collection_id = request_body.get("id", None)
-        self.request_ids["owner_id"] = (
-            user if user and not self.request_ids["owner_id"] else self.request_ids["owner_id"]
-        )
-        self.request_ids["collection_id"] = (
-            collection_id
-            if collection_id and not self.request_ids["collection_id"]
-            else self.request_ids["collection_id"]
-        )
+        # This is available in POST/PUT/PATCH methods only
+        if request_body:
+            self.request_ids["owner_id"] = self.request_ids.get("owner_id") or request_body.get("owner")
+            # received a POST/PUT/PATCH for a STAC item or
+            # a STAC collection is created
+            if not self.request_ids["collection_id"]:
+                self.request_ids["collection_id"] = request_body.get("collection") or request_body.get("id")
+            if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
+                self.request_ids["item_id"] = request_body.get("id", None)
 
         if "/health" in request.scope["path"]:
             # return true if up and running
@@ -954,8 +1013,8 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             response = await self.manage_put_post_response(request, response)
-        elif request.method == "DELETE" and user:
-            response = await self.manage_delete_response(response, user)
+        elif request.method == "DELETE" and self.request_ids["owner_id"]:
+            response = await self.manage_delete_response(response, self.request_ids["owner_id"])
 
         return response
 
