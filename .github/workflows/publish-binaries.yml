@@ -379,7 +379,7 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/staging' Docker image"
-    needs: [set-env, services-frontend-whl]
+    needs: [set-env, services-staging-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
