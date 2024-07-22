@@ -51,9 +51,6 @@ RUN \
 # Copy the whole /usr/local dir (that contains the python installation) from the build stage
 COPY --from=builder /usr/local /usr/local
 
-# Install opentelemetry instrumentation packages for dependencies
-RUN opentelemetry-bootstrap -a install
-
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
 
