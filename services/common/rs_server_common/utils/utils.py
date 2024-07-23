@@ -16,8 +16,10 @@
 
 import copy
 import os
+import shutil
 import threading
 import time
+import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -225,7 +227,12 @@ def update_db(
     raise last_exception
 
 
-def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[str], Provider], **kwargs):
+def eodag_download(
+    argument: EoDAGDownloadHandler,
+    db,
+    init_provider: Callable[[str], Provider],
+    **kwargs,
+):  # pylint: disable=too-many-locals
     """Initiates the eodag download process.
 
     Args:
@@ -293,6 +300,18 @@ def eodag_download(argument: EoDAGDownloadHandler, db, init_provider: Callable[[
         # Try n times to update the status to FAILED in the database
         update_db(db, db_product, EDownloadStatus.FAILED, repr(exception))
         return
+
+    # EoDAG 3.0 update:
+    # lone file (e.g. NetCDF or grib files) or zip file with a lone file products: a directory with the name of
+    # the product title is created to place the file in
+    file_dir = Path(local) / argument.name
+    file_location = file_dir / argument.name
+
+    if file_dir.is_dir() and file_location.is_file():
+        temp_loc = Path(local) / f"{uuid.uuid4()}_{argument.name}"
+        shutil.move(file_location, temp_loc)
+        file_dir.rmdir()  # Remove the original directory
+        shutil.move(temp_loc, file_dir)
 
     if argument.obs:
         try:
