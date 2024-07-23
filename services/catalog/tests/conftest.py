@@ -25,6 +25,7 @@ import subprocess  # nosec ignore security issue
 os.environ["RSPY_LOCAL_MODE"] = "1"
 os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
+os.environ["RSPY_UAC_HOMEPAGE"] = "http://test_apikey_manager/docs"
 
 from dataclasses import dataclass
 from pathlib import Path
