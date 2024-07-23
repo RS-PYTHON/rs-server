@@ -312,7 +312,7 @@ def eodag_download(
         shutil.move(file_location, temp_loc)
         file_dir.rmdir()  # Remove the original directory
         shutil.move(temp_loc, file_dir)
-        
+
     if argument.obs:
         try:
             # NOTE: The environment variables have to be set from outside
