@@ -179,24 +179,6 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     # Create the endpoint /catalog/catalogs/owner_id
     owner_id = "Owner ID"
     collection_id = "Collection ID"
-    catalog_owner_id: Dict[str, Any] = {
-        "summary": "Landing page for the catalog owner id only.",
-        "description": "Endpoint.",
-        "operationId": "Get_landing_page_owner_id",
-        "responses": {
-            "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
-        },
-        "parameters": [
-            {
-                "description": owner_id,
-                "required": True,
-                "schema": {"type": "string", "title": owner_id, "description": owner_id},
-                "name": "owner_id",
-                "in": "path",
-            },
-        ],
-    }
-    catalog_catalogs_path = "/catalog/catalogs/{owner_id}"
 
     # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. GET METHOD
     # We copy the parameters from the original /catalog/search endpoint and we add new parameters.
@@ -240,11 +222,9 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
 
     # Add security parameters.
     if common_settings.CLUSTER_MODE:
-        catalog_owner_id["security"] = [{"API key passed in HTTP header": []}]
         catalog_collection_search["security"] = [{"API key passed in HTTP header": []}]
         catalog_collection_search_post["security"] = [{"API key passed in HTTP header": []}]
     # Add all previous created endpoints.
-    openapi_spec["paths"][catalog_catalogs_path] = {"get": catalog_owner_id}
     openapi_spec["paths"][catalog_collection_search_path] = {"get": catalog_collection_search}
     openapi_spec["paths"][catalog_collection_search_path]["post"] = catalog_collection_search_post
     app.openapi_schema = openapi_spec

@@ -25,8 +25,6 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"(?P<item_id>/.+?(?=/|$))?)?"
 )
 
-CATALOG_OWNER_ID_REGEX = r"/catalog/catalogs/((?P<owner_id>.+))?"
-
 COLLECTIONS_QUERYABLES_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/queryables"
 COLLECTIONS_SEARCH_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/search"
 BULK_ITEMS_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/bulk_items"
@@ -126,12 +124,6 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
         ids_dict["collection_id"] = groups["collection_id"]
         return "/search", ids_dict
 
-    # To catch the endpoint /catalog/catalogs/[{owner_id}]
-    if match := re.fullmatch(CATALOG_OWNER_ID_REGEX, path):
-        groups = match.groupdict()
-        ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
-        return "/", ids_dict
-
     # To catch all the other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
@@ -169,8 +161,8 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     elif path == CATALOG_COLLECTION:
         path = "/collections"
 
-    elif "catalog" not in path and not any(re.fullmatch(pattern, path) for pattern in patterns):
-        raise ValueError(f"Path {path} is invalid.")
+    elif not any(re.fullmatch(pattern, path) for pattern in patterns):
+        return "", {}
     return path, ids_dict
 
 
@@ -199,7 +191,7 @@ def add_user_prefix(  # pylint: disable=too-many-return-statements
         return CATALOG_SEARCH
 
     if user and (path == "/"):
-        return f"/catalog/catalogs/{user}"
+        return "/catalog/"
 
     if user and collection_id and (path == f"/collections/{user}_{collection_id}"):
         return f"/catalog/collections/{user}:{collection_id}"
