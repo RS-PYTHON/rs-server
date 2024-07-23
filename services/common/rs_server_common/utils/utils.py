@@ -301,6 +301,18 @@ def eodag_download(
         update_db(db, db_product, EDownloadStatus.FAILED, repr(exception))
         return
 
+    # EoDAG 3.0 update:
+    # lone file (e.g. NetCDF or grib files) or zip file with a lone file products: a directory with the name of
+    # the product title is created to place the file in
+    file_dir = Path(local) / argument.name
+    file_location = file_dir / argument.name
+
+    if file_dir.is_dir() and file_location.is_file():
+        temp_loc = Path(local) / f"{uuid.uuid4()}_{argument.name}"
+        shutil.move(file_location, temp_loc)
+        file_dir.rmdir()  # Remove the original directory
+        shutil.move(temp_loc, file_dir)
+        
     if argument.obs:
         try:
             # NOTE: The environment variables have to be set from outside
@@ -351,18 +363,6 @@ def eodag_download(
     # Try n times to update the status to DONE in the database
     update_db(db, db_product, EDownloadStatus.DONE)
     logger.debug("Download finished succesfully for %s", db_product.name)
-
-    # EoDAG 3.0 update:
-    # lone file (e.g. NetCDF or grib files) or zip file with a lone file products: a directory with the name of
-    # the product title is created to place the file in
-    file_dir = Path(local) / argument.name
-    file_location = file_dir / argument.name
-
-    if file_dir.is_dir() and file_location.is_file():
-        temp_loc = Path(local) / f"{uuid.uuid4()}_{argument.name}"
-        shutil.move(file_location, temp_loc)
-        file_dir.rmdir()  # Remove the original directory
-        shutil.move(temp_loc, file_dir)
 
 
 def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: dict) -> dict:
