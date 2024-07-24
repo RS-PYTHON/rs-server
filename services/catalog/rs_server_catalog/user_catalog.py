@@ -74,6 +74,7 @@ from starlette.status import (
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
@@ -216,6 +217,67 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
                 status_code=HTTP_400_BAD_REQUEST,
             ) from e
 
+    def check_s3_key(self, item: dict, asset_name: str, s3_href):
+        """Check if the given S3 key exists and matches the expected path.
+
+        Args:
+            item (dict): The item containing the asset.
+            asset_name (str): The name of the asset to check.
+            s3_href (dict): The S3 href to check against.
+
+        Returns:
+            bool: True if the S3 key is valid and exists, otherwise False.
+
+        Raises:
+            HTTPException: If the handler is not available, if S3 paths cannot be retrieved,
+                        if the S3 paths do not match, or if there is an error checking the key.
+        """
+        if not item:
+            return False
+        # update an item
+        existing_asset = item["assets"].get(asset_name, None)
+        if not existing_asset:
+            return False
+
+        if not self.handler:
+            raise HTTPException(
+                detail="Could not get the s3 handler",
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        # check if the new s3_href is the same as the existing one
+        try:
+            item_s3_path = existing_asset["alternate"]["s3"]["href"]
+            s3_path = s3_href["s3"]["href"]
+        except KeyError as exc:
+            raise HTTPException(
+                detail=f"Could not get s3 paths for the asset {asset_name}",
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            ) from exc
+        if item_s3_path != s3_path:
+            raise HTTPException(
+                detail=f"Received an updated path for asset {asset_name} of item {item['id']}. \
+The existent path is {item_s3_path}, while the new one is {s3_path}. It is not accepted to change \
+an already existent path",
+                status_code=HTTP_400_BAD_REQUEST,
+            )
+        s3_key_array = s3_path.split("/")
+        bucket = s3_key_array[2]
+        key_path = "/".join(s3_key_array[3:])
+
+        # check the presence of the key
+        try:
+            if not self.handler.check_s3_key_on_bucket(bucket, key_path):
+                raise HTTPException(
+                    detail=f"The key {s3_href} should exist on the bucket, but it couldn't be checked",
+                    status_code=HTTP_400_BAD_REQUEST,
+                )
+            return True
+        except RuntimeError as rte:
+            raise HTTPException(
+                detail=f"When checking the presence of the {s3_href} key, an error has been raised: {rte}",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from rte
+
     def update_stac_item_publication(  # pylint: disable=too-many-locals
         self,
         content: dict,
@@ -224,17 +286,19 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
         item: dict,
     ) -> Any:
         """Update json body of feature push to catalog"""
-        # protection in case of POST request and an already exisiting item in the database
+        # protection in case of the POST request and there is already an item with the same name in the database
         if request.method == "POST" and item:
             raise HTTPException(
                 detail=f"Conflict error! The item {item['id']} \
 already exists in the {user}_{content['collection']} collection",
                 status_code=HTTP_400_BAD_REQUEST,
             )
-        if request.method in ["PUT", "PATCH"] and not item:
+        # protection in case of the PUT/PATCH requests and the item does not exist in the database
+        if request.method in {"PUT", "PATCH"} and not item:
+            item_id = content.get("id", "Unknown")
             raise HTTPException(
-                detail=f"The item {item['id']} \
-does not exist in the {user}_{content['collection']} collection for an update (POST/PATCH request received)",
+                detail=f"The item {item_id} \
+does not exist in the {user}_{content['collection']} collection for an update (PUT / PATCH request received)",
                 status_code=HTTP_400_BAD_REQUEST,
             )
         # in case of an update (PUT request), prepare an array with all the assets
@@ -251,31 +315,49 @@ does not exist in the {user}_{content['collection']} collection for an update (P
         # 1 - update assets href
         for asset in content["assets"]:
             filename_str = content["assets"][asset]["href"]
-            existing_asset = None
-            if item:
-                existing_asset = item["assets"].get(asset, None)
-            logger.debug(f"HTTP request asset: {filename_str!r}")
+            logger.debug(f"HTTP request add/update asset: {filename_str!r}")
             fid = filename_str.rsplit("/", maxsplit=1)[-1]
-            new_href = f'https://{request.url.netloc}/catalog/collections/{user}:{content["collection"]}/items/{fid}/download/{asset}'
+            new_href = f'https://{request.url.netloc}/catalog/\
+collections/{user}:{content["collection"]}/items/{fid}/download/{asset}'
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = filename_str.split("/")
+                # Determine the temporary bucket name
                 temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
                 bucket_names.add(temp_bucket_name)
+                # Update the S3 path to use the catalog bucket
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 new_s3_href = {"s3": {"href": s3_key}}
-                transfer_it = True
-                if existing_asset:
-                    # check if there is the same path. If yes, verify if the file is already copied
-                    if existing_asset["alternate"] == new_s3_href:
-                        # check the file
-                        self.handler.list_s3_files_obj
                 content["assets"][asset].update({"alternate": new_s3_href})
-                files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
+                # Check if the S3 key exists
+                if not self.check_s3_key(item, asset, new_s3_href):
+                    # copy the key only if it isn't already copied
+                    files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
+                elif request.method == "PUT":
+                    # remove the asset from the item
+                    item["assets"].pop(asset)
             except (IndexError, AttributeError, KeyError) as exc:
                 raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
+        # in case of the PUT request, we copy the new s3 hrefs, but delete the old ones
+        # if any has changed. All the remained hrefs (the existent ones are removed from item in check_s3_key) have to
+        # be deleted now from the s3. If a PATCH request is received (not yet implemented), do not delete anything
+        if request.method == "PUT":
+            for asset in item["assets"]:
+                try:
+                    key_array = item["assets"][asset]["alternate"]["s3"]["href"].split("/")
+                    self.handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
+                except KeyError as exc:
+                    raise HTTPException(
+                        detail=f"Key error for item asset {asset}!",
+                        status_code=HTTP_400_BAD_REQUEST,
+                    ) from exc
+                except RuntimeError as rte:
+                    logger.exception(
+                        f"Failed to delete key {'/'.join(key_array)} \
+from s3 bucket  Reason: {rte}. The process will continue though !",
+                    )
 
         # There should be a single temp bucket name
         if not bucket_names:
@@ -548,9 +630,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             elif "items" in request.scope["path"]:
                 # try to get the item if it is already part from the collection
                 item = await self.get_item_from_collection(request)
-                # protection when a request to create an item already present in the collection
-                if request.method == "POST":
-                    content = self.update_stac_item_publication(content, user, request, item)
+                content = self.update_stac_item_publication(content, user, request, item)
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
@@ -932,7 +1012,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        request_body = None if request.method not in ["POST", "PUT", "PATCH"] else await request.json()
+        request_body = None if request.method not in ["POST", "PUT"] else await request.json()
         # Get the the user_login calling the endpoint. If this is not set (the authentication.apikey_security function
         # is not called), the local user shall be used (later on, in rereoute_url)
         # The common_settings.CLUSTER_MODE may not be used because for some endpoints like /api
@@ -968,7 +1048,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             request = await self.manage_search_request(request)
             if hasattr(request, "status_code"):  # Unauthorized
                 return request
-        elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
+        elif request.method in {"POST", "PUT"} and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)
