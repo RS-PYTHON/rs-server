@@ -475,7 +475,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 detail = {"error": "Unauthorized access."}
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
-            if request.scope["path"] == "/collections":
+            if (
+                request.scope["path"] == "/collections"  # POST collection
+                or request.scope["path"] == f"/collections/{user}_{self.request_ids['collection_id']}"  # PUT collection
+            ):
                 # Manage a collection creation. The apikey user should be the same as the owner
                 # field in the body request. In other words, an apikey user cannot create a
                 # collection owned by another user.
