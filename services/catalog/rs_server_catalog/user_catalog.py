@@ -993,7 +993,6 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         # Add the authentication reference to each link and asset
         for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
             link_or_asset["auth:refs"] = ["apikey"]
-
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:
