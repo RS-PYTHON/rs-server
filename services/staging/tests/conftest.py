@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """Module used to configure pytests."""
-# pylint: disable=wrong-import-position
+
+# flake8: noqa: F402
+
 import os
 import os.path as osp
 from pathlib import Path

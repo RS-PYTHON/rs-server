@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """rs server staging main module."""
+# pylint: disable=E0401
+
 import os
 import uuid
 
