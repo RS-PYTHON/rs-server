@@ -73,6 +73,7 @@ from starlette.status import (
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_404_NOT_FOUND,
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
@@ -325,7 +326,19 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 res = right
         return res
 
-    async def manage_search_request(
+    async def collection_exists(self, request: Request, collection_id: str) -> bool:
+        """Check if the collection exists.
+
+        Returns:
+            bool: True if the collection exists, False otherwise
+        """
+        try:
+            await self.client.get_collection(collection_id, request)
+            return True
+        except:  # pylint: disable=bare-except
+            return False
+
+    async def manage_search_request(  # pylint: disable=too-many-branches
         self,
         request: Request,
     ) -> Request | JSONResponse:
@@ -400,6 +413,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        if not await self.collection_exists(request, f"{owner_id}_{collection_id}"):
+            detail = {"error": f"Collection {collection_id} not found."}
+            return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
