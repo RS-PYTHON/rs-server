@@ -14,6 +14,9 @@
 
 """Module used to configure pytests."""
 
+# Ignore not-at-top level import errors
+
+# pylint: disable=C0413
 # flake8: noqa: F402
 
 import os
