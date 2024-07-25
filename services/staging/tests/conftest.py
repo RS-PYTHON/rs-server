@@ -15,10 +15,11 @@
 """Module used to configure pytests."""
 # pylint: disable=wrong-import-position
 import os
+import os.path as osp
 from pathlib import Path
 
 # set pygeoapi env variables
-geoapi_cfg = Path("tests/test_config.yml").absolute()
+geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "test_config.yml"
 os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
 os.environ["PYGEOAPI_OPENAPI"] = ""
 
