@@ -389,7 +389,10 @@ class TestCatalogPublishCollectionEndpoint:
 
         # Update the collection description and PUT
         minimal_collection["description"] = "the_updated_test_description"
-        updated_collection_response = client.put("/catalog/collections", json=minimal_collection)
+        updated_collection_response = client.put(
+            "/catalog/collections/second_test_owner:second_test_collection",
+            json=minimal_collection,
+        )
         assert updated_collection_response.status_code == fastapi.status.HTTP_200_OK
 
         # Check that collection is correctly updated
@@ -397,18 +400,6 @@ class TestCatalogPublishCollectionEndpoint:
         response_content = json.loads(get_check_collection_response.content)
         assert response_content["description"] == "the_updated_test_description"
 
-        # Update collection using PUT /catalog/collections/owner:collection
-        minimal_collection["description"] = "description_updated_again"
-        second_update_response = client.put(
-            "/catalog/collections/second_test_owner:second_test_collection",
-            json=minimal_collection,
-        )
-        assert second_update_response.status_code == fastapi.status.HTTP_200_OK
-
-        # Check that collection is correctly updated, use GET /catalog/collections/owner:collection
-        second_check_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
-        second_check_response_content = json.loads(second_check_response.content)
-        assert second_check_response_content["description"] == "description_updated_again"
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
 
@@ -654,7 +645,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert sorted(s3_handler.list_s3_files_obj(self.catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
 
             updated_feature_sent = copy.deepcopy(a_correct_feature_copy)
-            updated_feature_sent["bbox"] = [77]
+            updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
             del updated_feature_sent["collection"]
 
             path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
@@ -790,10 +781,9 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
     def test_incorrect_feature_publish(self, client, a_incorrect_feature, owner, collection_id):
         """This test send a featureCollection to the catalog with a wrong format."""
         # TC02: Add on Sentinel-1 item to the Catalog with a wrong-formatted STAC JSON file. => 400 Bad Request
-        with pytest.raises(Exception):
-            added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
-            # Bad request = 400
-            assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
+        # Bad request = 400
+        assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
     @pytest.mark.unit
     def test_incorrect_bucket_publish(self, client, a_correct_feature):
@@ -1033,7 +1023,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
-        updated_feature_sent["bbox"] = [77]
+        updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
         del updated_feature_sent["collection"]
 
         feature_put_response = client.put(
@@ -1079,7 +1069,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         first_expires_date = content["properties"]["expires"]
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
-        updated_feature_sent["bbox"] = [77]
+        updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
         del updated_feature_sent["collection"]
 
         # Test that updated field is correctly updated.

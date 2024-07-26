@@ -475,7 +475,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 detail = {"error": "Unauthorized access."}
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
-            if request.scope["path"] == "/collections":
+            if (
+                request.scope["path"] == "/collections"  # POST collection
+                or request.scope["path"] == f"/collections/{user}_{self.request_ids['collection_id']}"  # PUT collection
+            ):
                 # Manage a collection creation. The apikey user should be the same as the owner
                 # field in the body request. In other words, an apikey user cannot create a
                 # collection owned by another user.
@@ -990,7 +993,6 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         # Add the authentication reference to each link and asset
         for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
             link_or_asset["auth:refs"] = ["apikey"]
-
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:
