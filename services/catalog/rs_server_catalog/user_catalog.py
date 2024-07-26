@@ -79,7 +79,7 @@ from starlette.status import (
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
-
+# pylint: disable=too-many-lines
 logger = Logging.default(__name__)
 
 
@@ -335,7 +335,8 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         try:
             await self.client.get_collection(collection_id, request)
             return True
-        except:  # pylint: disable=bare-except
+        except KeyError as e:
+            print(f" collection not found: {e}")
             return False
 
     async def manage_search_request(  # pylint: disable=too-many-branches
