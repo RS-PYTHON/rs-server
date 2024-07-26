@@ -339,10 +339,10 @@ api = StacApi(
     middlewares=[
         UserCatalogMiddleware,
         BrotliMiddleware,
-        CORSMiddleware,
         ProxyHeaderMiddleware,
         AuthenticationMiddleware,
         DontRaiseExceptions,
+        CORSMiddleware,  # WARNING: must be last !
     ],
 )
 app = api.app
