@@ -981,18 +981,43 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         parent = content
         if content.get("type") == "Feature":
             parent = content.setdefault("properties", {})
-        parent.setdefault("auth:schemes", {})["apikey"] = {
-            "type": "apiKey",
-            "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
-            # add anchor to the "new api key" endpoint
-            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
-            "name": "x-api-key",
-            "in": "header",
-        }
+        parent.setdefault("auth:schemes", {}).update(
+            {
+                "apikey": {
+                    "type": "apiKey",
+                    "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
+                    # add anchor to the "new api key" endpoint
+                    "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
+                    "name": "x-api-key",
+                    "in": "header",
+                },
+                "oauth2": {
+                    "type": "oauth2",
+                    "description": "KeyCloak OAuth2 authentication",
+                    "flows": {
+                        "authorizationCode": {
+                            "authorizationUrl": os.environ["OIDC_AUTHORIZATION_ENDPOINT"],
+                            "tokenUrl": os.environ["OIDC_TOKEN_ENDPOINT"],
+                            "scopes": {
+                                "openid": "openid scope",
+                                "profile": "profile scope",
+                                "email": "email scope",
+                            },
+                        },
+                    },
+                },
+                "openidconnect": {
+                    "type": "openIdConnect",
+                    "description": "KeyCloak OpenId authentication",
+                    "openIdConnectUrl": os.environ["OIDC_CONFIGURATION"],
+                    "oidcOptions": {"client_id": os.environ["OIDC_CLIENT_ID"]},
+                },
+            },
+        )
 
         # Add the authentication reference to each link and asset
         for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
-            link_or_asset["auth:refs"] = ["apikey"]
+            link_or_asset["auth:refs"] = ["apikey", "oauth2", "openidconnect"]
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:
