@@ -142,10 +142,9 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
                 ids_dict["owner_id"] = owner_collection_id_split[0]
                 ids_dict["collection_id"] = owner_collection_id_split[1]
 
-        # /catalog/collections/[owner:]collection case is the same for PUT / POST / DELETE, but needs different paths
-        if groups["item_id"] is None and method == "PUT":
-            path = "/collections"
-        elif groups["items"] is None and method != "DELETE":
+        # /catalog/collections/{owner_id}:{collection_id}
+        # case is the same for PUT / POST / DELETE, but needs different paths
+        if groups["items"] is None and method != "DELETE":
             path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}"
         else:
             ids_dict["item_id"] = groups["item_id"]
@@ -157,9 +156,6 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
             else:
                 ids_dict["item_id"] = ids_dict["item_id"][1:]
                 path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items/{ids_dict['item_id']}"
-
-    elif path == CATALOG_COLLECTION:
-        path = "/collections"
 
     elif not any(re.fullmatch(pattern, path) for pattern in patterns):
         return "", {}
