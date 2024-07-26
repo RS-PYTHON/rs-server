@@ -335,7 +335,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         try:
             await self.client.get_collection(collection_id, request)
             return True
-        except KeyError as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             print(f" collection not found: {e}")
             return False
 
