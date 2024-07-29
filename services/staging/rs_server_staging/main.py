@@ -30,9 +30,6 @@ from tinydb import Query, TinyDB
 
 from .processors import processors
 
-db = TinyDB("db.json")
-jobs_table = db.table("jobs")
-
 
 # Use if you want to impose shaped-design of request
 class ExecuteRequest(BaseModel):  # pylint: disable = too-few-public-methods
@@ -64,6 +61,8 @@ app.add_middleware(
 # openapi = openapi_path  # You should load the actual content of your OpenAPI spec here if it's not a file path
 
 api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAPI"])
+db = TinyDB(api.config["manager"]["connection"])
+jobs_table = db.table("jobs")
 
 
 # Exception handlers
