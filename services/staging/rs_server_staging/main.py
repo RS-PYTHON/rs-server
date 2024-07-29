@@ -80,7 +80,7 @@ async def custom_http_exception_handler(
 @app.get("/_mgmt/ping")
 async def ping():
     """Liveliness probe."""
-    return {"status": "healthy"}
+    return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
 @app.get("/processes")
