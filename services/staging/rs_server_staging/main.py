@@ -84,11 +84,14 @@ async def ping():
 
 
 # Endpoint to execute the staging process and generate a job ID
-@app.post("/processes/staging/execution")
-async def execute_staging_process(request: dict):
+@app.post("/processes/{resource}/execution")
+async def execute_staging_process(request: dict, resource: str):
     """Used to execute processing jobs."""
     job_id = str(uuid.uuid4())  # Generate a unique job ID
     parameters = request.get("parameters", {})
+    if resource not in api.config["resources"]:
+        raise HTTPException(status_code=404, detail=f"Process resource '{resource}' not found")
+
     processor_name = "HelloWorld"
     if processor_name in processors:
         processor = processors[processor_name]
