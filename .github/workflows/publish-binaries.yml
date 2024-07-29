@@ -398,7 +398,7 @@ jobs:
         with:
           dockerfile: ./services/staging/.github/Dockerfile
           build_context_path: ./whl
-          image_suffix: -frontend
+          image_suffix: -staging
           version_name: ${{ needs.services-staging-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
