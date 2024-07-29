@@ -26,6 +26,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.status import HTTP_200_OK
 from tinydb import Query, TinyDB
 
 from .processors import processors
@@ -82,9 +83,21 @@ async def ping():
     return {"status": "healthy"}
 
 
+@app.get("/processes")
+async def get_processes():
+    """Should return list of all available proceses from config maybe?"""
+    return JSONResponse(status_code=HTTP_200_OK, content="Check")
+
+
+@app.get("/processes/{resource}")
+async def get_resource():
+    """Should return info about a specific resource."""
+    return JSONResponse(status_code=HTTP_200_OK, content="Check")
+
+
 # Endpoint to execute the staging process and generate a job ID
 @app.post("/processes/{resource}/execution")
-async def execute_staging_process(request: dict, resource: str):
+async def execute_process(request: dict, resource: str):
     """Used to execute processing jobs."""
     job_id = str(uuid.uuid4())  # Generate a unique job ID
     parameters = request.get("parameters", {})
@@ -115,6 +128,24 @@ async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
         return job
 
     raise HTTPException(status_code=404, detail="Job not found")
+
+
+@app.get("/jobs")
+async def get_jobs():
+    """Should return status of all jobs"""
+    return JSONResponse(status_code=HTTP_200_OK, content="Check")
+
+
+@app.delete("/jobs/{job_id}")
+async def delete_job(job_id):
+    """Should delete a specific job from db."""
+    return JSONResponse(status_code=HTTP_200_OK, content=job_id)
+
+
+@app.get("/jobs/{job_id}/result")
+async def get_specific_job_result(job_id):
+    """Get result from a specific job."""
+    return JSONResponse(status_code=HTTP_200_OK, content=job_id)
 
 
 # Mount pygeoapi endpoints
