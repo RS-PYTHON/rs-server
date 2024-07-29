@@ -32,7 +32,7 @@ import json
 import os
 import re
 from typing import Any, Optional
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, urlparse
 
 import botocore
 from fastapi import HTTPException
@@ -44,6 +44,12 @@ from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import (
     add_prefix_link_landing_page,
     manage_landing_page,
+)
+from rs_server_catalog.search import (
+    search_endpoint_get,
+    search_endpoint_in_collection_get,
+    search_endpoint_in_collection_post,
+    search_endpoint_post,
 )
 from rs_server_catalog.user_handler import (
     add_user_prefix,
@@ -319,7 +325,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 res = right
         return res
 
-    async def manage_search_request(self, request: Request) -> Request | JSONResponse:
+    async def manage_search_request(
+        self,
+        request: Request,
+    ) -> Request | JSONResponse:
         """find the user in the filter parameter and add it to the
         collection name.
 
@@ -331,55 +340,66 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         """
         auth_roles = []
         user_login = ""
+        owner_id = ""
+        collection_id = ""
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
-        if request.method == "POST":
+        if request.method == "POST":  # POST method.
             content = await request.json()
-            if request.scope["path"] == "/search" and "filter" in content:
-                qs_filter = content["filter"]
-                filters = parse_cql2_json(qs_filter)
-                user = self.find_owner_id(filters)
-                if "collections" in content:
-                    if (  # If we are in cluster mode and the user_login is not authorized
-                        # to put/post returns a HTTP_401_UNAUTHORIZED status.
-                        common_settings.CLUSTER_MODE
-                        and not get_authorisation(
-                            content["collections"][0],
-                            auth_roles,
-                            "read",
-                            user,
-                            user_login,
-                        )
-                    ):
-                        detail = {"error": "Unauthorized access."}
-                        return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-                    content["collections"] = [f"{user}_{content['collections'][0]}"]
-                    request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-        else:
+            if (
+                "filter-lang" not in content and "filter" in content
+            ):  # If not specified, the default value of filter_lang in a post method is cql2-json.
+                filter_lang = {"filter-lang": "cql2-json"}
+                stac_filter = {}
+                stac_filter["filter"] = content.pop("filter")
+                content = {
+                    **content,
+                    **filter_lang,
+                    **stac_filter,
+                }  # The "filter_lang" field has to be placed BEFORE the filter.
+            if self.request_ids["collection_id"]:  # /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
+                owner_id = (
+                    user_login if not self.request_ids["owner_id"] else self.request_ids["owner_id"]
+                )  # Implicit owner_id.
+                collection_id = self.request_ids["collection_id"]
+                if not owner_id:  # We don't have owner_id in local mode --> error.
+                    detail = {"error": "Owner Id can't be implicit in local mode"}
+                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+                request = search_endpoint_in_collection_post(content, request, owner_id, collection_id)
+            elif "filter" in content and "collections" in content:  # /catalo/search ENDPOINT.
+                owner_id, collection_id, request = search_endpoint_post(content=content, request=request)
+            if (
+                not owner_id or not collection_id
+            ):  # TODO find a solution to get authorisations in this case for next stories
+                return request
+        else:  # GET method.
             query = parse_qs(request.url.query)
-            if "filter" in query:
-                if "filter-lang" not in query:
-                    query["filter-lang"] = ["cql2-text"]
-                qs_filter = query["filter"][0]
-                filters = parse_ecql(qs_filter)
-                user = self.find_owner_id(filters)
-                if "collections" in query:
-                    if (  # If we are in cluster mode and the user_login is not authorized
-                        # to put/post returns a HTTP_401_UNAUTHORIZED status.
-                        common_settings.CLUSTER_MODE
-                        and not get_authorisation(
-                            query["collections"][0],
-                            auth_roles,
-                            "read",
-                            user,
-                            user_login,
-                        )
-                    ):
-                        detail = {"error": "Unauthorized access."}
-                        return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-                    query["collections"] = [f"{user}_{query['collections'][0]}"]
-                    request.scope["query_string"] = urlencode(query, doseq=True).encode()
+            if self.request_ids["collection_id"]:  # /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
+                owner_id = (
+                    user_login if not self.request_ids["owner_id"] else self.request_ids["owner_id"]
+                )  # Implicit owner_id.
+                collection_id = self.request_ids["collection_id"]
+                request = search_endpoint_in_collection_get(query, request, owner_id, collection_id)
+            elif "filter" in query and "collections" in query:  # /catalog/search ENDPOINT.
+                owner_id, collection_id, request = search_endpoint_get(query=query, request=request)
+            if (
+                not owner_id or not collection_id
+            ):  # TODO find a solution to get authorisations in this case for next stories
+                return request
+        if (  # If we are in cluster mode and the user_login is not authorized
+            # to put/post returns a HTTP_401_UNAUTHORIZED status.
+            common_settings.CLUSTER_MODE
+            and not get_authorisation(
+                collection_id,
+                auth_roles,
+                "read",
+                owner_id,
+                user_login,
+            )
+        ):
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -415,6 +435,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
         content = self.remove_user_from_objects(content, owner_id, "features")
         content = self.adapt_links(content, owner_id, collection_id, "features")
+
+        # Add the stac authentication extension
+        self.add_authentication_extension(content)
+
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_put_post_request(  # pylint: disable=too-many-branches
@@ -451,7 +475,10 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 detail = {"error": "Unauthorized access."}
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
-            if request.scope["path"] == "/collections":
+            if (
+                request.scope["path"] == "/collections"  # POST collection
+                or request.scope["path"] == f"/collections/{user}_{self.request_ids['collection_id']}"  # PUT collection
+            ):
                 # Manage a collection creation. The apikey user should be the same as the owner
                 # field in the body request. In other words, an apikey user cannot create a
                 # collection owned by another user.
@@ -558,7 +585,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             owner_id = collection["owner"]
             size_owner_id = int(
                 len(owner_id) + 1,
-            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id=len('toto_')==len('toto')+1.
+            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id==len('toto_')==len('toto')+1.
             collection_id = self.get_collection_id(collection, size_owner_id)
             # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
             for link in collection["links"]:
@@ -566,6 +593,20 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                 new_path = add_user_prefix(link_parser.path, owner_id, collection_id)
                 link["href"] = link_parser._replace(path=new_path).geturl()
         return collections
+
+    def update_stac_catalog_metadata(self, metadata: dict):
+        """Update the metadata fields from a catalog
+
+        Args:
+            metadata (dict): The metadata that has to be updated. The fields id, title,
+                            description and stac_version are to be updated, by using the env vars which have
+                            to be set before starting the app/pod. The existing values are used if
+                            the env vars are not found
+        """
+        if metadata.get("type") == "Catalog":
+            for key in ["id", "title", "description", "stac_version"]:
+                if key in metadata:
+                    metadata[key] = os.environ.get(f"CATALOG_METADATA_{key.upper()}", metadata[key])
 
     async def manage_get_response(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
@@ -583,6 +624,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
         content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+        self.update_stac_catalog_metadata(content)
         auth_roles = []
         user_login = ""
 
@@ -590,8 +632,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
         if request.scope["path"] == "/":
-            if common_settings.CLUSTER_MODE:  # /catalog and /catalog/catalogs/owner_id
-                content = manage_landing_page(request, auth_roles, user_login, content, user)
+            if common_settings.CLUSTER_MODE:  # /catalog
+                content = manage_landing_page(auth_roles, user_login, content)
                 if hasattr(content, "status_code"):  # Unauthorized
                     return content
             # Manage local landing page of the catalog
@@ -663,6 +705,10 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         elif self.request_ids["item_id"]:  # /catalog/owner_id/collections/collection_id/items/item_id
             content = remove_user_from_feature(content, user)
             content = self.adapt_object_links(content, user)
+
+        # Add the stac authentication extension
+        self.add_authentication_extension(content)
+
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_download_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -844,6 +890,8 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
         )
         request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
+        if not request.scope["path"]:  # Invalid endpoint
+            return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
         user = request_body.get("owner", None)
@@ -915,3 +963,38 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             response = await self.manage_delete_response(response, user)
 
         return response
+
+    def add_authentication_extension(self, content: dict):
+        """Add the stac authentication extension, see: https://github.com/stac-extensions/authentication"""
+
+        # Only on cluster mode
+        if not common_settings.CLUSTER_MODE:
+            return
+
+        # Add the STAC extension at the root
+        extensions = content.setdefault("stac_extensions", [])
+        url = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+        if url not in extensions:
+            extensions.append(url)
+
+        # Add the authentication schemes under the root or "properties" (for the items)
+        parent = content
+        if content.get("type") == "Feature":
+            parent = content.setdefault("properties", {})
+        parent.setdefault("auth:schemes", {})["apikey"] = {
+            "type": "apiKey",
+            "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
+            # add anchor to the "new api key" endpoint
+            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
+            "name": "x-api-key",
+            "in": "header",
+        }
+
+        # Add the authentication reference to each link and asset
+        for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
+            link_or_asset["auth:refs"] = ["apikey"]
+        # Add the extension to the response root and to nested collections, items, ...
+        # Do recursive calls to all nested fields, if defined
+        for nested_field in ["collections", "features"]:
+            for nested_content in content.get(nested_field, []):
+                self.add_authentication_extension(nested_content)

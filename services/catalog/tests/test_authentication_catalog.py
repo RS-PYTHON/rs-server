@@ -42,15 +42,38 @@ RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 VALID_APIKEY = "VALID_API_KEY"
 WRONG_APIKEY = "WRONG_APIKEY"
 
-# Test two ways of passing the api key: in HTTP header and in url query parameter (disabled for now)
-PASS_THE_APIKEY = [
-    {"headers": {APIKEY_HEADER: VALID_APIKEY}},
-    # {"params": {APIKEY_QUERY: VALID_APIKEY}}
-]
+# Pass the api key in HTTP header
+HEADER = {"headers": {APIKEY_HEADER: VALID_APIKEY}}
+WRONG_HEADER = {"headers": {APIKEY_HEADER: WRONG_APIKEY}}
 
-WRONG_HEADER = {APIKEY_HEADER: WRONG_APIKEY}
+AUTHENT_EXTENSION = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
+AUTHENT_SCHEME = {
+    "auth:schemes": {
+        "apikey": {
+            "type": "apiKey",
+            "description": "API key generated using http://test_apikey_manager/docs"
+            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
+            "name": "x-api-key",
+            "in": "header",
+        },
+    },
+}
+AUTHENT_REF = {
+    "auth:refs": ["apikey"],
+}
+COMMON_FIELDS = {
+    "extent": {
+        "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+        "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+    },
+    "license": "public-domain",
+    "description": "Some description",
+    "stac_version": "1.0.0",
+    "stac_extensions": [AUTHENT_EXTENSION],
+    **AUTHENT_SCHEME,
+}
 
-# pylint: skip-file # ignore pylint issues for this file, TODO remove this
+# pylint: disable=too-many-lines
 
 
 def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], mock_wrong_apikey: bool = False):
@@ -103,14 +126,30 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
     init_test(mocker, monkeypatch, httpx_mock, iam_roles, True)
 
     valid_links = [
-        {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/"},
-        {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/"},
-        {"rel": "data", "type": "application/json", "href": "http://testserver/catalog/collections"},
+        {
+            "rel": "self",
+            "type": "application/json",
+            "href": "http://testserver/catalog/",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "root",
+            "type": "application/json",
+            "href": "http://testserver/catalog/",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "data",
+            "type": "application/json",
+            "href": "http://testserver/catalog/collections",
+            **AUTHENT_REF,
+        },
         {
             "rel": "conformance",
             "type": "application/json",
-            "title": "STAC/WFS3 conformance classes implemented by this server",
+            "title": "STAC/OGC conformance classes implemented by this server",
             "href": "http://testserver/catalog/conformance",
+            **AUTHENT_REF,
         },
         {
             "rel": "search",
@@ -118,6 +157,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "title": "STAC search",
             "href": "http://testserver/catalog/search",
             "method": "GET",
+            **AUTHENT_REF,
         },
         {
             "rel": "search",
@@ -125,110 +165,62 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "title": "STAC search",
             "href": "http://testserver/catalog/search",
             "method": "POST",
+            **AUTHENT_REF,
+        },
+        {
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+            "type": "application/schema+json",
+            "title": "Queryables",
+            "href": "http://testserver/catalog/queryables",
+            "method": "GET",
+            "auth:refs": ["apikey"],
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "toto_S1_L1",
             "href": "http://testserver/catalog/collections/toto:S1_L1",
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "toto_S2_L3",
             "href": "http://testserver/catalog/collections/toto:S2_L3",
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "titi_S2_L1",
             "href": "http://testserver/catalog/collections/titi:S2_L1",
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
             "type": "application/json",
             "title": "pyteam_S1_L1",
             "href": "http://testserver/catalog/collections/pyteam:S1_L1",
+            **AUTHENT_REF,
         },
         {
             "rel": "service-desc",
             "type": "application/vnd.oai.openapi+json;version=3.0",
             "title": "OpenAPI service description",
             "href": "http://testserver/catalog/api",
+            **AUTHENT_REF,
         },
         {
             "rel": "service-doc",
             "type": "text/html",
             "title": "OpenAPI service documentation",
             "href": "http://testserver/catalog/api.html",
-        },
-        {"rel": "child", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
-    ]
-    # Pass the api key in HTTP headers then in url query parameter
-    for pass_the_apikey in PASS_THE_APIKEY:
-        landing_page_response = client.request("GET", "/catalog/", **pass_the_apikey)
-        assert landing_page_response.status_code == HTTP_200_OK
-        content = json.loads(landing_page_response.content)
-        assert content["links"] == valid_links
-
-    valid_links = [
-        {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/"},
-        {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/"},
-        {"rel": "data", "type": "application/json", "href": "http://testserver/catalog/collections"},
-        {
-            "rel": "conformance",
-            "type": "application/json",
-            "title": "STAC/WFS3 conformance classes implemented by this server",
-            "href": "http://testserver/catalog/conformance",
-        },
-        {
-            "rel": "search",
-            "type": "application/geo+json",
-            "title": "STAC search",
-            "href": "http://testserver/catalog/search",
-            "method": "GET",
-        },
-        {
-            "rel": "search",
-            "type": "application/geo+json",
-            "title": "STAC search",
-            "href": "http://testserver/catalog/search",
-            "method": "POST",
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "toto_S1_L1",
-            "href": "http://testserver/catalog/collections/toto:S1_L1",
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "toto_S2_L3",
-            "href": "http://testserver/catalog/collections/toto:S2_L3",
-        },
-        {
-            "rel": "child",
-            "title": "pyteam_S1_L1",
-            "type": "application/json",
-            "href": "http://testserver/catalog/collections/pyteam:S1_L1",
-        },
-        {
-            "rel": "service-desc",
-            "type": "application/vnd.oai.openapi+json;version=3.0",
-            "title": "OpenAPI service description",
-            "href": "http://testserver/catalog/api",
-        },
-        {
-            "rel": "service-doc",
-            "type": "text/html",
-            "title": "OpenAPI service documentation",
-            "href": "http://testserver/catalog/api.html",
+            **AUTHENT_REF,
         },
     ]
-
-    catalog_owner_id_response = client.request("GET", "/catalog/catalogs/toto", headers={APIKEY_HEADER: VALID_APIKEY})
-    content = json.loads(catalog_owner_id_response.content)
+    landing_page_response = client.request("GET", "/catalog/", **HEADER)
+    assert landing_page_response.status_code == HTTP_200_OK
+    content = json.loads(landing_page_response.content)
     assert content["links"] == valid_links
 
     pyteam_collection = {
@@ -240,9 +232,21 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 "type": "application/geo+json",
                 "href": "http://testserver/collections/S2_L1/items",
             },
-            {"rel": "parent", "type": "application/json", "href": "http://testserver/"},
-            {"rel": "root", "type": "application/json", "href": "http://testserver/"},
-            {"rel": "self", "type": "application/json", "href": "http://testserver/collections/S2_L1"},
+            {
+                "rel": "parent",
+                "type": "application/json",
+                "href": "http://testserver/",
+            },
+            {
+                "rel": "root",
+                "type": "application/json",
+                "href": "http://testserver/",
+            },
+            {
+                "rel": "self",
+                "type": "application/json",
+                "href": "http://testserver/collections/S2_L1",
+            },
             {
                 "rel": "items",
                 "href": "http://localhost:8082/collections/S2_L1/items",
@@ -255,15 +259,9 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             },
         ],
         "owner": "pyteam",
-        "extent": {
-            "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-            "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-        },
-        "license": "public-domain",
-        "description": "Some description",
-        "stac_version": "1.0.0",
+        **COMMON_FIELDS,
     }
-    post_response = client.post("/catalog/collections", json=pyteam_collection, **pass_the_apikey)
+    post_response = client.post("/catalog/collections", json=pyteam_collection, **HEADER)
     assert post_response.status_code == HTTP_200_OK
     valid_collections = [
         {
@@ -274,29 +272,41 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": "http://testserver/catalog/collections/toto:S1_L1/items",
+                    **AUTHENT_REF,
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
-                {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/collections/toto:S1_L1"},
+                {
+                    "rel": "parent",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "root",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/collections/toto:S1_L1",
+                    **AUTHENT_REF,
+                },
                 {
                     "rel": "items",
                     "href": "http://localhost:8082/catalog/collections/toto:S1_L1/items/",
                     "type": "application/geo+json",
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "toto",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
         {
             "id": "toto_S2_L3",
@@ -306,29 +316,41 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": "http://testserver/catalog/collections/toto:S2_L3/items",
+                    **AUTHENT_REF,
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/toto"},
-                {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/collections/toto:S2_L3"},
+                {
+                    "rel": "parent",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "root",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/collections/toto:S2_L3",
+                    **AUTHENT_REF,
+                },
                 {
                     "rel": "items",
                     "href": "http://localhost:8082/catalog/collections/toto:S2_L3/items/",
                     "type": "application/geo+json",
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "toto",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
         {
             "id": "titi_S2_L1",
@@ -338,29 +360,41 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": "http://testserver/catalog/collections/titi:S2_L1/items",
+                    **AUTHENT_REF,
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/titi"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/titi"},
-                {"rel": "self", "type": "application/json", "href": "http://testserver/catalog/collections/titi:S2_L1"},
+                {
+                    "rel": "parent",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "root",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/collections/titi:S2_L1",
+                    **AUTHENT_REF,
+                },
                 {
                     "rel": "items",
                     "href": "http://localhost:8082/catalog/collections/titi:S2_L1/items/",
                     "type": "application/geo+json",
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "titi",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
         {
             "id": "pyteam_S1_L1",
@@ -370,41 +404,41 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "href": "http://testserver/catalog/collections/pyteam:S1_L1/items",
                     "rel": "items",
                     "type": "application/geo+json",
+                    **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     "rel": "parent",
                     "type": "application/json",
+                    **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     "rel": "root",
                     "type": "application/json",
+                    **AUTHENT_REF,
                 },
                 {
                     "href": "http://testserver/catalog/collections/pyteam:S1_L1",
                     "rel": "self",
                     "type": "application/json",
+                    **AUTHENT_REF,
                 },
                 {
                     "href": "http://localhost:8082/catalog/collections/pyteam:S1_L1/items/",
                     "rel": "items",
                     "type": "application/geo+json",
+                    **AUTHENT_REF,
                 },
                 {
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "rel": "license",
                     "title": "public domain",
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "pyteam",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
         {
             "id": "pyteam_S2_L1",
@@ -414,53 +448,62 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": "http://testserver/catalog/collections/pyteam:S2_L1/items",
+                    **AUTHENT_REF,
                 },
-                {"rel": "parent", "type": "application/json", "href": "http://testserver/catalog/catalogs/pyteam"},
-                {"rel": "root", "type": "application/json", "href": "http://testserver/catalog/catalogs/pyteam"},
+                {
+                    "rel": "parent",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "root",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
                 {
                     "rel": "self",
                     "type": "application/json",
                     "href": "http://testserver/catalog/collections/pyteam:S2_L1",
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": "http://testserver/catalog/collections/pyteam:S2_L1/items/",
                     "type": "application/geo+json",
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": "http://localhost:8082/catalog/collections/pyteam:S2_L1/items/",
                     "type": "application/geo+json",
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
                 },
             ],
             "owner": "pyteam",
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         },
     ]
-    # Pass the api key in HTTP headers then in url query parameter
-    for pass_the_apikey in PASS_THE_APIKEY:
-        all_collections = client.request("GET", "/catalog/collections", **pass_the_apikey)
+    all_collections = client.request("GET", "/catalog/collections", **HEADER)
 
-        assert all_collections.status_code == HTTP_200_OK
-        content = json.loads(all_collections.content)
-        assert content["collections"] == valid_collections
+    assert all_collections.status_code == HTTP_200_OK
+    content = json.loads(all_collections.content)
+    assert content["collections"] == valid_collections
 
-    wrong_api_key_response = client.request("GET", "/catalog/", headers=WRONG_HEADER)
+    wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_HEADER)
     assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
 
 
 class TestAuthenticationGetOneCollection:
+    """Contains authentication tests when the user wants to get a single collection."""
+
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call"),
         [
@@ -476,7 +519,8 @@ class TestAuthenticationGetOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):  # pylint: disable=too-many-arguments
+        """Test that the user gets the right collection when he does a good request with right permissions."""
         iam_roles = [f"rs_catalog_{user}:*_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
@@ -488,43 +532,49 @@ class TestAuthenticationGetOneCollection:
                     "rel": "items",
                     "type": "application/geo+json",
                     "href": f"http://testserver/catalog/collections/{user}:S1_L1/items",
+                    **AUTHENT_REF,
                 },
-                {"rel": "parent", "type": "application/json", "href": f"http://testserver/catalog/catalogs/{user}"},
-                {"rel": "root", "type": "application/json", "href": f"http://testserver/catalog/catalogs/{user}"},
+                {
+                    "rel": "parent",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "root",
+                    "type": "application/json",
+                    "href": "http://testserver/catalog/",
+                    **AUTHENT_REF,
+                },
                 {
                     "rel": "self",
                     "type": "application/json",
                     "href": f"http://testserver/catalog/collections/{user}:S1_L1",
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "items",
                     "href": f"http://localhost:8082/catalog/collections/{user}:S1_L1/items/",
                     "type": "application/geo+json",
+                    **AUTHENT_REF,
                 },
                 {
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
                 },
             ],
             "owner": user,
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
+            **COMMON_FIELDS,
         }
-        # Pass the api key in HTTP headers then in url query parameter
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            assert collection == json.loads(response.content)
+        response = client.request(
+            "GET",
+            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        assert collection == json.loads(response.content)
 
     def test_fails_without_good_perms(
         self,
@@ -532,7 +582,9 @@ class TestAuthenticationGetOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right authorisations."""
 
         iam_roles = [
             "rs_catalog_toto:*_write",
@@ -540,17 +592,17 @@ class TestAuthenticationGetOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        # Pass the api key in HTTP headers then in url query parameter
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/collections/toto:S1_L1",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationGetItems:
+    """Contains authentication tests when the user wants to get items."""
+
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call"),
         [
@@ -566,18 +618,19 @@ class TestAuthenticationGetItems:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):  # pylint: disable=too-many-arguments
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does a good request with right permissions."""
 
         iam_roles = [f"rs_catalog_{user}:*_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+        response = client.request(
+            "GET",
+            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -585,7 +638,10 @@ class TestAuthenticationGetItems:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user get a HTTP_401_UNAUTHORIZED status code response
+        when he does a good requests without the right authorisations.
+        """
 
         iam_roles = [
             "rs_catalog_toto:*_write",
@@ -593,16 +649,17 @@ class TestAuthenticationGetItems:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/collections/toto:S1_L1/items/",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/items/",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationGetOneItem:
+    """Contains authentication tests when the user wants to one item."""
+
     @pytest.mark.parametrize(
         ("user", "user_str_for_endpoint_call", "feature"),
         [
@@ -619,7 +676,8 @@ class TestAuthenticationGetOneItem:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):  # pylint: disable=too-many-arguments
+        """Test that the user gets the right item when he does a good request with right permissions."""
 
         iam_roles = [
             "rs_catalog_pyteam:*_read",
@@ -636,6 +694,7 @@ class TestAuthenticationGetOneItem:
                     "href": f"""s3://temp-bucket/{user}_S1_L1/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
+                    **AUTHENT_REF,
                 },
             },
             "geometry": {
@@ -660,23 +719,24 @@ class TestAuthenticationGetOneItem:
                 "owner_id": user,
                 "proj:epsg": 3857,
                 "orientation": "nadir",
+                **AUTHENT_SCHEME,
             },
             "stac_version": "1.0.0",
             "stac_extensions": [
                 "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
                 "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+                AUTHENT_EXTENSION,
             ],
         }
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/{feature}",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            id = json.loads(response.content)["id"]
-            assert id == feature_s1_l1_0["id"]
+        response = client.request(
+            "GET",
+            f"/catalog/collections/{user_str_for_endpoint_call}S1_L1/items/{feature}",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        feature_id = json.loads(response.content)["id"]
+        assert feature_id == feature_s1_l1_0["id"]
 
     def test_fails_without_good_perms(
         self,
@@ -684,7 +744,10 @@ class TestAuthenticationGetOneItem:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions.
+        """
 
         iam_roles = [
             "rs_catalog_toto:*_write",
@@ -692,16 +755,17 @@ class TestAuthenticationGetOneItem:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationPostOneCollection:
+    """Contains authentication tests when a user wants to post one collection."""
+
     collection_to_post = {
         "id": "MY_SPECIAL_COLLECTION",
         "type": "Collection",
@@ -725,13 +789,7 @@ class TestAuthenticationPostOneCollection:
                 "title": "public domain",
             },
         ],
-        "extent": {
-            "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-            "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-        },
-        "license": "public-domain",
-        "description": "Some description",
-        "stac_version": "1.0.0",
+        **COMMON_FIELDS,
     }
 
     def test_http200_with_good_authentication(
@@ -740,7 +798,9 @@ class TestAuthenticationPostOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does a good request with right permissions."""
 
         iam_roles = [
             "rs_catalog_pyteam:*_read",
@@ -748,14 +808,13 @@ class TestAuthenticationPostOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections",
-                json=self.collection_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+        response = client.request(
+            "POST",
+            "/catalog/collections",
+            json=self.collection_to_post,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -763,19 +822,20 @@ class TestAuthenticationPostOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
         self.collection_to_post["owner"] = "toto"
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections",
-                json=self.collection_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "POST",
+            "/catalog/collections",
+            json=self.collection_to_post,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
     def test_fails_user_creates_collection_owned_by_another_user(
         self,
@@ -783,7 +843,36 @@ class TestAuthenticationPostOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test to verify that creating a collection owned by another user returns HTTP 401 Unauthorized.
+
+        This test checks the scenario where the user 'pyteam' attempts to create a collection that
+        is owned by the user 'toto'. It ensures that the appropriate HTTP 401 Unauthorized status
+        code is returned. The rs-server-catalog receives the apikey from the HEADER parameter,
+        which is created for the user 'pyteam'. It then tries to create a collection with the
+        info received in the body, but it sees that the owner is the 'toto' user, which doesn't
+        correspond with the apikey owner
+
+        Args:
+            self: The test case instance.
+            mocker: pytest-mock fixture for mocking objects.
+            monkeypatch: pytest fixture for modifying module or environment attributes.
+            httpx_mock (HTTPXMock): Fixture for mocking HTTPX requests.
+            client: Test client for making HTTP requests to the application.
+
+        Returns:
+            None
+
+        Raises:
+            AssertionError: If the response status code is not HTTP 401 Unauthorized.
+
+        Notes:
+        - The `iam_roles` variable simulates the roles assigned to the user 'pyteam'.
+        - The `init_test` function is called to set up the test environment with mocked roles and configurations.
+        - The `self.collection_to_post` dictionary is modified to set the 'owner' field to 'toto'.
+        - The `client.request` method sends a POST request to create a collection.
+        - The test asserts that the response status code is HTTP 401 Unauthorized.
+        """
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -791,17 +880,18 @@ class TestAuthenticationPostOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
         self.collection_to_post["owner"] = "toto"
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections",
-                json=self.collection_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "POST",
+            "/catalog/collections",
+            json=self.collection_to_post,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthicationPutOneCollection:
+class TestAuthenticationPutOneCollection:
+    """Contains authentication tests when a user wants to update one collection."""
+
     updated_collection = {
         "id": "S1_L1",
         "type": "Collection",
@@ -826,13 +916,7 @@ class TestAuthicationPutOneCollection:
             },
         ],
         "owner": "pyteam",
-        "extent": {
-            "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-            "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-        },
-        "license": "public-domain",
-        "description": "This is the description from the updated S1_L1 collection.",
-        "stac_version": "1.0.0",
+        **COMMON_FIELDS,
     }
 
     def test_http200_with_good_authentication(
@@ -841,7 +925,10 @@ class TestAuthicationPutOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does good requests (one with the owner_id parameter and the other one
+        without the owner_id parameter) with right permissions."""
 
         iam_roles = [
             "rs_catalog_pyteam:*_read",
@@ -849,24 +936,23 @@ class TestAuthicationPutOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            # user is used in the endpoint, format is user:collection
-            response = client.request(
-                "PUT",
-                "/catalog/collections/pyteam:S1_L1",
-                json=self.updated_collection,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            # request the endpoint by using just "collection" (the user is
-            # loaded by the rs-server-catalog directly from the apikey)
-            response = client.request(
-                "PUT",
-                "/catalog/collections/S1_L1",
-                json=self.updated_collection,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+        # owner_id is used in the endpoint, format is owner_id:collection
+        response = client.request(
+            "PUT",
+            "/catalog/collections/pyteam:S1_L1",
+            json=self.updated_collection,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        # request the endpoint by using just "collection" (the owner_id is
+        # loaded by the rs-server-catalog directly from the apikey)
+        response = client.request(
+            "PUT",
+            "/catalog/collections/S1_L1",
+            json=self.updated_collection,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -874,19 +960,20 @@ class TestAuthicationPutOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_pyteam:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "PUT",
-                "/catalog/collections/toto:S1_L1",
-                json=self.updated_collection,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "PUT",
+            "/catalog/collections/toto:S1_L1",
+            json=self.updated_collection,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
     def test_fails_user_updates_collection_owned_by_another_user(
         self,
@@ -894,7 +981,35 @@ class TestAuthicationPutOneCollection:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """This test evaluates the scenario where the user 'pyteam' attempts to update his
+        own collection by altering the owner field to another user, 'toto'. The primary objective
+        is to ensure that an appropriate HTTP 401 Unauthorized status code is returned. The rs-server-catalog
+        retrieves the apikey from the HEADER parameter, which is associated with the user 'pyteam'. When
+        attempting to update the collection with the information provided in the body, the
+        system detects that the owner is specified as 'toto'. Since 'toto' does not match the owner of the apikey,
+        the update is correctly rejected, resulting in the expected unauthorized status.
+
+        Args:
+            self: The test case instance.
+            mocker: pytest-mock fixture for mocking objects.
+            monkeypatch: pytest fixture for modifying module or environment attributes.
+            httpx_mock (HTTPXMock): Fixture for mocking HTTPX requests.
+            client: Test client for making HTTP requests to the application.
+
+        Returns:
+            None
+
+        Raises:
+            AssertionError: If the response status code is not HTTP 401 Unauthorized.
+
+        Notes:
+        - The `iam_roles` variable simulates the roles assigned to the user 'pyteam'.
+        - The `init_test` function is called to set up the test environment with mocked roles and configurations.
+        - The `self.collection_to_post` dictionary is modified to set the 'owner' field to 'toto'.
+        - The `client.request` method sends a PUT request to update a collection.
+        - The test asserts that the response status code is HTTP 401 Unauthorized.
+        """
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -902,17 +1017,17 @@ class TestAuthicationPutOneCollection:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
         self.updated_collection["owner"] = "toto"
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "PUT",
-                "/catalog/collections",
-                json=self.updated_collection,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "PUT",
+            "/catalog/collections/toto:S1_L1",
+            json=self.updated_collection,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationSearch:
+    """Contains authentication tests when a user wants to do a search request."""
 
     search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
     test_json = {
@@ -933,7 +1048,9 @@ class TestAuthenticationSearch:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does good requests (GET and POST method) with right permissions."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -941,16 +1058,15 @@ class TestAuthenticationSearch:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/search",
-                params=self.search_params,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            response = client.request("POST", "/catalog/search", json=self.test_json, **pass_the_apikey)
-            assert response.status_code == HTTP_200_OK
+        response = client.request(
+            "GET",
+            "/catalog/search",
+            params=self.search_params,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        response = client.request("POST", "/catalog/search", json=self.test_json, **HEADER)
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -958,24 +1074,118 @@ class TestAuthenticationSearch:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/search",
-                params=self.search_params,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
-            response = client.request("POST", "/catalog/search", json=self.test_json, **pass_the_apikey)
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "GET",
+            "/catalog/search",
+            params=self.search_params,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request("POST", "/catalog/search", json=self.test_json, **HEADER)
+        assert response.status_code == HTTP_401_UNAUTHORIZED
+
+
+class TestAuthenticationSearchInCollection:
+    """Contains authentication tests when a user wants to do a search request inside a specific collection."""
+
+    search_params_ids = {"ids": "fe916452-ba6f-4631-9154-c249924a122d"}
+    search_params_filter = {"filter-lang": "cql2-text", "filter": "width=2500"}
+    test_json = {
+        "filter-lang": "cql2-json",
+        "filter": {
+            "op": "and",
+            "args": [
+                {"op": "=", "args": [{"property": "height"}, 2500]},
+                {"op": "=", "args": [{"property": "width"}, 2500]},
+            ],
+        },
+    }
+
+    def test_http200_with_good_authentication(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does good requests (GET and POST method) with right permissions.
+        Also test that the user gets the right number of items matching the search request parameters."""
+
+        iam_roles = [
+            "rs_catalog_toto:*_read",
+            "rs_catalog_toto:*_write",
+        ]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/search",
+            params=self.search_params_ids,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        content = json.loads(response.content)
+        assert content["context"] == {"limit": 10, "returned": 1}
+
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/search",
+            params=self.search_params_filter,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        content = json.loads(response.content)
+        assert content["context"] == {"limit": 10, "returned": 2}
+
+        response = client.request(
+            "POST",
+            "/catalog/collections/toto:S1_L1/search",
+            json=self.test_json,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        content = json.loads(response.content)
+        assert content["context"] == {"limit": 10, "returned": 2}
+
+    def test_fails_without_good_perms(
+        self,
+        mocker,
+        monkeypatch,
+        httpx_mock: HTTPXMock,
+        client,
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without the right permissions."""
+
+        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+
+        response = client.request(
+            "GET",
+            "/catalog/collections/toto:S1_L1/search",
+            params=self.search_params_filter,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "POST",
+            "/catalog/collections/toto:S1_L1/search",
+            json=self.test_json,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
 class TestAuthenticationDownload:
+    """Contains authentication tests when a user wants to do a download."""
 
     def export_aws_credentials(self):
         """Export AWS credentials as environment variables for testing purposes.
@@ -1013,8 +1223,8 @@ class TestAuthenticationDownload:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):
-        # pylint: disable=missing-function-docstring
+    ):  # pylint: disable=too-many-locals
+        """Test used to verify the generation of a presigned url for a download."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1023,7 +1233,6 @@ class TestAuthenticationDownload:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        """Test used to verify the generation of a presigned url for a download."""
         # Start moto server
         moto_endpoint = "http://localhost:8077"
         self.export_aws_credentials()
@@ -1048,31 +1257,31 @@ class TestAuthenticationDownload:
                 Key="S1_L1/images/may24C355000e4102500n.tif",
                 Body=object_content,
             )
+            user = ""
 
-            for pass_the_apikey in PASS_THE_APIKEY:
-                for user, file in users_map.items():
-                    response = client.request(
-                        "GET",
-                        f"/catalog/collections/{user}S1_L1/items/{file}/download/COG",
-                        **pass_the_apikey,
-                    )
-                    assert response.status_code == HTTP_302_FOUND
-
-                # Check that response is empty
-                assert response.content == b""
-
-                # call the redirected url
-                product_content = requests.get(response.headers["location"], timeout=10)
-
-                assert product_content.status_code == HTTP_200_OK
-                assert product_content.content.decode() == object_content
-                assert (
-                    client.get(
-                        f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/COG",
-                        headers={APIKEY_HEADER: VALID_APIKEY},
-                    ).status_code
-                    == HTTP_404_NOT_FOUND
+            for user, file in users_map.items():
+                response = client.request(
+                    "GET",
+                    f"/catalog/collections/{user}S1_L1/items/{file}/download/COG",
+                    **HEADER,
                 )
+                assert response.status_code == HTTP_302_FOUND
+
+            # Check that response is empty
+            assert response.content == b""
+
+            # call the redirected url
+            product_content = requests.get(response.headers["location"], timeout=10)
+
+            assert product_content.status_code == HTTP_200_OK
+            assert product_content.content.decode() == object_content
+            assert (
+                client.get(
+                    f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/COG",
+                    headers={APIKEY_HEADER: VALID_APIKEY},
+                ).status_code
+                == HTTP_404_NOT_FOUND
+            )
 
         finally:
             server.stop()
@@ -1093,7 +1302,7 @@ class TestAuthenticationDownload:
         httpx_mock: HTTPXMock,
         client,
     ):
-        # pylint: disable=missing-function-docstring
+        """Test used to verify the generation of a presigned url for a download."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1101,7 +1310,6 @@ class TestAuthenticationDownload:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        """Test used to verify the generation of a presigned url for a download."""
         # Start moto server
         moto_endpoint = "http://localhost:8077"
         self.export_aws_credentials()
@@ -1127,13 +1335,12 @@ class TestAuthenticationDownload:
                 Body=object_content,
             )
 
-            for pass_the_apikey in PASS_THE_APIKEY:
-                response = client.request(
-                    "GET",
-                    "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
-                    **pass_the_apikey,
-                )
-                assert response.status_code == HTTP_401_UNAUTHORIZED
+            response = client.request(
+                "GET",
+                "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
+                **HEADER,
+            )
+            assert response.status_code == HTTP_401_UNAUTHORIZED
 
         finally:
             server.stop()
@@ -1141,14 +1348,18 @@ class TestAuthenticationDownload:
             self.clear_aws_credentials()
 
 
-class TestAuthentiactionDelete:
+class TestAuthenticationDelete:
+    """Contains authentication tests when a user wants to delete a collection."""
+
     def test_http200_with_good_authentication(
         self,
         mocker,
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he deletes a collection with right permissions"""
 
         iam_roles: list[str] = []
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
@@ -1171,22 +1382,21 @@ class TestAuthentiactionDelete:
             )
             assert response.status_code == HTTP_200_OK
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            # request the endpoint by using "user:collection"
-            response = client.request(
-                "DELETE",
-                f"/catalog/collections/pyteam:{collections[0]}",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
-            # request the endpoint by using just "collection" (the user is
-            # loaded by the rs-server-catalog directly from the apikey)
-            response = client.request(
-                "DELETE",
-                f"/catalog/collections/{collections[1]}",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_200_OK
+        # request the endpoint by using "user:collection"
+        response = client.request(
+            "DELETE",
+            f"/catalog/collections/pyteam:{collections[0]}",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
+        # request the endpoint by using just "collection" (the user is
+        # loaded by the rs-server-catalog directly from the apikey)
+        response = client.request(
+            "DELETE",
+            f"/catalog/collections/{collections[1]}",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -1194,7 +1404,9 @@ class TestAuthentiactionDelete:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he tries to delete a collection without right permissions."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1204,25 +1416,30 @@ class TestAuthentiactionDelete:
         # sending a request from user pyteam (loaded from the apikey) to delete
         # the S1_L1 collection owned by the `toto` user.
         # 401 unauthorized reponse should be received
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "DELETE",
-                "/catalog/collections/toto:S1_L1",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "DELETE",
+            "/catalog/collections/toto:S1_L1",
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationPostOneItem:
+class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
+    """Contains authentication tests when a user wants to post one item."""
+
     item_id = "S1SIWOCN_20220412T054447_0024_S139"
     feature_to_post = {
-        "collection": "S1_L1",
-        "assets": {
-            "zarr": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip", "roles": ["data"]},
-            "cog": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip", "roles": ["data"]},
-            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
-        },
-        "bbox": [0],
+        "type": "Feature",
+        "stac_version": "1.0.0",
+        "stac_extensions": [
+            "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+        ],
+        "id": item_id,
         "geometry": {
             "type": "Polygon",
             "coordinates": [
@@ -1235,9 +1452,7 @@ class TestAuthenticationPostOneItem:
                 ],
             ],
         },
-        "id": item_id,
-        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-        "other_metadata": {},
+        "bbox": [-180.0, -90.0, 0.0, 180.0, 90.0, 10000.0],
         "properties": {
             "gsd": 0.5971642834779395,
             "width": 2500,
@@ -1246,16 +1461,13 @@ class TestAuthenticationPostOneItem:
             "proj:epsg": 3857,
             "orientation": "nadir",
         },
-        "stac_extensions": [
-            "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-        ],
-        "stac_version": "1.0.0",
-        "type": "Feature",
+        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+        "assets": {
+            "zarr": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip", "roles": ["data"]},
+            "cog": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip", "roles": ["data"]},
+            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+        },
+        "collection": "S1_L1",
     }
 
     def test_http200_with_good_authentication(
@@ -1264,7 +1476,9 @@ class TestAuthenticationPostOneItem:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does a good request with right permissions."""
 
         iam_roles = [
             "rs_catalog_toto:*_read",
@@ -1272,25 +1486,23 @@ class TestAuthenticationPostOneItem:
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections/S1_L1/items",
-                json=self.feature_to_post,
-                **pass_the_apikey,
-            )
-            # check if the item was well added to the collection
-            assert response.status_code == HTTP_200_OK
-            # delete the item, don't change the collection, because it is used
-            # by other tests also
-            response = client.request(
-                "DELETE",
-                f"/catalog/collections/S1_L1/items/{self.item_id}",
-                json=self.feature_to_post,
-                **pass_the_apikey,
-            )
-            # check if the item was deleted from the collection
-            assert response.status_code == HTTP_200_OK
+        response = client.post(
+            "/catalog/collections/S1_L1/items",
+            content=json.dumps(self.feature_to_post),
+            **HEADER,
+        )
+        # check if the item was well added to the collection
+        assert response.status_code == HTTP_200_OK
+        # delete the item, don't change the collection, because it is used
+        # by other tests also
+        response = client.request(
+            "DELETE",
+            f"/catalog/collections/S1_L1/items/{self.item_id}",
+            json=self.feature_to_post,
+            **HEADER,
+        )
+        # check if the item was deleted from the collection
+        assert response.status_code == HTTP_200_OK
 
     def test_fails_without_good_perms(
         self,
@@ -1298,71 +1510,28 @@ class TestAuthenticationPostOneItem:
         monkeypatch,
         httpx_mock: HTTPXMock,
         client,
-    ):  # pylint: disable=missing-function-docstring
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does a good request without right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L1_read"]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "POST",
-                "/catalog/collections/toto:S1_L1/items",
-                json=self.feature_to_post,
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
+        response = client.request(
+            "POST",
+            "/catalog/collections/toto:S1_L1/items",
+            json=self.feature_to_post,
+            **HEADER,
+        )
+        assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-class TestAuthenticationGetCatalogOwnerId:
-    def test_http200_with_good_authentication(
-        self,
-        mocker,
-        monkeypatch,
-        httpx_mock: HTTPXMock,
-        client,
-    ):  # pylint: disable=missing-function-docstring
-
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-        users_map = {"toto": "toto", "pyteam": ""}
-        for pass_the_apikey in PASS_THE_APIKEY:
-            for _, val in users_map.items():
-                response = client.request(
-                    "GET",
-                    f"/catalog/catalogs/{val}",
-                    **pass_the_apikey,
-                )
-                assert response.status_code == HTTP_200_OK
-
-    def test_fails_if_not_authorized(
-        self,
-        mocker,
-        monkeypatch,
-        httpx_mock: HTTPXMock,
-        client,
-    ):  # pylint: disable=missing-function-docstring
-
-        iam_roles = ["rs_catalog_toto:*_write"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
-        for pass_the_apikey in PASS_THE_APIKEY:
-            response = client.request(
-                "GET",
-                "/catalog/catalogs/toto",
-                **pass_the_apikey,
-            )
-            assert response.status_code == HTTP_401_UNAUTHORIZED
-
-
-class TestAuthenticationErrorHandling:
-    def test_error_when_not_authenticated(
-        self,
-        mocker,
-        client,
-    ):  # pylint: disable=missing-function-docstring
-        mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-        response = client.request("GET", "/catalog/")
-        assert response.status_code == HTTP_403_FORBIDDEN
+def test_error_when_not_authenticated(
+    mocker,
+    client,
+):
+    """Test that the user gets a HTPP_403_FORBIDDEN status code response
+    when he tries to call an endpoint without being authenticated."""
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+    response = client.request("GET", "/catalog/")
+    assert response.status_code == HTTP_403_FORBIDDEN

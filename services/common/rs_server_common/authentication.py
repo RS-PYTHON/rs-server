@@ -48,9 +48,9 @@ APIKEY_HEADER = "x-api-key"
 # Just print the plain RSPY_UAC_HOMEPAGE environment variable name.
 # When the rs-server-frontend container will start, it will replace it with its associated value.
 APIKEY_DESCRIPTION = """
-<h3><a href="${RSPY_UAC_HOMEPAGE}">Create it from here</a></h3>
+<h3><a href="${RSPY_UAC_HOMEPAGE}" target="_blank">Create it from here</a></h3>
 
-<h3><a href="https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/users/oauth2_apikey_manager">
+<h3><a href="https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/users/oauth2_apikey_manager" target="_blank">
 See the documentation</a></h3>
 """
 
