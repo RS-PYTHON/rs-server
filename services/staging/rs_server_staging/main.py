@@ -26,7 +26,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.status import HTTP_200_OK
+from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from tinydb import Query, TinyDB
 
 from .processors import processors
@@ -102,7 +102,7 @@ async def execute_process(request: dict, resource: str):
     job_id = str(uuid.uuid4())  # Generate a unique job ID
     parameters = request.get("parameters", {})
     if resource not in api.config["resources"]:
-        raise HTTPException(status_code=404, detail=f"Process resource '{resource}' not found")
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
     processor_name = "HelloWorld"
     if processor_name in processors:
@@ -115,7 +115,7 @@ async def execute_process(request: dict, resource: str):
         # Process result as needed and return a response
         return {"job_id": job_id, "message": "Process executed successfully", "result": result}
 
-    raise HTTPException(status_code=404, detail=f"Processor '{processor_name}' not found")
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 
 
 # Endpoint to get the status of a job by job_id
@@ -127,7 +127,7 @@ async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
     if job:
         return job
 
-    raise HTTPException(status_code=404, detail="Job not found")
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Job not found")
 
 
 @app.get("/jobs")
