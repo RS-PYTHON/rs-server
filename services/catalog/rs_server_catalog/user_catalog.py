@@ -58,6 +58,7 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
+from rs_server_catalog.utils import verify_existing_item
 from rs_server_common import settings as common_settings
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
@@ -227,12 +228,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
 
         Returns:
             bool: True if the S3 key is valid and exists, otherwise False.
+            NOTE: Don't mind if we have RSPY_LOCAL_CATALOG_MODE set to ON (meaning self.handler is None)
 
         Raises:
             HTTPException: If the handler is not available, if S3 paths cannot be retrieved,
                         if the S3 paths do not match, or if there is an error checking the key.
         """
-        if not item:
+        if not item or not self.handler:
             return False
         # update an item
         existing_asset = item["assets"].get(asset_name, None)
@@ -286,39 +288,31 @@ an already existent path",
         item: dict,
     ) -> Any:
         """Update json body of feature push to catalog"""
-        # protection in case of the POST request and there is already an item with the same name in the database
-        if request.method == "POST" and item:
-            raise HTTPException(
-                detail=f"Conflict error! The item {item['id']} \
-already exists in the {user}_{content['collection']} collection",
-                status_code=HTTP_400_BAD_REQUEST,
+        if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+            self.handler = S3StorageHandler(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
             )
-        # protection in case of the PUT/PATCH requests and the item does not exist in the database
-        if request.method in {"PUT", "PATCH"} and not item:
-            item_id = content.get("id", "Unknown")
+        collection_id = content.get("collection", self.request_ids.get("collection_id", None))
+        print(f"COLLECTION_ID = {collection_id}")
+        if not collection_id:
             raise HTTPException(
-                detail=f"The item {item_id} \
-does not exist in the {user}_{content['collection']} collection for an update (PUT / PATCH request received)",
-                status_code=HTTP_400_BAD_REQUEST,
+                detail="Could not get the name of the collection!",
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        # in case of an update (PUT request), prepare an array with all the assets
-        # this will be used to check for the newly added or removable assets
-        # Unique set of temp bucket names
+        verify_existing_item(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
+
         bucket_names = set()
         files_s3_key = []
-        self.handler = S3StorageHandler(
-            os.environ["S3_ACCESSKEY"],
-            os.environ["S3_SECRETKEY"],
-            os.environ["S3_ENDPOINT"],
-            os.environ["S3_REGION"],
-        )
         # 1 - update assets href
         for asset in content["assets"]:
             filename_str = content["assets"][asset]["href"]
             logger.debug(f"HTTP request add/update asset: {filename_str!r}")
             fid = filename_str.rsplit("/", maxsplit=1)[-1]
-            new_href = f'https://{request.url.netloc}/catalog/\
-collections/{user}:{content["collection"]}/items/{fid}/download/{asset}'
+            new_href = f"https://{request.url.netloc}/catalog/\
+collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
             try:
@@ -343,7 +337,7 @@ collections/{user}:{content["collection"]}/items/{fid}/download/{asset}'
         # in case of the PUT request, we copy the new s3 hrefs, but delete the old ones
         # if any has changed. All the remained hrefs (the existent ones are removed from item in check_s3_key) have to
         # be deleted now from the s3. If a PATCH request is received (not yet implemented), do not delete anything
-        if request.method == "PUT":
+        if self.handler and request.method == "PUT":
             for asset in item["assets"]:
                 try:
                     key_array = item["assets"][asset]["alternate"]["s3"]["href"].split("/")
@@ -377,7 +371,7 @@ from s3 bucket  Reason: {rte}. The process will continue though !",
             content["stac_extensions"].append(new_stac_extension)
         # 4 bucket movement
         try:
-            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+            if self.handler:  # don't move files if we are in local mode
                 config = TransferFromS3ToS3Config(
                     files_s3_key,
                     self.temp_bucket_name,
@@ -403,7 +397,7 @@ from s3 bucket  Reason: {rte}. The process will continue though !",
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
-        content.update({"collection": f"{user}_{content['collection']}"})
+        content.update({"collection": f"{user}_{collection_id}"})
         return content
 
     def generate_presigned_url(self, content, path):

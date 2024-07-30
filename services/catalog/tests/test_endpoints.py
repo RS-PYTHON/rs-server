@@ -800,6 +800,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         """Test used to verify failure when obs path is wrong."""
         # TC03: Add on Sentinel-1 item to the Catalog with a wrong OBS path  => ERROR => 400 Bad Request
         export_aws_credentials()
+        a_correct_feature["id"] = "S1SIWOCN_20220412T054447_0024_S139_TEST"
         a_correct_feature["assets"]["zarr"]["href"] = "incorrect_s3_url/some_file.zarr.zip"
         a_correct_feature["assets"]["cog"]["href"] = "incorrect_s3_url/some_file.cog.zip"
         a_correct_feature["assets"]["ncdf"]["href"] = "incorrect_s3_url/some_file.ncdf.zip"
