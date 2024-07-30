@@ -287,7 +287,6 @@ class TestCatalogSearchEndpoint:
         # Test for POST /catalog/search
         test_json = {
             "collections": ["S1_L1"],
-            # Here we remove the filter-lang field and check that we insert a default filter-lang.
             "filter": {
                 "op": "and",
                 "args": [
@@ -300,8 +299,16 @@ class TestCatalogSearchEndpoint:
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == 404  # Checking with unexisting owner_id
 
-        test_json["collections"] = ["notfound"]
-        test_json["filter"]["args"][0] = {"op": "=", "args": [{"property": "owner"}, "toto"]}
+        test_json = {
+            "collections": ["notfound"],
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
 
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == 404  # Checking with unexisting collection_id
