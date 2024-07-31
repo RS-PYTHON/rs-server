@@ -20,6 +20,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 
 # pylint: disable=redefined-builtin
 import json
+import os
 import os.path as osp
 import traceback
 from pathlib import Path
@@ -27,6 +28,7 @@ from typing import Annotated, List, Union
 
 import requests
 import sqlalchemy
+import yaml
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
@@ -48,21 +50,74 @@ from rs_server_common.utils.utils import (
     write_search_products_to_db,
 )
 
+
+def validate_cadip_config(fp):
+    """Function to validate yaml template, tba."""
+    return fp
+
+
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
+search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
+cadip_search_config = validate_cadip_config(os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute())))
+with open(cadip_search_config, encoding="utf-8") as search_conf:
+    config = yaml.safe_load(search_conf)
 
 
-@router.get("/cadip/{station}/cadu/search")
+@router.get("/cadip/search")
 @apikey_validator(station="cadip", access_type="read")
-def search_products(  # pylint: disable=too-many-locals, too-many-arguments
-    request: Request,  # pylint: disable=unused-argument
-    datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
-    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
-    session_id: Annotated[str, Query(description="Session from which file belong")] = "",
-    limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
-) -> list[dict] | dict:
+def search_cadip_endpoint():
+    return {}
+
+
+@router.get("/cadip/collections/{collection_id}")
+@apikey_validator(station="cadip", access_type="read")
+def get_cadip_collection(collection_id: str) -> list[dict] | dict:
+    return {}
+
+
+@router.get("/cadip/collections/{collection_id}/items")
+@apikey_validator(station="cadip", access_type="read")
+def get_cadip_collection_items(request: Request, collection_id):
+    selected_config = next((item for item in config["collections"] if item["id"] == collection_id), None)
+    station = selected_config["station"]
+
+    session_id = selected_config["query"].get("id", None)
+    platform = selected_config["query"].get("platform", None)
+    start_date = selected_config["query"].get("start_date", None)
+    stop_date = selected_config["query"].get("stop_date", None)
+
+    # Limit and sortby to be added for sessions
+    limit = selected_config["query"].get("limit", None)
+    sortby = selected_config["query"].get("sortby", "-datetime")
+
+    return process_session_search(request, station, session_id, platform, start_date, stop_date)
+
+
+@router.get("/cadip/collections/{collection_id}/items/{session_id}")
+@apikey_validator(station="cadip", access_type="read")
+def get_cadip_collection_item_details(request: Request, collection_id, session_id):
+    selected_config = next((item for item in config["collections"] if item["id"] == collection_id), None)
+    station = selected_config["station"]
+
+    sid = selected_config["query"].get("id", None)
+    platform = selected_config["query"].get("platform", None)
+    start_date = selected_config["query"].get("start_date", None)
+    stop_date = selected_config["query"].get("stop_date", None)
+
+    # Limit and sortby to be added for sessions
+    limit = selected_config["query"].get("limit", None)
+    sortby = selected_config["query"].get("sortby", "-datetime")
+
+    result = process_session_search(request, station, sid, platform, start_date, stop_date)
+    return next(
+        (item for item in result["features"] if item["id"] == session_id),
+        HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found."),
+    )
+
+
+def process_files_search(datetime: str, station: str, session_id: str, limit=None, sortby=None) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
@@ -90,7 +145,12 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     if not (datetime or session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
     start_date, stop_date = validate_inputs_format(datetime)
-    session: Union[List[str], str] = [sid.strip() for sid in session_id.split(",")] if "," in session_id else session_id
+    if session_id:
+        session: Union[List[str], str] = (
+            [sid.strip() for sid in session_id.split(",")] if "," in session_id else session_id
+        )
+    else:
+        session = None
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
@@ -100,7 +160,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
             id=session,
             items_per_page=limit,
         )
-        write_search_products_to_db(CadipDownloadStatus, products)
+        # write_search_products_to_db(CadipDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
         with (
@@ -144,22 +204,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         ) from exception
 
 
-@router.get("/cadip/{station}/session")
-@apikey_validator(station="cadip", access_type="read")
-def search_session(
-    request: Request,  # pylint: disable=unused-argument
-    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
-    id: Annotated[
-        Union[str, None],
-        Query(
-            description='Session identifier eg: "S1A_20200105072204051312" or '
-            '"S1A_20200105072204051312, S1A_20220715090550123456"',
-        ),
-    ] = None,
-    platform: Annotated[Union[str, None], Query(description='Satellite identifier eg: "S1A" or "S1A, S1B"')] = None,
-    start_date: Annotated[Union[str, None], Query(description='Start time e.g. "2024-01-01T00:00:00Z"')] = None,
-    stop_date: Annotated[Union[str, None], Query(description='Stop time e.g. "2024-01-01T00:00:00Z"')] = None,
-):  # pylint: disable=too-many-arguments, too-many-locals
+def process_session_search(request, station: str, id: str, platform=None, start_date=None, stop_date=None):
     """Endpoint to retrieve a list of sessions from any CADIP station.
 
     A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
@@ -197,7 +242,7 @@ def search_session(
         )
         products = validate_products(products)
         sessions_products = from_session_expand_to_dag_serializer(products)
-        write_search_products_to_db(CadipDownloadStatus, sessions_products)
+        # write_search_products_to_db(CadipDownloadStatus, sessions_products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
         expanded_session_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
