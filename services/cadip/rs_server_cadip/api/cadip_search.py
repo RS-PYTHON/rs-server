@@ -24,7 +24,7 @@ import os
 import os.path as osp
 import traceback
 from pathlib import Path
-from typing import Annotated, List, Union
+from typing import Annotated, Any, List, Union
 
 import requests
 import sqlalchemy
@@ -68,15 +68,47 @@ with open(cadip_search_config, encoding="utf-8") as search_conf:
     config = yaml.safe_load(search_conf)
 
 
+def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
+    """Used to create and map query values with default values."""
+    required_keys = ["station", "id", "platform", "start_date", "stop_date", "limit", "sortby"]
+    default_values = ["cadip", None, None, None, None, None, "-datetime"]
+    if not selected_config:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
+    return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+
+
 @router.get("/cadip/search")
 @apikey_validator(station="cadip", access_type="read")
-def search_cadip_endpoint():
-    return {}
+def search_cadip_endpoint(request: Request):
+    """Endpoint used to search cadip collections."""
+    # Collection at the moment, multiple collections to be implemented.
+    query_params = dict(request.query_params)
+    collection = query_params.pop("collection", None)
+    selected_config: Union[dict[Any, Any], None] = next(
+        (item for item in config["collections"] if item["id"] == collection),
+        None,
+    )
+    if selected_config:
+        # Update selected_config query values with the ones coming in request.query_params
+        for query_config_key in query_params:
+            selected_config["query"][query_config_key] = query_params[query_config_key]
+
+    query_params = create_session_search_params(selected_config)
+
+    return process_session_search(
+        request,
+        query_params["station"],
+        query_params["id"],
+        query_params["platform"],
+        query_params["start_date"],
+        query_params["stop_date"],
+    )
 
 
 @router.get("/cadip/collections/{collection_id}")
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection(collection_id: str) -> list[dict] | dict:
+    """To be added."""
     return {}
 
 
@@ -84,38 +116,41 @@ def get_cadip_collection(collection_id: str) -> list[dict] | dict:
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_items(request: Request, collection_id):
     """Endpoint to retrieve a list of sessions from any CADIP station."""
-    selected_config = next((item for item in config["collections"] if item["id"] == collection_id), None)
-    station = selected_config["station"]
+    selected_config: Union[dict[Any, Any], None] = next(
+        (item for item in config["collections"] if item["id"] == collection_id),
+        None,
+    )
 
-    session_id = selected_config["query"].get("id", None)
-    platform = selected_config["query"].get("platform", None)
-    start_date = selected_config["query"].get("start_date", None)
-    stop_date = selected_config["query"].get("stop_date", None)
+    query_params = create_session_search_params(selected_config)
 
-    # Limit and sortby to be added for sessions
-    limit = selected_config["query"].get("limit", None)
-    sortby = selected_config["query"].get("sortby", "-datetime")
-
-    return process_session_search(request, station, session_id, platform, start_date, stop_date)
+    return process_session_search(
+        request,
+        query_params["station"],
+        query_params["id"],
+        query_params["platform"],
+        query_params["start_date"],
+        query_params["stop_date"],
+    )
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_item_details(request: Request, collection_id, session_id):
     """Endpoint to retrieve a specific item from list of sessions from any CADIP station."""
-    selected_config = next((item for item in config["collections"] if item["id"] == collection_id), None)
-    station = selected_config["station"]
+    selected_config: Union[dict[Any, Any], None] = next(
+        (item for item in config["collections"] if item["id"] == collection_id),
+        None,
+    )
 
-    sid = selected_config["query"].get("id", None)
-    platform = selected_config["query"].get("platform", None)
-    start_date = selected_config["query"].get("start_date", None)
-    stop_date = selected_config["query"].get("stop_date", None)
-
-    # !!! Limit and sortby to be added for sessions
-    limit = selected_config["query"].get("limit", None)
-    sortby = selected_config["query"].get("sortby", "-datetime")
-    # !!!
-    result = process_session_search(request, station, sid, platform, start_date, stop_date)
+    query_params = create_session_search_params(selected_config)
+    result = process_session_search(
+        request,
+        query_params["station"],
+        query_params["id"],
+        query_params["platform"],
+        query_params["start_date"],
+        query_params["stop_date"],
+    )
     return next(
         (item for item in result["features"] if item["id"] == session_id),
         HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found."),
