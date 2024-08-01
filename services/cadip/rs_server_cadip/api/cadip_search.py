@@ -53,6 +53,9 @@ from rs_server_common.utils.utils import (
 
 def validate_cadip_config(fp):
     """Function to validate yaml template, tba."""
+    accepted_stations = ["cadip", "ins", "mts"]
+    accepted_queries = ["id", "platform", "datetime", "start_date", "stop_date", "limit", "sortby"]
+    # Check that yaml content for query and stations (for now) is in accepted list.
     return fp
 
 
@@ -80,6 +83,7 @@ def get_cadip_collection(collection_id: str) -> list[dict] | dict:
 @router.get("/cadip/collections/{collection_id}/items")
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_items(request: Request, collection_id):
+    """Endpoint to retrieve a list of sessions from any CADIP station."""
     selected_config = next((item for item in config["collections"] if item["id"] == collection_id), None)
     station = selected_config["station"]
 
@@ -98,6 +102,7 @@ def get_cadip_collection_items(request: Request, collection_id):
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_item_details(request: Request, collection_id, session_id):
+    """Endpoint to retrieve a specific item from list of sessions from any CADIP station."""
     selected_config = next((item for item in config["collections"] if item["id"] == collection_id), None)
     station = selected_config["station"]
 
@@ -106,10 +111,10 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     start_date = selected_config["query"].get("start_date", None)
     stop_date = selected_config["query"].get("stop_date", None)
 
-    # Limit and sortby to be added for sessions
+    # !!! Limit and sortby to be added for sessions
     limit = selected_config["query"].get("limit", None)
     sortby = selected_config["query"].get("sortby", "-datetime")
-
+    # !!!
     result = process_session_search(request, station, sid, platform, start_date, stop_date)
     return next(
         (item for item in result["features"] if item["id"] == session_id),
@@ -145,12 +150,11 @@ def process_files_search(datetime: str, station: str, session_id: str, limit=Non
     if not (datetime or session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
     start_date, stop_date = validate_inputs_format(datetime)
-    if session_id:
-        session: Union[List[str], str] = (
-            [sid.strip() for sid in session_id.split(",")] if "," in session_id else session_id
-        )
-    else:
-        session = None
+    session: Union[List[str], str, None] = (
+        ([sid.strip() for sid in session_id.split(",")] if session_id and "," in session_id else session_id)
+        if session_id
+        else None
+    )
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
@@ -205,7 +209,7 @@ def process_files_search(datetime: str, station: str, session_id: str, limit=Non
 
 
 def process_session_search(request, station: str, id: str, platform=None, start_date=None, stop_date=None):
-    """Endpoint to retrieve a list of sessions from any CADIP station.
+    """Function to process and to retrieve a list of sessions from any CADIP station.
 
     A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
     (*start_date* and *stop_date* correctly defined).
