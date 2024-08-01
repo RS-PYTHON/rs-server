@@ -336,7 +336,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             await self.client.get_collection(collection_id, request)
             return True
         except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(" collection not found: %s", e)
+            logger.error("Collection %s not found: %s", collection_id, e)
             return False
 
     async def manage_search_request(  # pylint: disable=too-many-branches
