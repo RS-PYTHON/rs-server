@@ -144,9 +144,36 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         }
 
         response = client.post("/catalog/collections/toto:S1_L1/search", json=cql2_json_query)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 2
+
+    def test_search_in_unexisting_collection(self, client):
+        """Test that if the collection does not exist, an HTTP 404 error is returned."""
+
+        # Test for GET /catalog/collections/{owner_id}:{collection_id}/search
+        test_params = {"filter": "width=2500"}
+        response = client.get("/catalog/collections/tata:S1_L1/search", params=test_params)
+        assert response.status_code == 404  # Checking with unexisting owner_id
+        response = client.get("/catalog/collections/toto:notfound/Search", params=test_params)
+        assert response.status_code == 404  # Checking with unexisting collection_id
+
+        # Test for POST /catalog/collections/{owner_id}:{collection_id}/search
+        cql2_json_query = {
+            "filter-lang": "cql2-json",
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "height"}, 2500]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/collections/tata:S1_L1/search", json=cql2_json_query)
+        assert response.status_code == 404  # Checking with unexisting owner_id
+        response = client.post("/catalog/collections/toto:notfound/search", json=cql2_json_query)
+        assert response.status_code == 404  # Checking with unexisting collection_id
 
 
 class TestCatalogSearchEndpoint:
@@ -245,6 +272,46 @@ class TestCatalogSearchEndpoint:
 
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == 200
+
+    def test_search_in_unexisting_collection(self, client):
+        """Test that if the collection does not exist, an HTTP 404 error is returned."""
+
+        # Test for GET /catalog/search
+        test_params = {"collections": ["S1_L1"], "filter": "owner='tata'"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 404  # Checking with unexisting owner_id
+        test_params = {"collections": ["notfound"], "filter": "owner='toto'"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 404  # Checking with unexisting collection_id
+
+        # Test for POST /catalog/search
+        test_json = {
+            "collections": ["S1_L1"],
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, "tata"]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == 404  # Checking with unexisting owner_id
+
+        test_json = {
+            "collections": ["notfound"],
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == 404  # Checking with unexisting collection_id
 
     def test_search_with_collections_and_filter(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": ["toto_S1_L1"], "filter": "width=2500"}
