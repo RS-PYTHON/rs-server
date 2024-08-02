@@ -30,7 +30,7 @@ os.environ["PYGEOAPI_OPENAPI"] = ""
 
 import pytest
 from fastapi.testclient import TestClient
-from rs_server_staging.main import app
+from rs_server_staging.main import app  # pylint: disable=import-error
 
 
 @pytest.fixture(name="staging_client")

@@ -15,6 +15,7 @@
 """Test staging module."""
 
 import pytest
+from starlette.exceptions import HTTPException
 from starlette.status import HTTP_200_OK
 
 
@@ -35,6 +36,13 @@ def test_execute_staging_process(staging_client):
 
 
 @pytest.mark.unit
+def test_execute_wrong_resource(staging_client):
+    """Test /processes/{resource_id}/execution."""
+    with pytest.raises(HTTPException):
+        staging_client.post("/processes/unknown_resource/execution")
+
+
+@pytest.mark.unit
 def test_get_job_status(staging_client):
     """Create a job and get the status."""
     # First, create a job to get its status
@@ -47,3 +55,31 @@ def test_get_job_status(staging_client):
     assert response.status_code == HTTP_200_OK
     assert "job_id" in response.json()
     assert response.json()["job_id"] == job_id
+
+
+@pytest.mark.unit
+def test_get_incorrect_job(staging_client):
+    """Test /jobs/{job-id}."""
+    with pytest.raises(HTTPException):
+        staging_client.get("/jobs/incorrect_job_id")
+
+
+# not implemented endpoints tests
+
+
+@pytest.mark.unit
+def test_get_processes(staging_client):
+    """Test /processes."""
+    assert staging_client.get("/processes").status_code == HTTP_200_OK
+
+
+@pytest.mark.unit
+def test_get_process_resource(staging_client):
+    """Test /processes/{resource_id}."""
+    assert staging_client.get("/processes/resource_id").status_code == HTTP_200_OK
+
+
+@pytest.mark.unit
+def test_get_jobs(staging_client):
+    """Test /jobs."""
+    assert staging_client.get("/jobs").status_code == HTTP_200_OK
