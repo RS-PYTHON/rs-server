@@ -22,14 +22,13 @@ from fastapi import FastAPI, HTTPException, Path
 from pydantic import BaseModel
 from pygeoapi.api import API
 from pygeoapi.config import get_config
+from rs_server_staging.processors import processors
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from tinydb import Query, TinyDB
-
-from .processors import processors
 
 
 # Use if you want to impose shaped-design of request
@@ -142,7 +141,7 @@ async def delete_job(job_id):
     return JSONResponse(status_code=HTTP_200_OK, content=job_id)
 
 
-@app.get("/jobs/{job_id}/result")
+@app.get("/jobs/{job_id}/results")
 async def get_specific_job_result(job_id):
     """Get result from a specific job."""
     return JSONResponse(status_code=HTTP_200_OK, content=job_id)

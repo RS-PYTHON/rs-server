@@ -24,14 +24,13 @@ import os.path as osp
 from pathlib import Path
 
 # set pygeoapi env variables
-geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "test_config.yml"
+geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
 os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
 os.environ["PYGEOAPI_OPENAPI"] = ""
 
 import pytest
 from fastapi.testclient import TestClient
-
-from ..rs_server_staging.main import app
+from rs_server_staging.main import app
 
 
 @pytest.fixture(name="staging_client")

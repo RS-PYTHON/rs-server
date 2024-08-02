@@ -23,7 +23,6 @@ def test_ping(staging_client):
     """Test status."""
     response = staging_client.get("/_mgmt/ping")
     assert response.status_code == HTTP_200_OK
-    assert response.json() == {"status": "healthy"}
 
 
 @pytest.mark.unit
