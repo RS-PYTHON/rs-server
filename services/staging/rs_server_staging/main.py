@@ -18,7 +18,7 @@
 import os
 import uuid
 
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pydantic import BaseModel
 from pygeoapi.api import API
 from pygeoapi.config import get_config
@@ -42,6 +42,7 @@ class ExecuteRequest(BaseModel):  # pylint: disable = too-few-public-methods
 
 # Initialize a FastAPI application
 app = FastAPI(title="rs-staging", root_path="", debug=True)
+router = APIRouter(tags=["Staging service"])
 
 # CORS enabled origins
 app.add_middleware(
@@ -76,26 +77,26 @@ async def custom_http_exception_handler(
 
 
 # Health check route
-@app.get("/_mgmt/ping")
+@router.get("/_mgmt/ping", include_in_schema=False)
 async def ping():
     """Liveliness probe."""
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-@app.get("/processes")
+@router.get("/processes")
 async def get_processes():
     """Should return list of all available proceses from config maybe?"""
     return JSONResponse(status_code=HTTP_200_OK, content="Check")
 
 
-@app.get("/processes/{resource}")
+@router.get("/processes/{resource}")
 async def get_resource():
     """Should return info about a specific resource."""
     return JSONResponse(status_code=HTTP_200_OK, content="Check")
 
 
 # Endpoint to execute the staging process and generate a job ID
-@app.post("/processes/{resource}/execution")
+@router.post("/processes/{resource}/execution")
 async def execute_process(request: dict, resource: str):
     """Used to execute processing jobs."""
     job_id = str(uuid.uuid4())  # Generate a unique job ID
@@ -118,7 +119,7 @@ async def execute_process(request: dict, resource: str):
 
 
 # Endpoint to get the status of a job by job_id
-@app.get("/jobs/{job_id}")
+@router.get("/jobs/{job_id}")
 async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
     job = jobs_table.get(Query().job_id == job_id)
@@ -129,23 +130,25 @@ async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Job not found")
 
 
-@app.get("/jobs")
+@router.get("/jobs")
 async def get_jobs():
     """Should return status of all jobs"""
     return JSONResponse(status_code=HTTP_200_OK, content="Check")
 
 
-@app.delete("/jobs/{job_id}")
+@router.delete("/jobs/{job_id}")
 async def delete_job(job_id):
     """Should delete a specific job from db."""
     return JSONResponse(status_code=HTTP_200_OK, content=job_id)
 
 
-@app.get("/jobs/{job_id}/results")
+@router.get("/jobs/{job_id}/results")
 async def get_specific_job_result(job_id):
     """Get result from a specific job."""
     return JSONResponse(status_code=HTTP_200_OK, content=job_id)
 
+
+app.include_router(router)
 
 # Mount pygeoapi endpoints
 app.mount(path="/oapi", app=api)
