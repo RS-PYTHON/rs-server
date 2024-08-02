@@ -354,7 +354,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
     [
         # Test with a list of 2 SessionIds
         (
-            "/cadip/cadip/session?id=S1A_20170501121534062343,S1A_20240328185208053186",
+            "/cadip/collections/cadip_session_by_id_list/items",
             '"SessionId%20in%20S1A_20170501121534062343,%20S1A_20240328185208053186"&$top=20&$expand=Files',
             ["S1A_20170501121534062343", "S1A_20240328185208053186"],
             ["2017-05-01T12:00:00", "2024-03-28T18:52:26Z"],
@@ -363,7 +363,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # TC001: Search one session only with a single id (ex: id=S1A_20240312192515052953).
         # Check that response return 1 result in STAC format for the given id.
         (
-            "/cadip/cadip/session?id=S1A_20240328185208053186",
+            "/cadip/collections/cadip_session_by_id/items",
             '"SessionId%20eq%20S1A_20240328185208053186"&$top=20&$expand=Files',
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
@@ -371,7 +371,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         # Test with a single platform
         (
-            "/cadip/cadip/session?id=S1A_20240328185208053186&platform=S1A",
+            "/cadip/collections/cadip_session_by_id_platform/items",
             "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
@@ -379,7 +379,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         # Test with a list of session ids and list of platforms
         (
-            "/cadip/cadip/session?id=S1A_20240328185208053186,S1A_20240328185208053186&platform=S1A,S2B",
+            "/cadip/collections/cadip_session_by_lists_id_platform/items",
             "%22SessionId%20in%20S1A_20240328185208053186,%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A,"
             "%20S2B%22&$top=20&$expand=Files"
             "",
@@ -389,7 +389,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         # Test only with a list of platforms
         (
-            "/cadip/cadip/session?platform=S1A, S2B",
+            "/cadip/collections/cadip_session_by_platform_list/items",
             "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
@@ -399,7 +399,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # # (ex: platform=S1A,S1B&start_date=2024-03-12T08:00:00.000Z&stop_date=2024-03-12T12:00:00.000Z.)
         # # Check that response returns several results in STAC format for the sessions that match the criteria
         (
-            "/cadip/cadip/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-16T12:00:00Z&platform=S1A",
+            "/cadip/collections/cadip_session_by_start_stop_platform/items",
             "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
             "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],

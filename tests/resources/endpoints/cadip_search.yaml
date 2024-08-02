@@ -1,0 +1,101 @@
+stations:
+  cadip:
+    endpoint:
+      url: http://127.0.0.1:8000
+      secret:
+        username: test
+        password: test
+collections:
+  - id: cadip_session_by_id_list
+    station: cadip
+    query:
+      id: S1A_20170501121534062343,S1A_20240328185208053186
+      limit: 20
+  - id: cadip_session_by_id
+    station: cadip
+    query:
+      id: S1A_20240328185208053186
+      limit: 20
+
+  - id: cadip_session_by_id_platform
+    station: cadip
+    query:
+      id: S1A_20240328185208053186
+      platform: S1A
+      limit: 20
+
+  - id: cadip_session_by_lists_id_platform
+    station: cadip
+    query:
+      id: S1A_20240328185208053186,S1A_20240328185208053186
+      platform: S1A,S2B
+      limit: 20
+
+  - id: cadip_session_by_platform_list
+    station: cadip
+    query:
+      platform: S1A, S2B
+      limit: 20
+
+  - id: cadip_session_by_start_stop_platform
+    station: cadip
+    query:
+      start_date: "2020-02-16T12:00:00Z"
+      stop_date: "2023-02-16T12:00:00Z"
+      platform: S1A
+      limit: 20
+
+
+
+
+  - id: cadip_session_by_interval
+    station: cadip
+    query:
+      start_date: "2014-02-16T12:00:00Z"
+      stop_date: "2024-02-16T12:00:00Z"
+      limit: 2
+  - id: cadip_session_by_satellite
+    station: cadip
+    query:
+      platform: S1A
+      limit: 2
+  ###
+  - id: ins
+    station: ins
+    query:
+  - id: mps
+    station: mps
+    query:
+  - id: mti
+    station: mti
+    query:
+  - id: nsg
+    station: nsg
+    query:
+  - id: sgs
+    station: sgs
+    query:
+  - id: s1_ins
+    station: ins
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s1_mps
+    station: mps
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s1_nsg
+    station: nsg
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s1_sgs
+    station: sgs
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s1_mti
+    station: mti
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s2_ins
+    station: ins
+    query: $filter=Satellite in ('S2A', 'S2B', 'S2C')
+  - id: s2_sgs
+    station: sgs
+    query: $filter=Satellite in ('S2A', 'S2B', 'S2C')
+  - id: s3_sgs
+    station: sgs
+    query: $filter=Satellite in ('S3A', 'S3B')

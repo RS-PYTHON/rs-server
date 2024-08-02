@@ -63,9 +63,14 @@ router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
-cadip_search_config = validate_cadip_config(os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute())))
-with open(cadip_search_config, encoding="utf-8") as search_conf:
-    config = yaml.safe_load(search_conf)
+
+
+def read_conf():
+    """Used each time to read config yaml."""
+    cadip_search_config = validate_cadip_config(os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute())))
+    with open(cadip_search_config, encoding="utf-8") as search_conf:
+        config = yaml.safe_load(search_conf)
+    return config
 
 
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
@@ -82,6 +87,7 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
 def search_cadip_endpoint(request: Request):
     """Endpoint used to search cadip collections."""
     # Collection at the moment, multiple collections to be implemented.
+    config = read_conf()
     query_params = dict(request.query_params)
     collection = query_params.pop("collection", None)
     selected_config: Union[dict[Any, Any], None] = next(
@@ -116,6 +122,7 @@ def get_cadip_collection(collection_id: str) -> list[dict] | dict:
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_items(request: Request, collection_id):
     """Endpoint to retrieve a list of sessions from any CADIP station."""
+    config = read_conf()
     selected_config: Union[dict[Any, Any], None] = next(
         (item for item in config["collections"] if item["id"] == collection_id),
         None,
@@ -137,6 +144,7 @@ def get_cadip_collection_items(request: Request, collection_id):
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_item_details(request: Request, collection_id, session_id):
     """Endpoint to retrieve a specific item from list of sessions from any CADIP station."""
+    config = read_conf()
     selected_config: Union[dict[Any, Any], None] = next(
         (item for item in config["collections"] if item["id"] == collection_id),
         None,
