@@ -15,8 +15,7 @@
 """Test staging module."""
 
 import pytest
-from starlette.exceptions import HTTPException
-from starlette.status import HTTP_200_OK
+from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
 
 @pytest.mark.unit
@@ -38,8 +37,8 @@ def test_execute_staging_process(staging_client):
 @pytest.mark.unit
 def test_execute_wrong_resource(staging_client):
     """Test /processes/{resource_id}/execution."""
-    with pytest.raises(HTTPException):
-        staging_client.post("/processes/unknown_resource/execution")
+    resp = staging_client.post("/processes/unknown_resource/execution", json={"parameters": {"key": "value"}})
+    assert resp.status_code == HTTP_404_NOT_FOUND
 
 
 @pytest.mark.unit
@@ -60,8 +59,7 @@ def test_get_job_status(staging_client):
 @pytest.mark.unit
 def test_get_incorrect_job(staging_client):
     """Test /jobs/{job-id}."""
-    with pytest.raises(HTTPException):
-        staging_client.get("/jobs/incorrect_job_id")
+    assert staging_client.get("/jobs/incorrect_job_id").status_code == HTTP_404_NOT_FOUND
 
 
 # not implemented endpoints tests
