@@ -119,9 +119,6 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
     def test_root_url(self):
         assert reroute_url("/", "GET")[0] == "/"
 
-    def test_remove_the_catalog_prefix(self):
-        assert reroute_url("/catalog/catalogs/Toto", "GET")[0] == ("/")
-
     def test_item_id(self):
         result = reroute_url("/catalog/collections/Toto:joplin/items/fe916452-ba6f-4631-9154-c249924a122d", "GET")
         assert result[0] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
@@ -144,21 +141,11 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         }
 
     def test_fails_if_unknown_endpoint(self):
-        with pytest.raises(ValueError) as exc_info:
-            reroute_url("/not/found", "GET")
-        assert str(exc_info.value) == "Path /not/found is invalid."
+        result = reroute_url("/not/found", "GET")
+        assert result == ("", {})
 
     def test_work_with_ping_endpoinst(self):
         assert reroute_url("/_mgmt/ping", "GET")[0] == ("/_mgmt/ping")
-
-    def test_reroute_catalog_catalogs_owner_id(self):
-        res = reroute_url("/catalog/catalogs/toto", "GET")
-        assert res[0] == "/"
-        assert res[1] == {
-            "owner_id": "toto",
-            "collection_id": "",
-            "item_id": "",
-        }
 
     def test_reroute_oauth2(self):
         assert reroute_url("/catalog/docs/oauth2-redirect", "GET")[0] == "/docs/oauth2-redirect"
@@ -200,9 +187,6 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function add_user_prefix."""
-
-    def test_return_catalog_if_no_user(self):
-        assert add_user_prefix("/", "toto", "") == "/catalog/catalogs/toto"
 
     def test_add_prefix_and_user_prefix(self):
         assert add_user_prefix("/collections", "toto", "") == "/catalog/collections"

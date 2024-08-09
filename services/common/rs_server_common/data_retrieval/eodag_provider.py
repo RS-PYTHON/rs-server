@@ -139,10 +139,11 @@ class EodagProvider(Provider):
 
         try:
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
-            products, _ = self.client.search(
+            products = self.client.search(
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
                 raise_errors=True,
+                productType="S1_SAR_RAW" if "adgs" not in self.provider.lower() else "CAMS_GRF_AUX",
                 **kwargs,
             )
         except RequestError:
@@ -171,7 +172,7 @@ class EodagProvider(Provider):
         # download_plugin = self.client._plugins_manager.get_download_plugin(product)
         # authent_plugin = self.client._plugins_manager.get_auth_plugin(product.provider)
         # product.register_downloader(download_plugin, authent_plugin)
-        self.client.download(product, outputs_prefix=to_file.parent)
+        self.client.download(product, outputs_prefix=str(to_file.parent))
 
     def create_eodag_product(self, product_id: str, filename: str):
         """Initialize an EO product with minimal properties.

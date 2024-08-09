@@ -330,7 +330,7 @@ def a_correct_feature_fixture() -> dict:
             },
             "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
         },
-        "bbox": [0],
+        "bbox": [-180.0, -90.0, 0.0, 180.0, 90.0, 10000.0],
         "geometry": {
             "type": "Polygon",
             "coordinates": [

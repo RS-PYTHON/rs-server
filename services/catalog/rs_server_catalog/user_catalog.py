@@ -75,13 +75,14 @@ from starlette.status import (
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
-
+# pylint: disable=too-many-lines
 logger = Logging.default(__name__)
 
 
@@ -161,7 +162,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         links = my_object["links"]
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
-            if "properties" in my_object:  # If my_object is a feature
+            if "properties" in my_object:  # If my_object is an item
                 new_path = add_user_prefix(link_parser.path, user, my_object["collection"], my_object["id"])
             else:  # If my_object is a collection
                 new_path = add_user_prefix(link_parser.path, user, my_object["id"])
@@ -454,7 +455,20 @@ from s3 bucket  Reason: {rte}. The process will continue though !",
                 res = right
         return res
 
-    async def manage_search_request(  # pylint: disable = too-many-branches
+    async def collection_exists(self, request: Request, collection_id: str) -> bool:
+        """Check if the collection exists.
+
+        Returns:
+            bool: True if the collection exists, False otherwise
+        """
+        try:
+            await self.client.get_collection(collection_id, request)
+            return True
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Collection %s not found: %s", collection_id, e)
+            return False
+
+    async def manage_search_request(  # pylint: disable=too-many-branches
         self,
         request: Request,
     ) -> Request | JSONResponse:
@@ -529,6 +543,9 @@ from s3 bucket  Reason: {rte}. The process will continue though !",
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        if not await self.collection_exists(request, f"{owner_id}_{collection_id}"):
+            detail = {"error": f"Collection {collection_id} not found."}
+            return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -604,7 +621,10 @@ from s3 bucket  Reason: {rte}. The process will continue though !",
                 detail = {"error": "Unauthorized access."}
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
-            if request.scope["path"] == "/collections":
+            if (
+                request.scope["path"] == "/collections"  # POST collection
+                or request.scope["path"] == f"/collections/{user}_{self.request_ids['collection_id']}"  # PUT collection
+            ):
                 # Manage a collection creation. The apikey user should be the same as the owner
                 # field in the body request. In other words, an apikey user cannot create a
                 # collection owned by another user.
@@ -716,7 +736,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             owner_id = collection["owner"]
             size_owner_id = int(
                 len(owner_id) + 1,
-            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id=len('toto_')==len('toto')+1.
+            )  # example: if collection['id']=='toto_S1_L1' then size_owner_id==len('toto_')==len('toto')+1.
             collection_id = self.get_collection_id(collection, size_owner_id)
             # example: if collection['id']=='toto_S1_L1' then collection_id=='S1_L1'.
             for link in collection["links"]:
@@ -763,8 +783,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
         if request.scope["path"] == "/":
-            if common_settings.CLUSTER_MODE:  # /catalog and /catalog/catalogs/owner_id
-                content = manage_landing_page(request, auth_roles, user_login, content, user)
+            if common_settings.CLUSTER_MODE:  # /catalog
+                content = manage_landing_page(auth_roles, user_login, content)
                 if hasattr(content, "status_code"):  # Unauthorized
                     return content
             # Manage local landing page of the catalog
@@ -1021,6 +1041,8 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
         )
         request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
+        if not request.scope["path"]:  # Invalid endpoint
+            return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
         # This is available in POST/PUT/PATCH methods only
@@ -1099,14 +1121,17 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         if not common_settings.CLUSTER_MODE:
             return
 
-        # Add the STAC extension
+        # Add the STAC extension at the root
         extensions = content.setdefault("stac_extensions", [])
         url = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
         if url not in extensions:
             extensions.append(url)
 
-        # Add the authentication schemes
-        content.setdefault("auth:schemes", {})["apikey"] = {
+        # Add the authentication schemes under the root or "properties" (for the items)
+        parent = content
+        if content.get("type") == "Feature":
+            parent = content.setdefault("properties", {})
+        parent.setdefault("auth:schemes", {})["apikey"] = {
             "type": "apiKey",
             "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
             # add anchor to the "new api key" endpoint
@@ -1118,7 +1143,6 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         # Add the authentication reference to each link and asset
         for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
             link_or_asset["auth:refs"] = ["apikey"]
-
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:

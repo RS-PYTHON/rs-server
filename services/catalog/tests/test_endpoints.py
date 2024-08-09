@@ -144,9 +144,36 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         }
 
         response = client.post("/catalog/collections/toto:S1_L1/search", json=cql2_json_query)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 2
+
+    def test_search_in_unexisting_collection(self, client):
+        """Test that if the collection does not exist, an HTTP 404 error is returned."""
+
+        # Test for GET /catalog/collections/{owner_id}:{collection_id}/search
+        test_params = {"filter": "width=2500"}
+        response = client.get("/catalog/collections/tata:S1_L1/search", params=test_params)
+        assert response.status_code == 404  # Checking with unexisting owner_id
+        response = client.get("/catalog/collections/toto:notfound/Search", params=test_params)
+        assert response.status_code == 404  # Checking with unexisting collection_id
+
+        # Test for POST /catalog/collections/{owner_id}:{collection_id}/search
+        cql2_json_query = {
+            "filter-lang": "cql2-json",
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "height"}, 2500]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/collections/tata:S1_L1/search", json=cql2_json_query)
+        assert response.status_code == 404  # Checking with unexisting owner_id
+        response = client.post("/catalog/collections/toto:notfound/search", json=cql2_json_query)
+        assert response.status_code == 404  # Checking with unexisting collection_id
 
 
 class TestCatalogSearchEndpoint:
@@ -245,6 +272,46 @@ class TestCatalogSearchEndpoint:
 
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == 200
+
+    def test_search_in_unexisting_collection(self, client):
+        """Test that if the collection does not exist, an HTTP 404 error is returned."""
+
+        # Test for GET /catalog/search
+        test_params = {"collections": ["S1_L1"], "filter": "owner='tata'"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 404  # Checking with unexisting owner_id
+        test_params = {"collections": ["notfound"], "filter": "owner='toto'"}
+        response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 404  # Checking with unexisting collection_id
+
+        # Test for POST /catalog/search
+        test_json = {
+            "collections": ["S1_L1"],
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, "tata"]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == 404  # Checking with unexisting owner_id
+
+        test_json = {
+            "collections": ["notfound"],
+            "filter": {
+                "op": "and",
+                "args": [
+                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                    {"op": "=", "args": [{"property": "width"}, 2500]},
+                ],
+            },
+        }
+
+        response = client.post("/catalog/search", json=test_json)
+        assert response.status_code == 404  # Checking with unexisting collection_id
 
     def test_search_with_collections_and_filter(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": ["toto_S1_L1"], "filter": "width=2500"}
@@ -389,7 +456,10 @@ class TestCatalogPublishCollectionEndpoint:
 
         # Update the collection description and PUT
         minimal_collection["description"] = "the_updated_test_description"
-        updated_collection_response = client.put("/catalog/collections", json=minimal_collection)
+        updated_collection_response = client.put(
+            "/catalog/collections/second_test_owner:second_test_collection",
+            json=minimal_collection,
+        )
         assert updated_collection_response.status_code == fastapi.status.HTTP_200_OK
 
         # Check that collection is correctly updated
@@ -397,18 +467,6 @@ class TestCatalogPublishCollectionEndpoint:
         response_content = json.loads(get_check_collection_response.content)
         assert response_content["description"] == "the_updated_test_description"
 
-        # Update collection using PUT /catalog/collections/owner:collection
-        minimal_collection["description"] = "description_updated_again"
-        second_update_response = client.put(
-            "/catalog/collections/second_test_owner:second_test_collection",
-            json=minimal_collection,
-        )
-        assert second_update_response.status_code == fastapi.status.HTTP_200_OK
-
-        # Check that collection is correctly updated, use GET /catalog/collections/owner:collection
-        second_check_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
-        second_check_response_content = json.loads(second_check_response.content)
-        assert second_check_response_content["description"] == "description_updated_again"
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
 
@@ -654,7 +712,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert sorted(s3_handler.list_s3_files_obj(self.catalog_bucket, "")) == sorted(lst_with_files_to_be_copied)
 
             updated_feature_sent = copy.deepcopy(a_correct_feature_copy)
-            updated_feature_sent["bbox"] = [77]
+            updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
             del updated_feature_sent["collection"]
 
             path = f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}"
@@ -790,10 +848,9 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
     def test_incorrect_feature_publish(self, client, a_incorrect_feature, owner, collection_id):
         """This test send a featureCollection to the catalog with a wrong format."""
         # TC02: Add on Sentinel-1 item to the Catalog with a wrong-formatted STAC JSON file. => 400 Bad Request
-        with pytest.raises(Exception):
-            added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
-            # Bad request = 400
-            assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+        added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_incorrect_feature)
+        # Bad request = 400
+        assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
 
     @pytest.mark.unit
     def test_incorrect_bucket_publish(self, client, a_correct_feature):
@@ -1034,7 +1091,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
-        updated_feature_sent["bbox"] = [77]
+        updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
         del updated_feature_sent["collection"]
 
         feature_put_response = client.put(
@@ -1080,7 +1137,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         first_expires_date = content["properties"]["expires"]
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
-        updated_feature_sent["bbox"] = [77]
+        updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
         del updated_feature_sent["collection"]
 
         # Test that updated field is correctly updated.
@@ -1220,3 +1277,12 @@ def test_queryables(client):
     """
     response = client.get("/catalog/queryables")
     assert response.status_code == fastapi.status.HTTP_200_OK
+
+
+def test_catalog_catalogs_owner_id_is_disabled(client):
+    """
+    Test that the endpoint /catalog/catalogs/{owner_id} is no longer working as expected.
+    """
+
+    response = client.get("/catalog/catalogs/toto")
+    assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST

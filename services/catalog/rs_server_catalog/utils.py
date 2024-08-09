@@ -18,7 +18,7 @@ from starlette.status import HTTP_400_BAD_REQUEST
 
 
 def verify_existing_item(method: str, item: dict, content_id_str: str, user_collection_str: str):
-    """Update json body of feature push to catalog"""
+    """Verify if an exisiting item from catalog may be created or updated"""
 
     # Protection for cases where a POST request attempts to add an
     # item with a name that already exists in the database.
