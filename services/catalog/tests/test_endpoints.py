@@ -744,6 +744,128 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             clear_aws_credentials()
             os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
+    def test_updating_assets_in_item(  # pylint: disable=too-many-locals, too-many-statements
+        self,
+        client,
+        a_correct_feature,
+        a_minimal_collection,
+    ):
+        """Test used to verify update of an item to the catalog."""
+        # Create moto server and temp / catalog bucket
+        moto_endpoint = "http://localhost:8077"
+        export_aws_credentials()
+        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+        # Enable bucket transfer
+        os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+        server = ThreadedMotoServer(port=8077)
+        server.start()
+        try:
+            requests.post(moto_endpoint + "/moto-api/reset", timeout=5)
+            s3_handler = S3StorageHandler(
+                secrets["accesskey"],
+                secrets["secretkey"],
+                secrets["s3endpoint"],
+                secrets["region"],
+            )
+
+            s3_handler.s3_client.create_bucket(Bucket=self.temp_bucket)
+            s3_handler.s3_client.create_bucket(Bucket=self.catalog_bucket)
+            assert not s3_handler.list_s3_files_obj(self.temp_bucket, "")
+            assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
+
+            # Populate temp-bucket with some small files.
+            lst_with_files_to_be_copied = [
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+                "S1SIWOCN_20220412T054447_0024_S209_T102.nc",
+            ]
+            for obj in lst_with_files_to_be_copied:
+                s3_handler.s3_client.put_object(Bucket=self.temp_bucket, Key=obj, Body="testing\n")
+
+            # check that temp_bucket is not empty
+            assert s3_handler.list_s3_files_obj(self.temp_bucket, "")
+            # check if temp_bucket content is different from catalog_bucket
+            assert sorted(s3_handler.list_s3_files_obj(self.temp_bucket, "")) != sorted(
+                s3_handler.list_s3_files_obj(self.catalog_bucket, ""),
+            )
+
+            item_test = copy.deepcopy(a_correct_feature)
+            # modify the item: change the name of the collection with the fixture_collection
+            # delete the last two assets for a later use
+            item_test["collection"] = "fixture_collection"
+            del item_test["assets"]["cog"]
+            del item_test["assets"]["ncdf"]
+            resp = client.post(
+                "/catalog/collections/fixture_owner:fixture_collection/items",
+                json=item_test,
+            )
+            assert resp.status_code == fastapi.status.HTTP_200_OK
+            content = json.loads(resp.content)
+            assert content.get("assets").get("zarr")
+            assert not content.get("assets").get("cog")
+            assert not content.get("assets").get("ncdf")
+
+            item_test["assets"]["cog"] = {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "roles": ["data"],
+            }
+            resp = client.put(
+                f"/catalog/collections/fixture_owner:fixture_collection/items/{item_test['id']}",
+                json=item_test,
+            )
+            assert resp.status_code == fastapi.status.HTTP_200_OK
+            content = json.loads(resp.content)
+            assert content.get("assets").get("zarr")
+            assert content.get("assets").get("cog")
+            assert not content.get("assets").get("ncdf")
+
+            del item_test["assets"]["zarr"]
+            item_test["assets"]["ncdf"] = {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+                "roles": ["data"],
+            }
+            resp = client.put(
+                f"/catalog/collections/fixture_owner:fixture_collection/items/{item_test['id']}",
+                json=item_test,
+            )
+            assert resp.status_code == fastapi.status.HTTP_200_OK
+            content = json.loads(resp.content)
+            assert not content.get("assets").get("zarr")
+            assert content.get("assets").get("cog")
+            assert content.get("assets").get("ncdf")
+
+            catalog_files = s3_handler.list_s3_files_obj(self.catalog_bucket, "")
+            assert len(catalog_files) == 2
+            assert set(catalog_files) == set(
+                ["S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip", "S1SIWOCN_20220412T054447_0024_S139_T902.nc"],
+            )
+            # try to change the path / physical file for an asset, it should not work
+            item_test["assets"]["ncdf"] = {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S209_T102.nc",
+                "roles": ["data"],
+            }
+            resp = client.put(
+                f"/catalog/collections/fixture_owner:fixture_collection/items/{item_test['id']}",
+                json=item_test,
+            )
+            assert resp.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+            content = json.loads(resp.content)
+            assert "However, changing an existing path of an asset is not allowed" in content
+
+            assert (
+                client.delete(
+                    "/catalog/collections/fixture_owner:fixture_collection/items/S1SIWOCN_20220412T054447_0024_S139",
+                ).status_code
+                == fastapi.status.HTTP_200_OK
+            )
+        except Exception as e:
+            raise RuntimeError("error") from e
+        finally:
+            server.stop()
+            clear_aws_credentials()
+            os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
     @pytest.mark.parametrize(
         "owner, collection_id",
         [

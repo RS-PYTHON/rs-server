@@ -18,7 +18,18 @@ from starlette.status import HTTP_400_BAD_REQUEST
 
 
 def verify_existing_item(method: str, item: dict, content_id_str: str, user_collection_str: str):
-    """Verify if an exisiting item from catalog may be created or updated"""
+    """Verify if an exisiting item from catalog may be created or updated
+
+    Args:
+        method (str): The HTTP method used in the request (e.g., "POST", "PUT", "PATCH").
+        item (dict): The item from the catalog to check.
+        content_id_str (str): The name of the item, used for generating an error message
+        user_collection_str (str): The collection identifier including the user.
+
+    Raises:
+        HTTPException: If a POST request is made for an existing item,
+                       or if a PUT/PATCH request is made for a non-existent item.
+    """
 
     # Protection for cases where a POST request attempts to add an
     # item with a name that already exists in the database.
