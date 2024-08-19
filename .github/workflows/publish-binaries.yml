@@ -151,6 +151,21 @@ jobs:
         with:
           package_directory: services/cadip
 
+  services-staging-whl:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "'services/staging' wheel"
+    outputs:
+      version_name: ${{ steps.publish-wheel.outputs.version_name }}
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO remove when the right python repo will be set
+    steps:
+      - uses: actions/checkout@v4
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: services/staging
+
   services-catalog-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -357,6 +372,34 @@ jobs:
           build_context_path: ./whl
           image_suffix: -frontend
           version_name: ${{ needs.services-frontend-whl.outputs.version_name }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+
+  services-staging-img:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "'services/staging' Docker image"
+    needs: [set-env, services-staging-whl]
+    permissions: write-all
+    outputs:
+      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download .whl files into ./whl/
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.services-staging-whl.outputs.package_name }}
+          path: ./whl
+
+      - id: publish-docker
+        uses: ./.github/actions/publish-docker
+        with:
+          dockerfile: ./services/staging/.github/Dockerfile
+          build_context_path: ./whl
+          image_suffix: -staging
+          version_name: ${{ needs.services-staging-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
