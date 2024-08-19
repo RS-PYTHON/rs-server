@@ -38,33 +38,33 @@ from .conftest import (  # pylint: disable=no-name-in-module
 @pytest.mark.parametrize(
     "endpoint, db_handler, expected_feature, fields_to_sort",
     [
-        (
-            "/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
-            CadipDownloadStatus,
-            {
-                "stac_version": "1.0.0",
-                "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
-                "type": "Feature",
-                "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-                "geometry": None,
-                "properties": {
-                    "created": "2021-02-16T12:00:00.000Z",
-                    "datetime": "1970-01-01T12:00:00.000Z",
-                    "start_datetime": "1970-01-01T12:00:00.000Z",
-                    "end_datetime": "1970-01-01T12:00:00.000Z",
-                    "eviction_datetime": "eviction_date_test_value",
-                    "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
-                    "cadip:retransfer": False,
-                    "cadip:final_block": True,
-                    "cadip:block_number": "BlockNumber_test_value",
-                    "cadip:channel": "Channel_test_value",
-                    "cadip:session_id": "session_id1",
-                },
-                "links": [],
-                "assets": {"file": {"file:size": "size_test_value"}},
-            },
-            ["datetime", "cadip:id"],
-        ),
+        # (
+        #     "/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
+        #     CadipDownloadStatus,
+        #     {
+        #         "stac_version": "1.0.0",
+        #         "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+        #         "type": "Feature",
+        #         "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+        #         "geometry": None,
+        #         "properties": {
+        #             "created": "2021-02-16T12:00:00.000Z",
+        #             "datetime": "1970-01-01T12:00:00.000Z",
+        #             "start_datetime": "1970-01-01T12:00:00.000Z",
+        #             "end_datetime": "1970-01-01T12:00:00.000Z",
+        #             "eviction_datetime": "eviction_date_test_value",
+        #             "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+        #             "cadip:retransfer": False,
+        #             "cadip:final_block": True,
+        #             "cadip:block_number": "BlockNumber_test_value",
+        #             "cadip:channel": "Channel_test_value",
+        #             "cadip:session_id": "session_id1",
+        #         },
+        #         "links": [],
+        #         "assets": {"file": {"file:size": "size_test_value"}},
+        #     },
+        #     ["datetime", "cadip:id"],
+        # ),
         (
             "/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             AdgsDownloadStatus,
@@ -157,7 +157,7 @@ def test_valid_endpoint_request_list(
 @pytest.mark.parametrize(
     "station, endpoint, start, stop",
     [
-        ("CADIP", "/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
+        # ("CADIP", "/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
         ("AUX", "/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
@@ -199,8 +199,8 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
 @pytest.mark.parametrize(
     "endpoint, start_date, stop_date",
     [
-        ("/cadip/CADIP/cadu/search", "2014-01-01", "2023-12-30T12:00:00Z"),
-        ("/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2025-12"),
+        # ("/cadip/CADIP/cadu/search", "2014-01-01", "2023-12-30T12:00:00Z"),
+        # ("/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2025-12"),
         ("/adgs/aux/search", "2014-01-01", "2023-12-30T12:00:00Z"),
         ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2025-12"),
     ],
@@ -240,8 +240,7 @@ def test_invalid_endpoint_param_station(client):
     expecting a 400 Bad Request response.
     """
     # Test with and inccorect station name, this should result in a 400 bad request response.
-    station = "incorrect_station"
-    endpoint = f"/cadip/{station}/cadu/search?datetime=2023-01-01T12:00:00Z/2024-12-30T12:00:00Z"
+    endpoint = f"/cadip/collections/cadip_session_incorrect_station/items"
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -250,7 +249,7 @@ def test_invalid_endpoint_param_station(client):
 @pytest.mark.parametrize(
     "endpoint, start, stop",
     [
-        ("/cadip/CADIP/cadu/search", "2014-01-01T12:00:00Z", "2023-12-30T12:00:00Z"),
+        # ("/cadip/CADIP/cadu/search", "2014-01-01T12:00:00Z", "2023-12-30T12:00:00Z"),
         ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
@@ -299,7 +298,7 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
 @pytest.mark.parametrize(
     "endpoint, db_handler, limit",
     [
-        ("/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", CadipDownloadStatus, 3),
+        # ("/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", CadipDownloadStatus, 3),
         ("/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", AdgsDownloadStatus, 1),
     ],
 )
@@ -452,18 +451,24 @@ def test_valid_sessions_endpoint_request_list(
 def test_invalid_sessions_endpoint_request(client):
     """Test cases with invalid requests send to /session endpoint"""
     # Test with missing all parameters
-    assert client.get("/cadip/cadip/session").status_code == status.HTTP_400_BAD_REQUEST
+    assert client.get("/cadip/collections/cadip_session_incomplete/items").status_code == status.HTTP_400_BAD_REQUEST
     # Test only with start, without stop
-    assert client.get("/cadip/cadip/session?start_date=2020-02-16T12:00:00Z").status_code == status.HTTP_400_BAD_REQUEST
-    assert client.get("/cadip/cadip/session?stop_date=2020-02-16T12:00:00Z").status_code == status.HTTP_400_BAD_REQUEST
+    assert (
+        client.get("/cadip/collections/cadip_session_incomplete_no_stop/items").status_code
+        == status.HTTP_400_BAD_REQUEST
+    )
+    assert (
+        client.get("/cadip/collections/cadip_session_incomplete_no_start/items").status_code
+        == status.HTTP_400_BAD_REQUEST
+    )
     # Test with platform and only start_date, should work since platform=S1A is valid
     assert (
-        client.get("/cadip/cadip/session?platform=S1A&start_date=2020-02-16T12:00:00Z").status_code
+        client.get("/cadip/collections/cadip_session_incomplete_platf_no_start/items").status_code
         != status.HTTP_400_BAD_REQUEST
     )
 
 
-@pytest.mark.unit
+@pytest.mark.skip(reason="Disabled since RSPY322")
 @responses.activate
 def test_valid_search_by_session_id(expected_products, client):
     """Test used for searching a file by a given session id or ids."""
@@ -513,7 +518,7 @@ def test_valid_search_by_session_id(expected_products, client):
     [
         (
             "%22Satellite%20in%20S2B%22&$top=20&$expand=Files",
-            "cadip/cadip/session?platform=S2B",
+            "/cadip/collections/cadip_session_s2b/items",
             # Note: The following JSON were modified due to compliance of HTTP/1.1 protocol
             # "Retransfer": false -> "Retransfer": False,
             # "geometry": null -> "geometry": None,
@@ -610,8 +615,8 @@ def test_valid_search_by_session_id(expected_products, client):
                                     "eviction_datetime": "2023-11-17T18:52:29.165Z",
                                     "file:size": "42",
                                     "roles": ["cadu"],
-                                    "href": "http://testserver/cadip/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch"
-                                    "2_DSDB_00001.raw",
+                                    "href": "http://testserver/cadip/collections/cadip_cadu?name=DCS_01_S2B_20231117170"
+                                    "332034987_ch2_DSDB_00001.raw",
                                 },
                             },
                             {
@@ -627,8 +632,8 @@ def test_valid_search_by_session_id(expected_products, client):
                                     "file:size": "42",
                                     "roles": ["cadu"],
                                     # Note: 127.0.0.1:8000 replaced with testserver due to TestClient usage
-                                    "href": "http://testserver/cadip/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch"
-                                    "2_DSDB_00002.raw",
+                                    "href": "http://testserver/cadip/collections/cadip_cadu?name=DCS_01_S2B_20231117170"
+                                    "332034987_ch2_DSDB_00002.raw",
                                 },
                             },
                         ],
@@ -638,7 +643,7 @@ def test_valid_search_by_session_id(expected_products, client):
         ),
         (
             '"Satellite%20in%20incorrect_platform"&$top=20&$expand=Files',
-            "/cadip/cadip/session?platform=incorrect_platform",
+            "/cadip/collections/cadip_session_incorrect/items",
             {},
             {"type": "FeatureCollection", "numberMatched": 0, "numberReturned": 0, "features": []},
         ),

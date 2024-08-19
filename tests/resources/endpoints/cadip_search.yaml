@@ -45,20 +45,55 @@ collections:
       platform: S1A
       limit: 20
 
-
-
-
   - id: cadip_session_by_interval
     station: cadip
     query:
       start_date: "2014-02-16T12:00:00Z"
       stop_date: "2024-02-16T12:00:00Z"
       limit: 2
+
   - id: cadip_session_by_satellite
     station: cadip
     query:
       platform: S1A
       limit: 2
+
+  - id: cadip_session_s2b
+    station: cadip
+    query:
+      platform: S2B
+
+  - id: cadip_session_incorrect
+    station: cadip
+    query:
+      platform: incorrect_platform
+
+  - id: cadip_session_incomplete
+    station: cadip
+    query:
+      limit: 1
+
+  - id: cadip_session_incomplete_no_stop
+    station: cadip
+    query:
+      start_date: "2020-02-16T12:00:00Z"
+
+  - id: cadip_session_incomplete_no_start
+    station: cadip
+    query:
+      stop_date: "2020-02-16T12:00:00Z"
+
+  - id: cadip_session_incomplete_platf_no_start
+    station: cadip
+    query:
+      platform: S1A
+      start_date: "2020-02-16T12:00:00Z"
+
+  - id: cadip_session_incorrect_station
+    station: incorrect
+    query:
+      platform: S1A
+
   ###
   - id: ins
     station: ins
