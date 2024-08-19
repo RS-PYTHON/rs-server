@@ -22,6 +22,8 @@ adgs:
   products:
     GENERIC_PRODUCT_TYPE:
       productType: '{productType}'
+    CAMS_GRF_AUX:
+      productType: cams-ads-grf-aux
 
   search:
     type: ODataV4Search

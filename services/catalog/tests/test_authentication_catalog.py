@@ -58,7 +58,9 @@ AUTHENT_SCHEME = {
         },
     },
 }
-AUTHENT_REF = {"auth:refs": ["apikey"]}
+AUTHENT_REF = {
+    "auth:refs": ["apikey"],
+}
 COMMON_FIELDS = {
     "extent": {
         "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
@@ -145,7 +147,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         {
             "rel": "conformance",
             "type": "application/json",
-            "title": "STAC/WFS3 conformance classes implemented by this server",
+            "title": "STAC/OGC conformance classes implemented by this server",
             "href": "http://testserver/catalog/conformance",
             **AUTHENT_REF,
         },
@@ -164,6 +166,14 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "href": "http://testserver/catalog/search",
             "method": "POST",
             **AUTHENT_REF,
+        },
+        {
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+            "type": "application/schema+json",
+            "title": "Queryables",
+            "href": "http://testserver/catalog/queryables",
+            "method": "GET",
+            "auth:refs": ["apikey"],
         },
         {
             "rel": "child",
@@ -207,99 +217,10 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "href": "http://testserver/catalog/api.html",
             **AUTHENT_REF,
         },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "href": "http://testserver/catalog/catalogs/toto",
-            **AUTHENT_REF,
-        },
     ]
     landing_page_response = client.request("GET", "/catalog/", **HEADER)
     assert landing_page_response.status_code == HTTP_200_OK
     content = json.loads(landing_page_response.content)
-    assert content["links"] == valid_links
-
-    valid_links = [
-        {
-            "rel": "self",
-            "type": "application/json",
-            "href": "http://testserver/catalog/",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "root",
-            "type": "application/json",
-            "href": "http://testserver/catalog/",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "data",
-            "type": "application/json",
-            "href": "http://testserver/catalog/collections",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "conformance",
-            "type": "application/json",
-            "title": "STAC/WFS3 conformance classes implemented by this server",
-            "href": "http://testserver/catalog/conformance",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "search",
-            "type": "application/geo+json",
-            "title": "STAC search",
-            "href": "http://testserver/catalog/search",
-            "method": "GET",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "search",
-            "type": "application/geo+json",
-            "title": "STAC search",
-            "href": "http://testserver/catalog/search",
-            "method": "POST",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "toto_S1_L1",
-            "href": "http://testserver/catalog/collections/toto:S1_L1",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "toto_S2_L3",
-            "href": "http://testserver/catalog/collections/toto:S2_L3",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "title": "pyteam_S1_L1",
-            "type": "application/json",
-            "href": "http://testserver/catalog/collections/pyteam:S1_L1",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "service-desc",
-            "type": "application/vnd.oai.openapi+json;version=3.0",
-            "title": "OpenAPI service description",
-            "href": "http://testserver/catalog/api",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "service-doc",
-            "type": "text/html",
-            "title": "OpenAPI service documentation",
-            "href": "http://testserver/catalog/api.html",
-            **AUTHENT_REF,
-        },
-    ]
-
-    catalog_owner_id_response = client.request("GET", "/catalog/catalogs/toto", headers={APIKEY_HEADER: VALID_APIKEY})
-    content = json.loads(catalog_owner_id_response.content)
     assert content["links"] == valid_links
 
     pyteam_collection = {
@@ -356,13 +277,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/toto",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/toto",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -400,13 +321,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/toto",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/toto",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -444,13 +365,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/titi",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/titi",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -486,13 +407,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     "rel": "parent",
                     "type": "application/json",
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     "rel": "root",
                     "type": "application/json",
                     **AUTHENT_REF,
@@ -532,13 +453,13 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": "http://testserver/catalog/catalogs/pyteam",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -616,13 +537,13 @@ class TestAuthenticationGetOneCollection:
                 {
                     "rel": "parent",
                     "type": "application/json",
-                    "href": f"http://testserver/catalog/catalogs/{user}",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
                     "rel": "root",
                     "type": "application/json",
-                    "href": f"http://testserver/catalog/catalogs/{user}",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
@@ -798,6 +719,7 @@ class TestAuthenticationGetOneItem:
                 "owner_id": user,
                 "proj:epsg": 3857,
                 "orientation": "nadir",
+                **AUTHENT_SCHEME,
             },
             "stac_version": "1.0.0",
             "stac_extensions": [
@@ -805,7 +727,6 @@ class TestAuthenticationGetOneItem:
                 "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
                 AUTHENT_EXTENSION,
             ],
-            **AUTHENT_SCHEME,
         }
 
         response = client.request(
@@ -1098,7 +1019,7 @@ class TestAuthenticationPutOneCollection:
         self.updated_collection["owner"] = "toto"
         response = client.request(
             "PUT",
-            "/catalog/collections",
+            "/catalog/collections/toto:S1_L1",
             json=self.updated_collection,
             **HEADER,
         )
@@ -1508,13 +1429,17 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
 
     item_id = "S1SIWOCN_20220412T054447_0024_S139"
     feature_to_post = {
-        "collection": "S1_L1",
-        "assets": {
-            "zarr": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip", "roles": ["data"]},
-            "cog": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip", "roles": ["data"]},
-            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
-        },
-        "bbox": [0],
+        "type": "Feature",
+        "stac_version": "1.0.0",
+        "stac_extensions": [
+            "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
+            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
+        ],
+        "id": item_id,
         "geometry": {
             "type": "Polygon",
             "coordinates": [
@@ -1527,9 +1452,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
                 ],
             ],
         },
-        "id": item_id,
-        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-        "other_metadata": {},
+        "bbox": [-180.0, -90.0, 0.0, 180.0, 90.0, 10000.0],
         "properties": {
             "gsd": 0.5971642834779395,
             "width": 2500,
@@ -1538,16 +1461,13 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
             "proj:epsg": 3857,
             "orientation": "nadir",
         },
-        "stac_extensions": [
-            "https://stac-extensions.github.io/eopf/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/eo/v1.1.0/schema.json",
-            "https://stac-extensions.github.io/sat/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/processing/v1.1.0/schema.json",
-        ],
-        "stac_version": "1.0.0",
-        "type": "Feature",
+        "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+        "assets": {
+            "zarr": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip", "roles": ["data"]},
+            "cog": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip", "roles": ["data"]},
+            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+        },
+        "collection": "S1_L1",
     }
 
     def test_http200_with_good_authentication(
@@ -1566,10 +1486,9 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
         ]
         init_test(mocker, monkeypatch, httpx_mock, iam_roles)
 
-        response = client.request(
-            "POST",
+        response = client.post(
             "/catalog/collections/S1_L1/items",
-            json=self.feature_to_post,
+            content=json.dumps(self.feature_to_post),
             **HEADER,
         )
         # check if the item was well added to the collection
@@ -1602,54 +1521,6 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
             "POST",
             "/catalog/collections/toto:S1_L1/items",
             json=self.feature_to_post,
-            **HEADER,
-        )
-        assert response.status_code == HTTP_401_UNAUTHORIZED
-
-
-class TestAuthenticationGetCatalogOwnerId:
-    """Contains authentication tests when a user wants to get a specific catalog."""
-
-    def test_http200_with_good_authentication(
-        self,
-        mocker,
-        monkeypatch,
-        httpx_mock: HTTPXMock,
-        client,
-    ):
-        """Test that the user gets a HTTP_200_OK status code response
-        when he does a good request with right permissions"""
-
-        iam_roles = [
-            "rs_catalog_toto:*_read",
-            "rs_catalog_toto:*_write",
-        ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-        users_map = {"toto": "toto", "pyteam": ""}
-        for _, val in users_map.items():
-            response = client.request(
-                "GET",
-                f"/catalog/catalogs/{val}",
-                **HEADER,
-            )
-            assert response.status_code == HTTP_200_OK
-
-    def test_fails_if_not_authorized(
-        self,
-        mocker,
-        monkeypatch,
-        httpx_mock: HTTPXMock,
-        client,
-    ):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does a good request without right permissions."""
-
-        iam_roles = ["rs_catalog_toto:*_write"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
-
-        response = client.request(
-            "GET",
-            "/catalog/catalogs/toto",
             **HEADER,
         )
         assert response.status_code == HTTP_401_UNAUTHORIZED

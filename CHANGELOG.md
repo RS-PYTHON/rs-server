@@ -24,6 +24,30 @@ Changed
 
 None
 
+[0.2a2] - Sprint 12 - 2024-07-17
+================================
+
+Added
+-----
+
+* RSPY-40: Implement a LTA station mockup
+* RSPY-105: Add collection-specific search endpoint
+* RSPY-132: Implement secured inventory.yaml using Vault
+* RSPY-223: Provide an Ansible playbook to deploy RS-Server
+* RSPY-272: [Deployment] Node label not set (terraform error)
+* RSPY-273: Implement the STAC authentication extension in Catalog (1/3: API key)
+* RSPY-281: STAC extensions missing in the stac_extensions list
+* RSPY-282: Document STAC catalog metadata (id, title, description)
+* RSPY-297: [Deployment] Several pods have no affinity
+* RSPY-299: EODAG library performs uncontrolled access to external STAC servers
+* RSPY-305: DPR mockup returns STAC items with a single zarr asset
+* RSPY-306: Internal error when adding catalog item with missing asset
+* RSPY-307: Replace use of deprecated FastAPI code
+* RSPY-308: Define resource requests and limits for all pods
+* RSPY-317: Deploy VELERO component on the cluster.
+* RSPY-333: Sprint 12 corrections of issues
+* RSPY-334: A user is able to create a collection for another user
+
 [0.2a1] - Sprint 11 - 2024-06-26
 ================================
 

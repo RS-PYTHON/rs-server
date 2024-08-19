@@ -330,7 +330,7 @@ def a_correct_feature_fixture() -> dict:
             },
             "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
         },
-        "bbox": [0],
+        "bbox": [-180.0, -90.0, 0.0, 180.0, 90.0, 10000.0],
         "geometry": {
             "type": "Polygon",
             "coordinates": [
@@ -374,18 +374,21 @@ def a_incorrect_feature_fixture() -> dict:
         "collection": "S1_L2",
         "assets": {
             "zarr": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T717.zarr.zip",
                 "roles": ["data"],
             },
             "cog": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T420.cog.zip",
                 "roles": ["data"],
             },
-            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+            "ncdf": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T902.nc",
+                "roles": ["data"],
+            },
         },
         "bbox": [0],
         "geometry": {},
-        "id": "S1SIWOCN_20220412T054447_0024_S139",
+        "id": "S1SIWOCN_20220412T054447_0024_S139_INCORRECT",
         "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
         "other_metadata": {},
         "properties": {},
