@@ -73,7 +73,7 @@ jobs:
     name: Check linting (pylint, flake8)
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
-    continue-on-error: true # run other jobs, resolve issues later
+    # continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
@@ -115,7 +115,7 @@ jobs:
     name: Check typing (mypy)
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
-    continue-on-error: true # run other jobs, resolve issues later
+    # continue-on-error: true # run other jobs, resolve issues later
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
@@ -126,7 +126,7 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit, safety, trivy)
-    continue-on-error: true # run other jobs, resolve issues later
+    # continue-on-error: true # run other jobs, resolve issues later
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
@@ -228,7 +228,7 @@ jobs:
     permissions: write-all # write pull request comments
     # Mark the job as OK even if the sonarqube quality gate doesn't pass.
     # We will resolve these issues later.
-    continue-on-error: true
+    # continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Download linting reports
