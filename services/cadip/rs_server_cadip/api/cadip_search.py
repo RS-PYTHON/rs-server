@@ -113,9 +113,25 @@ def search_cadip_endpoint(request: Request):
 
 @router.get("/cadip/collections/{collection_id}")
 @apikey_validator(station="cadip", access_type="read")
-def get_cadip_collection(collection_id: str) -> list[dict] | dict:
+def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | dict:
     """To be added."""
-    return {}
+    config = read_conf()
+    selected_config: Union[dict[Any, Any], None] = next(
+        (item for item in config["collections"] if item["id"] == collection_id),
+        None,
+    )
+
+    query_params = create_session_search_params(selected_config)
+
+    return process_session_search(
+        request,
+        query_params["station"],
+        query_params["id"],
+        query_params["platform"],
+        query_params["start_date"],
+        query_params["stop_date"],
+        False,
+    )
 
 
 @router.get("/cadip/collections/{collection_id}/items")
@@ -251,7 +267,15 @@ def process_files_search(datetime: str, station: str, session_id: str, limit=Non
         ) from exception
 
 
-def process_session_search(request, station: str, id: str, platform=None, start_date=None, stop_date=None):
+def process_session_search(
+    request,
+    station: str,
+    id: str,
+    platform=None,
+    start_date=None,
+    stop_date=None,
+    add_assets=True,
+):
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
     A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
@@ -302,12 +326,13 @@ def process_session_search(request, station: str, id: str, platform=None, start_
             stac_mapper = json.loads(stac_map.read())
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
             cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
-            cadip_sessions_collection = from_session_expand_to_assets_serializer(
-                cadip_sessions_collection,
-                sessions_products,
-                expanded_session_mapper,
-                request,
-            )
+            if add_assets:
+                cadip_sessions_collection = from_session_expand_to_assets_serializer(
+                    cadip_sessions_collection,
+                    sessions_products,
+                    expanded_session_mapper,
+                    request,
+                )
             return cadip_sessions_collection
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
