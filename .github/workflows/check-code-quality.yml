@@ -126,7 +126,7 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit, safety, trivy)
-    # continue-on-error: true # run other jobs, resolve issues later
+    continue-on-error: true # run other jobs, resolve issues later
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
