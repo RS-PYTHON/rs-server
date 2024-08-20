@@ -45,3 +45,7 @@ updates:
     directory: "/services/frontend"
     schedule:
       interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/services/staging"
+    schedule:
+      interval: "daily"

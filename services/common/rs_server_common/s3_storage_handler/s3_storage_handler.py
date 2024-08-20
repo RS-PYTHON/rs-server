@@ -419,6 +419,42 @@ class S3StorageHandler:
             self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
 
+    def check_s3_key_on_bucket(self, bucket, s3_key):
+        """Check if the s3 key available in the bucket.
+
+        Args:
+            bucket (str): The S3 bucket name.
+            s3_key (str): The s3 key that should be checked
+
+        Raises:
+            RuntimeError: If an error occurs during the bucket access check or if
+            the s3_key is not available.
+        """
+
+        try:
+            self.connect_s3()
+            self.s3_client.head_object(Bucket=bucket, Key=s3_key)
+        except botocore.client.ClientError as error:
+            # check that it was a 404 vs 403 errors
+            # If it was a 404 error, then the bucket does not exist.
+            error_code = int(error.response["Error"]["Code"])
+            if error_code == S3_ERR_FORBIDDEN_ACCESS:
+                self.logger.exception((f"{bucket} is a private bucket. Forbidden access!"))
+                raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
+            if error_code == S3_ERR_NOT_FOUND:
+                self.logger.exception((f"The key s3://{bucket}/s3_key does not exist!"))
+                # raise RuntimeError(f"The key s3://{bucket}/s3_key does not exist!") from error
+                return False
+            self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
+            raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
+        except botocore.exceptions.EndpointConnectionError as error:
+            self.logger.exception(f"Could not connect to the endpoint when trying to access {bucket}: {error}")
+            raise RuntimeError(f"Could not connect to the endpoint when trying to access {bucket}!") from error
+        except Exception as error:
+            self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
+            raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
+        return True
+
     def wait_timeout(self, timeout):
         """
         Wait for a specified timeout duration (minimum 200 ms).

@@ -58,6 +58,7 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
+from rs_server_catalog.utils import verify_existing_item
 from rs_server_common import settings as common_settings
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
@@ -65,6 +66,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.pgstac.core import CoreCrudClient
+from stac_fastapi.types.errors import NotFoundError
 from starlette.middleware.base import StreamingResponse
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
@@ -73,12 +75,14 @@ from starlette.status import (
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
-
+# pylint: disable=too-many-lines
 logger = Logging.default(__name__)
 
 
@@ -90,7 +94,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
     def __init__(self, client: CoreCrudClient):
         """Constructor, called from the middleware"""
 
-        self.handler: S3StorageHandler = None
+        self.s3_handler: S3StorageHandler = None
         self.temp_bucket_name: str = ""
         self.request_ids: dict[Any, Any] = {}
         self.client = client
@@ -119,7 +123,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
 
     def clear_temp_bucket(self, content: dict):
         """Used to clear specific files from temporary bucket."""
-        if not self.handler:
+        if not self.s3_handler:
             return
         for asset in content.get("assets", {}):
             # Iterate through all assets and delete them from the temp bucket.
@@ -133,17 +137,17 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             )
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
                 # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
-                self.handler.delete_file_from_s3(self.temp_bucket_name, file_key)
+                self.s3_handler.delete_file_from_s3(self.temp_bucket_name, file_key)
 
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
-        if not self.handler:
+        if not self.s3_handler:
             return
         for asset in content.get("assets", {}):
             # For catalog bucket, data is already store into alternate:s3:href
             file_key = content["assets"][asset]["alternate"]["s3"]["href"]
-            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
-                self.handler.delete_file_from_s3(CATALOG_BUCKET, file_key)
+            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
+                self.s3_handler.delete_file_from_s3(CATALOG_BUCKET, file_key)
 
     def adapt_object_links(self, my_object: dict, user: str) -> dict:
         """adapt all the links from a collection so the user can use them correctly
@@ -158,7 +162,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         links = my_object["links"]
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
-            if "properties" in my_object:  # If my_object is a feature
+            if "properties" in my_object:  # If my_object is an item
                 new_path = add_user_prefix(link_parser.path, user, my_object["collection"], my_object["id"])
             else:  # If my_object is a collection
                 new_path = add_user_prefix(link_parser.path, user, my_object["id"])
@@ -185,36 +189,222 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
         return content
 
+    async def get_item_from_collection(self, request: Request):
+        """Get an item from the collection.
+
+        Args:
+            request (Request): The request object.
+
+        Returns:
+            Optional[Dict]: The item from the collection if found, else None.
+        """
+        try:
+            item = await self.client.get_item(
+                item_id=self.request_ids["item_id"],
+                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
+                request=request,
+            )
+            return item
+        except NotFoundError:
+            logger.info(
+                f"The element {self.request_ids['item_id']} does not \
+exist in collection {self.request_ids['owner_id']}_{self.request_ids['collection_id']}",
+            )
+            return None
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Exception: {e}")
+            raise HTTPException(
+                detail=f"Exception when trying to get the item {item['id']} \
+from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} collection",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from e
+
+    def check_s3_key(self, item: dict, asset_name: str, s3_href):
+        """Check if the given S3 key exists and matches the expected path.
+
+        Args:
+            item (dict): The item containing the asset.
+            asset_name (str): The name of the asset to check.
+            s3_href (dict): The S3 href to check against.
+
+        Returns:
+            bool: True if the S3 key is valid and exists, otherwise False.
+            NOTE: Don't mind if we have RSPY_LOCAL_CATALOG_MODE set to ON (meaning self.s3_handler is None)
+
+        Raises:
+            HTTPException: If the s3_handler is not available, if S3 paths cannot be retrieved,
+                        if the S3 paths do not match, or if there is an error checking the key.
+        """
+        if not item or not self.s3_handler:
+            return False
+        # update an item
+        existing_asset = item["assets"].get(asset_name, None)
+        if not existing_asset:
+            return False
+
+        # check if the new s3_href is the same as the existing one
+        try:
+            item_s3_path = existing_asset["alternate"]["s3"]["href"]
+            s3_path = s3_href["s3"]["href"]
+        except KeyError as exc:
+            raise HTTPException(
+                detail=f"Could not get s3 paths for the asset {asset_name}",
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            ) from exc
+        if item_s3_path != s3_path:
+            raise HTTPException(
+                detail=(
+                    f"Received an updated path for the asset {asset_name} of item {item['id']}. "
+                    f"The current path is {item_s3_path}, and the new path is {s3_path}. "
+                    "However, changing an existing path of an asset is not allowed."
+                ),
+                status_code=HTTP_400_BAD_REQUEST,
+            )
+        s3_key_array = s3_path.split("/")
+        bucket = s3_key_array[2]
+        key_path = "/".join(s3_key_array[3:])
+
+        # check the presence of the key
+        try:
+            if not self.s3_handler.check_s3_key_on_bucket(bucket, key_path):
+                raise HTTPException(
+                    detail=f"The key {s3_href} should exist on the bucket, but it couldn't be checked",
+                    status_code=HTTP_400_BAD_REQUEST,
+                )
+            return True
+        except RuntimeError as rte:
+            raise HTTPException(
+                detail=f"When checking the presence of the {s3_href} key, an error has been raised: {rte}",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from rte
+
+    def s3_bucket_handling(self, files_s3_key: list[str], item: dict, request: Request) -> None:
+        """Handle the transfer and deletion of files in S3 buckets.
+
+        Args:
+            files_s3_key (list[str]): List of S3 keys for the files to be transfered.
+            item (dict): The catalog item from which all the remaining assets should be deleted.
+            request (Request): The request object, used to determine the request method.
+
+        Raises:
+            HTTPException: If there are errors during the S3 transfer or deletion process.
+        """
+        if not self.s3_handler:
+            return
+        try:
+            err_message = f"Failed to transfer file(s) from '{self.temp_bucket_name}' bucket to \
+'{CATALOG_BUCKET}' catalog bucket!"
+            config = TransferFromS3ToS3Config(
+                files_s3_key,
+                self.temp_bucket_name,
+                CATALOG_BUCKET,
+                copy_only=True,
+                max_retries=3,
+            )
+
+            failed_files = self.s3_handler.transfer_from_s3_to_s3(config)
+
+            if failed_files:
+                raise HTTPException(
+                    detail=f"{err_message} {failed_files}",
+                    status_code=HTTP_400_BAD_REQUEST,
+                )
+            # in case of the PUT request, we copy the new s3 hrefs, but delete the old ones
+            # if any has changed. All the remained hrefs (the existent ones are removed
+            # from item with pop after the check_s3_key call, in update_stac_item_publication function) have
+            # to be deleted now from the s3. If a PATCH request is received (not yet implemented),
+            # do not delete anything
+            if item and request.method == "PUT":
+                for asset in item["assets"]:
+                    try:
+                        key_array = item["assets"][asset]["alternate"]["s3"]["href"].split("/")
+                        self.s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
+                    except KeyError as exc:
+                        raise HTTPException(
+                            detail=f"Key error for item asset {asset}!",
+                            status_code=HTTP_400_BAD_REQUEST,
+                        ) from exc
+                    except RuntimeError as rte:
+                        logger.exception(
+                            f"Failed to delete key {'/'.join(key_array)} \
+from s3 bucket  Reason: {rte}. The process will continue though !",
+                        )
+        except KeyError as kerr:
+            raise HTTPException(
+                detail=f"{err_message} Could not find S3 credentials.",
+                status_code=HTTP_400_BAD_REQUEST,
+            ) from kerr
+        except RuntimeError as rte:
+            raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
+
     def update_stac_item_publication(  # pylint: disable=too-many-locals
         self,
         content: dict,
         user: str,
-        netloc: str,
+        request: Request,
+        item: dict,
     ) -> Any:
-        """Update json body of feature push to catalog"""
+        """Update the JSON body of a feature push to the catalog.
 
-        # Unique set of temp bucket names
+        Args:
+            content (dict): The content to update.
+            user (str): The user making the request.
+            request (Request): The HTTP request object.
+            item (dict): The item from the catalog (if exists) to update.
+
+        Returns:
+            dict: The updated content.
+
+        Raises:
+            HTTPException: If there are errors in processing the request, such as missing collection name,
+                        invalid S3 bucket, or failed file transfers.
+        """
+        if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
+            self.s3_handler = S3StorageHandler(
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            )
+
+        collection_id = content.get("collection", self.request_ids.get("collection_id", None))
+        print(f"COLLECTION_ID = {collection_id}")
+        if not collection_id:
+            raise HTTPException(
+                detail="Could not get the name of the collection!",
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        verify_existing_item(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
+
         bucket_names = set()
         files_s3_key = []
         # 1 - update assets href
         for asset in content["assets"]:
             filename_str = content["assets"][asset]["href"]
-            logger.debug(f"HTTP request asset: {filename_str!r}")
+            logger.debug(f"HTTP request add/update asset: {filename_str!r}")
             fid = filename_str.rsplit("/", maxsplit=1)[-1]
-            new_href = (
-                f'https://{netloc}/catalog/collections/{user}:{content["collection"]}/items/{fid}/download/{asset}'
-            )
+            new_href = f"https://{request.url.netloc}/catalog/\
+collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             content["assets"][asset].update({"href": new_href})
             # 2 - update alternate href to define catalog s3 bucket
             try:
                 old_bucket_arr = filename_str.split("/")
+                # Determine the temporary bucket name
                 temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
                 bucket_names.add(temp_bucket_name)
+                # Update the S3 path to use the catalog bucket
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 new_s3_href = {"s3": {"href": s3_key}}
                 content["assets"][asset].update({"alternate": new_s3_href})
-                files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
+                # Check if the S3 key exists
+                if not self.check_s3_key(item, asset, new_s3_href):
+                    # copy the key only if it isn't already copied
+                    files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
+                elif request.method == "PUT":
+                    # remove the asset from the item, all assets that remain shall
+                    # be deleted from the s3 bucket later on
+                    item["assets"].pop(asset)
             except (IndexError, AttributeError, KeyError) as exc:
                 raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
 
@@ -227,48 +417,18 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 status_code=HTTP_400_BAD_REQUEST,
             )
         self.temp_bucket_name = bucket_names.pop()
-        err_message = f"Failed to transfer file(s) from '{self.temp_bucket_name}' bucket to \
-'{CATALOG_BUCKET}' catalog bucket!"
+
         # 3 - include new stac extension if not present
 
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
         if new_stac_extension not in content["stac_extensions"]:
             content["stac_extensions"].append(new_stac_extension)
         # 4 bucket movement
-        try:
-            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
-                self.handler = S3StorageHandler(
-                    os.environ["S3_ACCESSKEY"],
-                    os.environ["S3_SECRETKEY"],
-                    os.environ["S3_ENDPOINT"],
-                    os.environ["S3_REGION"],
-                )
-                config = TransferFromS3ToS3Config(
-                    files_s3_key,
-                    self.temp_bucket_name,
-                    CATALOG_BUCKET,
-                    copy_only=True,
-                    max_retries=3,
-                )
-
-                failed_files = self.handler.transfer_from_s3_to_s3(config)
-
-                if failed_files:
-                    raise HTTPException(
-                        detail=f"{err_message} {failed_files}",
-                        status_code=HTTP_400_BAD_REQUEST,
-                    )
-        except KeyError as kerr:
-            raise HTTPException(
-                detail=f"{err_message} Could not find S3 credentials.",
-                status_code=HTTP_400_BAD_REQUEST,
-            ) from kerr
-        except RuntimeError as rte:
-            raise HTTPException(detail=f"{err_message} Reason: {rte}", status_code=HTTP_400_BAD_REQUEST) from rte
+        self.s3_bucket_handling(files_s3_key, item, request)
 
         # 5 - add owner data
         content["properties"].update({"owner": user})
-        content.update({"collection": f"{user}_{content['collection']}"})
+        content.update({"collection": f"{user}_{collection_id}"})
         return content
 
     def generate_presigned_url(self, content, path):
@@ -285,13 +445,13 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             .lstrip("/")
         )
         try:
-            handler = S3StorageHandler(
+            s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
                 os.environ["S3_SECRETKEY"],
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
             )
-            response = handler.s3_client.generate_presigned_url(
+            response = s3_handler.s3_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": CATALOG_BUCKET, "Key": s3_path},
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
@@ -325,7 +485,20 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 res = right
         return res
 
-    async def manage_search_request(
+    async def collection_exists(self, request: Request, collection_id: str) -> bool:
+        """Check if the collection exists.
+
+        Returns:
+            bool: True if the collection exists, False otherwise
+        """
+        try:
+            await self.client.get_collection(collection_id, request)
+            return True
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error("Collection %s not found: %s", collection_id, e)
+            return False
+
+    async def manage_search_request(  # pylint: disable=too-many-branches
         self,
         request: Request,
     ) -> Request | JSONResponse:
@@ -400,6 +573,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        if not await self.collection_exists(request, f"{owner_id}_{collection_id}"):
+            detail = {"error": f"Collection {collection_id} not found."}
+            return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -493,16 +669,22 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                 content["id"] = f"{user}_{content['id']}"
                 if not content.get("owner"):
                     content["owner"] = user
+                logger.debug(f"Handling for collection {content['id']}")
                 # TODO update the links also?
+            # The following section handles the request to create/update an item
             elif "items" in request.scope["path"]:
-                if request.method == "POST":
-                    content = self.update_stac_item_publication(content, user, request.url.netloc)
+                # try to get the item if it is already part from the collection
+                item = await self.get_item_from_collection(request)
+                content = self.update_stac_item_publication(content, user, request, item)
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
                         content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
                     else:  # PUT
-                        published, expires = await self.retrieve_timestamp(request)
+                        published = expires = ""
+                        if item and item.get("properties"):
+                            published = item["properties"].get("published", "")
+                            expires = item["properties"].get("expires", "")
                         if not published and not expires:
                             detail = {"error": f"Item {content['id']} not found."}
                             return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
@@ -875,7 +1057,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
-        request_body = {} if request.method not in ["POST", "PUT"] else await request.json()
+        request_body = None if request.method not in ["POST", "PUT"] else await request.json()
         # Get the the user_login calling the endpoint. If this is not set (the authentication.apikey_security function
         # is not called), the local user shall be used (later on, in rereoute_url)
         # The common_settings.CLUSTER_MODE may not be used because for some endpoints like /api
@@ -884,7 +1066,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         try:
             user_login = request.state.user_login
         except (NameError, AttributeError):
-            # "The current user will be used if needed in rerouting"
+            # The current running user (if in local mode) will be used if needed in rerouting
             user_login = None
         logger.debug(
             f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
@@ -894,16 +1076,15 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
         # Overwrite user and collection id with the ones provided in the request body
-        user = request_body.get("owner", None)
-        collection_id = request_body.get("id", None)
-        self.request_ids["owner_id"] = (
-            user if user and not self.request_ids["owner_id"] else self.request_ids["owner_id"]
-        )
-        self.request_ids["collection_id"] = (
-            collection_id
-            if collection_id and not self.request_ids["collection_id"]
-            else self.request_ids["collection_id"]
-        )
+        # This is available in POST/PUT/PATCH methods only
+        if request_body:
+            self.request_ids["owner_id"] = self.request_ids.get("owner_id") or request_body.get("owner")
+            # received a POST/PUT/PATCH for a STAC item or
+            # a STAC collection is created
+            if not self.request_ids["collection_id"]:
+                self.request_ids["collection_id"] = request_body.get("collection") or request_body.get("id")
+            if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
+                self.request_ids["item_id"] = request_body.get("id", None)
 
         if "/health" in request.scope["path"]:
             # return true if up and running
@@ -914,7 +1095,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             request = await self.manage_search_request(request)
             if hasattr(request, "status_code"):  # Unauthorized
                 return request
-        elif request.method in ["POST", "PUT"] and self.request_ids["owner_id"]:
+        elif request.method in {"POST", "PUT"} and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)
@@ -959,8 +1140,8 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             response = await self.manage_put_post_response(request, response)
-        elif request.method == "DELETE" and user:
-            response = await self.manage_delete_response(response, user)
+        elif request.method == "DELETE" and self.request_ids["owner_id"]:
+            response = await self.manage_delete_response(response, self.request_ids["owner_id"])
 
         return response
 
