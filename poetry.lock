@@ -687,13 +687,13 @@ poetry = ["poetry"]
 
 [[package]]
 name = "eodag"
-version = "3.0.0b2"
+version = "3.0.0b3"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "eodag-3.0.0b2-py3-none-any.whl", hash = "sha256:b30b9885165b3a6cc07b596807ae9c9994ccd60bfdd62e78f28204642b866ef1"},
-    {file = "eodag-3.0.0b2.tar.gz", hash = "sha256:ae239495bc57a5f9a78392bc56ffe924eff8376c2bab3e1f9c62f105fa6b1182"},
+    {file = "eodag-3.0.0b3-py3-none-any.whl", hash = "sha256:03e09a5a0ea21b6f21d7c308964c3d23f2eb674b661f6eeee445e29570d48a53"},
+    {file = "eodag-3.0.0b3.tar.gz", hash = "sha256:909ac37c7651f9dc5a2360bce315cf47c6eb4db309cc39d460bd66b029c9f953"},
 ]
 
 [package.dependencies]
@@ -728,12 +728,13 @@ Whoosh = "*"
 all = ["eodag[all-providers,csw,server,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
-dev = ["boto3-stubs[essential]", "eodag[all-providers,csw,server]", "faker", "fastapi[all]", "flake8", "moto", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (<3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (<0.24.0)", "stdlib-list", "tox", "twine", "types-lxml", "wheel"]
-docs = ["eodag[all]", "nbsphinx", "sphinx", "sphinx-book-theme", "sphinx-copybutton", "sphinx-tabs"]
+dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (<3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (<0.24.0)", "stdlib-list", "tox", "twine", "wheel"]
+docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
 server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
-tutorials = ["eodag-cube (>=0.2.0)", "eodag[notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
+stubs = ["boto3-stubs[essential]", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-tqdm"]
+tutorials = ["eodag-cube (>=0.2.0)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
 usgs = ["usgs (>=0.3.1)"]
 
 [[package]]
@@ -2699,7 +2700,7 @@ asyncache = "^0.3.1"
 boto3 = "==1.28.85"
 botocore = "==1.31.85"
 cachetools = "^5.5.0"
-eodag = "==3.0.0b2"
+eodag = "==3.0.0b3"
 fastapi = "^0.112.1"
 filelock = "^3.15.4"
 httpx = "^0.27.0"
