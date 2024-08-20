@@ -608,7 +608,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             collection_id = query["collections"][0].removeprefix(owner_id)
 
         body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+        dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
+        content = json.loads(dec_content)
         content = self.remove_user_from_objects(content, owner_id, "features")
         content = self.adapt_links(content, owner_id, collection_id, "features")
 
@@ -805,7 +806,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         """
         user = self.request_ids["owner_id"]
         body = [chunk async for chunk in response.body_iterator]
-        content = json.loads(b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode())
+        dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
+        content = json.loads(dec_content)
         self.update_stac_catalog_metadata(content)
         auth_roles = []
         user_login = ""
