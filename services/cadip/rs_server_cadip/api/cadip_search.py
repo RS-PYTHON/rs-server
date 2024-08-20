@@ -44,6 +44,7 @@ from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
+    create_collection,
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
@@ -122,7 +123,6 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
     )
 
     query_params = create_session_search_params(selected_config)
-
     return process_session_search(
         request,
         query_params["station"],
@@ -325,15 +325,15 @@ def process_session_search(
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
-            cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
             if add_assets:
-                cadip_sessions_collection = from_session_expand_to_assets_serializer(
+                cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
+                return from_session_expand_to_assets_serializer(
                     cadip_sessions_collection,
                     sessions_products,
                     expanded_session_mapper,
                     request,
                 )
-            return cadip_sessions_collection
+            return create_collection(products)
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
     except json.JSONDecodeError as exception:

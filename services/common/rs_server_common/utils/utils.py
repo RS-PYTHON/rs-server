@@ -398,6 +398,33 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
 
 
+def create_collection(products: List[EOProduct]):
+    template = {
+        "id": "",
+        "type": "Collection",
+        "stac_extensions": [
+            "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+        ],
+        "stac_version": "1.0.0",
+        "description": "A simple collection demonstrating core catalog fields with links to a couple of items",
+        "title": "Simple Example Collection",
+        "links": [],
+    }
+    for product in products:
+        rel = (
+            {
+                "rel": "item",
+                "href": "./simple-item.json",
+                "type": "application/geo+json",
+                "title": product.properties["SessionId"],
+            },
+        )
+        template["links"].append(rel)
+    return template
+
+
 def create_stac_collection(products: List[EOProduct], feature_template: dict, stac_mapper: dict) -> dict:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
