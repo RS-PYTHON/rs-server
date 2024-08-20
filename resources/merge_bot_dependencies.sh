@@ -65,7 +65,7 @@ for bot_branch in $bot_branches; do
     # We have a lot of merge conflicts on the poetry.lock files,
     # so we replace our local files by the bot branch files to avoid conflicts.
     # Then we rebuild them at the end of this script.
-    lock_files=$(git diff --name-only "$bot_branch" | grep -E "(^|/)poetry.lock$")
+    lock_files=$(git diff --diff-filter=M --name-only "$bot_branch" | grep -E "(^|/)poetry.lock$")
     if [[ "$lock_files" ]]; then
         (set -x;
             git checkout "$bot_branch" -- $lock_files; \
