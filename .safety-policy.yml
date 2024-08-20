@@ -25,11 +25,11 @@ security: # configuration for the `safety check` command
   # continue-on-vulnerability-error: False # Suppress non-zero exit codes when vulnerabilities are found. Enable this in pipelines and CI/CD processes if you want to pass builds that have vulnerabilities
 
   ignore-vulnerabilities:
-    67599:
-      reason: see Jira https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-243
+    # 67599:
+    #   reason: see Jira https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-243
+    71608:
+        reason: Vulnerability found in urllib3 version 2.0.7
     70612:
         reason: Vulnerability found in jinja2 version 3.1.4
-    64396:
-        reason: Vulnerability found in ecdsa version 0.19.0
-    64459:
-        reason: Vulnerability found in ecdsa version 0.19.0
+    70624:
+        reason: Vulnerability found in flask-cors version 4.0.1
