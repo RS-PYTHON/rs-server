@@ -19,7 +19,11 @@ import json
 import pytest
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import APIKEY_HEADER, apikey_security, ttl_cache
+from rs_server_common.authentication.apikey import (
+    APIKEY_HEADER,
+    apikey_security,
+    ttl_cache,
+)
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import State
 from starlette.status import (

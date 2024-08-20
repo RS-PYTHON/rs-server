@@ -24,7 +24,7 @@ import httpx
 import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
 from rs_server_common import settings
-from rs_server_common.authentication import apikey_security
+from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
@@ -153,11 +153,12 @@ def init_app(  # pylint: disable=too-many-locals
     app.state.startup_events = startup_events or []
     app.state.shutdown_events = shutdown_events or []
 
-    # In cluster mode, add the api key security: the user must provide
-    # an api key (generated from the apikey manager) to access the endpoints
+    # In cluster mode, add the api key / oauth2 security: the user must provide
+    # an api key (generated from the apikey manager) or authenticate to the
+    # oauth2 service (keycloak) to access the endpoints
     dependencies = []
     if settings.CLUSTER_MODE:
-        dependencies.append(Depends(apikey_security))
+        dependencies.append(Depends(authenticate))
 
     # Add the authenticated routers (and not the technical routers) to a single bigger router
     auth_router = APIRouter(dependencies=dependencies)

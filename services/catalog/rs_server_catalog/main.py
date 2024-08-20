@@ -35,8 +35,9 @@ from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalog
-from rs_server_common import authentication
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import authentication
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
@@ -272,10 +273,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
             and request.url.path != "/catalog/api.html"
         ):
 
-            # Check the api key validity, passed in HTTP header
-            await authentication.apikey_security(
+            # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
+            await authentication.authenticate(
                 request=request,
-                apikey_header=request.headers.get(authentication.APIKEY_HEADER, None),
+                apikey_header=request.headers.get(APIKEY_HEADER, None),
             )
 
         # Call the next middleware
@@ -398,10 +399,10 @@ if common_settings.CLUSTER_MODE:
             for method_ in route.methods:
                 scopes.append({"path": route.path, "method": method_})
 
-    # Note: Depends(apikey_security) doesn't work (the function is not called) after we
+    # Note: Depends(authenticate) doesn't work (the function is not called) after we
     # changed the url prefixes in the openapi specification.
     # But this dependency still adds the lock icon in swagger to enter the api key.
-    api.add_route_dependencies(scopes=scopes, dependencies=[Depends(authentication.apikey_security)])
+    api.add_route_dependencies(scopes=scopes, dependencies=[Depends(authentication.authenticate)])
 
 # Pause and timeout to connect to database (hardcoded for now)
 app.state.pg_pause = 3  # seconds

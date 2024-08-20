@@ -38,7 +38,7 @@ from rs_server_cadip.cadip_utils import (
     from_session_expand_to_dag_serializer,
     validate_products,
 )
-from rs_server_common.authentication import apikey_validator
+from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -54,7 +54,7 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config
 
 
 @router.get("/cadip/{station}/cadu/search")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
@@ -145,7 +145,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
 
 
 @router.get("/cadip/{station}/session")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def search_session(
     request: Request,  # pylint: disable=unused-argument
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
