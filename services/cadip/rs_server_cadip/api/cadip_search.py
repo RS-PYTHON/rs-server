@@ -130,7 +130,7 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
         query_params["platform"],
         query_params["start_date"],
         query_params["stop_date"],
-        False,
+        "collection",
     )
 
 
@@ -153,6 +153,7 @@ def get_cadip_collection_items(request: Request, collection_id):
         query_params["platform"],
         query_params["start_date"],
         query_params["stop_date"],
+        "items",
     )
 
 
@@ -325,15 +326,21 @@ def process_session_search(
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
-            if add_assets:
-                cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
-                return from_session_expand_to_assets_serializer(
-                    cadip_sessions_collection,
-                    sessions_products,
-                    expanded_session_mapper,
-                    request,
-                )
-            return create_collection(products)
+            match add_assets:
+                case "collection":
+                    return create_collection(products)
+                case "items":
+                    return create_stac_collection(products, feature_template, stac_mapper)
+                case True:
+                    cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
+                    return from_session_expand_to_assets_serializer(
+                        cadip_sessions_collection,
+                        sessions_products,
+                        expanded_session_mapper,
+                        request,
+                    )
+                case "_":
+                    return create_collection(products)
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
     except json.JSONDecodeError as exception:

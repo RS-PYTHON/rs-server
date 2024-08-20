@@ -399,6 +399,7 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 
 
 def create_collection(products: List[EOProduct]):
+    """Used to create stac collection template based on sessions lists."""
     template = {
         "id": "",
         "type": "Collection",
