@@ -21,7 +21,6 @@ import responses
 import sqlalchemy
 from fastapi import HTTPException, status
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
-from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus

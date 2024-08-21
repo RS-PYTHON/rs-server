@@ -24,16 +24,13 @@ import os
 import os.path as osp
 import traceback
 from pathlib import Path
-from typing import Annotated, Any, List, Union
+from typing import Any, List, Union
 
 import requests
 import sqlalchemy
 import yaml
-from fastapi import APIRouter, HTTPException
-from fastapi import Path as FPath
-from fastapi import Query, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from rs_server_cadip import cadip_tags
-from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     from_session_expand_to_assets_serializer,
@@ -48,7 +45,6 @@ from rs_server_common.utils.utils import (
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
-    write_search_products_to_db,
 )
 
 
@@ -87,7 +83,6 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
 @apikey_validator(station="cadip", access_type="read")
 def search_cadip_endpoint(request: Request):
     """Endpoint used to search cadip collections."""
-    # Collection at the moment, multiple collections to be implemented.
     config = read_conf()
     query_params = dict(request.query_params)
     collection = query_params.pop("collection", None)
@@ -115,7 +110,16 @@ def search_cadip_endpoint(request: Request):
 @router.get("/cadip/collections/{collection_id}")
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | dict:
-    """To be added."""
+    """
+    Endpoint that retrieves session data from an external CADIP server and formats it into a STAC-compliant Collection.
+
+    This endpoint begins by reading configuration details from file described using RSPY_CADIP_SEARCH_CONFIG.
+    Using this configuration, it sends a request to an external CADIP server to fetch information about available
+    sessions. Upon receiving the session data, the endpoint processes and transforms the data into the STAC format.
+
+    In the formatted STAC Collection response, each sessions name is included as a link within the `links` list.
+    These links point to the session details and are structured according to the STAC specification.
+    """
     config = read_conf()
     selected_config: Union[dict[Any, Any], None] = next(
         (item for item in config["collections"] if item["id"] == collection_id),
@@ -137,7 +141,18 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
 @router.get("/cadip/collections/{collection_id}/items")
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_items(request: Request, collection_id):
-    """Endpoint to retrieve a list of sessions from any CADIP station."""
+    """
+     Endpoint that retrieves a list of sessions from any CADIP station and returns them as an ItemCollection.
+
+    This endpoint begins by reading configuration details from file described using RSPY_CADIP_SEARCH_CONFIG,
+    it sends a request to the specified CADIP station to retrieve session data. The response from the CADIP station is
+    then mapped from the original OData format to the STAC (SpatioTemporal Asset Catalog) format,
+    ensuring the data is structured according to industry standards.
+
+     The final response is an ItemCollection, which contains detailed information about each requested session.
+     However, the assets associated with each session are intentionally excluded from the response,
+     focusing solely on the session metadata.
+    """
     config = read_conf()
     selected_config: Union[dict[Any, Any], None] = next(
         (item for item in config["collections"] if item["id"] == collection_id),
@@ -160,7 +175,18 @@ def get_cadip_collection_items(request: Request, collection_id):
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_item_details(request: Request, collection_id, session_id):
-    """Endpoint to retrieve a specific item from list of sessions from any CADIP station."""
+    """
+    Endpoint that retrieves a specific item from an ItemCollection, providing detailed information about a particular
+    session.
+
+    This endpoint processes a request to fetch a specific session from a CADIP station. After retrieving the data,
+    it maps the session information from the original OData format to the STAC (SpatioTemporal Asset Catalog) format.
+    The response is an Item that includes comprehensive metadata about the requested session, along with detailed
+    descriptions of all associated assets.
+
+    Response fully describes the assets, ensuring that all relevant information about the session and its resources is
+    available in the final output.
+    """
     config = read_conf()
     selected_config: Union[dict[Any, Any], None] = next(
         (item for item in config["collections"] if item["id"] == collection_id),
@@ -182,7 +208,14 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     )
 
 
-def process_files_search(datetime: str, station: str, session_id: str, limit=None, sortby=None) -> list[dict] | dict:
+# DEPRECATED CODE, WILL BE REMOVED !!!
+def process_files_search(
+    datetime: str,
+    station: str,
+    session_id: str,
+    limit=None,
+    sortby=None,
+) -> list[dict] | dict:  # pylint: disable=too-many-locals
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
@@ -268,7 +301,7 @@ def process_files_search(datetime: str, station: str, session_id: str, limit=Non
         ) from exception
 
 
-def process_session_search(
+def process_session_search(  # pylint: disable=too-many-arguments, too-many-locals
     request,
     station: str,
     id: str,
