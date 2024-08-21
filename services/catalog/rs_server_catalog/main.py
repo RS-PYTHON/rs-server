@@ -42,7 +42,7 @@ from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
-from stac_fastapi.extensions.core import (
+from stac_fastapi.extensions.core import (  # pylint: disable=no-name-in-module
     ContextExtension,
     FieldsExtension,
     FilterExtension,
