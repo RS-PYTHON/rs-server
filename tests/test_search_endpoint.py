@@ -239,10 +239,10 @@ def test_invalid_endpoint_param_station(client):
     This test sends a request to the specified endpoint with an incorrect station name,
     expecting a 400 Bad Request response.
     """
-    # Test with and inccorect station name, this should result in a 400 bad request response.
-    endpoint = "/cadip/collections/cadip_session_incorrect_station/items"
+    # Test with and incorrect station name, this should result in a 404 not found request response.
+    endpoint = "/cadip_session_incorrect_station/collections/correct_collection/items"
     response = client.get(endpoint)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.unit
@@ -602,41 +602,7 @@ def test_valid_search_by_session_id(expected_products, client):
                             "cadip:delivery_push_ok": True,
                         },
                         "links": [],
-                        "assets": [
-                            {
-                                "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw": {
-                                    "cadip:id": "axd19d2f-29eb-4c18-bc1f-bf2769a3a16d",
-                                    "cadip:retransfer": False,
-                                    "cadip:final_block": False,
-                                    "cadip:block_number": 1,
-                                    "cadip:channel": 1,
-                                    "cadip:session_id": "S2B_20231117033237234567",
-                                    "created": "2023-11-17T18:52:29.165Z",
-                                    "eviction_datetime": "2023-11-17T18:52:29.165Z",
-                                    "file:size": "42",
-                                    "roles": ["cadu"],
-                                    "href": "http://testserver/cadip/collections/cadip_cadu?name=DCS_01_S2B_20231117170"
-                                    "332034987_ch2_DSDB_00001.raw",
-                                },
-                            },
-                            {
-                                "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
-                                    "cadip:id": "a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1",
-                                    "cadip:retransfer": False,
-                                    "cadip:final_block": False,
-                                    "cadip:block_number": 1,
-                                    "cadip:channel": 1,
-                                    "cadip:session_id": "S2B_20231117033237234567",
-                                    "created": "2023-11-17T18:52:39.165Z",
-                                    "eviction_datetime": "2023-11-17T18:52:39.165Z",
-                                    "file:size": "42",
-                                    "roles": ["cadu"],
-                                    # Note: 127.0.0.1:8000 replaced with testserver due to TestClient usage
-                                    "href": "http://testserver/cadip/collections/cadip_cadu?name=DCS_01_S2B_20231117170"
-                                    "332034987_ch2_DSDB_00002.raw",
-                                },
-                            },
-                        ],
+                        "assets": {},
                     },
                 ],
             },
@@ -665,6 +631,7 @@ def test_expanded_sessions_endpoint_request(
      list
     Degraded: Test that an OData response without a Files element is mapped to a STAC response with an empty asset list
 
+    Note: Assets are not expanded.
     """
     responses.add(
         responses.GET,
