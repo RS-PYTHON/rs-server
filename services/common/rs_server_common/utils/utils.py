@@ -400,7 +400,7 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 
 def create_collection(products: List[EOProduct]):
     """Used to create stac collection template based on sessions lists."""
-    template = {
+    return {
         "id": "",
         "type": "Collection",
         "stac_extensions": [
@@ -411,19 +411,16 @@ def create_collection(products: List[EOProduct]):
         "stac_version": "1.0.0",
         "description": "A simple collection demonstrating core catalog fields with links to a couple of items",
         "title": "Simple Example Collection",
-        "links": [],
-    }
-    for product in products:
-        rel = (
+        "links": [
             {
                 "rel": "item",
                 "href": "./simple-item.json",
                 "type": "application/geo+json",
                 "title": product.properties["SessionId"],
-            },
-        )
-        template["links"].append(rel)
-    return template
+            }
+            for product in products
+        ],
+    }
 
 
 def create_stac_collection(products: List[EOProduct], feature_template: dict, stac_mapper: dict) -> dict:

@@ -46,7 +46,7 @@ def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starl
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
     asset["roles"] = ["cadu"]
-    asset["href"] = f'{str(request.url).split("session", maxsplit=1)[0]}cadu?name={asset.pop("id")}'
+    asset["href"] = f'http://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
     return {product.properties["Name"]: asset}
 
 
@@ -71,12 +71,21 @@ def from_session_expand_to_assets_serializer(
     Associate all expanded files with session from feature_collection and create an asset for each file.
     """
     for session in feature_collection["features"]:
-        session["assets"] = [
-            map_dag_file_to_asset(mapper, product, request)
-            for product in input_session
-            if product.properties["SessionID"] == session["id"]
-        ]
+        # Initialize an empty dictionary for the session's assets
+        session["assets"] = {}
+
+        # Iterate over products and map them to assets
+        for product in input_session:
+            if product.properties["SessionID"] == session["id"]:
+                # Get the asset dictionary
+                asset_dict = map_dag_file_to_asset(mapper, product, request)
+
+                # Merge the asset dictionary into session['assets']
+                session["assets"].update(asset_dict)
+
+        # Remove processed products from input_session
         input_session = [product for product in input_session if product.properties["SessionID"] != session["id"]]
+
     return feature_collection
 
 
