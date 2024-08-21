@@ -35,8 +35,9 @@ from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalog
+from rs_server_catalog.utils import AUTH_PREFIX
 from rs_server_common import settings as common_settings
-from rs_server_common.authentication import authentication
+from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
@@ -60,7 +61,9 @@ from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Route
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
@@ -276,7 +279,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
             # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
             await authentication.authenticate(
                 request=request,
-                apikey_header=request.headers.get(APIKEY_HEADER, None),
+                apikey_value=request.headers.get(APIKEY_HEADER, None),
             )
 
         # Call the next middleware
@@ -349,6 +352,35 @@ api = StacApi(
 app = api.app
 app.openapi = extract_openapi_specification
 
+# In cluster mode, add the oauth2 authentication
+if common_settings.CLUSTER_MODE:
+
+    # Override configuration
+    oauth2.AUTH_PREFIX = AUTH_PREFIX
+    oauth2.DOCS_URL_PREFIX = "/catalog"
+
+    # Existing middlewares
+    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]
+
+    # Insert the SessionMiddleware (to save cookies) before the AuthenticationMiddleware.
+    # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
+    if app.middleware_stack is not None:
+        raise RuntimeError("Cannot add middleware after an application has started")
+    authentication_index = middleware_names.index("AuthenticationMiddleware")
+    cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
+    app.user_middleware.insert(authentication_index, Middleware(SessionMiddleware, secret_key=cookie_secret))
+
+    # Get the oauth2 router
+    oauth2_router = oauth2.get_router(app)
+
+    # Add it to the FastAPI application
+    app.include_router(
+        oauth2_router,
+        tags=["Authentication"],
+        prefix=AUTH_PREFIX,
+        include_in_schema=True,
+    )
+
 
 @asynccontextmanager
 async def lifespan(my_app: FastAPI):
@@ -386,15 +418,15 @@ app.router.lifespan_context = lifespan
 # Configure OpenTelemetry
 opentelemetry.init_traces(app, "rs.server.catalog")
 
-# In cluster mode, add the api key security dependency: the user must provide
-# an api key (generated from the apikey manager) to access the endpoints
+# In cluster mode, add the authentication dependency: the user must provide an api key
+# (generated from the apikey manager) or authenticate with oauth2 to access the endpoints
 if common_settings.CLUSTER_MODE:
     # One scope for each ApiRouter path and method
     scopes = []
     for route in api.app.router.routes:
         if isinstance(route, APIRoute):
-            # Not on the technical endpoints
-            if route.path in TECH_ENDPOINTS:
+            # Not on the technical or authentication endpoints
+            if (route.path in TECH_ENDPOINTS) or route.path.startswith(f"{AUTH_PREFIX}/"):
                 continue
             for method_ in route.methods:
                 scopes.append({"path": route.path, "method": method_})

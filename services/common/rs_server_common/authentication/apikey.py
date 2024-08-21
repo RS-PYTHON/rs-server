@@ -65,7 +65,7 @@ async def apikey_security(
     Check the api key validity, passed as an HTTP header.
 
     Args:
-        apikey_header (Security): API key passed in HTTP header
+        apikey_value (Security): API key passed in HTTP header
 
     Returns:
         Tuple of (IAM roles, config, user login) information from the keycloak account, associated to the api key.

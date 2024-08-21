@@ -16,27 +16,14 @@
 Authentication functions implementation.
 """
 
-import sys
-import traceback
 from functools import wraps
-from os import environ as env
 from typing import Annotated
 
-import httpx
-from asyncache import cached
-from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
-from fastapi.security import APIKeyHeader
 from rs_server_common import settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
+from rs_server_common.authentication.oauth2 import get_user_info
 from rs_server_common.utils.logging import Logging
-
-# from functools import wraps
-from starlette.status import (
-    HTTP_400_BAD_REQUEST,
-    HTTP_403_FORBIDDEN,
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
 
 logger = Logging.default(__name__)
 
@@ -61,7 +48,7 @@ async def authenticate(
     or that the user is authenticated with oauth2 (keycloak).
 
     Args:
-        apikey_header (Security): API key passed in HTTP header
+        apikey_value (Security): API key passed in HTTP header
 
     Returns:
         Tuple of (IAM roles, config, user login) information from the keycloak account, associated to the api key
@@ -73,8 +60,8 @@ async def authenticate(
     if ret is not None:
         return ret
 
-    # TODO oauth2
-    ret = ("", "", "")
+    # Try to authenticate with oauth2
+    ret = await get_user_info(request)
 
     # Save information in the request state and return it
     auth_roles, auth_config, user_login = ret

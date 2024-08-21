@@ -16,6 +16,8 @@
 from fastapi import HTTPException
 from starlette.status import HTTP_400_BAD_REQUEST
 
+AUTH_PREFIX = "/auth"
+
 
 def verify_existing_item(method: str, item: dict, content_id_str: str, user_collection_str: str):
     """Verify if an exisiting item from catalog may be created or updated

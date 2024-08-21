@@ -1,7 +1,4 @@
-# Copyright 2023-2024, CS GROUP - France, https://www.csgroup.eu/
-#
-# This file is part of APIKeyManager project
-#     https://github.com/csgroup-oss/apikey-manager/
+# Copyright 2024 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,15 +13,15 @@
 # limitations under the License.
 
 
-import logging
+import os
 from dataclasses import dataclass
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
 from keycloak.exceptions import KeycloakGetError
+from rs_server_common.utils.logging import Logging
+from starlette.status import HTTP_404_NOT_FOUND
 
-from ..settings import api_settings as settings
-
-LOGGER = logging.getLogger(__name__)
+logger = Logging.default(__name__)
 
 
 @dataclass
@@ -34,42 +31,57 @@ class KCInfo:
 
 
 class KCUtil:
+    """Utility class to get user information from the KeyCloak server."""
+
     def __init__(self) -> None:
+        """Constructor."""
         self.keycloak_admin = self.__get_keycloak_admin()
 
     def __get_keycloak_admin(self) -> KeycloakAdmin:
-        """Init and return an admin keycloak connection from the admin client"""
-        LOGGER.debug(f"Connecting to the keycloak server {settings.oidc_endpoint} ...")
+        """Init and return an admin KeyCloak connection."""
+
+        oidc_endpoint = os.environ["OIDC_ENDPOINT"]
+        oidc_realm = os.environ["OIDC_REALM"]
+        oidc_client_id = os.environ["OIDC_CLIENT_ID"]
+        oidc_client_secret = os.environ["OIDC_CLIENT_SECRET"]
+
+        logger.debug(f"Connecting to the keycloak server {oidc_endpoint} ...")
         try:
             keycloak_connection = KeycloakOpenIDConnection(
-                server_url=settings.oidc_endpoint,
-                realm_name=settings.oidc_realm,
-                client_id=settings.oidc_client_id,
-                client_secret_key=settings.oidc_client_secret,
+                server_url=oidc_endpoint,
+                realm_name=oidc_realm,
+                client_id=oidc_client_id,
+                client_secret_key=oidc_client_secret,
                 verify=True,
             )
-            LOGGER.debug("Connected to the keycloak server")
+            logger.debug("Connected to the keycloak server")
             return KeycloakAdmin(connection=keycloak_connection)
 
         except KeycloakError as error:
             raise RuntimeError(
-                f"Error connecting with keycloak to '{settings.oidc_endpoint}', "
-                f"realm_name={settings.oidc_realm} with client_id="
-                f"{settings.oidc_client_id}.",
+                f"Error connecting with keycloak to '{oidc_endpoint}', "
+                f"realm_name={oidc_realm} with client_id="
+                f"{oidc_client_id}.",
             ) from error
 
     def get_user_info(self, user_id: str) -> KCInfo:
-        """Get user info from keycloak"""
+        """Get user information from the KeyCloak server."""
+
         try:
             kadm = self.keycloak_admin
             user = kadm.get_user(user_id)
             iam_roles = [role["name"] for role in kadm.get_composite_realm_roles_of_user(user_id)]
             return KCInfo(user["enabled"], iam_roles)
+
         except KeycloakGetError as error:
+
             # If the user is not found, this means he was removed from keycloak.
             # Thus we must remove all his api keys from the database.
-            if (error.response_code == 404) and ("User not found" in error.response_body.decode("utf-8")):
-                LOGGER.warning(f"User '{user_id}' not found in keycloak.")
+            if (error.response_code == HTTP_404_NOT_FOUND) and (
+                "User not found" in error.response_body.decode("utf-8")
+            ):
+                logger.warning(f"User '{user_id}' not found in keycloak.")
                 return KCInfo(False, [])
 
+            # Raise other exceptions
             raise

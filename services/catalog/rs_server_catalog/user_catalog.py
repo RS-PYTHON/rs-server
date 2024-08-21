@@ -60,6 +60,7 @@ from rs_server_catalog.user_handler import (
 )
 from rs_server_catalog.utils import verify_existing_item
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import oauth2
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
@@ -73,6 +74,7 @@ from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.status import (
     HTTP_200_OK,
     HTTP_302_FOUND,
+    HTTP_307_TEMPORARY_REDIRECT,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
@@ -889,7 +891,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             content = self.adapt_object_links(content, user)
 
         # Add the stac authentication extension
-        self.add_authentication_extension(content)
+        await self.add_authentication_extension(content)
 
         return JSONResponse(content, status_code=response.status_code)
 
@@ -1109,8 +1111,9 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         response = await call_next(request)
 
-        # Don't forward responses that fail
-        if response.status_code != 200:
+        # Don't forward responses that fail.
+        # NOTE: the 30x (redirect responses) are use by the oauth2 authentication.
+        if response.status_code not in (HTTP_200_OK, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
             if response is None:
                 return None
 
@@ -1145,12 +1148,18 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         return response
 
-    def add_authentication_extension(self, content: dict):
+    async def add_authentication_extension(self, content: dict):
         """Add the stac authentication extension, see: https://github.com/stac-extensions/authentication"""
 
         # Only on cluster mode
         if not common_settings.CLUSTER_MODE:
             return
+
+        # Read environment variables
+        oidc_endpoint = os.environ["OIDC_ENDPOINT"]
+        oidc_realm = os.environ["OIDC_REALM"]
+        oidc_client_id = os.environ["OIDC_CLIENT_ID"]
+        oidc_metadata_url = f"{oidc_endpoint}/realms/{oidc_realm}/.well-known/openid-configuration"
 
         # Add the STAC extension at the root
         extensions = content.setdefault("stac_extensions", [])
@@ -1162,6 +1171,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         parent = content
         if content.get("type") == "Feature":
             parent = content.setdefault("properties", {})
+        oidc = await oauth2.KEYCLOAK.load_server_metadata()
         parent.setdefault("auth:schemes", {}).update(
             {
                 "apikey": {
@@ -1177,8 +1187,8 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                     "description": "KeyCloak OAuth2 authentication",
                     "flows": {
                         "authorizationCode": {
-                            "authorizationUrl": os.environ["OIDC_AUTHORIZATION_ENDPOINT"],
-                            "tokenUrl": os.environ["OIDC_TOKEN_ENDPOINT"],
+                            "authorizationUrl": oidc["authorization_endpoint"],
+                            "tokenUrl": oidc["token_endpoint"],
                             "scopes": {
                                 "openid": "openid scope",
                                 "profile": "profile scope",
@@ -1190,8 +1200,8 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                 "openidconnect": {
                     "type": "openIdConnect",
                     "description": "KeyCloak OpenId authentication",
-                    "openIdConnectUrl": os.environ["OIDC_CONFIGURATION"],
-                    "oidcOptions": {"client_id": os.environ["OIDC_CLIENT_ID"]},
+                    "openIdConnectUrl": oidc_metadata_url,
+                    "oidcOptions": {"client_id": oidc_client_id},
                 },
             },
         )
