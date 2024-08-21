@@ -588,7 +588,7 @@ def test_valid_search_by_session_id(expected_products, client):
                             "cadip:id": "3f8d5c2e-a9b1-4d6f-87ce-1a240b9d5e72",
                             "cadip:num_channels": 2,
                             "cadip:station_unit_id": "01",
-                            "cadip:downlink_orbit": 53186,
+                            "sat:absolute_orbit": 53186,
                             "cadip:acquisition_id": 531861,
                             "cadip:antenna_id": "MSP21",
                             "cadip:front_end_id": "01",

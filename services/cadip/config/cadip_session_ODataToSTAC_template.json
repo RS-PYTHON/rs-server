@@ -15,7 +15,7 @@
         "cadip:id": "PLACEHOLDER",
         "cadip:num_channels": "PLACEHOLDER",
         "cadip:station_unit_id": "PLACEHOLDER",
-        "cadip:downlink_orbit": "PLACEHOLDER",
+        "sat:absolute_orbit": "PLACEHOLDER",
         "cadip:acquisition_id": "PLACEHOLDER",
         "cadip:antenna_id": "PLACEHOLDER",
         "cadip:front_end_id": "PLACEHOLDER",
