@@ -275,7 +275,7 @@ def process_session_search(
     platform=None,
     start_date=None,
     stop_date=None,
-    add_assets=True,
+    add_assets: Union[bool, str] = True,
 ):
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
@@ -289,6 +289,7 @@ def process_session_search(
         platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
         stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
+        add_assets (str | bool, optional): Used to set how item assets are formatted.
 
     Returns:
         dict (dict): A STAC Feature Collection of the sessions.

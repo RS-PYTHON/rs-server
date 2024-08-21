@@ -401,7 +401,7 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 def create_collection(products: List[EOProduct]):
     """Used to create stac collection template based on sessions lists."""
     return {
-        "id": "",
+        "id": str(uuid.uuid4()),
         "type": "Collection",
         "stac_extensions": [
             "https://stac-extensions.github.io/eo/v1.0.0/schema.json",

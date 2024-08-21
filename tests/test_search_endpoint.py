@@ -240,7 +240,7 @@ def test_invalid_endpoint_param_station(client):
     expecting a 400 Bad Request response.
     """
     # Test with and inccorect station name, this should result in a 400 bad request response.
-    endpoint = f"/cadip/collections/cadip_session_incorrect_station/items"
+    endpoint = "/cadip/collections/cadip_session_incorrect_station/items"
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -676,3 +676,36 @@ def test_expanded_sessions_endpoint_request(
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == rs_server_response
     # assert responses.assert_call_count(f"http://127.0.0.1:5000/Sessions?$filter={odata_request}", 1)
+
+
+@pytest.mark.unit
+@responses.activate
+def test_cadip_collection(client):
+    """Test the links from /station/collections/collection-id"""
+    sid = "S1A_20240328185208053186"
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20in%20S1A"&$top=20&$expand=Files',
+        json=expected_sessions_builder_fixture(sid, "2024-03-28T18:52:26Z", "S1A"),
+        status=200,
+    )
+
+    response = client.get("/cadip/collections/cadip_session_by_satellite")
+    assert response.status_code == status.HTTP_200_OK
+    for link in response.json()["links"]:
+        assert sid in link["title"]
+
+
+@pytest.mark.unit
+def test_invalid_cadip_collection(client):
+    """Test cases with invalid requests."""
+    response = client.get("/cadip/collections/cadip_session_incorrect")
+    # Should return an empty collection, but with 200 status.
+    assert response.status_code == status.HTTP_200_OK
+    # Test that collection contains no links (is empty).
+    assert not response.json()["links"]
+
+    # Test that an invalid configured collection return 404 with specific response.
+    response = client.get("/cadip/collections/invalid_configured_collection")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": "Cannot find a valid configuration"}
