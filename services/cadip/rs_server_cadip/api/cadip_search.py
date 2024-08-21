@@ -78,6 +78,7 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
+@apikey_validator(station="cadip", access_type="read")
 
 @router.get("/cadip/search")
 @apikey_validator(station="cadip", access_type="read")
