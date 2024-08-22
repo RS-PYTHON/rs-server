@@ -31,6 +31,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import HTMLResponse
+from rs_server_common import settings
 from rs_server_common.authentication.keycloak_util import KCUtil
 from rs_server_common.utils.utils2 import AuthInfo
 from starlette.config import Config as StarletteConfig
@@ -231,7 +232,8 @@ def get_router(app: FastAPI) -> APIRouter:
 
 
 # Utility class to get user information from the KeyCloak server
-kcutil = KCUtil()
+if settings.CLUSTER_MODE:
+    kcutil = KCUtil()
 
 
 async def get_user_info(request: Request) -> AuthInfo:
