@@ -20,21 +20,19 @@ It includes an API endpoint, utility functions, and initialization for accessing
 
 # pylint: disable=redefined-builtin
 import json
-import os
-import os.path as osp
 import traceback
-from pathlib import Path
 from typing import Any, List, Union
 
 import requests
 import sqlalchemy
-import yaml
 from fastapi import APIRouter, HTTPException, Request, status
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
+    CADIP_CONFIG,
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
+    select_config,
     validate_products,
 )
 from rs_server_common.authentication import apikey_validator
@@ -47,32 +45,13 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
 )
 
-
-def validate_cadip_config(fp):
-    """Function to validate yaml template, tba."""
-    accepted_stations = ["cadip", "ins", "mts"]
-    accepted_queries = ["id", "platform", "datetime", "start_date", "stop_date", "limit", "sortby"]
-    # Check that yaml content for query and stations (for now) is in accepted list.
-    return fp
-
-
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
-CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
-search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
-
-
-def read_conf():
-    """Used each time to read config yaml."""
-    cadip_search_config = validate_cadip_config(os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute())))
-    with open(cadip_search_config, encoding="utf-8") as search_conf:
-        config = yaml.safe_load(search_conf)
-    return config
 
 
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
     """Used to create and map query values with default values."""
-    required_keys = ["station", "id", "platform", "start_date", "stop_date", "limit", "sortby"]
+    required_keys = ["station", "id", "satellite", "start_date", "stop_date", "limit", "sortby"]
     default_values = ["cadip", None, None, None, None, None, "-datetime"]
     if not selected_config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
@@ -83,13 +62,9 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
 @apikey_validator(station="cadip", access_type="read")
 def search_cadip_endpoint(request: Request):
     """Endpoint used to search cadip collections."""
-    config = read_conf()
     query_params = dict(request.query_params)
     collection = query_params.pop("collection", None)
-    selected_config: Union[dict[Any, Any], None] = next(
-        (item for item in config["collections"] if item["id"] == collection),
-        None,
-    )
+    selected_config = select_config(collection)
     if selected_config:
         # Update selected_config query values with the ones coming in request.query_params
         for query_config_key in query_params:
@@ -101,7 +76,7 @@ def search_cadip_endpoint(request: Request):
         request,
         query_params["station"],
         query_params["id"],
-        query_params["platform"],
+        query_params["satellite"],
         query_params["start_date"],
         query_params["stop_date"],
     )
@@ -120,18 +95,14 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
     In the formatted STAC Collection response, each sessions name is included as a link within the `links` list.
     These links point to the session details and are structured according to the STAC specification.
     """
-    config = read_conf()
-    selected_config: Union[dict[Any, Any], None] = next(
-        (item for item in config["collections"] if item["id"] == collection_id),
-        None,
-    )
+    selected_config = select_config(collection_id)
 
     query_params = create_session_search_params(selected_config)
     return process_session_search(
         request,
         query_params["station"],
         query_params["id"],
-        query_params["platform"],
+        query_params["satellite"],
         query_params["start_date"],
         query_params["stop_date"],
         "collection",
@@ -153,19 +124,14 @@ def get_cadip_collection_items(request: Request, collection_id):
      However, the assets associated with each session are intentionally excluded from the response,
      focusing solely on the session metadata.
     """
-    config = read_conf()
-    selected_config: Union[dict[Any, Any], None] = next(
-        (item for item in config["collections"] if item["id"] == collection_id),
-        None,
-    )
-
+    selected_config = select_config(collection_id)
     query_params = create_session_search_params(selected_config)
 
     return process_session_search(
         request,
         query_params["station"],
         query_params["id"],
-        query_params["platform"],
+        query_params["satellite"],
         query_params["start_date"],
         query_params["stop_date"],
         "items",
@@ -187,18 +153,14 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     Response fully describes the assets, ensuring that all relevant information about the session and its resources is
     available in the final output.
     """
-    config = read_conf()
-    selected_config: Union[dict[Any, Any], None] = next(
-        (item for item in config["collections"] if item["id"] == collection_id),
-        None,
-    )
+    selected_config = select_config(collection_id)
 
     query_params = create_session_search_params(selected_config)
     result = process_session_search(
         request,
         query_params["station"],
         query_params["id"],
-        query_params["platform"],
+        query_params["satellite"],
         query_params["start_date"],
         query_params["stop_date"],
     )
@@ -209,13 +171,13 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
 
 
 # DEPRECATED CODE, WILL BE REMOVED !!!
-def process_files_search(
+def process_files_search(  # pylint: disable=too-many-locals
     datetime: str,
     station: str,
     session_id: str,
     limit=None,
     sortby=None,
-) -> list[dict] | dict:  # pylint: disable=too-many-locals
+) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
@@ -305,7 +267,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
     request,
     station: str,
     id: str,
-    platform=None,
+    satellite=None,
     start_date=None,
     stop_date=None,
     add_assets: Union[bool, str] = True,
@@ -319,7 +281,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
         request (Request): The request object (unused).
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
         id (str, optional): Session identifier(s), comma-separated. Defaults to None.
-        platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
+        satellite (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
         stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
         add_assets (str | bool, optional): Used to set how item assets are formatted.
@@ -333,17 +295,17 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
     session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
-    satellite: Union[List[str], None] = platform.split(",") if platform else None
+    platform: Union[List[str], None] = satellite.split(",") if satellite else None
     time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
 
-    if not (session_id or satellite or (time_interval[0] and time_interval[1])):
+    if not (session_id or platform or (time_interval[0] and time_interval[1])):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     try:
         products = init_cadip_provider(f"{station}_session").search(
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
-            platform=satellite,
+            platform=platform,
             sessions_search=True,
         )
         products = validate_products(products)

@@ -35,20 +35,20 @@ collections:
     station: cadip
     query:
       id: S1A_20240328185208053186
-      platform: S1A
+      satellite: S1A
       limit: 20
 
   - id: cadip_session_by_lists_id_platform
     station: cadip
     query:
       id: S1A_20240328185208053186,S1A_20240328185208053186
-      platform: S1A,S2B
+      satellite: S1A,S2B
       limit: 20
 
   - id: cadip_session_by_platform_list
     station: cadip
     query:
-      platform: S1A, S2B
+      satellite: S1A, S2B
       limit: 20
 
   - id: cadip_session_by_start_stop_platform
@@ -56,7 +56,7 @@ collections:
     query:
       start_date: "2020-02-16T12:00:00Z"
       stop_date: "2023-02-16T12:00:00Z"
-      platform: S1A
+      satellite: S1A
       limit: 20
 
   - id: cadip_session_by_interval
@@ -69,18 +69,18 @@ collections:
   - id: cadip_session_by_satellite
     station: cadip
     query:
-      platform: S1A
+      satellite: S1A
       limit: 2
 
   - id: cadip_session_s2b
     station: cadip
     query:
-      platform: S2B
+      satellite: S2B
 
   - id: cadip_session_incorrect
     station: cadip
     query:
-      platform: incorrect_platform
+      satellite: incorrect_platform
 
   - id: cadip_session_incomplete
     station: cadip
@@ -100,30 +100,44 @@ collections:
   - id: cadip_session_incomplete_platf_no_start
     station: cadip
     query:
-      platform: S1A
+      satellite: S1A
       start_date: "2020-02-16T12:00:00Z"
 
   - id: cadip_session_incorrect_station
     station: incorrect
     query:
-      platform: S1A
+      satellite: S1A
+
+  - id: cadip_valid_auth
+    station: cadip
+    query:
+      limit: 1
 
   ###
+  - id: cadip
+    station: cadip
+    query:
+      limit: 100
   - id: ins
     station: ins
     query:
+      limit: 100
   - id: mps
     station: mps
     query:
+      limit: 100
   - id: mti
     station: mti
     query:
+      limit: 100
   - id: nsg
     station: nsg
     query:
+      limit: 100
   - id: sgs
     station: sgs
     query:
+      limit: 100
   - id: s1_ins
     station: ins
     query: $filter=Satellite in ('S1A', 'S1C')

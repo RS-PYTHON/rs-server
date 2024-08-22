@@ -73,7 +73,7 @@ collections:
   - id: cadip_session_by_satellite
     station: cadip
     query:
-      platform: S1A
+      satellite: S1A, S2B
       limit: 2
   ###
   - id: ins

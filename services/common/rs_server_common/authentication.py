@@ -29,6 +29,7 @@ from asyncache import cached
 from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
+from rs_server_cadip.cadip_utils import select_config
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
 
@@ -191,7 +192,16 @@ def apikey_validator(station, access_type):
             if settings.CLUSTER_MODE:
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 if station == "cadip":
-                    cadip_station = kwargs["station"]  # ins, mps, mti, nsg, sgs, or cadip
+                    if "/cadip/search" == kwargs["request"].url.path:
+                        return func(*args, **kwargs)
+                    # /cadip/search is always allowed ? tbd
+                    if collection_id := kwargs.get("collection_id", None):
+                        conf = select_config(collection_id)
+                        cadip_station = (
+                            conf["station"] if conf else "unknown-cadip-station"
+                        )  # ins, mps, mti, nsg, sgs, or cadip
+                    else:
+                        cadip_station = kwargs["station"]
                     try:
                         full_station = STATIONS_AUTH_LUT[cadip_station.lower()]
                     except KeyError as exception:

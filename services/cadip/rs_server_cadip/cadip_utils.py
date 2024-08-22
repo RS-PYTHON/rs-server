@@ -18,12 +18,50 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
+import os
+import os.path as osp
+from pathlib import Path
 from typing import Dict, List
 
 import eodag
 import starlette.requests
+import yaml
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
+CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
+search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
+
+
+def validate_cadip_config(fp):
+    """Function to validate yaml template, tba. Should we check this?"""
+    accepted_stations = ["cadip", "ins", "mts"]  # pylint: disable=unused-variable
+    accepted_queries = [  # pylint: disable=unused-variable
+        "id",
+        "platform",
+        "datetime",
+        "start_date",
+        "stop_date",
+        "limit",
+        "sortby",
+    ]
+    # Check that yaml content for query and stations (for now) is in accepted list.
+    return fp
+
+
+def read_conf():
+    """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
+    cadip_search_config = validate_cadip_config(os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute())))
+    with open(cadip_search_config, encoding="utf-8") as search_conf:
+        config = yaml.safe_load(search_conf)
+    return config
+
+
+def select_config(configuration_id: str) -> dict | None:
+    """Used to select a specific configuration from yaml file, returns None if not found."""
+    return next(
+        (item for item in read_conf()["collections"] if item["id"] == configuration_id),
+        None,
+    )
 
 
 def rename_keys(product: dict) -> dict:
