@@ -62,7 +62,7 @@ from rs_server_catalog.utils import (
     get_s3_filename_from_asset,
     get_temp_bucket_name,
     is_s3_path,
-    verify_existing_item,
+    verify_existing_item_from_catalog,
 )
 from rs_server_common import settings as common_settings
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
@@ -373,7 +373,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
                 detail="Could not get the user or the name of the collection!",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        verify_existing_item(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
+        verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
 
         files_s3_key = []
         # 1 - update assets href

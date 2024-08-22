@@ -25,7 +25,7 @@ S3_KEY_PATTERN = r"^s3:\/\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.\/]+$"
 s3_pattern = re.compile(S3_KEY_PATTERN)
 
 
-def verify_existing_item(method: str, item: dict, content_id_str: str, user_collection_str: str):
+def verify_existing_item_from_catalog(method: str, item: dict, content_id_str: str, user_collection_str: str):
     """Verify if an exisiting item from the catalog may be created or updated
 
     Args:
