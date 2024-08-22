@@ -14,15 +14,25 @@
 
 info:
   description: |
+
     The Copernicus Space Component Reference System is an open-source software solution allowing to implement,
     maintain, deploy, operate and monitor Sentinel data processing workflows based on the future re-engineered Level
     0, 1, 2 Sentinel Data processors (Q3 2024/2025).
 
-    <a href="https://home.rs-python.eu/">Website</a>
+    ---
+    #### Authentication
 
-    <a href="https://home.rs-python.eu/rs-documentation/">Documentation</a>
+    <a href="/auth/login" target="_blank">Login</a> /
+    <a href="/auth/logout" target="_blank">Logout</a>
 
-    <a href="${RSPY_UAC_HOMEPAGE}">API-Key Manager</a>
+    ---
+    #### Links
+
+    <a href="https://home.rs-python.eu/" target="_blank">Website</a> /
+    <a href="https://home.rs-python.eu/rs-documentation/" target="_blank">Documentation</a> /
+    <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
+
+    ---
 services:
   adgs:
     openapi_url: http://localhost:8001/openapi.json
