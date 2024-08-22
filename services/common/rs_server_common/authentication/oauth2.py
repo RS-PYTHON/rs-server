@@ -16,13 +16,23 @@
 # limitations under the License.
 
 import os
+from typing import Annotated
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from authlib.integrations import starlette_client
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
-from fastapi import APIRouter, FastAPI, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.responses import HTMLResponse
 from rs_server_common.authentication.keycloak_util import KCUtil
+from rs_server_common.utils.utils2 import AuthInfo
 from starlette.config import Config as StarletteConfig
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -33,13 +43,11 @@ from starlette.responses import RedirectResponse
 KEYCLOAK: StarletteOAuth2App = None
 
 # Const values
+AUTH_PREFIX = "/auth"
 LOGIN_FROM_BROWSER = "/login"
 LOGIN_FROM_CONSOLE = "/login_from_console"
 COOKIE_NAME = "user"
-
-# Endpoint prefixes. Should be overriden by the application.
-AUTH_PREFIX = ""
-DOCS_URL_PREFIX = ""
+SWAGGER_HOMEPAGE = "/docs"  # swagger /docs page as called from the cluster
 
 
 class RequiresLoginException(Exception):
@@ -75,7 +83,7 @@ async def login(request: Request):
 
         # If the /login endpoint was called from the browser, redirect to the Swagger UI
         if calling_endpoint.path.rstrip("/") == f"{AUTH_PREFIX}{LOGIN_FROM_BROWSER}":
-            return RedirectResponse(f"{DOCS_URL_PREFIX}{request.app.docs_url}")
+            return RedirectResponse(SWAGGER_HOMEPAGE)
 
         # For other endpoints called from the browser, redirect to this endpoint
         return RedirectResponse(calling_endpoint)
@@ -189,7 +197,15 @@ def get_router(app: FastAPI) -> APIRouter:
         """Send message to the user when they are already logged in from the python console."""
         return await console_logged_message()
 
-    @router.get("/logout")
+    @router.get("/me")
+    async def show_my_information(auth_info: Annotated[AuthInfo, Depends(get_user_info)]):
+        """Show user information."""
+        return {
+            "user_login": auth_info.user_login,
+            "iam_roles": auth_info.iam_roles,
+        }
+
+    @router.get("/logout", include_in_schema=False)
     async def logout(request: Request):
         """Logout the user."""
 
@@ -218,7 +234,7 @@ def get_router(app: FastAPI) -> APIRouter:
 kcutil = KCUtil()
 
 
-async def get_user_info(request: Request) -> tuple[list[str], dict, str]:
+async def get_user_info(request: Request) -> AuthInfo:
     """
     Get user information from the OAuth2 authentication and the KeyCloak server.
 
@@ -235,7 +251,7 @@ async def get_user_info(request: Request) -> tuple[list[str], dict, str]:
         # We can login then redirect to this endpoint, but this is not possible to make redirection from the Swagger.
         # In this case, referer = http://<domain>:<port>/docs
         referer = request.headers.get("referer")
-        if referer and (urlparse(referer).path.rstrip("/") == f"{DOCS_URL_PREFIX}{request.app.docs_url}"):
+        if referer and (urlparse(referer).path.rstrip("/") == SWAGGER_HOMEPAGE):
 
             # login_url = request.url_for("login_from_browser") # doesn't work for all endpoints
             login_url = f"{str(request.base_url).rstrip('/')}{AUTH_PREFIX}{LOGIN_FROM_BROWSER}"
@@ -261,7 +277,7 @@ async def get_user_info(request: Request) -> tuple[list[str], dict, str]:
     if user_info.is_enabled:
 
         # The configuration dict is only set with the API key, not with the OAuth2 authentication.
-        return user_info.roles, {}, user_login
+        return AuthInfo(user_login=user_login, iam_roles=user_info.roles, apikey_config={})
 
     else:
         raise HTTPException(

@@ -32,6 +32,7 @@ from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
 
 # from functools import wraps
+from rs_server_common.utils.utils2 import AuthInfo
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
@@ -51,7 +52,7 @@ See the documentation</a></h3>
 # API key authentication using a header
 APIKEY_AUTH_HEADER = APIKeyHeader(
     name=APIKEY_HEADER,
-    scheme_name="You need an API key to use these endpoints",
+    scheme_name="You can also authenticate with an API key",
     auto_error=False,
     description=APIKEY_DESCRIPTION,
 )
@@ -60,7 +61,7 @@ APIKEY_AUTH_HEADER = APIKeyHeader(
 async def apikey_security(
     request: Request,
     apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",
-) -> tuple[list[str], dict, str] | None:
+) -> AuthInfo | None:
     """
     Check the api key validity, passed as an HTTP header.
 
@@ -68,7 +69,7 @@ async def apikey_security(
         apikey_value (Security): API key passed in HTTP header
 
     Returns:
-        Tuple of (IAM roles, config, user login) information from the keycloak account, associated to the api key.
+        Authentication information from the keycloak account, associated to the api key.
         Or None if no api key is provided.
     """
 
@@ -86,7 +87,7 @@ ttl_cache: TTLCache = TTLCache(maxsize=sys.maxsize, ttl=120)
 
 
 @cached(cache=ttl_cache)
-async def __apikey_security_cached(apikey_value) -> tuple[list[str], dict, str]:
+async def __apikey_security_cached(apikey_value) -> AuthInfo:
     """
     Cached version of apikey_security. Cache an infinite (sys.maxsize) number of results for 120 seconds.
 
@@ -98,7 +99,7 @@ async def __apikey_security_cached(apikey_value) -> tuple[list[str], dict, str]:
         apikey_value (str): The API key value.
 
     Returns:
-        tuple: A tuple containing user IAM roles, configuration data, and user login information.
+        AuthInfo: Authentication information from the keycloak account, associated to the api key.
 
     Raises:
         HTTPException: If there is an error connecting to the UAC manager or if the UAC manager returns an error.
@@ -122,7 +123,11 @@ async def __apikey_security_cached(apikey_value) -> tuple[list[str], dict, str]:
     if response.is_success:
         contents = response.json()
         # Note: for now, config is an empty dict
-        return contents["iam_roles"], contents["config"], contents["user_login"]
+        return AuthInfo(
+            user_login=contents["user_login"],
+            iam_roles=contents["iam_roles"],
+            apikey_config=contents["config"],
+        )
 
     # Try to read the response detail or error
     try:

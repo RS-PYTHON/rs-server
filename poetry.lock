@@ -54,6 +54,17 @@ files = [
 ]
 
 [[package]]
+name = "async-property"
+version = "0.2.2"
+description = "Python decorator for async properties."
+optional = false
+python-versions = "*"
+files = [
+    {file = "async_property-0.2.2-py2.py3-none-any.whl", hash = "sha256:8924d792b5843994537f8ed411165700b27b2bd966cefc4daeefc1253442a9d7"},
+    {file = "async_property-0.2.2.tar.gz", hash = "sha256:17d9bd6ca67e27915a75d92549df64b5c7174e9dc806b30a3934dc4ff0506380"},
+]
+
+[[package]]
 name = "asyncache"
 version = "0.3.1"
 description = "Helpers to use cachetools with async code."
@@ -629,6 +640,20 @@ wrapt = ">=1.10,<2"
 dev = ["PyTest", "PyTest-Cov", "bump2version (<1)", "sphinx (<2)", "tox"]
 
 [[package]]
+name = "deprecation"
+version = "2.1.0"
+description = "A library to handle automated deprecations"
+optional = false
+python-versions = "*"
+files = [
+    {file = "deprecation-2.1.0-py2.py3-none-any.whl", hash = "sha256:a10811591210e1fb0e768a8c25517cabeabcba6f0bf96564f8ff45189f90b14a"},
+    {file = "deprecation-2.1.0.tar.gz", hash = "sha256:72b3bde64e5d778694b0cf68178aed03d15e15477116add3fb773e581f9518ff"},
+]
+
+[package.dependencies]
+packaging = "*"
+
+[[package]]
 name = "dill"
 version = "0.3.8"
 description = "serialize all of Python"
@@ -1190,6 +1215,21 @@ ply = "*"
 six = "*"
 
 [[package]]
+name = "jwcrypto"
+version = "1.5.6"
+description = "Implementation of JOSE Web standards"
+optional = false
+python-versions = ">= 3.8"
+files = [
+    {file = "jwcrypto-1.5.6-py3-none-any.whl", hash = "sha256:150d2b0ebbdb8f40b77f543fb44ffd2baeff48788be71f67f03566692fd55789"},
+    {file = "jwcrypto-1.5.6.tar.gz", hash = "sha256:771a87762a0c081ae6166958a954f80848820b2ab066937dc8b8379d65b1b039"},
+]
+
+[package.dependencies]
+cryptography = ">=3.4"
+typing-extensions = ">=4.5.0"
+
+[[package]]
 name = "lxml"
 version = "5.3.0"
 description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
@@ -1453,13 +1493,13 @@ files = [
 
 [[package]]
 name = "marshmallow"
-version = "3.21.3"
+version = "3.22.0"
 description = "A lightweight library for converting complex datatypes to and from native Python datatypes."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "marshmallow-3.21.3-py3-none-any.whl", hash = "sha256:86ce7fb914aa865001a4b2092c4c2872d13bc347f3d42673272cabfdbad386f1"},
-    {file = "marshmallow-3.21.3.tar.gz", hash = "sha256:4f57c5e050a54d66361e826f94fba213eb10b67b2fdb02c3e0343ce207ba1662"},
+    {file = "marshmallow-3.22.0-py3-none-any.whl", hash = "sha256:71a2dce49ef901c3f97ed296ae5051135fd3febd2bf43afe0ae9a82143a494d9"},
+    {file = "marshmallow-3.22.0.tar.gz", hash = "sha256:4972f529104a220bb8637d595aa4c9762afbe7f7a77d82dc58c1615d70c5823e"},
 ]
 
 [package.dependencies]
@@ -1467,7 +1507,7 @@ packaging = ">=17.0"
 
 [package.extras]
 dev = ["marshmallow[tests]", "pre-commit (>=3.5,<4.0)", "tox"]
-docs = ["alabaster (==0.7.16)", "autodocsumm (==0.2.12)", "sphinx (==7.3.7)", "sphinx-issues (==4.1.0)", "sphinx-version-warning (==1.1.2)"]
+docs = ["alabaster (==1.0.0)", "autodocsumm (==0.2.13)", "sphinx (==8.0.2)", "sphinx-issues (==4.1.0)", "sphinx-version-warning (==1.1.2)"]
 tests = ["pytest", "pytz", "simplejson"]
 
 [[package]]
@@ -2554,6 +2594,25 @@ files = [
 cli = ["click (>=5.0)"]
 
 [[package]]
+name = "python-keycloak"
+version = "4.3.0"
+description = "python-keycloak is a Python package providing access to the Keycloak API."
+optional = false
+python-versions = "<4.0,>=3.8"
+files = [
+    {file = "python_keycloak-4.3.0-py3-none-any.whl", hash = "sha256:6dc1e89c38346a90bb4386850381d84fedb489a7dea19d561aaad5882ceeed72"},
+    {file = "python_keycloak-4.3.0.tar.gz", hash = "sha256:c187ceee7d79f0d76d9c2ed26e3d10ce35e42a407896bf5ec15b8fb24fc0c9ce"},
+]
+
+[package.dependencies]
+async-property = ">=0.2.2"
+deprecation = ">=2.1.0"
+httpx = ">=0.23.2"
+jwcrypto = ">=1.5.4"
+requests = ">=2.20.0"
+requests-toolbelt = ">=0.6.0"
+
+[[package]]
 name = "python-logging-loki"
 version = "0.3.1"
 description = "Python logging handler for Grafana Loki."
@@ -2652,6 +2711,20 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
+name = "requests-toolbelt"
+version = "1.0.0"
+description = "A utility belt for advanced users of python-requests"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+files = [
+    {file = "requests-toolbelt-1.0.0.tar.gz", hash = "sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6"},
+    {file = "requests_toolbelt-1.0.0-py2.py3-none-any.whl", hash = "sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06"},
+]
+
+[package.dependencies]
+requests = ">=2.0.1,<3.0.0"
+
+[[package]]
 name = "responses"
 version = "0.25.3"
 description = "A utility library for mocking out the `requests` Python library."
@@ -2701,7 +2774,7 @@ jupyter = ["ipywidgets (>=7.5.1,<9)"]
 
 [[package]]
 name = "rs-server-adgs"
-version = "0.2a2.post146.dev0+cf72b19"
+version = "0.2a2.post148.dev0+b9b8c8c"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2717,7 +2790,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "0.2a2.post146.dev0+cf72b19"
+version = "0.2a2.post148.dev0+b9b8c8c"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2733,7 +2806,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-common"
-version = "0.2a2.post146.dev0+cf72b19"
+version = "0.2a2.post141.dev0+3d31e6c"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2742,6 +2815,7 @@ develop = true
 
 [package.dependencies]
 asyncache = "^0.3.1"
+authlib = "^1.3.1"
 boto3 = "==1.28.85"
 botocore = "==1.31.85"
 cachetools = "^5.5.0"
@@ -2759,6 +2833,7 @@ orjson = [
 psycopg2 = "^2.9.9"
 pydantic = ">=2.0.0"
 python-dotenv = "^1.0.0"
+python-keycloak = "^4.3.0"
 python-logging-loki = "^0.3.1"
 sqlalchemy = "^2.0.32"
 uvicorn = "^0.30.6"
@@ -2769,7 +2844,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "0.2a2.post146.dev0+cf72b19"
+version = "0.2a2.post148.dev0+b9b8c8c"
 description = ""
 optional = false
 python-versions = "^3.11"
@@ -2916,13 +2991,13 @@ spdx = ["spdx-tools (>=0.8.2)"]
 
 [[package]]
 name = "safety-schemas"
-version = "0.0.3"
+version = "0.0.4"
 description = "Schemas for Safety tools"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "safety_schemas-0.0.3-py3-none-any.whl", hash = "sha256:05b59d3973765911c64541ac6b5aca16418d56c1f043d983a5450ea265916061"},
-    {file = "safety_schemas-0.0.3.tar.gz", hash = "sha256:b39554f9c010e4f11f7c9e5773eb31d2c96c164f7a595c273a98b074d0fb98f4"},
+    {file = "safety_schemas-0.0.4-py3-none-any.whl", hash = "sha256:b8b93e447bbffe62e4bd4364877f8ac0dc9688056911b2618d6f48773f9c9011"},
+    {file = "safety_schemas-0.0.4.tar.gz", hash = "sha256:5ec6a8e2a80620a829a9d236165cce9d9e864b0345345d1fc983397eb5d2ac65"},
 ]
 
 [package.dependencies]
@@ -2934,13 +3009,13 @@ typing-extensions = ">=4.7.1"
 
 [[package]]
 name = "setuptools"
-version = "73.0.0"
+version = "73.0.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "setuptools-73.0.0-py3-none-any.whl", hash = "sha256:f2bfcce7ae1784d90b04c57c2802e8649e1976530bb25dc72c2b078d3ecf4864"},
-    {file = "setuptools-73.0.0.tar.gz", hash = "sha256:3c08705fadfc8c7c445cf4d98078f0fafb9225775b2b4e8447e40348f82597c0"},
+    {file = "setuptools-73.0.1-py3-none-any.whl", hash = "sha256:b208925fcb9f7af924ed2dc04708ea89791e24bde0d3020b27df0e116088b34e"},
+    {file = "setuptools-73.0.1.tar.gz", hash = "sha256:d59a3e788ab7e012ab2c4baed1b376da6366883ee20d7a5fc426816e3d7b1193"},
 ]
 
 [package.extras]
@@ -3477,13 +3552,13 @@ test = ["covdefaults (>=2.3)", "coverage (>=7.2.7)", "coverage-enable-subprocess
 
 [[package]]
 name = "werkzeug"
-version = "3.0.3"
+version = "3.0.4"
 description = "The comprehensive WSGI web application library."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "werkzeug-3.0.3-py3-none-any.whl", hash = "sha256:fc9645dc43e03e4d630d23143a04a7f947a9a3b5727cd535fdfe155a17cc48c8"},
-    {file = "werkzeug-3.0.3.tar.gz", hash = "sha256:097e5bfda9f0aba8da6b8545146def481d06aa7d3266e7448e2cccf67dd8bd18"},
+    {file = "werkzeug-3.0.4-py3-none-any.whl", hash = "sha256:02c9eb92b7d6c06f31a782811505d2157837cea66aaede3e217c7c27c039476c"},
+    {file = "werkzeug-3.0.4.tar.gz", hash = "sha256:34f2371506b250df4d4f84bfe7b0921e4762525762bbd936614909fe25cd7306"},
 ]
 
 [package.dependencies]

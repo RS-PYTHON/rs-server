@@ -24,6 +24,7 @@ from rs_server_common import settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
 from rs_server_common.authentication.oauth2 import get_user_info
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import AuthInfo
 
 logger = Logging.default(__name__)
 
@@ -42,7 +43,7 @@ STATIONS_AUTH_LUT = {
 async def authenticate(
     request: Request,
     apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",
-) -> tuple[list[str], dict, str]:
+) -> AuthInfo:
     """
     FastAPI Security dependency for the cluster mode. Check the api key validity, passed as an HTTP header,
     or that the user is authenticated with oauth2 (keycloak).
@@ -56,20 +57,18 @@ async def authenticate(
     """
 
     # Try to authenticate with the api key value
-    ret = await apikey_security(request, apikey_value)
-    if ret is not None:
-        return ret
+    auth_info = await apikey_security(request, apikey_value)
+    if auth_info is not None:
+        return auth_info
 
     # Try to authenticate with oauth2
-    ret = await get_user_info(request)
+    auth_info = await get_user_info(request)
 
     # Save information in the request state and return it
-    auth_roles, auth_config, user_login = ret
-    request.state.auth_roles = auth_roles
-    request.state.auth_config = auth_config
-    request.state.user_login = user_login
-
-    return auth_roles, auth_config, user_login
+    request.state.auth_roles = auth_info.iam_roles
+    request.state.auth_config = auth_info.apikey_config
+    request.state.user_login = auth_info.user_login
+    return auth_info
 
 
 def auth_validator(station, access_type):

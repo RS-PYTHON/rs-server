@@ -35,10 +35,10 @@ from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalog
-from rs_server_catalog.utils import AUTH_PREFIX
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
+from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
@@ -354,10 +354,6 @@ app.openapi = extract_openapi_specification
 
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:
-
-    # Override configuration
-    oauth2.AUTH_PREFIX = AUTH_PREFIX
-    oauth2.DOCS_URL_PREFIX = "/catalog"
 
     # Existing middlewares
     middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]

@@ -18,7 +18,7 @@ import getpass
 import re
 from typing import Tuple
 
-from rs_server_catalog.utils import AUTH_PREFIX
+from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"/catalog/collections"
@@ -82,7 +82,7 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     if "/health" in path:
         return "/health", ids_dict
 
-    # Remove the /auth prefix
+    # Authentication endpoints
     if path.startswith(f"{AUTH_PREFIX}/"):
         return path, ids_dict
 
