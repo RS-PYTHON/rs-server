@@ -22,7 +22,7 @@ info:
     ---
     #### Authentication
 
-    <a href="/auth/login" target="_blank">Login</a> /
+    <a href="/auth/login" target="_self">Login</a> /
     <a href="/auth/logout" target="_blank">Logout</a>
 
     ---

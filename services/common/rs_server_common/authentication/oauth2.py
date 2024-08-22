@@ -51,9 +51,9 @@ COOKIE_NAME = "user"
 SWAGGER_HOMEPAGE = "/docs"  # swagger /docs page as called from the cluster
 
 
-class RequiresLoginException(Exception):
+class LoginAndRedirect(Exception):
     """
-    Used to call the login method and redirect.
+    Used to call the login endpoint and redirect to the calling endpoint.
     See https://github.com/fastapi/fastapi/discussions/7817#discussioncomment-5144391
     """
 
@@ -178,9 +178,9 @@ def get_router(app: FastAPI) -> APIRouter:
         },
     )
 
-    @app.exception_handler(RequiresLoginException)
-    async def exception_handler(request: Request, exc: RequiresLoginException) -> Response:
-        """Used to call the login method and redirect."""
+    @app.exception_handler(LoginAndRedirect)
+    async def login_and_redirect(request: Request, exc: LoginAndRedirect) -> Response:
+        """Used to call the login endpoint and redirect to the calling endpoint."""
         return await login(request)
 
     @router.get(LOGIN_FROM_BROWSER, include_in_schema=False)
@@ -242,6 +242,7 @@ async def get_user_info(request: Request) -> AuthInfo:
 
     Args:
         request (Request): HTTP request
+        is_endpoint_dependency (bool): is this function called as an endpoint dependency ?
 
     Returns:
         tuple: A tuple containing user IAM roles, configuration data, and user login information.
@@ -263,10 +264,10 @@ async def get_user_info(request: Request) -> AuthInfo:
                 f"You must first login by calling this URL in your browser: {login_url}",
             )
 
+        # Login and redirect to the calling endpoint.
         # Let's hope that the caller called from a browser (can we detect this ?) and not a python console
         # or the redirections won't work.
-        # Raising this exception will call the login method and redirect.
-        raise RequiresLoginException
+        raise LoginAndRedirect
 
     # Read the user ID and name from the cookie = from the OAuth2 authentication process
     user_id = user.get("sub")

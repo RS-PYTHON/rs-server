@@ -38,7 +38,7 @@ from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX
+from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
@@ -276,11 +276,16 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
             and request.url.path != "/catalog/api.html"
         ):
 
-            # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
-            await authentication.authenticate(
-                request=request,
-                apikey_value=request.headers.get(APIKEY_HEADER, None),
-            )
+            try:
+                # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
+                await authentication.authenticate(
+                    request=request,
+                    apikey_value=request.headers.get(APIKEY_HEADER, None),
+                )
+
+            # Login and redirect to the calling endpoint.
+            except LoginAndRedirect:
+                return await oauth2.login(request)
 
         # Call the next middleware
         return await call_next(request)
