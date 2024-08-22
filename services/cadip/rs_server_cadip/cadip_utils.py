@@ -34,8 +34,8 @@ search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 def validate_cadip_config(fp):
     """Function to validate yaml template, tba. Should we check this?"""
-    accepted_stations = ["cadip", "ins", "mts"]  # pylint: disable=unused-variable
-    accepted_queries = [  # pylint: disable=unused-variable
+    accepted_stations = ["cadip", "ins", "mts"]  # pylint: disable=unused-variable # noqa
+    accepted_queries = [  # pylint: disable=unused-variable # noqa
         "id",
         "platform",
         "datetime",

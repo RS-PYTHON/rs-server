@@ -18,6 +18,7 @@ Authentication functions implementation.
 Note: calls https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manager
 """
 
+import os
 import sys
 import traceback
 from functools import wraps
@@ -25,11 +26,11 @@ from os import environ as env
 from typing import Annotated
 
 import httpx
+import yaml
 from asyncache import cached
 from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
-from rs_server_cadip.cadip_utils import select_config
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
 
@@ -196,7 +197,15 @@ def apikey_validator(station, access_type):
                         return func(*args, **kwargs)
                     # /cadip/search is always allowed ? tbd
                     if collection_id := kwargs.get("collection_id", None):
-                        conf = select_config(collection_id)
+                        with open(
+                            os.environ.get("RSPY_CADIP_SEARCH_CONFIG"),  # type: ignore
+                            encoding="utf-8",
+                        ) as search:
+                            config = yaml.safe_load(search)
+                        conf = next(
+                            (item for item in config["collections"] if item["id"] == collection_id),
+                            None,
+                        )
                         cadip_station = (
                             conf["station"] if conf else "unknown-cadip-station"
                         )  # ins, mps, mti, nsg, sgs, or cadip
