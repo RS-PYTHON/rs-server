@@ -105,6 +105,8 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
 
 def is_s3_path(s3_key):
     """Function to check if a string matches the S3 pattern"""
+    if not isinstance(s3_key, str):
+        return False
     return bool(s3_pattern.match(s3_key))
 
 

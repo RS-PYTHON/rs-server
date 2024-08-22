@@ -102,7 +102,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         self.s3_handler: S3StorageHandler = None
         self.request_ids: dict[Any, Any] = {}
         self.client = client
-        self.s3_keys_to_be_deleted = [str]
+        self.s3_keys_to_be_deleted: list[str] = []
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
