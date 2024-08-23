@@ -70,7 +70,7 @@ class KCUtil:
         try:
             kadm = self.keycloak_admin
             user = kadm.get_user(user_id)
-            iam_roles = [role["name"] for role in kadm.get_composite_realm_roles_of_user(user_id)]
+            iam_roles = sorted([role["name"] for role in kadm.get_composite_realm_roles_of_user(user_id)])
             return KCInfo(user["enabled"], iam_roles)
 
         except KeycloakGetError as error:

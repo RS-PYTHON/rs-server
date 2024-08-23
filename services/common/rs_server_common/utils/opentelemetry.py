@@ -91,7 +91,10 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
     for _, module_str, _ in pkgutil.walk_packages(path=package.__path__, prefix=prefix, onerror=None):
 
         # Don't instrument these modules, they have errors, maybe we should see why
-        if module_str in ["opentelemetry.instrumentation.tortoiseorm"]:
+        if module_str in [
+            "opentelemetry.instrumentation.tortoiseorm",
+            "opentelemetry.instrumentation.auto_instrumentation.sitecustomize",
+        ]:
             continue
 
         # Import and find all module classes
