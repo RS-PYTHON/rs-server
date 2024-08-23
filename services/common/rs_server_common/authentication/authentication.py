@@ -58,11 +58,16 @@ async def authenticate(
 
     # Try to authenticate with the api key value
     auth_info = await apikey_security(request, apikey_value)
-    if auth_info is not None:
-        return auth_info
 
-    # Try to authenticate with oauth2
-    auth_info = await get_user_info(request)
+    # Else try to authenticate with oauth2
+    if not auth_info:
+        auth_info = await get_user_info(request)
+
+    if not auth_info:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
 
     # Save information in the request state and return it
     request.state.auth_roles = auth_info.iam_roles
