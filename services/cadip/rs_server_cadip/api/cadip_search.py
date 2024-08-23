@@ -160,10 +160,9 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     result = process_session_search(
         request,
         query_params["station"],
-        query_params["id"],
-        query_params["satellite"],
-        query_params["start_date"],
-        query_params["stop_date"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
     )
     return next(
         (item for item in result["features"] if item["id"] == session_id),
