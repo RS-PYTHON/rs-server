@@ -38,8 +38,8 @@ orjson = [ # we need the same markers and versions as in eodag: https://github.c
     {version = "<3.10.0", markers = "python_version>='3.12' and platform_system=='Windows'"},
     {version = "^3.10", markers = "python_version<'3.12' or platform_system!='Windows'"},
 ]
-opentelemetry-distro = "^0.46b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-exporter-otlp = "^1.25.0"
+opentelemetry-distro = "^0.47b0" # then run 'poetry run opentelemetry-bootstrap -a install'
+opentelemetry-exporter-otlp = "^1.26.0"
 python-logging-loki = "^0.3.1"
 authlib = "^1.3.1"
 python-keycloak = "^4.3.0"
