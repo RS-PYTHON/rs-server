@@ -32,25 +32,9 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-def validate_cadip_config(fp):
-    """Function to validate yaml template, tba. Should we check this?"""
-    accepted_stations = ["cadip", "ins", "mts"]  # pylint: disable=unused-variable # noqa
-    accepted_queries = [  # pylint: disable=unused-variable # noqa
-        "id",
-        "platform",
-        "datetime",
-        "start_date",
-        "stop_date",
-        "limit",
-        "sortby",
-    ]
-    # Check that yaml content for query and stations (for now) is in accepted list.
-    return fp
-
-
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
-    cadip_search_config = validate_cadip_config(os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute())))
+    cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
     with open(cadip_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
     return config
