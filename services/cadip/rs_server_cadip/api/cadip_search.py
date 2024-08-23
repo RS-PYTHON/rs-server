@@ -21,11 +21,13 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-from typing import Any, List, Union
+from typing import Annotated, Any, List, Union
 
 import requests
 import sqlalchemy
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException
+from fastapi import Path as FPath
+from fastapi import Query, Request, status
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
@@ -170,7 +172,174 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     )
 
 
+def process_session_search(  # pylint: disable=too-many-arguments, too-many-locals
+    request,
+    station: str,
+    id: str,
+    satellite=None,
+    start_date=None,
+    stop_date=None,
+    add_assets: Union[bool, str] = True,
+):
+    """Function to process and to retrieve a list of sessions from any CADIP station.
+
+    A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
+    (*start_date* and *stop_date* correctly defined).
+
+    Args:
+        request (Request): The request object (unused).
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        id (str, optional): Session identifier(s), comma-separated. Defaults to None.
+        satellite (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
+        start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
+        stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
+        add_assets (str | bool, optional): Used to set how item assets are formatted.
+
+    Returns:
+        dict (dict): A STAC Feature Collection of the sessions.
+
+    Raises:
+        HTTPException (fastapi.exceptions): If search parameters are missing.
+        HTTPException (fastapi.exceptions): If there is a JSON mapping error.
+        HTTPException (fastapi.exceptions): If there is a value error during mapping.
+    """
+    session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
+    platform: Union[List[str], None] = satellite.split(",") if satellite else None
+    time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
+
+    if not (session_id or platform or (time_interval[0] and time_interval[1])):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
+
+    try:
+        products = init_cadip_provider(f"{station}_session").search(
+            TimeRange(*time_interval),
+            id=session_id,  # pylint: disable=redefined-builtin
+            platform=platform,
+            sessions_search=True,
+        )
+        products = validate_products(products)
+        sessions_products = from_session_expand_to_dag_serializer(products)
+        # write_search_products_to_db(CadipDownloadStatus, sessions_products)
+        feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
+        stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
+        expanded_session_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
+        with (
+            open(feature_template_path, encoding="utf-8") as template,
+            open(stac_mapper_path, encoding="utf-8") as stac_map,
+            open(expanded_session_mapper_path, encoding="utf-8") as expanded_session_mapper,
+        ):
+            feature_template = json.loads(template.read())
+            stac_mapper = json.loads(stac_map.read())
+            expanded_session_mapper = json.loads(expanded_session_mapper.read())
+            match add_assets:
+                case "collection":
+                    return create_collection(products)
+                case "items":
+                    return create_stac_collection(products, feature_template, stac_mapper)
+                case True:
+                    cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
+                    return from_session_expand_to_assets_serializer(
+                        cadip_sessions_collection,
+                        sessions_products,
+                        expanded_session_mapper,
+                        request,
+                    )
+                case "_":
+                    return create_collection(products)
+    # except [OSError, FileNotFoundError] as exception:
+    #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
+    except json.JSONDecodeError as exception:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"JSON Map Error: {exception}",
+        ) from exception
+    except ValueError as exception:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unable to map OData to STAC.",
+        ) from exception
+
+
+######################################
 # DEPRECATED CODE, WILL BE REMOVED !!!
+######################################
+@router.get("/cadip/{station}/cadu/search")
+@apikey_validator(station="cadip", access_type="read")
+def search_products(  # pylint: disable=too-many-locals, too-many-arguments
+    request: Request,  # pylint: disable=unused-argument
+    datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
+    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    session_id: Annotated[str, Query(description="Session from which file belong")] = "",
+    limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
+    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
+) -> list[dict] | dict:
+    """Endpoint to retrieve a list of products from the CADU system for a specified station.
+
+    This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
+    writes the search results to the database, and generates a STAC Feature Collection from the products.
+
+    Args:
+        request (Request): The request object (unused).
+        datetime (str): Time interval in ISO 8601 format.
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        session_id (str): Session from which file belong.
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
+
+    Returns:
+        list[dict] | dict: A list of STAC Feature Collections or an error message.
+                           If no products are found in the specified time range, returns an empty list.
+
+    Raises:
+        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
+        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
+        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
+        HTTPException (fastapi.exceptions): If there is a connection error to the station.
+        HTTPException (fastapi.exceptions): If there is a general failure during the process.
+    """
+    return process_files_search(datetime, station, session_id, limit, sortby)
+
+
+@router.get("/cadip/{station}/session")
+@apikey_validator(station="cadip", access_type="read")
+def search_session(
+    request: Request,  # pylint: disable=unused-argument
+    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    id: Annotated[
+        Union[str, None],
+        Query(
+            description='Session identifier eg: "S1A_20200105072204051312" or '
+            '"S1A_20200105072204051312, S1A_20220715090550123456"',
+        ),
+    ] = None,
+    platform: Annotated[Union[str, None], Query(description='Satellite identifier eg: "S1A" or "S1A, S1B"')] = None,
+    start_date: Annotated[Union[str, None], Query(description='Start time e.g. "2024-01-01T00:00:00Z"')] = None,
+    stop_date: Annotated[Union[str, None], Query(description='Stop time e.g. "2024-01-01T00:00:00Z"')] = None,
+):  # pylint: disable=too-many-arguments, too-many-locals
+    """Endpoint to retrieve a list of sessions from any CADIP station.
+
+    A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
+    (*start_date* and *stop_date* correctly defined).
+
+    Args:
+        request (Request): The request object (unused).
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        id (str, optional): Session identifier(s), comma-separated. Defaults to None.
+        platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
+        start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
+        stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
+
+    Returns:
+        dict (dict): A STAC Feature Collection of the sessions.
+
+    Raises:
+        HTTPException (fastapi.exceptions): If search parameters are missing.
+        HTTPException (fastapi.exceptions): If there is a JSON mapping error.
+        HTTPException (fastapi.exceptions): If there is a value error during mapping.
+    """
+    return process_session_search(request, station, id, platform, start_date, stop_date)  # type: ignore
+
+
 def process_files_search(  # pylint: disable=too-many-locals
     datetime: str,
     station: str,
@@ -260,92 +429,4 @@ def process_files_search(  # pylint: disable=too-many-locals
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",
-        ) from exception
-
-
-def process_session_search(  # pylint: disable=too-many-arguments, too-many-locals
-    request,
-    station: str,
-    id: str,
-    satellite=None,
-    start_date=None,
-    stop_date=None,
-    add_assets: Union[bool, str] = True,
-):
-    """Function to process and to retrieve a list of sessions from any CADIP station.
-
-    A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
-    (*start_date* and *stop_date* correctly defined).
-
-    Args:
-        request (Request): The request object (unused).
-        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        id (str, optional): Session identifier(s), comma-separated. Defaults to None.
-        satellite (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
-        start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
-        stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
-        add_assets (str | bool, optional): Used to set how item assets are formatted.
-
-    Returns:
-        dict (dict): A STAC Feature Collection of the sessions.
-
-    Raises:
-        HTTPException (fastapi.exceptions): If search parameters are missing.
-        HTTPException (fastapi.exceptions): If there is a JSON mapping error.
-        HTTPException (fastapi.exceptions): If there is a value error during mapping.
-    """
-    session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
-    platform: Union[List[str], None] = satellite.split(",") if satellite else None
-    time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
-
-    if not (session_id or platform or (time_interval[0] and time_interval[1])):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
-
-    try:
-        products = init_cadip_provider(f"{station}_session").search(
-            TimeRange(*time_interval),
-            id=session_id,  # pylint: disable=redefined-builtin
-            platform=platform,
-            sessions_search=True,
-        )
-        products = validate_products(products)
-        sessions_products = from_session_expand_to_dag_serializer(products)
-        # write_search_products_to_db(CadipDownloadStatus, sessions_products)
-        feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
-        stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
-        expanded_session_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
-        with (
-            open(feature_template_path, encoding="utf-8") as template,
-            open(stac_mapper_path, encoding="utf-8") as stac_map,
-            open(expanded_session_mapper_path, encoding="utf-8") as expanded_session_mapper,
-        ):
-            feature_template = json.loads(template.read())
-            stac_mapper = json.loads(stac_map.read())
-            expanded_session_mapper = json.loads(expanded_session_mapper.read())
-            match add_assets:
-                case "collection":
-                    return create_collection(products)
-                case "items":
-                    return create_stac_collection(products, feature_template, stac_mapper)
-                case True:
-                    cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
-                    return from_session_expand_to_assets_serializer(
-                        cadip_sessions_collection,
-                        sessions_products,
-                        expanded_session_mapper,
-                        request,
-                    )
-                case "_":
-                    return create_collection(products)
-    # except [OSError, FileNotFoundError] as exception:
-    #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
-    except json.JSONDecodeError as exception:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"JSON Map Error: {exception}",
-        ) from exception
-    except ValueError as exception:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Unable to map OData to STAC.",
         ) from exception
