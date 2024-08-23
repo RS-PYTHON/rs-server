@@ -37,6 +37,7 @@ from rs_server_cadip.cadip_utils import (
     select_config,
     validate_products,
 )
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
@@ -45,6 +46,7 @@ from rs_server_common.utils.utils import (
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
+    write_search_products_to_db
 )
 
 router = APIRouter(tags=cadip_tags)
@@ -219,7 +221,6 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
         )
         products = validate_products(products)
         sessions_products = from_session_expand_to_dag_serializer(products)
-        # write_search_products_to_db(CadipDownloadStatus, sessions_products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
         expanded_session_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
@@ -297,7 +298,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    return process_files_search(datetime, station, session_id, limit, sortby)
+    return process_files_search(datetime, station, session_id, limit, sortby, deprecated=True)
 
 
 @router.get("/cadip/{station}/session")
@@ -346,6 +347,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     session_id: str,
     limit=None,
     sortby=None,
+    **kwargs
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 
@@ -388,7 +390,8 @@ def process_files_search(  # pylint: disable=too-many-locals
             id=session,
             items_per_page=limit,
         )
-        # write_search_products_to_db(CadipDownloadStatus, products)
+        if kwargs.get("deprecated", False):
+            write_search_products_to_db(CadipDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
         with (
