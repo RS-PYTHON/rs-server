@@ -21,6 +21,7 @@ import responses
 import sqlalchemy
 from fastapi import HTTPException, status
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
@@ -37,33 +38,33 @@ from .conftest import (  # pylint: disable=no-name-in-module
 @pytest.mark.parametrize(
     "endpoint, db_handler, expected_feature, fields_to_sort",
     [
-        # (
-        #     "/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
-        #     CadipDownloadStatus,
-        #     {
-        #         "stac_version": "1.0.0",
-        #         "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
-        #         "type": "Feature",
-        #         "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-        #         "geometry": None,
-        #         "properties": {
-        #             "created": "2021-02-16T12:00:00.000Z",
-        #             "datetime": "1970-01-01T12:00:00.000Z",
-        #             "start_datetime": "1970-01-01T12:00:00.000Z",
-        #             "end_datetime": "1970-01-01T12:00:00.000Z",
-        #             "eviction_datetime": "eviction_date_test_value",
-        #             "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
-        #             "cadip:retransfer": False,
-        #             "cadip:final_block": True,
-        #             "cadip:block_number": "BlockNumber_test_value",
-        #             "cadip:channel": "Channel_test_value",
-        #             "cadip:session_id": "session_id1",
-        #         },
-        #         "links": [],
-        #         "assets": {"file": {"file:size": "size_test_value"}},
-        #     },
-        #     ["datetime", "cadip:id"],
-        # ),
+        (
+            "/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
+            CadipDownloadStatus,
+            {
+                "stac_version": "1.0.0",
+                "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+                "type": "Feature",
+                "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
+                "geometry": None,
+                "properties": {
+                    "created": "2021-02-16T12:00:00.000Z",
+                    "datetime": "1970-01-01T12:00:00.000Z",
+                    "start_datetime": "1970-01-01T12:00:00.000Z",
+                    "end_datetime": "1970-01-01T12:00:00.000Z",
+                    "eviction_datetime": "eviction_date_test_value",
+                    "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
+                    "cadip:retransfer": False,
+                    "cadip:final_block": True,
+                    "cadip:block_number": "BlockNumber_test_value",
+                    "cadip:channel": "Channel_test_value",
+                    "cadip:session_id": "session_id1",
+                },
+                "links": [],
+                "assets": {"file": {"file:size": "size_test_value"}},
+            },
+            ["datetime", "cadip:id"],
+        ),
         (
             "/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z",
             AdgsDownloadStatus,
@@ -156,7 +157,7 @@ def test_valid_endpoint_request_list(
 @pytest.mark.parametrize(
     "station, endpoint, start, stop",
     [
-        # ("CADIP", "/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
+        ("CADIP", "/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
         ("AUX", "/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
@@ -198,8 +199,8 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
 @pytest.mark.parametrize(
     "endpoint, start_date, stop_date",
     [
-        # ("/cadip/CADIP/cadu/search", "2014-01-01", "2023-12-30T12:00:00Z"),
-        # ("/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2025-12"),
+        ("/cadip/CADIP/cadu/search", "2014-01-01", "2023-12-30T12:00:00Z"),
+        ("/cadip/CADIP/cadu/search", "2023-01-01T12:00:00Z", "2025-12"),
         ("/adgs/aux/search", "2014-01-01", "2023-12-30T12:00:00Z"),
         ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2025-12"),
     ],
@@ -248,7 +249,7 @@ def test_invalid_endpoint_param_station(client):
 @pytest.mark.parametrize(
     "endpoint, start, stop",
     [
-        # ("/cadip/CADIP/cadu/search", "2014-01-01T12:00:00Z", "2023-12-30T12:00:00Z"),
+        ("/cadip/CADIP/cadu/search", "2014-01-01T12:00:00Z", "2023-12-30T12:00:00Z"),
         ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
@@ -297,7 +298,7 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
 @pytest.mark.parametrize(
     "endpoint, db_handler, limit",
     [
-        # ("/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", CadipDownloadStatus, 3),
+        ("/cadip/CADIP/cadu/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", CadipDownloadStatus, 3),
         ("/adgs/aux/search?datetime=2014-01-01T12:00:00Z/2023-12-30T12:00:00Z", AdgsDownloadStatus, 1),
     ],
 )

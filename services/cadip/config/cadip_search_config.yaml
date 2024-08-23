@@ -57,24 +57,23 @@ collections:
   - id: interval_cadip
     station: cadip
     query:
-      datetime: 1940-03-10T12:00:00Z/2024-01-01T12:00:00Z
-      limit: 2
+      PublicationDate: 1940-03-10T12:00:00Z/2024-01-01T12:00:00Z
+      top: 2
   - id: cadip_session_by_id
     station: cadip
     query:
-      id: S1A_20231120061537234567
-      limit: 2
-  - id: cadip_session_by_interval
-    station: cadip
-    query:
-      start_date: "2014-02-16T12:00:00Z"
-      stop_date: "2024-02-16T12:00:00Z"
-      limit: 2
+      SessionId: S1A_20231120061537234567
+      top: 2
   - id: cadip_session_by_satellite
     station: cadip
     query:
-      satellite: S1A, S2B
+      Satellite: S1A, S2B
       limit: 2
+  - id: cadip_session_incomplete_platf_no_start
+    station: cadip
+    query:
+      Satellite: S1A
+      PublicationDate: "invalid_stop/2020-02-16T12:00:00Z"
   ###
   - id: ins
     station: ins

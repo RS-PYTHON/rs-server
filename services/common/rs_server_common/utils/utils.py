@@ -61,7 +61,10 @@ def is_valid_date_format(date: str) -> bool:
         return False
 
 
-def validate_inputs_format(interval: str) -> Tuple[Union[None, datetime], Union[None, datetime]]:
+def validate_inputs_format(
+    interval: str,
+    raise_errors: bool = True,
+) -> Tuple[Union[None, datetime], Union[None, datetime]]:
     """
     Validate the format of the input time interval.
 
@@ -71,6 +74,7 @@ def validate_inputs_format(interval: str) -> Tuple[Union[None, datetime], Union[
     Args:
         interval (str): The time interval to be validated, with the following format:
             "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
+        raise_errors (bool): Raise exception if invalid parameters.
 
     Returns:
         Tuple[Union[None, datetime], Union[None, datetime]]:
@@ -93,9 +97,10 @@ def validate_inputs_format(interval: str) -> Tuple[Union[None, datetime], Union[
         logger.error("Missing start or stop in endpoint call!")
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
     if (not is_valid_date_format(start_date)) or (not is_valid_date_format(stop_date)):
-        logger.error("Invalid start/stop in endpoint call!")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
-
+        logger.info("Invalid start/stop in endpoint call!")
+        if raise_errors:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
+        return None, None
     return datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date)
 
 

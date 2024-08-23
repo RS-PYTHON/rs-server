@@ -29,6 +29,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
 from rs_server_cadip import cadip_tags
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
@@ -37,7 +38,6 @@ from rs_server_cadip.cadip_utils import (
     select_config,
     validate_products,
 )
-from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
@@ -46,7 +46,7 @@ from rs_server_common.utils.utils import (
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
-    write_search_products_to_db
+    write_search_products_to_db,
 )
 
 router = APIRouter(tags=cadip_tags)
@@ -55,7 +55,7 @@ logger = Logging.default(__name__)
 
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
     """Used to create and map query values with default values."""
-    required_keys = ["station", "id", "satellite", "start_date", "stop_date", "limit", "sortby"]
+    required_keys = ["station", "SessionId", "Satellite", "PublicationDate", "top", "orderby"]
     default_values = ["cadip", None, None, None, None, None, "-datetime"]
     if not selected_config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
@@ -79,10 +79,9 @@ def search_cadip_endpoint(request: Request):
     return process_session_search(
         request,
         query_params["station"],
-        query_params["id"],
-        query_params["satellite"],
-        query_params["start_date"],
-        query_params["stop_date"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
     )
 
 
@@ -105,10 +104,9 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
     return process_session_search(
         request,
         query_params["station"],
-        query_params["id"],
-        query_params["satellite"],
-        query_params["start_date"],
-        query_params["stop_date"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
         "collection",
     )
 
@@ -134,10 +132,9 @@ def get_cadip_collection_items(request: Request, collection_id):
     return process_session_search(
         request,
         query_params["station"],
-        query_params["id"],
-        query_params["satellite"],
-        query_params["start_date"],
-        query_params["stop_date"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
         "items",
     )
 
@@ -179,8 +176,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
     station: str,
     id: str,
     satellite=None,
-    start_date=None,
-    stop_date=None,
+    interval=None,
     add_assets: Union[bool, str] = True,
 ):
     """Function to process and to retrieve a list of sessions from any CADIP station.
@@ -193,8 +189,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
         id (str, optional): Session identifier(s), comma-separated. Defaults to None.
         satellite (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
-        start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
-        stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
+        interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
         add_assets (str | bool, optional): Used to set how item assets are formatted.
 
     Returns:
@@ -207,7 +202,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
     """
     session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
     platform: Union[List[str], None] = satellite.split(",") if satellite else None
-    time_interval = validate_inputs_format(f"{start_date}/{stop_date}") if start_date and stop_date else (None, None)
+    time_interval = validate_inputs_format(interval, raise_errors=False) if interval else (None, None)
 
     if not (session_id or platform or (time_interval[0] and time_interval[1])):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
@@ -347,7 +342,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     session_id: str,
     limit=None,
     sortby=None,
-    **kwargs
+    **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
 

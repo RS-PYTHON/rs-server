@@ -23,95 +23,93 @@ collections:
   - id: cadip_session_by_id_list
     station: cadip
     query:
-      id: S1A_20170501121534062343,S1A_20240328185208053186
-      limit: 20
+      SessionId: S1A_20170501121534062343,S1A_20240328185208053186
+      top: 20
   - id: cadip_session_by_id
     station: cadip
     query:
-      id: S1A_20240328185208053186
-      limit: 20
+      SessionId: S1A_20240328185208053186
+      top: 20
 
   - id: cadip_session_by_id_platform
     station: cadip
     query:
-      id: S1A_20240328185208053186
-      satellite: S1A
-      limit: 20
+      SessionId: S1A_20240328185208053186
+      Satellite: S1A
+      top: 20
 
   - id: cadip_session_by_lists_id_platform
     station: cadip
     query:
-      id: S1A_20240328185208053186,S1A_20240328185208053186
-      satellite: S1A,S2B
-      limit: 20
+      SessionId: S1A_20240328185208053186,S1A_20240328185208053186
+      Satellite: S1A,S2B
+      top: 20
 
   - id: cadip_session_by_platform_list
     station: cadip
     query:
-      satellite: S1A, S2B
-      limit: 20
+      Satellite: S1A, S2B
+      top: 20
 
   - id: cadip_session_by_start_stop_platform
     station: cadip
     query:
-      start_date: "2020-02-16T12:00:00Z"
-      stop_date: "2023-02-16T12:00:00Z"
-      satellite: S1A
-      limit: 20
+      PublicationDate: "2020-02-16T12:00:00Z/2023-02-16T12:00:00Z"
+      Satellite: S1A
+      top: 20
 
   - id: cadip_session_by_interval
     station: cadip
     query:
-      start_date: "2014-02-16T12:00:00Z"
-      stop_date: "2024-02-16T12:00:00Z"
-      limit: 2
+      PublicationDate: "2014-02-16T12:00:00Z/2024-02-16T12:00:00Z"
+      top: 2
 
   - id: cadip_session_by_satellite
     station: cadip
     query:
-      satellite: S1A
+      Satellite: S1A
       limit: 2
 
   - id: cadip_session_s2b
     station: cadip
     query:
-      satellite: S2B
+      Satellite: S2B
 
   - id: cadip_session_incorrect
     station: cadip
     query:
-      satellite: incorrect_platform
+      Satellite: incorrect_platform
 
   - id: cadip_session_incomplete
     station: cadip
     query:
-      limit: 1
+      top: 1
 
   - id: cadip_session_incomplete_no_stop
     station: cadip
     query:
-      start_date: "2020-02-16T12:00:00Z"
+      PublicationDate: "2020-02-16T12:00:00Z/invalid_stop"
 
   - id: cadip_session_incomplete_no_start
     station: cadip
     query:
-      stop_date: "2020-02-16T12:00:00Z"
+      PublicationDate: "invalid_start/2020-02-16T12:00:00Z"
 
   - id: cadip_session_incomplete_platf_no_start
     station: cadip
     query:
-      satellite: S1A
-      start_date: "2020-02-16T12:00:00Z"
+      Satellite: S1A
+      PublicationDate: "invalid_stop/2020-02-16T12:00:00Z"
 
   - id: cadip_session_incorrect_station
     station: incorrect
     query:
-      satellite: S1A
+      Satellite: S1A
 
   - id: cadip_valid_auth
     station: cadip
     query:
-      limit: 1
+      top: 1
 
   ###
   - id: cadip
