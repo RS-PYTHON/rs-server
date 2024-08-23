@@ -260,7 +260,7 @@ async def get_user_info(request: Request) -> AuthInfo:
             login_url = f"{str(request.base_url).rstrip('/')}{AUTH_PREFIX}{LOGIN_FROM_BROWSER}"
 
             raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
+                status.HTTP_401_UNAUTHORIZED,
                 f"You must first login by calling this URL in your browser: {login_url}",
             )
 
