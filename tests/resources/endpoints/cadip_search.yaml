@@ -74,6 +74,7 @@ collections:
     station: cadip
     query:
       Satellite: S2B
+      top: 20
 
   - id: cadip_session_incorrect
     station: cadip

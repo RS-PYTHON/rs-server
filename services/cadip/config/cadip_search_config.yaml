@@ -58,7 +58,7 @@ collections:
     station: cadip
     query:
       PublicationDate: 1940-03-10T12:00:00Z/2024-01-01T12:00:00Z
-      top: 2
+      top: 95
   - id: cadip_session_by_id
     station: cadip
     query:

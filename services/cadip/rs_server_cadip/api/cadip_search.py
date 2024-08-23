@@ -82,6 +82,7 @@ def search_cadip_endpoint(request: Request):
         query_params["SessionId"],
         query_params["Satellite"],
         query_params["PublicationDate"],
+        query_params["top"],
     )
 
 
@@ -107,6 +108,7 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
         query_params["SessionId"],
         query_params["Satellite"],
         query_params["PublicationDate"],
+        query_params["top"],
         "collection",
     )
 
@@ -135,6 +137,7 @@ def get_cadip_collection_items(request: Request, collection_id):
         query_params["SessionId"],
         query_params["Satellite"],
         query_params["PublicationDate"],
+        query_params["top"],
         "items",
     )
 
@@ -163,6 +166,7 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
         query_params["SessionId"],
         query_params["Satellite"],
         query_params["PublicationDate"],
+        query_params["top"],
     )
     return next(
         (item for item in result["features"] if item["id"] == session_id),
@@ -174,8 +178,9 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
     request,
     station: str,
     id: str,
-    satellite=None,
-    interval=None,
+    satellite,
+    interval,
+    limit,
     add_assets: Union[bool, str] = True,
 ):
     """Function to process and to retrieve a list of sessions from any CADIP station.
@@ -189,6 +194,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
         id (str, optional): Session identifier(s), comma-separated. Defaults to None.
         satellite (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
         add_assets (str | bool, optional): Used to set how item assets are formatted.
 
     Returns:
@@ -202,6 +208,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
     session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
     platform: Union[List[str], None] = satellite.split(",") if satellite else None
     time_interval = validate_inputs_format(interval, raise_errors=False) if interval else (None, None)
+    limit = limit if limit else 1000
 
     if not (session_id or platform or (time_interval[0] and time_interval[1])):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
@@ -212,6 +219,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
             id=session_id,  # pylint: disable=redefined-builtin
             platform=platform,
             sessions_search=True,
+            items_per_page=limit,
         )
         products = validate_products(products)
         sessions_products = from_session_expand_to_dag_serializer(products)
