@@ -215,7 +215,7 @@ class Feature:
             "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
             "type": "Feature",
             "assets": {
-                "COG": {
+                "may24C355000e4102500n.tif": {
                     "href": f"""s3://temp-bucket/{self.collection}/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
@@ -320,15 +320,18 @@ def a_correct_feature_fixture() -> dict:
     return {
         "collection": "S1_L2",
         "assets": {
-            "zarr": {
+            "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
                 "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
                 "roles": ["data"],
             },
-            "cog": {
+            "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip": {
                 "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
                 "roles": ["data"],
             },
-            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+            "S1SIWOCN_20220412T054447_0024_S139_T902.nc": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+                "roles": ["data"],
+            },
         },
         "bbox": [-180.0, -90.0, 0.0, 180.0, 90.0, 10000.0],
         "geometry": {
@@ -373,15 +376,15 @@ def a_incorrect_feature_fixture() -> dict:
     return {
         "collection": "S1_L2",
         "assets": {
-            "zarr": {
+            "S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T717.zarr.zip": {
                 "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T717.zarr.zip",
                 "roles": ["data"],
             },
-            "cog": {
+            "S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T420.cog.zip": {
                 "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T420.cog.zip",
                 "roles": ["data"],
             },
-            "ncdf": {
+            "S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T902.nc": {
                 "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_INCORRECT_T902.nc",
                 "roles": ["data"],
             },
