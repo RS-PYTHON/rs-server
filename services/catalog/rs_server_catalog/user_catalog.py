@@ -135,16 +135,16 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             try:
                 if not is_s3_path(s3_key):
                     raise HTTPException(
-                        detail=f"The s3 key {s3_key} does not matcht with a correct s3 \
-        path pattern (s3://bucket_name/path/to/obj)",
+                        detail=f"The s3 key {s3_key} does not match with a correct s3"
+                        "path pattern (s3://bucket_name/path/to/obj)",
                         status_code=HTTP_400_BAD_REQUEST,
                     )
                 key_array = s3_key.split("/")
                 self.s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
             except RuntimeError as rte:
                 logger.exception(
-                    f"Failed to delete key {'/'.join(key_array)} \
-from s3 bucket  Reason: {rte}. The process will continue though !",
+                    f"Failed to delete key {'/'.join(key_array)} from s3 bucket."
+                    f"Reason: {rte}. The process will continue though !",
                 )
         self.s3_keys_to_be_deleted.clear()
 
@@ -435,8 +435,6 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         # 5 - add owner data
         content["properties"].update({"owner": user})
         content.update({"collection": f"{user}_{collection_id}"})
-        # import pprint
-        # pprint.PrettyPrinter(indent=4).pprint(content)
         return content
 
     def generate_presigned_url(self, content, path):
