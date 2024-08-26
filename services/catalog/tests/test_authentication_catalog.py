@@ -690,7 +690,7 @@ class TestAuthenticationGetOneItem:
             "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
             "type": "Feature",
             "assets": {
-                "COG": {
+                "may24C355000e4102500n.tif": {
                     "href": f"""s3://temp-bucket/{user}_S1_L1/images/may24C355000e4102500n.tif""",
                     "type": "image/tiff; application=geotiff; profile=cloud-optimized",
                     "title": "NOAA STORM COG",
@@ -1259,29 +1259,37 @@ class TestAuthenticationDownload:
             )
             user = ""
 
-            for user, file in users_map.items():
+            for user, item_id in users_map.items():
+                print(f"user = {user}, file = {item_id}")
                 response = client.request(
                     "GET",
-                    f"/catalog/collections/{user}S1_L1/items/{file}/download/COG",
+                    f"/catalog/collections/{user}S1_L1/items/{item_id}/download/may24C355000e4102500n.tif",
                     **HEADER,
                 )
                 assert response.status_code == HTTP_302_FOUND
 
-            # Check that response is empty
-            assert response.content == b""
+                # Check that response is empty
+                assert response.content == b""
 
-            # call the redirected url
-            product_content = requests.get(response.headers["location"], timeout=10)
+                # call the redirected url
+                product_content = requests.get(response.headers["location"], timeout=10)
 
-            assert product_content.status_code == HTTP_200_OK
-            assert product_content.content.decode() == object_content
-            assert (
-                client.get(
-                    f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/COG",
-                    headers={APIKEY_HEADER: VALID_APIKEY},
-                ).status_code
-                == HTTP_404_NOT_FOUND
-            )
+                assert product_content.status_code == HTTP_200_OK
+                assert product_content.content.decode() == object_content
+                # test with a non-existing asset id
+                response = client.get(
+                    f"/catalog/collections/{user}S1_L1/items/{item_id}/download/UNKNWON",
+                    **HEADER,
+                )
+                assert response.status_code == HTTP_404_NOT_FOUND
+
+                assert (
+                    client.get(
+                        f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/UNKNOWN",
+                        headers={APIKEY_HEADER: VALID_APIKEY},
+                    ).status_code
+                    == HTTP_404_NOT_FOUND
+                )
 
         finally:
             server.stop()
@@ -1289,7 +1297,8 @@ class TestAuthenticationDownload:
             self.clear_aws_credentials()
 
         response = client.get(
-            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
+            "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/"
+            "may24C355000e4102500n.tif",
             headers={APIKEY_HEADER: VALID_APIKEY},
         )
         assert response.status_code == HTTP_400_BAD_REQUEST
@@ -1337,7 +1346,8 @@ class TestAuthenticationDownload:
 
             response = client.request(
                 "GET",
-                "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/COG",
+                "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/"
+                "may24C355000e4102500n.tif",
                 **HEADER,
             )
             assert response.status_code == HTTP_401_UNAUTHORIZED
@@ -1463,9 +1473,18 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
         },
         "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
         "assets": {
-            "zarr": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip", "roles": ["data"]},
-            "cog": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip", "roles": ["data"]},
-            "ncdf": {"href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc", "roles": ["data"]},
+            "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "roles": ["data"],
+            },
+            "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "roles": ["data"],
+            },
+            "S1SIWOCN_20220412T054447_0024_S139_T902.nc": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+                "roles": ["data"],
+            },
         },
         "collection": "S1_L1",
     }
