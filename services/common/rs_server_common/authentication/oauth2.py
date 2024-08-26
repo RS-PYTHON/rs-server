@@ -60,6 +60,31 @@ class LoginAndRedirect(Exception):
     pass
 
 
+async def is_from_browser(request: Request) -> bool:
+    """Return True if the request comes from a browser, False if from a console (curl, python console, ...)"""
+
+    # See: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent
+    try:
+        user_agent = request.headers["user-agent"]
+    except KeyError:
+        return False
+    return any(
+        browser in user_agent
+        for browser in (
+            "Mozilla/",
+            "Gecko/",
+            "Firefox/",
+            "AppleWebKit/",
+            "Chrome/",
+            "Safari/",
+            "OPR/",
+            "Opera/",
+            "Presto/",
+            "Edg/",
+        )
+    )
+
+
 async def is_logged_in(request: Request) -> bool:
     """We know that the user is logged in if the session cookie exists."""
     return COOKIE_NAME in request.session
@@ -255,19 +280,23 @@ async def get_user_info(request: Request) -> AuthInfo:
         # In this case, referer = http://<domain>:<port>/docs
         referer = request.headers.get("referer")
         if referer and (urlparse(referer).path.rstrip("/") == SWAGGER_HOMEPAGE):
-
-            # login_url = request.url_for("login_from_browser") # doesn't work for all endpoints
             login_url = f"{str(request.base_url).rstrip('/')}{AUTH_PREFIX}{LOGIN_FROM_BROWSER}"
-
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
                 f"You must first login by calling this URL in your browser: {login_url}",
             )
 
-        # Login and redirect to the calling endpoint.
-        # Let's hope that the caller called from a browser (can we detect this ?) and not a python console
-        # or the redirections won't work.
-        raise LoginAndRedirect
+        # Else, if the request comes from a browser, we login, then redirect (in the same webpage)
+        # to the calling endpoint.
+        if await is_from_browser(request):
+            raise LoginAndRedirect
+
+        # Else, the request comes from a console (curl, python console, ...).
+        # It's not possible to redirect so send an HTTP error.
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            f"You cannot login from a console, you need an API key or an OAuth2 session cookie.",
+        )
 
     # Read the user ID and name from the cookie = from the OAuth2 authentication process
     user_id = user.get("sub")

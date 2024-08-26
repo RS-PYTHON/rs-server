@@ -125,7 +125,7 @@ async def __apikey_security_cached(apikey_value) -> AuthInfo:
         # Note: for now, config is an empty dict
         return AuthInfo(
             user_login=contents["user_login"],
-            iam_roles=contents["iam_roles"],
+            iam_roles=sorted(contents["iam_roles"]),
             apikey_config=contents["config"],
         )
 
