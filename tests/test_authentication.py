@@ -139,7 +139,7 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
 
         # For each method (get, post, ...)
         for method in route.methods:
-            endpoint = route.path.replace("/cadip/{station}", "/cadip/cadip")
+            endpoint = route.path.replace("/cadip/collections/{collection_id}", "/cadip/collections/cadip_valid_auth")
             logger.debug(f"Test the {route.path!r} [{method}] authentication")
 
             # Check that without api key in headers, the endpoint is protected and we receive a 403
@@ -181,7 +181,23 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         [CLUSTER_MODE, "/adgs/aux/search", "GET", ADGS_STATIONS, DATE_PARAM, "rs_adgs_read"],
         [CLUSTER_MODE, "/adgs/aux", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
         [CLUSTER_MODE, "/adgs/aux/status", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
-        [CLUSTER_MODE, "/cadip/{station}/cadu/search", "GET", CADIP_STATIONS, DATE_PARAM, "rs_cadip_{station}_read"],
+        [CLUSTER_MODE, "/cadip/collections/{station}", "GET", CADIP_STATIONS, DATE_PARAM, "rs_cadip_{station}_read"],
+        [
+            CLUSTER_MODE,
+            "/cadip/collections/{station}/items",
+            "GET",
+            CADIP_STATIONS,
+            DATE_PARAM,
+            "rs_cadip_{station}_read",
+        ],
+        [
+            CLUSTER_MODE,
+            "/cadip/collections/{station}/items/specific_sid",
+            "GET",
+            CADIP_STATIONS,
+            DATE_PARAM,
+            "rs_cadip_{station}_read",
+        ],
         [CLUSTER_MODE, "/cadip/{station}/cadu", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_{station}_download"],
         [
             CLUSTER_MODE,
@@ -200,6 +216,8 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         "/cadip/{station}/cadu/search",
         "/cadip/{station}/cadu",
         "/cadip/{station}/cadu/status",
+        "/cadip/collections/{station}/items",
+        "/cadip/collections/{station}/items/specific_sid",
     ],
 )
 async def test_authentication_roles(  # pylint: disable=too-many-arguments,too-many-locals

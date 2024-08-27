@@ -36,7 +36,8 @@ from rs_server_common.utils.logging import Logging
 from tests.app import init_app
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
-
+CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
+os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
 
 ##################
 # INITIALISATION #

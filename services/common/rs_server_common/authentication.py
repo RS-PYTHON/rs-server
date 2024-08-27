@@ -18,6 +18,7 @@ Authentication functions implementation.
 Note: calls https://gitlab.si.c-s.fr/space_applications/eoservices/apikey-manager
 """
 
+import os
 import sys
 import traceback
 from functools import wraps
@@ -25,6 +26,7 @@ from os import environ as env
 from typing import Annotated
 
 import httpx
+import yaml
 from asyncache import cached
 from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
@@ -191,7 +193,24 @@ def apikey_validator(station, access_type):
             if settings.CLUSTER_MODE:
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 if station == "cadip":
-                    cadip_station = kwargs["station"]  # ins, mps, mti, nsg, sgs, or cadip
+                    if "/cadip/search" == kwargs["request"].url.path:
+                        return func(*args, **kwargs)
+                    # /cadip/search is always allowed ? tbd
+                    if collection_id := kwargs.get("collection_id", None):
+                        with open(
+                            os.environ.get("RSPY_CADIP_SEARCH_CONFIG"),  # type: ignore
+                            encoding="utf-8",
+                        ) as search:
+                            config = yaml.safe_load(search)
+                        conf = next(
+                            (item for item in config["collections"] if item["id"] == collection_id),
+                            None,
+                        )
+                        cadip_station = (
+                            conf["station"] if conf else "unknown-cadip-station"
+                        )  # ins, mps, mti, nsg, sgs, or cadip
+                    else:
+                        cadip_station = kwargs["station"]
                     try:
                         full_station = STATIONS_AUTH_LUT[cadip_station.lower()]
                     except KeyError as exception:

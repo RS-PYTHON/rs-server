@@ -555,6 +555,9 @@ cadip_session:
       PublicationDate:
         - null
         - "$.PublicationDate"
+      Satellite:
+        - null
+        - "$.Satellite"
       platform:
         - null
         - "$.Satellite"
