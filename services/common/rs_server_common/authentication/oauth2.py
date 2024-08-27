@@ -19,6 +19,7 @@ import os
 from typing import Annotated
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
+import requests
 from authlib.integrations import starlette_client
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi import (
@@ -243,15 +244,44 @@ def get_router(app: FastAPI) -> APIRouter:
             if key.startswith("_state_"):
                 request.session.pop(key, None)
 
+        # Get the keycloak url to logout.
+        # This url shows an HTML button that the user has to click manually to logout.
         metadata = await KEYCLOAK.load_server_metadata()
         end_session_endpoint = metadata["end_session_endpoint"]
 
-        return HTMLResponse(
-            "You are logged out.<br><br>"
-            "Click here to also log out from the authentication server: "
-            f"<a href='{end_session_endpoint}' target='_blank'>"
-            f"{end_session_endpoint}</a>",
-        )
+        # We don't want a manual action, we want to logout automatically.
+        # This page says that we should be able to do this by setting the id_token_hint and post_logout_redirect_uri
+        # arguments but I couldn't make it work:
+        # https://keycloak.discourse.group/t/how-is-logout-really-working-and-can-we-bypass-the-logout-confirm-page/
+        # /15314/2
+        # So I'm using beautifulsoup4 to scrap the HTML information and click the button.
+        # It's ugly but it works.
+        session = requests.Session()
+        response = session.get(end_session_endpoint)
+        if response.ok:
+            try:
+                soup = BeautifulSoup(response.content, "html.parser")
+                form = soup.find("form")  # get the single form
+                action = form["action"]
+
+                # 'https://<domain>' shoud be missing, take it from the logout url
+                if not action.startswith("http"):
+                    url = urlparse(end_session_endpoint)
+                    action = f"{url.scheme}://{url.netloc}{action}"
+
+                # "Click" the logout button, add the session_code payload
+                attrs = form.input.attrs
+                response = session.post(action, data={attrs["name"]: attrs["value"]})
+
+                # If it works, redirect to the Swagger homepage
+                if response.ok:
+                    return RedirectResponse(SWAGGER_HOMEPAGE)
+
+            except (TypeError, KeyError, requests.exceptions.ConnectionError):
+                pass
+
+        # If it doesn't work, show the logout page
+        return RedirectResponse(end_session_endpoint)
 
     return router
 
@@ -273,7 +303,8 @@ async def get_user_info(request: Request) -> AuthInfo:
         tuple: A tuple containing user IAM roles, configuration data, and user login information.
     """
 
-    # Read user information from cookies to see if he's logged in
+    # Read user information from cookies to see if he's logged in.
+    # NOTE: the cookie is read from SessionMiddleware
     user = request.session.get(COOKIE_NAME)
     if not user:
         # We can login then redirect to this endpoint, but this is not possible to make redirection from the Swagger.
@@ -283,7 +314,7 @@ async def get_user_info(request: Request) -> AuthInfo:
             login_url = f"{str(request.base_url).rstrip('/')}{AUTH_PREFIX}{LOGIN_FROM_BROWSER}"
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
-                f"You must first login by calling this URL in your browser: {login_url}",
+                f"You must first login by clicking the 'Login' link on top of this Swagger page.",
             )
 
         # Else, if the request comes from a browser, we login, then redirect (in the same webpage)
