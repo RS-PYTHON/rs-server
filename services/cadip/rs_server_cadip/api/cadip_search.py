@@ -69,6 +69,12 @@ def search_cadip_endpoint(request: Request):
     query_params = dict(request.query_params)
     collection = query_params.pop("collection", None)
     selected_config = select_config(collection)
+
+    stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
+    with open(stac_mapper_path, encoding="utf-8") as stac_map:
+        stac_mapper = json.loads(stac_map.read())
+        query_params = {stac_mapper.get(k, k): v for k, v in query_params.items()}
+
     if selected_config:
         # Update selected_config query values with the ones coming in request.query_params
         for query_config_key in query_params:
