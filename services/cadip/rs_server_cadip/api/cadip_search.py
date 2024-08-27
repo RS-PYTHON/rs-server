@@ -83,7 +83,7 @@ def search_cadip_endpoint(request: Request):
         query_params["Satellite"],
         query_params["PublicationDate"],
         query_params["top"],
-        "collection"
+        "collection",
     )
 
 
