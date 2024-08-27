@@ -325,6 +325,7 @@ def search_session(
     platform: Annotated[Union[str, None], Query(description='Satellite identifier eg: "S1A" or "S1A, S1B"')] = None,
     start_date: Annotated[Union[str, None], Query(description='Start time e.g. "2024-01-01T00:00:00Z"')] = None,
     stop_date: Annotated[Union[str, None], Query(description='Stop time e.g. "2024-01-01T00:00:00Z"')] = None,
+    limit: int = 1000,
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """Endpoint to retrieve a list of sessions from any CADIP station.
 
@@ -338,6 +339,7 @@ def search_session(
         platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
         stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
 
     Returns:
         dict (dict): A STAC Feature Collection of the sessions.
@@ -347,7 +349,7 @@ def search_session(
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-    return process_session_search(request, station, id, platform, start_date, stop_date)  # type: ignore
+    return process_session_search(request, station, id, platform, f"{start_date}/{stop_date}", limit)  # type: ignore
 
 
 def process_files_search(  # pylint: disable=too-many-locals
