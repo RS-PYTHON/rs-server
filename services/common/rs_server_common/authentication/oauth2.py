@@ -244,43 +244,10 @@ def get_router(app: FastAPI) -> APIRouter:
             if key.startswith("_state_"):
                 request.session.pop(key, None)
 
-        # Get the keycloak url to logout.
+        # Redirect to the keycloak url to logout.
         # This url shows an HTML button that the user has to click manually to logout.
         metadata = await KEYCLOAK.load_server_metadata()
         end_session_endpoint = metadata["end_session_endpoint"]
-
-        # We don't want a manual action, we want to logout automatically.
-        # This page says that we should be able to do this by setting the id_token_hint and post_logout_redirect_uri
-        # arguments but I couldn't make it work:
-        # https://keycloak.discourse.group/t/how-is-logout-really-working-and-can-we-bypass-the-logout-confirm-page/
-        # /15314/2
-        # So I'm using beautifulsoup4 to scrap the HTML information and click the button.
-        # It's ugly but it works.
-        session = requests.Session()
-        response = session.get(end_session_endpoint)
-        if response.ok:
-            try:
-                soup = BeautifulSoup(response.content, "html.parser")
-                form = soup.find("form")  # get the single form
-                action = form["action"]
-
-                # 'https://<domain>' shoud be missing, take it from the logout url
-                if not action.startswith("http"):
-                    url = urlparse(end_session_endpoint)
-                    action = f"{url.scheme}://{url.netloc}{action}"
-
-                # "Click" the logout button, add the session_code payload
-                attrs = form.input.attrs
-                response = session.post(action, data={attrs["name"]: attrs["value"]})
-
-                # If it works, redirect to the Swagger homepage
-                if response.ok:
-                    return RedirectResponse(SWAGGER_HOMEPAGE)
-
-            except (TypeError, KeyError, requests.exceptions.ConnectionError):
-                pass
-
-        # If it doesn't work, show the logout page
         return RedirectResponse(end_session_endpoint)
 
     return router
