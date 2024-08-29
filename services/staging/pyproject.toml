@@ -20,12 +20,12 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.112.1"
+fastapi = "^0.112.2"
 pygeoapi = "^0.17.0"
 tinydb = "^4.8.0"
 uvicorn = "^0.30.6"
-opentelemetry-distro = "^0.47b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-exporter-otlp = "^1.25.0"
+opentelemetry-distro = "^0.48b0" # then run 'poetry run opentelemetry-bootstrap -a install'
+opentelemetry-exporter-otlp = "^1.27.0"
 python-logging-loki = "^0.3.1"
 
 [tool.poetry.group.dev]
@@ -37,7 +37,7 @@ pre-commit = "^3.7.1"
 bandit = "^1.7.9"
 pylint = "^3.2.5"
 pytest = "^8.3.1"
-pytest-asyncio = "^0.23.7"
+pytest-asyncio = "^0.24.0"
 pytest-cov = "^5.0.0"
 pytest-docker = "^3.1.0"
 pytest-error-for-skips = "^2.0.2"
