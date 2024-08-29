@@ -307,7 +307,7 @@ class S3StorageHandler:
                 list_with_files.append(("", s3_files[0]))
                 self.logger.debug("Append files: list_with_files = %s", list_with_files)
             else:
-                # the current key is a folder, append all its files (reursively gathered) to the list
+                # the current key is a folder, append all its files (recursively gathered) to the list
                 for s3_file in s3_files:
                     split = s3_file.split("/")
                     split_idx = split.index(basename_part)

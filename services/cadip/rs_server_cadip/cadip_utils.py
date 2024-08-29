@@ -18,12 +18,54 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
+import json
+import os
+import os.path as osp
+from pathlib import Path
 from typing import Dict, List
 
 import eodag
 import starlette.requests
+import yaml
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
+CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
+search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
+
+
+def read_conf():
+    """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
+    cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
+    with open(cadip_search_config, encoding="utf-8") as search_conf:
+        config = yaml.safe_load(search_conf)
+    return config
+
+
+def select_config(configuration_id: str) -> dict | None:
+    """Used to select a specific configuration from yaml file, returns None if not found."""
+    return next(
+        (item for item in read_conf()["collections"] if item["id"] == configuration_id),
+        None,
+    )
+
+
+def prepare_cadip_search(collection, queryables):
+    """Function used to prepare cadip /search endpoint.
+    Map queryables from stac to odata format, read and update existing configuration.
+    """
+
+    selected_config = select_config(collection)
+
+    stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
+    with open(stac_mapper_path, encoding="utf-8") as stac_map:
+        stac_mapper = json.loads(stac_map.read())
+        query_params = {stac_mapper.get(k, k): v for k, v in queryables.items()}
+
+    if selected_config:
+        # Update selected_config query values with the ones coming in request.query_params
+        for query_config_key in query_params:
+            selected_config["query"][query_config_key] = query_params[query_config_key]
+    return selected_config, query_params
 
 
 def rename_keys(product: dict) -> dict:
@@ -46,7 +88,7 @@ def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starl
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
     asset["roles"] = ["cadu"]
-    asset["href"] = f'{str(request.url).split("session", maxsplit=1)[0]}cadu?name={asset.pop("id")}'
+    asset["href"] = f'{request.url.scheme}://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
     return {product.properties["Name"]: asset}
 
 
@@ -71,12 +113,21 @@ def from_session_expand_to_assets_serializer(
     Associate all expanded files with session from feature_collection and create an asset for each file.
     """
     for session in feature_collection["features"]:
-        session["assets"] = [
-            map_dag_file_to_asset(mapper, product, request)
-            for product in input_session
-            if product.properties["SessionID"] == session["id"]
-        ]
+        # Initialize an empty dictionary for the session's assets
+        session["assets"] = {}
+
+        # Iterate over products and map them to assets
+        for product in input_session:
+            if product.properties["SessionID"] == session["id"]:
+                # Get the asset dictionary
+                asset_dict = map_dag_file_to_asset(mapper, product, request)
+
+                # Merge the asset dictionary into session['assets']
+                session["assets"].update(asset_dict)
+
+        # Remove processed products from input_session
         input_session = [product for product in input_session if product.properties["SessionID"] != session["id"]]
+
     return feature_collection
 
 

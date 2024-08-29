@@ -19,6 +19,7 @@ Authentication functions implementation.
 from functools import wraps
 from typing import Annotated
 
+import yaml
 from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
@@ -100,7 +101,25 @@ def auth_validator(station, access_type):
             if settings.CLUSTER_MODE:
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 if station == "cadip":
-                    cadip_station = kwargs["station"]  # ins, mps, mti, nsg, sgs, or cadip
+                    # Get the collection id from kwargs, otherwise, get the request's query params, and then collection
+                    if collection_id := kwargs.get(
+                        "collection_id",
+                        kwargs.get("request", None).query_params.get("collection", None),
+                    ):
+                        with open(
+                            os.environ.get("RSPY_CADIP_SEARCH_CONFIG"),  # type: ignore
+                            encoding="utf-8",
+                        ) as search:
+                            config = yaml.safe_load(search)
+                        conf = next(
+                            (item for item in config["collections"] if item["id"] == collection_id),
+                            None,
+                        )
+                        cadip_station = (
+                            conf["station"] if conf else "unknown-cadip-station"
+                        )  # ins, mps, mti, nsg, sgs, or cadip
+                    else:
+                        cadip_station = kwargs["station"]
                     try:
                         full_station = STATIONS_AUTH_LUT[cadip_station.lower()]
                     except KeyError as exception:

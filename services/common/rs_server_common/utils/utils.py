@@ -61,7 +61,10 @@ def is_valid_date_format(date: str) -> bool:
         return False
 
 
-def validate_inputs_format(interval: str) -> Tuple[Union[None, datetime], Union[None, datetime]]:
+def validate_inputs_format(
+    interval: str,
+    raise_errors: bool = True,
+) -> Tuple[Union[None, datetime], Union[None, datetime]]:
     """
     Validate the format of the input time interval.
 
@@ -71,6 +74,7 @@ def validate_inputs_format(interval: str) -> Tuple[Union[None, datetime], Union[
     Args:
         interval (str): The time interval to be validated, with the following format:
             "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
+        raise_errors (bool): Raise exception if invalid parameters.
 
     Returns:
         Tuple[Union[None, datetime], Union[None, datetime]]:
@@ -93,9 +97,10 @@ def validate_inputs_format(interval: str) -> Tuple[Union[None, datetime], Union[
         logger.error("Missing start or stop in endpoint call!")
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
     if (not is_valid_date_format(start_date)) or (not is_valid_date_format(stop_date)):
-        logger.error("Invalid start/stop in endpoint call!")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
-
+        logger.info("Invalid start/stop in endpoint call!")
+        if raise_errors:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
+        return None, None
     return datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date)
 
 
@@ -396,6 +401,31 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
 def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
     """This function is creating key:value pairs from an EOProduct properties"""
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
+
+
+def create_collection(products: List[EOProduct]):
+    """Used to create stac collection template based on sessions lists."""
+    return {
+        "id": str(uuid.uuid4()),
+        "type": "Collection",
+        "stac_extensions": [
+            "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+        ],
+        "stac_version": "1.0.0",
+        "description": "A simple collection demonstrating core catalog fields with links to a couple of items",
+        "title": "Simple Example Collection",
+        "links": [
+            {
+                "rel": "item",
+                "href": "./simple-item.json",
+                "type": "application/geo+json",
+                "title": product.properties["SessionId"],
+            }
+            for product in products
+        ],
+    }
 
 
 def create_stac_collection(products: List[EOProduct], feature_template: dict, stac_mapper: dict) -> dict:

@@ -239,11 +239,10 @@ def test_invalid_endpoint_param_station(client):
     This test sends a request to the specified endpoint with an incorrect station name,
     expecting a 400 Bad Request response.
     """
-    # Test with and inccorect station name, this should result in a 400 bad request response.
-    station = "incorrect_station"
-    endpoint = f"/cadip/{station}/cadu/search?datetime=2023-01-01T12:00:00Z/2024-12-30T12:00:00Z"
+    # Test with and incorrect station name, this should result in a 404 not found request response.
+    endpoint = "/cadip_session_incorrect_station/collections/correct_collection/items"
     response = client.get(endpoint)
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.unit
@@ -354,7 +353,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
     [
         # Test with a list of 2 SessionIds
         (
-            "/cadip/cadip/session?id=S1A_20170501121534062343,S1A_20240328185208053186",
+            "/cadip/collections/cadip_session_by_id_list/items",
             '"SessionId%20in%20S1A_20170501121534062343,%20S1A_20240328185208053186"&$top=20&$expand=Files',
             ["S1A_20170501121534062343", "S1A_20240328185208053186"],
             ["2017-05-01T12:00:00", "2024-03-28T18:52:26Z"],
@@ -363,7 +362,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # TC001: Search one session only with a single id (ex: id=S1A_20240312192515052953).
         # Check that response return 1 result in STAC format for the given id.
         (
-            "/cadip/cadip/session?id=S1A_20240328185208053186",
+            "/cadip/collections/cadip_session_by_id/items",
             '"SessionId%20eq%20S1A_20240328185208053186"&$top=20&$expand=Files',
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
@@ -371,7 +370,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         # Test with a single platform
         (
-            "/cadip/cadip/session?id=S1A_20240328185208053186&platform=S1A",
+            "/cadip/collections/cadip_session_by_id_platform/items",
             "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
@@ -379,7 +378,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         # Test with a list of session ids and list of platforms
         (
-            "/cadip/cadip/session?id=S1A_20240328185208053186,S1A_20240328185208053186&platform=S1A,S2B",
+            "/cadip/collections/cadip_session_by_lists_id_platform/items",
             "%22SessionId%20in%20S1A_20240328185208053186,%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A,"
             "%20S2B%22&$top=20&$expand=Files"
             "",
@@ -389,7 +388,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         # Test only with a list of platforms
         (
-            "/cadip/cadip/session?platform=S1A, S2B",
+            "/cadip/collections/cadip_session_by_platform_list/items",
             "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
@@ -399,7 +398,15 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # # (ex: platform=S1A,S1B&start_date=2024-03-12T08:00:00.000Z&stop_date=2024-03-12T12:00:00.000Z.)
         # # Check that response returns several results in STAC format for the sessions that match the criteria
         (
-            "/cadip/cadip/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-16T12:00:00Z&platform=S1A",
+            "/cadip/collections/cadip_session_by_start_stop_platform/items",
+            "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+            "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
+            ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
+            ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
+            ["S1A", "S1A", "S2B"],
+        ),
+        (
+            "/cadip/search/items?collection=cadip_session_by_start_stop_platform",
             "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
             "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
@@ -414,6 +421,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         "list_id_list_platform",
         "list_platform",
         "start_stop_single_platform",
+        "search_items",
     ],
 )
 @responses.activate
@@ -452,13 +460,19 @@ def test_valid_sessions_endpoint_request_list(
 def test_invalid_sessions_endpoint_request(client):
     """Test cases with invalid requests send to /session endpoint"""
     # Test with missing all parameters
-    assert client.get("/cadip/cadip/session").status_code == status.HTTP_400_BAD_REQUEST
+    assert client.get("/cadip/collections/cadip_session_incomplete/items").status_code == status.HTTP_400_BAD_REQUEST
     # Test only with start, without stop
-    assert client.get("/cadip/cadip/session?start_date=2020-02-16T12:00:00Z").status_code == status.HTTP_400_BAD_REQUEST
-    assert client.get("/cadip/cadip/session?stop_date=2020-02-16T12:00:00Z").status_code == status.HTTP_400_BAD_REQUEST
+    assert (
+        client.get("/cadip/collections/cadip_session_incomplete_no_stop/items").status_code
+        == status.HTTP_400_BAD_REQUEST
+    )
+    assert (
+        client.get("/cadip/collections/cadip_session_incomplete_no_start/items").status_code
+        == status.HTTP_400_BAD_REQUEST
+    )
     # Test with platform and only start_date, should work since platform=S1A is valid
     assert (
-        client.get("/cadip/cadip/session?platform=S1A&start_date=2020-02-16T12:00:00Z").status_code
+        client.get("/cadip/collections/cadip_session_incomplete_platf_no_start/items").status_code
         != status.HTTP_400_BAD_REQUEST
     )
 
@@ -513,7 +527,7 @@ def test_valid_search_by_session_id(expected_products, client):
     [
         (
             "%22Satellite%20in%20S2B%22&$top=20&$expand=Files",
-            "cadip/cadip/session?platform=S2B",
+            "/cadip/collections/cadip_session_s2b/items",
             # Note: The following JSON were modified due to compliance of HTTP/1.1 protocol
             # "Retransfer": false -> "Retransfer": False,
             # "geometry": null -> "geometry": None,
@@ -584,7 +598,7 @@ def test_valid_search_by_session_id(expected_products, client):
                             "cadip:id": "3f8d5c2e-a9b1-4d6f-87ce-1a240b9d5e72",
                             "cadip:num_channels": 2,
                             "cadip:station_unit_id": "01",
-                            "cadip:downlink_orbit": 53186,
+                            "sat:absolute_orbit": 53186,
                             "cadip:acquisition_id": 531861,
                             "cadip:antenna_id": "MSP21",
                             "cadip:front_end_id": "01",
@@ -597,48 +611,47 @@ def test_valid_search_by_session_id(expected_products, client):
                             "cadip:delivery_push_ok": True,
                         },
                         "links": [],
-                        "assets": [
-                            {
-                                "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw": {
-                                    "cadip:id": "axd19d2f-29eb-4c18-bc1f-bf2769a3a16d",
-                                    "cadip:retransfer": False,
-                                    "cadip:final_block": False,
-                                    "cadip:block_number": 1,
-                                    "cadip:channel": 1,
-                                    "cadip:session_id": "S2B_20231117033237234567",
-                                    "created": "2023-11-17T18:52:29.165Z",
-                                    "eviction_datetime": "2023-11-17T18:52:29.165Z",
-                                    "file:size": "42",
-                                    "roles": ["cadu"],
-                                    "href": "http://testserver/cadip/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch"
-                                    "2_DSDB_00001.raw",
-                                },
+                        "assets": {
+                            "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw": {
+                                "cadip:block_number": 1,
+                                "cadip:channel": 1,
+                                "cadip:final_block": False,
+                                "cadip:id": "axd19d2f-29eb-4c18-bc1f-bf2769a3a16d",
+                                "cadip:retransfer": False,
+                                "cadip:session_id": "S2B_20231117033237234567",
+                                "created": "2023-11-17T18:52:29.165Z",
+                                "eviction_datetime": "2023-11-17T18:52:29.165Z",
+                                "file:size": "42",
+                                "href": "http://testserver/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch2_DSDB_"
+                                "00001.raw",
+                                "roles": [
+                                    "cadu",
+                                ],
                             },
-                            {
-                                "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
-                                    "cadip:id": "a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1",
-                                    "cadip:retransfer": False,
-                                    "cadip:final_block": False,
-                                    "cadip:block_number": 1,
-                                    "cadip:channel": 1,
-                                    "cadip:session_id": "S2B_20231117033237234567",
-                                    "created": "2023-11-17T18:52:39.165Z",
-                                    "eviction_datetime": "2023-11-17T18:52:39.165Z",
-                                    "file:size": "42",
-                                    "roles": ["cadu"],
-                                    # Note: 127.0.0.1:8000 replaced with testserver due to TestClient usage
-                                    "href": "http://testserver/cadip/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch"
-                                    "2_DSDB_00002.raw",
-                                },
+                            "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
+                                "cadip:block_number": 1,
+                                "cadip:channel": 1,
+                                "cadip:final_block": False,
+                                "cadip:id": "a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1",
+                                "cadip:retransfer": False,
+                                "cadip:session_id": "S2B_20231117033237234567",
+                                "created": "2023-11-17T18:52:39.165Z",
+                                "eviction_datetime": "2023-11-17T18:52:39.165Z",
+                                "file:size": "42",
+                                "href": "http://testserver/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch2_DSDB_"
+                                "00002.raw",
+                                "roles": [
+                                    "cadu",
+                                ],
                             },
-                        ],
+                        },
                     },
                 ],
             },
         ),
         (
             '"Satellite%20in%20incorrect_platform"&$top=20&$expand=Files',
-            "/cadip/cadip/session?platform=incorrect_platform",
+            "/cadip/collections/cadip_session_incorrect/items",
             {},
             {"type": "FeatureCollection", "numberMatched": 0, "numberReturned": 0, "features": []},
         ),
@@ -660,6 +673,7 @@ def test_expanded_sessions_endpoint_request(
      list
     Degraded: Test that an OData response without a Files element is mapped to a STAC response with an empty asset list
 
+    Note: Assets are not expanded.
     """
     responses.add(
         responses.GET,
@@ -671,3 +685,36 @@ def test_expanded_sessions_endpoint_request(
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == rs_server_response
     # assert responses.assert_call_count(f"http://127.0.0.1:5000/Sessions?$filter={odata_request}", 1)
+
+
+@pytest.mark.unit
+@responses.activate
+def test_cadip_collection(client):
+    """Test the links from /station/collections/collection-id"""
+    sid = "S1A_20240328185208053186"
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20in%20S1A"&$top=20&$expand=Files',
+        json=expected_sessions_builder_fixture(sid, "2024-03-28T18:52:26Z", "S1A"),
+        status=200,
+    )
+
+    response = client.get("/cadip/collections/cadip_session_by_satellite")
+    assert response.status_code == status.HTTP_200_OK
+    for link in response.json()["links"]:
+        assert sid in link["title"]
+
+
+@pytest.mark.unit
+def test_invalid_cadip_collection(client):
+    """Test cases with invalid requests."""
+    response = client.get("/cadip/collections/cadip_session_incorrect")
+    # Should return an empty collection, but with 200 status.
+    assert response.status_code == status.HTTP_200_OK
+    # Test that collection contains no links (is empty).
+    assert not response.json()["links"]
+
+    # Test that an invalid configured collection return 404 with specific response.
+    response = client.get("/cadip/collections/invalid_configured_collection")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.json() == {"detail": "Cannot find a valid configuration"}

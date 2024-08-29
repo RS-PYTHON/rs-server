@@ -58,7 +58,12 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
-from rs_server_catalog.utils import verify_existing_item
+from rs_server_catalog.utils import (
+    get_s3_filename_from_asset,
+    get_temp_bucket_name,
+    is_s3_path,
+    verify_existing_item_from_catalog,
+)
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
@@ -97,9 +102,9 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         """Constructor, called from the middleware"""
 
         self.s3_handler: S3StorageHandler = None
-        self.temp_bucket_name: str = ""
         self.request_ids: dict[Any, Any] = {}
         self.client = client
+        self.s3_keys_to_be_deleted: list[str] = []
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -123,30 +128,34 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 objects[i] = remove_user_from_feature(objects[i], user)
         return content
 
-    def clear_temp_bucket(self, content: dict):
-        """Used to clear specific files from temporary bucket."""
+    def clear_unnecessary_s3_files(self):
+        """Used to clear specific files from temporary bucket and from catalog bucket if needed."""
         if not self.s3_handler:
             return
-        for asset in content.get("assets", {}):
-            # Iterate through all assets and delete them from the temp bucket.
-            file_key = (
-                content["assets"][asset]["alternate"]["s3"]["href"]
-                .replace(
-                    f"s3://{CATALOG_BUCKET}",
-                    "",
+        # delete any temp file file or a file from the catalog for which the asset has been removed
+        for s3_key in self.s3_keys_to_be_deleted:
+            try:
+                if not is_s3_path(s3_key):
+                    raise HTTPException(
+                        detail=f"The s3 key {s3_key} does not match with a correct s3"
+                        "path pattern (s3://bucket_name/path/to/obj)",
+                        status_code=HTTP_400_BAD_REQUEST,
+                    )
+                key_array = s3_key.split("/")
+                self.s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
+            except RuntimeError as rte:
+                logger.exception(
+                    f"Failed to delete key {'/'.join(key_array)} from s3 bucket."
+                    f"Reason: {rte}. The process will continue though !",
                 )
-                .lstrip("/")
-            )
-            if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't move files if we are in local mode
-                # get the s3 asset file key by removing bucket related info (s3://temp-bucket-key)
-                self.s3_handler.delete_file_from_s3(self.temp_bucket_name, file_key)
+        self.s3_keys_to_be_deleted.clear()
 
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
         if not self.s3_handler:
             return
         for asset in content.get("assets", {}):
-            # For catalog bucket, data is already store into alternate:s3:href
+            # For catalog bucket, data is already stored into alternate:s3:href
             file_key = content["assets"][asset]["alternate"]["s3"]["href"]
             if not int(os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0)):  # don't delete files if we are in local mode
                 self.s3_handler.delete_file_from_s3(CATALOG_BUCKET, file_key)
@@ -221,13 +230,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
                 status_code=HTTP_400_BAD_REQUEST,
             ) from e
 
-    def check_s3_key(self, item: dict, asset_name: str, s3_href):
+    def check_s3_key(self, item: dict, asset_name: str, s3_key):
         """Check if the given S3 key exists and matches the expected path.
 
         Args:
-            item (dict): The item containing the asset.
+            item (dict): The item from the catalog (if it does exist) containing the asset.
             asset_name (str): The name of the asset to check.
-            s3_href (dict): The S3 href to check against.
+            s3_key (str): The S3 key path to check against.
 
         Returns:
             bool: True if the S3 key is valid and exists, otherwise False.
@@ -247,22 +256,21 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
         # check if the new s3_href is the same as the existing one
         try:
             item_s3_path = existing_asset["alternate"]["s3"]["href"]
-            s3_path = s3_href["s3"]["href"]
         except KeyError as exc:
             raise HTTPException(
-                detail=f"Could not get s3 paths for the asset {asset_name}",
+                detail=f"Could not get the s3 path for the asset {asset_name}",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
-        if item_s3_path != s3_path:
+        if item_s3_path != s3_key:
             raise HTTPException(
                 detail=(
                     f"Received an updated path for the asset {asset_name} of item {item['id']}. "
-                    f"The current path is {item_s3_path}, and the new path is {s3_path}. "
+                    f"The current path is {item_s3_path}, and the new path is {s3_key}. "
                     "However, changing an existing path of an asset is not allowed."
                 ),
                 status_code=HTTP_400_BAD_REQUEST,
             )
-        s3_key_array = s3_path.split("/")
+        s3_key_array = s3_key.split("/")
         bucket = s3_key_array[2]
         key_path = "/".join(s3_key_array[3:])
 
@@ -270,13 +278,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
         try:
             if not self.s3_handler.check_s3_key_on_bucket(bucket, key_path):
                 raise HTTPException(
-                    detail=f"The key {s3_href} should exist on the bucket, but it couldn't be checked",
+                    detail=f"The s3 key {s3_key} should exist on the bucket, but it couldn't be checked",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
             return True
         except RuntimeError as rte:
             raise HTTPException(
-                detail=f"When checking the presence of the {s3_href} key, an error has been raised: {rte}",
+                detail=f"When checking the presence of the {s3_key} key, an error has been raised: {rte}",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from rte
 
@@ -291,14 +299,20 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
         Raises:
             HTTPException: If there are errors during the S3 transfer or deletion process.
         """
-        if not self.s3_handler:
+        if not self.s3_handler or not files_s3_key:
             return
+
         try:
-            err_message = f"Failed to transfer file(s) from '{self.temp_bucket_name}' bucket to \
+            temp_bucket_name = get_temp_bucket_name(files_s3_key)
+            # now remove the s3://temp_bucket_name for each s3_key
+            for idx, s3_key in enumerate(files_s3_key):
+                files_s3_key[idx] = s3_key.replace(f"s3://{temp_bucket_name}", "")
+
+            err_message = f"Failed to transfer file(s) from '{temp_bucket_name}' bucket to \
 '{CATALOG_BUCKET}' catalog bucket!"
             config = TransferFromS3ToS3Config(
                 files_s3_key,
-                self.temp_bucket_name,
+                temp_bucket_name,
                 CATALOG_BUCKET,
                 copy_only=True,
                 max_retries=3,
@@ -311,26 +325,13 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
                     detail=f"{err_message} {failed_files}",
                     status_code=HTTP_400_BAD_REQUEST,
                 )
-            # in case of the PUT request, we copy the new s3 hrefs, but delete the old ones
-            # if any has changed. All the remained hrefs (the existent ones are removed
-            # from item with pop after the check_s3_key call, in update_stac_item_publication function) have
-            # to be deleted now from the s3. If a PATCH request is received (not yet implemented),
-            # do not delete anything
+            # In case of the PUT request, all the new assets are transfered (see up)
+            # Any existing asset in the item (already in the catalog from a previous POST request)
+            # but not found in this request is deleted
+            # If a PATCH request is received (not yet implemented) do not delete anything
             if item and request.method == "PUT":
                 for asset in item["assets"]:
-                    try:
-                        key_array = item["assets"][asset]["alternate"]["s3"]["href"].split("/")
-                        self.s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
-                    except KeyError as exc:
-                        raise HTTPException(
-                            detail=f"Key error for item asset {asset}!",
-                            status_code=HTTP_400_BAD_REQUEST,
-                        ) from exc
-                    except RuntimeError as rte:
-                        logger.exception(
-                            f"Failed to delete key {'/'.join(key_array)} \
-from s3 bucket  Reason: {rte}. The process will continue though !",
-                        )
+                    self.s3_keys_to_be_deleted.append(item["assets"][asset]["alternate"]["s3"]["href"])
         except KeyError as kerr:
             raise HTTPException(
                 detail=f"{err_message} Could not find S3 credentials.",
@@ -342,7 +343,6 @@ from s3 bucket  Reason: {rte}. The process will continue though !",
     def update_stac_item_publication(  # pylint: disable=too-many-locals
         self,
         content: dict,
-        user: str,
         request: Request,
         item: dict,
     ) -> Any:
@@ -350,7 +350,6 @@ from s3 bucket  Reason: {rte}. The process will continue though !",
 
         Args:
             content (dict): The content to update.
-            user (str): The user making the request.
             request (Request): The HTTP request object.
             item (dict): The item from the catalog (if exists) to update.
 
@@ -369,40 +368,57 @@ from s3 bucket  Reason: {rte}. The process will continue though !",
                 os.environ["S3_REGION"],
             )
 
-        collection_id = content.get("collection", self.request_ids.get("collection_id", None))
-        print(f"COLLECTION_ID = {collection_id}")
-        if not collection_id:
+        collection_id = self.request_ids.get("collection_id", None)
+        user = self.request_ids.get("owner_id", None)
+        if not collection_id or not user:
             raise HTTPException(
-                detail="Could not get the name of the collection!",
+                detail="Could not get the user or the name of the collection!",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        verify_existing_item(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
+        verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
 
-        bucket_names = set()
         files_s3_key = []
         # 1 - update assets href
         for asset in content["assets"]:
-            filename_str = content["assets"][asset]["href"]
-            logger.debug(f"HTTP request add/update asset: {filename_str!r}")
-            fid = filename_str.rsplit("/", maxsplit=1)[-1]
-            new_href = f"https://{request.url.netloc}/catalog/\
-collections/{user}:{collection_id}/items/{fid}/download/{asset}"
-            content["assets"][asset].update({"href": new_href})
+            s3_filename, alternate_field = get_s3_filename_from_asset(content["assets"][asset])
+            if alternate_field:
+                if not item:
+                    # the asset should be already in the catalog from a previous POST/PUT request
+                    raise HTTPException(
+                        detail=(f"The item that contains asset '{asset}' does not exist in the catalog "),
+                        status_code=HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                # when alternate_key does not exist, it means the request is coming from the staging process,
+                # and the s3_filename is on the temp bucket. this should be deleted later on after the catalog
+                # insertion process is completed (see the use of clear_unnecessary_s3_files function)
+                self.s3_keys_to_be_deleted.append(s3_filename)
+            logger.debug(f"HTTP request add/update asset: {s3_filename!r}")
+            fid = s3_filename.rsplit("/", maxsplit=1)[-1]
+            if fid != asset:
+                raise HTTPException(
+                    detail=(
+                        f"Invalid structure for the asset '{asset}'. The name of the key "
+                        f"should be the filename, which is {fid} "
+                    ),
+                    status_code=HTTP_400_BAD_REQUEST,
+                )
             # 2 - update alternate href to define catalog s3 bucket
             try:
-                old_bucket_arr = filename_str.split("/")
-                # Determine the temporary bucket name
-                temp_bucket_name = old_bucket_arr[0] if "s3" not in old_bucket_arr[0] else old_bucket_arr[2]
-                bucket_names.add(temp_bucket_name)
-                # Update the S3 path to use the catalog bucket
+                old_bucket_arr = s3_filename.split("/")
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
-                new_s3_href = {"s3": {"href": s3_key}}
-                content["assets"][asset].update({"alternate": new_s3_href})
                 # Check if the S3 key exists
-                if not self.check_s3_key(item, asset, new_s3_href):
-                    # copy the key only if it isn't already copied
-                    files_s3_key.append(filename_str.replace(f"s3://{temp_bucket_name}", ""))
+                if not self.check_s3_key(item, asset, s3_key):
+                    # update the 'href' key with the download link
+                    new_href = f"https://{request.url.netloc}/catalog/\
+collections/{user}:{collection_id}/items/{fid}/download/{asset}"
+                    content["assets"][asset].update({"href": new_href})
+                    # Update the S3 path to use the catalog bucket and create the alternate field
+                    new_s3_href = {"s3": {"href": s3_key}}
+                    content["assets"][asset].update({"alternate": new_s3_href})
+                    # copy the key only if it isn't already on the final bucket
+                    files_s3_key.append(s3_filename)
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
                     # be deleted from the s3 bucket later on
@@ -410,22 +426,12 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             except (IndexError, AttributeError, KeyError) as exc:
                 raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
 
-        # There should be a single temp bucket name
-        if not bucket_names:
-            raise HTTPException(detail="Assets are missing from the request", status_code=HTTP_400_BAD_REQUEST)
-        if len(bucket_names) > 1:
-            raise HTTPException(
-                detail=f"A single s3 bucket should be used in the assets: {bucket_names!r}",
-                status_code=HTTP_400_BAD_REQUEST,
-            )
-        self.temp_bucket_name = bucket_names.pop()
-
         # 3 - include new stac extension if not present
-
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
         if new_stac_extension not in content["stac_extensions"]:
             content["stac_extensions"].append(new_stac_extension)
-        # 4 bucket movement
+
+        # 4 - bucket handling
         self.s3_bucket_handling(files_s3_key, item, request)
 
         # 5 - add owner data
@@ -437,15 +443,20 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         """This function is used to generate a time-limited download url"""
         # Assume that pgstac already selected the correct asset id
         # just check type, generate and return url
-        asset_id = path.split("/")[-1]
-        s3_path = (
-            content["assets"][asset_id]["alternate"]["s3"]["href"]
-            .replace(
-                f"s3://{CATALOG_BUCKET}",
-                "",
+        path_splitted = path.split("/")
+        asset_id = path_splitted[-1]
+        item_id = path_splitted[-3]
+        try:
+            s3_path = (
+                content["assets"][asset_id]["alternate"]["s3"]["href"]
+                .replace(
+                    f"s3://{CATALOG_BUCKET}",
+                    "",
+                )
+                .lstrip("/")
             )
-            .lstrip("/")
-        )
+        except KeyError:
+            return f"Could not find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
@@ -678,7 +689,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             elif "items" in request.scope["path"]:
                 # try to get the item if it is already part from the collection
                 item = await self.get_item_from_collection(request)
-                content = self.update_stac_item_publication(content, user, request, item)
+                content = self.update_stac_item_publication(content, request, item)
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
@@ -971,7 +982,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             ):
                 response_content = remove_user_from_feature(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
-            self.clear_temp_bucket(response_content)
+            self.clear_unnecessary_s3_files()
         except RuntimeError as exc:
             return JSONResponse(content=f"Failed to clean temporary bucket: {exc}", status_code=HTTP_400_BAD_REQUEST)
         except Exception as exc:  # pylint: disable=broad-except
