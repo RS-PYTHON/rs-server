@@ -602,7 +602,40 @@ def test_valid_search_by_session_id(expected_products, client):
                             "cadip:delivery_push_ok": True,
                         },
                         "links": [],
-                        "assets": {},
+                        "assets": {
+                            "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw": {
+                                "cadip:block_number": 1,
+                                "cadip:channel": 1,
+                                "cadip:final_block": False,
+                                "cadip:id": "axd19d2f-29eb-4c18-bc1f-bf2769a3a16d",
+                                "cadip:retransfer": False,
+                                "cadip:session_id": "S2B_20231117033237234567",
+                                "created": "2023-11-17T18:52:29.165Z",
+                                "eviction_datetime": "2023-11-17T18:52:29.165Z",
+                                "file:size": "42",
+                                "href": "http://testserver/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch2_DSDB_"
+                                "00001.raw",
+                                "roles": [
+                                    "cadu",
+                                ],
+                            },
+                            "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
+                                "cadip:block_number": 1,
+                                "cadip:channel": 1,
+                                "cadip:final_block": False,
+                                "cadip:id": "a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1",
+                                "cadip:retransfer": False,
+                                "cadip:session_id": "S2B_20231117033237234567",
+                                "created": "2023-11-17T18:52:39.165Z",
+                                "eviction_datetime": "2023-11-17T18:52:39.165Z",
+                                "file:size": "42",
+                                "href": "http://testserver/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch2_DSDB_"
+                                "00002.raw",
+                                "roles": [
+                                    "cadu",
+                                ],
+                            },
+                        },
                     },
                 ],
             },

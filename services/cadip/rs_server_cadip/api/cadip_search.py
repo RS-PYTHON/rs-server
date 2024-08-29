@@ -244,9 +244,9 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
             match add_assets:
                 case "collection":
                     return create_collection(products)
-                case "items":
-                    return create_stac_collection(products, feature_template, stac_mapper)
-                case True:
+                # case "items":
+                #     return create_stac_collection(products, feature_template, stac_mapper)
+                case True | "items":
                     cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
                     return from_session_expand_to_assets_serializer(
                         cadip_sessions_collection,
