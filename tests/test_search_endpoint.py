@@ -405,6 +405,14 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
             ["S1A", "S1A", "S2B"],
         ),
+        (
+                "/cadip/search/items?collection=cadip_session_by_start_stop_platform",
+                "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+                "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
+                ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
+                ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
+                ["S1A", "S1A", "S2B"],
+        ),
     ],
     ids=[
         "list_id",
@@ -413,6 +421,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         "list_id_list_platform",
         "list_platform",
         "start_stop_single_platform",
+        "search_items"
     ],
 )
 @responses.activate
