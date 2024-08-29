@@ -139,7 +139,11 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
 
         # For each method (get, post, ...)
         for method in route.methods:
+            # For new cadip endpoint, mention a valid-defined collection, either as an argument or in endpoint.
+            if route.path in ["/cadip/search", "/cadip/search/items"]:
+                route.path += "?collection=cadip_valid_auth"
             endpoint = route.path.replace("/cadip/collections/{collection_id}", "/cadip/collections/cadip_valid_auth")
+
             logger.debug(f"Test the {route.path!r} [{method}] authentication")
 
             # Check that without api key in headers, the endpoint is protected and we receive a 403

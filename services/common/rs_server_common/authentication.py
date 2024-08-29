@@ -193,10 +193,11 @@ def apikey_validator(station, access_type):
             if settings.CLUSTER_MODE:
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 if station == "cadip":
-                    if "/cadip/search" == kwargs["request"].url.path:
-                        return func(*args, **kwargs)
-                    # /cadip/search is always allowed ? tbd
-                    if collection_id := kwargs.get("collection_id", None):
+                    # Get the collection id from kwargs, otherwise, get the request's query params, and then collection
+                    if collection_id := kwargs.get(
+                        "collection_id",
+                        kwargs.get("request", None).query_params.get("collection", None),
+                    ):
                         with open(
                             os.environ.get("RSPY_CADIP_SEARCH_CONFIG"),  # type: ignore
                             encoding="utf-8",
