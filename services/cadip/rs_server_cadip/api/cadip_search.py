@@ -35,6 +35,7 @@ from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
+    prepare_cadip_search,
     select_config,
     validate_products,
 )
@@ -62,23 +63,33 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
 
+@router.get("/cadip/search/items")
+@apikey_validator(station="cadip", access_type="read")
+def search_cadip_with_session_info(request: Request):
+    """Endpoint used to search cadip collections and directly return items properties and assets."""
+    query_params = dict(request.query_params)
+    collection = query_params.pop("collection", None)
+    selected_config, query_params = prepare_cadip_search(collection, query_params)
+    query_params = create_session_search_params(selected_config)
+
+    return process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        True,
+    )
+
+
 @router.get("/cadip/search")
 @apikey_validator(station="cadip", access_type="read")
 def search_cadip_endpoint(request: Request):
     """Endpoint used to search cadip collections."""
     query_params = dict(request.query_params)
     collection = query_params.pop("collection", None)
-    selected_config = select_config(collection)
-
-    stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
-    with open(stac_mapper_path, encoding="utf-8") as stac_map:
-        stac_mapper = json.loads(stac_map.read())
-        query_params = {stac_mapper.get(k, k): v for k, v in query_params.items()}
-
-    if selected_config:
-        # Update selected_config query values with the ones coming in request.query_params
-        for query_config_key in query_params:
-            selected_config["query"][query_config_key] = query_params[query_config_key]
+    selected_config, query_params = prepare_cadip_search(collection, query_params)
 
     query_params = create_session_search_params(selected_config)
 
@@ -244,9 +255,9 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
             match add_assets:
                 case "collection":
                     return create_collection(products)
-                case "items":
-                    return create_stac_collection(products, feature_template, stac_mapper)
-                case True:
+                # case "items":
+                #     return create_stac_collection(products, feature_template, stac_mapper)
+                case True | "items":
                     cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
                     return from_session_expand_to_assets_serializer(
                         cadip_sessions_collection,

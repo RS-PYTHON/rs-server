@@ -18,6 +18,7 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
+import json
 import os
 import os.path as osp
 from pathlib import Path
@@ -48,6 +49,25 @@ def select_config(configuration_id: str) -> dict | None:
     )
 
 
+def prepare_cadip_search(collection, queryables):
+    """Function used to prepare cadip /search endpoint.
+    Map queryables from stac to odata format, read and update existing configuration.
+    """
+
+    selected_config = select_config(collection)
+
+    stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
+    with open(stac_mapper_path, encoding="utf-8") as stac_map:
+        stac_mapper = json.loads(stac_map.read())
+        query_params = {stac_mapper.get(k, k): v for k, v in queryables.items()}
+
+    if selected_config:
+        # Update selected_config query values with the ones coming in request.query_params
+        for query_config_key in query_params:
+            selected_config["query"][query_config_key] = query_params[query_config_key]
+    return selected_config, query_params
+
+
 def rename_keys(product: dict) -> dict:
     """Rename keys in the product dictionary. To match eodag specific properties key name (id / startTime..)"""
     if "Id" in product:
@@ -68,7 +88,7 @@ def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starl
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
     asset["roles"] = ["cadu"]
-    asset["href"] = f'http://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
+    asset["href"] = f'{request.url.scheme}://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
     return {product.properties["Name"]: asset}
 
 
