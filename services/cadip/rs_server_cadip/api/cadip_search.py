@@ -43,7 +43,8 @@ from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
-    create_collection,
+    create_links,
+    create_pystac_collection,
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
@@ -93,15 +94,20 @@ def search_cadip_endpoint(request: Request):
 
     query_params = create_session_search_params(selected_config)
 
-    return process_session_search(
-        request,
-        query_params["station"],
-        query_params["SessionId"],
-        query_params["Satellite"],
-        query_params["PublicationDate"],
-        query_params["top"],
-        "collection",
+    pystac_collection = create_pystac_collection(selected_config)
+
+    pystac_collection.add_links(
+        process_session_search(
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+            "collection",
+        ),
     )
+    return pystac_collection.to_dict()
 
 
 @router.get("/cadip/collections/{collection_id}")
@@ -120,15 +126,21 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
     selected_config = select_config(collection_id)
 
     query_params = create_session_search_params(selected_config)
-    return process_session_search(
-        request,
-        query_params["station"],
-        query_params["SessionId"],
-        query_params["Satellite"],
-        query_params["PublicationDate"],
-        query_params["top"],
-        "collection",
+
+    pystac_collection = create_pystac_collection(selected_config)
+
+    pystac_collection.add_links(
+        process_session_search(
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+            "collection",
+        ),
     )
+    return pystac_collection.to_dict()
 
 
 @router.get("/cadip/collections/{collection_id}/items")
@@ -254,7 +266,7 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
             match add_assets:
                 case "collection":
-                    return create_collection(products)
+                    return create_links(products)
                 # case "items":
                 #     return create_stac_collection(products, feature_template, stac_mapper)
                 case True | "items":
@@ -266,7 +278,11 @@ def process_session_search(  # pylint: disable=too-many-arguments, too-many-loca
                         request,
                     )
                 case "_":
-                    return create_collection(products)
+                    # Should / Must be non reacheable case
+                    raise HTTPException(
+                        detail="Unselected output formatter.",
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    )
     # except [OSError, FileNotFoundError] as exception:
     #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
     except json.JSONDecodeError as exception:

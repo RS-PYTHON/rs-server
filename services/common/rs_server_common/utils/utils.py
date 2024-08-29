@@ -26,9 +26,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple, Union
 
+import pystac
 import sqlalchemy
+from dateutil import parser
 from eodag import EOProduct, setup_logging
 from fastapi import HTTPException, status
+from pystac import Extent, Link
+from pystac import Provider as pystac_provider
+from pystac import SpatialExtent, TemporalExtent
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -403,29 +408,56 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
 
 
-def create_collection(products: List[EOProduct]):
-    """Used to create stac collection template based on sessions lists."""
-    return {
-        "id": str(uuid.uuid4()),
-        "type": "Collection",
-        "stac_extensions": [
-            "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-        ],
-        "stac_version": "1.0.0",
-        "description": "A simple collection demonstrating core catalog fields with links to a couple of items",
-        "title": "Simple Example Collection",
-        "links": [
-            {
-                "rel": "item",
-                "href": "./simple-item.json",
-                "type": "application/geo+json",
-                "title": product.properties["SessionId"],
-            }
-            for product in products
-        ],
-    }
+def create_links(products: List[EOProduct]):
+    """Used to create pystac Link objects based on sessions lists."""
+    return [
+        Link(rel="item", title=product.properties["SessionId"], target="./simple-item.json") for product in products
+    ]
+
+
+def create_pystac_collection(collection: dict) -> pystac.Collection:
+    """Used to create pystac Collection based on given collection data."""
+    # Extracting values from the input dictionary
+    collection_id = collection["id"]
+    title = collection.get("title", "")
+    description = collection.get("description", "")
+    license_info = collection.get("license", "proprietary")  # Default to 'proprietary' if not provided
+
+    # Extent: Spatial and Temporal
+    spatial_extent = SpatialExtent(bboxes=[collection["extent"]["spatial"]["bbox"]])
+
+    # Parse date strings using dateutil.parser
+    start_date_str, end_date_str = collection["extent"]["temporal"]["interval"]
+    start_date = parser.parse(start_date_str)
+    end_date = parser.parse(end_date_str)
+
+    # Create TemporalExtent with datetime objects
+    temporal_extent = TemporalExtent(intervals=[[start_date, end_date]])
+
+    extent = Extent(spatial=spatial_extent, temporal=temporal_extent)
+    # STAC Extensions
+    stac_extensions = collection.get("stac_extensions", [])
+    providers = [pystac_provider(**provider) for provider in collection["providers"]]
+    # Create the pystac.Collection
+    pystac_collection = pystac.Collection(
+        id=collection_id,
+        description=description,
+        extent=extent,
+        title=title,
+        license=license_info,
+        providers=providers,
+        stac_extensions=stac_extensions,
+    )
+
+    pystac_collection.add_link(
+        Link(
+            rel="self",
+            target="https://example.com/stac/collections/s1_cadip",
+            title="Self Link for the Sentinel-1 Inuvik CADIP sessions collection",
+        ),
+    )
+
+    return pystac_collection
 
 
 def create_stac_collection(products: List[EOProduct], feature_template: dict, stac_mapper: dict) -> dict:
