@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 import pystac
 import sqlalchemy
@@ -460,7 +460,11 @@ def create_pystac_collection(collection: dict) -> pystac.Collection:
     return pystac_collection
 
 
-def create_stac_collection(products: List[EOProduct], feature_template: dict, stac_mapper: dict) -> dict:
+def create_stac_collection(
+    products: List[EOProduct],
+    feature_template: dict,
+    stac_mapper: dict,
+) -> pystac.ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
 
@@ -472,19 +476,23 @@ def create_stac_collection(products: List[EOProduct], feature_template: dict, st
     Returns:
         dict: The STAC feature collection containing features for each EOProduct.
     """
-    stac_template: Dict[Any, Any] = {
-        "type": "FeatureCollection",
-        "numberMatched": 0,
-        "numberReturned": 0,
-        "features": [],
-    }
+    items: list = []
+    item_counter: int = 0
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
-        stac_template["numberMatched"] += 1
-        stac_template["numberReturned"] += 1
-        stac_template["features"].append(feature_tmp)
-    return stac_template
+        item = pystac.Item(
+            id=feature_tmp["id"],
+            geometry=feature_tmp["geometry"],  # None in this case
+            bbox=None,
+            datetime=datetime.fromisoformat(feature_tmp["properties"]["datetime"].replace("Z", "+00:00")),
+            properties=feature_tmp["properties"],
+            stac_extensions=feature_tmp["stac_extensions"],
+        )
+        items.append(item)
+        item_counter += 1
+    matched_and_returned: dict = {"numberMatched": item_counter, "numberReturned": item_counter}
+    return pystac.ItemCollection(items=items, extra_fields=matched_and_returned)
 
 
 def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:

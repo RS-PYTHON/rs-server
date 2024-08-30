@@ -49,7 +49,7 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "geometry": None,
                 "properties": {
                     "created": "2021-02-16T12:00:00.000Z",
-                    "datetime": "1970-01-01T12:00:00.000Z",
+                    "datetime": "1970-01-01T12:00:00Z",
                     "start_datetime": "1970-01-01T12:00:00.000Z",
                     "end_datetime": "1970-01-01T12:00:00.000Z",
                     "eviction_datetime": "eviction_date_test_value",
@@ -61,7 +61,7 @@ from .conftest import (  # pylint: disable=no-name-in-module
                     "cadip:session_id": "session_id1",
                 },
                 "links": [],
-                "assets": {"file": {"file:size": "size_test_value"}},
+                "assets": {},
             },
             ["datetime", "cadip:id"],
         ),
@@ -77,12 +77,12 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "properties": {
                     "created": "2021-02-16T12:00:00.000Z",
                     "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
-                    "datetime": "ContentDate_Start_test_value",
-                    "start_datetime": "ContentDate_Start_test_value",
-                    "end_datetime": "ContentDate_End_test_value",
+                    "datetime": "1970-01-01T12:00:00Z",
+                    "start_datetime": "1970-01-01T12:00:00Z",
+                    "end_datetime": "1970-01-01T12:00:00Z",
                 },
                 "links": [],
-                "assets": {"file": {"file:size": "ContentLength_test_value"}},
+                "assets": {},
             },
             ["datetime", "adgs:id"],
         ),
@@ -190,7 +190,6 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
     with contextmanager(get_db)():
         # convert output to python dict
         data = client.get(test_endpoint).json()
-        print(data)
         # check that request returned no elements
         assert len(data["features"]) == 0
 
@@ -591,7 +590,7 @@ def test_valid_search_by_session_id(expected_products, client):
                         "geometry": None,
                         "properties": {
                             "start_datetime": "2023-11-17T06:05:37.234Z",
-                            "datetime": "2023-11-17T06:05:37.234Z",
+                            "datetime": "2023-11-17T06:05:37.234000Z",
                             "end_datetime": "2023-11-17T06:15:37.234Z",
                             "published": "2023-11-17T06:15:37.234Z",
                             "platform": "S2B",
@@ -627,6 +626,7 @@ def test_valid_search_by_session_id(expected_products, client):
                                 "roles": [
                                     "cadu",
                                 ],
+                                "title": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw",
                             },
                             "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
                                 "cadip:block_number": 1,
@@ -643,6 +643,7 @@ def test_valid_search_by_session_id(expected_products, client):
                                 "roles": [
                                     "cadu",
                                 ],
+                                "title": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw",
                             },
                         },
                     },
