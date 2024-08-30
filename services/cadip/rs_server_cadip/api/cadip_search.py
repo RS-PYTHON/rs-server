@@ -94,7 +94,13 @@ def search_cadip_endpoint(request: Request):
 
     query_params = create_session_search_params(selected_config)
 
-    pystac_collection = create_pystac_collection(selected_config)
+    try:
+        pystac_collection = create_pystac_collection(selected_config)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cannot create STAC Collection -> Missing {exc}",
+        ) from exc
 
     pystac_collection.add_links(
         process_session_search(
@@ -127,7 +133,13 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
 
     query_params = create_session_search_params(selected_config)
 
-    pystac_collection = create_pystac_collection(selected_config)
+    try:
+        pystac_collection = create_pystac_collection(selected_config)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cannot create STAC Collection -> Missing {exc}",
+        ) from exc
 
     pystac_collection.add_links(
         process_session_search(

@@ -89,6 +89,7 @@ def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starl
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
     asset["roles"] = ["cadu"]
     asset["href"] = f'{request.url.scheme}://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
+    # ToDo: Use pystac.Asset
     return {product.properties["Name"]: asset}
 
 
@@ -112,6 +113,7 @@ def from_session_expand_to_assets_serializer(
     """
     Associate all expanded files with session from feature_collection and create an asset for each file.
     """
+    # ToDo: Create pystac.Collection and use collection.add_assets
     for session in feature_collection["features"]:
         # Initialize an empty dictionary for the session's assets
         session["assets"] = {}

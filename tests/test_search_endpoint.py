@@ -702,19 +702,30 @@ def test_cadip_collection(client):
     response = client.get("/cadip/collections/cadip_session_by_satellite")
     assert response.status_code == status.HTTP_200_OK
     for link in response.json()["links"]:
-        assert sid in link["title"]
+        if link["rel"] == "item":
+            assert sid in link["title"]
 
 
 @pytest.mark.unit
 def test_invalid_cadip_collection(client):
-    """Test cases with invalid requests."""
+    """Test cases with invalid requests/collections."""
+    # Test a correctly configured collection with a bad query.
     response = client.get("/cadip/collections/cadip_session_incorrect")
     # Should return an empty collection, but with 200 status.
     assert response.status_code == status.HTTP_200_OK
-    # Test that collection contains no links (is empty).
-    assert not response.json()["links"]
 
-    # Test that an invalid configured collection return 404 with specific response.
+    # Test that collection contains no "Item" links.
+    assert not any("item" in link["rel"] for link in response.json()["links"])
+
+    # Also check for root / self relation
+    assert any("root" in link["rel"] for link in response.json()["links"])
+    assert any("self" in link["rel"] for link in response.json()["links"])
+
+    # Test that a non existing collection return 404 with specific response.
     response = client.get("/cadip/collections/invalid_configured_collection")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {"detail": "Cannot find a valid configuration"}
+
+    # Test with a miss configured collection: cadip_session_incomplete does not define a Extent.
+    response = client.get("/cadip/collections/cadip_session_incomplete")
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
