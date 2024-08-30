@@ -417,36 +417,27 @@ def create_links(products: List[EOProduct]):
 
 def create_pystac_collection(collection: dict) -> pystac.Collection:
     """Used to create pystac Collection based on given collection data."""
-    # Extracting values from the input dictionary
-    collection_id = collection["id"]
-    title = collection.get("title", "")
-    description = collection.get("description", "")
-    license_info = collection.get("license", "proprietary")  # Default to 'proprietary' if not provided
-
     # Extent: Spatial and Temporal
-    spatial_extent = SpatialExtent(bboxes=[collection["extent"]["spatial"]["bbox"]])
-
-    # Parse date strings using dateutil.parser
+    # Parse date strings using dateutil.parser for TemporalExtent
     start_date_str, end_date_str = collection["extent"]["temporal"]["interval"]
     start_date = parser.parse(start_date_str)
     end_date = parser.parse(end_date_str)
 
-    # Create TemporalExtent with datetime objects
-    temporal_extent = TemporalExtent(intervals=[[start_date, end_date]])
+    extent = Extent(
+        spatial=SpatialExtent(bboxes=[collection["extent"]["spatial"]["bbox"]]),
+        temporal=TemporalExtent(intervals=[[start_date, end_date]]),
+    )
 
-    extent = Extent(spatial=spatial_extent, temporal=temporal_extent)
-    # STAC Extensions
-    stac_extensions = collection.get("stac_extensions", [])
     providers = [pystac_provider(**provider) for provider in collection["providers"]]
     # Create the pystac.Collection
     pystac_collection = pystac.Collection(
-        id=collection_id,
-        description=description,
+        id=collection["id"],
+        description=collection.get("description", "No description provided."),
         extent=extent,
-        title=title,
-        license=license_info,
+        title=collection.get("title", "No title provided."),
+        license=collection.get("license", "proprietary"),  # Default to 'proprietary' if not provided
         providers=providers,
-        stac_extensions=stac_extensions,
+        stac_extensions=collection.get("stac_extensions", []),
     )
 
     pystac_collection.add_link(
@@ -456,8 +447,14 @@ def create_pystac_collection(collection: dict) -> pystac.Collection:
             title="Self Link for the Sentinel-1 Inuvik CADIP sessions collection",
         ),
     )
-
-    return pystac_collection
+    try:
+        pystac_collection.validate()
+        return pystac_collection
+    except pystac.STACValidationError as e:
+        raise HTTPException(
+            detail="Unable to validated collection.",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        ) from e
 
 
 def create_stac_collection(
