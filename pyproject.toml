@@ -32,6 +32,7 @@ rs-server-adgs = {path = "services/adgs", develop = true}
 rs-server-cadip = {path = "services/cadip", develop = true}
 rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
+pystac = {version = "^1.10.1", extras = ["validation"]}
 
 [tool.poetry.group.dev]
 optional = true
