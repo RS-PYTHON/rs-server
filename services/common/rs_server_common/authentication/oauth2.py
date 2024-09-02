@@ -19,7 +19,6 @@ import os
 from typing import Annotated
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-import requests
 from authlib.integrations import starlette_client
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi import (

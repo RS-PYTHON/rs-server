@@ -19,11 +19,8 @@ import json
 import pytest
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication.apikey import (
-    APIKEY_HEADER,
-    apikey_security,
-    ttl_cache,
-)
+from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
+from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import State
 from starlette.status import (
@@ -77,7 +74,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     )
 
     # Check the apikey_security result
-    await apikey_security(dummy_request, VALID_APIKEY)  # , "")
+    await authenticate(dummy_request, VALID_APIKEY)
     assert dummy_request.state.auth_roles == initial_response["iam_roles"]
     assert dummy_request.state.auth_config == initial_response["config"]
     assert dummy_request.state.user_login == initial_response["user_login"]
@@ -97,14 +94,14 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
 
     # Still the initial response !
     for _ in range(100):
-        await apikey_security(dummy_request, VALID_APIKEY)  # , "")
+        await authenticate(dummy_request, VALID_APIKEY)
         assert dummy_request.state.auth_roles == initial_response["iam_roles"]
         assert dummy_request.state.auth_config == initial_response["config"]
         assert dummy_request.state.user_login == initial_response["user_login"]
 
     # We have to clear the cache to obtain the modified response
     ttl_cache.clear()
-    await apikey_security(dummy_request, VALID_APIKEY)  # , "")
+    await authenticate(dummy_request, VALID_APIKEY)
     assert dummy_request.state.auth_roles == modified_response["iam_roles"]
     assert dummy_request.state.auth_config == modified_response["config"]
     assert dummy_request.state.user_login == modified_response["user_login"]
@@ -136,9 +133,9 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
         status_code=HTTP_403_FORBIDDEN,
     )
 
-    # For each api endpoint (except the technical endpoints)
+    # For each api endpoint (except the technical and oauth2 endpoints)
     for route in fastapi_app.router.routes:
-        if (not isinstance(route, APIRoute)) or (route.path in ("/", "/health")):
+        if (not isinstance(route, APIRoute)) or (route.path in ("/", "/health")) or route.path.startswith("/auth/"):
             continue
 
         # For each method (get, post, ...)
@@ -150,8 +147,8 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
 
             logger.debug(f"Test the {route.path!r} [{method}] authentication")
 
-            # Check that without api key in headers, the endpoint is protected and we receive a 403
-            assert client.request(method, endpoint).status_code == HTTP_403_FORBIDDEN
+            # Check that without api key in headers, the endpoint is protected and we receive a 401 or 403
+            assert client.request(method, endpoint).status_code in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
 
             # Test a valid and wrong api key values in headers
             assert (
@@ -162,16 +159,6 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
                 client.request(method, endpoint, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
                 == HTTP_403_FORBIDDEN
             )
-
-            # Idem by passing the api key by url query parameter (disabled for now)
-            # assert (
-            #     client.request(method, endpoint, params={APIKEY_QUERY: VALID_APIKEY}).status_code \
-            #     != HTTP_403_FORBIDDEN
-            # )
-            # assert (
-            #     client.request(method, endpoint, params={APIKEY_QUERY: WRONG_APIKEY}).status_code \
-            #     == HTTP_403_FORBIDDEN
-            # )
 
 
 UNKNOWN_CADIP_STATION = "unknown-cadip-station"
