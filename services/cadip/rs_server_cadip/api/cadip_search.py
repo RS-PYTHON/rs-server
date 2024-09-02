@@ -64,7 +64,7 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
 
 
 @router.get("/cadip/search/items")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def search_cadip_with_session_info(request: Request):
     """Endpoint used to search cadip collections and directly return items properties and assets."""
     query_params = dict(request.query_params)
@@ -84,7 +84,7 @@ def search_cadip_with_session_info(request: Request):
 
 
 @router.get("/cadip/search")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def search_cadip_endpoint(request: Request):
     """Endpoint used to search cadip collections."""
     query_params = dict(request.query_params)
@@ -105,7 +105,7 @@ def search_cadip_endpoint(request: Request):
 
 
 @router.get("/cadip/collections/{collection_id}")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | dict:
     """
     Endpoint that retrieves session data from an external CADIP server and formats it into a STAC-compliant Collection.
@@ -132,7 +132,7 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
 
 
 @router.get("/cadip/collections/{collection_id}/items")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def get_cadip_collection_items(request: Request, collection_id):
     """
      Endpoint that retrieves a list of sessions from any CADIP station and returns them as an ItemCollection.
@@ -161,7 +161,7 @@ def get_cadip_collection_items(request: Request, collection_id):
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def get_cadip_collection_item_details(request: Request, collection_id, session_id):
     """
     Endpoint that retrieves a specific item from an ItemCollection, providing detailed information about a particular

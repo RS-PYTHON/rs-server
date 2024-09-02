@@ -40,14 +40,14 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     fi
 
     # Install dependencies
-    # (set -x
-    #     cd "$proj_dir" && poetry install --with dev
-    #     poetry run opentelemetry-bootstrap -a install || true
-    # )
+    (set -x
+        cd "$proj_dir" && poetry install --with dev
+        poetry run opentelemetry-bootstrap -a install || true
+    )
 
     # Test if the directory has at least one test (see: https://stackoverflow.com/a/57014262)
-    ntests=$(cd "$proj_dir" && poetry run pytest --collect-only -q | head -n -2 | wc -l)
-    if [[ $ntests == 0 ]]; then
+    test_count=$(cd "$proj_dir" && poetry run pytest --collect-only -q $tests_dir | head -n -2 | wc -l)
+    if [[ $test_count == 0 ]]; then
         echo "Skip '$tests_dir' (no tests implemented)"
         continue
     fi

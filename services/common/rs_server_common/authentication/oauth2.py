@@ -278,7 +278,6 @@ async def get_user_info(request: Request) -> AuthInfo:
         # In this case, referer = http://<domain>:<port>/docs
         referer = request.headers.get("referer")
         if referer and (urlparse(referer).path.rstrip("/") == SWAGGER_HOMEPAGE):
-            login_url = f"{str(request.base_url).rstrip('/')}{AUTH_PREFIX}{LOGIN_FROM_BROWSER}"
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
                 f"You must first login by clicking the 'Login' link on top of this Swagger page.",
