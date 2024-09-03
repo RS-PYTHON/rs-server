@@ -164,15 +164,14 @@ def get_allowed_collections(request: Request):
     filtered_collections = [
         collection for collection in configuration["collections"] if collection["station"] in allowed_stations
     ]
-
-    # Create STAC object.
-    stac_object: dict = {"links": [], "collections": []}
+    # Create JSON object.
+    stac_object: dict = {"type": "Object", "links": [], "collections": []}
 
     for config in filtered_collections:
         # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
         collection: pystac.Collection = create_pystac_collection(config)
-        link = process_session_search(
+        links = process_session_search(
             request,
             query_params["station"],
             query_params["SessionId"],
@@ -181,8 +180,8 @@ def get_allowed_collections(request: Request):
             query_params["top"],
             "collection",
         )
-        stac_object["links"].append(link)
-        stac_object["collections"].append(collection)
+        stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
+        stac_object["collections"].append(collection.to_dict())
     return stac_object
 
 
