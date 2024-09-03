@@ -122,12 +122,13 @@ def get_root_catalog(request: Request):
 @apikey_validator(station="cadip", access_type="landing_page")
 def get_allowed_collections(request: Request):
     """
-        Endpoint to retrieve a catalog of collections that a user is authorized to access based on their API key.
+        Endpoint to retrieve a object containing collections and links that a user is authorized to
+        access based on their API key.
 
     This endpoint reads the API key from the request to determine the roles associated with the user.
     Using these roles, it identifies the stations the user can access and filters the available collections
-    accordingly. The endpoint then constructs a STAC (SpatioTemporal Asset Catalog) catalog object, which
-    includes links to the collections that match the allowed stations.
+    accordingly. The endpoint then constructs a JSON, which includes links to the collections that match the allowed
+    stations.
 
     - It begins by extracting roles from the `request.state.auth_roles` and derives the station names
       the user has access to.
@@ -140,8 +141,7 @@ def get_allowed_collections(request: Request):
     the collections the user is allowed to access.
 
     Returns:
-        dict: A dictionary representation of a STAC catalog containing collections that the user has
-              permission to access.
+        dict: Object containing an array of Collection objects in the Catalog, and Link relations.
 
     Raises:
         HTTPException: If there are issues with reading configurations or processing session searches.
@@ -165,25 +165,25 @@ def get_allowed_collections(request: Request):
         collection for collection in configuration["collections"] if collection["station"] in allowed_stations
     ]
 
-    # Create catalog object.
-    pystac_catalog = pystac.Catalog(id=str(uuid.uuid4()), description="RSPY Available collections")
+    # Create STAC object.
+    stac_object: dict = {"links": [], "collections": []}
 
     for config in filtered_collections:
-        # Foreach allowed collection, create links and append to catalog.
+        # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
-        pystac_catalog.add_links(
-            process_session_search(
-                request,
-                query_params["station"],
-                query_params["SessionId"],
-                query_params["Satellite"],
-                query_params["PublicationDate"],
-                query_params["top"],
-                "collection",
-            ),
+        collection: pystac.Collection = create_pystac_collection(config)
+        link = process_session_search(
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+            "collection",
         )
-
-    return pystac_catalog.to_dict()
+        stac_object["links"].append(link)
+        stac_object["collections"].append(collection)
+    return stac_object
 
 
 @router.get("/cadip/search/items")
