@@ -110,7 +110,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
 @pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
 async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPXMock):
     """
-    Test that all the http endpoints are protected and return 403 if not authenticated.
+    Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
     """
 
     # Mock the uac manager url
@@ -147,8 +147,8 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
 
             logger.debug(f"Test the {route.path!r} [{method}] authentication")
 
-            # Check that without api key in headers, the endpoint is protected and we receive a 401 or 403
-            assert client.request(method, endpoint).status_code in (HTTP_401_UNAUTHORIZED, HTTP_403_FORBIDDEN)
+            # Check that without api key in headers, the endpoint is protected and we receive a 401
+            assert client.request(method, endpoint).status_code == HTTP_401_UNAUTHORIZED
 
             # Test a valid and wrong api key values in headers
             assert (

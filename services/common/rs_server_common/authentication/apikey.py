@@ -40,6 +40,8 @@ logger = Logging.default(__name__)
 # HTTP header field for the api key
 APIKEY_HEADER = "x-api-key"
 
+APIKEY_SCHEME_NAME = "You can also authenticate with an API key"
+
 # Just print the plain RSPY_UAC_HOMEPAGE environment variable name.
 # When the rs-server-frontend container will start, it will replace it with its associated value.
 APIKEY_DESCRIPTION = """
@@ -52,7 +54,7 @@ See the documentation</a></h3>
 # API key authentication using a header
 APIKEY_AUTH_HEADER = APIKeyHeader(
     name=APIKEY_HEADER,
-    scheme_name="You can also authenticate with an API key",
+    scheme_name=APIKEY_SCHEME_NAME,
     auto_error=False,
     description=APIKEY_DESCRIPTION,
 )
@@ -125,7 +127,7 @@ async def __apikey_security_cached(apikey_value) -> AuthInfo:
         # Note: for now, config is an empty dict
         return AuthInfo(
             user_login=contents["user_login"],
-            iam_roles=sorted(contents["iam_roles"]),
+            iam_roles=contents["iam_roles"],
             apikey_config=contents["config"],
         )
 

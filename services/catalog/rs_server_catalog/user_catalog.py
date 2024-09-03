@@ -627,7 +627,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         content = self.adapt_links(content, owner_id, collection_id, "features")
 
         # Add the stac authentication extension
-        self.add_authentication_extension(content)
+        await self.add_authentication_extension(content)
 
         return JSONResponse(content, status_code=response.status_code)
 
@@ -1184,7 +1184,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         parent = content
         if content.get("type") == "Feature":
             parent = content.setdefault("properties", {})
-        oidc = await oauth2.KEYCLOAK.load_server_metadata()
+        # oidc = await oauth2.KEYCLOAK.load_server_metadata()
         parent.setdefault("auth:schemes", {}).update(
             {
                 "apikey": {
@@ -1226,4 +1226,4 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:
             for nested_content in content.get(nested_field, []):
-                self.add_authentication_extension(nested_content)
+                await self.add_authentication_extension(nested_content)

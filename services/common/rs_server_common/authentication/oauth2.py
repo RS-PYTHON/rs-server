@@ -228,7 +228,7 @@ def get_router(app: FastAPI) -> APIRouter:
         """Show user information."""
         return {
             "user_login": auth_info.user_login,
-            "iam_roles": auth_info.iam_roles,
+            "iam_roles": sorted(auth_info.iam_roles),
         }
 
     @router.get("/logout", include_in_schema=False)

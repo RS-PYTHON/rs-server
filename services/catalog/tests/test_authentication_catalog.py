@@ -16,14 +16,18 @@
 
 import json
 import os
+from importlib import reload
 
 import pytest
 import requests
 import yaml
 from moto.server import ThreadedMotoServer
 from pytest_httpx import HTTPXMock
+from rs_server_catalog.main import app, must_be_authenticated
+from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from rs_server_common.utils.logging import Logging
 from starlette.status import (
     HTTP_200_OK,
     HTTP_302_FOUND,
@@ -33,10 +37,12 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
 )
 
-from .conftest import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
+from .conftest import (  # pylint: disable=no-name-in-module
+    RESOURCES_FOLDER,
+    RSPY_UAC_CHECK_URL,
+)
 
-# Dummy url for the uac manager check endpoint
-RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
+logger = Logging.default(__name__)
 
 # Dummy api key values
 VALID_APIKEY = "VALID_API_KEY"
@@ -80,9 +86,6 @@ def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], 
     """init mocker for tests."""
     # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-    # Mock the uac manager url
-    monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
     # With a valid api key in headers, the uac manager will give access to the endpoint
     ttl_cache.clear()  # clear the cached response
@@ -1545,12 +1548,30 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-def test_error_when_not_authenticated(
-    mocker,
-    client,
-):
-    """Test that the user gets a HTPP_403_FORBIDDEN status code response
-    when he tries to call an endpoint without being authenticated."""
+def test_error_when_not_authenticated(mocker, monkeypatch, client, httpx_mock: HTTPXMock):
+    """
+    Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
+    """
+    # Mock cluster mode to enable authentication
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-    response = client.request("GET", "/catalog/")
-    assert response.status_code == HTTP_403_FORBIDDEN
+
+    # With a wrong api key in headers, the uac manager will return 403
+    ttl_cache.clear()  # clear the cached response
+    httpx_mock.add_response(
+        url=RSPY_UAC_CHECK_URL,
+        match_headers={APIKEY_HEADER: WRONG_APIKEY},
+        status_code=HTTP_403_FORBIDDEN,
+    )
+
+    # For each route and method from the openapi specification i.e. with the /catalog/ prefixes
+    for path, methods in app.openapi()["paths"].items():
+        if not must_be_authenticated(path):
+            continue
+        for method in methods.keys():
+            logger.debug(f"Test the {path!r} [{method}] authentication")
+
+            # Check that without api key in headers, the endpoint is protected and we receive a 401
+            assert client.request(method, path).status_code == HTTP_401_UNAUTHORIZED
+
+            # With a wrong api key, it returns a 403
+            assert client.request(method, path, **WRONG_HEADER).status_code == HTTP_403_FORBIDDEN

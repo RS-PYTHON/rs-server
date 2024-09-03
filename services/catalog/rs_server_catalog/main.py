@@ -25,11 +25,11 @@ import sys
 import traceback
 from contextlib import asynccontextmanager
 from os import environ as env
-from typing import Any, Callable, Dict
+from typing import Annotated, Any, Callable, Dict
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Security
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
@@ -37,7 +37,11 @@ from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
-from rs_server_common.authentication.apikey import APIKEY_HEADER
+from rs_server_common.authentication.apikey import (
+    APIKEY_AUTH_HEADER,
+    APIKEY_HEADER,
+    APIKEY_SCHEME_NAME,
+)
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
@@ -71,6 +75,16 @@ logger = Logging.default(__name__)
 
 # Technical endpoints (no authentication)
 TECH_ENDPOINTS = ["/_mgmt/ping"]
+
+
+def must_be_authenticated(route_path: str) -> bool:
+    """Return true if a user must be authenticated to use this endpoint route path."""
+
+    # Remove the /catalog prefix, if any
+    path = route_path.removeprefix("/catalog")
+
+    no_auth = (path in TECH_ENDPOINTS) or (path in ["/api", "/api.html"]) or path.startswith("/auth/")
+    return not no_auth
 
 
 def add_parameter_owner_id(parameters: list[dict]) -> list[dict]:
@@ -150,8 +164,8 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
                 },
                 "operationId": "/catalog" + route.operation_id if hasattr(route, "operation_id") else route.path,
             }
-            if common_settings.CLUSTER_MODE and "api.html" not in route.path:
-                to_add["security"] = [{"API key passed in HTTP header": []}]
+            if common_settings.CLUSTER_MODE and must_be_authenticated(route.path):
+                to_add["security"] = [{APIKEY_SCHEME_NAME: []}]
             openapi_spec["paths"].setdefault(path, {})[method.lower()] = to_add
 
     openapi_spec_paths = openapi_spec["paths"]
@@ -226,8 +240,8 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
 
     # Add security parameters.
     if common_settings.CLUSTER_MODE:
-        catalog_collection_search["security"] = [{"API key passed in HTTP header": []}]
-        catalog_collection_search_post["security"] = [{"API key passed in HTTP header": []}]
+        catalog_collection_search["security"] = [{APIKEY_SCHEME_NAME: []}]
+        catalog_collection_search_post["security"] = [{APIKEY_SCHEME_NAME: []}]
     # Add all previous created endpoints.
     openapi_spec["paths"][catalog_collection_search_path] = {"get": catalog_collection_search}
     openapi_spec["paths"][catalog_collection_search_path]["post"] = catalog_collection_search_post
@@ -269,13 +283,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         Middleware implementation.
         """
 
-        # Only in cluster mode (not local mode) and for the catalog endpoints
-        if (
-            (common_settings.CLUSTER_MODE)
-            and request.url.path.startswith("/catalog")
-            and request.url.path != "/catalog/api.html"
-        ):
-
+        if common_settings.CLUSTER_MODE and must_be_authenticated(request.url.path):
             try:
                 # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
                 await authentication.authenticate(
@@ -363,13 +371,13 @@ if common_settings.CLUSTER_MODE:
     # Existing middlewares
     middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]
 
-    # Insert the SessionMiddleware (to save cookies) before the AuthenticationMiddleware.
+    # Insert the SessionMiddleware (to save cookies) after the DontRaiseExceptions middleware.
     # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
     if app.middleware_stack is not None:
         raise RuntimeError("Cannot add middleware after an application has started")
-    authentication_index = middleware_names.index("AuthenticationMiddleware")
+    middleare_index = middleware_names.index("DontRaiseExceptions")
     cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
-    app.user_middleware.insert(authentication_index, Middleware(SessionMiddleware, secret_key=cookie_secret))
+    app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
 
     # Get the oauth2 router
     oauth2_router = oauth2.get_router(app)
@@ -419,23 +427,29 @@ app.router.lifespan_context = lifespan
 # Configure OpenTelemetry
 opentelemetry.init_traces(app, "rs.server.catalog")
 
-# In cluster mode, add the authentication dependency: the user must provide an api key
-# (generated from the apikey manager) or authenticate with oauth2 to access the endpoints
+
+# In cluster mode, we add a FastAPI dependency to every authenticated endpoint so the lock icon (to enter an API key)
+# can appear in the Swagger. This won't do the actual authentication, which is done by a FastAPI middleware.
+# We do this because, in FastAPI, the dependencies are run after the middlewares, but here we need the
+# authentication to work from inside the middlewares.
 if common_settings.CLUSTER_MODE:
-    # One scope for each ApiRouter path and method
+
+    async def just_for_the_lock_icon(
+        request: Request,
+        apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "toto",
+    ):
+        """Dummy function to add a lock icon in Swagger to enter an API key."""
+        pass
+
+    # One scope for each Router path and method
     scopes = []
     for route in api.app.router.routes:
-        if isinstance(route, APIRoute):
-            # Not on the technical or authentication endpoints
-            if (route.path in TECH_ENDPOINTS) or route.path.startswith(f"{AUTH_PREFIX}/"):
-                continue
-            for method_ in route.methods:
-                scopes.append({"path": route.path, "method": method_})
+        if not isinstance(route, APIRoute) or not must_be_authenticated(route.path):
+            continue
+        for method_ in route.methods:
+            scopes.append({"path": route.path, "method": method_})
 
-    # Note: Depends(authenticate) doesn't work (the function is not called) after we
-    # changed the url prefixes in the openapi specification.
-    # But this dependency still adds the lock icon in swagger to enter the api key.
-    api.add_route_dependencies(scopes=scopes, dependencies=[Depends(authentication.authenticate)])
+    api.add_route_dependencies(scopes=scopes, dependencies=[Depends(just_for_the_lock_icon)])
 
 # Pause and timeout to connect to database (hardcoded for now)
 app.state.pg_pause = 3  # seconds
