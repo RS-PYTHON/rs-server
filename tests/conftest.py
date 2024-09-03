@@ -41,7 +41,7 @@ import pytest
 import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
-from rs_server_common.authentication import oauth2
+from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
@@ -139,7 +139,7 @@ def docker_compose_file_():
 
 
 @pytest.fixture(name="fastapi_app")
-def fastapi_app_(
+def fastapi_app_(  # pylint: disable=too-many-arguments
     request,
     mocker,
     monkeypatch,

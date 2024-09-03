@@ -16,7 +16,6 @@
 
 import json
 import os
-from importlib import reload
 
 import pytest
 import requests
@@ -104,7 +103,7 @@ COMMON_FIELDS = {
 # pylint: disable=too-many-lines
 
 
-def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], mock_wrong_apikey: bool = False):
+def init_test(mocker, httpx_mock: HTTPXMock, iam_roles: list[str], mock_wrong_apikey: bool = False):
     """init mocker for tests."""
     # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
@@ -145,7 +144,7 @@ def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], 
     )
 
 
-def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
+def test_authentication(mocker, httpx_mock: HTTPXMock, client):
     """
     Test that the http endpoints are protected and return 403 if not authenticated.
     """
@@ -155,7 +154,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
         "rs_catalog_titi:S2_L1_read",
         "rs_catalog_darius:*_write",
     ]
-    init_test(mocker, monkeypatch, httpx_mock, iam_roles, True)
+    init_test(mocker, httpx_mock, iam_roles, True)
 
     valid_links = [
         {
@@ -548,13 +547,12 @@ class TestAuthenticationGetOneCollection:
         user,
         user_str_for_endpoint_call,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):  # pylint: disable=too-many-arguments
         """Test that the user gets the right collection when he does a good request with right permissions."""
         iam_roles = [f"rs_catalog_{user}:*_read"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         collection = {
             "id": "S1_L1",
@@ -611,7 +609,6 @@ class TestAuthenticationGetOneCollection:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -622,7 +619,7 @@ class TestAuthenticationGetOneCollection:
             "rs_catalog_toto:*_write",
             "rs_catalog_toto:S1_L2_read",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "GET",
@@ -647,7 +644,6 @@ class TestAuthenticationGetItems:
         user,
         user_str_for_endpoint_call,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):  # pylint: disable=too-many-arguments
@@ -655,7 +651,7 @@ class TestAuthenticationGetItems:
         when he does a good request with right permissions."""
 
         iam_roles = [f"rs_catalog_{user}:*_read"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "GET",
@@ -667,7 +663,6 @@ class TestAuthenticationGetItems:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -679,7 +674,7 @@ class TestAuthenticationGetItems:
             "rs_catalog_toto:*_write",
             "rs_catalog_toto:S1_L2_read",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "GET",
@@ -705,7 +700,6 @@ class TestAuthenticationGetOneItem:
         user_str_for_endpoint_call,
         feature,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):  # pylint: disable=too-many-arguments
@@ -715,7 +709,7 @@ class TestAuthenticationGetOneItem:
             "rs_catalog_pyteam:*_read",
             "rs_catalog_toto:*_read",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         feature_s1_l1_0 = {
             "id": feature,
@@ -773,7 +767,6 @@ class TestAuthenticationGetOneItem:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -785,7 +778,7 @@ class TestAuthenticationGetOneItem:
             "rs_catalog_toto:*_write",
             "rs_catalog_toto:S1_L2_read",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "GET",
@@ -827,7 +820,6 @@ class TestAuthenticationPostOneCollection:
     def test_http200_with_good_authentication(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -838,7 +830,7 @@ class TestAuthenticationPostOneCollection:
             "rs_catalog_pyteam:*_read",
             "rs_catalog_pyteam:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "POST",
@@ -851,7 +843,6 @@ class TestAuthenticationPostOneCollection:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -859,7 +850,7 @@ class TestAuthenticationPostOneCollection:
         when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
         self.collection_to_post["owner"] = "toto"
         response = client.request(
             "POST",
@@ -872,7 +863,6 @@ class TestAuthenticationPostOneCollection:
     def test_fails_user_creates_collection_owned_by_another_user(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -888,7 +878,6 @@ class TestAuthenticationPostOneCollection:
         Args:
             self: The test case instance.
             mocker: pytest-mock fixture for mocking objects.
-            monkeypatch: pytest fixture for modifying module or environment attributes.
             httpx_mock (HTTPXMock): Fixture for mocking HTTPX requests.
             client: Test client for making HTTP requests to the application.
 
@@ -910,7 +899,7 @@ class TestAuthenticationPostOneCollection:
             "rs_catalog_toto:*_read",
             "rs_catalog_toto:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
         self.collection_to_post["owner"] = "toto"
         response = client.request(
             "POST",
@@ -954,7 +943,6 @@ class TestAuthenticationPutOneCollection:
     def test_http200_with_good_authentication(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -966,7 +954,7 @@ class TestAuthenticationPutOneCollection:
             "rs_catalog_pyteam:*_read",
             "rs_catalog_pyteam:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         # owner_id is used in the endpoint, format is owner_id:collection
         response = client.request(
@@ -989,7 +977,6 @@ class TestAuthenticationPutOneCollection:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -997,7 +984,7 @@ class TestAuthenticationPutOneCollection:
         when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_pyteam:S1_L2_read"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "PUT",
@@ -1010,7 +997,6 @@ class TestAuthenticationPutOneCollection:
     def test_fails_user_updates_collection_owned_by_another_user(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1025,7 +1011,6 @@ class TestAuthenticationPutOneCollection:
         Args:
             self: The test case instance.
             mocker: pytest-mock fixture for mocking objects.
-            monkeypatch: pytest fixture for modifying module or environment attributes.
             httpx_mock (HTTPXMock): Fixture for mocking HTTPX requests.
             client: Test client for making HTTP requests to the application.
 
@@ -1047,7 +1032,7 @@ class TestAuthenticationPutOneCollection:
             "rs_catalog_toto:*_read",
             "rs_catalog_toto:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
         self.updated_collection["owner"] = "toto"
         response = client.request(
             "PUT",
@@ -1077,7 +1062,6 @@ class TestAuthenticationSearch:
     def test_http200_with_good_authentication(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1088,7 +1072,7 @@ class TestAuthenticationSearch:
             "rs_catalog_toto:*_read",
             "rs_catalog_toto:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "GET",
@@ -1103,7 +1087,6 @@ class TestAuthenticationSearch:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1111,7 +1094,7 @@ class TestAuthenticationSearch:
         when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "GET",
@@ -1143,7 +1126,6 @@ class TestAuthenticationSearchInCollection:
     def test_http200_with_good_authentication(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1155,7 +1137,7 @@ class TestAuthenticationSearchInCollection:
             "rs_catalog_toto:*_read",
             "rs_catalog_toto:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "GET",
@@ -1190,7 +1172,6 @@ class TestAuthenticationSearchInCollection:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1198,7 +1179,7 @@ class TestAuthenticationSearchInCollection:
         when he does a good request without the right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L2_read"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "GET",
@@ -1252,7 +1233,6 @@ class TestAuthenticationDownload:
     def test_http200_with_good_authentication(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):  # pylint: disable=too-many-locals
@@ -1263,7 +1243,7 @@ class TestAuthenticationDownload:
             "rs_catalog_toto:*_write",
             "rs_catalog_toto:*_download",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         # Start moto server
         moto_endpoint = "http://localhost:8077"
@@ -1339,7 +1319,6 @@ class TestAuthenticationDownload:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1349,7 +1328,7 @@ class TestAuthenticationDownload:
             "rs_catalog_toto:*_read",
             "rs_catalog_toto:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         # Start moto server
         moto_endpoint = "http://localhost:8077"
@@ -1396,7 +1375,6 @@ class TestAuthenticationDelete:
     def test_http200_with_good_authentication(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1404,7 +1382,7 @@ class TestAuthenticationDelete:
         when he deletes a collection with right permissions"""
 
         iam_roles: list[str] = []
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
         # create the collections first
         collections = ["pyteam_fixture_collection_1", "pyteam_fixture_collection_2"]
         for collection in collections:
@@ -1443,7 +1421,6 @@ class TestAuthenticationDelete:
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1454,7 +1431,7 @@ class TestAuthenticationDelete:
             "rs_catalog_toto:*_read",
             "rs_catalog_toto:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
         # sending a request from user pyteam (loaded from the apikey) to delete
         # the S1_L1 collection owned by the `toto` user.
         # 401 unauthorized reponse should be received
@@ -1524,7 +1501,6 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
     def test_http200_with_good_authentication(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1535,7 +1511,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
             "rs_catalog_toto:*_read",
             "rs_catalog_toto:*_write",
         ]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.post(
             "/catalog/collections/S1_L1/items",
@@ -1558,7 +1534,6 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
     def test_fails_without_good_perms(
         self,
         mocker,
-        monkeypatch,
         httpx_mock: HTTPXMock,
         client,
     ):
@@ -1566,7 +1541,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
         when he does a good request without right permissions."""
 
         iam_roles = ["rs_catalog_toto:S1_L1_read"]
-        init_test(mocker, monkeypatch, httpx_mock, iam_roles)
+        init_test(mocker, httpx_mock, iam_roles)
 
         response = client.request(
             "POST",
@@ -1577,7 +1552,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
-def test_error_when_not_authenticated(mocker, monkeypatch, client, httpx_mock: HTTPXMock):
+def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMock):
     """
     Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
     """

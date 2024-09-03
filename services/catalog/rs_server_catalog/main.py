@@ -435,11 +435,9 @@ opentelemetry.init_traces(app, "rs.server.catalog")
 if common_settings.CLUSTER_MODE:
 
     async def just_for_the_lock_icon(
-        request: Request,
-        apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "toto",
+        apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
     ):
         """Dummy function to add a lock icon in Swagger to enter an API key."""
-        pass
 
     # One scope for each Router path and method
     scopes = []
