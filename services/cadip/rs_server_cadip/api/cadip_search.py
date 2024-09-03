@@ -70,8 +70,52 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
 @router.get("/cadip")
 @apikey_validator(station="cadip", access_type="landing_page")
 def get_root_catalog(request: Request):
-    # WIP
-    return {}
+    """
+    Retrieve the root catalog for the RSPY CADIP landing page.
+
+    This endpoint generates a STAC (SpatioTemporal Asset Catalog) Catalog object that serves as the landing
+    page for the RSPY CADIP service. The catalog includes basic metadata about the service and links to
+    available collections.
+
+    The resulting catalog contains:
+    - `id`: A unique identifier for the catalog, generated as a UUID.
+    - `description`: A brief description of the catalog.
+    - `title`: The title of the catalog.
+    - `stac_version`: The version of the STAC specification to which the catalog conforms.
+    - `conformsTo`: A list of STAC and OGC API specifications that the catalog conforms to.
+    - `links`: A link to the `/cadip/collections` endpoint where users can find available collections.
+
+    The `stac_version` is set to "1.0.0", and the `conformsTo` field lists the relevant STAC and OGC API
+    specifications that the catalog adheres to. A link to the collections endpoint is added to the catalog's
+    `links` field, allowing users to discover available collections in the CADIP service.
+
+    Parameters:
+    - request: The HTTP request object which includes details about the incoming request.
+
+    Returns:
+    - dict: A dictionary representation of the STAC catalog, including metadata and links.
+    """
+    landing_page = pystac.Catalog(
+        id=str(uuid.uuid4()),
+        description="RSPY CADIP landing page",
+        title="RSPY CADIP Catalog",
+    )
+    landing_page.stac_extensions = []
+    landing_page.stac_version = "1.0.0"  # type: ignore
+    landing_page.extra_fields["conformsTo"] = [
+        "https://api.stacspec.org/v1.0.0/core",
+        "https://api.stacspec.org/v1.0.0/collections",
+        "https://api.stacspec.org/v1.0.0/ogcapi-features",
+        "https://api.stacspec.org/v1.0.0/item-search",
+        "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+        "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+        "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+    ]
+
+    landing_page.add_link(
+        pystac.Link(rel="data", target=f"{request.url.scheme}://{request.url.netloc}/cadip/collections"),
+    )
+    return landing_page.to_dict()
 
 
 @router.get("/cadip/collections")
@@ -104,16 +148,16 @@ def get_allowed_collections(request: Request):
     """
     # Based on api key, get all station a user can access.
     allowed_stations = []
-
-    # Iterate over each auth_role in request.state.auth_roles
-    for auth_role in request.state.auth_roles:
-        try:
-            # Attempt to split the auth_role and extract the station part
-            station = auth_role.split("_")[2]
-            allowed_stations.append(station)
-        except IndexError:
-            # If there is an IndexError, ignore it and continue
-            continue
+    if hasattr(request.state, "auth_roles") and request.state.auth_roles is not None:
+        # Iterate over each auth_role in request.state.auth_roles
+        for auth_role in request.state.auth_roles:
+            try:
+                # Attempt to split the auth_role and extract the station part
+                station = auth_role.split("_")[2]
+                allowed_stations.append(station)
+            except IndexError:
+                # If there is an IndexError, ignore it and continue
+                continue
     configuration = read_conf()
 
     # Filter and selected only collections that query allowed stations.
