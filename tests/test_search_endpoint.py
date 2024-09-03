@@ -771,6 +771,7 @@ def test_landing_pages(client, endpoint):
         ("/cadip/collections", "rs_cadip_authTest_landing_page"),
     ],
 )
+@responses.activate
 def test_collections_landing_page(client, mocker, endpoint, role):
     """
     Unit test for validating the collections landing page response.
@@ -804,6 +805,13 @@ def test_collections_landing_page(client, mocker, endpoint, role):
         "rs_server_cadip.api.cadip_search.Request.state",
         new_callable=mocker.PropertyMock,
         return_value=mock_request_state,
+    )
+    # Mock the pickup response
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20in%20S1A"&$top=1&$expand=Files',
+        json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
+        status=200,
     )
 
     response = client.get(endpoint).json()
