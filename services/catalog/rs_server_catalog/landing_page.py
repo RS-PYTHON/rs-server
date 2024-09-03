@@ -16,47 +16,7 @@
 
 import re
 
-from starlette.requests import Request
 from starlette.responses import JSONResponse
-
-
-def add_catalogs(request: Request, auth_roles: list, user_login: str, content: dict) -> dict:
-    """This function returns a list of links with all catalogs that the user has access to.
-    We use the list auth_roles to access to all authorizations for the user.
-    Args:
-        request (Request): The client request.
-        auth_roles (list): list of roles of the api-key.
-        user_login (str): The api-key owner.
-        content (dict): The landing page.
-
-    Returns:
-        dict: The updated content with all catalogs that the user has access to.
-    """
-    catalog_read_right_pattern = (
-        r"rs_catalog_(?P<owner_id>.*(?=:)):(?P<collection_id>.+)_(?P<right_type>read|write|download)(?=$)"
-    )
-    # Add catalogs links that the user can access to.
-    for role in auth_roles:
-        if match := re.match(catalog_read_right_pattern, role):
-            groups = match.groupdict()
-            if user_login != groups["owner_id"] and groups["collection_id"] == "*" and groups["right_type"] == "read":
-
-                urls = str(request.url).split("?")  # split by query params
-                href = f"{urls[0]}catalogs/{groups['owner_id']}"
-
-                # To be discussed: maybe we should add the query params (urls[1:])
-                # but I guess we should not add e.g. the apikey because it's confidential.
-
-                child_link = {
-                    "rel": "child",
-                    "type": "application/json",
-                    "href": href,
-                }
-                content["links"].append(child_link)
-                # content["links"] = [
-                #     link for link in content["links"] if f"{groups['owner_id']}_" not in link["href"]
-                # ]  # to remove all the collection links and keep only catalogs.
-    return content
 
 
 def get_unauthorized_collections_links(auth_roles: list, user_login: str, content: dict) -> list:
