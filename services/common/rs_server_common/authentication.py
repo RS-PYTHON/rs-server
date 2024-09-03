@@ -193,6 +193,9 @@ def apikey_validator(station, access_type):
             if settings.CLUSTER_MODE:
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 if station == "cadip":
+                    if access_type == "landing_page":
+                        # no validation needed for landing pages.
+                        return func(*args, **kwargs)
                     # Get the collection id from kwargs, otherwise, get the request's query params, and then collection
                     if collection_id := kwargs.get(
                         "collection_id",

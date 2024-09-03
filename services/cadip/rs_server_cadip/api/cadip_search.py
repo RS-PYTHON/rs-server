@@ -21,6 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
+import uuid
 from typing import Annotated, Any, List, Union
 
 import pystac
@@ -37,6 +38,7 @@ from rs_server_cadip.cadip_utils import (
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
     prepare_cadip_search,
+    read_conf,
     select_config,
     validate_products,
 )
@@ -63,6 +65,81 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
     if not selected_config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+
+
+@router.get("/cadip")
+@apikey_validator(station="cadip", access_type="landing_page")
+def get_root_catalog(request: Request):
+    # WIP
+    return {}
+
+
+@router.get("/cadip/collections")
+@apikey_validator(station="cadip", access_type="landing_page")
+def get_allowed_collections(request: Request):
+    """
+        Endpoint to retrieve a catalog of collections that a user is authorized to access based on their API key.
+
+    This endpoint reads the API key from the request to determine the roles associated with the user.
+    Using these roles, it identifies the stations the user can access and filters the available collections
+    accordingly. The endpoint then constructs a STAC (SpatioTemporal Asset Catalog) catalog object, which
+    includes links to the collections that match the allowed stations.
+
+    - It begins by extracting roles from the `request.state.auth_roles` and derives the station names
+      the user has access to.
+    - Then, it filters the collections from the configuration to include only those belonging to the
+      allowed stations.
+    - For each filtered collection, a corresponding STAC collection is created with links to detailed
+      session searches.
+
+    The final response is a dictionary representation of the STAC catalog, which includes details about
+    the collections the user is allowed to access.
+
+    Returns:
+        dict: A dictionary representation of a STAC catalog containing collections that the user has
+              permission to access.
+
+    Raises:
+        HTTPException: If there are issues with reading configurations or processing session searches.
+    """
+    # Based on api key, get all station a user can access.
+    allowed_stations = []
+
+    # Iterate over each auth_role in request.state.auth_roles
+    for auth_role in request.state.auth_roles:
+        try:
+            # Attempt to split the auth_role and extract the station part
+            station = auth_role.split("_")[2]
+            allowed_stations.append(station)
+        except IndexError:
+            # If there is an IndexError, ignore it and continue
+            continue
+    configuration = read_conf()
+
+    # Filter and selected only collections that query allowed stations.
+    filtered_collections = [
+        collection for collection in configuration["collections"] if collection["station"] in allowed_stations
+    ]
+
+    # Create catalog object.
+    pystac_catalog = pystac.Catalog(id=str(uuid.uuid4()), description="RSPY Available collections")
+
+    for config in filtered_collections:
+        # Foreach allowed collection, create links and append to catalog.
+        query_params = create_session_search_params(config)
+        pystac_catalog.add_links(
+            process_session_search(
+                request,
+                query_params["station"],
+                query_params["SessionId"],
+                query_params["Satellite"],
+                query_params["PublicationDate"],
+                query_params["top"],
+                "collection",
+            ),
+        )
+
+    return pystac_catalog.to_dict()
 
 
 @router.get("/cadip/search/items")
