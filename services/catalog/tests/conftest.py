@@ -19,6 +19,11 @@ import os.path as osp
 import subprocess  # nosec ignore security issue
 from importlib import reload
 
+RSPY_UAC_HOMEPAGE = "http://RSPY_UAC_HOMEPAGE"
+RSPY_UAC_CHECK_URL = "http://RSPY_UAC_CHECK_URL"
+OIDC_ENDPOINT = "http://OIDC_ENDPOINT"
+OIDC_REALM = "OIDC_REALM"
+
 # Init the FastAPI application with all the cluster mode features (local mode=0).
 # Do this before any other imports.
 # We'll restore the local mode by default a few lines below.
@@ -27,10 +32,10 @@ from importlib import reload
 os.environ["RSPY_LOCAL_MODE"] = "0"
 os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
-RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
-os.environ["RSPY_UAC_HOMEPAGE"] = RSPY_UAC_CHECK_URL
-os.environ["OIDC_ENDPOINT"] = "OIDC_ENDPOINT"
-os.environ["OIDC_REALM"] = "OIDC_REALM"
+os.environ["RSPY_UAC_HOMEPAGE"] = RSPY_UAC_HOMEPAGE
+os.environ["RSPY_UAC_CHECK_URL"] = RSPY_UAC_CHECK_URL
+os.environ["OIDC_ENDPOINT"] = OIDC_ENDPOINT
+os.environ["OIDC_REALM"] = OIDC_REALM
 os.environ["OIDC_CLIENT_ID"] = "OIDC_CLIENT_ID"
 os.environ["OIDC_CLIENT_SECRET"] = "OIDC_CLIENT_SECRET"
 os.environ["RSPY_COOKIE_SECRET"] = "RSPY_COOKIE_SECRET"

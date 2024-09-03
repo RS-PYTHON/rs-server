@@ -1171,7 +1171,6 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         # Read environment variables
         oidc_endpoint = os.environ["OIDC_ENDPOINT"]
         oidc_realm = os.environ["OIDC_REALM"]
-        oidc_client_id = os.environ["OIDC_CLIENT_ID"]
         oidc_metadata_url = f"{oidc_endpoint}/realms/{oidc_realm}/.well-known/openid-configuration"
 
         # Add the STAC extension at the root
@@ -1184,7 +1183,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         parent = content
         if content.get("type") == "Feature":
             parent = content.setdefault("properties", {})
-        # oidc = await oauth2.KEYCLOAK.load_server_metadata()
+        oidc = await oauth2.KEYCLOAK.load_server_metadata()
         parent.setdefault("auth:schemes", {}).update(
             {
                 "apikey": {
@@ -1195,33 +1194,28 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                     "name": "x-api-key",
                     "in": "header",
                 },
+                "openid": {
+                    "type": "openIdConnect",
+                    "description": "OpenID Connect",
+                    "openIdConnectUrl": oidc_metadata_url,
+                },
                 "oauth2": {
                     "type": "oauth2",
-                    "description": "KeyCloak OAuth2 authentication",
+                    "description": "OAuth2+PKCE Authorization Code Flow",
                     "flows": {
                         "authorizationCode": {
                             "authorizationUrl": oidc["authorization_endpoint"],
                             "tokenUrl": oidc["token_endpoint"],
-                            "scopes": {
-                                "openid": "openid scope",
-                                "profile": "profile scope",
-                                "email": "email scope",
-                            },
+                            "scopes": {},
                         },
                     },
-                },
-                "openidconnect": {
-                    "type": "openIdConnect",
-                    "description": "KeyCloak OpenId authentication",
-                    "openIdConnectUrl": oidc_metadata_url,
-                    "oidcOptions": {"client_id": oidc_client_id},
                 },
             },
         )
 
         # Add the authentication reference to each link and asset
         for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
-            link_or_asset["auth:refs"] = ["apikey", "oauth2", "openidconnect"]
+            link_or_asset["auth:refs"] = ["apikey", "openid", "oauth2"]
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:

@@ -170,7 +170,7 @@ def fastapi_app_(
 
     # Mock the oauth2 environment variables for the cluster mode
     if cluster_mode:
-        monkeypatch.setenv("OIDC_ENDPOINT", "OIDC_ENDPOINT")
+        monkeypatch.setenv("OIDC_ENDPOINT", "http://OIDC_ENDPOINT")
         monkeypatch.setenv("OIDC_REALM", "OIDC_REALM")
         monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
         monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")

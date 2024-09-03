@@ -21,10 +21,10 @@ from importlib import reload
 import pytest
 import requests
 import yaml
+from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from moto.server import ThreadedMotoServer
 from pytest_httpx import HTTPXMock
 from rs_server_catalog.main import app, must_be_authenticated
-from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
@@ -38,8 +38,11 @@ from starlette.status import (
 )
 
 from .conftest import (  # pylint: disable=no-name-in-module
+    OIDC_ENDPOINT,
+    OIDC_REALM,
     RESOURCES_FOLDER,
     RSPY_UAC_CHECK_URL,
+    RSPY_UAC_HOMEPAGE,
 )
 
 logger = Logging.default(__name__)
@@ -52,20 +55,39 @@ WRONG_APIKEY = "WRONG_APIKEY"
 HEADER = {"headers": {APIKEY_HEADER: VALID_APIKEY}}
 WRONG_HEADER = {"headers": {APIKEY_HEADER: WRONG_APIKEY}}
 
+OAUTH2_AUTHORIZATION_ENDPOINT = "http://OAUTH2_AUTHORIZATION_ENDPOINT"
+OAUTH2_TOKEN_ENDPOINT = "http://OAUTH2_TOKEN_ENDPOINT"
+
 AUTHENT_EXTENSION = "https://stac-extensions.github.io/authentication/v1.1.0/schema.json"
 AUTHENT_SCHEME = {
     "auth:schemes": {
         "apikey": {
             "type": "apiKey",
-            "description": "API key generated using http://test_apikey_manager/docs"
+            "description": f"API key generated using {RSPY_UAC_HOMEPAGE}"
             "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
             "name": "x-api-key",
             "in": "header",
         },
+        "openid": {
+            "type": "openIdConnect",
+            "description": "OpenID Connect",
+            "openIdConnectUrl": f"{OIDC_ENDPOINT}/realms/{OIDC_REALM}/.well-known/openid-configuration",
+        },
+        "oauth2": {
+            "type": "oauth2",
+            "description": "OAuth2+PKCE Authorization Code Flow",
+            "flows": {
+                "authorizationCode": {
+                    "authorizationUrl": OAUTH2_AUTHORIZATION_ENDPOINT,
+                    "tokenUrl": OAUTH2_TOKEN_ENDPOINT,
+                    "scopes": {},
+                },
+            },
+        },
     },
 }
 AUTHENT_REF = {
-    "auth:refs": ["apikey"],
+    "auth:refs": ["apikey", "openid", "oauth2"],
 }
 COMMON_FIELDS = {
     "extent": {
@@ -114,6 +136,13 @@ def init_test(mocker, monkeypatch, httpx_mock: HTTPXMock, iam_roles: list[str], 
             match_headers={APIKEY_HEADER: WRONG_APIKEY},
             status_code=HTTP_403_FORBIDDEN,
         )
+
+    # Mock the OAuth2 server responses
+    mocker.patch.object(
+        StarletteOAuth2App,
+        "load_server_metadata",
+        return_value={"authorization_endpoint": OAUTH2_AUTHORIZATION_ENDPOINT, "token_endpoint": OAUTH2_TOKEN_ENDPOINT},
+    )
 
 
 def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
@@ -176,7 +205,7 @@ def test_authentication(mocker, monkeypatch, httpx_mock: HTTPXMock, client):
             "title": "Queryables",
             "href": "http://testserver/catalog/queryables",
             "method": "GET",
-            "auth:refs": ["apikey"],
+            "auth:refs": ["apikey", "openid", "oauth2"],
         },
         {
             "rel": "child",
