@@ -130,9 +130,19 @@ async def login(request: Request):
         return response
 
     # Else we are called from keycloak.
-    # In a session cookie, we save the user information received from keycloak.
     token = await KEYCLOAK.authorize_access_token(request)
     userinfo = dict(token["userinfo"])
+
+    # Check that the user is enabled in keycloak
+    user_id = userinfo.get("sub")
+    user_login = userinfo.get("preferred_username")
+    if not kcutil.get_user_info(user_id).is_enabled:  # pylint: disable=possibly-used-before-assignment
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"User {user_login!r} is disabled from KeyCloak.",
+        )
+
+    # In a session cookie, we save the user information received from keycloak.
     request.session[COOKIE_NAME] = userinfo
 
     # Redirect to the calling endpoint after removing the authentication query parameters from the URL.
@@ -310,5 +320,5 @@ async def get_user_info(request: Request) -> AuthInfo:
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=f"User {user_login!r} not found in keycloak.",
+        detail=f"User {user_login!r} not found in KeyCloak.",
     )
