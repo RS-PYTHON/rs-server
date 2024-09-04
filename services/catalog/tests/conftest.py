@@ -37,8 +37,8 @@ os.environ["RSPY_UAC_CHECK_URL"] = RSPY_UAC_CHECK_URL
 os.environ["OIDC_ENDPOINT"] = OIDC_ENDPOINT
 os.environ["OIDC_REALM"] = OIDC_REALM
 os.environ["OIDC_CLIENT_ID"] = "OIDC_CLIENT_ID"
-os.environ["OIDC_CLIENT_SECRET"] = "OIDC_CLIENT_SECRET"
-os.environ["RSPY_COOKIE_SECRET"] = "RSPY_COOKIE_SECRET"
+os.environ["OIDC_CLIENT_SECRET"] = "OIDC_CLIENT_SECRET"  # nosec
+os.environ["RSPY_COOKIE_SECRET"] = "RSPY_COOKIE_SECRET"  # nosec
 
 from dataclasses import dataclass
 from pathlib import Path
