@@ -24,9 +24,9 @@ import traceback
 import uuid
 from typing import Annotated, Any, List, Union
 
-import pystac
 import requests
 import sqlalchemy
+import stac_pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
@@ -46,13 +46,14 @@ from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
+    create_collection,
     create_links,
-    create_pystac_collection,
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
     write_search_products_to_db,
 )
+from stac_pydantic.links import Link, Links
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
@@ -95,27 +96,16 @@ def get_root_catalog(request: Request):
     Returns:
     - dict: A dictionary representation of the STAC catalog, including metadata and links.
     """
-    landing_page = pystac.Catalog(
+    landing_page: stac_pydantic.Catalog = stac_pydantic.Catalog(
+        type="Catalog",
         id=str(uuid.uuid4()),
         description="RSPY CADIP landing page",
         title="RSPY CADIP Catalog",
+        stac_version="1.0.0",
+        stac_extensions=[],
+        links=Links([Link(rel="data", href=f"{request.url.scheme}://{request.url.netloc}/cadip/collections")]),
     )
-    landing_page.stac_extensions = []
-    landing_page.stac_version = "1.0.0"  # type: ignore
-    landing_page.extra_fields["conformsTo"] = [
-        "https://api.stacspec.org/v1.0.0/core",
-        "https://api.stacspec.org/v1.0.0/collections",
-        "https://api.stacspec.org/v1.0.0/ogcapi-features",
-        "https://api.stacspec.org/v1.0.0/item-search",
-        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
-        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
-    ]
-
-    landing_page.add_link(
-        pystac.Link(rel="data", target=f"{request.url.scheme}://{request.url.netloc}/cadip/collections"),
-    )
-    return landing_page.to_dict()
+    return landing_page.model_dump()
 
 
 @router.get("/cadip/collections")
@@ -170,7 +160,7 @@ def get_allowed_collections(request: Request):
     for config in filtered_collections:
         # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
-        collection: pystac.Collection = create_pystac_collection(config)
+        collection: stac_pydantic.Collection = create_collection(config)
         if links := process_session_search(
             request,
             query_params["station"],
@@ -181,7 +171,7 @@ def get_allowed_collections(request: Request):
             "collection",
         ):
             stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
-            stac_object["collections"].append(collection.to_dict())
+            stac_object["collections"].append(collection.model_dump())
     return stac_object
 
 
@@ -195,7 +185,7 @@ def search_cadip_with_session_info(request: Request):
         request (Request): The HTTP request object containing query parameters for the search.
 
     Returns:
-        Union[list[pystac.Link], dict]: A list of STAC Links if items are found, or a dictionary containing
+        Union[list[stac_pydantic.links.Link], dict]: A list of STAC Links if items are found, or a dictionary containing
                                         the search results if no items are found or an error occurs.
 
     Raises:
@@ -244,25 +234,24 @@ def search_cadip_endpoint(request: Request) -> dict:
     query_params = create_session_search_params(selected_config)
 
     try:
-        pystac_collection: pystac.Collection = create_pystac_collection(selected_config)
+        stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cannot create STAC Collection -> Missing {exc}",
         ) from exc
 
-    pystac_collection.add_links(
-        process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ),
-    )
-    return pystac_collection.to_dict()
+    if link := process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        "collection",
+    ):
+        stac_collection.links.append(link)
+    return stac_collection.model_dump()
 
 
 @router.get("/cadip/collections/{collection_id}")
@@ -296,25 +285,24 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
     query_params: dict = create_session_search_params(selected_config)
 
     try:
-        pystac_collection: pystac.Collection = create_pystac_collection(selected_config)
+        stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cannot create STAC Collection -> Missing {exc}",
         ) from exc
 
-    pystac_collection.add_links(
-        process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ),
-    )
-    return pystac_collection.to_dict()
+    if link := process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        "collection",
+    ):
+        stac_collection.links.append(link)
+    return stac_collection.model_dump()
 
 
 @router.get("/cadip/collections/{collection_id}/items")
@@ -336,7 +324,7 @@ def get_cadip_collection_items(request: Request, collection_id):
         collection_id (str): The ID of the CADIP collection to use.
 
     Returns:
-        pystac.ItemCollection: A collection of items formatted according to STAC standards.
+        stac_pydantic.ItemCollection: A collection of items formatted according to STAC standards.
 
     Raises:
         HTTPException: If there is an error in selecting the configuration, creating query parameters, or processing
@@ -374,7 +362,7 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
-    item_collection = pystac.ItemCollection.from_dict(
+    item_collection = stac_pydantic.ItemCollection.model_validate(
         process_session_search(  # type: ignore
             request,
             query_params["station"],
@@ -385,7 +373,7 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
         ),
     )
     return next(
-        (item.to_dict() for item in item_collection.items if item.id == session_id),
+        (item.to_dict() for item in item_collection.features if item.id == session_id),
         HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found."),
     )
 
@@ -462,7 +450,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
                         sessions_products,
                         expanded_session_mapper,
                         request,
-                    ).to_dict()
+                    ).model_dump()
                 case "_":
                     # Should / Must be non reacheable case
                     raise HTTPException(
@@ -626,7 +614,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             stac_mapper = json.loads(stac_map.read())
             cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from CADIP station")
-        return sort_feature_collection(cadip_item_collection.to_dict(), sortby)
+        return sort_feature_collection(cadip_item_collection.model_dump(), sortby)
 
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
