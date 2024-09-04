@@ -61,7 +61,6 @@ APIKEY_AUTH_HEADER = APIKeyHeader(
 
 
 async def apikey_security(
-    request: Request,
     apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",
 ) -> AuthInfo | None:
     """
