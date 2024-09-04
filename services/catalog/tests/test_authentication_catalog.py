@@ -1559,8 +1559,17 @@ def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMock):
     # Mock cluster mode to enable authentication
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
-    # With a wrong api key in headers, the uac manager will return 403
+    # With a valid api key in headers, the uac manager will give access to the endpoint
     ttl_cache.clear()  # clear the cached response
+    httpx_mock.add_response(
+        url=RSPY_UAC_CHECK_URL,
+        match_headers={APIKEY_HEADER: VALID_APIKEY},
+        status_code=HTTP_200_OK,
+        # NOTE: we could use other roles and config, to be discussed
+        json={"iam_roles": [], "config": {}, "user_login": {}},
+    )
+
+    # With a wrong api key, it returns 403
     httpx_mock.add_response(
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: WRONG_APIKEY},
@@ -1577,5 +1586,21 @@ def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMock):
             # Check that without api key in headers, the endpoint is protected and we receive a 401
             assert client.request(method, path).status_code == HTTP_401_UNAUTHORIZED
 
-            # With a wrong api key, it returns a 403
+            # Test a valid and wrong api key values in headers
+            assert client.request(method, path, **HEADER).status_code != HTTP_403_FORBIDDEN
             assert client.request(method, path, **WRONG_HEADER).status_code == HTTP_403_FORBIDDEN
+
+
+def test_authenticated_endpoints():
+    """Test that the catalog endpoints need authentication."""
+    for route_path in ["/_mgmt/ping", "/catalog/api", "/catalog/api.html", "/auth/"]:
+        assert not must_be_authenticated(route_path)
+    for route_path in [
+        "/catalog",
+        "/catalog/",
+        "/catalog/conformance",
+        "/catalog/collections",
+        "/catalog/search",
+        "/catalog/queryables",
+    ]:
+        assert must_be_authenticated(route_path)

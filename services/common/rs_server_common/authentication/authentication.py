@@ -59,7 +59,7 @@ async def authenticate(
     """
 
     # Try to authenticate with the api key value
-    auth_info = await apikey_security(request, apikey_value)
+    auth_info = await apikey_security(apikey_value)
 
     # Else try to authenticate with oauth2
     if not auth_info:

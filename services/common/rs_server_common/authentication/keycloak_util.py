@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Utility module to get user information from the KeyCloak server."""
+
 
 import os
 from dataclasses import dataclass
@@ -26,11 +28,19 @@ logger = Logging.default(__name__)
 
 @dataclass
 class KCInfo:
+    """
+    User information from KeyCloak.
+
+    Attributes:
+        is_enabled (bool): is the user enabled in KeyCloak ?
+        roles (list[str]): IAM roles given to the user in KeyCloak.
+    """
+
     is_enabled: bool
     roles: list[str]
 
 
-class KCUtil:
+class KCUtil:  # pylint: disable=too-few-public-methods
     """Utility class to get user information from the KeyCloak server."""
 
     def __init__(self) -> None:

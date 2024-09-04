@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Implement OAuth2 authentication to the KeyCloak server."""
+
 import os
 from typing import Annotated
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
@@ -37,7 +39,6 @@ from rs_server_common.utils.utils2 import AuthInfo
 from starlette.config import Config as StarletteConfig
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.requests import Request
 from starlette.responses import RedirectResponse
 
 # authlib object for oauth2 keycloak authentication
@@ -56,8 +57,6 @@ class LoginAndRedirect(Exception):
     Used to call the login endpoint and redirect to the calling endpoint.
     See https://github.com/fastapi/fastapi/discussions/7817#discussioncomment-5144391
     """
-
-    pass
 
 
 async def is_from_browser(request: Request) -> bool:
@@ -146,7 +145,7 @@ async def login(request: Request):
     return RedirectResponse(urlunparse(url))
 
 
-def get_router(app: FastAPI) -> APIRouter:
+def get_router(app: FastAPI) -> APIRouter:  # pylint: disable=too-many-locals
     """
     Set and return the FastAPI router that implements the endpoints for oauth2 authentication."
 
@@ -191,7 +190,7 @@ def get_router(app: FastAPI) -> APIRouter:
 
     oidc_metadata_url = domain_url + "/.well-known/openid-configuration"
 
-    global KEYCLOAK
+    global KEYCLOAK  # pylint: disable=global-statement
     KEYCLOAK = oauth.register(
         "keycloak",
         client_id=oidc_client_id,
@@ -204,7 +203,10 @@ def get_router(app: FastAPI) -> APIRouter:
     )
 
     @app.exception_handler(LoginAndRedirect)
-    async def login_and_redirect(request: Request, exc: LoginAndRedirect) -> Response:
+    async def login_and_redirect(
+        request: Request,
+        exc: LoginAndRedirect,  # pylint: disable=unused-argument
+    ) -> Response:
         """Used to call the login endpoint and redirect to the calling endpoint."""
         return await login(request)
 
@@ -279,7 +281,7 @@ async def get_user_info(request: Request) -> AuthInfo:
         if referer and (urlparse(referer).path.rstrip("/") == SWAGGER_HOMEPAGE):
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
-                f"You must first login by clicking the 'Login' link on top of this Swagger page.",
+                "You must first login by clicking the 'Login' link on top of this Swagger page.",
             )
 
         # Else, if the request comes from a browser, we login, then redirect (in the same webpage)
@@ -291,7 +293,7 @@ async def get_user_info(request: Request) -> AuthInfo:
         # It's not possible to redirect so send an HTTP error.
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
-            f"You cannot login from a console, you need an API key or an OAuth2 session cookie.",
+            "You cannot login from a console, you need an API key or an OAuth2 session cookie.",
         )
 
     # Read the user ID and name from the cookie = from the OAuth2 authentication process
@@ -299,16 +301,14 @@ async def get_user_info(request: Request) -> AuthInfo:
     user_login = user.get("preferred_username")
 
     # Now call the KeyCloak server again to get the user information (IAM roles, ...) from the user ID
-    user_info = kcutil.get_user_info(user_id)
+    user_info = kcutil.get_user_info(user_id)  # pylint: disable=possibly-used-before-assignment
 
     # If the user is still enabled in KeyCloak
     if user_info.is_enabled:
-
         # The configuration dict is only set with the API key, not with the OAuth2 authentication.
         return AuthInfo(user_login=user_login, iam_roles=user_info.roles, apikey_config={})
 
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"User {user_login!r} not found in keycloak.",
-        )
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=f"User {user_login!r} not found in keycloak.",
+    )
