@@ -107,9 +107,9 @@ def get_root_catalog(request: Request):
         "https://api.stacspec.org/v1.0.0/collections",
         "https://api.stacspec.org/v1.0.0/ogcapi-features",
         "https://api.stacspec.org/v1.0.0/item-search",
-        "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-        "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
-        "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
+        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
+        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
+        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
     ]
 
     landing_page.add_link(
@@ -171,7 +171,7 @@ def get_allowed_collections(request: Request):
         # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
         collection: pystac.Collection = create_pystac_collection(config)
-        links = process_session_search(
+        if links := process_session_search(
             request,
             query_params["station"],
             query_params["SessionId"],
@@ -179,9 +179,9 @@ def get_allowed_collections(request: Request):
             query_params["PublicationDate"],
             query_params["top"],
             "collection",
-        )
-        stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
-        stac_object["collections"].append(collection.to_dict())
+        ):
+            stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
+            stac_object["collections"].append(collection.to_dict())
     return stac_object
 
 
