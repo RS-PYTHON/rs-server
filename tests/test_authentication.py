@@ -24,18 +24,15 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from keycloak import KeycloakAdmin
 from pytest_httpx import HTTPXMock
+from rs_server_common import fastapi_app as fastapi_app_module
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import AuthInfo
+from starlette import status
 from starlette.datastructures import State
 from starlette.responses import RedirectResponse
-from starlette.status import (
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_401_UNAUTHORIZED,
-    HTTP_403_FORBIDDEN,
-)
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -48,70 +45,6 @@ WRONG_APIKEY = "WRONG_APIKEY"
 CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 
 logger = Logging.default(__name__)
-
-
-async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
-    """
-    Test that we are caching the call results to the apikey_security function, that calls the
-    apikey manager service and keycloak to check the apikey validity and information.
-    """
-
-    # Mock the uac manager url
-    monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
-
-    # The function is updating request.state. We don't have a request object here,
-    # so just create a dummy one of type State = an object that can be used to store arbitrary state.
-    dummy_request = State()
-    dummy_request.state = State()
-
-    # Initial response expected from the function
-    initial_response = {
-        "iam_roles": ["initial", "roles"],
-        "config": {"initial": "config"},
-        "user_login": "initial_login",
-    }
-
-    # Clear the cached response and mock the uac manager response
-    ttl_cache.clear()
-    httpx_mock.add_response(
-        url=RSPY_UAC_CHECK_URL,
-        match_headers={APIKEY_HEADER: VALID_APIKEY},
-        status_code=HTTP_200_OK,
-        json=initial_response,
-    )
-
-    # Check the apikey_security result
-    await authenticate(dummy_request, VALID_APIKEY)
-    assert dummy_request.state.auth_roles == initial_response["iam_roles"]
-    assert dummy_request.state.auth_config == initial_response["config"]
-    assert dummy_request.state.user_login == initial_response["user_login"]
-
-    # If the UAC manager response changes, we won't see it because the previous result was cached
-    modified_response = {
-        "iam_roles": ["modified", "roles"],
-        "config": {"modified": "config"},
-        "user_login": "modified_login",
-    }
-    httpx_mock.add_response(
-        url=RSPY_UAC_CHECK_URL,
-        match_headers={APIKEY_HEADER: VALID_APIKEY},
-        status_code=HTTP_200_OK,
-        json=modified_response,
-    )
-
-    # Still the initial response !
-    for _ in range(100):
-        await authenticate(dummy_request, VALID_APIKEY)
-        assert dummy_request.state.auth_roles == initial_response["iam_roles"]
-        assert dummy_request.state.auth_config == initial_response["config"]
-        assert dummy_request.state.user_login == initial_response["user_login"]
-
-    # We have to clear the cache to obtain the modified response
-    ttl_cache.clear()
-    await authenticate(dummy_request, VALID_APIKEY)
-    assert dummy_request.state.auth_roles == modified_response["iam_roles"]
-    assert dummy_request.state.auth_config == modified_response["config"]
-    assert dummy_request.state.user_login == modified_response["user_login"]
 
 
 async def mock_oauth2(
@@ -178,67 +111,173 @@ async def mock_oauth2(
     return response
 
 
-@responses.activate
-@pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
-async def test_oauth2(fastapi_app, mocker, client):  # pylint: disable=unused-argument
-    """Test all the OAuth2 authentication endpoints."""
-
-    # @router.get("/me")
-    # async def show_my_information(auth_info: Annotated[AuthInfo, Depends(get_user_info)]):
-    #     """Show user information."""
-    #     return {
-    #         "user_login": auth_info.user_login,
-    #         "iam_roles": sorted(auth_info.iam_roles),
-    #     }
-
-    user_id = "user_id"
-    username = "username"
-    roles = ["role2", "role1", "role3"]
-
-    # If we called the 'login from browser' endpoint, we should be redirected to the swagger homepage
-    response = await mock_oauth2(mocker, client, "/auth/login", user_id, username, roles, enabled=False)
-    assert response.status_code == HTTP_401_UNAUTHORIZED
-    response = await mock_oauth2(mocker, client, "/auth/login", user_id, username, roles)
-    assert response.request.url.path == "/docs"
-
-    # If we called the 'login from console' endpoint, we should get a string response
-    response = await mock_oauth2(mocker, client, "/auth/login_from_console", user_id, username, roles, enabled=False)
-    assert response.status_code == HTTP_401_UNAUTHORIZED
-    response = await mock_oauth2(mocker, client, "/auth/login_from_console", user_id, username, roles)
-    assert response.content == client.get("/auth/console_logged_message").content
-
-    # responses.get(url=RSPY_UAC_CHECK_URL, status=200, json=initial_response)
-    response = await mock_oauth2(mocker, client, "/auth/logout", user_id, username, roles)
-    assert response.content.decode() == "You are logged out."
-
-    # response = client.get("/auth/me")
-    # assert response.is_success
-
-
-@pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
-async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTPXMock):
+async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     """
-    Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
+    Test that we are caching the call results to the apikey_security function, that calls the
+    apikey manager service and keycloak to check the apikey validity and information.
     """
 
     # Mock the uac manager url
     monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
-    # With a valid api key in headers, the uac manager will give access to the endpoint
-    ttl_cache.clear()  # clear the cached response
+    # The function is updating request.state. We don't have a request object here,
+    # so just create a dummy one of type State = an object that can be used to store arbitrary state.
+    dummy_request = State()
+    dummy_request.state = State()
+
+    # Initial response expected from the function
+    initial_response = {
+        "iam_roles": ["initial", "roles"],
+        "config": {"initial": "config"},
+        "user_login": "initial_login",
+    }
+
+    # Clear the cached response and mock the uac manager response
+    ttl_cache.clear()
     httpx_mock.add_response(
         url=RSPY_UAC_CHECK_URL,
         match_headers={APIKEY_HEADER: VALID_APIKEY},
-        status_code=HTTP_200_OK,
-        json={"iam_roles": [], "config": {}, "user_login": {}},
+        status_code=status.HTTP_200_OK,
+        json=initial_response,
     )
 
-    # With a wrong api key, it returns 403
+    # Check the apikey_security result
+    await authenticate(dummy_request, VALID_APIKEY)
+    assert dummy_request.state.auth_roles == initial_response["iam_roles"]
+    assert dummy_request.state.auth_config == initial_response["config"]
+    assert dummy_request.state.user_login == initial_response["user_login"]
+
+    # If the UAC manager response changes, we won't see it because the previous result was cached
+    modified_response = {
+        "iam_roles": ["modified", "roles"],
+        "config": {"modified": "config"},
+        "user_login": "modified_login",
+    }
     httpx_mock.add_response(
         url=RSPY_UAC_CHECK_URL,
-        match_headers={APIKEY_HEADER: WRONG_APIKEY},
-        status_code=HTTP_403_FORBIDDEN,
+        match_headers={APIKEY_HEADER: VALID_APIKEY},
+        status_code=status.HTTP_200_OK,
+        json=modified_response,
     )
+
+    # Still the initial response !
+    for _ in range(100):
+        await authenticate(dummy_request, VALID_APIKEY)
+        assert dummy_request.state.auth_roles == initial_response["iam_roles"]
+        assert dummy_request.state.auth_config == initial_response["config"]
+        assert dummy_request.state.user_login == initial_response["user_login"]
+
+    # We have to clear the cache to obtain the modified response
+    ttl_cache.clear()
+    await authenticate(dummy_request, VALID_APIKEY)
+    assert dummy_request.state.auth_roles == modified_response["iam_roles"]
+    assert dummy_request.state.auth_config == modified_response["config"]
+    assert dummy_request.state.user_login == modified_response["user_login"]
+
+
+@responses.activate
+@pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
+async def test_oauth2(fastapi_app, mocker, client):  # pylint: disable=unused-argument
+    """Test all the OAuth2 authentication endpoints."""
+
+    USER_ID = "user_id"
+    USERNAME = "username"
+    ROLES = ["role2", "role1", "role3"]
+
+    # If we call the 'login from browser' endpoint, we should be redirected to the swagger homepage
+    response = await mock_oauth2(mocker, client, "/auth/login", USER_ID, USERNAME, ROLES, enabled=False)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    response = await mock_oauth2(mocker, client, "/auth/login", USER_ID, USERNAME, ROLES)
+    assert response.is_success
+    assert response.request.url.path == "/docs"
+
+    # If we call the 'login from console' endpoint, we should get a string response
+    response = await mock_oauth2(mocker, client, "/auth/login_from_console", USER_ID, USERNAME, ROLES, enabled=False)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    response = await mock_oauth2(mocker, client, "/auth/login_from_console", USER_ID, USERNAME, ROLES)
+    assert response.is_success
+    assert response.content == client.get("/auth/console_logged_message").content
+
+    # To test the logout endpoint, we must mock other oauth2 and keycloack functions and endpoints
+    OAUTH2_END_SESSION_ENDPOINT = "http://oauth2_end_session_endpoint"
+    mocker.patch.object(
+        StarletteOAuth2App,
+        "load_server_metadata",
+        return_value={"end_session_endpoint": OAUTH2_END_SESSION_ENDPOINT},
+    )
+    response = await mock_oauth2(mocker, client, "/auth/logout", USER_ID, USERNAME, ROLES)
+    assert response.is_success
+    assert response.request.url == OAUTH2_END_SESSION_ENDPOINT
+
+    # Test endpoints that require the oauth2 authentication
+    response = await mock_oauth2(mocker, client, "/auth/me", USER_ID, USERNAME, ROLES, enabled=False)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    response = await mock_oauth2(mocker, client, "/auth/me", USER_ID, USERNAME, ROLES)
+    assert response.is_success
+    assert response.json() == {"user_login": USERNAME, "iam_roles": sorted(ROLES)}
+
+
+@pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
+@pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
+@pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
+async def test_authentication_protection(
+    fastapi_app,
+    client,
+    mocker,
+    monkeypatch,
+    httpx_mock: HTTPXMock,
+    test_apikey: bool,
+    test_oauth2: bool,
+):
+    """
+    Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
+    """
+
+    # Dummy endpoint arguments
+    ENDPOINT_PARAMS = {
+        "collection": "cadip_valid_auth",
+        "datetime": None,
+        "name": None,
+    }
+
+    # The user, authenticated with oauth2, can also use an apikey created by another user.
+    # In this case, the apikey authentication has higher priority and should be used.
+    ROLES = ["rs_adgs_read", "rs_adgs_download", "rs_cadip_cadip_read", "rs_cadip_cadip_download"]
+    APIKEY_USERNAME = "APIKEY_USERNAME"
+    APIKEY_ROLES = ["apikey_role1", "apikey_role2", *ROLES]
+    APIKEY_CONFIG = {"apikey": "config"}
+    OAUTH2_USER_ID = "OAUTH2_USER_ID"
+    OAUTH2_USERNAME = "OAUTH2_USERNAME"
+    OAUTH2_ROLES = ["oauth2_role1", "oauth2_role2", *ROLES]
+    OAUTH2_CONFIG = {}  # not apikey configuration with oauth2 !
+
+    if test_apikey:
+        # Mock the uac manager url
+        monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
+
+        # With a valid api key in headers, the uac manager will give access to the endpoint
+        ttl_cache.clear()  # clear the cached response
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: VALID_APIKEY},
+            status_code=status.HTTP_200_OK,
+            json={"user_login": APIKEY_USERNAME, "iam_roles": APIKEY_ROLES, "config": APIKEY_CONFIG},
+        )
+
+        # With a wrong api key, it returns 403
+        httpx_mock.add_response(
+            url=RSPY_UAC_CHECK_URL,
+            match_headers={APIKEY_HEADER: WRONG_APIKEY},
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
+    # If we test the oauth2 authentication, we login the user.
+    # His authentication information is saved in the client session cookies.
+    if test_oauth2:
+        await mock_oauth2(mocker, client, "/auth/login", OAUTH2_USER_ID, OAUTH2_USERNAME, OAUTH2_ROLES)
+
+    # Spy on the AuthInfo creation
+    spy_auth_info = mocker.spy(AuthInfo, "__init__")
 
     # For each api endpoint (except the technical and oauth2 endpoints)
     for route in fastapi_app.router.routes:
@@ -248,24 +287,59 @@ async def test_authentication(fastapi_app, client, monkeypatch, httpx_mock: HTTP
         # For each method (get, post, ...)
         for method in route.methods:
             # For new cadip endpoint, mention a valid-defined collection, either as an argument or in endpoint.
-            if route.path in ["/cadip/search", "/cadip/search/items"]:
-                route.path += "?collection=cadip_valid_auth"
-            endpoint = route.path.replace("/cadip/collections/{collection_id}", "/cadip/collections/cadip_valid_auth")
+            endpoint = route.path.replace(
+                "/cadip/collections/{collection_id}",
+                f"/cadip/collections/{ENDPOINT_PARAMS['collection']}",
+            ).replace("{station}", "cadip")
 
-            logger.debug(f"Test the {route.path!r} [{method}] authentication")
+            logger.debug(f"Test the {endpoint!r} [{method}] authentication")
 
-            # Check that without api key in headers, the endpoint is protected and we receive a 401
-            assert client.request(method, endpoint).status_code == HTTP_401_UNAUTHORIZED
+            # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.
+            # We have other errors on many endpoints because we didn't give the right arguments,
+            # but it's OK it is not what we are testing here.
+            if test_apikey or test_oauth2:
+                response = client.request(
+                    method,
+                    endpoint,
+                    params=ENDPOINT_PARAMS,
+                    headers={APIKEY_HEADER: VALID_APIKEY} if test_apikey else None,
+                )
+                logger.debug(response)
+                assert response.status_code not in (
+                    status.HTTP_401_UNAUTHORIZED,
+                    status.HTTP_403_FORBIDDEN,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,  # with 422, the authentication is not called and not tested
+                )
 
-            # Test a valid and wrong api key values in headers
-            assert (
-                client.request(method, endpoint, headers={APIKEY_HEADER: VALID_APIKEY}).status_code
-                != HTTP_403_FORBIDDEN
-            )
-            assert (
-                client.request(method, endpoint, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
-                == HTTP_403_FORBIDDEN
-            )
+                # With a wrong apikey, we should have a 403 error
+                if test_apikey:
+                    assert (
+                        client.request(method, endpoint, headers={APIKEY_HEADER: WRONG_APIKEY}).status_code
+                        == status.HTTP_403_FORBIDDEN
+                    )
+
+            # Check that without authentication, the endpoint is protected and we receive a 401
+            else:
+                assert (
+                    client.request(method, endpoint, params=ENDPOINT_PARAMS).status_code == status.HTTP_401_UNAUTHORIZED
+                )
+
+    # Test that the user information is set at least once,
+    # and that the apikey information is set rather thatn oauth2 if bot are available.
+    if test_apikey:
+        spy_auth_info.assert_called_once()  # set only once because of the cache
+        assert spy_auth_info.call_args_list[0].kwargs == {
+            "user_login": APIKEY_USERNAME,
+            "iam_roles": APIKEY_ROLES,
+            "apikey_config": APIKEY_CONFIG,
+        }
+    elif test_oauth2:
+        spy_auth_info.assert_called()
+        assert spy_auth_info.call_args_list[0].kwargs == {
+            "user_login": OAUTH2_USERNAME,
+            "iam_roles": OAUTH2_ROLES,
+            "apikey_config": OAUTH2_CONFIG,
+        }
 
 
 UNKNOWN_CADIP_STATION = "unknown-cadip-station"
@@ -347,7 +421,7 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments,too-m
         httpx_mock.add_response(
             url=RSPY_UAC_CHECK_URL,
             match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
+            status_code=status.HTTP_200_OK,
             json=_json,
         )
 
@@ -369,27 +443,27 @@ async def test_authentication_roles(  # pylint: disable=too-many-arguments,too-m
 
         # Test the error message with an unknown cadip station
         if station == UNKNOWN_CADIP_STATION:
-            assert response.status_code == HTTP_400_BAD_REQUEST
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
             assert f"Unknown CADIP station: {station!r}" in json.loads(response.content)["detail"]
             break  # no need to test the other endpoints
 
         # Else, with a valid station, we should receive an unauthorized response
-        assert response.status_code == HTTP_401_UNAUTHORIZED
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Idem with non-relevant roles
         mock_uac_response({"iam_roles": ["any", "non-relevant", "roles"], "config": {}, "user_login": {}})
-        assert client_request(station_endpoint).status_code == HTTP_401_UNAUTHORIZED
+        assert client_request(station_endpoint).status_code == status.HTTP_401_UNAUTHORIZED
 
         # With the right expected role, we should be authorized (no 401 or 403)
         mock_uac_response({"iam_roles": [station_role], "config": {}, "user_login": {}})
         assert client_request(station_endpoint).status_code not in (
-            HTTP_401_UNAUTHORIZED,
-            HTTP_403_FORBIDDEN,
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
         )
 
         # It should also work if other random roles are present
         mock_uac_response({"iam_roles": [station_role, "any", "other", "role"], "config": {}, "user_login": {}})
         assert client_request(station_endpoint).status_code not in (
-            HTTP_401_UNAUTHORIZED,
-            HTTP_403_FORBIDDEN,
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
         )
