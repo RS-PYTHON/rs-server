@@ -180,29 +180,34 @@ def add_user_prefix(  # pylint: disable=too-many-return-statements
     Returns:
         str: The RS server frontend endpoint.
     """
+    new_path = path
+
     if path == "/collections":
-        return CATALOG_COLLECTION
+        new_path = CATALOG_COLLECTION
 
-    if path == "/search":
-        return CATALOG_SEARCH
+    elif path == "/search":
+        new_path = CATALOG_SEARCH
 
-    if user and (path == "/"):
-        return "/catalog/"
+    elif user and (path == "/"):
+        new_path = "/catalog/"
 
-    if user and collection_id and (path == f"/collections/{user}_{collection_id}"):
-        return f"/catalog/collections/{user}:{collection_id}"
+    elif user and collection_id and (path == f"/collections/{user}_{collection_id}"):
+        new_path = f"/catalog/collections/{user}:{collection_id}"
 
-    if user and collection_id and (path == f"/collections/{user}_{collection_id}/items"):
-        return f"/catalog/collections/{user}:{collection_id}/items"
+    elif user and collection_id and (path == f"/collections/{user}_{collection_id}/items"):
+        new_path = f"/catalog/collections/{user}:{collection_id}/items"
 
-    if (
+    elif user and collection_id and (path == f"/collections/{user}_{collection_id}/queryables"):
+        new_path = f"/catalog/collections/{user}:{collection_id}/queryables"
+
+    elif (
         user
         and collection_id
         and (f"/collections/{user}_{collection_id}/items" in path or f"/collections/{collection_id}/items" in path)
     ):  # /catalog/.../items/item_id
-        return f"/catalog/collections/{user}:{collection_id}/items/{feature_id}"
+        new_path = f"/catalog/collections/{user}:{collection_id}/items/{feature_id}"
 
-    return path
+    return new_path
 
 
 def remove_user_from_feature(feature: dict, user: str) -> dict:

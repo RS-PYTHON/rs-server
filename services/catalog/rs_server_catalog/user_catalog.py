@@ -807,7 +807,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         request: Request,
         response: StreamingResponse,
     ) -> Response | JSONResponse:
-        """Remove the user name from obects and adapt all links.
+        """Remove the user name from objects and adapt all links.
 
         Args:
             request (Request): The client request.
