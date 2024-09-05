@@ -45,10 +45,10 @@ from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
+from fastapi.testclient import TestClient
 from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
 from sqlalchemy_utils import database_exists
-from starlette.testclient import TestClient
 
 # Clean before running.
 # No security risks since this file is not released into production.
@@ -109,7 +109,7 @@ def start_database_fixture(docker_services, db_url):
 def client_fixture(start_database):  # pylint: disable=missing-function-docstring, unused-argument
     # A .env file is read automatically
     # to setup the env to start the app.
-    with TestClient(app, follow_redirects=False) as client:
+    with TestClient(app) as client:
         yield client
 
 

@@ -16,22 +16,17 @@
 
 import json
 
-import httpx
 import pytest
 import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi.routing import APIRoute
-from fastapi.testclient import TestClient
-from keycloak import KeycloakAdmin
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo
+from rs_server_common.utils.utils2 import AuthInfo, mock_oauth2
 from starlette import status
 from starlette.datastructures import State
-from starlette.responses import RedirectResponse
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -44,72 +39,6 @@ WRONG_APIKEY = "WRONG_APIKEY"
 CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 
 logger = Logging.default(__name__)
-
-
-async def mock_oauth2(  # pylint: disable=too-many-arguments
-    mocker,
-    client: TestClient,
-    endpoint: str,
-    user_id: str,
-    username: str,
-    iam_roles: list[str],
-    enabled: bool = True,
-    headers: dict | None = None,
-) -> httpx.Response:
-    """Mock the OAuth2 authorization code flow process."""
-
-    # Clear the cookies, except for the logout endpoint which do it itself
-    if endpoint.endswith("/logout"):
-        assert "session" in dict(client.cookies)
-    else:
-        client.cookies.clear()
-
-    # If we are not loging from the console, we simulate the fact that our request comes from a browser
-    login_from_console = endpoint.endswith(oauth2.LOGIN_FROM_CONSOLE)
-    if not headers:
-        headers = {}
-    headers["user-agent"] = "Mozilla/"
-
-    # The 1st step of the oauth2 authorization code flow returns a redirection to the keycloak login page.
-    # After login, it returns a redirection to the original calling endpoint, but this time
-    # with a 'code' and 'state' params.
-    # Here we do not test the keycloak login page, we only mock the last redirection.
-    mocker.patch.object(
-        StarletteOAuth2App,
-        "authorize_redirect",
-        return_value=RedirectResponse(f"{endpoint}?code=my_code&state=my_state", status_code=302),
-    )
-
-    # The 2nd step checks the 'code' and 'state' params then returns a dict which contains the user information
-    mocker.patch.object(
-        StarletteOAuth2App,
-        "authorize_access_token",
-        return_value={"userinfo": {"sub": user_id, "preferred_username": username}},
-    )
-
-    # Then the service will ask for user information in KeyCloak
-    mocker.patch.object(KeycloakAdmin, "get_user", return_value={"enabled": enabled})
-    mocker.patch.object(
-        KeycloakAdmin,
-        "get_composite_realm_roles_of_user",
-        return_value=[{"name": role} for role in iam_roles],
-    )
-
-    # Call the endpoint that will run the oauth2 authentication process
-    response = client.get(endpoint, headers=headers)
-
-    # From the console, the redirection after the 1st step must be done manually
-    if login_from_console:
-        assert response.is_success
-        response = client.get(response.json())
-
-    # After this, if successful, we should have a cookie with the authentication information.
-    # Except for the logout endpoint which should have removed the cookie.
-    if response.is_success:
-        has_cookie = not endpoint.endswith("/logout")
-        assert ("session" in dict(client.cookies)) == has_cookie
-
-    return response
 
 
 async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
@@ -252,6 +181,9 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     oauth2_roles = ["oauth2_role1", "oauth2_role2", *roles]
     oauth2_config: dict = {}  # not apikey configuration with oauth2 !
 
+    # Clear oauth2 cookies
+    client.cookies.clear()
+
     if test_apikey:
         # Mock the uac manager url
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
@@ -291,7 +223,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
             endpoint = route.path.replace(
                 "/cadip/collections/{collection_id}",
                 f"/cadip/collections/{endpoint_params['collection']}",
-            ).replace("{station}", "cadip")
+            ).format(session_id="session_id", station="cadip")
 
             logger.debug(f"Test the {endpoint!r} [{method}] authentication")
 
@@ -352,7 +284,7 @@ DATE_PARAM = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
 NAME_PARAM = {"name": "TEST_FILE.raw"}
 
 
-@pytest.mark.parametrize("auth_type", ["apikey", "oauth2"])
+@pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
 @pytest.mark.parametrize(
     "fastapi_app, endpoint, method, stations, query_params, expected_role",
     [
@@ -404,7 +336,8 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
     mocker,
     monkeypatch,
     httpx_mock: HTTPXMock,
-    auth_type,
+    test_apikey,
+    test_oauth2,
     endpoint,
     method,
     stations,
@@ -415,14 +348,15 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
     Test that the api key has the right roles for the http endpoints.
     """
 
-    test_apikey = auth_type == "apikey"  # else: test with oauth2
-
     # Mock the uac manager url
     if test_apikey:
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)
 
     async def mock_response(user_info: dict):
         """Mock the apikey or oauth2 authentication."""
+
+        # Clear oauth2 cookies
+        client.cookies.clear()
 
         # Mock the UAC response. Clear the cached response everytime.
         if test_apikey:
@@ -436,7 +370,7 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
 
         # Login the user with oauth2.
         # His authentication information is saved in the client session cookies.
-        else:
+        elif test_oauth2:
             await mock_oauth2(
                 mocker,
                 client,
