@@ -368,7 +368,7 @@ class TestCatalogPublishCollectionEndpoint:
             },
         }
         response = client.post("/catalog/collections", json=minimal_collection)
-        # Check that collection status code is 200
+        # Check that collection status code is 201
         assert response.status_code == fastapi.status.HTTP_201_CREATED
         # Check that internal collection id is set to owner_collection
         assert json.loads(response.content)["id"] == "test_collection"
@@ -712,7 +712,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 s3_handler.list_s3_files_obj(self.catalog_bucket, ""),
             )
             # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
-            # and a good OBS path. => 200 OK
+            # and a good OBS path. => 201 CREATED
             # Check if that user darius have a collection (Added in conftest -> setup_database)
             # Add a featureCollection to darius collection
             a_correct_feature_copy = copy.deepcopy(a_correct_feature)
@@ -958,7 +958,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             )
 
             # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
-            # and a good OBS path. => 200 OK
+            # and a good OBS path. => 201 CREATED
             # Check if that user darius have a collection (Added in conftest -> setup_database)
             # Add a featureCollection to darius collection
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
