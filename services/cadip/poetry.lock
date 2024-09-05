@@ -504,6 +504,25 @@ files = [
 ]
 
 [[package]]
+name = "geojson-pydantic"
+version = "1.1.1"
+description = "Pydantic data models for the GeoJSON spec."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "geojson_pydantic-1.1.1-py3-none-any.whl", hash = "sha256:3d8adeee9ee0e1bb658c262fcb2e0da44090e44c0123ea95f989e484bdf123d9"},
+    {file = "geojson_pydantic-1.1.1.tar.gz", hash = "sha256:9c4b3e0a384a41fc919f50766979a559efae2f04ac5936f3e7cb3e1cc28927a7"},
+]
+
+[package.dependencies]
+pydantic = ">=2.0,<3.0"
+
+[package.extras]
+dev = ["bump-my-version", "pre-commit"]
+docs = ["mkdocs", "mkdocs-material", "pygments"]
+test = ["pytest", "pytest-cov", "shapely"]
+
+[[package]]
 name = "googleapis-common-protos"
 version = "1.63.2"
 description = "Common protobufs used in Google APIs"
@@ -1938,6 +1957,7 @@ pydantic = ">=2.0.0"
 python-dotenv = "^1.0.0"
 python-logging-loki = "^0.3.1"
 sqlalchemy = "^2.0.32"
+stac-pydantic = "^3.1.2"
 uvicorn = "^0.30.6"
 
 [package.source]
@@ -2143,6 +2163,27 @@ postgresql-psycopg2cffi = ["psycopg2cffi"]
 postgresql-psycopgbinary = ["psycopg[binary] (>=3.0.7)"]
 pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
+
+[[package]]
+name = "stac-pydantic"
+version = "3.1.2"
+description = "Pydantic data models for the STAC spec"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "stac_pydantic-3.1.2-py3-none-any.whl", hash = "sha256:3ababee8be2a7f3421f9376cdb1a5278a5d04995869f5775169d88ce02af40f2"},
+    {file = "stac_pydantic-3.1.2.tar.gz", hash = "sha256:3077f58860430b829e722c0b591ac6954bd5dff25080d25b45423abfa2b2c8bc"},
+]
+
+[package.dependencies]
+click = ">=8.1.7"
+geojson-pydantic = ">=1.0.0"
+pydantic = ">=2.4.1"
+
+[package.extras]
+dev = ["dictdiffer (>=0.9.0)", "jsonschema (>=4.19.1)", "pytest (>=7.4.2)", "pytest-cov (>=4.1.0)", "pytest-icdiff (>=0.8)", "pyyaml (>=6.0.1)", "requests (>=2.31.0)", "shapely (>=2.0.1)"]
+lint = ["Flake8-pyproject (>=1.2.3)", "black (>=23.9.1)", "flake8 (>=6.1.0)", "isort (>=5.12.0)", "mypy (>=1.5.1)", "pre-commit (>=3.4.0)", "tox (>=4.11.3)", "types-PyYAML (>=6.0.12.12)", "types-jsonschema (>=4.19.0.3)", "types-requests (>=2.31.0.5)"]
+validation = ["jsonschema (>=4.19.1)", "requests (>=2.31.0)"]
 
 [[package]]
 name = "starlette"
