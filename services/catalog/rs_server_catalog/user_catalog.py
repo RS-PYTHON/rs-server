@@ -1123,7 +1123,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         response = await call_next(request)
 
         # Don't forward responses that fail
-        if response.status_code != 200:
+        if response.status_code not in [200, 201]:
             if response is None:
                 return None
 

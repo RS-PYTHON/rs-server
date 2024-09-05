@@ -43,7 +43,6 @@ from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (  # pylint: disable=no-name-in-module
-    ContextExtension,
     FieldsExtension,
     FilterExtension,
     SortExtension,
@@ -59,6 +58,7 @@ from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Route
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
@@ -242,7 +242,6 @@ extensions_map = {
     "sort": SortExtension(),
     "fields": FieldsExtension(),
     "pagination": TokenPaginationExtension(),
-    "context": ContextExtension(),
     "filter": FilterExtension(client=FiltersClient()),
     "bulk_transactions": BulkTransactionExtension(client=BulkTransactionsClient()),
 }
@@ -337,12 +336,12 @@ api = StacApi(
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
     middlewares=[
-        UserCatalogMiddleware,
-        BrotliMiddleware,
-        CORSMiddleware,
-        ProxyHeaderMiddleware,
-        AuthenticationMiddleware,
-        DontRaiseExceptions,
+        Middleware(UserCatalogMiddleware),
+        Middleware(BrotliMiddleware),
+        Middleware(CORSMiddleware),
+        Middleware(ProxyHeaderMiddleware),
+        Middleware(AuthenticationMiddleware),
+        Middleware(DontRaiseExceptions),
     ],
 )
 app = api.app
