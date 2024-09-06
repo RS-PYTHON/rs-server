@@ -24,7 +24,8 @@ from pytest_httpx import HTTPXMock
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import AuthInfo, mock_oauth2
+from rs_server_common.utils.pytest_utils import mock_oauth2
+from rs_server_common.utils.utils2 import AuthInfo
 from starlette import status
 from starlette.datastructures import State
 

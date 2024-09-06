@@ -73,9 +73,13 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.types.errors import NotFoundError
-from starlette.middleware.base import StreamingResponse
 from starlette.requests import Request
-from starlette.responses import JSONResponse, RedirectResponse, Response
+from starlette.responses import (
+    JSONResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
+)
 from starlette.status import (
     HTTP_200_OK,
     HTTP_302_FOUND,

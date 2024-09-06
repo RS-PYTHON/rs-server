@@ -28,7 +28,7 @@ from rs_server_catalog.main import app, must_be_authenticated
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils2 import mock_oauth2
+from rs_server_common.utils.pytest_utils import mock_oauth2
 from starlette.status import (
     HTTP_200_OK,
     HTTP_302_FOUND,
@@ -103,7 +103,7 @@ COMMON_FIELDS = {
     **AUTHENT_SCHEME,
 }
 
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, too-many-arguments
 
 
 async def init_test(
