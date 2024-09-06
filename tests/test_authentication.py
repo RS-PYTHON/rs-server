@@ -115,17 +115,33 @@ async def test_oauth2_security(fastapi_app, mocker, client):  # pylint: disable=
     roles = ["role2", "role1", "role3"]
 
     # If we call the 'login from browser' endpoint, we should be redirected to the swagger homepage
-    response = await mock_oauth2(mocker, client, "/auth/login", user_id, username, roles, enabled=False)
+    response = await mock_oauth2(
+        mocker,
+        client,
+        "/auth/login",
+        user_id,
+        username,
+        roles,
+        enabled=False,
+        assert_success=False,
+    )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     response = await mock_oauth2(mocker, client, "/auth/login", user_id, username, roles)
-    assert response.is_success
     assert response.request.url.path == "/docs"
 
     # If we call the 'login from console' endpoint, we should get a string response
-    response = await mock_oauth2(mocker, client, "/auth/login_from_console", user_id, username, roles, enabled=False)
+    response = await mock_oauth2(
+        mocker,
+        client,
+        "/auth/login_from_console",
+        user_id,
+        username,
+        roles,
+        enabled=False,
+        assert_success=False,
+    )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     response = await mock_oauth2(mocker, client, "/auth/login_from_console", user_id, username, roles)
-    assert response.is_success
     assert response.content == client.get("/auth/console_logged_message").content
 
     # To test the logout endpoint, we must mock other oauth2 and keycloack functions and endpoints
@@ -136,14 +152,21 @@ async def test_oauth2_security(fastapi_app, mocker, client):  # pylint: disable=
         return_value={"end_session_endpoint": oauth2_end_session_endpoint},
     )
     response = await mock_oauth2(mocker, client, "/auth/logout", user_id, username, roles)
-    assert response.is_success
     assert response.request.url == oauth2_end_session_endpoint
 
     # Test endpoints that require the oauth2 authentication
-    response = await mock_oauth2(mocker, client, "/auth/me", user_id, username, roles, enabled=False)
+    response = await mock_oauth2(
+        mocker,
+        client,
+        "/auth/me",
+        user_id,
+        username,
+        roles,
+        enabled=False,
+        assert_success=False,
+    )
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     response = await mock_oauth2(mocker, client, "/auth/me", user_id, username, roles)
-    assert response.is_success
     assert response.json() == {"user_login": username, "iam_roles": sorted(roles)}
 
 

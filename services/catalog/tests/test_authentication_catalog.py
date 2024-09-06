@@ -155,8 +155,10 @@ async def init_test(
 
     # If we test the oauth2 authentication, we login the user.
     # His authentication information is saved in the client session cookies.
+    # Note: we use the "login from console" because we need the client to follow redirections,
+    # and they are disabled in these tests.
     if test_oauth2:
-        await mock_oauth2(mocker, client, "/auth/login", "oauth2_user_id", user_login, iam_roles)
+        await mock_oauth2(mocker, client, "/auth/login_from_console", "oauth2_user_id", user_login, iam_roles)
 
     # Mock the OAuth2 server responses that are used for the STAC extensions (not for the authentication)
     mocker.patch.object(
@@ -557,8 +559,8 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         wrong_api_key_response = client.request("GET", "/catalog/", **WRONG_APIKEY_HEADER)
         assert wrong_api_key_response.status_code == HTTP_403_FORBIDDEN
 
-    # Delete the created collections so we're back to the original test state
-    assert client.delete("/catalog/collections/pyteam:S2_L1", **header).status_code == HTTP_200_OK
+    # Delete the created collections so we're back to the initial test state
+    assert client.delete("/catalog/collections/pyteam:S2_L1", **header).is_success
 
 
 class TestAuthenticationGetOneCollection:
@@ -875,6 +877,12 @@ class TestAuthenticationPostOneCollection:
             **header,
         )
         assert response.status_code == HTTP_200_OK
+
+        # Delete the created collections so we're back to the initial test state
+        assert client.delete(
+            f"/catalog/collections/{self.collection_to_post['owner']}:{self.collection_to_post['id']}",
+            **header,
+        ).is_success
 
     @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
@@ -1346,7 +1354,7 @@ class TestAuthenticationDownload:
                 assert (
                     client.get(
                         f"/catalog/collections/{user}S1_L1/items/INCORRECT_ITEM_ID/download/UNKNOWN",
-                        headers={APIKEY_HEADER: VALID_APIKEY},
+                        **header,
                     ).status_code
                     == HTTP_404_NOT_FOUND
                 )
@@ -1359,7 +1367,7 @@ class TestAuthenticationDownload:
         response = client.get(
             "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/"
             "may24C355000e4102500n.tif",
-            headers={APIKEY_HEADER: VALID_APIKEY},
+            **header,
         )
         assert response.status_code == HTTP_400_BAD_REQUEST
         assert response.content == b'"Could not find s3 credentials"'
@@ -1448,7 +1456,7 @@ class TestAuthenticationDelete:
                 "POST",
                 "/catalog/collections",
                 json=new_collection,
-                headers={APIKEY_HEADER: VALID_APIKEY},
+                **header,
             )
             assert response.status_code == HTTP_200_OK
 

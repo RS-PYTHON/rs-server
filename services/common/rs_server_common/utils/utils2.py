@@ -49,6 +49,7 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
     username: str,
     iam_roles: list[str],
     enabled: bool = True,
+    assert_success: bool = True,
 ) -> httpx.Response:
     """
     Only for unit tests: mock the OAuth2 authorization code flow process.
@@ -61,6 +62,7 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
         username: username in keycloak
         iam_roles: user iam roles in keycloak
         enabled: is the user enabled in keycloak ?
+        assert_success: is the login process expected to success ?
     """
 
     # Clear the cookies, except for the logout endpoint which do it itself
@@ -98,13 +100,27 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
         return_value=[{"name": role} for role in iam_roles],
     )
 
-    # Call the endpoint that will run the oauth2 authentication process
-    response = client.get(endpoint, headers=headers)
+    # We need the client to follow redirections.
+    # Note: even with this, the "login from browser" fails with a 400, I don't know why.
+    # Use the "login from console instead".
+    old_follow_redirects = client.follow_redirects
+    try:
+        client.follow_redirects = True
 
-    # From the console, the redirection after the 1st step must be done manually
-    if login_from_console:
+        # Call the endpoint that will run the oauth2 authentication process
+        response = client.get(endpoint, headers=headers)
+
+        # From the console, the redirection after the 1st step must be done manually
+        if login_from_console:
+            assert response.is_success
+            response = client.get(response.json())
+
+    # Restore the redirections
+    finally:
+        client.follow_redirects = old_follow_redirects
+
+    if assert_success:
         assert response.is_success
-        response = client.get(response.json())
 
     # After this, if successful, we should have a cookie with the authentication information.
     # Except for the logout endpoint which should have removed the cookie.
