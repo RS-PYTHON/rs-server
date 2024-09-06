@@ -339,11 +339,8 @@ class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-publ
 
     async def dispatch(self, request, call_next):
         """Redirect the user catalog specific endpoint and adapt the response content."""
-
-        # NOTE: the same 'self' instance is reused by all requests so it must
-        # not be used by several requests at the same time or we'll have conflicts.
-        # Do everything in a specific object.
-        return await UserCatalog(client).dispatch(request, call_next)
+        response = await UserCatalog(client).dispatch(request, call_next)
+        return response
 
 
 api = StacApi(
