@@ -35,11 +35,14 @@ from fastapi import (
 from fastapi.responses import HTMLResponse
 from rs_server_common import settings
 from rs_server_common.authentication.keycloak_util import KCUtil
+from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import AuthInfo
 from starlette.config import Config as StarletteConfig
 from starlette.middleware import Middleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import RedirectResponse
+
+logger = Logging.default(__name__)
 
 # authlib object for oauth2 keycloak authentication
 KEYCLOAK: StarletteOAuth2App = None
@@ -301,6 +304,10 @@ async def get_user_info(request: Request) -> AuthInfo:
 
         # Else, the request comes from a console (curl, python console, ...).
         # It's not possible to redirect so send an HTTP error.
+        # logger.debug(
+        #     "Error login from a console using: "
+        #     f"{str(request.url)!r} with headers:\n{json.dumps(dict(request.headers),indent=2)}",
+        # )
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "You cannot login from a console, you need an API key or an OAuth2 session cookie.",

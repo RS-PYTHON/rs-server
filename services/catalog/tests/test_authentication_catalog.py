@@ -1660,7 +1660,7 @@ async def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMoc
 
 def test_authenticated_endpoints():
     """Test that the catalog endpoints need authentication."""
-    for route_path in ["/_mgmt/ping", "/catalog/api", "/catalog/api.html", "/auth/"]:
+    for route_path in ["/_mgmt/ping", "/catalog/api", "/catalog/api.html", "/auth/", "/health"]:
         assert not must_be_authenticated(route_path)
     for route_path in [
         "/catalog",
