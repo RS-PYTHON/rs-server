@@ -4,7 +4,7 @@ version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server-common"
-version = "0.2a2.post141.dev0+3d31e6c"
+version = "0.0.0"
 description = ""
 authors = ["Your Name <you@example.com>"]
 
@@ -75,7 +75,7 @@ warn_redundant_casts = true
 check_untyped_defs = true
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
-enable = false
+enable = true
 tagged-metadata = true
 
 [build-system]

@@ -1129,7 +1129,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         response = await call_next(request)
 
         # Don't forward responses that fail.
-        # NOTE: the 30x (redirect responses) are use by the oauth2 authentication.
+        # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
         if response.status_code not in (HTTP_200_OK, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
             if response is None:
                 return None
