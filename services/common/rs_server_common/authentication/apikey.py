@@ -133,14 +133,11 @@ async def __apikey_security_cached(apikey_value) -> AuthInfo:
     # Try to read the response detail or error
     try:
         json = response.json()
-        if "detail" in json:
-            detail = json["detail"]
-        else:
-            detail = json["error"]
+        detail = json.get("detail") or json["error"]
 
     # If this fail, get the full response content
     except Exception:  # pylint: disable=broad-exception-caught
-        detail = response.read().decode("utf-8")
+        detail = response.content.decode("utf-8", errors="ignore")
 
     # Forward error
     raise HTTPException(response.status_code, f"UAC manager: {detail}")
