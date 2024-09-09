@@ -24,13 +24,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 import sqlalchemy
 import stac_pydantic
 from eodag import EOProduct, setup_logging
 from fastapi import HTTPException, status
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -40,6 +40,18 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 from stac_pydantic.links import Link
+
+
+class Queryables(BaseModel):
+    """BaseModel used to describe queryable holder."""
+
+    schema: str  # type: ignore
+    id: str
+    type: str
+    title: str
+    description: str
+    properties: dict[str, Any]
+
 
 logger = Logging.default(__name__)
 

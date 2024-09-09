@@ -37,6 +37,8 @@ from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
+    generate_queryables,
+    get_cadip_queryables,
     prepare_cadip_search,
     read_conf,
     select_config,
@@ -46,6 +48,7 @@ from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
+    Queryables,
     create_collection,
     create_links,
     create_stac_collection,
@@ -173,6 +176,91 @@ def get_allowed_collections(request: Request):
             stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
             stac_object["collections"].append(collection.model_dump())
     return stac_object
+
+
+@router.get("/cadip/queryables")
+@apikey_validator(station="cadip", access_type="landing_page")
+def get_all_queryables():
+    """
+    Get All Queryable Fields for CADIP Search API
+
+    This endpoint returns a JSON schema describing all the queryable fields available within
+    the CADIP Search API. These fields represent the metadata attributes that can be used to filter
+    search results globally across the API. The returned schema helps clients understand the
+    available fields for constructing queries.
+
+    **Response:**
+    - A JSON object following the JSON Schema Draft 2019-09 specification, which includes:
+        - `schema`: URL of the JSON Schema specification (e.g., "https://json-schema.org/draft/2019-09/schema").
+        - `id`: Unique identifier for this queryables schema (e.g., "https://stac-api.example.com/queryables").
+        - `type`: The type of the schema object, typically "object".
+        - `title`: Title describing the queryables (e.g., "Queryables for CADIP Search API").
+        - `description`: Description of what the queryables represent (e.g., "Queryable names for the CADIP Search API
+        Item Search filter.").
+        - `properties`: Dictionary of queryable fields and their attributes, including their data types, titles, and
+        descriptions.
+
+    **Responses:**
+    - `200 OK`: Returns the queryables schema for the CADIP Search API.
+    - `401 Unauthorized`: If the request is missing or has an invalid API key.
+    - `403 Forbidden`: If the API key does not have the required permissions for the `cadip` station and `landing_page`
+     access type.
+
+    **Security:**
+    - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
+    and `landing_page` access type.
+    """
+    return Queryables(
+        schema="https://json-schema.org/draft/2019-09/schema",
+        id="https://stac-api.example.com/queryables",
+        type="object",
+        title="Queryables for CADIP Search API",
+        description="Queryable names for the CADIP Search API Item Search filter.",
+        properties=get_cadip_queryables(),
+    ).model_dump()
+
+
+@router.get("/cadip/collections/{collection_id}/queryables")
+@apikey_validator(station="cadip", access_type="landing_page")
+def get_collection_queryables(collection_id: str):
+    """
+    Get Queryable Fields for a Specific Collection
+
+    This endpoint returns a JSON schema describing the queryable fields available for a specified
+    collection within the CADIP Search API. Queryable fields represent metadata attributes that can
+    be used to filter search results within the collection. The returned schema helps clients
+    understand which fields are available for filtering.
+
+    **Path Parameters:**
+    - `collection_id` (str): The unique identifier for the collection for which queryable fields are retrieved.
+
+    **Response:**
+    - A JSON object following the JSON Schema Draft 2019-09 specification, which includes:
+        - `schema`: URL of the JSON Schema specification (e.g., "https://json-schema.org/draft/2019-09/schema").
+        - `id`: Unique identifier for this queryables schema (e.g., "https://stac-api.example.com/queryables").
+        - `type`: The type of the schema object, typically "object".
+        - `title`: Title describing the queryables (e.g., "Queryables for CADIP Search API").
+        - `description`: Description of what the queryables represent (e.g., "Queryable names for the CADIP Search API
+        Item Search filter.").
+        - `properties`: Dictionary of queryable fields and their attributes, including their data types, titles, and
+        descriptions.
+
+    **Responses:**
+    - `200 OK`: Returns the queryables schema for the specified collection.
+    - `404 Not Found`: If the collection with the provided `collection_id` does not exist.
+
+    **Security:**
+    - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
+    and `landing_page` access type.
+    """
+    return Queryables(
+        schema="https://json-schema.org/draft/2019-09/schema",
+        id="https://stac-api.example.com/queryables",
+        type="object",
+        title="Queryables for CADIP Search API",
+        description="Queryable names for the CADIP Search API Item Search filter.",
+        properties=generate_queryables(collection_id),
+    ).model_dump()
 
 
 @router.get("/cadip/search/items", deprecated=True)
