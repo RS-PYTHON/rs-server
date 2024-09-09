@@ -2238,7 +2238,7 @@ orjson = [
     {version = ">=3.10,<4.0", markers = "python_version < \"3.12\" or platform_system != \"Windows\""},
 ]
 psycopg2 = "^2.9.9"
-pydantic = ">=2.9.0"
+pydantic = ">=2.9.1"
 python-dotenv = "^1.0.0"
 python-keycloak = "^4.3.0"
 python-logging-loki = "^0.3.1"
