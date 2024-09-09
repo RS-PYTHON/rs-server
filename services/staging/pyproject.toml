@@ -24,8 +24,10 @@ fastapi = "^0.114.0"
 pygeoapi = "^0.17.0"
 tinydb = "^4.8.0"
 uvicorn = "^0.30.6"
-opentelemetry-distro = "==0.46b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-exporter-otlp = "==1.25.0"
+opentelemetry-distro = "^0.48b0" # then run 'poetry run opentelemetry-bootstrap -a install'
+opentelemetry-instrumentation-aws-lambda = "^0.48b0"
+opentelemetry-test-utils = "^0.48b0"
+opentelemetry-exporter-otlp = "^1.27.0"
 python-logging-loki = "^0.3.1"
 
 [tool.poetry.group.dev]
