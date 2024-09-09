@@ -26,6 +26,7 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
 from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
@@ -90,7 +91,10 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
     for _, module_str, _ in pkgutil.walk_packages(path=package.__path__, prefix=prefix, onerror=None):
 
         # Don't instrument these modules, they have errors, maybe we should see why
-        if module_str in ["opentelemetry.instrumentation.tortoiseorm"]:
+        if module_str in [
+            "opentelemetry.instrumentation.tortoiseorm",
+            "opentelemetry.instrumentation.auto_instrumentation.sitecustomize",
+        ]:
             continue
 
         # Import and find all module classes
@@ -103,7 +107,7 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
             classes.add(_class)
 
             # Don't instrument these classes, they have errors, maybe we should see why
-            if _class in [AsyncioInstrumentor, AwsLambdaInstrumentor, BaseInstrumentor]:
+            if _class in [AsyncioInstrumentor, AwsLambdaInstrumentor, BaseInstrumentor, HTTPXClientInstrumentor]:
                 continue
 
             # If the "instrument" method exists, call it
