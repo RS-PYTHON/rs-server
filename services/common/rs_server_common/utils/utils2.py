@@ -32,3 +32,18 @@ class AuthInfo:
 
     # Configuration associated to the API key (not implemented for now)
     apikey_config: dict
+
+
+def read_response_error(response):
+    """Read and return an HTTP response error detail."""
+
+    # Try to read the response detail or error
+    try:
+        json = response.json()
+        detail = json.get("detail") or json["error"]
+
+    # If this fail, get the full response content
+    except Exception:  # pylint: disable=broad-exception-caught
+        detail = response.content.decode("utf-8", errors="ignore")
+
+    return detail

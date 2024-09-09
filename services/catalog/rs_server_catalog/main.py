@@ -370,7 +370,7 @@ if common_settings.CLUSTER_MODE:
 
     # Insert the SessionMiddleware (to save cookies) after the DontRaiseExceptions middleware.
     # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
-    if app.middleware_stack is not None:
+    if app.middleware_stack:
         raise RuntimeError("Cannot add middleware after an application has started")
     middleare_index = middleware_names.index("DontRaiseExceptions")
     cookie_secret = os.environ["RSPY_COOKIE_SECRET"]

@@ -88,7 +88,8 @@ async def is_from_browser(request: Request) -> bool:
 
 
 async def is_logged_in(request: Request) -> bool:
-    """We know that the user is logged in if the session cookie exists."""
+    """Return True if the user is logged in."""
+    # Check if the session cookie exists
     return COOKIE_NAME in request.session
 
 
@@ -186,7 +187,7 @@ def get_router(app: FastAPI) -> APIRouter:  # pylint: disable=too-many-locals
     # Add it at the end (after the CORS middleware, that must be first)
     # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
     if "SessionMiddleware" not in middleware_names:
-        if app.middleware_stack is not None:
+        if app.middleware_stack:
             raise RuntimeError("Cannot add middleware after an application has started")
         app.user_middleware.append(Middleware(SessionMiddleware, secret_key=cookie_secret))
 

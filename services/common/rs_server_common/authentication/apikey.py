@@ -32,7 +32,7 @@ from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
 
 # from functools import wraps
-from rs_server_common.utils.utils2 import AuthInfo
+from rs_server_common.utils.utils2 import AuthInfo, read_response_error
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
@@ -130,14 +130,5 @@ async def __apikey_security_cached(apikey_value) -> AuthInfo:
             apikey_config=contents["config"],
         )
 
-    # Try to read the response detail or error
-    try:
-        json = response.json()
-        detail = json.get("detail") or json["error"]
-
-    # If this fail, get the full response content
-    except Exception:  # pylint: disable=broad-exception-caught
-        detail = response.content.decode("utf-8", errors="ignore")
-
     # Forward error
-    raise HTTPException(response.status_code, f"UAC manager: {detail}")
+    raise HTTPException(response.status_code, f"UAC manager: {read_response_error(response)}")
