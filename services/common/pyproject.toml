@@ -20,12 +20,12 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.112.2"
+fastapi = "^0.114.0"
 boto3 = "==1.28.85"
 botocore = "==1.31.85"
-sqlalchemy = "^2.0.32"
+sqlalchemy = "^2.0.34"
 eodag = "==3.0.0b3"
-pydantic = ">=2.0.0"
+pydantic = ">=2.9.1"
 markdown = "^3.6"
 python-dotenv = "^1.0.0"
 psycopg2 = "^2.9.9"
