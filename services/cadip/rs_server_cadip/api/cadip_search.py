@@ -40,6 +40,7 @@ from rs_server_cadip.cadip_utils import (
     validate_products,
 )
 from rs_server_common.authentication import apikey_validator
+from rs_server_common.authentication_to_external import set_eodag_auth_token
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -72,6 +73,8 @@ def search_cadip_with_session_info(request: Request):
     selected_config, query_params = prepare_cadip_search(collection, query_params)
     query_params = create_session_search_params(selected_config)
 
+    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
+
     return process_session_search(
         request,
         query_params["station"],
@@ -92,6 +95,8 @@ def search_cadip_endpoint(request: Request):
     selected_config, query_params = prepare_cadip_search(collection, query_params)
 
     query_params = create_session_search_params(selected_config)
+
+    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
 
     return process_session_search(
         request,
@@ -120,6 +125,9 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
     selected_config = select_config(collection_id)
 
     query_params = create_session_search_params(selected_config)
+
+    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
+
     return process_session_search(
         request,
         query_params["station"],
@@ -148,6 +156,8 @@ def get_cadip_collection_items(request: Request, collection_id):
     """
     selected_config = select_config(collection_id)
     query_params = create_session_search_params(selected_config)
+
+    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
 
     return process_session_search(
         request,
@@ -178,6 +188,9 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     selected_config = select_config(collection_id)
 
     query_params = create_session_search_params(selected_config)
+
+    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
+
     result = process_session_search(
         request,
         query_params["station"],
@@ -318,6 +331,8 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
+    set_eodag_auth_token(station, "cadip")
+
     return process_files_search(datetime, station, session_id, limit, sortby, deprecated=True)
 
 
@@ -360,6 +375,9 @@ def search_session(
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
+
+    set_eodag_auth_token(station.lower(), "cadip")
+
     return process_session_search(request, station, id, platform, f"{start_date}/{stop_date}", limit)  # type: ignore
 
 

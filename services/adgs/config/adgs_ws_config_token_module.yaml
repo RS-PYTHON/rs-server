@@ -14,22 +14,11 @@
 
 adgs:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5000/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     GENERIC_PRODUCT_TYPE:
       productType: '{productType}'

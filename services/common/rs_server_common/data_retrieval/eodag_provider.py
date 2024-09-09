@@ -24,8 +24,11 @@ from typing import List, Union
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.utils.exceptions import RequestError
+from requests import exceptions
 
-from .provider import CreateProviderFailed, Provider, TimeRange
+from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
+
+# from fastapi import HTTPException
 
 
 class EodagProvider(Provider):
@@ -146,7 +149,11 @@ class EodagProvider(Provider):
                 productType="S1_SAR_RAW" if "adgs" not in self.provider.lower() else "CAMS_GRF_AUX",
                 **kwargs,
             )
-        except RequestError:
+        except RequestError as e:
+            if e.args and "403" and "FORBIDDEN" in e.args[0]:
+                raise SearchProductFailed(
+                    f"Can't search provider {self.provider} " "because the used token is not valid",
+                )
             # Empty list if something goes wrong in eodag
             return []
 
