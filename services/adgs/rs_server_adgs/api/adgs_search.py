@@ -94,7 +94,7 @@ def search_products(  # pylint: disable=too-many-locals
             stac_mapper = json.loads(stac_map.read())
             adgs_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from AUX station")
-        return sort_feature_collection(adgs_item_collection, sortby)
+        return sort_feature_collection(adgs_item_collection.model_dump(), sortby)
 
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:

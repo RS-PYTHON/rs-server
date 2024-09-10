@@ -22,7 +22,8 @@
     "links": [],
     "assets": {
         "file": {
-            "file:size": "PLACEHOLDER"
+            "file:size": "PLACEHOLDER",
+            "href": "not_set"
         }
     }
 }
