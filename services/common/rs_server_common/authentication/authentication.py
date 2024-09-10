@@ -41,6 +41,15 @@ STATIONS_AUTH_LUT = {
     "cadip": "cadip_cadip",
 }
 
+# Mocker doesn't work on the authenticate function that is a FastAPI dependency,
+# I don't know why, so just use this hack to spy the function from the pytests.
+FROM_PYTEST = False
+
+
+def authenticate_from_pytest(auth_info: AuthInfo) -> AuthInfo:
+    """'authenticate' function called from pytest."""
+    return auth_info
+
 
 async def authenticate(
     request: Request,
@@ -75,7 +84,7 @@ async def authenticate(
     request.state.auth_roles = auth_info.iam_roles
     request.state.auth_config = auth_info.apikey_config
     request.state.user_login = auth_info.user_login
-    return auth_info
+    return authenticate_from_pytest(auth_info) if FROM_PYTEST else auth_info
 
 
 def auth_validator(station, access_type):

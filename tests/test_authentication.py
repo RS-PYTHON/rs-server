@@ -21,6 +21,7 @@ import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
+from rs_server_common.authentication import authentication
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.utils.logging import Logging
@@ -187,6 +188,12 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
     """
 
+    # Patch the global variables. See: https://stackoverflow.com/a/69685866
+    mocker.patch("rs_server_common.authentication.authentication.FROM_PYTEST", new=True, autospec=False)
+
+    # Spy on the authenticate function call
+    spy_authenticate = mocker.spy(authentication, "authenticate_from_pytest")
+
     # Dummy endpoint arguments
     endpoint_params = {
         "collection": "cadip_valid_auth",
@@ -196,7 +203,13 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
 
     # The user, authenticated with oauth2, can also use an apikey created by another user.
     # In this case, the apikey authentication has higher priority and should be used.
-    roles = ["rs_adgs_read", "rs_adgs_download", "rs_cadip_cadip_read", "rs_cadip_cadip_download"]
+    roles = [
+        "rs_adgs_read",
+        "rs_adgs_download",
+        "rs_cadip_cadip_read",
+        "rs_cadip_cadip_download",
+        "rs_cadip_landing_page",
+    ]
     apikey_username = "APIKEY_USERNAME"
     apikey_roles = ["apikey_role1", "apikey_role2", *roles]
     apikey_config = {"apikey": "config"}
@@ -233,9 +246,6 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     if test_oauth2:
         await mock_oauth2(mocker, client, "/auth/login", oauth2_user_id, oauth2_username, oauth2_roles)
 
-    # Spy on the AuthInfo creation
-    spy_auth_info = mocker.spy(AuthInfo, "__init__")
-
     # For each api endpoint (except the technical and oauth2 endpoints)
     for route in fastapi_app.router.routes:
         if (not isinstance(route, APIRoute)) or (route.path in ("/", "/health")) or route.path.startswith("/auth/"):
@@ -255,6 +265,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
             # We have other errors on many endpoints because we didn't give the right arguments,
             # but it's OK it is not what we are testing here.
             if test_apikey or test_oauth2:
+                spy_authenticate.reset_mock()
                 response = client.request(
                     method,
                     endpoint,
@@ -265,7 +276,6 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
                 assert response.status_code not in (
                     status.HTTP_401_UNAUTHORIZED,
                     status.HTTP_403_FORBIDDEN,
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,  # with 422, the authentication is not called and not tested
                 )
 
                 # With a wrong apikey, we should have a 403 error
@@ -275,28 +285,27 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
                         == status.HTTP_403_FORBIDDEN
                     )
 
+                # Test that the authenticate function was called only once
+                # and that the apikey information is set rather thatn oauth2 if both are available.
+                spy_authenticate.assert_called_once()
+                if test_apikey:
+                    assert spy_authenticate.spy_return == AuthInfo(
+                        apikey_username,
+                        apikey_roles,
+                        apikey_config,
+                    )
+                elif test_oauth2:
+                    assert spy_authenticate.spy_return == AuthInfo(
+                        oauth2_username,
+                        oauth2_roles,
+                        oauth2_config,
+                    )
+
             # Check that without authentication, the endpoint is protected and we receive a 401
             else:
                 assert (
                     client.request(method, endpoint, params=endpoint_params).status_code == status.HTTP_401_UNAUTHORIZED
                 )
-
-    # Test that the user information is set at least once,
-    # and that the apikey information is set rather thatn oauth2 if bot are available.
-    if test_apikey:
-        spy_auth_info.assert_called_once()  # set only once because of the cache
-        assert spy_auth_info.call_args_list[0].kwargs == {
-            "user_login": apikey_username,
-            "iam_roles": apikey_roles,
-            "apikey_config": apikey_config,
-        }
-    elif test_oauth2:
-        spy_auth_info.assert_called()
-        assert spy_auth_info.call_args_list[0].kwargs == {
-            "user_login": oauth2_username,
-            "iam_roles": oauth2_roles,
-            "apikey_config": oauth2_config,
-        }
 
 
 UNKNOWN_CADIP_STATION = "unknown-cadip-station"
