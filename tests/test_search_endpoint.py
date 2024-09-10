@@ -363,7 +363,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test with a single platform
         (
             "/cadip/collections/cadip_session_by_id_platform/items",
-            "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
+            "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20eq%20S1A%22&$top=20&$expand=Files",
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
@@ -381,7 +381,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test only with a list of platforms
         (
             "/cadip/collections/cadip_session_by_platform_list/items",
-            "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20&$expand=Files",
+            "%22Satellite%20in%20S1A,%20S2B%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
             ["S1A", "S2B"],
@@ -391,7 +391,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # # Check that response returns several results in STAC format for the sessions that match the criteria
         (
             "/cadip/collections/cadip_session_by_start_stop_platform/items",
-            "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+            "%22Satellite%20eq%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
             "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
@@ -399,7 +399,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         (
             "/cadip/search/items?collection=cadip_session_by_start_stop_platform",
-            "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+            "%22Satellite%20eq%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
             "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
@@ -517,7 +517,7 @@ def test_valid_search_by_session_id(expected_products, client):
     "odata_request, rs_server_request, odata_response, rs_server_response",
     [
         (
-            "%22Satellite%20in%20S2B%22&$top=20&$expand=Files",
+            "%22Satellite%20eq%20S2B%22&$top=20&$expand=Files",
             "/cadip/collections/cadip_session_s2b/items",
             # Note: The following JSON were modified due to compliance of HTTP/1.1 protocol
             # "Retransfer": false -> "Retransfer": False,
@@ -800,7 +800,7 @@ def test_collections_landing_page(client, mocker, endpoint, role):
     # Mock the pickup response
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20in%20S1A"&$top=1&$expand=Files',
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20eq%20S1A"&$top=1&$expand=Files',
         json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
         status=200,
     )

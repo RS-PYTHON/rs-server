@@ -22,7 +22,6 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import traceback
 import uuid
-from functools import partial
 from typing import Annotated, Any, List, Union
 
 import requests
@@ -232,7 +231,7 @@ def get_all_queryables():
 @router.get("/cadip/collections/{collection_id}/queryables")
 @apikey_validator(station="cadip", access_type="landing_page")
 def get_collection_queryables(
-    collection_id: Annotated[str, Query(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
 ):
     """
     Get Queryable Fields for a Specific Collection
@@ -449,7 +448,7 @@ def search_cadip_endpoint(request: Request) -> dict:
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection(
     request: Request,
-    collection_id: Annotated[str, Query(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
 ) -> list[dict] | dict:
     """
     Retrieve a STAC-Compliant Collection for a Specific CADIP Station.
@@ -521,7 +520,7 @@ def get_cadip_collection(
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_items(
     request: Request,
-    collection_id: Annotated[str, Query(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
 ):
     """
     Retrieve a List of Sessions for a specific collection.
@@ -550,7 +549,6 @@ def get_cadip_collection_items(
     """
     selected_config: Union[dict, None] = select_config(collection_id)
     query_params: dict = create_session_search_params(selected_config)
-
     try:
         return process_session_search(
             request,
@@ -572,9 +570,10 @@ def get_cadip_collection_items(
 @apikey_validator(station="cadip", access_type="read")
 def get_cadip_collection_item_details(
     request: Request,
-    collection_id: Annotated[str, Query(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
     session_id: Annotated[
-        str, Query(title="CADIP session ID.", max_length=100, description="E.G. S1A_20231120061537234567"),
+        str,
+        FPath(title="CADIP session ID.", max_length=100, description="E.G. S1A_20231120061537234567"),
     ],
 ):
     """
@@ -642,8 +641,14 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     station: str,
     session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
     platform: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
-    time_interval: Annotated[Union[str, None], WrapValidator(partial(validate_inputs_format, raise_errors=True))],
-    limit: Annotated[Union[int, None], Query(gt=0, le=10000, default=1000, description="Pagination Limit")],
+    time_interval: Annotated[
+        Union[str, None],
+        WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=False)),
+    ],
+    limit: Annotated[
+        Union[int, None],
+        Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
+    ],
     add_assets: Union[bool, str] = True,
 ):
     """Function to process and to retrieve a list of sessions from any CADIP station.
@@ -668,8 +673,8 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-
-    if not (session_id or platform or (time_interval[0] and time_interval[1])):
+    limit = limit if limit else 1000
+    if not (session_id or platform or (time_interval[0] and time_interval[1])):  # type: ignore
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     try:

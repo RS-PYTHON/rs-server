@@ -100,12 +100,14 @@ def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> 
           Output: ['S1A', 'S2B'] (list of str)
     """
     try:
-        handler(parameter)
+        if parameter:
+            handler(parameter)
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cannot validate: {parameter}",
         ) from exc
+
     if parameter and "," in parameter:
         items = [item.strip() for item in parameter.split(",") if item.strip()]
         return items if len(items) > 1 else items[0]
