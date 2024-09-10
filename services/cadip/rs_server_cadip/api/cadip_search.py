@@ -77,7 +77,7 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
 @apikey_validator(station="cadip", access_type="landing_page")
 def get_root_catalog(request: Request):
     """
-    Retrieve the root catalog for the RSPY CADIP landing page.
+    Retrieve the RSPY CADIP Search catalog landing page.
 
     This endpoint generates a STAC (SpatioTemporal Asset Catalog) Catalog object that serves as the landing
     page for the RSPY CADIP service. The catalog includes basic metadata about the service and links to
