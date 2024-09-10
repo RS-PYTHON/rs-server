@@ -113,8 +113,6 @@ A valid session search request must contain at least a value for either
 
     {
         "type": "FeatureCollection",
-        "numberMatched": 3,
-        "numberReturned": 3,
         "features": [
             {
                 "stac_version": "1.0.0",

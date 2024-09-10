@@ -25,9 +25,10 @@ from pathlib import Path
 from typing import List
 
 import eodag
-import pystac
+import stac_pydantic
 import starlette.requests
 import yaml
+from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
@@ -85,11 +86,11 @@ def update_product(product: dict) -> dict:
     return product
 
 
-def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starlette.requests.Request) -> pystac.Asset:
+def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starlette.requests.Request) -> Asset:
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
     href = f'{request.url.scheme}://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
-    return pystac.Asset(href=href, roles=["cadu"], title=product.properties["Name"], extra_fields=asset)
+    return Asset(href=href, roles=["cadu"], title=product.properties["Name"], **asset)
 
 
 def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct]) -> List[eodag.EOProduct]:
@@ -104,23 +105,22 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
 
 
 def from_session_expand_to_assets_serializer(
-    feature_collection: pystac.ItemCollection,
+    feature_collection: stac_pydantic.ItemCollection,
     input_session: eodag.EOProduct,
     mapper: dict,
     request: starlette.requests.Request,
-) -> pystac.ItemCollection:
+) -> stac_pydantic.ItemCollection:
     """
-    Associate all expanded files with session from feature_collection and create a pystac.Asset for each file.
+    Associate all expanded files with session from feature_collection and create a stac_pydantic.Asset for each file.
     """
-    for session in feature_collection.items:
+    for session in feature_collection.features:
         # Iterate over products and map them to assets
         for product in input_session:
             if product.properties["SessionID"] == session.id:
                 # Create Asset
-                asset: pystac.Asset = map_dag_file_to_asset(mapper, product, request)
+                asset: Asset = map_dag_file_to_asset(mapper, product, request)
                 # Add Asset to Item.
-                session.add_asset(asset.title, asset)  # type: ignore
-
+                session.assets.update({asset.title: asset.model_dump()})  # type: ignore
         # Remove processed products from input_session
         input_session = [product for product in input_session if product.properties["SessionID"] != session.id]
 

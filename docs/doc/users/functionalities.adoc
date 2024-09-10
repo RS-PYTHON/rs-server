@@ -83,8 +83,6 @@ GET /cadip/station123/session?start_date=2020-02-16T12:00:00Z&stop_date=2023-02-
 
 {
     "type": "FeatureCollection",
-    "numberMatched": 3,
-    "numberReturned": 3,
     "features": [
         {
             "stac_version": "1.0.0",
