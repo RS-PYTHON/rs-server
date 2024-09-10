@@ -24,13 +24,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, List, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import sqlalchemy
 import stac_pydantic
 from eodag import EOProduct, setup_logging
 from fastapi import HTTPException, status
-from pydantic import BaseModel, ValidationError, ValidatorFunctionWrapHandler
+from pydantic import BaseModel, Field, ValidationError, ValidatorFunctionWrapHandler
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -41,16 +41,23 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 from rs_server_common.utils.logging import Logging
 from stac_pydantic.links import Link
 
+# pylint: disable=too-few-public-methods
+
 
 class Queryables(BaseModel):
     """BaseModel used to describe queryable holder."""
 
-    schema: str  # type: ignore
-    id: str
+    schema: Optional[str] = Field(None, alias="$schema")  # type: ignore
+    id: Optional[str] = Field(None, alias="$id")
     type: str
     title: str
     description: str
     properties: dict[str, Any]
+
+    class Config:
+        """Used to overwrite BaseModel config and display aliases in model_dump."""
+
+        allow_population_by_field_name = True
 
 
 logger = Logging.default(__name__)

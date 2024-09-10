@@ -225,7 +225,7 @@ def get_all_queryables():
         title="Queryables for CADIP Search API",
         description="Queryable names for the CADIP Search API Item Search filter.",
         properties=get_cadip_queryables(),
-    ).model_dump()
+    ).model_dump(by_alias=True)
 
 
 @router.get("/cadip/collections/{collection_id}/queryables")
@@ -270,7 +270,7 @@ def get_collection_queryables(
         title="Queryables for CADIP Search API",
         description="Queryable names for the CADIP Search API Item Search filter.",
         properties=generate_queryables(collection_id),
-    ).model_dump()
+    ).model_dump(by_alias=True)
 
 
 @router.get("/cadip/search/items", deprecated=True)
