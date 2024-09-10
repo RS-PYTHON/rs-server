@@ -24,6 +24,34 @@ Changed
 
 None
 
+[0.2a3] - Sprint 13 - 2024-08-28
+================================
+
+Added
+-----
+
+* RSPY-166: Use Keycloak to login into Wazuh
+* RSPY-237: [stac-fastapi-pgstac] Upgrade to version 2.5.0
+* RSPY-264: [Monitoring] Create Grafana datasources for PostgreSQL databases
+* RSPY-266: [Monitoring] Create JupyterHub ServiceMonitor
+* RSPY-293: Use Keycloak to login into Neuvector
+* RSPY-295: STAC Queryables (Catalog software part)
+* RSPY-302: Simplify Catalog: remove the concept of "user catalog"
+* RSPY-312: Configure Prefect Server logging
+* RSPY-318: Backup and restore Keycloak data
+* RSPY-321: Implement skeleton of staging service
+* RSPY-322: Implement STAC view of CADIP sessions (1/3: refactor)
+* RSPY-327: [Catalog] add/update item : don't copy assets already in catalog bucket
+* RSPY-335: Deploy dask gateway server
+* RSPY-340: [API-Key Manager] merge rspy branch into main
+* RSPY-341: Update to EODAG v3
+* RSPY-346: Proof Of Concept / oauth2 with PKCE authorisation
+* RSPY-351: Variabilize the bucket name
+* RSPY-353: STAC validation error with auth scheme
+* RSPY-354: Sprint 13 corrections of issues
+* RSPY-356: Collection search endpoint should return http 404 error instead of empty list for missing collection
+* RSPY-397: Adapt tests and code to support filenames as STAC asset keys
+
 [0.2a2] - Sprint 12 - 2024-07-17
 ================================
 
