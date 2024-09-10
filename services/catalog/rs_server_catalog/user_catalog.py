@@ -77,7 +77,9 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.status import (
     HTTP_200_OK,
+    HTTP_201_CREATED,
     HTTP_302_FOUND,
+    HTTP_307_TEMPORARY_REDIRECT,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
@@ -1121,9 +1123,10 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                 return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
 
         response = await call_next(request)
-
+        
         # Don't forward responses that fail
-        if response.status_code not in [200, 201]:
+        # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
+        if response.status_code not in (HTTP_200_OK, HTTP_201_CREATED, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
             if response is None:
                 return None
 
