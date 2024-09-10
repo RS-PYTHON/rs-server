@@ -24,9 +24,9 @@ import traceback
 import uuid
 from typing import Annotated, Any, List, Union
 
-import pystac
 import requests
 import sqlalchemy
+import stac_pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
@@ -46,13 +46,14 @@ from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
+    create_collection,
     create_links,
-    create_pystac_collection,
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
     write_search_products_to_db,
 )
+from stac_pydantic.links import Link, Links
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
@@ -95,27 +96,16 @@ def get_root_catalog(request: Request):
     Returns:
     - dict: A dictionary representation of the STAC catalog, including metadata and links.
     """
-    landing_page = pystac.Catalog(
+    landing_page: stac_pydantic.Catalog = stac_pydantic.Catalog(
+        type="Catalog",
         id=str(uuid.uuid4()),
         description="RSPY CADIP landing page",
         title="RSPY CADIP Catalog",
+        stac_version="1.0.0",
+        stac_extensions=[],
+        links=Links([Link(rel="data", href=f"{request.url.scheme}://{request.url.netloc}/cadip/collections")]),
     )
-    landing_page.stac_extensions = []
-    landing_page.stac_version = "1.0.0"  # type: ignore
-    landing_page.extra_fields["conformsTo"] = [
-        "https://api.stacspec.org/v1.0.0/core",
-        "https://api.stacspec.org/v1.0.0/collections",
-        "https://api.stacspec.org/v1.0.0/ogcapi-features",
-        "https://api.stacspec.org/v1.0.0/item-search",
-        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/core",
-        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/oas30",
-        # "http://www.opengis.net/spec/ogcapi-features-1/1.0/conf/geojson",
-    ]
-
-    landing_page.add_link(
-        pystac.Link(rel="data", target=f"{request.url.scheme}://{request.url.netloc}/cadip/collections"),
-    )
-    return landing_page.to_dict()
+    return landing_page.model_dump()
 
 
 @router.get("/cadip/collections")
@@ -170,7 +160,7 @@ def get_allowed_collections(request: Request):
     for config in filtered_collections:
         # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
-        collection: pystac.Collection = create_pystac_collection(config)
+        collection: stac_pydantic.Collection = create_collection(config)
         if links := process_session_search(
             request,
             query_params["station"],
@@ -181,11 +171,11 @@ def get_allowed_collections(request: Request):
             "collection",
         ):
             stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
-            stac_object["collections"].append(collection.to_dict())
+            stac_object["collections"].append(collection.model_dump())
     return stac_object
 
 
-@router.get("/cadip/search/items")
+@router.get("/cadip/search/items", deprecated=True)
 @auth_validator(station="cadip", access_type="read")
 def search_cadip_with_session_info(request: Request):
     """
@@ -195,7 +185,7 @@ def search_cadip_with_session_info(request: Request):
         request (Request): The HTTP request object containing query parameters for the search.
 
     Returns:
-        Union[list[pystac.Link], dict]: A list of STAC Links if items are found, or a dictionary containing
+        Union[list[stac_pydantic.links.Link], dict]: A list of STAC Links if items are found, or a dictionary containing
                                         the search results if no items are found or an error occurs.
 
     Raises:
@@ -224,16 +214,96 @@ def search_cadip_with_session_info(request: Request):
 @auth_validator(station="cadip", access_type="read")
 def search_cadip_endpoint(request: Request) -> dict:
     """
-    Endpoint used to search cadip collections.
+    Search CADIP Collections and Retrieve STAC-Compliant Data.
 
-    Args:
-        request (Request): The HTTP request object containing query parameters.
+    This endpoint allows users to search for sessions (extending or improving collection queryable) within CADIP
+    stations and retrieve results in a stac-pydantic validated format. The search is based on query parameters provided
+    in the URL, which are used to filter and return the appropriate session data.
 
-    Returns:
-        Dict: The STAC collection as a dictionary.
+    ### Path:
+    - `/cadip/search`
 
-    Raises:
-        HTTPException: If there is an error in creating the STAC collection or if required parameters are missing.
+    ### Query Parameters:
+    - `collection` (optional, string): The name of the CADIP collection to search within (e.g., `s1_cadip`).
+    - `id` (optional, string): The session ID to filter the search (e.g., `S1A_20200105072204051312`).
+    - Additional query parameters may be passed to filter sessions within the collection.
+
+    ### Functionality:
+    1. **Extract Parameters**: Reads query parameters from the request and identifies the collection name, if provided.
+    2. **Search Preparation**: Uses the `prepare_cadip_search` function to build a configuration and query parameter set
+       based on the collection and additional parameters.
+    3. **STAC Collection Creation**: Constructs a STAC-compliant collection using the session data retrieved from CADIP.
+    4. **Session Search Link**: Adds links to detailed session information within the STAC collection response.
+
+    ### Response:
+    - Returns a **STAC Collection** object in dictionary format, validated by staf-pydantic model, containing metadata,
+    spatial/temporal extents, links to sessions, and providers' information.
+
+    ### Response Example:
+
+    ```json
+    {
+        "id": "s1_cadip",
+        "description": "Sentinel-1 Inuvik CADIP sessions",
+        "links": [
+            {
+                "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_
+                Conditions.pdf",
+                "rel": "license",
+                "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information"
+            },
+            [
+                {
+                    "href": "./simple-item.json",
+                    "rel": "item",
+                    "title": "S1A_20200105072204051312"
+                }
+            ]
+        ],
+        "stac_extensions": [
+            "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/view/v1.0.0/schema.json"
+        ],
+        "title": "Sentinel-1 Inuvik CADIP sessions",
+        "type": "Collection",
+        "license": "other",
+        "extent": {
+            "spatial": {
+                "bbox": [[-180, -82.85, 180, 82.82]]
+            },
+            "temporal": {
+                "interval": [
+                    [
+                        "2024-06-12T02:57:21.459000Z",
+                        "2024-08-22T11:30:12.767000Z"
+                    ]
+                ]
+            }
+        },
+        "providers": [
+            {
+                "name": "European Union/ESA/Copernicus",
+                "roles": [
+                    "producer",
+                    "licensor"
+                ],
+                "url": "https://sentiwiki.copernicus.eu/web/s1-mission"
+            },
+            {
+                "name": "Reference System",
+                "roles": [
+                    "host"
+                ],
+                "url": "https://home.rs-python.eu/"
+            }
+        ],
+        "station": "cadip",
+        "query": {
+            "Satellite": "S1A, S1C",
+            "SessionId": "S1A_20200105072204051312"
+        }
+    }
     """
     request_params = dict(request.query_params)
     collection_name: Union[str, None] = request_params.pop("collection", None)
@@ -244,103 +314,116 @@ def search_cadip_endpoint(request: Request) -> dict:
     query_params = create_session_search_params(selected_config)
 
     try:
-        pystac_collection: pystac.Collection = create_pystac_collection(selected_config)
+        stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cannot create STAC Collection -> Missing {exc}",
         ) from exc
 
-    pystac_collection.add_links(
-        process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ),
-    )
-    return pystac_collection.to_dict()
+    if link := process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        "collection",
+    ):
+        stac_collection.links.append(link)
+    return stac_collection.model_dump()
 
 
 @router.get("/cadip/collections/{collection_id}")
 @auth_validator(station="cadip", access_type="read")
 def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | dict:
     """
-    Endpoint that retrieves session data from an external CADIP server and formats it into a STAC-compliant Collection.
+    Retrieve a STAC-Compliant Collection for a Specific CADIP Station.
 
-    This endpoint begins by reading configuration details from file described using RSPY_CADIP_SEARCH_CONFIG.
-    Using this configuration, it sends a request to an external CADIP server to fetch information about available
-    sessions. Upon receiving the session data, the endpoint processes and transforms the data into the STAC format.
+    This endpoint fetches and returns session data from an external CADIP server, structured as a STAC-compliant
+    Collection. By specifying a `collection_id`, the client can retrieve a collection of session metadata related to
+    that CADIP station.
 
-    In the formatted STAC Collection response, each sessions name is included as a link within the `links` list.
-    These links point to the session details and are structured according to the STAC specification.
+    ### Path Parameters:
+    - `collection_id` (string): The unique identifier of the CADIP collection to retrieve.
 
-    Args:
-        request (Request): The HTTP request object containing query parameters and metadata.
-        collection_id (str): The ID of the CADIP collection to retrieve.
+    ### Response:
+    The response is a STAC Collection object formatted as a dictionary, which contains links to session details.
+    Each session is represented as a link inside the `links` array, following the STAC specification. These links point
+     to the detailed metadata for each session.
 
-    Returns:
-        Union[list[dict], dict]: A STAC Collection formatted as a dictionary, which includes session links as per
-                                  the STAC specification. If multiple collections are retrieved, a list of such
-                                  dictionaries may be returned.
+    ### Key Operations:
+    1. **Configuration Lookup**: Reads the relevant configuration from `RSPY_CADIP_SEARCH_CONFIG`.
+    2. **CADIP Server Request**: Sends a request to the CADIP server to retrieve session data.
+    3. **STAC Formatting**: Transforms the session data into a STAC Collection format.
+    4. **Link Creation**: Adds links to session details in the response.
 
-    Raises:
-        HTTPException: If there is an error in creating the STAC Collection or if required configuration details
-                       are missing or invalid.
+    ### Responses:
+    - **200 OK**: Returns the STAC Collection containing links to session metadata. If multiple collections are
+    available, returns a list of collections.
+    - **422 Unprocessable Entity**: Returns an error if the STAC Collection cannot be created due to missing or invalid
+    configuration details.
+
+    ### Raises:
+    - **HTTPException**:
+      - **422 Unprocessable Entity**: If any configuration data is missing, invalid, or causes an error when creating
+      the STAC Collection.
+
+    This endpoint is secured by an API key validator, ensuring that only authorized users can retrieve data from the
+    CADIP station.
     """
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
 
     try:
-        pystac_collection: pystac.Collection = create_pystac_collection(selected_config)
+        stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cannot create STAC Collection -> Missing {exc}",
         ) from exc
 
-    pystac_collection.add_links(
-        process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ),
-    )
-    return pystac_collection.to_dict()
+    if link := process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        "collection",
+    ):
+        stac_collection.links.append(link)
+    return stac_collection.model_dump()
 
 
 @router.get("/cadip/collections/{collection_id}/items")
 @auth_validator(station="cadip", access_type="read")
 def get_cadip_collection_items(request: Request, collection_id):
     """
-     Endpoint that retrieves a list of sessions from any CADIP station and returns them as an ItemCollection.
+    Retrieve a List of Sessions for a specific collection.
 
-    This endpoint begins by reading configuration details from file described using RSPY_CADIP_SEARCH_CONFIG,
-    it sends a request to the specified CADIP station to retrieve session data. The response from the CADIP station is
-    then mapped from the original OData format to the STAC (SpatioTemporal Asset Catalog) format,
-    ensuring the data is structured according to industry standards.
+    This endpoint provides access to a list of sessions for a given collection from the CADIP station.
+    By specifying the `collection_id` in the path, clients can retrieve session metadata in the form of a STAC
+    (SpatioTemporal Asset Catalog) ItemCollection.
 
-     The final response is an ItemCollection, which contains detailed information about each requested session.
-     However, the assets associated with each session are intentionally excluded from the response,
-     focusing solely on the session metadata.
-    Args:
-        request (Request): The HTTP request object containing any additional query parameters.
-        collection_id (str): The ID of the CADIP collection to use.
+    ### Path Parameters:
+    - `collection_id` (string): The unique identifier of the collection from which session data is being requested.
 
-    Returns:
-        pystac.ItemCollection: A collection of items formatted according to STAC standards.
+    ### Response:
+    Returns a STAC ItemCollection containing metadata for each session in the specified collection.
+    Each session is represented as a STAC Item, containing key information such as:
+    - **Session metadata**: Information about the session's time, satellite, and session ID.
 
-    Raises:
-        HTTPException: If there is an error in selecting the configuration, creating query parameters, or processing
-                       the session search.
+    ### Responses:
+    - **200 OK**: If sessions are found, returns the ItemCollection in JSON format.
+    - **404 Not Found**: If no matching sessions or collection is found.
+
+    ### Errors:
+    - **500 Internal Server Error**: If an error occurs in reading configurations, creating query parameters, or
+    processing the session search.
+
+    This endpoint is protected by an API key validator, ensuring appropriate access to the CADIP station.
     """
     selected_config: Union[dict, None] = select_config(collection_id)
     query_params: dict = create_session_search_params(selected_config)
@@ -360,21 +443,43 @@ def get_cadip_collection_items(request: Request, collection_id):
 @auth_validator(station="cadip", access_type="read")
 def get_cadip_collection_item_details(request: Request, collection_id, session_id):
     """
-    Endpoint that retrieves a specific item from an ItemCollection, providing detailed information about a particular
-    session.
+    Retrieve Detailed Information for a specific session in a collection.
 
-    This endpoint processes a request to fetch a specific session from a CADIP station. After retrieving the data,
-    it maps the session information from the original OData format to the STAC (SpatioTemporal Asset Catalog) format.
-    The response is an Item that includes comprehensive metadata about the requested session, along with detailed
-    descriptions of all associated assets.
+    This endpoint fetches metadata and asset details for a specific session within a collection from the CADIP station.
+    Clients can request session details by providing the `collection_id` and `session_id` as path parameters.
+    The session data is retrieved and converted from the original OData format into the STAC format,
+    which provides standardized metadata for spatiotemporal datasets.
 
-    Response fully describes the assets, ensuring that all relevant information about the session and its resources is
-    available in the final output.
+    ### Path Parameters:
+    - `collection_id` (string): The unique identifier of the collection from which the session is being retrieved.
+    - `session_id` (string): The identifier of the specific session within the collection for which details are
+    requested.
+
+    ### Response:
+    Returns a STAC Item containing metadata and asset details about the requested session, including:
+    - **Session metadata**: Contains important temporal information (e.g., `datetime`, `start_datetime`, and
+    `end_datetime`),
+      the platform (`platform`), and session-specific details such as `cadip:id`, `cadip:num_channels`,
+      `cadip:station_unit_id`, `cadip:antenna_id`, and more.
+    - **Satellite information**: Includes satellite attributes such as `sat:absolute_orbit`, `cadip:acquisition_id`, and
+    status fields like `cadip:antenna_status_ok`, `cadip:front_end_status_ok`, and `cadip:downlink_status_ok`.
+    - **Assets**: A collection of asset objects associated with the session. Each asset contains:
+      - A unique asset `href` (link) pointing to the asset resource.
+      - Metadata such as `cadip:id`, `cadip:retransfer`, `cadip:block_number`, `cadip:channel`,
+        `created`, `eviction_datetime`, and `file:size`.
+      - Asset `roles`, indicating the type of resource (e.g., "cadu").
+      - Asset title and name.
+
+    ### Responses:
+    - **200 OK**: If the session details are found, returns the STAC Item in JSON format.
+    - **404 Not Found**: If the `session_id` is not found within the specified collection.
+
+    The endpoint is protected by an API key validator, which requires appropriate access permissions.
     """
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
-    item_collection = pystac.ItemCollection.from_dict(
+    item_collection = stac_pydantic.ItemCollection.model_validate(
         process_session_search(  # type: ignore
             request,
             query_params["station"],
@@ -385,7 +490,7 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
         ),
     )
     return next(
-        (item.to_dict() for item in item_collection.items if item.id == session_id),
+        (item.to_dict() for item in item_collection.features if item.id == session_id),
         HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found."),
     )
 
@@ -462,7 +567,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
                         sessions_products,
                         expanded_session_mapper,
                         request,
-                    ).to_dict()
+                    ).model_dump()
                 case "_":
                     # Should / Must be non reacheable case
                     raise HTTPException(
@@ -486,7 +591,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
 ######################################
 # DEPRECATED CODE, WILL BE REMOVED !!!
 ######################################
-@router.get("/cadip/{station}/cadu/search")
+@router.get("/cadip/{station}/cadu/search", deprecated=True)
 @auth_validator(station="cadip", access_type="read")
 def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     request: Request,  # pylint: disable=unused-argument
@@ -523,7 +628,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     return process_files_search(datetime, station, session_id, limit, sortby, deprecated=True)
 
 
-@router.get("/cadip/{station}/session")
+@router.get("/cadip/{station}/session", deprecated=True)
 @auth_validator(station="cadip", access_type="read")
 def search_session(
     request: Request,  # pylint: disable=unused-argument
@@ -626,7 +731,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             stac_mapper = json.loads(stac_map.read())
             cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from CADIP station")
-        return sort_feature_collection(cadip_item_collection.to_dict(), sortby)
+        return sort_feature_collection(cadip_item_collection.model_dump(), sortby)
 
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:

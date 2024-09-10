@@ -64,9 +64,9 @@ collections:
     license: other
     extent:
       spatial:
-        bbox: [ -180, -82.85, 180, 82.82 ]
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
       temporal:
-        interval: [ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
     links:
       - rel: license
         href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'

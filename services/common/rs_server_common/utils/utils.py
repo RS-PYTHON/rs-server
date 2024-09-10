@@ -26,14 +26,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, Tuple, Union
 
-import pystac
 import sqlalchemy
-from dateutil import parser
+import stac_pydantic
 from eodag import EOProduct, setup_logging
 from fastapi import HTTPException, status
-from pystac import Extent, Link
-from pystac import Provider as pystac_provider
-from pystac import SpatialExtent, TemporalExtent
+from pydantic import ValidationError
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -42,6 +39,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.utils.logging import Logging
+from stac_pydantic.links import Link
 
 logger = Logging.default(__name__)
 
@@ -409,59 +407,27 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
 
 
 def create_links(products: List[EOProduct]):
-    """Used to create pystac Link objects based on sessions lists."""
-    return [
-        Link(rel="item", title=product.properties["SessionId"], target="./simple-item.json") for product in products
-    ]
+    """Used to create stac_pydantic Link objects based on sessions lists."""
+    return [Link(rel="item", title=product.properties["SessionId"], href="./simple-item.json") for product in products]
 
 
-def create_pystac_collection(collection: dict) -> pystac.Collection:
-    """Used to create pystac Collection based on given collection data."""
-    # Extent: Spatial and Temporal
-    # Parse date strings using dateutil.parser for TemporalExtent
-    start_date_str, end_date_str = collection["extent"]["temporal"]["interval"]
-    start_date = parser.parse(start_date_str)
-    end_date = parser.parse(end_date_str)
-
-    extent = Extent(
-        spatial=SpatialExtent(bboxes=[collection["extent"]["spatial"]["bbox"]]),
-        temporal=TemporalExtent(intervals=[[start_date, end_date]]),
-    )
-
-    providers = [pystac_provider(**provider) for provider in collection["providers"]]
-    # Create the pystac.Collection
-    pystac_collection = pystac.Collection(
-        id=collection["id"],
-        description=collection.get("description", "No description provided."),
-        extent=extent,
-        title=collection.get("title", "No title provided."),
-        license=collection.get("license", "proprietary"),  # Default to 'proprietary' if not provided
-        providers=providers,
-        stac_extensions=collection.get("stac_extensions", []),
-    )
-
-    pystac_collection.add_link(
-        Link(
-            rel="self",
-            target="https://example.com/stac/collections/s1_cadip",
-            title="Self Link for the Sentinel-1 Inuvik CADIP sessions collection",
-        ),
-    )
+def create_collection(collection: dict) -> stac_pydantic.Collection:
+    """Used to create stac_pydantic Model Collection based on given collection data."""
     try:
-        pystac_collection.validate()
-        return pystac_collection
-    except pystac.STACValidationError as e:
+        stac_collection = stac_pydantic.Collection(type="Collection", **collection)
+        return stac_collection
+    except ValidationError as exc:
         raise HTTPException(
-            detail="Unable to validated collection.",
+            detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        ) from e
+        ) from exc
 
 
 def create_stac_collection(
     products: List[EOProduct],
     feature_template: dict,
     stac_mapper: dict,
-) -> pystac.ItemCollection:
+) -> stac_pydantic.ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
 
@@ -474,22 +440,13 @@ def create_stac_collection(
         dict: The STAC feature collection containing features for each EOProduct.
     """
     items: list = []
-    item_counter: int = 0
+
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
-        item = pystac.Item(
-            id=feature_tmp["id"],
-            geometry=feature_tmp["geometry"],  # None in this case
-            bbox=None,
-            datetime=datetime.fromisoformat(feature_tmp["properties"]["datetime"].replace("Z", "+00:00")),
-            properties=feature_tmp["properties"],
-            stac_extensions=feature_tmp["stac_extensions"],
-        )
+        item = stac_pydantic.Item(**feature_tmp)
         items.append(item)
-        item_counter += 1
-    matched_and_returned: dict = {"numberMatched": item_counter, "numberReturned": item_counter}
-    return pystac.ItemCollection(items=items, extra_fields=matched_and_returned)
+    return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
 
 
 def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:

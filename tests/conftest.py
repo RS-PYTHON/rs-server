@@ -252,7 +252,7 @@ def a_product_fixture():
                 "Start": "1970-01-01T12:00:00Z",
                 "End": "1970-01-01T12:00:00Z",
             },
-            "ContentLength": "ContentLength_test_value",
+            "ContentLength": "size_test_value",
         }
 
     return build
