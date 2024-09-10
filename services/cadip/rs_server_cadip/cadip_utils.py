@@ -22,9 +22,10 @@ import json
 import os
 import os.path as osp
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
 import eodag
+import pystac
 import starlette.requests
 import yaml
 
@@ -84,12 +85,11 @@ def update_product(product: dict) -> dict:
     return product
 
 
-def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starlette.requests.Request):
+def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starlette.requests.Request) -> pystac.Asset:
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
-    asset["roles"] = ["cadu"]
-    asset["href"] = f'{request.url.scheme}://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
-    return {product.properties["Name"]: asset}
+    href = f'{request.url.scheme}://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
+    return pystac.Asset(href=href, roles=["cadu"], title=product.properties["Name"], extra_fields=asset)
 
 
 def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct]) -> List[eodag.EOProduct]:
@@ -104,29 +104,25 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
 
 
 def from_session_expand_to_assets_serializer(
-    feature_collection,
+    feature_collection: pystac.ItemCollection,
     input_session: eodag.EOProduct,
     mapper: dict,
     request: starlette.requests.Request,
-) -> Dict:
+) -> pystac.ItemCollection:
     """
-    Associate all expanded files with session from feature_collection and create an asset for each file.
+    Associate all expanded files with session from feature_collection and create a pystac.Asset for each file.
     """
-    for session in feature_collection["features"]:
-        # Initialize an empty dictionary for the session's assets
-        session["assets"] = {}
-
+    for session in feature_collection.items:
         # Iterate over products and map them to assets
         for product in input_session:
-            if product.properties["SessionID"] == session["id"]:
-                # Get the asset dictionary
-                asset_dict = map_dag_file_to_asset(mapper, product, request)
-
-                # Merge the asset dictionary into session['assets']
-                session["assets"].update(asset_dict)
+            if product.properties["SessionID"] == session.id:
+                # Create Asset
+                asset: pystac.Asset = map_dag_file_to_asset(mapper, product, request)
+                # Add Asset to Item.
+                session.add_asset(asset.title, asset)  # type: ignore
 
         # Remove processed products from input_session
-        input_session = [product for product in input_session if product.properties["SessionID"] != session["id"]]
+        input_session = [product for product in input_session if product.properties["SessionID"] != session.id]
 
     return feature_collection
 
