@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Unittests for cadip search endpoint."""
-
 from contextlib import contextmanager
 
 import pytest
@@ -49,7 +48,7 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "geometry": None,
                 "properties": {
                     "created": "2021-02-16T12:00:00.000Z",
-                    "datetime": "1970-01-01T12:00:00.000Z",
+                    "datetime": "1970-01-01T12:00:00Z",
                     "start_datetime": "1970-01-01T12:00:00.000Z",
                     "end_datetime": "1970-01-01T12:00:00.000Z",
                     "eviction_datetime": "eviction_date_test_value",
@@ -61,7 +60,7 @@ from .conftest import (  # pylint: disable=no-name-in-module
                     "cadip:session_id": "session_id1",
                 },
                 "links": [],
-                "assets": {"file": {"file:size": "size_test_value"}},
+                "assets": {},
             },
             ["datetime", "cadip:id"],
         ),
@@ -77,12 +76,12 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "properties": {
                     "created": "2021-02-16T12:00:00.000Z",
                     "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
-                    "datetime": "ContentDate_Start_test_value",
-                    "start_datetime": "ContentDate_Start_test_value",
-                    "end_datetime": "ContentDate_End_test_value",
+                    "datetime": "1970-01-01T12:00:00Z",
+                    "start_datetime": "1970-01-01T12:00:00Z",
+                    "end_datetime": "1970-01-01T12:00:00Z",
                 },
                 "links": [],
-                "assets": {"file": {"file:size": "ContentLength_test_value"}},
+                "assets": {},
             },
             ["datetime", "adgs:id"],
         ),
@@ -190,7 +189,6 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
     with contextmanager(get_db)():
         # convert output to python dict
         data = client.get(test_endpoint).json()
-        print(data)
         # check that request returned no elements
         assert len(data["features"]) == 0
 
@@ -591,7 +589,7 @@ def test_valid_search_by_session_id(expected_products, client):
                         "geometry": None,
                         "properties": {
                             "start_datetime": "2023-11-17T06:05:37.234Z",
-                            "datetime": "2023-11-17T06:05:37.234Z",
+                            "datetime": "2023-11-17T06:05:37.234000Z",
                             "end_datetime": "2023-11-17T06:15:37.234Z",
                             "published": "2023-11-17T06:15:37.234Z",
                             "platform": "S2B",
@@ -627,6 +625,7 @@ def test_valid_search_by_session_id(expected_products, client):
                                 "roles": [
                                     "cadu",
                                 ],
+                                "title": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw",
                             },
                             "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
                                 "cadip:block_number": 1,
@@ -643,6 +642,7 @@ def test_valid_search_by_session_id(expected_products, client):
                                 "roles": [
                                     "cadu",
                                 ],
+                                "title": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw",
                             },
                         },
                     },
@@ -702,19 +702,132 @@ def test_cadip_collection(client):
     response = client.get("/cadip/collections/cadip_session_by_satellite")
     assert response.status_code == status.HTTP_200_OK
     for link in response.json()["links"]:
-        assert sid in link["title"]
+        if link["rel"] == "item":
+            assert sid in link["title"]
 
 
 @pytest.mark.unit
 def test_invalid_cadip_collection(client):
-    """Test cases with invalid requests."""
+    """Test cases with invalid requests/collections."""
+    # Test a correctly configured collection with a bad query.
     response = client.get("/cadip/collections/cadip_session_incorrect")
     # Should return an empty collection, but with 200 status.
     assert response.status_code == status.HTTP_200_OK
-    # Test that collection contains no links (is empty).
-    assert not response.json()["links"]
 
-    # Test that an invalid configured collection return 404 with specific response.
+    # Test that collection contains no "Item" links.
+    assert not any("item" in link["rel"] for link in response.json()["links"])
+
+    # Also check for root / self relation
+    assert any("root" in link["rel"] for link in response.json()["links"])
+    assert any("self" in link["rel"] for link in response.json()["links"])
+
+    # Test that a non existing collection return 404 with specific response.
     response = client.get("/cadip/collections/invalid_configured_collection")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {"detail": "Cannot find a valid configuration"}
+
+    # Test with a miss configured collection: cadip_session_incomplete does not define a Extent.
+    response = client.get("/cadip/collections/cadip_session_incomplete")
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/cadip",
+    ],
+)
+def test_landing_pages(client, endpoint):
+    """
+    Unit test for checking the structure and links of the landing page.
+
+    This test verifies that the landing page at the specified endpoint
+    returns a response of type 'Catalog' and includes the necessary links.
+    It checks that:
+    - The 'type' field in the response is 'Catalog'.
+    - The response contains links.
+    - At least one link with the 'rel' attribute set to 'data' points to the
+      '/cadip/collections' endpoint.
+
+    Args:
+        client: The test client to send requests.
+        endpoint: The endpoint to test, e.g., "/cadip".
+        role: The role to use for authentication (not used directly in the test).
+
+    """
+    # Check for response type and links to /collections.
+    response = client.get(endpoint).json()
+    assert response["type"] == "Catalog"
+    assert response["links"]
+    # Check for data relationship and redirect to /collections.
+    assert any("/cadip/collections" in link["href"] for link in response["links"] if link["rel"] == "data")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint, role",
+    [
+        ("/cadip/collections", "rs_cadip_authTest_landing_page"),
+    ],
+)
+@responses.activate
+def test_collections_landing_page(client, mocker, endpoint, role):
+    """
+    Unit test for validating the collections landing page response.
+
+    This test checks the response of the collections landing page at the
+    specified endpoint. It ensures that:
+    - The response contains both 'links' and 'collections' as lists.
+    - These lists are not empty.
+    - At least one link includes a title matching the expected session.
+    - At least one collection's type is 'Collection'.
+    - At least one collection's ID matches the expected collection name.
+
+    Additionally, the test verifies the behavior when no roles are available:
+    - It ensures that the response returns empty lists for 'links' and
+      'collections' when the request state has no roles.
+
+    Args:
+        client: The test client to send requests.
+        mocker: The pytest-mock fixture for mocking.
+        endpoint: The endpoint to test, e.g., "/cadip/collections".
+        role: The role used to simulate access control.
+
+    """
+    # Mock the request.state object
+    mock_request_state = mocker.MagicMock()
+    # Set mock auth_roles, set accest to "authTest" collection
+    mock_request_state.auth_roles = [role]
+
+    # Patch the part where request.state.auth_roles is accessed
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.Request.state",
+        new_callable=mocker.PropertyMock,
+        return_value=mock_request_state,
+    )
+    # Mock the pickup response
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20in%20S1A"&$top=1&$expand=Files',
+        json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
+        status=200,
+    )
+
+    response = client.get(endpoint).json()
+    # Check links and collections.
+    assert isinstance(response["links"], list)
+    assert isinstance(response["collections"], list)
+    # Check if not empty
+    assert response["links"] and response["collections"]
+    # Check if link title is matching with fixture given session.
+    assert any("S1A_20200105072204051312" in link["title"] for link in response["links"])
+    # Check that collection type is correctly set.
+    assert any("Collection" in collection["type"] for collection in response["collections"])
+    # Check that collection name is correctly set.
+    assert any("test_collection" in collection["id"] for collection in response["collections"])
+
+    # Disable patcher, set request state to empty (Simulating an apikey with no roles)
+    mocker.patch("rs_server_cadip.api.cadip_search.Request.state", new_callable=mocker.PropertyMock, return_value=[])
+    # Test without using api-key, result should be 2 empty lists.
+    assert {"type": "Object", "links": [], "collections": []} == client.get(endpoint).json()

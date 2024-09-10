@@ -315,6 +315,8 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         [CLUSTER_MODE, "/adgs/aux/search", "GET", ADGS_STATIONS, DATE_PARAM, "rs_adgs_read"],
         [CLUSTER_MODE, "/adgs/aux", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
         [CLUSTER_MODE, "/adgs/aux/status", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
+        [CLUSTER_MODE, "/cadip", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
+        [CLUSTER_MODE, "/cadip/collections", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
         [CLUSTER_MODE, "/cadip/collections/{station}", "GET", CADIP_STATIONS, DATE_PARAM, "rs_cadip_{station}_read"],
         [
             CLUSTER_MODE,
@@ -348,6 +350,8 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         "/adgs/aux",
         "/adgs/aux/status",
         "/cadip/{station}/cadu/search",
+        "/cadip",
+        "/cadip/collections",
         "/cadip/{station}/cadu",
         "/cadip/{station}/cadu/status",
         "/cadip/collections/{station}/items",
@@ -425,8 +429,8 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
         await mock_response({"iam_roles": [], "config": {}, "user_login": {}})
         response = client_request(station_endpoint)
 
-        # Test the error message with an unknown cadip station
-        if station == UNKNOWN_CADIP_STATION:
+        # Test the error message with an unknown cadip station, skip for landing_pages since no need for stations.
+        if station == UNKNOWN_CADIP_STATION and "landing_page" not in station_role:
             assert response.status_code == status.HTTP_400_BAD_REQUEST
             assert f"Unknown CADIP station: {station!r}" in json.loads(response.content)["detail"]
             break  # no need to test the other endpoints
