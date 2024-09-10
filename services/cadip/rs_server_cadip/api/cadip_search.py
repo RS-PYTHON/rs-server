@@ -22,6 +22,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import traceback
 import uuid
+from functools import partial
 from typing import Annotated, Any, List, Union
 
 import requests
@@ -30,6 +31,7 @@ import stac_pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
+from pydantic import ValidationError, WrapValidator, validate_call
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
@@ -54,6 +56,7 @@ from rs_server_common.utils.utils import (
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
+    validate_str_list,
     write_search_products_to_db,
 )
 from stac_pydantic.links import Link, Links
@@ -164,17 +167,23 @@ def get_allowed_collections(request: Request):
         # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
         collection: stac_pydantic.Collection = create_collection(config)
-        if links := process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ):
-            stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
-            stac_object["collections"].append(collection.model_dump())
+        try:
+            if links := process_session_search(
+                request,
+                query_params["station"],
+                query_params["SessionId"],
+                query_params["Satellite"],
+                query_params["PublicationDate"],
+                query_params["top"],
+                "collection",
+            ):
+                stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
+                stac_object["collections"].append(collection.model_dump())
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Parameters validation error: {exc}",
+            ) from exc
     return stac_object
 
 
@@ -222,7 +231,9 @@ def get_all_queryables():
 
 @router.get("/cadip/collections/{collection_id}/queryables")
 @apikey_validator(station="cadip", access_type="landing_page")
-def get_collection_queryables(collection_id: str):
+def get_collection_queryables(
+    collection_id: Annotated[str, Query(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+):
     """
     Get Queryable Fields for a Specific Collection
 
@@ -277,7 +288,8 @@ def search_cadip_with_session_info(request: Request):
                                         the search results if no items are found or an error occurs.
 
     Raises:
-        HTTPException: If there is an error in processing the search query or if required parameters are missing.
+        HTTPException: If there is an error in validation or processing pf the search query or if required parameters
+        are missing.
     """
     request_params: dict = dict(request.query_params)
     collection: Union[str, None] = request_params.pop("collection", None)
@@ -287,15 +299,21 @@ def search_cadip_with_session_info(request: Request):
     selected_config, query_params = prepare_cadip_search(collection, request_params)
     query_params = create_session_search_params(selected_config)
 
-    return process_session_search(
-        request,
-        query_params["station"],
-        query_params["SessionId"],
-        query_params["Satellite"],
-        query_params["PublicationDate"],
-        query_params["top"],
-        True,
-    )
+    try:
+        return process_session_search(
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+            True,
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Parameters validation error: {exc}",
+        ) from exc
 
 
 @router.get("/cadip/search")
@@ -408,23 +426,31 @@ def search_cadip_endpoint(request: Request) -> dict:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cannot create STAC Collection -> Missing {exc}",
         ) from exc
-
-    if link := process_session_search(
-        request,
-        query_params["station"],
-        query_params["SessionId"],
-        query_params["Satellite"],
-        query_params["PublicationDate"],
-        query_params["top"],
-        "collection",
-    ):
-        stac_collection.links.append(link)
+    try:
+        if link := process_session_search(
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+            "collection",
+        ):
+            stac_collection.links.append(link)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Parameters validation error: {exc}",
+        ) from exc
     return stac_collection.model_dump()
 
 
 @router.get("/cadip/collections/{collection_id}")
 @apikey_validator(station="cadip", access_type="read")
-def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | dict:
+def get_cadip_collection(
+    request: Request,
+    collection_id: Annotated[str, Query(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+) -> list[dict] | dict:
     """
     Retrieve a STAC-Compliant Collection for a Specific CADIP Station.
 
@@ -472,22 +498,31 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
             detail=f"Cannot create STAC Collection -> Missing {exc}",
         ) from exc
 
-    if link := process_session_search(
-        request,
-        query_params["station"],
-        query_params["SessionId"],
-        query_params["Satellite"],
-        query_params["PublicationDate"],
-        query_params["top"],
-        "collection",
-    ):
-        stac_collection.links.append(link)
+    try:
+        if link := process_session_search(
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+            "collection",
+        ):
+            stac_collection.links.append(link)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Parameters validation error: {exc}",
+        ) from exc
     return stac_collection.model_dump()
 
 
 @router.get("/cadip/collections/{collection_id}/items")
 @apikey_validator(station="cadip", access_type="read")
-def get_cadip_collection_items(request: Request, collection_id):
+def get_cadip_collection_items(
+    request: Request,
+    collection_id: Annotated[str, Query(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+):
     """
     Retrieve a List of Sessions for a specific collection.
 
@@ -516,20 +551,32 @@ def get_cadip_collection_items(request: Request, collection_id):
     selected_config: Union[dict, None] = select_config(collection_id)
     query_params: dict = create_session_search_params(selected_config)
 
-    return process_session_search(
-        request,
-        query_params["station"],
-        query_params["SessionId"],
-        query_params["Satellite"],
-        query_params["PublicationDate"],
-        query_params["top"],
-        "items",
-    )
+    try:
+        return process_session_search(
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+            "items",
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Parameters validation error: {exc}",
+        ) from exc
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
 @apikey_validator(station="cadip", access_type="read")
-def get_cadip_collection_item_details(request: Request, collection_id, session_id):
+def get_cadip_collection_item_details(
+    request: Request,
+    collection_id: Annotated[str, Query(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    session_id: Annotated[
+        str, Query(title="CADIP session ID.", max_length=100, description="E.G. S1A_20231120061537234567"),
+    ],
+):
     """
     Retrieve Detailed Information for a specific session in a collection.
 
@@ -567,29 +614,36 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
-    item_collection = stac_pydantic.ItemCollection.model_validate(
-        process_session_search(  # type: ignore
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-        ),
-    )
+    try:
+        item_collection = stac_pydantic.ItemCollection.model_validate(
+            process_session_search(  # type: ignore
+                request,
+                query_params["station"],
+                query_params["SessionId"],
+                query_params["Satellite"],
+                query_params["PublicationDate"],
+                query_params["top"],
+            ),
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Parameters validation error: {exc}",
+        ) from exc
     return next(
         (item.to_dict() for item in item_collection.features if item.id == session_id),
         HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found."),
     )
 
 
+@validate_call(config={"arbitrary_types_allowed": True})
 def process_session_search(  # type: ignore  # pylint: disable=too-many-arguments, too-many-locals
     request: Request,
     station: str,
-    id: str,
-    satellite: Union[str, None],
-    interval: Union[str, None],
-    limit: Union[int, None],
+    session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
+    platform: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
+    time_interval: Annotated[Union[str, None], WrapValidator(partial(validate_inputs_format, raise_errors=True))],
+    limit: Annotated[Union[int, None], Query(gt=0, le=10000, default=1000, description="Pagination Limit")],
     add_assets: Union[bool, str] = True,
 ):
     """Function to process and to retrieve a list of sessions from any CADIP station.
@@ -600,10 +654,10 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     Args:
         request (Request): The request object (unused).
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        id (str, optional): Session identifier(s), comma-separated. Defaults to None.
-        satellite (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
-        interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
-        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        session_id (str, optional): Session identifier(s), comma-separated. Defaults to None.
+        platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
+        time_interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
+        limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
         add_assets (str | bool, optional): Used to set how item assets are formatted.
 
     Returns:
@@ -614,10 +668,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-    session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
-    platform: Union[List[str], None] = satellite.split(",") if satellite else None
-    time_interval = validate_inputs_format(interval, raise_errors=False) if interval else (None, None)
-    limit = limit if limit else 1000
 
     if not (session_id or platform or (time_interval[0] and time_interval[1])):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
