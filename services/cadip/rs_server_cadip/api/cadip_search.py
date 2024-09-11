@@ -22,7 +22,9 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import traceback
 import uuid
-from typing import Annotated, Any, List, Union
+from functools import wraps
+from itertools import chain
+from typing import Annotated, Any, Callable, List, Union
 
 import requests
 import sqlalchemy
@@ -30,6 +32,7 @@ import stac_pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
+from pydantic import ValidationError, WrapValidator, validate_call
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
@@ -37,6 +40,8 @@ from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
+    generate_queryables,
+    get_cadip_queryables,
     prepare_cadip_search,
     read_conf,
     select_config,
@@ -46,17 +51,41 @@ from rs_server_common.authentication import apikey_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
+    Queryables,
     create_collection,
     create_links,
     create_stac_collection,
     sort_feature_collection,
     validate_inputs_format,
+    validate_str_list,
     write_search_products_to_db,
 )
 from stac_pydantic.links import Link, Links
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
+
+
+def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors while creating/validating
+    items."""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Cannot create STAC Collection -> Missing {exc}",
+            ) from exc
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Parameters validation error: {exc}",
+            ) from exc
+
+    return wrapper
 
 
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
@@ -72,7 +101,7 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
 @apikey_validator(station="cadip", access_type="landing_page")
 def get_root_catalog(request: Request):
     """
-    Retrieve the root catalog for the RSPY CADIP landing page.
+    Retrieve the RSPY CADIP Search catalog landing page.
 
     This endpoint generates a STAC (SpatioTemporal Asset Catalog) Catalog object that serves as the landing
     page for the RSPY CADIP service. The catalog includes basic metadata about the service and links to
@@ -110,6 +139,7 @@ def get_root_catalog(request: Request):
 
 @router.get("/cadip/collections")
 @apikey_validator(station="cadip", access_type="landing_page")
+@handle_exceptions
 def get_allowed_collections(request: Request):
     """
         Endpoint to retrieve a object containing collections and links that a user is authorized to
@@ -170,13 +200,103 @@ def get_allowed_collections(request: Request):
             query_params["top"],
             "collection",
         ):
-            stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
+            stac_object["links"].append(list(map(lambda link: link.model_dump(), links)))
             stac_object["collections"].append(collection.model_dump())
+    # Flatten links if case:
+    stac_object["links"] = list(chain.from_iterable(stac_object["links"]))
     return stac_object
+
+
+@router.get("/cadip/queryables")
+@apikey_validator(station="cadip", access_type="landing_page")
+def get_all_queryables():
+    """
+    Get All Queryable Fields for CADIP Search API
+
+    This endpoint returns a JSON schema describing all the queryable fields available within
+    the CADIP Search API. These fields represent the metadata attributes that can be used to filter
+    search results globally across the API. The returned schema helps clients understand the
+    available fields for constructing queries.
+
+    **Response:**
+    - A JSON object following the JSON Schema Draft 2019-09 specification, which includes:
+        - `schema`: URL of the JSON Schema specification (e.g., "https://json-schema.org/draft/2019-09/schema").
+        - `id`: Unique identifier for this queryables schema (e.g., "https://stac-api.example.com/queryables").
+        - `type`: The type of the schema object, typically "object".
+        - `title`: Title describing the queryables (e.g., "Queryables for CADIP Search API").
+        - `description`: Description of what the queryables represent (e.g., "Queryable names for the CADIP Search API
+        Item Search filter.").
+        - `properties`: Dictionary of queryable fields and their attributes, including their data types, titles, and
+        descriptions.
+
+    **Responses:**
+    - `200 OK`: Returns the queryables schema for the CADIP Search API.
+    - `401 Unauthorized`: If the request is missing or has an invalid API key.
+    - `403 Forbidden`: If the API key does not have the required permissions for the `cadip` station and `landing_page`
+     access type.
+
+    **Security:**
+    - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
+    and `landing_page` access type.
+    """
+    return Queryables(
+        schema="https://json-schema.org/draft/2019-09/schema",
+        id="https://stac-api.example.com/queryables",
+        type="object",
+        title="Queryables for CADIP Search API",
+        description="Queryable names for the CADIP Search API Item Search filter.",
+        properties=get_cadip_queryables(),
+    ).model_dump(by_alias=True)
+
+
+@router.get("/cadip/collections/{collection_id}/queryables")
+@apikey_validator(station="cadip", access_type="landing_page")
+def get_collection_queryables(
+    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+):
+    """
+    Get Queryable Fields for a Specific Collection
+
+    This endpoint returns a JSON schema describing the queryable fields available for a specified
+    collection within the CADIP Search API. Queryable fields represent metadata attributes that can
+    be used to filter search results within the collection. The returned schema helps clients
+    understand which fields are available for filtering.
+
+    **Path Parameters:**
+    - `collection_id` (str): The unique identifier for the collection for which queryable fields are retrieved.
+
+    **Response:**
+    - A JSON object following the JSON Schema Draft 2019-09 specification, which includes:
+        - `schema`: URL of the JSON Schema specification (e.g., "https://json-schema.org/draft/2019-09/schema").
+        - `id`: Unique identifier for this queryables schema (e.g., "https://stac-api.example.com/queryables").
+        - `type`: The type of the schema object, typically "object".
+        - `title`: Title describing the queryables (e.g., "Queryables for CADIP Search API").
+        - `description`: Description of what the queryables represent (e.g., "Queryable names for the CADIP Search API
+        Item Search filter.").
+        - `properties`: Dictionary of queryable fields and their attributes, including their data types, titles, and
+        descriptions.
+
+    **Responses:**
+    - `200 OK`: Returns the queryables schema for the specified collection.
+    - `404 Not Found`: If the collection with the provided `collection_id` does not exist.
+
+    **Security:**
+    - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
+    and `landing_page` access type.
+    """
+    return Queryables(
+        schema="https://json-schema.org/draft/2019-09/schema",
+        id="https://stac-api.example.com/queryables",
+        type="object",
+        title="Queryables for CADIP Search API",
+        description="Queryable names for the CADIP Search API Item Search filter.",
+        properties=generate_queryables(collection_id),
+    ).model_dump(by_alias=True)
 
 
 @router.get("/cadip/search/items", deprecated=True)
 @apikey_validator(station="cadip", access_type="read")
+@handle_exceptions
 def search_cadip_with_session_info(request: Request):
     """
     Endpoint used to search cadip collections and directly return items properties and assets.
@@ -189,7 +309,8 @@ def search_cadip_with_session_info(request: Request):
                                         the search results if no items are found or an error occurs.
 
     Raises:
-        HTTPException: If there is an error in processing the search query or if required parameters are missing.
+        HTTPException: If there is an error in validation or processing pf the search query or if required parameters
+        are missing.
     """
     request_params: dict = dict(request.query_params)
     collection: Union[str, None] = request_params.pop("collection", None)
@@ -212,6 +333,7 @@ def search_cadip_with_session_info(request: Request):
 
 @router.get("/cadip/search")
 @apikey_validator(station="cadip", access_type="read")
+@handle_exceptions
 def search_cadip_endpoint(request: Request) -> dict:
     """
     Search CADIP Collections and Retrieve STAC-Compliant Data.
@@ -313,14 +435,7 @@ def search_cadip_endpoint(request: Request) -> dict:
     selected_config, query_params = prepare_cadip_search(collection_name, request_params)
     query_params = create_session_search_params(selected_config)
 
-    try:
-        stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-    except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Cannot create STAC Collection -> Missing {exc}",
-        ) from exc
-
+    stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     if link := process_session_search(
         request,
         query_params["station"],
@@ -336,7 +451,11 @@ def search_cadip_endpoint(request: Request) -> dict:
 
 @router.get("/cadip/collections/{collection_id}")
 @apikey_validator(station="cadip", access_type="read")
-def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | dict:
+@handle_exceptions
+def get_cadip_collection(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+) -> list[dict] | dict:
     """
     Retrieve a STAC-Compliant Collection for a Specific CADIP Station.
 
@@ -376,14 +495,7 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
 
     query_params: dict = create_session_search_params(selected_config)
 
-    try:
-        stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-    except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Cannot create STAC Collection -> Missing {exc}",
-        ) from exc
-
+    stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     if link := process_session_search(
         request,
         query_params["station"],
@@ -399,7 +511,11 @@ def get_cadip_collection(request: Request, collection_id: str) -> list[dict] | d
 
 @router.get("/cadip/collections/{collection_id}/items")
 @apikey_validator(station="cadip", access_type="read")
-def get_cadip_collection_items(request: Request, collection_id):
+@handle_exceptions
+def get_cadip_collection_items(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+):
     """
     Retrieve a List of Sessions for a specific collection.
 
@@ -441,7 +557,15 @@ def get_cadip_collection_items(request: Request, collection_id):
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
 @apikey_validator(station="cadip", access_type="read")
-def get_cadip_collection_item_details(request: Request, collection_id, session_id):
+@handle_exceptions
+def get_cadip_collection_item_details(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    session_id: Annotated[
+        str,
+        FPath(title="CADIP session ID.", max_length=100, description="E.G. S1A_20231120061537234567"),
+    ],
+):
     """
     Retrieve Detailed Information for a specific session in a collection.
 
@@ -495,13 +619,20 @@ def get_cadip_collection_item_details(request: Request, collection_id, session_i
     )
 
 
+@validate_call(config={"arbitrary_types_allowed": True})
 def process_session_search(  # type: ignore  # pylint: disable=too-many-arguments, too-many-locals
     request: Request,
     station: str,
-    id: str,
-    satellite: Union[str, None],
-    interval: Union[str, None],
-    limit: Union[int, None],
+    session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
+    platform: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
+    time_interval: Annotated[
+        Union[str, None],
+        WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=False)),
+    ],
+    limit: Annotated[
+        Union[int, None],
+        Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
+    ],
     add_assets: Union[bool, str] = True,
 ):
     """Function to process and to retrieve a list of sessions from any CADIP station.
@@ -512,10 +643,10 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     Args:
         request (Request): The request object (unused).
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        id (str, optional): Session identifier(s), comma-separated. Defaults to None.
-        satellite (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
-        interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
-        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        session_id (str, optional): Session identifier(s), comma-separated. Defaults to None.
+        platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
+        time_interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
+        limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
         add_assets (str | bool, optional): Used to set how item assets are formatted.
 
     Returns:
@@ -526,12 +657,8 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-    session_id: Union[List[str], str, None] = [sid.strip() for sid in id.split(",")] if (id and "," in id) else id
-    platform: Union[List[str], None] = satellite.split(",") if satellite else None
-    time_interval = validate_inputs_format(interval, raise_errors=False) if interval else (None, None)
     limit = limit if limit else 1000
-
-    if not (session_id or platform or (time_interval[0] and time_interval[1])):
+    if not (session_id or platform or (time_interval[0] and time_interval[1])):  # type: ignore
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     try:

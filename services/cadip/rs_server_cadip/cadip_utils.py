@@ -22,17 +22,70 @@ import json
 import os
 import os.path as osp
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import eodag
 import stac_pydantic
 import starlette.requests
 import yaml
+from pydantic import BaseModel
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
+
+
+class CADIPQueryableField(BaseModel):
+    """BaseModel used to describe queryable item."""
+
+    title: str
+    type: str
+    description: Optional[str] = None
+    format: Optional[str] = None
+    items: Optional[dict] = None
+
+
+def generate_queryables(collection_id: str) -> dict[str, CADIPQueryableField]:
+    """Function used to get available queryables based on a given collection."""
+    config = select_config(collection_id)
+    if config:
+        # Top and limit are pagination-related quaryables, remove if there.
+        if isinstance(config.get("query"), dict):
+            config["query"].pop("limit", None)
+            config["query"].pop("top", None)
+        # Get all defined quaryables.
+        all_queryables = get_cadip_queryables()
+        # Remove the ones already defined, and keep only the ones that can be added.
+        for key in set(config["query"].keys()).intersection(set(all_queryables.keys())):
+            all_queryables.pop(key)
+        return all_queryables
+    # If config is not found, return all available queryables.
+    return get_cadip_queryables()
+
+
+def get_cadip_queryables() -> dict[str, CADIPQueryableField]:
+    """Function to list all available queryables for CADIP session search."""
+    return {
+        "PublicationDate": CADIPQueryableField(
+            title="PublicationDate",
+            type="Interval",
+            description="Session Publication Date",
+            format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
+        ),
+        "Satellite": CADIPQueryableField(
+            title="Satellite",
+            type="[string, array]",
+            description="Session satellite acquisition target",
+            format="S1A or S1A, S2B",
+        ),
+        "SessionId": CADIPQueryableField(
+            title="SessionId",
+            type="[string, array]",
+            description="Session ID descriptor",
+            format="S1A_20231120061537234567",
+        ),
+    }
 
 
 def read_conf():
