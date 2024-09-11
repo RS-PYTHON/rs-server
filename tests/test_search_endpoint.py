@@ -824,6 +824,25 @@ def test_collections_landing_page(client, mocker, endpoint, role):
     # Test without using api-key, result should be 2 empty lists.
     assert {"type": "Object", "links": [], "collections": []} == client.get(endpoint).json()
 
+    # Test validationError case:
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.Request.state",
+        new_callable=mocker.PropertyMock,
+        return_value=mock_request_state,
+    )
+    # Mock the pickup response
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20eq%20S1A"&$top=1&$expand=Files',
+        json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
+        status=200,
+    )
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.process_session_search",
+        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+    )
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
@@ -842,6 +861,17 @@ def test_validation_errors(client, mocker, endpoint):
         "rs_server_cadip.api.cadip_search.process_session_search",
         side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
     )
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    ["/cadip/search?collection=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
+)
+def test_collection_creation_failure(client, mocker, endpoint):
+    """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
+    mocker.patch("rs_server_cadip.api.cadip_search.process_session_search", side_effect=KeyError)
     assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
