@@ -22,8 +22,9 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import traceback
 import uuid
+from functools import wraps
 from itertools import chain
-from typing import Annotated, Any, List, Union
+from typing import Annotated, Any, Callable, List, Union
 
 import requests
 import sqlalchemy
@@ -63,6 +64,28 @@ from stac_pydantic.links import Link, Links
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
+
+
+def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors while creating/validating
+    items."""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Cannot create STAC Collection -> Missing {exc}",
+            ) from exc
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Parameters validation error: {exc}",
+            ) from exc
+
+    return wrapper
 
 
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
@@ -116,6 +139,7 @@ def get_root_catalog(request: Request):
 
 @router.get("/cadip/collections")
 @apikey_validator(station="cadip", access_type="landing_page")
+@handle_exceptions
 def get_allowed_collections(request: Request):
     """
         Endpoint to retrieve a object containing collections and links that a user is authorized to
@@ -167,23 +191,17 @@ def get_allowed_collections(request: Request):
         # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
         collection: stac_pydantic.Collection = create_collection(config)
-        try:
-            if links := process_session_search(
-                request,
-                query_params["station"],
-                query_params["SessionId"],
-                query_params["Satellite"],
-                query_params["PublicationDate"],
-                query_params["top"],
-                "collection",
-            ):
-                stac_object["links"].append(list(map(lambda link: link.model_dump(), links)))
-                stac_object["collections"].append(collection.model_dump())
-        except ValidationError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Parameters validation error: {exc}",
-            ) from exc
+        if links := process_session_search(
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+            "collection",
+        ):
+            stac_object["links"].append(list(map(lambda link: link.model_dump(), links)))
+            stac_object["collections"].append(collection.model_dump())
     # Flatten links if case:
     stac_object["links"] = list(chain.from_iterable(stac_object["links"]))
     return stac_object
@@ -278,6 +296,7 @@ def get_collection_queryables(
 
 @router.get("/cadip/search/items", deprecated=True)
 @apikey_validator(station="cadip", access_type="read")
+@handle_exceptions
 def search_cadip_with_session_info(request: Request):
     """
     Endpoint used to search cadip collections and directly return items properties and assets.
@@ -301,25 +320,20 @@ def search_cadip_with_session_info(request: Request):
     selected_config, query_params = prepare_cadip_search(collection, request_params)
     query_params = create_session_search_params(selected_config)
 
-    try:
-        return process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            True,
-        )
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Parameters validation error: {exc}",
-        ) from exc
+    return process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        True,
+    )
 
 
 @router.get("/cadip/search")
 @apikey_validator(station="cadip", access_type="read")
+@handle_exceptions
 def search_cadip_endpoint(request: Request) -> dict:
     """
     Search CADIP Collections and Retrieve STAC-Compliant Data.
@@ -421,33 +435,23 @@ def search_cadip_endpoint(request: Request) -> dict:
     selected_config, query_params = prepare_cadip_search(collection_name, request_params)
     query_params = create_session_search_params(selected_config)
 
-    try:
-        stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-        if link := process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ):
-            stac_collection.links.append(link)
-    except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Cannot create STAC Collection -> Missing {exc}",
-        ) from exc
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Parameters validation error: {exc}",
-        ) from exc
+    stac_collection: stac_pydantic.Collection = create_collection(selected_config)
+    if link := process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        "collection",
+    ):
+        stac_collection.links.append(link)
     return stac_collection.model_dump()
 
 
 @router.get("/cadip/collections/{collection_id}")
 @apikey_validator(station="cadip", access_type="read")
+@handle_exceptions
 def get_cadip_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
@@ -491,33 +495,23 @@ def get_cadip_collection(
 
     query_params: dict = create_session_search_params(selected_config)
 
-    try:
-        stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-        if link := process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ):
-            stac_collection.links.append(link)
-    except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Cannot create STAC Collection -> Missing {exc}",
-        ) from exc
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Parameters validation error: {exc}",
-        ) from exc
+    stac_collection: stac_pydantic.Collection = create_collection(selected_config)
+    if link := process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        "collection",
+    ):
+        stac_collection.links.append(link)
     return stac_collection.model_dump()
 
 
 @router.get("/cadip/collections/{collection_id}/items")
 @apikey_validator(station="cadip", access_type="read")
+@handle_exceptions
 def get_cadip_collection_items(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
@@ -549,25 +543,21 @@ def get_cadip_collection_items(
     """
     selected_config: Union[dict, None] = select_config(collection_id)
     query_params: dict = create_session_search_params(selected_config)
-    try:
-        return process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "items",
-        )
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Parameters validation error: {exc}",
-        ) from exc
+
+    return process_session_search(
+        request,
+        query_params["station"],
+        query_params["SessionId"],
+        query_params["Satellite"],
+        query_params["PublicationDate"],
+        query_params["top"],
+        "items",
+    )
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
 @apikey_validator(station="cadip", access_type="read")
+@handle_exceptions
 def get_cadip_collection_item_details(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
@@ -613,22 +603,16 @@ def get_cadip_collection_item_details(
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
-    try:
-        item_collection = stac_pydantic.ItemCollection.model_validate(
-            process_session_search(  # type: ignore
-                request,
-                query_params["station"],
-                query_params["SessionId"],
-                query_params["Satellite"],
-                query_params["PublicationDate"],
-                query_params["top"],
-            ),
-        )
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Parameters validation error: {exc}",
-        ) from exc
+    item_collection = stac_pydantic.ItemCollection.model_validate(
+        process_session_search(  # type: ignore
+            request,
+            query_params["station"],
+            query_params["SessionId"],
+            query_params["Satellite"],
+            query_params["PublicationDate"],
+            query_params["top"],
+        ),
+    )
     return next(
         (item.to_dict() for item in item_collection.features if item.id == session_id),
         HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found."),
