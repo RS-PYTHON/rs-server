@@ -10,7 +10,7 @@ authors = ["Your Name <you@example.com>"]
 
 packages = [
     { include = "rs_server_cadip" },
-    { include = "tests", format = "sdist" },
+    # { include = "tests", format = "sdist" },
 ]
 
 # Add configuration files to the .whl package
