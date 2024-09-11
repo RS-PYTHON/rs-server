@@ -843,3 +843,16 @@ def test_validation_errors(client, mocker, endpoint):
         side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
     )
     assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    ["/cadip/queryables", "/cadip/collections/cadip_session_by_id_list/queryables"],
+)
+@pytest.mark.unit
+def test_queryables(client, endpoint):
+    """Endpoint to test all queryables."""
+    resp = client.get(endpoint).json()
+    assert resp["title"] == "Queryables for CADIP Search API"
+    assert "Satellite" in resp["properties"].keys()
+    assert "PublicationDate" in resp["properties"].keys()
