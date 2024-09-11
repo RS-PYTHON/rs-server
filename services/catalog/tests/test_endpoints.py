@@ -360,10 +360,16 @@ class TestCatalogPublishCollectionEndpoint:
             "description": "test_description",
             "stac_version": "1.0.0",
             "owner": "test_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
         }
         response = client.post("/catalog/collections", json=minimal_collection)
-        # Check that collection status code is 200
-        assert response.status_code == fastapi.status.HTTP_200_OK
+        # Check that collection status code is 201
+        assert response.status_code == fastapi.status.HTTP_201_CREATED
         # Check that internal collection id is set to owner_collection
         assert json.loads(response.content)["id"] == "test_collection"
         assert json.loads(response.content)["owner"] == "test_owner"
@@ -416,10 +422,17 @@ class TestCatalogPublishCollectionEndpoint:
             "description": "test_description",
             "stac_version": "1.0.0",
             "owner": "duplicate_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
         }
+
         # Test that collection is correctly published
         response = client.post("/catalog/collections", json=minimal_collection)
-        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert response.status_code == fastapi.status.HTTP_201_CREATED
         # Test that duplicate collection cannot be published
         response = client.post("/catalog/collections", json=minimal_collection)
         assert response.status_code == fastapi.status.HTTP_409_CONFLICT
@@ -445,10 +458,16 @@ class TestCatalogPublishCollectionEndpoint:
             "description": "not_updated_test_description",
             "stac_version": "1.0.0",
             "owner": "second_test_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
         }
         # Post the collection
         post_collection_response = client.post("/catalog/collections", json=minimal_collection)
-        assert post_collection_response.status_code == fastapi.status.HTTP_200_OK
+        assert post_collection_response.status_code == fastapi.status.HTTP_201_CREATED
         # test if is ok written in catalogDB
         get_collection_response = client.get("/catalog/collections/second_test_owner:second_test_collection")
         response_content = json.loads(get_collection_response.content)
@@ -481,9 +500,15 @@ class TestCatalogPublishCollectionEndpoint:
             "description": "will_be_deleted_description",
             "stac_version": "1.0.0",
             "owner": "will_be_deleted_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
         }
         response = client.post("/catalog/collections", json=minimal_collection)
-        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert response.status_code == fastapi.status.HTTP_201_CREATED
 
         # Check that collection is correctly published
         first_check_response = client.get("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection")
@@ -513,9 +538,15 @@ class TestCatalogPublishCollectionEndpoint:
             "description": "will_be_deleted_description",
             "stac_version": "1.0.0",
             "owner": "owner_with_rights",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
         }
         response = client.post("/catalog/collections", json=minimal_collection)
-        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert response.status_code == fastapi.status.HTTP_201_CREATED
         delete_response = client.delete("/catalog/collections/owner_with_no_rights:correctly_created_collection")
         # To be changed with 405 not allowed after UAC
         assert delete_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
@@ -534,7 +565,7 @@ class TestCatalogPublishCollectionEndpoint:
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=updated_feature_sent,
         )
-        assert post_collection_response.status_code == fastapi.status.HTTP_200_OK
+        assert post_collection_response.status_code == fastapi.status.HTTP_201_CREATED
         # Test that the collection is not empty
         second_get_collection_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert second_get_collection_response.status_code == fastapi.status.HTTP_200_OK
@@ -681,7 +712,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 s3_handler.list_s3_files_obj(self.catalog_bucket, ""),
             )
             # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
-            # and a good OBS path. => 200 OK
+            # and a good OBS path. => 201 CREATED
             # Check if that user darius have a collection (Added in conftest -> setup_database)
             # Add a featureCollection to darius collection
             a_correct_feature_copy = copy.deepcopy(a_correct_feature)
@@ -691,7 +722,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 json=a_correct_feature_copy,
             )
 
-            assert added_feature.status_code == fastapi.status.HTTP_200_OK
+            assert added_feature.status_code == fastapi.status.HTTP_201_CREATED
 
             content = json.loads(added_feature.content)
             updated_timestamp = content["properties"]["updated"]
@@ -799,7 +830,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
                 "/catalog/collections/fixture_owner:fixture_collection/items",
                 json=item_test,
             )
-            assert resp.status_code == fastapi.status.HTTP_200_OK
+            assert resp.status_code == fastapi.status.HTTP_201_CREATED
             content = json.loads(resp.content)
 
             assert content.get("assets").get("S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip")
@@ -927,11 +958,11 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             )
 
             # TC01: Add on Sentinel-1 item to the Catalog with a well-formatted STAC JSON file
-            # and a good OBS path. => 200 OK
+            # and a good OBS path. => 201 CREATED
             # Check if that user darius have a collection (Added in conftest -> setup_database)
             # Add a featureCollection to darius collection
             added_feature = client.post(f"/catalog/collections/{owner}:{collection_id}/items", json=a_correct_feature)
-            assert added_feature.status_code == fastapi.status.HTTP_200_OK
+            assert added_feature.status_code == fastapi.status.HTTP_201_CREATED
             feature_data = json.loads(added_feature.content)
             # check if owner was added and match to the owner of the collection
             assert feature_data["properties"]["owner"] == owner
@@ -1051,7 +1082,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
 
             added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=item_test)
-            assert added_feature.status_code == fastapi.status.HTTP_200_OK
+            assert added_feature.status_code == fastapi.status.HTTP_201_CREATED
 
             assert not s3_handler.list_s3_files_obj(custom_bucket, "")
             assert s3_handler.list_s3_files_obj(self.catalog_bucket, "")
@@ -1167,12 +1198,11 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
                 "rs_server_catalog.user_catalog.UserCatalog.update_stac_item_publication",
                 return_value={},
             )
-            with pytest.raises(Exception):
-                added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
-                # Check if status code is BAD REQUEST
-                assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
-                # If catalog publish fails, self.catalog_bucket should be empty, and
-                # self.temp_bucket should not be empty.
+            added_feature = client.post("/catalog/collections/darius:S1_L2/items", json=a_correct_feature)
+            # Check if status code is BAD REQUEST
+            assert added_feature.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+            # If catalog publish fails, self.catalog_bucket should be empty, and
+            # self.temp_bucket should not be empty.
 
             assert s3_handler.list_s3_files_obj(self.temp_bucket, "")
             assert not s3_handler.list_s3_files_obj(self.catalog_bucket, "")
@@ -1197,7 +1227,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=a_correct_feature,
         )
-        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
         # Check if the future is correctly posted to catalog
         check_features_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert check_features_response.status_code == fastapi.status.HTTP_200_OK
@@ -1250,7 +1280,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=a_correct_feature,
         )
-        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
@@ -1292,7 +1322,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             json=a_correct_feature,
         )
 
-        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
 
         content = json.loads(feature_post_response.content)
         first_published_date = content["properties"]["published"]
@@ -1344,7 +1374,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             json=a_correct_feature,
         )
 
-        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
 
         # Update the feature and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
@@ -1374,7 +1404,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=a_correct_feature,
         )
-        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
         # Update the feature with an incorrect value and PUT it into catalogDB
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["bbox"] = "Incorrect_bbox_value"
@@ -1404,7 +1434,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
             "/catalog/collections/fixture_owner:fixture_collection/items",
             json=a_correct_feature,
         )
-        assert feature_post_response.status_code == fastapi.status.HTTP_200_OK
+        assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
         # Delete the feature from catalogDB
         delete_response = client.delete(
             f"/catalog/collections/fixture_owner:fixture_collection/items/{a_correct_feature['id']}",

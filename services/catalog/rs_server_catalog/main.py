@@ -49,7 +49,6 @@ from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (  # pylint: disable=no-name-in-module
-    ContextExtension,
     FieldsExtension,
     FilterExtension,
     SortExtension,
@@ -260,7 +259,6 @@ extensions_map = {
     "sort": SortExtension(),
     "fields": FieldsExtension(),
     "pagination": TokenPaginationExtension(),
-    "context": ContextExtension(),
     "filter": FilterExtension(client=FiltersClient()),
     "bulk_transactions": BulkTransactionExtension(client=BulkTransactionsClient()),
 }
@@ -351,12 +349,12 @@ api = StacApi(
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
     middlewares=[
-        UserCatalogMiddleware,
-        BrotliMiddleware,
-        ProxyHeaderMiddleware,
-        AuthenticationMiddleware,
-        DontRaiseExceptions,
-        CORSMiddleware,  # WARNING: must be last !
+        Middleware(UserCatalogMiddleware),
+        Middleware(BrotliMiddleware),
+        Middleware(ProxyHeaderMiddleware),
+        Middleware(AuthenticationMiddleware),
+        Middleware(DontRaiseExceptions),
+        Middleware(CORSMiddleware),  # WARNING: must be last !
     ],
 )
 app = api.app
