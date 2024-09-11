@@ -423,12 +423,6 @@ def search_cadip_endpoint(request: Request) -> dict:
 
     try:
         stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-    except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Cannot create STAC Collection -> Missing {exc}",
-        ) from exc
-    try:
         if link := process_session_search(
             request,
             query_params["station"],
@@ -439,6 +433,11 @@ def search_cadip_endpoint(request: Request) -> dict:
             "collection",
         ):
             stac_collection.links.append(link)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cannot create STAC Collection -> Missing {exc}",
+        ) from exc
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -494,13 +493,6 @@ def get_cadip_collection(
 
     try:
         stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-    except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Cannot create STAC Collection -> Missing {exc}",
-        ) from exc
-
-    try:
         if link := process_session_search(
             request,
             query_params["station"],
@@ -511,6 +503,11 @@ def get_cadip_collection(
             "collection",
         ):
             stac_collection.links.append(link)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cannot create STAC Collection -> Missing {exc}",
+        ) from exc
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

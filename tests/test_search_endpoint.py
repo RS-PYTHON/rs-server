@@ -19,6 +19,7 @@ import pytest
 import responses
 import sqlalchemy
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
@@ -822,3 +823,23 @@ def test_collections_landing_page(client, mocker, endpoint, role):
     mocker.patch("rs_server_cadip.api.cadip_search.Request.state", new_callable=mocker.PropertyMock, return_value=[])
     # Test without using api-key, result should be 2 empty lists.
     assert {"type": "Object", "links": [], "collections": []} == client.get(endpoint).json()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/cadip/search?collection=cadip_session_by_id_list",
+        "/cadip/search/items?collection=cadip_session_by_id_list",
+        "/cadip/collections/cadip_session_by_id_list",
+        "/cadip/collections/cadip_session_by_id_list/items",
+        "/cadip/collections/cadip_session_by_id_list/items/sessionId",
+    ],
+)
+def test_validation_errors(client, mocker, endpoint):
+    """Test used to mock a validation error on pydantic model, should return HTTP 422."""
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.process_session_search",
+        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+    )
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
