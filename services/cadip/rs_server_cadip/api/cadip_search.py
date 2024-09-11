@@ -22,6 +22,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import traceback
 import uuid
+from itertools import chain
 from typing import Annotated, Any, List, Union
 
 import requests
@@ -176,13 +177,15 @@ def get_allowed_collections(request: Request):
                 query_params["top"],
                 "collection",
             ):
-                stac_object["links"].append(*list(map(lambda link: link.to_dict(), links)))
+                stac_object["links"].append(list(map(lambda link: link.model_dump(), links)))
                 stac_object["collections"].append(collection.model_dump())
         except ValidationError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Parameters validation error: {exc}",
             ) from exc
+    # Flatten links if case:
+    stac_object["links"] = list(chain.from_iterable(stac_object["links"]))
     return stac_object
 
 
