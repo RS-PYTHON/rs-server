@@ -121,7 +121,7 @@ def search_products(  # pylint: disable=too-many-locals
         ) from exception
 
     except Exception as exception:  # pylint: disable=broad-exception-caught
-        logger.error("General failure!")
+        logger.error(f"General failure! {exception}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",

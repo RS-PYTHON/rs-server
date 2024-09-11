@@ -20,8 +20,9 @@ from pathlib import Path
 
 from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
+from rs_server_common.settings import env_bool
 
-if os.getenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", None):
+if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", False):
     DEFAULT_EODAG_CONFIG = (
         Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "cadip_ws_config_token_module.yaml"
     )

@@ -86,7 +86,7 @@ adgs:
 
   download:
     type: HTTPDownload
-    base_uri: 'http://127.0.0.1:5001/Products'
+    base_uri: 'http://127.0.0.1:5000/Products'
     metadata_mapping:
         uid: '$.Id'
         downloadLink: 'http://127.0.0.1:5000/Products({uid})/$value'

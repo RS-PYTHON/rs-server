@@ -24,7 +24,6 @@ from typing import List, Union
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.utils.exceptions import RequestError
-from requests import exceptions
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
 
@@ -150,10 +149,10 @@ class EodagProvider(Provider):
                 **kwargs,
             )
         except RequestError as e:
-            if e.args and "403" and "FORBIDDEN" in e.args[0]:
+            if e.args and "FORBIDDEN" in e.args[0]:
                 raise SearchProductFailed(
                     f"Can't search provider {self.provider} " "because the used token is not valid",
-                )
+                ) from e
             # Empty list if something goes wrong in eodag
             return []
 
