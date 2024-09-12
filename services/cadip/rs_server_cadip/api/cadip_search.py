@@ -75,11 +75,13 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
         try:
             return func(*args, **kwargs)
         except KeyError as exc:
+            logger.error(f"KeyError caught in {func.__name__}")
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Cannot create STAC Collection -> Missing {exc}",
             ) from exc
         except ValidationError as exc:
+            logger.error(f"ValidationError caught in {func.__name__}")
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Parameters validation error: {exc}",
@@ -125,6 +127,7 @@ def get_root_catalog(request: Request):
     Returns:
     - dict: A dictionary representation of the STAC catalog, including metadata and links.
     """
+    logger.info(f"Starting {request.url.path}")
     landing_page: stac_pydantic.Catalog = stac_pydantic.Catalog(
         type="Catalog",
         id=str(uuid.uuid4()),
@@ -142,7 +145,7 @@ def get_root_catalog(request: Request):
 @handle_exceptions
 def get_allowed_collections(request: Request):
     """
-        Endpoint to retrieve a object containing collections and links that a user is authorized to
+        Endpoint to retrieve an object containing collections and links that a user is authorized to
         access based on their API key.
 
     This endpoint reads the API key from the request to determine the roles associated with the user.
@@ -167,9 +170,11 @@ def get_allowed_collections(request: Request):
         HTTPException: If there are issues with reading configurations or processing session searches.
     """
     # Based on api key, get all station a user can access.
+    logger.info(f"Starting {request.url.path}")
     allowed_stations = []
     if hasattr(request.state, "auth_roles") and request.state.auth_roles is not None:
         # Iterate over each auth_role in request.state.auth_roles
+        logger.debug(f"Request auth roles: {request.state.auth_roles}")
         for auth_role in request.state.auth_roles:
             try:
                 # Attempt to split the auth_role and extract the station part
@@ -178,18 +183,21 @@ def get_allowed_collections(request: Request):
             except IndexError:
                 # If there is an IndexError, ignore it and continue
                 continue
+    logger.debug(f"User allowed stations: {allowed_stations}")
     configuration = read_conf()
 
     # Filter and selected only collections that query allowed stations.
     filtered_collections = [
         collection for collection in configuration["collections"] if collection["station"] in allowed_stations
     ]
+    logger.debug(f"User allowed collections: {filtered_collections}")
     # Create JSON object.
     stac_object: dict = {"type": "Object", "links": [], "collections": []}
 
     for config in filtered_collections:
         # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
+        logger.debug(f"Collection {config['id']} params: {query_params}")
         collection: stac_pydantic.Collection = create_collection(config)
         if links := process_session_search(
             request,
@@ -209,7 +217,7 @@ def get_allowed_collections(request: Request):
 
 @router.get("/cadip/queryables")
 @apikey_validator(station="cadip", access_type="landing_page")
-def get_all_queryables():
+def get_all_queryables(request: Request):
     """
     Get All Queryable Fields for CADIP Search API
 
@@ -239,6 +247,7 @@ def get_all_queryables():
     - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
     and `landing_page` access type.
     """
+    logger.info(f"Starting {request.url.path}")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
@@ -252,6 +261,7 @@ def get_all_queryables():
 @router.get("/cadip/collections/{collection_id}/queryables")
 @apikey_validator(station="cadip", access_type="landing_page")
 def get_collection_queryables(
+    request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
 ):
     """
@@ -284,6 +294,7 @@ def get_collection_queryables(
     - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
     and `landing_page` access type.
     """
+    logger.info(f"Starting {request.url.path}")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
@@ -312,14 +323,15 @@ def search_cadip_with_session_info(request: Request):
         HTTPException: If there is an error in validation or processing pf the search query or if required parameters
         are missing.
     """
+    logger.info(f"Starting {request.url.path}")
     request_params: dict = dict(request.query_params)
     collection: Union[str, None] = request_params.pop("collection", None)
-
+    logger.debug(f"User selected collection: {collection}")
     selected_config: Union[dict, None]
     query_params: dict
     selected_config, query_params = prepare_cadip_search(collection, request_params)
     query_params = create_session_search_params(selected_config)
-
+    logger.debug(f"Collection search params: {query_params}")
     return process_session_search(
         request,
         query_params["station"],
@@ -427,14 +439,15 @@ def search_cadip_endpoint(request: Request) -> dict:
         }
     }
     """
+    logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
     collection_name: Union[str, None] = request_params.pop("collection", None)
-
+    logger.debug(f"User selected collection: {collection_name}")
     selected_config: Union[dict, None]
     query_params: dict
     selected_config, query_params = prepare_cadip_search(collection_name, request_params)
     query_params = create_session_search_params(selected_config)
-
+    logger.debug(f"Collection search params: {query_params}")
     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     if link := process_session_search(
         request,
@@ -491,10 +504,11 @@ def get_cadip_collection(
     This endpoint is secured by an API key validator, ensuring that only authorized users can retrieve data from the
     CADIP station.
     """
+    logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
-
+    logger.debug(f"User selected collection: {collection_id}")
     query_params: dict = create_session_search_params(selected_config)
-
+    logger.debug(f"Collection search params: {query_params}")
     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     if link := process_session_search(
         request,
@@ -541,9 +555,11 @@ def get_cadip_collection_items(
 
     This endpoint is protected by an API key validator, ensuring appropriate access to the CADIP station.
     """
+    logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
     query_params: dict = create_session_search_params(selected_config)
-
+    logger.debug(f"User selected collection: {collection_id}")
+    logger.debug(f"Collection search params: {query_params}")
     return process_session_search(
         request,
         query_params["station"],
@@ -600,9 +616,12 @@ def get_cadip_collection_item_details(
 
     The endpoint is protected by an API key validator, which requires appropriate access permissions.
     """
+    logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
+    logger.debug(f"User selected collection: {collection_id}")
+    logger.debug(f"Collection search params: {query_params}")
     item_collection = stac_pydantic.ItemCollection.model_validate(
         process_session_search(  # type: ignore
             request,
