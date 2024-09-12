@@ -232,10 +232,9 @@ def apikey_validator(station, access_type):
                 logger.debug(f"Requested role: {requested_role}")
                 try:
                     auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
-                    logger.debug(f"Auth roles: {auth_roles}")
                 except KeyError:
                     auth_roles = []
-
+                logger.debug(f"Auth roles: {auth_roles}")
                 if requested_role not in auth_roles:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,

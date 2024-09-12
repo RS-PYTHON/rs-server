@@ -127,6 +127,7 @@ def get_root_catalog(request: Request):
     Returns:
     - dict: A dictionary representation of the STAC catalog, including metadata and links.
     """
+    logger.info(f"Starting {request.url.path}")
     landing_page: stac_pydantic.Catalog = stac_pydantic.Catalog(
         type="Catalog",
         id=str(uuid.uuid4()),
@@ -169,8 +170,8 @@ def get_allowed_collections(request: Request):
         HTTPException: If there are issues with reading configurations or processing session searches.
     """
     # Based on api key, get all station a user can access.
+    logger.info(f"Starting {request.url.path}")
     allowed_stations = []
-    logger.debug("Starting /cadip/collections")
     if hasattr(request.state, "auth_roles") and request.state.auth_roles is not None:
         # Iterate over each auth_role in request.state.auth_roles
         logger.debug(f"Request auth roles: {request.state.auth_roles}")
@@ -246,6 +247,7 @@ def get_all_queryables():
     - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
     and `landing_page` access type.
     """
+    logger.info(f"Starting {request.url.path}")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
@@ -291,6 +293,7 @@ def get_collection_queryables(
     - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
     and `landing_page` access type.
     """
+    logger.info(f"Starting {request.url.path}")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
@@ -319,7 +322,7 @@ def search_cadip_with_session_info(request: Request):
         HTTPException: If there is an error in validation or processing pf the search query or if required parameters
         are missing.
     """
-    logger.info("Starting /cadip/collections/{collection_id}/queryables")
+    logger.info(f"Starting {request.url.path}")
     request_params: dict = dict(request.query_params)
     collection: Union[str, None] = request_params.pop("collection", None)
     logger.debug(f"User selected collection: {collection}")
@@ -435,7 +438,7 @@ def search_cadip_endpoint(request: Request) -> dict:
         }
     }
     """
-    logger.info("Starting /cadip/search")
+    logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
     collection_name: Union[str, None] = request_params.pop("collection", None)
     logger.debug(f"User selected collection: {collection_name}")
@@ -500,7 +503,7 @@ def get_cadip_collection(
     This endpoint is secured by an API key validator, ensuring that only authorized users can retrieve data from the
     CADIP station.
     """
-    logger.info("/cadip/collections/{collection_id}")
+    logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
     logger.debug(f"User selected collection: {collection_id}")
     query_params: dict = create_session_search_params(selected_config)
@@ -551,7 +554,7 @@ def get_cadip_collection_items(
 
     This endpoint is protected by an API key validator, ensuring appropriate access to the CADIP station.
     """
-    logger.info("/cadip/collections/{collection_id}/items")
+    logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"User selected collection: {collection_id}")
@@ -612,7 +615,7 @@ def get_cadip_collection_item_details(
 
     The endpoint is protected by an API key validator, which requires appropriate access permissions.
     """
-    logger.info("/cadip/collections/{collection_id}/items/{session_id}")
+    logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
