@@ -217,7 +217,7 @@ def get_allowed_collections(request: Request):
 
 @router.get("/cadip/queryables")
 @apikey_validator(station="cadip", access_type="landing_page")
-def get_all_queryables():
+def get_all_queryables(request: Request):
     """
     Get All Queryable Fields for CADIP Search API
 
@@ -261,6 +261,7 @@ def get_all_queryables():
 @router.get("/cadip/collections/{collection_id}/queryables")
 @apikey_validator(station="cadip", access_type="landing_page")
 def get_collection_queryables(
+    request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
 ):
     """
