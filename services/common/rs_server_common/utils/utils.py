@@ -24,13 +24,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Tuple, Union
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import sqlalchemy
 import stac_pydantic
 from eodag import EOProduct, setup_logging
 from fastapi import HTTPException, status
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, ValidationError, ValidatorFunctionWrapHandler
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -40,6 +40,25 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 from stac_pydantic.links import Link
+
+# pylint: disable=too-few-public-methods
+
+
+class Queryables(BaseModel):
+    """BaseModel used to describe queryable holder."""
+
+    schema: Optional[str] = Field(None, alias="$schema")  # type: ignore
+    id: Optional[str] = Field(None, alias="$id")
+    type: str
+    title: str
+    description: str
+    properties: dict[str, Any]
+
+    class Config:
+        """Used to overwrite BaseModel config and display aliases in model_dump."""
+
+        allow_population_by_field_name = True
+
 
 logger = Logging.default(__name__)
 
@@ -62,6 +81,44 @@ def is_valid_date_format(date: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> Union[List, str]:
+    """
+    Validates and parses a parameter that can be either a string or a comma-separated list of strings.
+
+    The function processes the input parameter to:
+    - Strip whitespace from each item in a comma-separated list.
+    - Return a single string if the list has only one item.
+    - Return a list of strings if the input contains multiple valid items.
+
+    Examples:
+        - Input: 'S1A'
+          Output: 'S1A' (str)
+
+        - Input: 'S1A, S2B'
+          Output: ['S1A', 'S2B'] (list of str)
+
+          # Test case bgfx, when input contains ',' but not a validd value, output should not be ['S1A', '']
+        - Input: 'S1A,'
+          Output: 'S1A' (str)
+
+        - Input: 'S1A, S2B, '
+          Output: ['S1A', 'S2B'] (list of str)
+    """
+    try:
+        if parameter:
+            handler(parameter)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cannot validate: {parameter}",
+        ) from exc
+
+    if parameter and "," in parameter:
+        items = [item.strip() for item in parameter.split(",") if item.strip()]
+        return items if len(items) > 1 else items[0]
+    return parameter
 
 
 def validate_inputs_format(

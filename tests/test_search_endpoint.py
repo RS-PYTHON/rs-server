@@ -19,6 +19,7 @@ import pytest
 import responses
 import sqlalchemy
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
@@ -363,7 +364,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test with a single platform
         (
             "/cadip/collections/cadip_session_by_id_platform/items",
-            "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
+            "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20eq%20S1A%22&$top=20&$expand=Files",
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
@@ -381,7 +382,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test only with a list of platforms
         (
             "/cadip/collections/cadip_session_by_platform_list/items",
-            "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20&$expand=Files",
+            "%22Satellite%20in%20S1A,%20S2B%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
             ["S1A", "S2B"],
@@ -391,7 +392,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # # Check that response returns several results in STAC format for the sessions that match the criteria
         (
             "/cadip/collections/cadip_session_by_start_stop_platform/items",
-            "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+            "%22Satellite%20eq%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
             "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
@@ -399,7 +400,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         (
             "/cadip/search/items?collection=cadip_session_by_start_stop_platform",
-            "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+            "%22Satellite%20eq%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
             "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
@@ -517,7 +518,7 @@ def test_valid_search_by_session_id(expected_products, client):
     "odata_request, rs_server_request, odata_response, rs_server_response",
     [
         (
-            "%22Satellite%20in%20S2B%22&$top=20&$expand=Files",
+            "%22Satellite%20eq%20S2B%22&$top=20&$expand=Files",
             "/cadip/collections/cadip_session_s2b/items",
             # Note: The following JSON were modified due to compliance of HTTP/1.1 protocol
             # "Retransfer": false -> "Retransfer": False,
@@ -800,7 +801,7 @@ def test_collections_landing_page(client, mocker, endpoint, role):
     # Mock the pickup response
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20in%20S1A"&$top=1&$expand=Files',
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20eq%20S1A"&$top=1&$expand=Files',
         json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
         status=200,
     )
@@ -822,3 +823,66 @@ def test_collections_landing_page(client, mocker, endpoint, role):
     mocker.patch("rs_server_cadip.api.cadip_search.Request.state", new_callable=mocker.PropertyMock, return_value=[])
     # Test without using api-key, result should be 2 empty lists.
     assert {"type": "Object", "links": [], "collections": []} == client.get(endpoint).json()
+
+    # Test validationError case:
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.Request.state",
+        new_callable=mocker.PropertyMock,
+        return_value=mock_request_state,
+    )
+    # Mock the pickup response
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20eq%20S1A"&$top=1&$expand=Files',
+        json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
+        status=200,
+    )
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.process_session_search",
+        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+    )
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/cadip/search?collection=cadip_session_by_id_list",
+        "/cadip/search/items?collection=cadip_session_by_id_list",
+        "/cadip/collections/cadip_session_by_id_list",
+        "/cadip/collections/cadip_session_by_id_list/items",
+        "/cadip/collections/cadip_session_by_id_list/items/sessionId",
+    ],
+)
+def test_validation_errors(client, mocker, endpoint):
+    """Test used to mock a validation error on pydantic model, should return HTTP 422."""
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.process_session_search",
+        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+    )
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    ["/cadip/search?collection=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
+)
+def test_collection_creation_failure(client, mocker, endpoint):
+    """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
+    mocker.patch("rs_server_cadip.api.cadip_search.process_session_search", side_effect=KeyError)
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    ["/cadip/queryables", "/cadip/collections/cadip_session_by_id_list/queryables"],
+)
+@pytest.mark.unit
+def test_queryables(client, endpoint):
+    """Endpoint to test all queryables."""
+    resp = client.get(endpoint).json()
+    assert resp["title"] == "Queryables for CADIP Search API"
+    assert "Satellite" in resp["properties"].keys()
+    assert "PublicationDate" in resp["properties"].keys()

@@ -109,14 +109,17 @@ def auth_validator(station, access_type):
         @wraps(func)
         def wrapper(*args, **kwargs):
             if settings.CLUSTER_MODE:
+                logger.debug("Starting API-KEY validation.")
                 # Read the full cadip station passed in parameter e.g. INS, MPS, ...
                 # no validation needed for landing pages.
                 if station == "cadip" and access_type != "landing_page":
+                    logger.debug("API key validation for cadip search / download")
                     # Get the collection id from kwargs, otherwise, get the request's query params, and then collection
                     if collection_id := kwargs.get(
                         "collection_id",
                         kwargs.get("request", None).query_params.get("collection", None),
                     ):
+                        logger.debug(f"Collection id: {collection_id}")
                         with open(
                             os.environ.get("RSPY_CADIP_SEARCH_CONFIG"),  # type: ignore
                             encoding="utf-8",
@@ -126,11 +129,13 @@ def auth_validator(station, access_type):
                             (item for item in config["collections"] if item["id"] == collection_id),
                             None,
                         )
+                        logger.debug(f"CADIP search configuration: {conf}")
                         cadip_station = (
                             conf["station"] if conf else "unknown-cadip-station"
                         )  # ins, mps, mti, nsg, sgs, or cadip
                     else:
                         cadip_station = kwargs["station"]
+                    logger.debug(f"CADIP station: {cadip_station}")
                     try:
                         full_station = STATIONS_AUTH_LUT[cadip_station.lower()]
                     except KeyError as exception:
@@ -142,11 +147,12 @@ def auth_validator(station, access_type):
                     full_station = station
 
                 requested_role = f"rs_{full_station}_{access_type}".upper()
+                logger.debug(f"Requested role: {requested_role}")
                 try:
                     auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
                 except KeyError:
                     auth_roles = []
-
+                logger.debug(f"Auth roles: {auth_roles}")
                 if requested_role not in auth_roles:
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
