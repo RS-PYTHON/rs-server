@@ -145,7 +145,7 @@ def get_root_catalog(request: Request):
 @handle_exceptions
 def get_allowed_collections(request: Request):
     """
-        Endpoint to retrieve a object containing collections and links that a user is authorized to
+        Endpoint to retrieve an object containing collections and links that a user is authorized to
         access based on their API key.
 
     This endpoint reads the API key from the request to determine the roles associated with the user.
