@@ -47,7 +47,7 @@ from rs_server_cadip.cadip_utils import (
     select_config,
     validate_products,
 )
-from rs_server_common.authentication import apikey_validator
+from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -100,7 +100,7 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
 
 
 @router.get("/cadip")
-@apikey_validator(station="cadip", access_type="landing_page")
+@auth_validator(station="cadip", access_type="landing_page")
 def get_root_catalog(request: Request):
     """
     Retrieve the RSPY CADIP Search catalog landing page.
@@ -141,7 +141,7 @@ def get_root_catalog(request: Request):
 
 
 @router.get("/cadip/collections")
-@apikey_validator(station="cadip", access_type="landing_page")
+@auth_validator(station="cadip", access_type="landing_page")
 @handle_exceptions
 def get_allowed_collections(request: Request):
     """
@@ -216,7 +216,7 @@ def get_allowed_collections(request: Request):
 
 
 @router.get("/cadip/queryables")
-@apikey_validator(station="cadip", access_type="landing_page")
+@auth_validator(station="cadip", access_type="landing_page")
 def get_all_queryables(request: Request):
     """
     Get All Queryable Fields for CADIP Search API
@@ -259,7 +259,7 @@ def get_all_queryables(request: Request):
 
 
 @router.get("/cadip/collections/{collection_id}/queryables")
-@apikey_validator(station="cadip", access_type="landing_page")
+@auth_validator(station="cadip", access_type="landing_page")
 def get_collection_queryables(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
@@ -306,7 +306,7 @@ def get_collection_queryables(
 
 
 @router.get("/cadip/search/items", deprecated=True)
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def search_cadip_with_session_info(request: Request):
     """
@@ -344,7 +344,7 @@ def search_cadip_with_session_info(request: Request):
 
 
 @router.get("/cadip/search")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def search_cadip_endpoint(request: Request) -> dict:
     """
@@ -463,7 +463,7 @@ def search_cadip_endpoint(request: Request) -> dict:
 
 
 @router.get("/cadip/collections/{collection_id}")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection(
     request: Request,
@@ -524,7 +524,7 @@ def get_cadip_collection(
 
 
 @router.get("/cadip/collections/{collection_id}/items")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection_items(
     request: Request,
@@ -572,7 +572,7 @@ def get_cadip_collection_items(
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection_item_details(
     request: Request,
@@ -738,7 +738,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
 # DEPRECATED CODE, WILL BE REMOVED !!!
 ######################################
 @router.get("/cadip/{station}/cadu/search", deprecated=True)
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
@@ -775,7 +775,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
 
 
 @router.get("/cadip/{station}/session", deprecated=True)
-@apikey_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="read")
 def search_session(
     request: Request,  # pylint: disable=unused-argument
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),

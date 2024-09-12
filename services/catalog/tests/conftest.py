@@ -17,24 +17,38 @@
 import os
 import os.path as osp
 import subprocess  # nosec ignore security issue
+from importlib import reload
 
-# We are in local mode (no cluster).
+RSPY_UAC_HOMEPAGE = "http://RSPY_UAC_HOMEPAGE"
+RSPY_UAC_CHECK_URL = "http://RSPY_UAC_CHECK_URL"
+OIDC_ENDPOINT = "http://OIDC_ENDPOINT"
+OIDC_REALM = "OIDC_REALM"
+
+# Init the FastAPI application with all the cluster mode features (local mode=0).
 # Do this before any other imports.
+# We'll restore the local mode by default a few lines below.
 # pylint: disable=wrong-import-position
 # flake8: noqa
-os.environ["RSPY_LOCAL_MODE"] = "1"
+os.environ["RSPY_LOCAL_MODE"] = "0"
 os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
-os.environ["RSPY_UAC_HOMEPAGE"] = "http://test_apikey_manager/docs"
+os.environ["RSPY_UAC_HOMEPAGE"] = RSPY_UAC_HOMEPAGE
+os.environ["RSPY_UAC_CHECK_URL"] = RSPY_UAC_CHECK_URL
+os.environ["OIDC_ENDPOINT"] = OIDC_ENDPOINT
+os.environ["OIDC_REALM"] = OIDC_REALM
+os.environ["OIDC_CLIENT_ID"] = "OIDC_CLIENT_ID"
+os.environ["OIDC_CLIENT_SECRET"] = "OIDC_CLIENT_SECRET"  # nosec
+os.environ["RSPY_COOKIE_SECRET"] = "RSPY_COOKIE_SECRET"  # nosec
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator
 
 import pytest
+from fastapi.testclient import TestClient
 from rs_server_catalog.main import app, extract_openapi_specification
+from rs_server_common import settings as common_settings
 from sqlalchemy_utils import database_exists
-from starlette.testclient import TestClient
 
 # Clean before running.
 # No security risks since this file is not released into production.
@@ -47,6 +61,10 @@ subprocess.run(
 
 app.openapi = extract_openapi_specification
 app.openapi()
+
+# Restore the local mode by default
+os.environ["RSPY_LOCAL_MODE"] = "1"
+reload(common_settings)
 
 
 def is_db_up(db_url: str) -> bool:

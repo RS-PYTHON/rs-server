@@ -73,6 +73,13 @@ if [[ " $@ " == *" --run-services "* ]]; then
         port="$3"
         health="$4"
 
+        # Dummy environment variable values
+        export OIDC_ENDPOINT=OIDC_ENDPOINT
+        export OIDC_REALM=OIDC_REALM
+        export OIDC_CLIENT_ID=OIDC_CLIENT_ID
+        export OIDC_CLIENT_SECRET=OIDC_CLIENT_SECRET
+        export RSPY_COOKIE_SECRET=RSPY_COOKIE_SECRET
+
         # Install the poetry environment and run uvicorn with the environment variables set above
         cd "$path"
         poetry install

@@ -24,7 +24,9 @@ import httpx
 import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
 from rs_server_common import settings
-from rs_server_common.authentication import apikey_security
+from rs_server_common.authentication import oauth2
+from rs_server_common.authentication.authentication import authenticate
+from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
@@ -153,19 +155,33 @@ def init_app(  # pylint: disable=too-many-locals
     app.state.startup_events = startup_events or []
     app.state.shutdown_events = shutdown_events or []
 
-    # In cluster mode, add the api key security: the user must provide
-    # an api key (generated from the apikey manager) to access the endpoints
     dependencies = []
     if settings.CLUSTER_MODE:
-        dependencies.append(Depends(apikey_security))
 
-    # Add the authenticated routers (and not the technical routers) to a single bigger router
-    auth_router = APIRouter(dependencies=dependencies)
+        # Get the oauth2 router
+        oauth2_router = oauth2.get_router(app)
+
+        # Add it to the FastAPI application
+        app.include_router(
+            oauth2_router,
+            tags=["Authentication"],
+            prefix=AUTH_PREFIX,
+            include_in_schema=True,
+        )
+
+        # Add the api key / oauth2 security: the user must provide
+        # an api key (generated from the apikey manager) or authenticate to the
+        # oauth2 service (keycloak) to access the endpoints
+        dependencies.append(Depends(authenticate))
+
+    # Add all the input routers (and not the oauth2 nor technical routers) to a single bigger router
+    # to which we add the authentication dependency.
+    need_auth_router = APIRouter(dependencies=dependencies)
     for router in routers:
-        auth_router.include_router(router)
+        need_auth_router.include_router(router)
 
     # Add routers to the FastAPI app
-    app.include_router(auth_router)
+    app.include_router(need_auth_router)
     app.include_router(technical_router)
 
     return app

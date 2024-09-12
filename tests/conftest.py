@@ -26,10 +26,22 @@ import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
 from pathlib import Path
 
+# We are in local mode (no cluster).
+# Do this before any other imports.
+# pylint: disable=wrong-import-position
+# flake8: noqa
+os.environ["RSPY_LOCAL_MODE"] = "1"
+from importlib import reload
+
+from rs_server_common import settings
+
+reload(settings)
+
 import pytest
 import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
@@ -127,7 +139,14 @@ def docker_compose_file_():
 
 
 @pytest.fixture(name="fastapi_app")
-def fastapi_app_(request, mocker, docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
+def fastapi_app_(  # pylint: disable=too-many-arguments
+    request,
+    mocker,
+    monkeypatch,
+    docker_ip,
+    docker_services,
+    docker_compose_file,
+):  # pylint: disable=unused-argument
     """
     Init the FastAPI application and the database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
@@ -148,6 +167,17 @@ def fastapi_app_(request, mocker, docker_ip, docker_services, docker_compose_fil
 
     # Read the .env file that comes with docker-compose.yml
     load_dotenv(RESOURCES_FOLDER / "db" / ".env")
+
+    # Mock the oauth2 environment variables for the cluster mode
+    if cluster_mode:
+        monkeypatch.setenv("OIDC_ENDPOINT", "http://OIDC_ENDPOINT")
+        monkeypatch.setenv("OIDC_REALM", "OIDC_REALM")
+        monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
+        monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
+        monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
+
+        # Reload the oauth2 module with the cluster info
+        reload(oauth2)
 
     # Run all routers for the pytests
     with ExitStack():

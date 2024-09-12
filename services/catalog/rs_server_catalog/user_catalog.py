@@ -65,6 +65,7 @@ from rs_server_catalog.utils import (
     verify_existing_item_from_catalog,
 )
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication import oauth2
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
@@ -82,6 +83,7 @@ from starlette.responses import (
 from starlette.status import (
     HTTP_200_OK,
     HTTP_302_FOUND,
+    HTTP_307_TEMPORARY_REDIRECT,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
@@ -629,7 +631,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         content = self.adapt_links(content, owner_id, collection_id, "features")
 
         # Add the stac authentication extension
-        self.add_authentication_extension(content)
+        await self.add_authentication_extension(content)
 
         return JSONResponse(content, status_code=response.status_code)
 
@@ -906,7 +908,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             content = self.adapt_object_links(content, user)
 
         # Add the stac authentication extension
-        self.add_authentication_extension(content)
+        await self.add_authentication_extension(content)
 
         return JSONResponse(content, status_code=response.status_code)
 
@@ -1075,10 +1077,10 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """Redirect the user catalog specific endpoint and adapt the response content."""
         request_body = None if request.method not in ["POST", "PUT"] else await request.json()
-        # Get the the user_login calling the endpoint. If this is not set (the authentication.apikey_security function
+        # Get the the user_login calling the endpoint. If this is not set (the authentication.authenticate function
         # is not called), the local user shall be used (later on, in rereoute_url)
         # The common_settings.CLUSTER_MODE may not be used because for some endpoints like /api
-        # the apikey_security is not called even if common_settings.CLUSTER_MODE is True. Thus, the presence of
+        # the authenticate is not called even if common_settings.CLUSTER_MODE is True. Thus, the presence of
         # user_login has to be checked instead
         try:
             user_login = request.state.user_login
@@ -1126,8 +1128,9 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         response = await call_next(request)
 
-        # Don't forward responses that fail
-        if response.status_code != 200:
+        # Don't forward responses that fail.
+        # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
+        if response.status_code not in (HTTP_200_OK, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
             if response is None:
                 return None
 
@@ -1162,12 +1165,17 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         return response
 
-    def add_authentication_extension(self, content: dict):
+    async def add_authentication_extension(self, content: dict):
         """Add the stac authentication extension, see: https://github.com/stac-extensions/authentication"""
 
         # Only on cluster mode
         if not common_settings.CLUSTER_MODE:
             return
+
+        # Read environment variables
+        oidc_endpoint = os.environ["OIDC_ENDPOINT"]
+        oidc_realm = os.environ["OIDC_REALM"]
+        oidc_metadata_url = f"{oidc_endpoint}/realms/{oidc_realm}/.well-known/openid-configuration"
 
         # Add the STAC extension at the root
         extensions = content.setdefault("stac_extensions", [])
@@ -1179,20 +1187,41 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         parent = content
         if content.get("type") == "Feature":
             parent = content.setdefault("properties", {})
-        parent.setdefault("auth:schemes", {})["apikey"] = {
-            "type": "apiKey",
-            "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
-            # add anchor to the "new api key" endpoint
-            "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
-            "name": "x-api-key",
-            "in": "header",
-        }
+        oidc = await oauth2.KEYCLOAK.load_server_metadata()
+        parent.setdefault("auth:schemes", {}).update(
+            {
+                "apikey": {
+                    "type": "apiKey",
+                    "description": f"API key generated using {os.environ['RSPY_UAC_HOMEPAGE']}"  # link to /docs
+                    # add anchor to the "new api key" endpoint
+                    "#/Manage%20API%20keys/get_new_api_key_auth_api_key_new_get",
+                    "name": "x-api-key",
+                    "in": "header",
+                },
+                "openid": {
+                    "type": "openIdConnect",
+                    "description": "OpenID Connect",
+                    "openIdConnectUrl": oidc_metadata_url,
+                },
+                "oauth2": {
+                    "type": "oauth2",
+                    "description": "OAuth2+PKCE Authorization Code Flow",
+                    "flows": {
+                        "authorizationCode": {
+                            "authorizationUrl": oidc["authorization_endpoint"],
+                            "tokenUrl": oidc["token_endpoint"],
+                            "scopes": {},
+                        },
+                    },
+                },
+            },
+        )
 
         # Add the authentication reference to each link and asset
         for link_or_asset in content.get("links", []) + list(content.get("assets", {}).values()):
-            link_or_asset["auth:refs"] = ["apikey"]
+            link_or_asset["auth:refs"] = ["apikey", "openid", "oauth2"]
         # Add the extension to the response root and to nested collections, items, ...
         # Do recursive calls to all nested fields, if defined
         for nested_field in ["collections", "features"]:
             for nested_content in content.get(nested_field, []):
-                self.add_authentication_extension(nested_content)
+                await self.add_authentication_extension(nested_content)
