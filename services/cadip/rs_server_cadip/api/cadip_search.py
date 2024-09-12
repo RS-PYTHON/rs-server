@@ -190,7 +190,7 @@ def get_allowed_collections(request: Request):
     filtered_collections = [
         collection for collection in configuration["collections"] if collection["station"] in allowed_stations
     ]
-    logger.debug(f"User allowed collections: {filtered_collections}")
+    logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
     # Create JSON object.
     stac_object: dict = {"type": "Object", "links": [], "collections": []}
 
