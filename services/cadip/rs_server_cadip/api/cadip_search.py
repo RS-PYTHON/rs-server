@@ -249,8 +249,6 @@ def get_all_queryables(request: Request):
     """
     logger.info(f"Starting {request.url.path}")
     return Queryables(
-        schema="https://json-schema.org/draft/2019-09/schema",
-        id="https://stac-api.example.com/queryables",
         type="object",
         title="Queryables for CADIP Search API",
         description="Queryable names for the CADIP Search API Item Search filter.",
