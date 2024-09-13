@@ -213,7 +213,7 @@ def test_validate_token_format():
     """Test the validation of token format.
 
     This unit test verifies that valid tokens pass without exception, while invalid
-    tokens raise an HTTPException with status code 401 and the appropriate error message.
+    tokens raise an HTTPException with status code 400 and the appropriate error message.
     """
     # Test valid tokens (should not raise exceptions)
     valid_tokens = [
@@ -239,7 +239,7 @@ def test_validate_token_format():
     for token in invalid_tokens:
         with pytest.raises(HTTPException) as excinfo:
             validate_token_format(token)
-        assert excinfo.value.status_code == 401
+        assert excinfo.value.status_code == 400
         assert excinfo.value.detail == "Invalid token format received from the station."
 
 
@@ -975,7 +975,7 @@ def test_set_eodag_auth_token_config_not_found(mocker):
         mocker: Pytest fixture for patching and mocking.
 
     The test expects:
-    - An HTTPException is raised with a 401 status code and a message indicating that the configuration
+    - An HTTPException is raised with a 404 status code and a message indicating that the configuration
       could not be retrieved.
     """
     mocker.patch(
@@ -986,5 +986,5 @@ def test_set_eodag_auth_token_config_not_found(mocker):
     with pytest.raises(HTTPException) as exc_info:
         set_eodag_auth_token(station_id="adgs", service="auxip", path="/some/path")
 
-    assert exc_info.value.status_code == 401
+    assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Could not retrieve the configuration for the station token."

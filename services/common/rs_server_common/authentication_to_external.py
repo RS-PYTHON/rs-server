@@ -28,7 +28,9 @@ from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 from starlette.status import (
     HTTP_200_OK,
+    HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
+    HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
@@ -241,7 +243,7 @@ def validate_token_format(token: str) -> None:
     # Check if the token matches the expected format using a regular expression
     if not re.match(r"^[A-Za-z0-9\-_\.]+$", token):
         # Raise an HTTP exception if the token format is invalid
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid token format received from the station.")
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid token format received from the station.")
 
 
 def load_external_auth_config_by_station_service(
@@ -424,7 +426,7 @@ def set_eodag_auth_token(
 
     if not ext_auth_config:
         raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
+            status_code=HTTP_404_NOT_FOUND,
             detail="Could not retrieve the configuration for the station token.",
         )
     # call the module implemented for rspy-352

@@ -180,7 +180,6 @@ def get_allowed_collections(request: Request):
             try:
                 # Attempt to split the auth_role and extract the station part
                 station = auth_role.split("_")[2]
-                set_eodag_auth_token(f"{station.lower()}_session", "cadip")
                 allowed_stations.append(station)
             except IndexError:
                 # If there is an IndexError, ignore it and continue
@@ -331,7 +330,6 @@ def search_cadip_with_session_info(request: Request):
     query_params: dict
     selected_config, query_params = prepare_cadip_search(collection, request_params)
     query_params = create_session_search_params(selected_config)
-    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
     logger.debug(f"Collection search params: {query_params}")
     return process_session_search(
         request,
@@ -448,7 +446,6 @@ def search_cadip_endpoint(request: Request) -> dict:
     query_params: dict
     selected_config, query_params = prepare_cadip_search(collection_name, request_params)
     query_params = create_session_search_params(selected_config)
-    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
     logger.debug(f"Collection search params: {query_params}")
     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     if link := process_session_search(
@@ -510,7 +507,6 @@ def get_cadip_collection(
     selected_config: Union[dict, None] = select_config(collection_id)
     logger.debug(f"User selected collection: {collection_id}")
     query_params: dict = create_session_search_params(selected_config)
-    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
     logger.debug(f"Collection search params: {query_params}")
     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
     if link := process_session_search(
@@ -561,7 +557,6 @@ def get_cadip_collection_items(
     logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
     query_params: dict = create_session_search_params(selected_config)
-    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
     logger.debug(f"User selected collection: {collection_id}")
     logger.debug(f"Collection search params: {query_params}")
     return process_session_search(
@@ -624,7 +619,6 @@ def get_cadip_collection_item_details(
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
-    set_eodag_auth_token(f"{query_params['station'].lower()}_session", "cadip")
     logger.debug(f"User selected collection: {collection_id}")
     logger.debug(f"Collection search params: {query_params}")
     item_collection = stac_pydantic.ItemCollection.model_validate(
@@ -686,6 +680,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     try:
+        set_eodag_auth_token(f"{station.lower()}_session", "cadip")
         products = init_cadip_provider(f"{station}_session").search(
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
@@ -776,8 +771,6 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    set_eodag_auth_token(station, "cadip")
-
     return process_files_search(datetime, station, session_id, limit, sortby, deprecated=True)
 
 
@@ -820,8 +813,6 @@ def search_session(
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-
-    set_eodag_auth_token(station.lower(), "cadip")
 
     return process_session_search(request, station, id, platform, f"{start_date}/{stop_date}", limit)  # type: ignore
 
@@ -870,6 +861,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
+        set_eodag_auth_token(station.lower(), "cadip")
         products = init_cadip_provider(station).search(
             TimeRange(start_date, stop_date),
             id=session,
