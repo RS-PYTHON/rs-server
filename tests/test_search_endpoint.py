@@ -420,6 +420,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
 @responses.activate
 def test_valid_sessions_endpoint_request_list(
     client,
+    mocker,
     endpoint,
     pickup_point_translated_filter,
     expected_session_id,
@@ -434,6 +435,7 @@ def test_valid_sessions_endpoint_request_list(
         expected_publication_date,
         expected_platform,
     )
+    mocker.patch("rs_server_common.authentication_to_external.set_eodag_auth_token", side_effect=None)
     # Mock EODAG request to pickup-point
     responses.add(
         responses.GET,
