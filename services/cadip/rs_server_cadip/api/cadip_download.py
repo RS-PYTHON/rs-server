@@ -32,7 +32,7 @@ from pydantic import BaseModel
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus, EDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
-from rs_server_common.authentication import apikey_validator
+from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication_to_external import set_eodag_auth_token
 from rs_server_common.db.database import get_db
 from rs_server_common.utils.logging import Logging
@@ -84,7 +84,7 @@ class CadipDownloadResponse(BaseModel):
 
 
 @router.get("/cadip/{station}/cadu", response_model=CadipDownloadResponse)
-@apikey_validator(station="cadip", access_type="download")
+@auth_validator(station="cadip", access_type="download")
 def download_products(
     request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="CADU product name")],

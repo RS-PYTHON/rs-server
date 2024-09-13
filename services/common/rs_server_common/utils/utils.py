@@ -24,11 +24,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 import sqlalchemy
+import stac_pydantic
 from eodag import EOProduct, setup_logging
 from fastapi import HTTPException, status
+from pydantic import BaseModel, Field, ValidationError, ValidatorFunctionWrapHandler
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -37,6 +39,26 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.utils.logging import Logging
+from stac_pydantic.links import Link
+
+# pylint: disable=too-few-public-methods
+
+
+class Queryables(BaseModel):
+    """BaseModel used to describe queryable holder."""
+
+    schema: str = Field("https://json-schema.org/draft/2019-09/schema", alias="$schema")  # type: ignore
+    id: str = Field("https://stac-api.example.com/queryables", alias="$id")
+    type: str
+    title: str
+    description: str
+    properties: dict[str, Any]
+
+    class Config:
+        """Used to overwrite BaseModel config and display aliases in model_dump."""
+
+        allow_population_by_field_name = True
+
 
 logger = Logging.default(__name__)
 
@@ -59,6 +81,44 @@ def is_valid_date_format(date: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> Union[List, str]:
+    """
+    Validates and parses a parameter that can be either a string or a comma-separated list of strings.
+
+    The function processes the input parameter to:
+    - Strip whitespace from each item in a comma-separated list.
+    - Return a single string if the list has only one item.
+    - Return a list of strings if the input contains multiple valid items.
+
+    Examples:
+        - Input: 'S1A'
+          Output: 'S1A' (str)
+
+        - Input: 'S1A, S2B'
+          Output: ['S1A', 'S2B'] (list of str)
+
+          # Test case bgfx, when input contains ',' but not a validd value, output should not be ['S1A', '']
+        - Input: 'S1A,'
+          Output: 'S1A' (str)
+
+        - Input: 'S1A, S2B, '
+          Output: ['S1A', 'S2B'] (list of str)
+    """
+    try:
+        if parameter:
+            handler(parameter)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cannot validate: {parameter}",
+        ) from exc
+
+    if parameter and "," in parameter:
+        items = [item.strip() for item in parameter.split(",") if item.strip()]
+        return items if len(items) > 1 else items[0]
+    return parameter
 
 
 def validate_inputs_format(
@@ -403,32 +463,28 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
 
 
-def create_collection(products: List[EOProduct]):
-    """Used to create stac collection template based on sessions lists."""
-    return {
-        "id": str(uuid.uuid4()),
-        "type": "Collection",
-        "stac_extensions": [
-            "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/view/v1.0.0/schema.json",
-        ],
-        "stac_version": "1.0.0",
-        "description": "A simple collection demonstrating core catalog fields with links to a couple of items",
-        "title": "Simple Example Collection",
-        "links": [
-            {
-                "rel": "item",
-                "href": "./simple-item.json",
-                "type": "application/geo+json",
-                "title": product.properties["SessionId"],
-            }
-            for product in products
-        ],
-    }
+def create_links(products: List[EOProduct]):
+    """Used to create stac_pydantic Link objects based on sessions lists."""
+    return [Link(rel="item", title=product.properties["SessionId"], href="./simple-item.json") for product in products]
 
 
-def create_stac_collection(products: List[EOProduct], feature_template: dict, stac_mapper: dict) -> dict:
+def create_collection(collection: dict) -> stac_pydantic.Collection:
+    """Used to create stac_pydantic Model Collection based on given collection data."""
+    try:
+        stac_collection = stac_pydantic.Collection(type="Collection", **collection)
+        return stac_collection
+    except ValidationError as exc:
+        raise HTTPException(
+            detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        ) from exc
+
+
+def create_stac_collection(
+    products: List[EOProduct],
+    feature_template: dict,
+    stac_mapper: dict,
+) -> stac_pydantic.ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
 
@@ -440,19 +496,14 @@ def create_stac_collection(products: List[EOProduct], feature_template: dict, st
     Returns:
         dict: The STAC feature collection containing features for each EOProduct.
     """
-    stac_template: Dict[Any, Any] = {
-        "type": "FeatureCollection",
-        "numberMatched": 0,
-        "numberReturned": 0,
-        "features": [],
-    }
+    items: list = []
+
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
-        stac_template["numberMatched"] += 1
-        stac_template["numberReturned"] += 1
-        stac_template["features"].append(feature_tmp)
-    return stac_template
+        item = stac_pydantic.Item(**feature_tmp)
+        items.append(item)
+    return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
 
 
 def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:

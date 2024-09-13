@@ -13,13 +13,13 @@
 # limitations under the License.
 
 """Unittests for cadip search endpoint."""
-
 from contextlib import contextmanager
 
 import pytest
 import responses
 import sqlalchemy
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
@@ -48,10 +48,10 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
                 "geometry": None,
                 "properties": {
-                    "created": "2021-02-16T12:00:00.000Z",
-                    "datetime": "1970-01-01T12:00:00.000Z",
-                    "start_datetime": "1970-01-01T12:00:00.000Z",
-                    "end_datetime": "1970-01-01T12:00:00.000Z",
+                    "created": "2021-02-16T12:00:00Z",
+                    "datetime": "1970-01-01T12:00:00Z",
+                    "start_datetime": "1970-01-01T12:00:00Z",
+                    "end_datetime": "1970-01-01T12:00:00Z",
                     "eviction_datetime": "eviction_date_test_value",
                     "cadip:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
                     "cadip:retransfer": False,
@@ -61,7 +61,7 @@ from .conftest import (  # pylint: disable=no-name-in-module
                     "cadip:session_id": "session_id1",
                 },
                 "links": [],
-                "assets": {"file": {"file:size": "size_test_value"}},
+                "assets": {"file": {"href": "not_set", "file:size": "size_test_value"}},
             },
             ["datetime", "cadip:id"],
         ),
@@ -75,14 +75,14 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
                 "geometry": None,
                 "properties": {
-                    "created": "2021-02-16T12:00:00.000Z",
+                    "created": "2021-02-16T12:00:00Z",
                     "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
-                    "datetime": "ContentDate_Start_test_value",
-                    "start_datetime": "ContentDate_Start_test_value",
-                    "end_datetime": "ContentDate_End_test_value",
+                    "datetime": "1970-01-01T12:00:00Z",
+                    "start_datetime": "1970-01-01T12:00:00Z",
+                    "end_datetime": "1970-01-01T12:00:00Z",
                 },
                 "links": [],
-                "assets": {"file": {"file:size": "ContentLength_test_value"}},
+                "assets": {"file": {"href": "not_set", "file:size": "size_test_value"}},
             },
             ["datetime", "adgs:id"],
         ),
@@ -190,7 +190,6 @@ def test_invalid_endpoint_request(client, station, endpoint, start, stop):
     with contextmanager(get_db)():
         # convert output to python dict
         data = client.get(test_endpoint).json()
-        print(data)
         # check that request returned no elements
         assert len(data["features"]) == 0
 
@@ -329,12 +328,6 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
             # Check that product is not in database, this should raise HTTPException
             db_handler.get(db, name="S2L1C.raw")
             assert False
-        test_endpoint = f"{endpoint}&limit={limit}"
-        data = client.get(test_endpoint).json()
-        # check features number, and numberMatched / numberReturned
-        assert len(data["features"]) == limit
-        assert data["numberMatched"] == limit
-        assert data["numberReturned"] == limit
         # Check negative, should raise 422
         limit = 0
         test_endpoint = f"{endpoint}&limit={limit}"
@@ -371,7 +364,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test with a single platform
         (
             "/cadip/collections/cadip_session_by_id_platform/items",
-            "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20in%20S1A%22&$top=20&$expand=Files",
+            "%22SessionId%20eq%20S1A_20240328185208053186%20and%20Satellite%20eq%20S1A%22&$top=20&$expand=Files",
             "S1A_20240328185208053186",
             "2024-03-28T18:52:26Z",
             "S1A",
@@ -389,7 +382,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # Test only with a list of platforms
         (
             "/cadip/collections/cadip_session_by_platform_list/items",
-            "%22Satellite%20in%20S1A,%20%20S2B%22&$top=20&$expand=Files",
+            "%22Satellite%20in%20S1A,%20S2B%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z"],
             ["S1A", "S2B"],
@@ -399,7 +392,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         # # Check that response returns several results in STAC format for the sessions that match the criteria
         (
             "/cadip/collections/cadip_session_by_start_stop_platform/items",
-            "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+            "%22Satellite%20eq%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
             "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
@@ -407,7 +400,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
         ),
         (
             "/cadip/search/items?collection=cadip_session_by_start_stop_platform",
-            "%22Satellite%20in%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
+            "%22Satellite%20eq%20S1A%20and%20PublicationDate%20gt%202020-02-16T12:00:00.000Z%20and%20PublicationDate"
             "%20lt%202023-02-16T12:00:00.000Z%22&$top=20&$expand=Files",
             ["S1A_20240328185208053186", "S1A_20240328185208053186", "S1A_20240329083700053194"],
             ["2024-03-28T18:52:26Z", "2024-03-28T18:52:26Z", "2024-03-29T08:37:22Z"],
@@ -452,7 +445,6 @@ def test_valid_sessions_endpoint_request_list(
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_200_OK
     # Test that OData (dict) is translated to STAC.
-    assert response.json()["numberMatched"] == len(sessions_response)
     assert response.json()["features"]
 
 
@@ -526,7 +518,7 @@ def test_valid_search_by_session_id(expected_products, client):
     "odata_request, rs_server_request, odata_response, rs_server_response",
     [
         (
-            "%22Satellite%20in%20S2B%22&$top=20&$expand=Files",
+            "%22Satellite%20eq%20S2B%22&$top=20&$expand=Files",
             "/cadip/collections/cadip_session_s2b/items",
             # Note: The following JSON were modified due to compliance of HTTP/1.1 protocol
             # "Retransfer": false -> "Retransfer": False,
@@ -580,8 +572,6 @@ def test_valid_search_by_session_id(expected_products, client):
             },
             {
                 "type": "FeatureCollection",
-                "numberMatched": 1,
-                "numberReturned": 1,
                 "features": [
                     {
                         "stac_version": "1.0.0",
@@ -590,9 +580,9 @@ def test_valid_search_by_session_id(expected_products, client):
                         "id": "S2B_20231117033237234567",
                         "geometry": None,
                         "properties": {
-                            "start_datetime": "2023-11-17T06:05:37.234Z",
-                            "datetime": "2023-11-17T06:05:37.234Z",
-                            "end_datetime": "2023-11-17T06:15:37.234Z",
+                            "start_datetime": "2023-11-17T06:05:37.234000+00:00",
+                            "datetime": "2023-11-17T06:05:37.234000+00:00",
+                            "end_datetime": "2023-11-17T06:15:37.234000+00:00",
                             "published": "2023-11-17T06:15:37.234Z",
                             "platform": "S2B",
                             "cadip:id": "3f8d5c2e-a9b1-4d6f-87ce-1a240b9d5e72",
@@ -627,6 +617,7 @@ def test_valid_search_by_session_id(expected_products, client):
                                 "roles": [
                                     "cadu",
                                 ],
+                                "title": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw",
                             },
                             "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw": {
                                 "cadip:block_number": 1,
@@ -643,6 +634,7 @@ def test_valid_search_by_session_id(expected_products, client):
                                 "roles": [
                                     "cadu",
                                 ],
+                                "title": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw",
                             },
                         },
                     },
@@ -653,7 +645,7 @@ def test_valid_search_by_session_id(expected_products, client):
             '"Satellite%20in%20incorrect_platform"&$top=20&$expand=Files',
             "/cadip/collections/cadip_session_incorrect/items",
             {},
-            {"type": "FeatureCollection", "numberMatched": 0, "numberReturned": 0, "features": []},
+            {"type": "FeatureCollection", "features": []},
         ),
     ],
 )
@@ -702,19 +694,195 @@ def test_cadip_collection(client):
     response = client.get("/cadip/collections/cadip_session_by_satellite")
     assert response.status_code == status.HTTP_200_OK
     for link in response.json()["links"]:
-        assert sid in link["title"]
+        if link["rel"] == "item":
+            assert sid in link["title"]
 
 
 @pytest.mark.unit
 def test_invalid_cadip_collection(client):
-    """Test cases with invalid requests."""
+    """Test cases with invalid requests/collections."""
+    # Test a correctly configured collection with a bad query.
     response = client.get("/cadip/collections/cadip_session_incorrect")
     # Should return an empty collection, but with 200 status.
     assert response.status_code == status.HTTP_200_OK
-    # Test that collection contains no links (is empty).
-    assert not response.json()["links"]
 
-    # Test that an invalid configured collection return 404 with specific response.
+    # Test that collection contains no "Item" links.
+    assert not any("item" in link["rel"] for link in response.json()["links"])
+
+    # Also check for root / self relation -> Disabled, should we manually ad root and self?
+    # assert any("root" in link["rel"] for link in response.json()["links"])
+    # assert any("self" in link["rel"] for link in response.json()["links"])
+
+    # Test that a non existing collection return 404 with specific response.
     response = client.get("/cadip/collections/invalid_configured_collection")
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {"detail": "Cannot find a valid configuration"}
+
+    # Test with a miss configured collection: cadip_session_incomplete does not define a Extent.
+    response = client.get("/cadip/collections/cadip_session_incomplete")
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/cadip",
+    ],
+)
+def test_landing_pages(client, endpoint):
+    """
+    Unit test for checking the structure and links of the landing page.
+
+    This test verifies that the landing page at the specified endpoint
+    returns a response of type 'Catalog' and includes the necessary links.
+    It checks that:
+    - The 'type' field in the response is 'Catalog'.
+    - The response contains links.
+    - At least one link with the 'rel' attribute set to 'data' points to the
+      '/cadip/collections' endpoint.
+
+    Args:
+        client: The test client to send requests.
+        endpoint: The endpoint to test, e.g., "/cadip".
+        role: The role to use for authentication (not used directly in the test).
+
+    """
+    # Check for response type and links to /collections.
+    response = client.get(endpoint).json()
+    assert response["type"] == "Catalog"
+    assert response["links"]
+    # Check for data relationship and redirect to /collections.
+    assert any("/cadip/collections" in link["href"] for link in response["links"] if link["rel"] == "data")
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint, role",
+    [
+        ("/cadip/collections", "rs_cadip_authTest_landing_page"),
+    ],
+)
+@responses.activate
+def test_collections_landing_page(client, mocker, endpoint, role):
+    """
+    Unit test for validating the collections landing page response.
+
+    This test checks the response of the collections landing page at the
+    specified endpoint. It ensures that:
+    - The response contains both 'links' and 'collections' as lists.
+    - These lists are not empty.
+    - At least one link includes a title matching the expected session.
+    - At least one collection's type is 'Collection'.
+    - At least one collection's ID matches the expected collection name.
+
+    Additionally, the test verifies the behavior when no roles are available:
+    - It ensures that the response returns empty lists for 'links' and
+      'collections' when the request state has no roles.
+
+    Args:
+        client: The test client to send requests.
+        mocker: The pytest-mock fixture for mocking.
+        endpoint: The endpoint to test, e.g., "/cadip/collections".
+        role: The role used to simulate access control.
+
+    """
+    # Mock the request.state object
+    mock_request_state = mocker.MagicMock()
+    # Set mock auth_roles, set accest to "authTest" collection
+    mock_request_state.auth_roles = [role]
+
+    # Patch the part where request.state.auth_roles is accessed
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.Request.state",
+        new_callable=mocker.PropertyMock,
+        return_value=mock_request_state,
+    )
+    # Mock the pickup response
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20eq%20S1A"&$top=1&$expand=Files',
+        json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
+        status=200,
+    )
+
+    response = client.get(endpoint).json()
+    # Check links and collections.
+    assert isinstance(response["links"], list)
+    assert isinstance(response["collections"], list)
+    # Check if not empty
+    assert response["links"] and response["collections"]
+    # Check if link title is matching with fixture given session.
+    assert any("S1A_20200105072204051312" in link["title"] for link in response["links"])
+    # Check that collection type is correctly set.
+    assert any("Collection" in collection["type"] for collection in response["collections"])
+    # Check that collection name is correctly set.
+    assert any("test_collection" in collection["id"] for collection in response["collections"])
+
+    # Disable patcher, set request state to empty (Simulating an apikey with no roles)
+    mocker.patch("rs_server_cadip.api.cadip_search.Request.state", new_callable=mocker.PropertyMock, return_value=[])
+    # Test without using api-key, result should be 2 empty lists.
+    assert {"type": "Object", "links": [], "collections": []} == client.get(endpoint).json()
+
+    # Test validationError case:
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.Request.state",
+        new_callable=mocker.PropertyMock,
+        return_value=mock_request_state,
+    )
+    # Mock the pickup response
+    responses.add(
+        responses.GET,
+        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20eq%20S1A"&$top=1&$expand=Files',
+        json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
+        status=200,
+    )
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.process_session_search",
+        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+    )
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "/cadip/search?collection=cadip_session_by_id_list",
+        "/cadip/search/items?collection=cadip_session_by_id_list",
+        "/cadip/collections/cadip_session_by_id_list",
+        "/cadip/collections/cadip_session_by_id_list/items",
+        "/cadip/collections/cadip_session_by_id_list/items/sessionId",
+    ],
+)
+def test_validation_errors(client, mocker, endpoint):
+    """Test used to mock a validation error on pydantic model, should return HTTP 422."""
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.process_session_search",
+        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+    )
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "endpoint",
+    ["/cadip/search?collection=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
+)
+def test_collection_creation_failure(client, mocker, endpoint):
+    """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
+    mocker.patch("rs_server_cadip.api.cadip_search.process_session_search", side_effect=KeyError)
+    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    ["/cadip/queryables", "/cadip/collections/cadip_session_by_id_list/queryables"],
+)
+@pytest.mark.unit
+def test_queryables(client, endpoint):
+    """Endpoint to test all queryables."""
+    resp = client.get(endpoint).json()
+    assert resp["title"] == "Queryables for CADIP Search API"
+    assert "Satellite" in resp["properties"].keys()
+    assert "PublicationDate" in resp["properties"].keys()

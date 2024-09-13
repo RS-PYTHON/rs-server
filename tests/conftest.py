@@ -27,10 +27,22 @@ from contextlib import ExitStack
 from pathlib import Path
 from unittest import mock
 
+# We are in local mode (no cluster).
+# Do this before any other imports.
+# pylint: disable=wrong-import-position
+# flake8: noqa
+os.environ["RSPY_LOCAL_MODE"] = "1"
+from importlib import reload
+
+from rs_server_common import settings
+
+reload(settings)
+
 import pytest
 import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
+from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication_to_external import ExternalAuthenticationConfig
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
@@ -129,7 +141,14 @@ def docker_compose_file_():
 
 
 @pytest.fixture(name="fastapi_app")
-def fastapi_app_(request, mocker, docker_ip, docker_services, docker_compose_file):  # pylint: disable=unused-argument
+def fastapi_app_(  # pylint: disable=too-many-arguments
+    request,
+    mocker,
+    monkeypatch,
+    docker_ip,
+    docker_services,
+    docker_compose_file,
+):  # pylint: disable=unused-argument
     """
     Init the FastAPI application and the database connection from the docker-compose.yml file.
     docker_ip, docker_services are used by pytest-docker that runs docker compose.
@@ -150,6 +169,17 @@ def fastapi_app_(request, mocker, docker_ip, docker_services, docker_compose_fil
 
     # Read the .env file that comes with docker-compose.yml
     load_dotenv(RESOURCES_FOLDER / "db" / ".env")
+
+    # Mock the oauth2 environment variables for the cluster mode
+    if cluster_mode:
+        monkeypatch.setenv("OIDC_ENDPOINT", "http://OIDC_ENDPOINT")
+        monkeypatch.setenv("OIDC_REALM", "OIDC_REALM")
+        monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
+        monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
+        monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
+
+        # Reload the oauth2 module with the cluster info
+        reload(oauth2)
 
     # Run all routers for the pytests
     with ExitStack():
@@ -221,10 +251,10 @@ def a_product_fixture():
             "Channel": "Channel_test_value",
             "BlockNumber": "BlockNumber_test_value",
             "ContentDate": {
-                "Start": "ContentDate_Start_test_value",
-                "End": "ContentDate_End_test_value",
+                "Start": "1970-01-01T12:00:00Z",
+                "End": "1970-01-01T12:00:00Z",
             },
-            "ContentLength": "ContentLength_test_value",
+            "ContentLength": "size_test_value",
         }
 
     return build
@@ -305,7 +335,7 @@ def set_token_env_var_fixture(monkeypatch):
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__ID": "client_id",
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__TOKEN__URL": "\
-                http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
+http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__AUXIP__ADGS__SERVICE__URL": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
             "RSPY__TOKEN__AUXIP__ADGS__DOMAIN": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
             "RSPY__TOKEN__AUXIP__ADGS__SERVICE__NAME": "auxip",
@@ -318,7 +348,7 @@ def set_token_env_var_fixture(monkeypatch):
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__ID": "client_id",
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__TOKEN__URL": "\
-                http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
+http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__CADIP__INS__SERVICE__URL": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
             "RSPY__TOKEN__CADIP__INS__DOMAIN": "mockup-cadip-ins-svc.processing.svc.cluster.local",
             "RSPY__TOKEN__CADIP__INS__SERVICE__NAME": "cadip",
@@ -331,7 +361,7 @@ def set_token_env_var_fixture(monkeypatch):
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__ID": "client_id",
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__TOKEN__URL": "\
-                http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
+http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__CADIP__MPS__SERVICE__URL": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
             "RSPY__TOKEN__CADIP__MPS__DOMAIN": "mockup-cadip-mps-svc.processing.svc.cluster.local",
             "RSPY__TOKEN__CADIP__MPS__SERVICE__NAME": "cadip",

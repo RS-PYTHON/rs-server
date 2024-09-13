@@ -14,6 +14,7 @@
 # limitations under the License.
 
 set -euo pipefail
+set -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
@@ -37,19 +38,13 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     if [[ ! -d "$tests_dir" ]]; then
         continue
     fi
+    echo "Test '$tests_dir'"
 
     # Install dependencies
     (set -x
         cd "$proj_dir" && poetry install --with dev
         poetry run opentelemetry-bootstrap -a install || true
     )
-
-    # Test if the directory has at least one test (see: https://stackoverflow.com/a/57014262)
-    if [[ $(cd "$proj_dir" && poetry run pytest --collect-only -q | head -n -2 | wc -l) == 0 ]]; then
-        echo "Skip '$tests_dir' (no tests implemented)"
-        continue
-    fi
-    echo "Test '$tests_dir'"
 
     # Subshell
     (

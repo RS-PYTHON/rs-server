@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
-from rs_server_common.authentication import apikey_validator
+from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication_to_external import set_eodag_auth_token
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
@@ -74,7 +74,7 @@ class AdgsDownloadResponse(BaseModel):
 
 
 @router.get("/adgs/aux", response_model=AdgsDownloadResponse)
-@apikey_validator(station="adgs", access_type="download")
+@auth_validator(station="adgs", access_type="download")
 def download_products(
     request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="AUX product name")],
