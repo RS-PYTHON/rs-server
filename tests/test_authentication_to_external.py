@@ -151,7 +151,6 @@ def test_get_station_token(
 
 
 @pytest.mark.unit
-@responses.activate
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
 def test_prepare_headers(get_external_auth_config):
     """Test preparation of headers for authentication.
@@ -176,7 +175,6 @@ def test_prepare_headers(get_external_auth_config):
 
 
 @pytest.mark.unit
-@responses.activate
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
 def test_prepare_data(get_external_auth_config):
     """Test preparation of data for authentication.
@@ -209,6 +207,7 @@ def test_prepare_data(get_external_auth_config):
     assert prepare_data(ext_auth_config) == data
 
 
+@pytest.mark.unit
 def test_validate_token_format():
     """Test the validation of token format.
 
@@ -429,6 +428,7 @@ def test_load_external_auth_config_by_station_service_no_matching_service(mocker
     )
 
 
+@pytest.mark.unit
 def test_load_external_auth_config_by_station_service_no_matching_station(mocker):
     """
     Test scenario where no matching station is found in the configuration.
@@ -838,7 +838,6 @@ def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config):
 
 
 @pytest.mark.unit
-@responses.activate
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
 async def test_set_eodag_auth_token_by_station_and_service_success(
     mocker,
@@ -894,7 +893,6 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
 
 
 @pytest.mark.unit
-@responses.activate
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
 async def test_set_eodag_auth_token_by_domain_success(
     mocker,

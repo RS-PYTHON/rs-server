@@ -435,8 +435,14 @@ def test_valid_sessions_endpoint_request_list(
         expected_publication_date,
         expected_platform,
     )
-    mocker.patch("rs_server_common.authentication_to_external.set_eodag_auth_token", side_effect=None)
-    # Mock EODAG request to pickup-point
+    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
+    responses.add(
+        responses.POST,
+        "http://127.0.0.1:5000/oauth2/token",
+        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
+        status=200,
+    )
+    # Mock EODAG request to pickup-point as well as the token
     responses.add(
         responses.GET,
         f"http://127.0.0.1:5000/Sessions?$filter={pickup_point_translated_filter}",
