@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Callable, List, Tuple, Union
 
 import sqlalchemy
 import stac_pydantic
@@ -47,8 +47,8 @@ from stac_pydantic.links import Link
 class Queryables(BaseModel):
     """BaseModel used to describe queryable holder."""
 
-    schema: Optional[str] = Field(None, alias="$schema")  # type: ignore
-    id: Optional[str] = Field(None, alias="$id")
+    schema: str = Field("https://json-schema.org/draft/2019-09/schema", alias="$schema")  # type: ignore
+    id: str = Field("https://stac-api.example.com/queryables", alias="$id")
     type: str
     title: str
     description: str

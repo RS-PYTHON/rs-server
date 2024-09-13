@@ -190,7 +190,7 @@ def get_allowed_collections(request: Request):
     filtered_collections = [
         collection for collection in configuration["collections"] if collection["station"] in allowed_stations
     ]
-    logger.debug(f"User allowed collections: {filtered_collections}")
+    logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
     # Create JSON object.
     stac_object: dict = {"type": "Object", "links": [], "collections": []}
 
@@ -249,8 +249,6 @@ def get_all_queryables(request: Request):
     """
     logger.info(f"Starting {request.url.path}")
     return Queryables(
-        schema="https://json-schema.org/draft/2019-09/schema",
-        id="https://stac-api.example.com/queryables",
         type="object",
         title="Queryables for CADIP Search API",
         description="Queryable names for the CADIP Search API Item Search filter.",
