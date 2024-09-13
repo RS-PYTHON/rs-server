@@ -304,7 +304,8 @@ def set_token_env_var_fixture(monkeypatch):
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTHORIZATION": "Basic test",
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__ID": "client_id",
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__TOKEN__URL": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
+            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__TOKEN__URL": "\
+                http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__AUXIP__ADGS__SERVICE__URL": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
             "RSPY__TOKEN__AUXIP__ADGS__DOMAIN": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
             "RSPY__TOKEN__AUXIP__ADGS__SERVICE__NAME": "auxip",
@@ -316,7 +317,8 @@ def set_token_env_var_fixture(monkeypatch):
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTHORIZATION": "Basic test",
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__ID": "client_id",
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__TOKEN__URL": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
+            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__TOKEN__URL": "\
+                http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__CADIP__INS__SERVICE__URL": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
             "RSPY__TOKEN__CADIP__INS__DOMAIN": "mockup-cadip-ins-svc.processing.svc.cluster.local",
             "RSPY__TOKEN__CADIP__INS__SERVICE__NAME": "cadip",
@@ -328,7 +330,8 @@ def set_token_env_var_fixture(monkeypatch):
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTHORIZATION": "Basic test",
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__ID": "client_id",
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__TOKEN__URL": "http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
+            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__TOKEN__URL": "\
+                http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__CADIP__MPS__SERVICE__URL": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
             "RSPY__TOKEN__CADIP__MPS__DOMAIN": "mockup-cadip-mps-svc.processing.svc.cluster.local",
             "RSPY__TOKEN__CADIP__MPS__SERVICE__NAME": "cadip",

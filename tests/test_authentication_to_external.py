@@ -58,8 +58,8 @@ logger = Logging.default(__name__)
 @pytest.mark.unit
 def test_create_rs_server_config_yaml(
     mocker,
-    set_token_env_var,
-    expected_config_token_file,  # pylint: disable=unused-argument
+    set_token_env_var,  # pylint: disable=unused-argument
+    expected_config_token_file,
 ):
     """Test the creation of the rs-server config YAML file with both valid and invalid paths.
 
