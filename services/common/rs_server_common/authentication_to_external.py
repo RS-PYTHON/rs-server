@@ -88,15 +88,18 @@ def create_rs_server_config_yaml():
                 config_data[station][section][rest_of_key] = value
             else:
                 config_data[station][section] = value
+    try:
+        # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL), exist_ok=True)
 
-    # Create the directory if it doesn't exist
-    os.makedirs(os.path.dirname(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL), exist_ok=True)
-
-    # Write the YAML data to the file
-    main_dict = {}
-    main_dict["external_data_sources"] = config_data
-    with open(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL, "w") as yaml_file:
-        yaml.dump(main_dict, yaml_file, default_flow_style=False)
+        # Write the YAML data to the file
+        main_dict = {"external_data_sources": config_data}
+        with open(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL, "w", encoding="utf-8") as yaml_file:
+            yaml.dump(main_dict, yaml_file, default_flow_style=False)
+        logger.info(f"Configuration successfully written to {DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL}")
+    except (OSError, IOError) as e:
+        logger.exception(f"Failed to write configuration to {DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}")
+        raise RuntimeError(f"Failed to write configuration to {DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}") from e
 
 
 @dataclass
@@ -136,14 +139,13 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     authorization: str | None = None
 
 
-def get_station_token(station_id: str | None = None, service: str | None = None, domain: str | None = None) -> str:
+def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str:
     """
     Retrieve and validate an authentication token for a specific station and service.
 
     Args:
-        station_id (Optional[str]): The ID of the station for which the token is requested.
-        service (Optional[str]): The service name for which the token is required.
-        domain (Optional[str]): The domain of the service for which the token is required.
+        external_auth_config (ExternalAuthenticationConfig): The configuration object loaded
+        from the rs-server.yaml file.
 
     Returns:
         str: The token as string.
@@ -152,13 +154,6 @@ def get_station_token(station_id: str | None = None, service: str | None = None,
         HTTPException: If the external authentication configuration cannot be retrieved,
                        if the token request fails, or if the token format is invalid.
     """
-    if station_id and service:
-        external_auth_config = load_external_authentication_config_by_id_service(station_id, service)
-    elif domain:
-        external_auth_config = load_external_auth_config_by_domain(domain)
-    else:
-        raise ValueError("Either station_id and service or domain must be provided.")
-
     if not external_auth_config:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
@@ -226,10 +221,9 @@ def prepare_data(external_auth_config: ExternalAuthenticationConfig) -> Dict[str
         "client_id": external_auth_config.client_id,
         "client_secret": external_auth_config.client_secret,
         "grant_type": external_auth_config.grant_type,
+        "username": external_auth_config.username,
+        "password": external_auth_config.password,
     }
-    if external_auth_config.username and external_auth_config.password:
-        data_to_send["username"] = external_auth_config.username
-        data_to_send["password"] = external_auth_config.password
     if external_auth_config.scope:
         data_to_send["scope"] = external_auth_config.scope
     return data_to_send
@@ -250,7 +244,7 @@ def validate_token_format(token: str) -> None:
         raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Invalid token format received from the station.")
 
 
-def load_external_authentication_config_by_id_service(
+def load_external_auth_config_by_station_service(
     station_id: str,
     service: str,
     path: str | None = None,
@@ -327,13 +321,20 @@ def load_external_auth_config_by_domain(domain: str, path: str | None = None) ->
             # Iterate through the external data sources in the configuration
             for station_id, station_dict in config_yaml.get("external_data_sources", {}).items():
                 if station_dict.get("domain") == domain:
-                    service_dict = station_dict.get("service", {})
-                    return create_external_auth_config(station_id, station_dict, service_dict)
+                    return create_external_auth_config(station_id, station_dict, station_dict.get("service", {}))
 
     except (FileNotFoundError, yaml.YAMLError) as e:
         logger.error(f"Error loading configuration: {e}")
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error loading configuration. {e}",
+        ) from e
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.exception(f"An unexpected error occurred: {e}")
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred. {e}",
+        ) from e
 
     return None
 
@@ -415,7 +416,7 @@ def set_eodag_auth_token(
         Exception: If token retrieval fails for any reason, a general exception will be logged.
     """
     if station_id and service:
-        ext_auth_config = load_external_authentication_config_by_id_service(station_id.lower(), service, path)
+        ext_auth_config = load_external_auth_config_by_station_service(station_id.lower(), service, path)
     elif domain:
         ext_auth_config = load_external_auth_config_by_domain(domain, path)
     else:
@@ -430,9 +431,7 @@ def set_eodag_auth_token(
     # NOTE: the cadip_ws_config should be also configured
     if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", False):
         os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] = get_station_token(
-            ext_auth_config.station_id.lower(),
-            service,
-            domain,
+            ext_auth_config,
         )
     else:
         # use eodag to get the token
