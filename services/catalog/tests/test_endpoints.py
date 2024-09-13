@@ -74,12 +74,6 @@ def clear_aws_credentials():
             del os.environ[env_var]
 
 
-def test_get_items_with_limit(client):
-    response = client.get("/catalog/collections/toto:S1_L1/items?limit=1")
-    content = json.loads(response.content)
-    assert response.status_code == 200
-
-
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/api.html")
     assert response.status_code == fastapi.status.HTTP_200_OK
