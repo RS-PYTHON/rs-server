@@ -134,6 +134,7 @@ def test_valid_endpoint_request_download(
 def test_exception_while_valid_download(
     mocker,
     client,
+    mock_token_validation,
     endpoint,
     filename,
     db_handler,
@@ -159,6 +160,7 @@ def test_exception_while_valid_download(
     Note:
     - The mock responses and patches are used to simulate the external service and control the behavior of the download.
     """
+    mock_token_validation()
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
 
@@ -274,7 +276,14 @@ def test_invalid_endpoint_request(mocker, client, endpoint, db_handler):
         ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CadipDownloadStatus),
     ],
 )
-def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint, filename, db_handler):
+def test_eodag_provider_failure_while_creating_provider(
+    mocker,
+    client,
+    mock_token_validation,
+    endpoint,
+    filename,
+    db_handler,
+):
     """
     Test the system response to an error during EODAG provider creation.
 
@@ -301,6 +310,7 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
         None: This test does not return anything but asserts conditions related to the system's
               response to EODAG provider creation failure.
     """
+    mock_token_validation()
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
 
@@ -344,7 +354,14 @@ def test_eodag_provider_failure_while_creating_provider(mocker, client, endpoint
         ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CadipDownloadStatus),
     ],
 )
-def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, filename, db_handler):
+def test_eodag_provider_failure_while_downloading(
+    mocker,
+    client,
+    mock_token_validation,
+    endpoint,
+    filename,
+    db_handler,
+):
     """
     Test the EODAG providers error handling during a download failure.
 
@@ -373,6 +390,7 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
         None: This function does not return a value. It asserts various conditions to ensure proper error
         handling in the download process.
     """
+    mock_token_validation()
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
     endpoint = f"{endpoint}?product_id=id_1&name={filename}"
@@ -414,7 +432,15 @@ def test_eodag_provider_failure_while_downloading(mocker, client, endpoint, file
         ("/cadip/CADIP/cadu", "CADIP_test_file_eodag.raw", CadipDownloadStatus),
     ],
 )
-def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint, filename, db_handler):
+def test_failure_while_uploading_to_bucket(
+    mocker,
+    monkeypatch,
+    client,
+    mock_token_validation,
+    endpoint,
+    filename,
+    db_handler,
+):
     """
     Test the systems behavior when there is a failure during the upload process to the S3 bucket.
 
@@ -444,6 +470,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint
     Returns:
         None: The function asserts conditions but does not return any value.
     """
+    mock_token_validation()
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
     obs = "s3://some_bucket_info"
@@ -508,6 +535,7 @@ def test_failure_while_uploading_to_bucket(mocker, monkeypatch, client, endpoint
 )
 def test_upload_to_s3(
     client,
+    mock_token_validation,
     endpoint,
     filename,
     db_handler,
@@ -527,6 +555,7 @@ def test_upload_to_s3(
     Raises:
         AssertionError: If the test fails to assert the expected outcomes.
     """
+    mock_token_validation()
     export_aws_credentials()
     s3endpoint = "http://localhost:5010"
     secrets = {"s3endpoint": s3endpoint, "accesskey": None, "secretkey": None, "region": ""}
@@ -623,6 +652,7 @@ def test_upload_to_s3(
 )
 def test_valid_parallel_download(
     client,
+    mock_token_validation,
     endpoint,
     local_filenames,
     db_handler,
@@ -630,6 +660,7 @@ def test_valid_parallel_download(
     """
     Test the parallel behaviour of download endpoint with 3 requests.
     """
+    mock_token_validation()
     # To be added, also check os.environ["EODAG_CFG_DIR"] inside thread
     publication_date = "2023-10-10T00:00:00.111Z"
     # Set the ids of requested files, and their local name
@@ -713,6 +744,7 @@ def test_valid_parallel_download(
 )
 def test_endpoint_request_download_thread_timeout(
     client,
+    mock_token_validation,
     endpoint,
     db_handler,
     mocker,
@@ -732,6 +764,7 @@ def test_endpoint_request_download_thread_timeout(
     Raises:
         AssertionError: If the test fails to assert the expected outcomes.
     """
+    mock_token_validation()
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
     # Add cadip mock server response to eodag download request
