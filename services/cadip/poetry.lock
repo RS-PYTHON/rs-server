@@ -639,13 +639,13 @@ usgs = ["usgs (>=0.3.1)"]
 
 [[package]]
 name = "fastapi"
-version = "0.114.1"
+version = "0.114.2"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi-0.114.1-py3-none-any.whl", hash = "sha256:5d4746f6e4b7dff0b4f6b6c6d5445645285f662fe75886e99af7ee2d6b58bb3e"},
-    {file = "fastapi-0.114.1.tar.gz", hash = "sha256:1d7bbbeabbaae0acb0c22f0ab0b040f642d3093ca3645f8c876b6f91391861d8"},
+    {file = "fastapi-0.114.2-py3-none-any.whl", hash = "sha256:44474a22913057b1acb973ab90f4b671ba5200482e7622816d79105dcece1ac5"},
+    {file = "fastapi-0.114.2.tar.gz", hash = "sha256:0adb148b62edb09e8c6eeefa3ea934e8f276dabc038c5a82989ea6346050c3da"},
 ]
 
 [package.dependencies]
@@ -2087,13 +2087,13 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-keycloak"
-version = "4.3.0"
+version = "4.4.0"
 description = "python-keycloak is a Python package providing access to the Keycloak API."
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "python_keycloak-4.3.0-py3-none-any.whl", hash = "sha256:6dc1e89c38346a90bb4386850381d84fedb489a7dea19d561aaad5882ceeed72"},
-    {file = "python_keycloak-4.3.0.tar.gz", hash = "sha256:c187ceee7d79f0d76d9c2ed26e3d10ce35e42a407896bf5ec15b8fb24fc0c9ce"},
+    {file = "python_keycloak-4.4.0-py3-none-any.whl", hash = "sha256:b7c1e65b2d501ddf924797701d8bd1372f7772ad67532e689456d911e3790ad2"},
+    {file = "python_keycloak-4.4.0.tar.gz", hash = "sha256:f063f4c24f81817c66470b61dbdba5fa5555cc5c236c17a198909ece40482c69"},
 ]
 
 [package.dependencies]
@@ -2243,7 +2243,7 @@ boto3 = "==1.28.85"
 botocore = "==1.31.85"
 cachetools = "^5.5.0"
 eodag = "==3.0.0b3"
-fastapi = "^0.114.1"
+fastapi = "^0.114.2"
 filelock = "^3.15.4"
 httpx = "^0.27.2"
 itsdangerous = "^2.2.0"
@@ -2259,7 +2259,7 @@ orjson = [
 psycopg2 = "^2.9.9"
 pydantic = ">=2.9.1"
 python-dotenv = "^1.0.0"
-python-keycloak = "^4.3.0"
+python-keycloak = "^4.4.0"
 python-logging-loki = "^0.3.1"
 sqlalchemy = "^2.0.34"
 stac-pydantic = "^3.1.2"
