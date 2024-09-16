@@ -58,6 +58,7 @@ TIME_TO_DOWNLOAD_FILES_IN_PARALLEL = 5
 )
 def test_valid_endpoint_request_download(
     client,
+    mock_token_validation,
     endpoint,
     filename,
     target_filename,
@@ -78,6 +79,7 @@ def test_valid_endpoint_request_download(
     Raises:
         AssertionError: If the test fails to assert the expected outcomes.
     """
+    mock_token_validation()
     product_id = "id_1"
     publication_date = "2023-10-10T00:00:00.111Z"
     # Add cadip mock server response to eodag download request

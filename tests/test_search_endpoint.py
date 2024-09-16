@@ -263,7 +263,12 @@ def test_invalid_endpoint_param_station(client):
     ],
 )
 def test_failure_while_creating_retriever(
-    mocker, mock_token_validation, client, endpoint, start, stop,
+    mocker,
+    mock_token_validation,
+    client,
+    endpoint,
+    start,
+    stop,
 ):  # pylint: disable=too-many-arguments
     """
     Tests the failure response of the ADGS / CADIP product search endpoint due to retriever creation errors.
