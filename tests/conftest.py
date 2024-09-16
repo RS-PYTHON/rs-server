@@ -54,6 +54,11 @@ RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
 
+TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
+TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
+TOKEN_CLIENT_SECRET = os.getenv("RSPY_CLIENT_SECRET", "client_secret")
+TOKEN_URL = os.getenv("RSPY_TOKEN_URL", "http://127.0.0.1:5000/oauth2/token")
+
 ##################
 # INITIALISATION #
 ##################
@@ -334,7 +339,7 @@ def set_token_env_var_fixture(monkeypatch):
         envvars = {
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTHORIZATION": "Basic test",
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__ID": "client_id",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
+            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__TOKEN__URL": "\
 http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__AUXIP__ADGS__SERVICE__URL": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
@@ -342,12 +347,12 @@ http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__AUXIP__ADGS__SERVICE__NAME": "auxip",
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTH__TYPE": "oauth2",
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__GRANT__TYPE": "password",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__PASSWORD": "test",
+            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
             "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__SCOPE": "",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__USERNAME": "test",
+            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTHORIZATION": "Basic test",
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__ID": "client_id",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
+            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__TOKEN__URL": "\
 http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__CADIP__INS__SERVICE__URL": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
@@ -355,12 +360,12 @@ http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__CADIP__INS__SERVICE__NAME": "cadip",
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTH__TYPE": "oauth2",
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__GRANT__TYPE": "password",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__PASSWORD": "test",
+            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
             "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__SCOPE": "",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__USERNAME": "test",
+            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTHORIZATION": "Basic test",
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__ID": "client_id",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__SECRET": "client_secret",
+            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__TOKEN__URL": "\
 http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
             "RSPY__TOKEN__CADIP__MPS__SERVICE__URL": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
@@ -368,9 +373,9 @@ http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/toke
             "RSPY__TOKEN__CADIP__MPS__SERVICE__NAME": "cadip",
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTH__TYPE": "oauth2",
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__GRANT__TYPE": "password",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__PASSWORD": "test",
+            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
             "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__SCOPE": "",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__USERNAME": "test",
+            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
         }
         for key, val in envvars.items():
             monkeypatch.setenv(key, val)
@@ -396,12 +401,12 @@ def expected_config_token_file_fixture() -> dict:
                     "auth_type": "oauth2",
                     "authorization": "Basic test",
                     "client_id": "client_id",
-                    "client_secret": "client_secret",
+                    "client_secret": TOKEN_CLIENT_SECRET,
                     "grant_type": "password",
-                    "password": "test",
+                    "password": TOKEN_PASSWORD,
                     "scope": "",
                     "token_url": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
-                    "username": "test",
+                    "username": TOKEN_USERNAME,
                 },
                 "domain": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
                 "service": {
@@ -414,12 +419,12 @@ def expected_config_token_file_fixture() -> dict:
                     "auth_type": "oauth2",
                     "authorization": "Basic test",
                     "client_id": "client_id",
-                    "client_secret": "client_secret",
+                    "client_secret": TOKEN_CLIENT_SECRET,
                     "grant_type": "password",
-                    "password": "test",
+                    "password": TOKEN_PASSWORD,
                     "scope": "",
                     "token_url": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
-                    "username": "test",
+                    "username": TOKEN_USERNAME,
                 },
                 "domain": "mockup-cadip-ins-svc.processing.svc.cluster.local",
                 "service": {
@@ -432,12 +437,12 @@ def expected_config_token_file_fixture() -> dict:
                     "auth_type": "oauth2",
                     "authorization": "Basic test",
                     "client_id": "client_id",
-                    "client_secret": "client_secret",
+                    "client_secret": TOKEN_CLIENT_SECRET,
                     "grant_type": "password",
-                    "password": "test",
+                    "password": TOKEN_PASSWORD,
                     "scope": "",
                     "token_url": "http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
-                    "username": "test",
+                    "username": TOKEN_USERNAME,
                 },
                 "domain": "mockup-cadip-mps-svc.processing.svc.cluster.local",
                 "service": {
@@ -471,12 +476,12 @@ def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig
         service_name=service,
         service_url="http://127.0.0.1:6001",
         auth_type="oauth2",
-        token_url="http://127.0.0.1:6001/oauth2/token",
+        token_url=TOKEN_URL,
         grant_type="password",
-        username="test",
-        password="test",
+        username=TOKEN_USERNAME,
+        password=TOKEN_PASSWORD,
         client_id="client_id",
-        client_secret="client_secret",
+        client_secret=TOKEN_CLIENT_SECRET,
         scope="openid",
         authorization="Basic test",
     )
@@ -499,7 +504,7 @@ def validate_token(mocker):
             mocker.patch(f"rs_server_{service}.api.{service}_download.set_eodag_auth_token", side_effect=None)
         responses.add(
             responses.POST,
-            "http://127.0.0.1:5000/oauth2/token",
+            TOKEN_URL,
             json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
             status=200,
         )

@@ -50,7 +50,7 @@ WRONG_APIKEY = "WRONG_APIKEY"
 CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 
 # Dummy token id
-TOKEN = "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI"
+TOKEN = os.getenv("RSPY_TOKEN", "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI")
 
 logger = Logging.default(__name__)
 
@@ -869,7 +869,7 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
     # The patching is not working ! Spent more than one hour to understand why env_bool function can't be patched
     # Instead, I reached to the solution of setting up the variable directly :(
     mocker.patch("rs_server_common.settings.env_bool", return_value=True)
-    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "on"
+    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "on"  # nosec # safe, verified.
 
     mocker.patch("rs_server_common.authentication_to_external.get_station_token", return_value=TOKEN)
 
@@ -882,7 +882,7 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to False. This will trigger the usage of EODAG for token
     # Same observation with patching the env_bool function, see above
     mocker.patch("rs_server_common.settings.env_bool", return_value=False)
-    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "off"
+    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "off"  # nosec # safe, verified.
 
     mock_set_env = mocker.patch("rs_server_common.authentication_to_external.set_eodag_auth_env")
     # Call the function
@@ -924,7 +924,7 @@ async def test_set_eodag_auth_token_by_domain_success(
     # The patching is not working ! Spent more than one hour to understand why env_bool function can't be patched
     # Instead, I reached to the solution of setting up the variable directly :(
     mocker.patch("rs_server_common.settings.env_bool", return_value=True)
-    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "on"
+    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "on"  # nosec # safe, verified.
 
     mocker.patch("rs_server_common.authentication_to_external.get_station_token", return_value=TOKEN)
 
@@ -937,7 +937,7 @@ async def test_set_eodag_auth_token_by_domain_success(
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to False. This will trigger the usage of EODAG for token
     # Same observation with patching the env_bool function, see above
     mocker.patch("rs_server_common.settings.env_bool", return_value=False)
-    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "off"
+    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "off"  # nosec # safe, verified.
 
     mock_set_env = mocker.patch("rs_server_common.authentication_to_external.set_eodag_auth_env")
     # Call the function
