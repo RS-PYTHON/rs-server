@@ -39,6 +39,7 @@ from rs_server_common import settings
 reload(settings)
 
 import pytest
+import responses
 import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
@@ -479,3 +480,26 @@ def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig
         scope="openid",
         authorization="Basic test",
     )
+
+
+@pytest.fixture(name="mock_token_validation")
+def validate_token(mocker):
+    """Fixture used to mock rs server service that authorize eodag ops."""
+
+    def _validate_token(service: str | None = None):
+        if not service:
+            # If not defined, mock both adgs and cadip
+            mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
+            mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
+        else:
+            # If defined, custom path mock
+            mocker.patch(f"rs_server_{service}.api.{service}_search.set_eodag_auth_token", side_effect=None)
+        responses.add(
+            responses.POST,
+            "http://127.0.0.1:5000/oauth2/token",
+            json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
+            status=200,
+        )
+        return service  # If needed, return the value to be used later in the test
+
+    return _validate_token

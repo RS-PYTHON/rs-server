@@ -91,7 +91,7 @@ from .conftest import (  # pylint: disable=no-name-in-module
 def test_valid_endpoint_request_list(
     expected_products,
     client,
-    mocker,
+    mock_token_validation,
     endpoint,
     db_handler,
     expected_feature,
@@ -103,14 +103,7 @@ def test_valid_endpoint_request_list(
     It checks if the response contains more than one element and verifies that the IDs and names match
     with the expected parameters.
     """
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
+    mock_token_validation()
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2014-01-01T12:00:00.000Z and PublicationDate lt '
@@ -170,7 +163,14 @@ def test_valid_endpoint_request_list(
         ("AUX", "/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
-def test_invalid_endpoint_request(client, mocker, station, endpoint, start, stop):  # pylint: disable=too-many-arguments
+def test_invalid_endpoint_request(
+    client,
+    mock_token_validation,
+    station,
+    endpoint,
+    start,
+    stop,
+):  # pylint: disable=too-many-arguments
     """Test case for validating the behavior of the endpoint when an invalid request is made.
 
     This test activates the 'responses' library to mock a successful response with an empty list.
@@ -178,14 +178,7 @@ def test_invalid_endpoint_request(client, mocker, station, endpoint, start, stop
     """
     # Register ADGS / CADIP responses
     cadip_json_resp: dict = {"responses": []}
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
+    mock_token_validation()
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="PublicationDate gt 2023-01-01T12:00:00.000Z and PublicationDate lt '
@@ -269,7 +262,9 @@ def test_invalid_endpoint_param_station(client):
         ("/adgs/aux/search", "2023-01-01T12:00:00Z", "2024-12-30T12:00:00Z"),
     ],
 )
-def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop):
+def test_failure_while_creating_retriever(
+    mocker, mock_token_validation, client, endpoint, start, stop,
+):  # pylint: disable=too-many-arguments
     """
     Tests the failure response of the ADGS / CADIP product search endpoint due to retriever creation errors.
 
@@ -287,8 +282,7 @@ def test_failure_while_creating_retriever(mocker, client, endpoint, start, stop)
     - Again, sends a GET request to the same endpoint and asserts that the status code is 400.
     """
     # Mock this function to raise an error
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
+    mock_token_validation()
     mocker.patch(
         "rs_server_adgs.api.adgs_search.init_adgs_provider",
         side_effect=CreateProviderFailed("Invalid station"),
@@ -439,7 +433,7 @@ def test_valid_pagination_options(expected_products, client, endpoint, db_handle
 @responses.activate
 def test_valid_sessions_endpoint_request_list(
     client,
-    mocker,
+    mock_token_validation,
     endpoint,
     pickup_point_translated_filter,
     expected_session_id,
@@ -454,13 +448,7 @@ def test_valid_sessions_endpoint_request_list(
         expected_publication_date,
         expected_platform,
     )
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
+    mock_token_validation("cadip")
     # Mock EODAG request to pickup-point as well as the token
     responses.add(
         responses.GET,
@@ -498,17 +486,11 @@ def test_invalid_sessions_endpoint_request(client):
 
 @pytest.mark.unit
 @responses.activate
-def test_valid_search_by_session_id(expected_products, client, mocker):
+def test_valid_search_by_session_id(expected_products, client, mock_token_validation):
     """Test used for searching a file by a given session id or ids."""
     # Test with no parameters
     assert client.get("/cadip/cadip/cadu/search").status_code == status.HTTP_400_BAD_REQUEST
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
+    mock_token_validation("cadip")
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id1"&$top=1000',
@@ -521,12 +503,6 @@ def test_valid_search_by_session_id(expected_products, client, mocker):
     # test that session_id1 is correctly mapped
     assert response.json()["features"][0]["properties"]["cadip:session_id"] == "session_id1"
 
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
     # Test a request with all files from multiple sessions
     responses.add(
         responses.GET,
@@ -541,12 +517,6 @@ def test_valid_search_by_session_id(expected_products, client, mocker):
     assert response.json()["features"][0]["properties"]["cadip:session_id"] == "session_id2"
     assert response.json()["features"][1]["properties"]["cadip:session_id"] == "session_id3"
 
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
     # Nominal case, combined session_id and datetime
     responses.add(
         responses.GET,
@@ -697,7 +667,7 @@ def test_valid_search_by_session_id(expected_products, client, mocker):
 @responses.activate
 def test_expanded_sessions_endpoint_request(
     client,
-    mocker,
+    mock_token_validation,
     odata_request,
     rs_server_request,
     odata_response,
@@ -713,13 +683,7 @@ def test_expanded_sessions_endpoint_request(
 
     Note: Assets are not expanded.
     """
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
+    mock_token_validation("cadip")
     responses.add(
         responses.GET,
         f"http://127.0.0.1:5000/Sessions?$filter={odata_request}",
@@ -734,16 +698,10 @@ def test_expanded_sessions_endpoint_request(
 
 @pytest.mark.unit
 @responses.activate
-def test_cadip_collection(client, mocker):
+def test_cadip_collection(client, mock_token_validation):
     """Test the links from /station/collections/collection-id"""
+    mock_token_validation("cadip")
     sid = "S1A_20240328185208053186"
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Sessions?$filter="Satellite%20in%20S1A"&$top=20&$expand=Files',
@@ -760,16 +718,10 @@ def test_cadip_collection(client, mocker):
 
 @responses.activate
 @pytest.mark.unit
-def test_invalid_cadip_collection(client, mocker):
+def test_invalid_cadip_collection(client, mock_token_validation):
     """Test cases with invalid requests/collections."""
     # Test a correctly configured collection with a bad query.
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
+    mock_token_validation("cadip")
     response = client.get("/cadip/collections/cadip_session_incorrect")
     # Should return an empty collection, but with 200 status.
     assert response.status_code == status.HTTP_200_OK
@@ -832,7 +784,7 @@ def test_landing_pages(client, endpoint):
     ],
 )
 @responses.activate
-def test_collections_landing_page(client, mocker, endpoint, role):
+def test_collections_landing_page(client, mocker, mock_token_validation, endpoint, role):
     """
     Unit test for validating the collections landing page response.
 
@@ -866,13 +818,7 @@ def test_collections_landing_page(client, mocker, endpoint, role):
         new_callable=mocker.PropertyMock,
         return_value=mock_request_state,
     )
-    mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-    responses.add(
-        responses.POST,
-        "http://127.0.0.1:5000/oauth2/token",
-        json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-        status=200,
-    )
+    mock_token_validation("cadip")
     # Mock the pickup response
     responses.add(
         responses.GET,
