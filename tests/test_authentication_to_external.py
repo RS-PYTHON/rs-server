@@ -865,11 +865,8 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
         return_value=ext_auth_config,
     )
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-    # usage of the internal token module
-    # The patching is not working ! Spent more than one hour to understand why env_bool function can't be patched
-    # Instead, I reached to the solution of setting up the variable directly :(
-    mocker.patch("rs_server_common.settings.env_bool", return_value=True)
-    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "on"  # nosec # safe, verified.
+    # usage of the internal token module  for getting the token and setting it to the eodag
+    mocker.patch("rs_server_common.authentication_to_external.env_bool", return_value=True)
 
     mocker.patch("rs_server_common.authentication_to_external.get_station_token", return_value=TOKEN)
 
@@ -879,10 +876,9 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
     # Check if the correct token was set in the environment variable
     assert os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == TOKEN
 
-    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to False. This will trigger the usage of EODAG for token
-    # Same observation with patching the env_bool function, see above
-    mocker.patch("rs_server_common.settings.env_bool", return_value=False)
-    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "off"  # nosec # safe, verified.
+    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
+    # usage of eodag for getting the token and using it
+    mocker.patch("rs_server_common.authentication_to_external.env_bool", return_value=False)
 
     mock_set_env = mocker.patch("rs_server_common.authentication_to_external.set_eodag_auth_env")
     # Call the function
@@ -920,11 +916,8 @@ async def test_set_eodag_auth_token_by_domain_success(
         return_value=ext_auth_config,
     )
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-    # usage of the internal token module
-    # The patching is not working ! Spent more than one hour to understand why env_bool function can't be patched
-    # Instead, I reached to the solution of setting up the variable directly :(
-    mocker.patch("rs_server_common.settings.env_bool", return_value=True)
-    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "on"  # nosec # safe, verified.
+    # usage of the internal token module  for getting the token and setting it to the eodag
+    mocker.patch("rs_server_common.authentication_to_external.env_bool", return_value=True)
 
     mocker.patch("rs_server_common.authentication_to_external.get_station_token", return_value=TOKEN)
 
@@ -934,10 +927,9 @@ async def test_set_eodag_auth_token_by_domain_success(
     # Check if the correct token was set in the environment variable
     assert os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == TOKEN
 
-    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to False. This will trigger the usage of EODAG for token
-    # Same observation with patching the env_bool function, see above
-    mocker.patch("rs_server_common.settings.env_bool", return_value=False)
-    os.environ["RSPY_USE_MODULE_FOR_STATION_TOKEN"] = "off"  # nosec # safe, verified.
+    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
+    # usage of eodag for getting the token and using it
+    mocker.patch("rs_server_common.authentication_to_external.env_bool", return_value=False)
 
     mock_set_env = mocker.patch("rs_server_common.authentication_to_external.set_eodag_auth_env")
     # Call the function
