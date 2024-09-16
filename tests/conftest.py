@@ -185,6 +185,10 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
         monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
         monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
         monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
+        # Mock the creation of ~/.config/rs-server.yaml file in case the CLUSTER_MODE is True
+        # we don't want to actually create the rs-server.yaml file.
+        # All the tests using it should create it  in a temporary directory
+        mocker.patch("rs_server_common.fastapi_app.create_rs_server_config_yaml", side_effect=None)
 
         # Reload the oauth2 module with the cluster info
         reload(oauth2)

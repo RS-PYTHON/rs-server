@@ -42,7 +42,8 @@ from .conftest import export_aws_credentials  # pylint: disable=no-name-in-modul
 RES_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
 S3_FOLDER = osp.join(RES_FOLDER, "s3")
 ENDPOINTS_FOLDER = osp.join(RES_FOLDER, "endpoints")
-TIME_TO_DOWNLOAD_FILE = 10
+TIME_TO_DOWNLOAD_FILE = 5
+SHORTER_TIME_TO_DOWNLOAD_FILE = 1
 TIME_TO_DOWNLOAD_FILES_IN_PARALLEL = 10
 
 
@@ -194,7 +195,7 @@ def test_exception_while_valid_download(
         # send the request
         assert db_handler.get(db, name=filename).status == EDownloadStatus.IN_PROGRESS
         client.get(endpoint)
-        time.sleep(TIME_TO_DOWNLOAD_FILE)
+        time.sleep(SHORTER_TIME_TO_DOWNLOAD_FILE)
         assert db_handler.get(db, name=filename).status == EDownloadStatus.FAILED
         assert db_handler.get(db, name=filename).status_fail_message == "Exception('Error while downloading')"
 
@@ -339,7 +340,7 @@ def test_eodag_provider_failure_while_creating_provider(
         # send the request
         client.get(endpoint)
         # wait for eodag to fail in initialization
-        time.sleep(TIME_TO_DOWNLOAD_FILE)
+        time.sleep(SHORTER_TIME_TO_DOWNLOAD_FILE)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed
@@ -412,7 +413,7 @@ def test_eodag_provider_failure_while_downloading(
         # send the request
         data = client.get(endpoint)
         # wait for eodag to start
-        time.sleep(TIME_TO_DOWNLOAD_FILE)
+        time.sleep(SHORTER_TIME_TO_DOWNLOAD_FILE)
         # After endpoint process this download request, check the db status
         result = db_handler.get(db=db, name=filename)
         # DB Status is set to failed and download started
