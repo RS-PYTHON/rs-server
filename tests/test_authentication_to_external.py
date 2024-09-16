@@ -23,7 +23,7 @@ import pytest
 import responses
 import yaml
 from fastapi import HTTPException
-from rs_server_common.authentication_to_external import (
+from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     create_external_auth_config,
     create_rs_server_config_yaml,
@@ -77,7 +77,7 @@ def test_create_rs_server_config_yaml(
     tmp_config_file = f"{tmp_path.rstrip('/')}/rs-server.yaml"
     # Patch the default config path to point to the temporary file
     mocker.patch(
-        "rs_server_common.authentication_to_external.DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL",
+        "rs_server_common.authentication.authentication_to_external.DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL",
         new=tmp_config_file,
         autospec=False,
     )
@@ -93,7 +93,7 @@ def test_create_rs_server_config_yaml(
 
     # test with a file that can't be created
     mocker.patch(
-        "rs_server_common.authentication_to_external.DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL",
+        "rs_server_common.authentication.authentication_to_external.DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL",
         new="/path/that/doesnt/exist/rs-server.yaml",
         autospec=False,
     )
@@ -341,7 +341,7 @@ def test_load_external_auth_config_by_station_service_yaml_error(mocker, station
         "yaml.safe_load",
         side_effect=yaml.YAMLError,
     )
-    mock_logger = mocker.patch("rs_server_common.authentication_to_external.logger.error")
+    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.error")
     with pytest.raises(HTTPException) as excinfo:
         load_external_auth_config_by_station_service(station_id, "auxip" if station_id == "adgs" else "cadip")
     assert excinfo.value.status_code == 500
@@ -368,7 +368,7 @@ def test_load_external_auth_config_by_station_service_unexpected_exception(mocke
         - Logger logs the exception.
     """
     mocker.patch("builtins.open", side_effect=Exception("Unexpected error"))
-    mock_logger = mocker.patch("rs_server_common.authentication_to_external.logger.exception")
+    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.exception")
     with pytest.raises(HTTPException) as excinfo:
         load_external_auth_config_by_station_service(station_id, "auxip" if station_id == "adgs" else "cadip")
     assert excinfo.value.status_code == 500
@@ -420,7 +420,7 @@ def test_load_external_auth_config_by_station_service_no_matching_service(mocker
         "yaml.safe_load",
         return_value=yaml.safe_load(mock_yaml_content),
     )
-    mock_logger = mocker.patch("rs_server_common.authentication_to_external.logger.warning")
+    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.warning")
     result = load_external_auth_config_by_station_service(station_id, "unknwon_service", "/custom/path")
     assert result is None
     mock_logger.assert_called_once_with(
@@ -466,7 +466,7 @@ def test_load_external_auth_config_by_station_service_no_matching_station(mocker
         "yaml.safe_load",
         return_value=yaml.safe_load(mock_yaml_content),
     )
-    mock_logger = mocker.patch("rs_server_common.authentication_to_external.logger.warning")
+    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.warning")
     result = load_external_auth_config_by_station_service("unknown_station", "known_service", "/custom/path")
     assert result is None
     mock_logger.assert_called_once_with(
@@ -570,7 +570,7 @@ def test_load_external_auth_config_by_domain_yaml_error(mocker):
         "yaml.safe_load",
         side_effect=yaml.YAMLError,
     )
-    mock_logger = mocker.patch("rs_server_common.authentication_to_external.logger.error")
+    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.error")
     with pytest.raises(HTTPException) as excinfo:
         load_external_auth_config_by_domain("domain_test", "/custom/path")
     assert excinfo.value.status_code == 500
@@ -595,7 +595,7 @@ def test_load_external_auth_config_by_domain_unexpected_exception(mocker):
         - Logger logs the exception.
     """
     mocker.patch("builtins.open", side_effect=Exception("Unexpected error"))
-    mock_logger = mocker.patch("rs_server_common.authentication_to_external.logger.exception")
+    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.exception")
     with pytest.raises(HTTPException) as excinfo:
         load_external_auth_config_by_domain("domain_test", "/custom/path")
     assert excinfo.value.status_code == 500
@@ -727,7 +727,7 @@ def test_create_external_auth_config_missing_keys(mocker):
     station_dict = {"authentication": {"auth_type": "token"}}
     service_dict = {"url": "http://rspy_test.net/api"}
 
-    mock_logger = mocker.patch("rs_server_common.authentication_to_external.logger.error")
+    mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.error")
     result = create_external_auth_config("adgs", station_dict, service_dict)
 
     assert result is None
@@ -861,14 +861,14 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
     ext_auth_config = get_external_auth_config
     # Mock the external authentication config loading function
     mocker.patch(
-        "rs_server_common.authentication_to_external.load_external_auth_config_by_station_service",
+        "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
         return_value=ext_auth_config,
     )
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of the internal token module  for getting the token and setting it to the eodag
-    mocker.patch("rs_server_common.authentication_to_external.env_bool", return_value=True)
+    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
 
-    mocker.patch("rs_server_common.authentication_to_external.get_station_token", return_value=TOKEN)
+    mocker.patch("rs_server_common.authentication.authentication_to_external.get_station_token", return_value=TOKEN)
 
     # Call the function
     set_eodag_auth_token(station_id=ext_auth_config.station_id, service=ext_auth_config.service_name)
@@ -878,9 +878,9 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
 
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of eodag for getting the token and using it
-    mocker.patch("rs_server_common.authentication_to_external.env_bool", return_value=False)
+    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=False)
 
-    mock_set_env = mocker.patch("rs_server_common.authentication_to_external.set_eodag_auth_env")
+    mock_set_env = mocker.patch("rs_server_common.authentication.authentication_to_external.set_eodag_auth_env")
     # Call the function
     set_eodag_auth_token(station_id=ext_auth_config.station_id, service=ext_auth_config.service_name)
 
@@ -912,14 +912,14 @@ async def test_set_eodag_auth_token_by_domain_success(
     ext_auth_config = get_external_auth_config
     # Mock the external authentication config loading function
     mocker.patch(
-        "rs_server_common.authentication_to_external.load_external_auth_config_by_domain",
+        "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_domain",
         return_value=ext_auth_config,
     )
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of the internal token module  for getting the token and setting it to the eodag
-    mocker.patch("rs_server_common.authentication_to_external.env_bool", return_value=True)
+    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
 
-    mocker.patch("rs_server_common.authentication_to_external.get_station_token", return_value=TOKEN)
+    mocker.patch("rs_server_common.authentication.authentication_to_external.get_station_token", return_value=TOKEN)
 
     # Call the function
     set_eodag_auth_token(domain=ext_auth_config.domain)
@@ -929,9 +929,9 @@ async def test_set_eodag_auth_token_by_domain_success(
 
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of eodag for getting the token and using it
-    mocker.patch("rs_server_common.authentication_to_external.env_bool", return_value=False)
+    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=False)
 
-    mock_set_env = mocker.patch("rs_server_common.authentication_to_external.set_eodag_auth_env")
+    mock_set_env = mocker.patch("rs_server_common.authentication.authentication_to_external.set_eodag_auth_env")
     # Call the function
     set_eodag_auth_token(domain=ext_auth_config.domain)
 
@@ -969,7 +969,7 @@ def test_set_eodag_auth_token_config_not_found(mocker):
       could not be retrieved.
     """
     mocker.patch(
-        "rs_server_common.authentication_to_external.load_external_auth_config_by_station_service",
+        "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
         return_value=None,
     )
 

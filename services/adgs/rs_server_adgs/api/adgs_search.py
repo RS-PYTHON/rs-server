@@ -31,7 +31,9 @@ from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
 from rs_server_common.authentication.authentication import auth_validator
-from rs_server_common.authentication_to_external import set_eodag_auth_token
+from rs_server_common.authentication.authentication_to_external import (
+    set_eodag_auth_token,
+)
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (

@@ -26,8 +26,10 @@ from fastapi import APIRouter, Depends, FastAPI
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
+from rs_server_common.authentication.authentication_to_external import (
+    create_rs_server_config_yaml,
+)
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
-from rs_server_common.authentication_to_external import create_rs_server_config_yaml
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry

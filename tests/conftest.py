@@ -44,7 +44,9 @@ import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
-from rs_server_common.authentication_to_external import ExternalAuthenticationConfig
+from rs_server_common.authentication.authentication_to_external import (
+    ExternalAuthenticationConfig,
+)
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
