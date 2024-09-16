@@ -38,7 +38,7 @@ adgs:
 
   search:
     type: ODataV4Search
-    api_endpoint: 'http://127.0.0.1:5001/Products'
+    api_endpoint: 'http://127.0.0.1:5000/Products'
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
