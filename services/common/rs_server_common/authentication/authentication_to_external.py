@@ -438,7 +438,9 @@ def set_eodag_auth_token(
         os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] = get_station_token(
             ext_auth_config,
         )
+        logger.debug("Token has been set to eodag")
     else:
         # use eodag to get the token
         # NOTE: the cadip_ws_config should be also configured
+        logger.debug("Let eodag to fetch the token")
         set_eodag_auth_env(ext_auth_config)
