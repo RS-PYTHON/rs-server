@@ -682,7 +682,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     try:
-        set_eodag_auth_token(f"{station.lower()}_session", "cadip")
+        set_eodag_auth_token(f"{station.lower()}", "cadip")
         products = init_cadip_provider(f"{station}_session").search(
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
