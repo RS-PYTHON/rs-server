@@ -25,7 +25,9 @@ import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.utils.exceptions import RequestError
 
-from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
+from .provider import CreateProviderFailed, Provider, TimeRange
+
+# TODO: See TODO invalid token. Import SearchProductFailed if needed
 
 # from fastapi import HTTPException
 
@@ -148,11 +150,15 @@ class EodagProvider(Provider):
                 productType="S1_SAR_RAW" if "adgs" not in self.provider.lower() else "CAMS_GRF_AUX",
                 **kwargs,
             )
-        except RequestError as e:
-            if e.args and "FORBIDDEN" in e.args[0]:
-                raise SearchProductFailed(
-                    f"Can't search provider {self.provider} " "because the used token is not valid",
-                ) from e
+        except RequestError:
+            # except RequestError as e:
+            # TODO invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
+            # Should we handle this specifically by raising an exception, or follow the current approach
+            # where any error results in returning an empty list?
+            # if e.args and "FORBIDDEN" in e.args[0]:
+            #     raise SearchProductFailed(
+            #         f"Can't search provider {self.provider} " "because the used token is not valid",
+            #     ) from e
             # Empty list if something goes wrong in eodag
             return []
 

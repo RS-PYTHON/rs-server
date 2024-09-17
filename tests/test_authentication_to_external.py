@@ -149,6 +149,20 @@ def test_get_station_token(
         get_station_token(ext_auth_config)
     assert f"Could not get the token from the station {ext_auth_config.station_id}" in str(exc.value)
 
+    # Simulate an invalid format of the token response from the authentication service
+    response = {"unexpected_field": TOKEN, "token_type": "Bearer", "expires_in": 3600}
+    responses.add(
+        responses.POST,
+        url=ext_auth_config.token_url,
+        status=HTTP_200_OK,
+        body=json.dumps(response),
+    )
+    with pytest.raises(HTTPException) as exc:
+        get_station_token(ext_auth_config)
+    assert f"The token field was not found in the response from the station {ext_auth_config.station_id}" in str(
+        exc.value,
+    )
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])

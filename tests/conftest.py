@@ -25,7 +25,6 @@ import os.path as osp
 import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
 from pathlib import Path
-from unittest import mock
 
 # We are in local mode (no cluster).
 # Do this before any other imports.
@@ -341,51 +340,50 @@ def set_token_env_var_fixture(monkeypatch):
     Args:
         monkeypatch: Pytest utility for temporarily modifying environment variables.
     """
-    with mock.patch.dict(os.environ, clear=True):
-        envvars = {
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTHORIZATION": "Basic test",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__ID": "client_id",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__TOKEN__URL": "\
+    envvars = {
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTHORIZATION": "Basic test",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__ID": "client_id",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__TOKEN__URL": "\
 http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
-            "RSPY__TOKEN__AUXIP__ADGS__SERVICE__URL": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
-            "RSPY__TOKEN__AUXIP__ADGS__DOMAIN": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
-            "RSPY__TOKEN__AUXIP__ADGS__SERVICE__NAME": "auxip",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTH__TYPE": "oauth2",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__GRANT__TYPE": "password",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__SCOPE": "",
-            "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTHORIZATION": "Basic test",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__ID": "client_id",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__TOKEN__URL": "\
+        "RSPY__TOKEN__AUXIP__ADGS__SERVICE__URL": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__AUXIP__ADGS__DOMAIN": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
+        "RSPY__TOKEN__AUXIP__ADGS__SERVICE__NAME": "auxip",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTH__TYPE": "oauth2",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__GRANT__TYPE": "password",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__SCOPE": "",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTHORIZATION": "Basic test",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__ID": "client_id",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__TOKEN__URL": "\
 http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
-            "RSPY__TOKEN__CADIP__INS__SERVICE__URL": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
-            "RSPY__TOKEN__CADIP__INS__DOMAIN": "mockup-cadip-ins-svc.processing.svc.cluster.local",
-            "RSPY__TOKEN__CADIP__INS__SERVICE__NAME": "cadip",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTH__TYPE": "oauth2",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__GRANT__TYPE": "password",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__SCOPE": "",
-            "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTHORIZATION": "Basic test",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__ID": "client_id",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__TOKEN__URL": "\
+        "RSPY__TOKEN__CADIP__INS__SERVICE__URL": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__CADIP__INS__DOMAIN": "mockup-cadip-ins-svc.processing.svc.cluster.local",
+        "RSPY__TOKEN__CADIP__INS__SERVICE__NAME": "cadip",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTH__TYPE": "oauth2",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__GRANT__TYPE": "password",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__SCOPE": "",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTHORIZATION": "Basic test",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__ID": "client_id",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__TOKEN__URL": "\
 http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
-            "RSPY__TOKEN__CADIP__MPS__SERVICE__URL": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
-            "RSPY__TOKEN__CADIP__MPS__DOMAIN": "mockup-cadip-mps-svc.processing.svc.cluster.local",
-            "RSPY__TOKEN__CADIP__MPS__SERVICE__NAME": "cadip",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTH__TYPE": "oauth2",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__GRANT__TYPE": "password",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__SCOPE": "",
-            "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
-        }
-        for key, val in envvars.items():
-            monkeypatch.setenv(key, val)
-        yield  # restore the environment
+        "RSPY__TOKEN__CADIP__MPS__SERVICE__URL": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__CADIP__MPS__DOMAIN": "mockup-cadip-mps-svc.processing.svc.cluster.local",
+        "RSPY__TOKEN__CADIP__MPS__SERVICE__NAME": "cadip",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTH__TYPE": "oauth2",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__GRANT__TYPE": "password",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__SCOPE": "",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
+    }
+    for key, val in envvars.items():
+        monkeypatch.setenv(key, val)
+    yield  # restore the environment
 
 
 @pytest.fixture(name="expected_config_token_file")
