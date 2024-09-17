@@ -42,7 +42,7 @@ resources:
   staging:
     type: process
     processor:
-      name: HelloWorld
+      name: CADIPStaging
 
 openapi:
   path: /openapi.json

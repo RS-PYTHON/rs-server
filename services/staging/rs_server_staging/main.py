@@ -97,17 +97,17 @@ async def get_resource():
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution")
-async def execute_process(request: dict, resource: str):
+async def execute_process(request: dict, resource: str, collection: str = None, item: str = None):
     """Used to execute processing jobs."""
     job_id = str(uuid.uuid4())  # Generate a unique job ID
-    parameters = request.get("parameters", {})
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
-    processor_name = "HelloWorld"
+    processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        result = processor(parameters)
+        result = processor(request, collection, item)
+        # WIP
 
         # Store job status in TinyDB
         jobs_table.insert({"job_id": job_id, "status": "completedOK"})
