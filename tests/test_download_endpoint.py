@@ -43,7 +43,7 @@ RES_FOLDER = osp.realpath(osp.join(osp.dirname(__file__), "resources"))
 S3_FOLDER = osp.join(RES_FOLDER, "s3")
 ENDPOINTS_FOLDER = osp.join(RES_FOLDER, "endpoints")
 TIME_TO_DOWNLOAD_FILE = 5
-SHORTER_TIME_TO_DOWNLOAD_FILE = 1
+SHORTER_TIME_TO_DOWNLOAD_FILE = 2
 TIME_TO_DOWNLOAD_FILES_IN_PARALLEL = 10
 
 

@@ -27,7 +27,7 @@ from eodag.utils.exceptions import RequestError
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
-# TODO: See TODO invalid token. Import SearchProductFailed if needed
+# TODO: See TODO invalid token. Import 'from .provider SearchProductFailed' if needed
 
 # from fastapi import HTTPException
 
