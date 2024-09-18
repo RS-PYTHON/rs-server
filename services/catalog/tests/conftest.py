@@ -266,6 +266,7 @@ class Feature:
                 "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
                 "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
             ],
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
         }
 
 
@@ -324,6 +325,12 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
             "description": "test_description",
             "stac_version": "1.0.0",
             "owner": "fixture_owner",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
         },
     )
 
