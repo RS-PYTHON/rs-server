@@ -1,14 +1,48 @@
 import asyncio  # for handling asynchronous tasks
 import logging
 import os
+import uuid
+from enum import Enum
 
+import tinydb  # temporary, migrate to psql
 from fastapi import HTTPException  # to handle HTTP 400 errors
+from stac_validator import stac_validator
+
+
+class ProcessorStatus(Enum):
+    QUEUED = "queued"  # Request received, processor will start soon
+    CREATED = "created"  # Processor has been initialised
+    STARTED = "started"  # Processor execution has started
+    IN_PROGRESS = "in_progress"  # Processor execution is in progress
+    STOPPED = "stopped"
+    FAILED = "failed"
+    FINISHED = "finished"
+    PAUSED = "paused"
+    RESUMED = "resumed"
+    CANCELLED = "cancelled"
+
+    # Serialization
+    def __str__(self):
+        return self.value
+
+    @classmethod
+    def to_json(cls, status):
+        if isinstance(status, cls):
+            return status.value
+        raise ValueError("Invalid ProcessorStatus")
+
+    @classmethod
+    def from_json(cls, value):
+        for status in cls:
+            if status.value == value:
+                return status
+        raise ValueError(f"Invalid ProcessorStatus value: {value}")
 
 
 class CADIPStaging:
     BUCKET = os.getenv("RSPY_STORAGE", "s3://test")
 
-    def __init__(self, input_collection: dict, collection: str, item: str, **kwargs):
+    def __init__(self, input_collection: dict, collection: str, item: str, db: tinydb, **kwargs):
         """
         Initialize the CADIPStaging processor with the input collection and catalog details.
 
@@ -17,13 +51,45 @@ class CADIPStaging:
         :param item: The item to process.
         :param kwargs: Additional keyword arguments.
         """
-        self.item_collection = input_collection
-        self.catalog_collection = collection
-        self.catalog_item_name = item
+        #################
+        # Env section
+        self.catalog_url = os.environ.get("RSPY_CATALOG_URL", "http://127.0.0.1:800")  # get catalog href, loopback else
+        #################
+        # Database section
+        self.job_id = str(uuid.uuid4())  # Generate a unique job ID
+        self.progress: int = 0
+        self.status: ProcessorStatus = ProcessorStatus.QUEUED
+        self.tracker: tinydb = db
+        self.create_job_execution()
+        #################
+        # Inputs section
+        self.item_collection: dict = input_collection
+        self.catalog_collection: str = collection
+        self.catalog_item_name: str = item
+        #################
+        # Execution section
 
         # Check the input collection for required fields if validation is not handled elsewhere
         if not self.check_schema_validation():
             self.check_item_collection()
+        # Start execution
+        # self.process_feature()
+
+    def create_job_execution(self):
+        # Create job id and track it
+        self.tracker.insert(
+            {"job_id": self.job_id, "status": ProcessorStatus.to_json(self.status), "progress": self.progress},
+        )
+
+    def log_job_execution(self, status: ProcessorStatus = None, progress: int = None):
+        # Update both runtime and db status and progress
+        self.status = status if status else self.status
+        self.progress = progress if progress else self.progress
+        tiny_job = tinydb.Query()
+        self.tracker.update(
+            {"status": ProcessorStatus.to_json(self.status), "progress": self.progress},
+            tiny_job.job_id == self.job_id,
+        )
 
     def check_schema_validation(self):
         """
@@ -34,7 +100,12 @@ class CADIPStaging:
         """
         # Placeholder: Check if pygeoapi performs validation
         # If Pygeoapi handles validation, return True and skip manual checks.
-        return False
+        # Load the STAC item schema
+
+        stac = stac_validator.StacValidate()
+        stac.validate_item_collection_dict(self.item_collection)
+        self.log_job_execution(status=ProcessorStatus.CREATED if stac.valid else ProcessorStatus.FAILED)
+        return stac.valid
 
     def check_item_collection(self):
         """
