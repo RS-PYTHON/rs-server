@@ -16,7 +16,9 @@
 # pylint: disable=E0401
 
 import os
+from typing import Dict, List, Optional
 
+import stac_pydantic.shared
 from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pydantic import BaseModel
 from pygeoapi.api import API
@@ -37,6 +39,24 @@ class ExecuteRequest(BaseModel):  # pylint: disable = too-few-public-methods
     job_id: str
     parameters: dict
     # Add any other fields you expect in the request body
+
+
+class Feature(BaseModel):
+    # Custom model for RSPY with no restrictions on links and bbox
+    type: str
+    geometry: Optional[dict]
+    properties: Dict[str, str]
+    bbox: Optional[List[int | float]]  # Can be empty for 0.2
+    id: str
+    stac_version: str
+    assets: Dict[str, stac_pydantic.shared.Asset]
+    links: Optional[List[Dict[str, str]]]  # Can be empty for 0.2
+    stac_extensions: List[str]
+
+
+class RSPYFeatureCollection(BaseModel):
+    type: str
+    features: List[Feature]
 
 
 # Initialize a FastAPI application
@@ -96,7 +116,7 @@ async def get_resource():
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution")
-async def execute_process(request: dict, resource: str, collection: str = None, item: str = None):
+async def execute_process(request: RSPYFeatureCollection, resource: str, collection: str = None, item: str = None):
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")

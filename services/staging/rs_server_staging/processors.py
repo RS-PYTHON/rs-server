@@ -5,8 +5,6 @@ import uuid
 from enum import Enum
 
 import tinydb  # temporary, migrate to psql
-from fastapi import HTTPException  # to handle HTTP 400 errors
-from stac_validator import stac_validator
 
 
 class ProcessorStatus(Enum):
@@ -58,7 +56,7 @@ class CADIPStaging:
         # Database section
         self.job_id = str(uuid.uuid4())  # Generate a unique job ID
         self.progress: int = 0
-        self.status: ProcessorStatus = ProcessorStatus.QUEUED
+        self.status: ProcessorStatus = ProcessorStatus.CREATED
         self.tracker: tinydb = db
         self.create_job_execution()
         #################
@@ -69,9 +67,6 @@ class CADIPStaging:
         #################
         # Execution section
 
-        # Check the input collection for required fields if validation is not handled elsewhere
-        if not self.check_schema_validation():
-            self.check_item_collection()
         # Start execution
         # self.process_feature()
 
@@ -90,36 +85,6 @@ class CADIPStaging:
             {"status": ProcessorStatus.to_json(self.status), "progress": self.progress},
             tiny_job.job_id == self.job_id,
         )
-
-    def check_schema_validation(self):
-        """
-        Checks if the input data is validated by Pygeoapi using JSON Schema.
-        If it is, skip manual validation.
-
-        :return: True if schema validation is handled, False otherwise.
-        """
-        # Placeholder: Check if pygeoapi performs validation
-        # If Pygeoapi handles validation, return True and skip manual checks.
-        # Load the STAC item schema
-
-        stac = stac_validator.StacValidate()
-        stac.validate_item_collection_dict(self.item_collection)
-        self.log_job_execution(status=ProcessorStatus.CREATED if stac.valid else ProcessorStatus.FAILED)
-        return stac.valid
-
-    def check_item_collection(self):
-        """
-        Checks the input collection for the presence of all required information.
-        Raises HTTP 400 error if any required information is missing.
-        """
-        if "features" not in self.item_collection or not self.item_collection["features"]:
-            raise HTTPException(status_code=400, detail="Missing required features in item collection")
-
-        for feature in self.item_collection["features"]:
-            if "assets" not in feature or not feature["assets"]:
-                raise HTTPException(status_code=400, detail="Missing required assets in features")
-
-        logging.info("Item collection passed validation.")
 
     async def process_feature(self):
         """
