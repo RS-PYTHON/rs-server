@@ -19,7 +19,7 @@ import os
 from typing import Dict, List, Optional
 
 import stac_pydantic.shared
-from fastapi import APIRouter, FastAPI, HTTPException, Path
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path
 from pydantic import BaseModel
 from pygeoapi.api import API
 from pygeoapi.config import get_config
@@ -116,7 +116,13 @@ async def get_resource():
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution")
-async def execute_process(request: RSPYFeatureCollection, resource: str, collection: str = None, item: str = None):
+async def execute_process(
+    req: Request,
+    feature: RSPYFeatureCollection,
+    resource: str,
+    collection: str = None,
+    item: str = None,
+):
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
@@ -124,7 +130,7 @@ async def execute_process(request: RSPYFeatureCollection, resource: str, collect
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        return processor(request, collection, item, jobs_table)
+        return processor(req, feature, collection, item, jobs_table)
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 

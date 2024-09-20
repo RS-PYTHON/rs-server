@@ -3,8 +3,11 @@ import logging
 import os
 import uuid
 from enum import Enum
+from typing import Any
 
+import requests
 import tinydb  # temporary, migrate to psql
+from starlette.datastructures import Headers
 
 
 class ProcessorStatus(Enum):
@@ -40,7 +43,7 @@ class ProcessorStatus(Enum):
 class CADIPStaging:
     BUCKET = os.getenv("RSPY_STORAGE", "s3://test")
 
-    def __init__(self, input_collection: dict, collection: str, item: str, db: tinydb, **kwargs):
+    def __init__(self, credentials: Headers, input_collection: Any, collection: str, item: str, db: tinydb, **kwargs):
         """
         Initialize the CADIPStaging processor with the input collection and catalog details.
 
@@ -49,6 +52,10 @@ class CADIPStaging:
         :param item: The item to process.
         :param kwargs: Additional keyword arguments.
         """
+        #################
+        # Locals
+        self.headers = credentials
+        self.stream_list: list = []
         #################
         # Env section
         self.catalog_url = os.environ.get("RSPY_CATALOG_URL", "http://127.0.0.1:800")  # get catalog href, loopback else
@@ -66,7 +73,7 @@ class CADIPStaging:
         self.catalog_item_name: str = item
         #################
         # Execution section
-
+        self.check_catalog()
         # Start execution
         # self.process_feature()
 
@@ -150,18 +157,20 @@ class CADIPStaging:
         logging.info("Creating STAC ItemCollection from created items.")
         return {"type": "FeatureCollection", "features": created_items}
 
-    def in_catalog(self, feature):
-        """
-        Checks if a feature exists in the RS catalog.
+    def check_catalog(self):
+        # Get each asset id and create /catalog/search argument
+        # Note, only for GET, to be updated and create request body for POST
+        ids_string = "ids=" + ", ".join(
+            key for feature in self.item_collection.features for key in feature.assets.keys()
+        )
+        search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search?{ids_string}"
+        # forward apikey to access catalog
+        self.create_streaming_list(requests.get(search_url, headers=self.headers, timeout=3).json())
 
-        :param feature: The feature to check.
-        :return: True if the feature is in the catalog, False otherwise.
-        """
-        logging.info(f"Checking if feature {feature['id']} is in the catalog...")
-        # Placeholder for catalog search logic
-        # from rs-server-catalog import search?
-        # return search(feature)
-        return False  # Assuming it is not in the catalog for now.
+    def create_streaming_list(self, catalog_response: dict):
+        # Based on catalog response, pop out assets already in catalog
+        self.stream_list = []
+        pass
 
     def __repr__(self):
         """Returns a string representation of the CADIPStaging processor."""
