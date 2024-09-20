@@ -61,7 +61,8 @@ class CADIPStaging:
         #################
         # Env section
         self.catalog_url = os.environ.get(
-            "RSPY_CATALOG_URL", "http://127.0.0.1:8003",
+            "RSPY_CATALOG_URL",
+            "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
         #################
         # Database section
@@ -187,12 +188,11 @@ class CADIPStaging:
                 # request.post('RS-server/download/feature/../, data=self.item_collection, headers=self.headers)
             else:
                 # Do the difference, call rs-server-download only with features to be downloaded
-                already_downloaded_features = stac_pydantic.ItemCollection(
-                    id="in-memory",  # Replace with your desired collection ID
-                    features=[stac_pydantic.Item(**feature) for feature in catalog_response["features"]],
-                )
-                ids2 = {item.id for item in already_downloaded_features.features}
-                not_downloaded_features = [item for item in self.item_collection.features if item.id not in ids2]
+                # Extract IDs from the catalog response directly
+                already_downloaded_ids = {feature["id"] for feature in catalog_response["features"]}
+                not_downloaded_features = [
+                    item for item in self.item_collection.features if item.id not in already_downloaded_ids
+                ]
                 # request.post('RS-server/download/feature/../, data=not_downloaded_features, headers=self.headers)
                 pass
 
