@@ -199,6 +199,10 @@ class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
         result = add_user_prefix("/collections/toto_joplin/items", "toto", "joplin")
         assert result == "/catalog/collections/toto:joplin/items"
 
+    def test_add_prefix_replace_user_with_queryables(self):
+        result = add_user_prefix("/collections/toto_joplin/queryables", "toto", "joplin")
+        assert result == "/catalog/collections/toto:joplin/queryables"
+
     def test_does_nothing_if_url_not_found(self):
         assert add_user_prefix("/NOT/FOUND", "toto", "joplin") == "/NOT/FOUND"
 

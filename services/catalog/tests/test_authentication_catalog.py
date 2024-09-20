@@ -31,6 +31,7 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest_utils import mock_oauth2
 from starlette.status import (
     HTTP_200_OK,
+    HTTP_201_CREATED,
     HTTP_302_FOUND,
     HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
@@ -230,7 +231,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             "title": "Queryables",
             "href": "http://testserver/catalog/queryables",
             "method": "GET",
-            "auth:refs": ["apikey", "openid", "oauth2"],
+            **AUTHENT_REF,
         },
         {
             "rel": "child",
@@ -319,7 +320,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         **COMMON_FIELDS,
     }
     post_response = client.post("/catalog/collections", json=pyteam_collection, **header)
-    assert post_response.status_code == HTTP_200_OK
+    assert post_response.status_code == HTTP_201_CREATED
     valid_collections = [
         {
             "id": "toto_S1_L1",
@@ -359,6 +360,13 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                    "type": "application/schema+json",
+                    "title": "Queryables",
+                    "href": "http://testserver/catalog/collections/toto:S1_L1/queryables",
                     **AUTHENT_REF,
                 },
             ],
@@ -405,6 +413,13 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
                     "title": "public domain",
                     **AUTHENT_REF,
                 },
+                {
+                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                    "type": "application/schema+json",
+                    "title": "Queryables",
+                    "href": "http://testserver/catalog/collections/toto:S2_L3/queryables",
+                    **AUTHENT_REF,
+                },
             ],
             "owner": "toto",
             **COMMON_FIELDS,
@@ -449,6 +464,13 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
                     "title": "public domain",
                     **AUTHENT_REF,
                 },
+                {
+                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                    "type": "application/schema+json",
+                    "title": "Queryables",
+                    "href": "http://testserver/catalog/collections/titi:S2_L1/queryables",
+                    **AUTHENT_REF,
+                },
             ],
             "owner": "titi",
             **COMMON_FIELDS,
@@ -458,39 +480,46 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
             "type": "Collection",
             "links": [
                 {
-                    "href": "http://testserver/catalog/collections/pyteam:S1_L1/items",
                     "rel": "items",
                     "type": "application/geo+json",
+                    "href": "http://testserver/catalog/collections/pyteam:S1_L1/items",
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/",
                     "rel": "parent",
                     "type": "application/json",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/",
                     "rel": "root",
                     "type": "application/json",
+                    "href": "http://testserver/catalog/",
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "http://testserver/catalog/collections/pyteam:S1_L1",
                     "rel": "self",
                     "type": "application/json",
+                    "href": "http://testserver/catalog/collections/pyteam:S1_L1",
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "http://localhost:8082/catalog/collections/pyteam:S1_L1/items/",
                     "rel": "items",
+                    "href": "http://localhost:8082/catalog/collections/pyteam:S1_L1/items/",
                     "type": "application/geo+json",
                     **AUTHENT_REF,
                 },
                 {
-                    "href": "https://creativecommons.org/licenses/publicdomain/",
                     "rel": "license",
+                    "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                    "type": "application/schema+json",
+                    "title": "Queryables",
+                    "href": "http://testserver/catalog/collections/pyteam:S1_L1/queryables",
                     **AUTHENT_REF,
                 },
             ],
@@ -541,6 +570,13 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                    "type": "application/schema+json",
+                    "title": "Queryables",
+                    "href": "http://testserver/catalog/collections/pyteam:S2_L1/queryables",
                     **AUTHENT_REF,
                 },
             ],
@@ -627,6 +663,13 @@ class TestAuthenticationGetOneCollection:
                     "rel": "license",
                     "href": "https://creativecommons.org/licenses/publicdomain/",
                     "title": "public domain",
+                    **AUTHENT_REF,
+                },
+                {
+                    "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+                    "type": "application/schema+json",
+                    "title": "Queryables",
+                    "href": f"http://testserver/catalog/collections/{user}:S1_L1/queryables",
                     **AUTHENT_REF,
                 },
             ],
@@ -852,7 +895,7 @@ class TestAuthenticationPostOneCollection:
     }
 
     @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
-    async def test_http200_with_good_authentication(
+    async def test_http201_with_good_authentication(
         self,
         mocker,
         httpx_mock: HTTPXMock,
@@ -876,7 +919,7 @@ class TestAuthenticationPostOneCollection:
             json=self.collection_to_post,
             **header,
         )
-        assert response.status_code == HTTP_200_OK
+        assert response.status_code == HTTP_201_CREATED
 
         # Delete the created collections so we're back to the initial test state
         assert client.delete(
@@ -1450,6 +1493,12 @@ class TestAuthenticationDelete:
                 "description": "test_description",
                 "stac_version": "1.0.0",
                 "owner": "pyteam",
+                "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+                "license": "public-domain",
+                "extent": {
+                    "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                    "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+                },
             }
 
             response = client.request(
@@ -1458,7 +1507,7 @@ class TestAuthenticationDelete:
                 json=new_collection,
                 **header,
             )
-            assert response.status_code == HTTP_200_OK
+            assert response.status_code == HTTP_201_CREATED
 
         # request the endpoint by using "user:collection"
         response = client.request(
@@ -1555,7 +1604,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
     }
 
     @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
-    async def test_http200_with_good_authentication(
+    async def test_http201_with_good_authentication(
         self,
         mocker,
         httpx_mock: HTTPXMock,
@@ -1579,7 +1628,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
             **header,
         )
         # check if the item was well added to the collection
-        assert response.status_code == HTTP_200_OK
+        assert response.status_code == HTTP_201_CREATED
         # delete the item, don't change the collection, because it is used
         # by other tests also
         response = client.request(
