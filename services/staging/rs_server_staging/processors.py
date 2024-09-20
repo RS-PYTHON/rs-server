@@ -1,4 +1,5 @@
 import asyncio  # for handling asynchronous tasks
+import json
 import logging
 import os
 import uuid
@@ -6,6 +7,7 @@ from enum import Enum
 from typing import Any
 
 import requests
+import stac_pydantic
 import tinydb  # temporary, migrate to psql
 from starlette.datastructures import Headers
 
@@ -58,7 +60,9 @@ class CADIPStaging:
         self.stream_list: list = []
         #################
         # Env section
-        self.catalog_url = os.environ.get("RSPY_CATALOG_URL", "http://127.0.0.1:800")  # get catalog href, loopback else
+        self.catalog_url = os.environ.get(
+            "RSPY_CATALOG_URL", "http://127.0.0.1:8003",
+        )  # get catalog href, loopback else
         #################
         # Database section
         self.job_id = str(uuid.uuid4())  # Generate a unique job ID
@@ -160,17 +164,37 @@ class CADIPStaging:
     def check_catalog(self):
         # Get each asset id and create /catalog/search argument
         # Note, only for GET, to be updated and create request body for POST
-        ids_string = "ids=" + ", ".join(
-            key for feature in self.item_collection.features for key in feature.assets.keys()
-        )
-        search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search?{ids_string}"
+        ids = [feature.id for feature in self.item_collection.features]
+        # Creating the filter string
+        filter_string = "id IN ({})".format(", ".join(["'{}'".format(id_) for id_ in ids]))
+
+        # Final filter object
+        filter_object = {"filter-lang": "cql2-text", "filter": filter_string}
+
+        search_url = f"{self.catalog_url}/catalog/search"
         # forward apikey to access catalog
-        self.create_streaming_list(requests.get(search_url, headers=self.headers, timeout=3).json())
+        # self.create_streaming_list(requests.get(search_url, headers=self.headers, params=filter_object, timeout=3).json())
+        # not right now
+        self.create_streaming_list(requests.get(search_url, params=json.dumps(filter_object), timeout=3).json())
 
     def create_streaming_list(self, catalog_response: dict):
         # Based on catalog response, pop out assets already in catalog
-        self.stream_list = []
-        pass
+        if catalog_response["context"]["returned"] == len(self.item_collection.features):
+            self.stream_list = []
+        else:
+            if not catalog_response["features"]:
+                pass  # No search result found, process everything from self.item_collection
+                # request.post('RS-server/download/feature/../, data=self.item_collection, headers=self.headers)
+            else:
+                # Do the difference, call rs-server-download only with features to be downloaded
+                already_downloaded_features = stac_pydantic.ItemCollection(
+                    id="in-memory",  # Replace with your desired collection ID
+                    features=[stac_pydantic.Item(**feature) for feature in catalog_response["features"]],
+                )
+                ids2 = {item.id for item in already_downloaded_features.features}
+                not_downloaded_features = [item for item in self.item_collection.features if item.id not in ids2]
+                # request.post('RS-server/download/feature/../, data=not_downloaded_features, headers=self.headers)
+                pass
 
     def __repr__(self):
         """Returns a string representation of the CADIPStaging processor."""
