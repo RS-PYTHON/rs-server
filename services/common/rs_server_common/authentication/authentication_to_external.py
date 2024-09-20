@@ -426,8 +426,8 @@ def set_eodag_auth_token(
         # TODO: This part of the code has to be deleted after the cadip_ws_config(_token_module) files
         # will be modified. The parameters from the cadip_session sections (ins, mti...) should replace those params
         # from cadip sections (ins, mti...)
-        if session in station_id:
-            station_id = station_id.strip("_session")
+        if "_session" in station_id:
+            station_id = station_id.replace("_session", "")
             session = "_session"
         ext_auth_config = load_external_auth_config_by_station_service(station_id.lower(), service, path)
     elif domain:
