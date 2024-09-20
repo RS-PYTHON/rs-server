@@ -420,7 +420,15 @@ def set_eodag_auth_token(
         ValueError: If the station_id is None or an empty string.
         Exception: If token retrieval fails for any reason, a general exception will be logged.
     """
+    session = ""
     if station_id and service:
+        # check if the station_id has 'session', this is a particular case for cadip
+        # TODO: This part of the code has to be deleted after the cadip_ws_config(_token_module) files
+        # will be modified. The parameters from the cadip_session sections (ins, mti...) should replace those params
+        # from cadip sections (ins, mti...)
+        if session in station_id:
+            station_id = station_id.strip("_session")
+            session = "_session"
         ext_auth_config = load_external_auth_config_by_station_service(station_id.lower(), service, path)
     elif domain:
         ext_auth_config = load_external_auth_config_by_domain(domain, path)
@@ -432,6 +440,7 @@ def set_eodag_auth_token(
             status_code=HTTP_404_NOT_FOUND,
             detail="Could not retrieve the configuration for the station token.",
         )
+    ext_auth_config.station_id = ext_auth_config.station_id + session
     # call the module implemented for rspy-352
     # NOTE: the cadip_ws_config should be also configured
     if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", False):
