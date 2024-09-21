@@ -4,11 +4,12 @@ import logging
 import os
 import uuid
 from enum import Enum
+from functools import wraps
 from typing import Any
 
 import requests
-import stac_pydantic
 import tinydb  # temporary, migrate to psql
+from fastapi import HTTPException
 from starlette.datastructures import Headers
 
 
@@ -42,8 +43,28 @@ class ProcessorStatus(Enum):
         raise ValueError(f"Invalid ProcessorStatus value: {value}")
 
 
-class CADIPStaging:
+def check_status(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if self.status == ProcessorStatus.FAILED:
+            raise HTTPException(detail=f"Cannot perform {func}, processor status is FAILED.", status_code=200)
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
+
+class MethodWrapperMeta(type):
+    def __new__(cls, name, bases, attrs):
+        # Wrap all callable attributes with check_status, to
+        for attr_name, attr_value in attrs.items():
+            if callable(attr_value):
+                attrs[attr_name] = check_status(attr_value)
+        return super().__new__(cls, name, bases, attrs)
+
+
+class CADIPStaging:  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
     BUCKET = os.getenv("RSPY_STORAGE", "s3://test")
+    status: ProcessorStatus = ProcessorStatus.QUEUED
 
     def __init__(self, credentials: Headers, input_collection: Any, collection: str, item: str, db: tinydb, **kwargs):
         """
@@ -64,11 +85,14 @@ class CADIPStaging:
             "RSPY_CATALOG_URL",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
+        self.download_url = os.environ.get(
+            "RSPY_RS_SERVER_CADIP_URL",
+            "http://127.0.0.1:8000",
+        )  # get catalog href, loopback else
         #################
         # Database section
         self.job_id = str(uuid.uuid4())  # Generate a unique job ID
         self.progress: int = 0
-        self.status: ProcessorStatus = ProcessorStatus.CREATED
         self.tracker: tinydb = db
         self.create_job_execution()
         #################
@@ -76,11 +100,14 @@ class CADIPStaging:
         self.item_collection: dict = input_collection
         self.catalog_collection: str = collection
         self.catalog_item_name: str = item
-        #################
+
+    def execute(self):
+        self.log_job_execution(ProcessorStatus.CREATED)
         # Execution section
         self.check_catalog()
         # Start execution
-        # self.process_feature()
+        self.process_rspy_features()
+        # self.publish_rspy_feature(self.item_collection.features[0])
 
     def create_job_execution(self):
         # Create job id and track it
@@ -97,6 +124,8 @@ class CADIPStaging:
             {"status": ProcessorStatus.to_json(self.status), "progress": self.progress},
             tiny_job.job_id == self.job_id,
         )
+
+    """Template functions"""
 
     async def process_feature(self):
         """
@@ -162,6 +191,8 @@ class CADIPStaging:
         logging.info("Creating STAC ItemCollection from created items.")
         return {"type": "FeatureCollection", "features": created_items}
 
+    """End of template"""
+
     def check_catalog(self):
         # Get each asset id and create /catalog/search argument
         # Note, only for GET, to be updated and create request body for POST
@@ -173,28 +204,74 @@ class CADIPStaging:
         filter_object = {"filter-lang": "cql2-text", "filter": filter_string}
 
         search_url = f"{self.catalog_url}/catalog/search"
-        # forward apikey to access catalog
-        # self.create_streaming_list(requests.get(search_url, headers=self.headers, params=filter_object, timeout=3).json())
-        # not right now
-        self.create_streaming_list(requests.get(search_url, params=json.dumps(filter_object), timeout=3).json())
+        try:
+            # forward apikey to access catalog
+            # requests.get(search_url, headers=self.headers, params=filter_object, timeout=3).json()
+            # not right now
+            response = requests.get(search_url, params=json.dumps(filter_object), timeout=3)
+            response.raise_for_status()  # Raise an error for HTTP error responses
+            self.create_streaming_list(response.json())
+        except (
+            requests.exceptions.HTTPError,
+            requests.exceptions.Timeout,
+            requests.exceptions.RequestException,
+            requests.exceptions.ConnectionError,
+            json.JSONDecodeError,
+        ) as e:
+            # logger.error here soon
+            self.log_job_execution(ProcessorStatus.FAILED)
 
     def create_streaming_list(self, catalog_response: dict):
-        # Based on catalog response, pop out assets already in catalog
+        # Based on catalog response, pop out assets already in catalog and prepare rest for download
         if catalog_response["context"]["returned"] == len(self.item_collection.features):
             self.stream_list = []
         else:
             if not catalog_response["features"]:
-                pass  # No search result found, process everything from self.item_collection
-                # request.post('RS-server/download/feature/../, data=self.item_collection, headers=self.headers)
+                # No search result found, process everything from self.item_collection
+                self.stream_list = self.item_collection.features
             else:
                 # Do the difference, call rs-server-download only with features to be downloaded
                 # Extract IDs from the catalog response directly
                 already_downloaded_ids = {feature["id"] for feature in catalog_response["features"]}
+                # Select only features whose IDs have not already been downloaded (returned in /search)
                 not_downloaded_features = [
                     item for item in self.item_collection.features if item.id not in already_downloaded_ids
                 ]
-                # request.post('RS-server/download/feature/../, data=not_downloaded_features, headers=self.headers)
-                pass
+                self.stream_list = not_downloaded_features
+
+    def process_rspy_features(self):
+        self.log_job_execution(ProcessorStatus.IN_PROGRESS)
+        # foreach feature in streaming_list, async start download, and check progress
+        # request.post('RS-server/download/feature/../, data=self.stream_list.idx, headers=self.headers)
+        stream_url = f"{self.download_url}/cadip/streaming"
+        for feature in self.stream_list:
+            try:
+                response = requests.post(stream_url, data=feature.json(), timeout=3)
+            except (
+                requests.exceptions.HTTPError,
+                requests.exceptions.Timeout,
+                requests.exceptions.RequestException,
+                requests.exceptions.ConnectionError,
+                json.JSONDecodeError,
+            ) as e:
+                # logger.error here soon
+                self.log_job_execution(ProcessorStatus.FAILED)
+
+    def publish_rspy_feature(self, feature: dict):
+        publish_url = f"{self.catalog_url}/catalog/collections/test_owner:test_collection/items"
+        try:
+            response = requests.post(publish_url, data=feature.json(), timeout=3)
+            response.raise_for_status()  # Raise an error for HTTP error responses
+            self.create_streaming_list(response.json())
+        except (
+            requests.exceptions.HTTPError,
+            requests.exceptions.Timeout,
+            requests.exceptions.RequestException,
+            requests.exceptions.ConnectionError,
+            json.JSONDecodeError,
+        ) as e:
+            # logger.error here soon
+            self.log_job_execution(ProcessorStatus.FAILED)
 
     def __repr__(self):
         """Returns a string representation of the CADIPStaging processor."""

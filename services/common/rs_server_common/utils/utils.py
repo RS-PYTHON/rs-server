@@ -502,6 +502,9 @@ def create_stac_collection(
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
         item = stac_pydantic.Item(**feature_tmp)
+        # Add a default bbox and geometry, since L0 chunks items are not geo-located.
+        item.bbox = [-10, 50, -5, 55]
+        item.geometry = {"type": "Polygon", "coordinates": [[[-10, 50], [-10, 55], [-5, 55], [-5, 50], [-10, 50]]]}
         items.append(item)
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
 

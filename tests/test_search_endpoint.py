@@ -578,7 +578,11 @@ def test_valid_search_by_session_id(expected_products, client):
                         "stac_extensions": ["https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"],
                         "type": "Feature",
                         "id": "S2B_20231117033237234567",
-                        "geometry": None,
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [[[-10, 50], [-10, 55], [-5, 55], [-5, 50], [-10, 50]]],
+                        },
+                        "bbox": [-10, 50, -5, 55],
                         "properties": {
                             "start_datetime": "2023-11-17T06:05:37.234000+00:00",
                             "datetime": "2023-11-17T06:05:37.234000+00:00",

@@ -24,6 +24,7 @@ from pathlib import Path
 from threading import Event
 from typing import Annotated
 
+import stac_pydantic
 from fastapi import APIRouter, Depends
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
@@ -41,6 +42,7 @@ from rs_server_common.utils.utils import (
     eodag_download,
     update_db,
 )
+from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from sqlalchemy.orm import Session
 
 router = APIRouter(tags=cadip_tags)
@@ -161,3 +163,28 @@ def download_products(
         return JSONResponse(status_code=status.HTTP_408_REQUEST_TIMEOUT, content={"started": "false"})
 
     return JSONResponse(status_code=status.HTTP_200_OK, content={"started": "true"})
+
+
+@router.get("/cadip/streaming")
+@auth_validator(station="cadip", access_type="download")
+def streaming_download(request: Request, feature: stac_pydantic.Item):
+    provider = init_cadip_provider("cadip")  # how to set station here?
+    for asset_name, asset in feature.assets.items():
+        cadip_id = asset.model_dump().get('cadip:id')
+        eop = provider.create_eodag_product(cadip_id, asset_name)
+        product_url = eop.properties.get('downloadLink')
+        # still need credentials :(
+        import pdb
+        pdb.set_trace()
+        """
+        try:
+            with requests.get(product_url, stream=True) as response:
+                response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
+
+                # Upload the streamed data to S3
+                s3_client.upload_fileobj(response.raw, s3_bucket, s3_key)
+
+                print(f'Successfully uploaded to s3://{s3_bucket}/{s3_key}')
+        except (requests.exceptions.RequestException, NoCredentialsError, PartialCredentialsError) as e:
+            print(f"Failed to upload to S3: {e}")
+        """
