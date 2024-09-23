@@ -103,20 +103,23 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         self.catalog_collection: str = collection
         self.catalog_item_name: str = item
 
-    def execute(self):
+    async def execute(self):
         self.log_job_execution(ProcessorStatus.CREATED)
         # Execution section
         self.check_catalog()
         # Start execution
+        # Connecto to loop since execute() is not async
         loop = asyncio.get_event_loop()
         if loop.is_running():
             # If the loop is running, schedule the async function
-            asyncio.create_task(self.process_rspy_features())
+            await asyncio.create_task(self.process_rspy_features())
+            [self.publish_rspy_feature(feature) for feature in self.stream_list]
         else:
             # If the loop is not running, run it until complete
             loop.run_until_complete(self.process_rspy_features())
+            [self.publish_rspy_feature(feature) for feature in self.stream_list]
 
-        # [self.publish_rspy_feature(feature) for feature in self.stream_list]
+        return "Succes"
 
     def create_job_execution(self):
         # Create job id and track it
@@ -134,76 +137,8 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
             tiny_job.job_id == self.job_id,
         )
 
-    """Template functions"""
-
-    async def process_feature(self):
-        """
-        Processes each feature in the input collection, downloading assets for features
-        not already in the catalog, and then creating an item in the catalog.
-
-        This function tracks the progress and sets the job to 100% when all items are processed.
-        """
-        task_progress = 0
-        total_items = len(self.item_collection["features"])
-        created_items = []
-
-        for feature in self.item_collection["features"]:
-            if not self.in_catalog(feature):
-                for asset in feature["assets"]:
-                    await self.download(asset)
-                    task_progress += 100 / total_items / len(feature["assets"])
-                    logging.info(f"Task progress: {task_progress:.2f}%")
-
-                # Create an item in the catalog using provided metadata
-                created_items.append(self.create_catalog_item(feature))
-
-        # Set job progress to 100% once all items are processed
-        task_progress = 100
-        logging.info(f"Task completed. Progress set to {task_progress}%.")
-
-        # Return a STAC ItemCollection containing created items
-        return self.create_stac_item_collection(created_items)
-
-    async def download(self, asset: dict):
-        """
-        Download the asset using streaming to the catalog bucket.
-
-        :param asset: The asset metadata to download.
-        """
-        # from rs-server.cadip.download import StreamDownload
-        # StreamDownload(asset, BUCKET_LOC)
-
-        logging.info(f"Downloading asset {asset['href']} to {self.BUCKET}...")
-        # Simulating streaming download
-        await asyncio.sleep(1)  # Simulate asynchronous download
-        logging.info(f"Download complete for asset {asset['href']}.")
-
-    def create_catalog_item(self, feature):
-        """
-        Creates a catalog item using the provided STAC item metadata.
-
-        :param feature: The feature to be added to the catalog.
-        :return: The created catalog item.
-        """
-        logging.info(f"Creating catalog item for feature {feature['id']}...")
-        # Placeholder for catalog item creation logic
-        # This would likely involve an API call to publish the item.
-        return feature
-
-    def create_stac_item_collection(self, created_items: list):
-        """
-        Creates a STAC ItemCollection from a list of created items.
-
-        :param created_items: The list of items created.
-        :return: A STAC ItemCollection object.
-        """
-        logging.info("Creating STAC ItemCollection from created items.")
-        return {"type": "FeatureCollection", "features": created_items}
-
-    """End of template"""
-
     def check_catalog(self):
-        # Get each asset id and create /catalog/search argument
+        # Get each feature id and create /catalog/search argument
         # Note, only for GET, to be updated and create request body for POST
         ids = [feature.id for feature in self.item_collection.features]
         # Creating the filter string
@@ -231,7 +166,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
             self.log_job_execution(ProcessorStatus.FAILED)
 
     def create_streaming_list(self, catalog_response: dict):
-        # Based on catalog response, pop out assets already in catalog and prepare rest for download
+        # Based on catalog response, pop out features already in catalog and prepare rest for download
         if catalog_response["context"]["returned"] == len(self.item_collection.features):
             self.stream_list = []
         else:
@@ -269,12 +204,11 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
             return None
 
     async def process_rspy_features(self):
+        # Process each feature, by starting streaming download of its assets to final bucket
         self.log_job_execution(ProcessorStatus.IN_PROGRESS)
         stream_url = f"{self.download_url}/cadip/streaming"
 
-        total_assets_to_be_processed = len(self.stream_list)
-        for feature in self.stream_list:
-            total_assets_to_be_processed *= len(feature.assets)
+        total_assets_to_be_processed = sum(len(feature.assets) for feature in self.stream_list)
 
         async with aiohttp.ClientSession() as session:
             tasks = []
@@ -283,19 +217,20 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
                     # fixmeee 1 how asset should be passed in order to be jsonified
                     tasks.append(self.make_request(session, {asset_name: asset_content.json()}, stream_url))
 
-            for index, future in enumerate(asyncio.as_completed(tasks)):
-                response = await future
+            for index, asset in enumerate(asyncio.as_completed(tasks)):
+                response = await asset
                 if response:
                     self.progress = ((index + 1) / total_assets_to_be_processed) * 100
                     # Successfully processed feature
-                    print(f"Successfully processed feature, progress: {self.progress}")
+                    print(f"Successfully processed asset, progress: {self.progress}")
                 else:
                     # If the result is None, it means the request failed
-                    print(f"Failed to process feature")
+                    print(f"Failed to process asset")
         # Update status once all features are processed
         self.log_job_execution(ProcessorStatus.FINISHED)
 
     def publish_rspy_feature(self, feature: dict):
+        # Publish feature to catalog
         # how to get user? // Do we need user? should /catalog/collection/collectionId/items works with apik?
         publish_url = f"{self.catalog_url}/catalog/collections/test_owner:{self.catalog_collection}/items"
         try:

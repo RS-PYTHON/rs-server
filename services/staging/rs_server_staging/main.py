@@ -130,7 +130,8 @@ async def execute_process(
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        return processor(req, feature, collection, item, jobs_table).execute()
+        status = await processor(req, feature, collection, item, jobs_table).execute()
+        return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 

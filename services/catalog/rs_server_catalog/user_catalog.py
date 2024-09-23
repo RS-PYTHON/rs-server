@@ -693,7 +693,10 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             elif "items" in request.scope["path"]:
                 # try to get the item if it is already part from the collection
                 item = await self.get_item_from_collection(request)
-                content = self.update_stac_item_publication(content, request, item)
+                # !!!
+                # Removed since RSPY 326, no need for bucket movement
+                # content = self.update_stac_item_publication(content, request, item)
+                # !!!
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_updated_expires_timestamp(content, "creation")

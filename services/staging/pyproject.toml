@@ -30,6 +30,7 @@ opentelemetry-test-utils = "^0.48b0"
 opentelemetry-exporter-otlp = "^1.27.0"
 python-logging-loki = "^0.3.1"
 stac-pydantic = "2.0.0"
+aiohttp = "^3.10.5"
 
 [tool.poetry.group.dev]
 optional = true
