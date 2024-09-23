@@ -32,7 +32,7 @@ from moto.server import ThreadedMotoServer
 from rs_server_catalog.lifecycle import (
     check_expired_items,
     delete_asset_from_s3,
-    delete_assets_from_s3,
+    manage_expired_items,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
@@ -170,10 +170,18 @@ class TestCatalogLifeCycle:
             s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
 
             # Populate catalog-bucket with files.
-            lst_with_files_to_be_copied = ["s3://catalog-bucket/toto_S1_L1/images/may24C355000e4102500n.tif"]
+            lst_with_files_to_be_copied = ["may24C355000e4102500n.tif"]
             for obj in lst_with_files_to_be_copied:
                 s3_handler.s3_client.put_object(Bucket=catalog_bucket, Key=obj, Body="testing\n")
+
+            bucket_files = s3_handler.list_s3_files_obj(bucket=catalog_bucket, prefix="")
+            assert len(bucket_files) > 0
+
             delete_asset_from_s3(self.item["assets"]["may24C355000e4102500n.tif"])
+
+            # Check that the file is correctyl deleted.
+            bucket_files = s3_handler.list_s3_files_obj(bucket=catalog_bucket, prefix="toto_S1_L1/images")
+            assert bucket_files == []
         except Exception as e:
             raise RuntimeError("error") from e
         finally:

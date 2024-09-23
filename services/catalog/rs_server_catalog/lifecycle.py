@@ -22,6 +22,9 @@
 """Control the data lifecycle with automatic cleanup of expired data"""
 
 import os
+import time
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import boto3
 import psycopg2
@@ -45,7 +48,7 @@ def check_expired_items(database_url):
                 WHERE (content->'properties'->>'expires')::timestamptz < now()
                 """
 
-        cursor.execute(query, ("toto_S1_L1",))
+        cursor.execute(query)
 
         # Fetch all results
         expired_items = cursor.fetchall()
@@ -61,15 +64,19 @@ def check_expired_items(database_url):
             connection.close()
 
 
-def delete_assets_from_s3(expired_items):
+def manage_expired_items(expired_items):
     """Delete all assets linked to expired items."""
     for expired_item in expired_items:
-        if len(expired_item) == 6:
+        now = datetime.now(ZoneInfo("UTC"))
+        if len(expired_item) == 6:  # In this part we try to get the assets to be deleted.
             content = expired_item[5]
             if "assets" in content:
                 assets = content["assets"]
                 for asset in assets:
                     delete_asset_from_s3(assets[asset])
+            properties = content["properties"]
+            properties["unpublished"] = now
+            properties["updated"] = now
 
 
 def delete_asset_from_s3(asset):
@@ -90,3 +97,57 @@ def delete_asset_from_s3(asset):
         raise RuntimeError("Could not find s3 credentials") from e
     except Exception as e:
         raise RuntimeError("General exception when trying to access bucket") from e
+
+
+def update_expired_item(item, database_url):
+    """Once the item is processed, update the content in the database."""
+    # Connect to the database
+    try:
+        connection = psycopg2.connect(database_url)
+        cursor = connection.cursor()
+
+        # Define the SQL query to retrieve the collection with id 'toto_S1_L1'
+        query = """
+                UPDATE stac_items
+                SET content = jsonb_set(content, '{properties, datetime}', '"2024-01-01T00:00:00Z"', false)
+                WHERE id = 'your-item-id'
+                """
+
+        query = (
+            """
+            UPDATE stac_items
+            SET content = content
+                || jsonb_build_object('assets', '{}'::jsonb)
+                || jsonb_build_object('properties', content->'properties' || jsonb_build_object(
+                    'updated', to_jsonb(NOW()),
+                    'unpublished', to_jsonb(NOW())
+                ))
+            """
+            + f" WHERE id = '{item[id]}'"
+        )
+
+        cursor.execute(query)
+
+        # Fetch all results
+        expired_items = cursor.fetchall()
+
+        return expired_items
+
+    except Exception as e:
+        print(f"Error updating expired item: {e}")
+    finally:
+        # Close the connection
+        if connection:
+            cursor.close()
+            connection.close()
+
+
+def run():
+    """The data life cycle run."""
+    day_in_second = 3600 * 24
+    frequency = int(os.environ.get("LIFE_CYCLE_FREQUENCY", "1"))
+    data_base_url = os.environ["DATA_BASE_URL"]
+    while True:
+        expired_items = check_expired_items(data_base_url)
+        manage_expired_items(expired_items)
+        time.sleep(day_in_second / frequency)
