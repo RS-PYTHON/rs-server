@@ -28,7 +28,7 @@ include = [
 python = "^3.11"
 stac-fastapi-pgstac = "3.0.0"
 uvicorn = "^0.30.6"
-moto = "==5.0.14"
+moto = "==5.0.15"
 flask = "^3.0.3"
 flask-cors = "^5.0.0"
 pytest-mock = "^3.14.0"
