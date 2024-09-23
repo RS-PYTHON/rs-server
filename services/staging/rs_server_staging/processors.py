@@ -11,6 +11,7 @@ import requests
 import tinydb  # temporary, migrate to psql
 from fastapi import HTTPException
 from starlette.datastructures import Headers
+from pygeoapi.process.base import BaseProcessor
 
 
 class ProcessorStatus(Enum):
@@ -62,7 +63,7 @@ class MethodWrapperMeta(type):
         return super().__new__(cls, name, bases, attrs)
 
 
-class CADIPStaging:  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
+class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
     BUCKET = os.getenv("RSPY_STORAGE", "s3://test")
     status: ProcessorStatus = ProcessorStatus.QUEUED
 
@@ -107,6 +108,7 @@ class CADIPStaging:  # (metaclass=MethodWrapperMeta): - meta for stopping action
         self.check_catalog()
         # Start execution
         self.process_rspy_features()
+        [self.publish_rspy_feature(feature) for feature in self.stream_list]
         # self.publish_rspy_feature(self.item_collection.features[0])
 
     def create_job_execution(self):
@@ -247,6 +249,7 @@ class CADIPStaging:  # (metaclass=MethodWrapperMeta): - meta for stopping action
         for feature in self.stream_list:
             try:
                 response = requests.post(stream_url, data=feature.json(), timeout=3)
+                response.raise_for_status()
             except (
                 requests.exceptions.HTTPError,
                 requests.exceptions.Timeout,
@@ -258,7 +261,8 @@ class CADIPStaging:  # (metaclass=MethodWrapperMeta): - meta for stopping action
                 self.log_job_execution(ProcessorStatus.FAILED)
 
     def publish_rspy_feature(self, feature: dict):
-        publish_url = f"{self.catalog_url}/catalog/collections/test_owner:test_collection/items"
+        # how to get user? // Do we need user? should /catalog/collection/collectionId/items works with apik?
+        publish_url = f"{self.catalog_url}/catalog/collections/test_owner:{self.catalog_collection}/items"
         try:
             response = requests.post(publish_url, data=feature.json(), timeout=3)
             response.raise_for_status()  # Raise an error for HTTP error responses
