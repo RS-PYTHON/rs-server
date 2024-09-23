@@ -39,6 +39,7 @@ logger = Logging.default(__name__)
 CONFIG_FILENAME = "rs-server.yaml"
 DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL = f"{os.path.expanduser('~')}/.config/{CONFIG_FILENAME}"
 ACCESS_TK_KEY_IN_RESPONSE = "access_token"
+HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded"
 # if CLUSTER_MODE, the file ~/.config/rs-server.yaml has to be created, once, when the pod starts
 
 
@@ -204,7 +205,7 @@ def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> Dict[
     Returns:
         Dict[str, str]: Dictionary containing the prepared headers.
     """
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    headers = {"Content-Type": HEADER_CONTENT_TYPE}
     # Add Authorization header if it exists
     if external_auth_config.authorization:
         headers["Authorization"] = external_auth_config.authorization
@@ -393,6 +394,8 @@ def set_eodag_auth_env(ext_auth_config: ExternalAuthenticationConfig):
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__username"] = ext_auth_config.username
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__password"] = ext_auth_config.password
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__grant_type"] = ext_auth_config.grant_type
+    os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__username"] = ext_auth_config.username
+    os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__password"] = ext_auth_config.password
     # optional keys
     # NOTE: the Authorization cannot be overwritten when EODAG is sending the POST request when getting the token
     # if ext_auth_config.authorization:
