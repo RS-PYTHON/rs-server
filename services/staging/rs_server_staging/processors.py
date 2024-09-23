@@ -108,18 +108,15 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         # Execution section
         self.check_catalog()
         # Start execution
-        # Connecto to loop since execute() is not async
         loop = asyncio.get_event_loop()
         if loop.is_running():
             # If the loop is running, schedule the async function
-            await asyncio.create_task(self.process_rspy_features())
-            [self.publish_rspy_feature(feature) for feature in self.stream_list]
+            asyncio.create_task(self.process_rspy_features())
         else:
             # If the loop is not running, run it until complete
             loop.run_until_complete(self.process_rspy_features())
-            [self.publish_rspy_feature(feature) for feature in self.stream_list]
 
-        return "Succes"
+        return "AsyncJob started"
 
     def create_job_execution(self):
         # Create job id and track it
@@ -217,15 +214,17 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
                     # fixmeee 1 how asset should be passed in order to be jsonified
                     tasks.append(self.make_request(session, {asset_name: asset_content.json()}, stream_url))
 
-            for index, asset in enumerate(asyncio.as_completed(tasks)):
-                response = await asset
-                if response:
-                    self.progress = ((index + 1) / total_assets_to_be_processed) * 100
-                    # Successfully processed feature
-                    print(f"Successfully processed asset, progress: {self.progress}")
-                else:
-                    # If the result is None, it means the request failed
-                    print(f"Failed to process asset")
+                for index, asset in enumerate(asyncio.as_completed(tasks)):
+                    response = await asset
+                    if response:
+                        self.progress = ((index + 1) / total_assets_to_be_processed) * 100
+                        # Successfully processed feature
+                        print(f"Successfully processed asset, progress: {self.progress}")
+                    else:
+                        # If the result is None, it means the request failed
+                        # If one asset failed, should we push the feature to catalog?
+                        print(f"Failed to process asset")
+                self.publish_rspy_feature(feature)
         # Update status once all features are processed
         self.log_job_execution(ProcessorStatus.FINISHED)
 
