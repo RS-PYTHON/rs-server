@@ -22,7 +22,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from threading import Event
-from typing import Annotated
+from typing import Annotated, Dict
 
 import stac_pydantic
 from fastapi import APIRouter, Depends
@@ -165,25 +165,25 @@ def download_products(
     return JSONResponse(status_code=status.HTTP_200_OK, content={"started": "true"})
 
 
-@router.get("/cadip/streaming")
+@router.post("/cadip/streaming")
 @auth_validator(station="cadip", access_type="download")
-def streaming_download(request: Request, feature: stac_pydantic.Item):
+async def streaming_download(request: Request, rspy_asset: Dict[str, stac_pydantic.shared.Asset]):
     provider = init_cadip_provider("cadip")  # how to set station here?
-    for asset_name, asset in feature.assets.items():
-        cadip_id = asset.model_dump().get('cadip:id')
-        eop = provider.create_eodag_product(cadip_id, asset_name)
-        product_url = eop.properties.get('downloadLink')
-        product_name = eop.properties.get("title")
-        # still need credentials :(
-        s3_handler = S3StorageHandler(
-            os.environ["S3_ACCESSKEY"],
-            os.environ["S3_SECRETKEY"],
-            os.environ["S3_ENDPOINT"],
-            os.environ["S3_REGION"],  # "sbg",
-        )
-        try:
-            # path to be updated
-            s3_handler.s3_streaming_upload(product_url, "test-data", f"stream/{product_name}")
-        except RuntimeError as exc:
-            raise JSONResponse(status_code=status.HTTP_424_FAILED_DEPENDENCY, content=exc)
+    asset_name, asset = next(iter(rspy_asset.items()))
+    cadip_id = asset.model_dump().get("cadip:id")
+    eop = provider.create_eodag_product(cadip_id, asset_name)
+    product_url = eop.properties.get("downloadLink")
+    product_name = eop.properties.get("title")
+    # still need credentials :(
+    s3_handler = S3StorageHandler(
+        os.environ["S3_ACCESSKEY"],
+        os.environ["S3_SECRETKEY"],
+        os.environ["S3_ENDPOINT"],
+        os.environ["S3_REGION"],  # "sbg",
+    )
+    try:
+        # path to be updated
+        s3_handler.s3_streaming_upload(product_url, "test-data", f"stream/{product_name}")
+    except RuntimeError as exc:
+        raise JSONResponse(status_code=status.HTTP_424_FAILED_DEPENDENCY, content=exc)
     return JSONResponse(status_code=status.HTTP_200_OK, content="Done.")

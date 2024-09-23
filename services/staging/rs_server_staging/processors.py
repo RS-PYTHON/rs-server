@@ -7,11 +7,12 @@ from enum import Enum
 from functools import wraps
 from typing import Any
 
+import aiohttp
 import requests
 import tinydb  # temporary, migrate to psql
 from fastapi import HTTPException
-from starlette.datastructures import Headers
 from pygeoapi.process.base import BaseProcessor
+from starlette.datastructures import Headers
 
 
 class ProcessorStatus(Enum):
@@ -107,9 +108,15 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         # Execution section
         self.check_catalog()
         # Start execution
-        self.process_rspy_features()
-        [self.publish_rspy_feature(feature) for feature in self.stream_list]
-        # self.publish_rspy_feature(self.item_collection.features[0])
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If the loop is running, schedule the async function
+            asyncio.create_task(self.process_rspy_features())
+        else:
+            # If the loop is not running, run it until complete
+            loop.run_until_complete(self.process_rspy_features())
+
+        # [self.publish_rspy_feature(feature) for feature in self.stream_list]
 
     def create_job_execution(self):
         # Create job id and track it
@@ -241,24 +248,52 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
                 ]
                 self.stream_list = not_downloaded_features
 
-    def process_rspy_features(self):
-        self.log_job_execution(ProcessorStatus.IN_PROGRESS)
-        # foreach feature in streaming_list, async start download, and check progress
-        # request.post('RS-server/download/feature/../, data=self.stream_list.idx, headers=self.headers)
-        stream_url = f"{self.download_url}/cadip/streaming"
-        for feature in self.stream_list:
-            try:
-                response = requests.post(stream_url, data=feature.json(), timeout=3)
+    async def make_request(self, session, asset, stream_url):
+        """Helper function to make an HTTP POST request asynchronously."""
+        try:
+            # fixmeeee ?!
+            converted_dict = {key: json.loads(value) for key, value in asset.items()}
+            async with session.post(stream_url, json=converted_dict) as response:
                 response.raise_for_status()
-            except (
-                requests.exceptions.HTTPError,
-                requests.exceptions.Timeout,
-                requests.exceptions.RequestException,
-                requests.exceptions.ConnectionError,
-                json.JSONDecodeError,
-            ) as e:
-                # logger.error here soon
-                self.log_job_execution(ProcessorStatus.FAILED)
+                return response
+                # if response.status == 200:
+                #     response_data = await response.json()
+                #     return response_data
+        except (
+            aiohttp.ClientError,
+            asyncio.TimeoutError,
+            json.JSONDecodeError,
+        ) as e:
+            # Log the error and update the status
+            self.log_job_execution(ProcessorStatus.FAILED)
+            return None
+
+    async def process_rspy_features(self):
+        self.log_job_execution(ProcessorStatus.IN_PROGRESS)
+        stream_url = f"{self.download_url}/cadip/streaming"
+
+        total_assets_to_be_processed = len(self.stream_list)
+        for feature in self.stream_list:
+            total_assets_to_be_processed *= len(feature.assets)
+
+        async with aiohttp.ClientSession() as session:
+            tasks = []
+            for feature in self.stream_list:
+                for asset_name, asset_content in feature.assets.items():
+                    # fixmeee 1 how asset should be passed in order to be jsonified
+                    tasks.append(self.make_request(session, {asset_name: asset_content.json()}, stream_url))
+
+            for index, future in enumerate(asyncio.as_completed(tasks)):
+                response = await future
+                if response:
+                    self.progress = ((index + 1) / total_assets_to_be_processed) * 100
+                    # Successfully processed feature
+                    print(f"Successfully processed feature, progress: {self.progress}")
+                else:
+                    # If the result is None, it means the request failed
+                    print(f"Failed to process feature")
+        # Update status once all features are processed
+        self.log_job_execution(ProcessorStatus.FINISHED)
 
     def publish_rspy_feature(self, feature: dict):
         # how to get user? // Do we need user? should /catalog/collection/collectionId/items works with apik?
