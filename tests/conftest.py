@@ -38,10 +38,14 @@ from rs_server_common import settings
 reload(settings)
 
 import pytest
+import responses
 import yaml
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
+from rs_server_common.authentication.authentication_to_external import (
+    ExternalAuthenticationConfig,
+)
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
@@ -50,6 +54,11 @@ from tests.app import init_app
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
+
+TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
+TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
+TOKEN_CLIENT_SECRET = os.getenv("RSPY_CLIENT_SECRET", "client_secret")
+TOKEN_URL = os.getenv("RSPY_TOKEN_URL", "http://127.0.0.1:5000/oauth2/token")
 
 ##################
 # INITIALISATION #
@@ -175,6 +184,10 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
         monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
         monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
         monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
+        # Mock the creation of ~/.config/rs-server.yaml file in case the CLUSTER_MODE is True
+        # we don't want to actually create the rs-server.yaml file.
+        # All the tests using it should create it  in a temporary directory
+        mocker.patch("rs_server_common.fastapi_app.create_rs_server_config_yaml", side_effect=None)
 
         # Reload the oauth2 module with the cluster info
         reload(oauth2)
@@ -309,3 +322,196 @@ def expected_sessions_builder_fixture(session_id, publication_date, satellite):
     if isinstance(session_id, str):
         return [a_session_fixture(session_id, publication_date, satellite)]
     return [a_session_fixture(sid, pubd, satid) for sid, pubd, satid in zip(session_id, publication_date, satellite)]
+
+
+@pytest.fixture(name="set_token_env_var")
+def set_token_env_var_fixture(monkeypatch):
+    """Fixture to set environment variables for simulating the mounting of
+    the external station token secrets in kubernetes.
+
+    This fixture sets a variety of environment variables related to token-based
+    authentication for different services, allowing tests to be executed with
+    the correct configurations in place.
+    The enviornment variables set are managing 3 stations:
+    - adgs (service auxip)
+    - ins (service cadip)
+    - mps (service cadip)
+
+    Args:
+        monkeypatch: Pytest utility for temporarily modifying environment variables.
+    """
+    envvars = {
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTHORIZATION": "Basic test",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__ID": "client_id",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__TOKEN__URL": "\
+http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
+        "RSPY__TOKEN__AUXIP__ADGS__SERVICE__URL": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__AUXIP__ADGS__DOMAIN": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
+        "RSPY__TOKEN__AUXIP__ADGS__SERVICE__NAME": "auxip",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTH__TYPE": "oauth2",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__GRANT__TYPE": "password",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__SCOPE": "",
+        "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTHORIZATION": "Basic test",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__ID": "client_id",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__TOKEN__URL": "\
+http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
+        "RSPY__TOKEN__CADIP__INS__SERVICE__URL": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__CADIP__INS__DOMAIN": "mockup-cadip-ins-svc.processing.svc.cluster.local",
+        "RSPY__TOKEN__CADIP__INS__SERVICE__NAME": "cadip",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTH__TYPE": "oauth2",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__GRANT__TYPE": "password",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__SCOPE": "",
+        "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTHORIZATION": "Basic test",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__ID": "client_id",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__TOKEN__URL": "\
+http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
+        "RSPY__TOKEN__CADIP__MPS__SERVICE__URL": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__CADIP__MPS__DOMAIN": "mockup-cadip-mps-svc.processing.svc.cluster.local",
+        "RSPY__TOKEN__CADIP__MPS__SERVICE__NAME": "cadip",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTH__TYPE": "oauth2",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__GRANT__TYPE": "password",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__SCOPE": "",
+        "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
+    }
+    for key, val in envvars.items():
+        monkeypatch.setenv(key, val)
+    yield  # restore the environment
+
+
+@pytest.fixture(name="expected_config_token_file")
+def expected_config_token_file_fixture() -> dict:
+    """Fixture that gives the default configuration file that is created
+    by using the environment variables set through the mounting of token secrets (see set_token_env_var)
+    This config files is managing 3 stations:
+    - adgs (service auxip)
+    - ins (service cadip)
+    - mps (service cadip)
+
+
+    Return: a dictionary that represents that data by reading the YAML file using yaml.safe_load()
+    """
+    return {
+        "external_data_sources": {
+            "adgs": {
+                "authentication": {
+                    "auth_type": "oauth2",
+                    "authorization": "Basic test",
+                    "client_id": "client_id",
+                    "client_secret": TOKEN_CLIENT_SECRET,
+                    "grant_type": "password",
+                    "password": TOKEN_PASSWORD,
+                    "scope": "",
+                    "token_url": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
+                    "username": TOKEN_USERNAME,
+                },
+                "domain": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
+                "service": {
+                    "name": "auxip",
+                    "url": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
+                },
+            },
+            "ins": {
+                "authentication": {
+                    "auth_type": "oauth2",
+                    "authorization": "Basic test",
+                    "client_id": "client_id",
+                    "client_secret": TOKEN_CLIENT_SECRET,
+                    "grant_type": "password",
+                    "password": TOKEN_PASSWORD,
+                    "scope": "",
+                    "token_url": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
+                    "username": TOKEN_USERNAME,
+                },
+                "domain": "mockup-cadip-ins-svc.processing.svc.cluster.local",
+                "service": {
+                    "name": "cadip",
+                    "url": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
+                },
+            },
+            "mps": {
+                "authentication": {
+                    "auth_type": "oauth2",
+                    "authorization": "Basic test",
+                    "client_id": "client_id",
+                    "client_secret": TOKEN_CLIENT_SECRET,
+                    "grant_type": "password",
+                    "password": TOKEN_PASSWORD,
+                    "scope": "",
+                    "token_url": "http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
+                    "username": TOKEN_USERNAME,
+                },
+                "domain": "mockup-cadip-mps-svc.processing.svc.cluster.local",
+                "service": {
+                    "name": "cadip",
+                    "url": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
+                },
+            },
+        },
+    }
+
+
+@pytest.fixture(name="get_external_auth_config")
+def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig:
+    """Fixture to provide an ExternalAuthenticationConfig instance based on station_id.
+
+    This fixture creates and returns an ExternalAuthenticationConfig object with
+    predefined values based on the provided station_id.
+
+    Args:
+        station_id (str): The identifier for the station, determining the service name.
+
+    Returns:
+        ExternalAuthenticationConfig: An instance with the configuration for the given station_id.
+    """
+    # Determine the service based on the station_id
+    service = "auxip" if station_id == "adgs" else "cadip"
+    # Return a configured ExternalAuthenticationConfig object
+    return ExternalAuthenticationConfig(
+        station_id=station_id,
+        domain=f"mockup-{service}-{station_id}-svc.processing.svc.cluster.local",
+        service_name=service,
+        service_url="http://127.0.0.1:6001",
+        auth_type="oauth2",
+        token_url=TOKEN_URL,
+        grant_type="password",
+        username=TOKEN_USERNAME,
+        password=TOKEN_PASSWORD,
+        client_id="client_id",
+        client_secret=TOKEN_CLIENT_SECRET,
+        scope="openid",
+        authorization="Basic test",
+    )
+
+
+@pytest.fixture(name="mock_token_validation")
+def validate_token(mocker):
+    """Fixture used to mock rs server service that authorize eodag ops."""
+
+    def _validate_token(service: str | None = None):
+        if not service:
+            # If not defined, mock both adgs and cadip
+            mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
+            mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
+            mocker.patch("rs_server_cadip.api.cadip_download.set_eodag_auth_token", side_effect=None)
+            mocker.patch("rs_server_adgs.api.adgs_download.set_eodag_auth_token", side_effect=None)
+        else:
+            # If defined, custom path mock
+            mocker.patch(f"rs_server_{service}.api.{service}_search.set_eodag_auth_token", side_effect=None)
+            mocker.patch(f"rs_server_{service}.api.{service}_download.set_eodag_auth_token", side_effect=None)
+        responses.add(
+            responses.POST,
+            TOKEN_URL,
+            json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
+            status=200,
+        )
+        return service  # If needed, return the value to be used later in the test
+
+    return _validate_token

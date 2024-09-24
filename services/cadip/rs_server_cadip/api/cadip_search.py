@@ -48,6 +48,9 @@ from rs_server_cadip.cadip_utils import (
     validate_products,
 )
 from rs_server_common.authentication.authentication import auth_validator
+from rs_server_common.authentication.authentication_to_external import (
+    set_eodag_auth_token,
+)
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -679,6 +682,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 
     try:
+        set_eodag_auth_token(f"{station.lower()}_session", "cadip")
         products = init_cadip_provider(f"{station}_session").search(
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
@@ -811,6 +815,7 @@ def search_session(
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
+
     return process_session_search(request, station, id, platform, f"{start_date}/{stop_date}", limit)  # type: ignore
 
 
@@ -858,6 +863,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
+        set_eodag_auth_token(station.lower(), "cadip")
         products = init_cadip_provider(station).search(
             TimeRange(start_date, stop_date),
             id=session,
