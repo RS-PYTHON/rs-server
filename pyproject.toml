@@ -96,24 +96,18 @@ max-line-length = 120
 #     '__init__.py:F401',
 # ]
 
-[tool.pylint.messages_control]
-max-line-length=120
-disable = "logging-fstring-interpolation"
-
-[tool.pylint.MASTER]
+[tool.pylint]
+max-line-length = 120
+disable = [
+    "logging-fstring-interpolation",  # Logging f-string interpolation
+    "R0917"  # Too many positional arguments
+]
 ignore-paths = '^docs/.*$'
 
-[tool.pylint.MISCELLANEOUS]
-notes = ["XXX"] # no errors on TODO and FIXME
+# Only add notes as comments that are not checked for errors.
+notes = ["XXX"]  # No errors on TODO and FIXME
 
-[tool.pylint.SIMILARITIES]
-# Minimum lines number of a similarity FIXME.
-min-similarity-lines=10
-
-# [tool.pylint."MESSAGES CONTROL"]
-# disable = [
-#     "duplicate-code",
-# ]
+min-similarity-lines = 10  # Minimum lines number of a similarity
 
 [tool.bandit.assert_used]
 skips = ['*/test_*.py']
