@@ -42,7 +42,11 @@ from tests.test_endpoints import clear_aws_credentials, export_aws_credentials
 class TestCatalogLifeCycle:
     """This class contains integration tests for the life cycle management."""
 
-    # Utilisez une date dans le passé pour datetime
+    db_user = os.environ["POSTGRES_USER"]
+    db_password = os.environ["POSTGRES_PASSWORD"]
+    db_port = os.environ["POSTGRES_PORT"]
+    db_name = os.environ["POSTGRES_DBNAME"]
+    db_host = os.environ["POSTGRES_HOST"]
     past_date = datetime.now(ZoneInfo("UTC")) - timedelta(days=60)
     expired_date = past_date + timedelta(days=30)
     item = {
@@ -85,10 +89,16 @@ class TestCatalogLifeCycle:
         ],
     }
 
-    def test_check_expired_items(self, db_url):
+    def test_check_expired_items(self):
         """test the check expired items function."""
         # Connect to the PostgreSQL database
-        connection = psycopg2.connect(db_url)
+        connection = psycopg2.connect(
+            user=self.db_user,
+            password=self.db_password,
+            port=self.db_port,
+            dbname=self.db_name,
+            host=self.db_host,
+        )
         now = datetime.now(ZoneInfo("UTC"))
 
         try:
@@ -136,6 +146,9 @@ class TestCatalogLifeCycle:
             else:
                 print("No item found with the given ID.")
 
+            expired_items = check_expired_items(connection)
+            assert len(expired_items) == 1
+
         except Exception as e:
             print("Une erreur s'est produite :", e)
             connection.rollback()
@@ -144,8 +157,6 @@ class TestCatalogLifeCycle:
             # Close the cursor and connection
             cursor.close()
             connection.close()
-        expired_items = check_expired_items(database_url=db_url)
-        assert len(expired_items) == 1
 
     def test_delete_assets_from_s3(self):
         """Test used to verify that the function is correctly deleting the assing from the s3 bucket."""
@@ -188,3 +199,98 @@ class TestCatalogLifeCycle:
             server.stop()
             clear_aws_credentials()
             os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+    def test_one_run(self):
+        """Test the entire process one time."""
+        # Connect to the PostgreSQL database
+        connection = psycopg2.connect(
+            user=self.db_user,
+            password=self.db_password,
+            port=self.db_port,
+            dbname=self.db_name,
+            host=self.db_host,
+        )
+        now = datetime.now(ZoneInfo("UTC"))
+
+        try:
+
+            # Create a cursor to execute the query
+            cursor = connection.cursor()
+            cursor.execute("""ALTER TABLE _items_1 DROP CONSTRAINT _items_1_dt""")
+
+            cursor.execute(
+                """
+                INSERT INTO items (id, collection, geometry, datetime, end_datetime, content)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+                (
+                    self.item["id"],
+                    self.item["collection"],
+                    json.dumps(self.item["geometry"]),
+                    self.past_date,
+                    now,
+                    json.dumps(
+                        {
+                            "bbox": self.item["bbox"],
+                            "assets": self.item["assets"],
+                            "properties": self.item["properties"],
+                            "stac_extensions": self.item["stac_extensions"],
+                        },
+                    ),
+                ),
+            )
+
+            # Commit the changes
+            connection.commit()
+            # Create moto server and catalog-bucket
+            moto_endpoint = "http://localhost:8077"
+            catalog_bucket = "rs-cluster-catalog"
+            export_aws_credentials()
+            secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
+            # Enable bucket transfer
+            os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
+            server = ThreadedMotoServer(port=8077)
+            server.start()
+            try:
+                requests.post(f"{moto_endpoint}/moto-api/reset", timeout=5)
+                s3_handler = S3StorageHandler(
+                    secrets["accesskey"],
+                    secrets["secretkey"],
+                    secrets["s3endpoint"],
+                    secrets["region"],
+                )
+
+                s3_handler.s3_client.create_bucket(Bucket=catalog_bucket)
+
+                # Populate catalog-bucket with files.
+                lst_with_files_to_be_copied = ["may24C355000e4102500n.tif"]
+                for obj in lst_with_files_to_be_copied:
+                    s3_handler.s3_client.put_object(Bucket=catalog_bucket, Key=obj, Body="testing\n")
+
+                expired_items = check_expired_items(connection)
+                manage_expired_items(expired_items, connection)
+
+                # Check that the expired item has been correctly updated.
+                verify_query = """
+                SELECT * FROM items WHERE id = 'expired_item'
+                """
+                cursor.execute(verify_query)
+                result = cursor.fetchall()
+                item = result[0]
+                assert item[5]["assets"] == {}
+                assert item[5]["properties"]["unpublished"] == item[5]["properties"]["updated"]
+            except Exception as e:
+                raise RuntimeError("error") from e
+            finally:
+                server.stop()
+                clear_aws_credentials()
+                os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
+
+        except Exception as e:
+            print("Une erreur s'est produite :", e)
+            connection.rollback()
+
+        finally:
+            # Close the cursor and connection
+            cursor.close()
+            connection.close()

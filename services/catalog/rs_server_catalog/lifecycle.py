@@ -23,24 +23,17 @@
 
 import os
 import time
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
-import boto3
 import psycopg2
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 
 BUCKET_NAME = "rs-cluster-catalog"
 
 
-def check_expired_items(database_url):
+def check_expired_items(connection):
     """Select each item with a field 'expires' that is expired."""
-
-    # Connect to the database
     try:
-        connection = psycopg2.connect(database_url)
         cursor = connection.cursor()
-
         # Define the SQL query to retrieve the collection with id 'toto_S1_L1'
         query = """
                 SELECT *
@@ -61,26 +54,22 @@ def check_expired_items(database_url):
         # Close the connection
         if connection:
             cursor.close()
-            connection.close()
 
 
-def manage_expired_items(expired_items):
+def manage_expired_items(expired_items, connection):
     """Delete all assets linked to expired items."""
     for expired_item in expired_items:
-        now = datetime.now(ZoneInfo("UTC"))
         if len(expired_item) == 6:  # In this part we try to get the assets to be deleted.
             content = expired_item[5]
             if "assets" in content:
                 assets = content["assets"]
                 for asset in assets:
                     delete_asset_from_s3(assets[asset])
-            properties = content["properties"]
-            properties["unpublished"] = now
-            properties["updated"] = now
+        update_expired_item(expired_item, connection)
 
 
 def delete_asset_from_s3(asset):
-    """Delete one asset in a s3 bucket."""
+    """Delete one asset in an s3 bucket."""
     try:
         s3_handler = S3StorageHandler(
             os.environ["S3_ACCESSKEY"],
@@ -99,23 +88,16 @@ def delete_asset_from_s3(asset):
         raise RuntimeError("General exception when trying to access bucket") from e
 
 
-def update_expired_item(item, database_url):
+def update_expired_item(item, connection):
     """Once the item is processed, update the content in the database."""
     # Connect to the database
     try:
-        connection = psycopg2.connect(database_url)
         cursor = connection.cursor()
 
-        # Define the SQL query to retrieve the collection with id 'toto_S1_L1'
-        query = """
-                UPDATE stac_items
-                SET content = jsonb_set(content, '{properties, datetime}', '"2024-01-01T00:00:00Z"', false)
-                WHERE id = 'your-item-id'
-                """
-
+        # Define the SQL query to retrieve the collection with a specific id.
         query = (
             """
-            UPDATE stac_items
+            UPDATE items
             SET content = content
                 || jsonb_build_object('assets', '{}'::jsonb)
                 || jsonb_build_object('properties', content->'properties' || jsonb_build_object(
@@ -123,15 +105,13 @@ def update_expired_item(item, database_url):
                     'unpublished', to_jsonb(NOW())
                 ))
             """
-            + f" WHERE id = '{item[id]}'"
+            + f"WHERE id = '{item[0]}'"
         )
 
         cursor.execute(query)
 
-        # Fetch all results
-        expired_items = cursor.fetchall()
-
-        return expired_items
+        # Commit the changes
+        connection.commit()
 
     except Exception as e:
         print(f"Error updating expired item: {e}")
@@ -139,15 +119,36 @@ def update_expired_item(item, database_url):
         # Close the connection
         if connection:
             cursor.close()
-            connection.close()
 
 
 def run():
     """The data life cycle run."""
+    # Loads variables.
     day_in_second = 3600 * 24
     frequency = int(os.environ.get("LIFE_CYCLE_FREQUENCY", "1"))
-    data_base_url = os.environ["DATA_BASE_URL"]
+    db_user = os.environ["POSTGRES_USER"]
+    db_password = os.environ["POSTGRES_PASSWORD"]
+    db_port = os.environ["POSTGRES_PORT"]
+    db_name = os.environ["POSTGRES_DBNAME"]
+    db_host = os.environ["POSTGRES_HOST"]
+
+    # Run the cycle.
     while True:
-        expired_items = check_expired_items(data_base_url)
-        manage_expired_items(expired_items)
+        # Connect to the database.
+        try:
+            connection = psycopg2.connect(
+                user=db_user,
+                password=db_password,
+                port=db_port,
+                dbname=db_name,
+                host=db_host,
+            )
+            expired_items = check_expired_items(connection)
+            manage_expired_items(expired_items, connection)
+        except Exception as e:
+            print(f"Error during the cycle: {e}")
+        finally:
+            # Close the connection
+            if connection:
+                connection.close()
         time.sleep(day_in_second / frequency)
