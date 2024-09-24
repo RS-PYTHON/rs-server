@@ -149,10 +149,18 @@ class TestCatalogLifeCycle:
             expired_items = check_expired_items(connection)
             assert len(expired_items) == 1
 
-        except Exception as e:
-            print("Une erreur s'est produite :", e)
-            connection.rollback()
-
+        except psycopg2.DatabaseError as e:
+            print(f"Database error: {e}")
+        except psycopg2.OperationalError as e:
+            print(f"Operationnal error (connection issue): {e}")
+        except psycopg2.ProgrammingError as e:
+            print(f"SQL query error: {e}")
+        except psycopg2.DatabaseError as e:
+            print(f"Data error: {e}")
+        except psycopg2.IntegrityError as e:
+            print(f"Integrity constraint error: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"An unexpected error occurred: {e}")
         finally:
             # Close the cursor and connection
             cursor.close()
@@ -192,7 +200,7 @@ class TestCatalogLifeCycle:
 
             # Check that the file is correctyl deleted.
             bucket_files = s3_handler.list_s3_files_obj(bucket=catalog_bucket, prefix="toto_S1_L1/images")
-            assert bucket_files == []
+            assert not bucket_files
         except Exception as e:
             raise RuntimeError("error") from e
         finally:
@@ -200,7 +208,7 @@ class TestCatalogLifeCycle:
             clear_aws_credentials()
             os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
-    def test_one_run(self):
+    def test_one_run(self):  # pylint: disable=too-many-locals, too-many-statements
         """Test the entire process one time."""
         # Connect to the PostgreSQL database
         connection = psycopg2.connect(
@@ -286,10 +294,18 @@ class TestCatalogLifeCycle:
                 clear_aws_credentials()
                 os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
 
-        except Exception as e:
-            print("Une erreur s'est produite :", e)
-            connection.rollback()
-
+        except psycopg2.DatabaseError as e:
+            print(f"Database error: {e}")
+        except psycopg2.OperationalError as e:
+            print(f"Operationnal error (connection issue): {e}")
+        except psycopg2.ProgrammingError as e:
+            print(f"SQL query error: {e}")
+        except psycopg2.DatabaseError as e:
+            print(f"Data error: {e}")
+        except psycopg2.IntegrityError as e:
+            print(f"Integrity constraint error: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"An unexpected error occurred: {e}")
         finally:
             # Close the cursor and connection
             cursor.close()

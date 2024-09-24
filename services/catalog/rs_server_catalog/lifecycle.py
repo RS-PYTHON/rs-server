@@ -37,9 +37,10 @@ def check_expired_items(connection: psycopg2.extensions.connection) -> list:
         connection (psycopg2.extensions.connection): The connection to the database.
     Returns:
         list: The list of expired items."""
+    expired_items = []
     try:
         cursor = connection.cursor()
-        # Define the SQL query to retrieve the collection with id 'toto_S1_L1'
+        # Define the SQL query to retrieve the expired items.
         query = """
                 SELECT *
                 FROM items
@@ -50,8 +51,6 @@ def check_expired_items(connection: psycopg2.extensions.connection) -> list:
 
         # Fetch all results
         expired_items = cursor.fetchall()
-
-        return expired_items
     except psycopg2.DatabaseError as e:
         print(f"Database error: {e}")
     except psycopg2.OperationalError as e:
@@ -68,6 +67,7 @@ def check_expired_items(connection: psycopg2.extensions.connection) -> list:
         # Close the connection
         if connection:
             cursor.close()
+    return expired_items
 
 
 def manage_expired_items(expired_items: list, connection: psycopg2.extensions.connection) -> None:
