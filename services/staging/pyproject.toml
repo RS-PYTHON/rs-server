@@ -36,7 +36,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 python = "^3.11"
 pre-commit = "^3.7.1"
-bandit = "^1.7.9"
+bandit = "^1.7.10"
 pylint = "^3.3.0"
 pytest = "^8.3.3"
 pytest-asyncio = "^0.24.0"
