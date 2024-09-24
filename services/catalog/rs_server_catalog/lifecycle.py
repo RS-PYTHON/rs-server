@@ -30,8 +30,13 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHand
 BUCKET_NAME = "rs-cluster-catalog"
 
 
-def check_expired_items(connection):
-    """Select each item with a field 'expires' that is expired."""
+def check_expired_items(connection: psycopg2.extensions.connection) -> list:
+    """Select each item with an 'expires' field that has already expired.
+
+    Args:
+        connection (psycopg2.extensions.connection): The connection to the database.
+    Returns:
+        list: The list of expired items."""
     try:
         cursor = connection.cursor()
         # Define the SQL query to retrieve the collection with id 'toto_S1_L1'
@@ -56,8 +61,12 @@ def check_expired_items(connection):
             cursor.close()
 
 
-def manage_expired_items(expired_items, connection):
-    """Delete all assets linked to expired items."""
+def manage_expired_items(expired_items: list, connection: psycopg2.extensions.connection) -> None:
+    """Delete all assets linked to expired items.
+
+    Args:
+        expired_items (list): The list of expired items.
+        connection (psycopg2.extensions.connection): The connection to the database."""
     for expired_item in expired_items:
         if len(expired_item) == 6:  # In this part we try to get the assets to be deleted.
             content = expired_item[5]
@@ -68,8 +77,13 @@ def manage_expired_items(expired_items, connection):
         update_expired_item(expired_item, connection)
 
 
-def delete_asset_from_s3(asset):
-    """Delete one asset in an s3 bucket."""
+def delete_asset_from_s3(asset: dict) -> None:
+    """Delete one asset in an s3 bucket.
+
+    Args:
+        asset (dict): The asset to be deleted.
+    Raises:
+        KeyError: If there are errors while connecting to the s3 bucket."""
     try:
         s3_handler = S3StorageHandler(
             os.environ["S3_ACCESSKEY"],
@@ -88,8 +102,12 @@ def delete_asset_from_s3(asset):
         raise RuntimeError("General exception when trying to access bucket") from e
 
 
-def update_expired_item(item, connection):
-    """Once the item is processed, update the content in the database."""
+def update_expired_item(item: dict, connection: psycopg2.extensions.connection) -> None:
+    """Once the item is processed, update the content in the database.
+
+    Args:
+        item (dict): The item to be updated.
+        connection (psycopg2.extensions.connection): The connection to the database."""
     # Connect to the database
     try:
         cursor = connection.cursor()
