@@ -196,7 +196,13 @@ class TestCatalogLifeCycle:
             bucket_files = s3_handler.list_s3_files_obj(bucket=catalog_bucket, prefix="")
             assert len(bucket_files) > 0
 
-            delete_asset_from_s3(self.item["assets"]["may24C355000e4102500n.tif"])
+            asset_to_delete = {
+                "href": "s3://catalog-bucket/toto_S1_L1/images/may24C355000e4102500n.tif",
+                "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+                "title": "NOAA STORM COG",
+            }
+
+            delete_asset_from_s3(asset_to_delete)
 
             # Check that the file is correctyl deleted.
             bucket_files = s3_handler.list_s3_files_obj(bucket=catalog_bucket, prefix="toto_S1_L1/images")
