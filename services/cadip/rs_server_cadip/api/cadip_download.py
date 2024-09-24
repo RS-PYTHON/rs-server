@@ -167,8 +167,10 @@ def download_products(
 
 @router.post("/cadip/streaming")
 @auth_validator(station="cadip", access_type="download")
-async def streaming_download(request: Request, rspy_asset: Dict[str, stac_pydantic.shared.Asset]):
+def streaming_download(request: Request, rspy_asset: Dict[str, stac_pydantic.shared.Asset]):
     provider = init_cadip_provider("cadip")  # how to set station here?
+    # get download token/basic auth
+    auth = provider.client._plugins_manager.get_auth_plugin('cadip').authenticate()
     asset_name, asset = next(iter(rspy_asset.items()))
     cadip_id = asset.model_dump().get("cadip:id")
     eop = provider.create_eodag_product(cadip_id, asset_name)
@@ -183,7 +185,7 @@ async def streaming_download(request: Request, rspy_asset: Dict[str, stac_pydant
     )
     try:
         # path to be updated
-        s3_handler.s3_streaming_upload(product_url, "test-data", f"stream/{product_name}")
+        s3_handler.s3_streaming_upload(product_url, auth, "test-data", f"stream/{product_name}")
     except RuntimeError as exc:
         raise JSONResponse(status_code=status.HTTP_424_FAILED_DEPENDENCY, content=exc)
     return JSONResponse(status_code=status.HTTP_200_OK, content="Done.")

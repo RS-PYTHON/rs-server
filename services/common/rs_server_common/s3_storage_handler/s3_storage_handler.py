@@ -775,10 +775,10 @@ retried for %s times. Aborting",
 
         return failed_files
 
-    def s3_streaming_upload(self, stream_url: str, bucket, key):
+    def s3_streaming_upload(self, stream_url: str, auth: requests.auth, bucket: str, key: str):
         try:
             self.logger.info(f"Started streaming to s3://{bucket}/{key}")
-            with requests.get(stream_url, stream=True) as response:
+            with requests.get(stream_url, stream=True, auth=auth) as response:
                 response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
 
                 """
