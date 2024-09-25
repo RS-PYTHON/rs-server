@@ -126,14 +126,28 @@ async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
 
 @router.get("/jobs")
 async def get_jobs():
-    """Should return status of all jobs"""
-    return JSONResponse(status_code=HTTP_200_OK, content="Check")
+    """Returns the status of all jobs."""
+    jobs = jobs_table.all()  # Retrieve all job entries from the jobs table
+
+    if jobs:
+        return JSONResponse(status_code=HTTP_200_OK, content=jobs)
+
+    # If no jobs are found, return 404 with appropriate message
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No jobs found")
 
 
 @router.delete("/jobs/{job_id}")
-async def delete_job(job_id):
-    """Should delete a specific job from db."""
-    return JSONResponse(status_code=HTTP_200_OK, content=job_id)
+async def delete_job(job_id: str = Path(..., title="The ID of the job to delete")):
+    """Deletes a specific job from the database."""
+    JobQuery = Query()
+    job = jobs_table.get(JobQuery.job_id == job_id)  # Check if the job exists
+
+    if job:
+        jobs_table.remove(JobQuery.job_id == job_id)  # Delete the job if found
+        return JSONResponse(status_code=HTTP_200_OK, content={"message": f"Job {job_id} deleted successfully"})
+
+    # Raise 404 if job not found
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 @router.get("/jobs/{job_id}/results")

@@ -103,6 +103,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         #################
         # Database section
         self.job_id = str(uuid.uuid4())  # Generate a unique job ID
+        self.detail = "Processing Unit was queued"
         self.progress: int = 0
         self.tracker: tinydb = db
         self.create_job_execution()
@@ -126,21 +127,27 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
             # If the loop is not running, run it until complete
             loop.run_until_complete(self.process_rspy_features())
 
-        return "AsyncJob started"
+        return {"started": self.job_id}
 
     def create_job_execution(self):
         # Create job id and track it
         self.tracker.insert(
-            {"job_id": self.job_id, "status": ProcessorStatus.to_json(self.status), "progress": self.progress},
+            {
+                "job_id": self.job_id,
+                "status": ProcessorStatus.to_json(self.status),
+                "progress": self.progress,
+                "detail": self.detail,
+            },
         )
 
-    def log_job_execution(self, status: ProcessorStatus = None, progress: int = None):
+    def log_job_execution(self, status: ProcessorStatus = None, progress: int = None, detail: str = None):
         # Update both runtime and db status and progress
         self.status = status if status else self.status
         self.progress = progress if progress else self.progress
+        self.detail = detail if detail else self.detail
         tiny_job = tinydb.Query()
         self.tracker.update(
-            {"status": ProcessorStatus.to_json(self.status), "progress": self.progress},
+            {"status": ProcessorStatus.to_json(self.status), "progress": self.progress, "detail": self.detail},
             tiny_job.job_id == self.job_id,
         )
 
@@ -162,6 +169,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
             response = requests.get(search_url, params=json.dumps(filter_object), timeout=3)
             response.raise_for_status()  # Raise an error for HTTP error responses
             self.create_streaming_list(response.json())
+            self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
         except (
             requests.exceptions.HTTPError,
             requests.exceptions.Timeout,
@@ -170,7 +178,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
             json.JSONDecodeError,
         ) as e:
             # logger.error here soon
-            self.log_job_execution(ProcessorStatus.FAILED)
+            self.log_job_execution(ProcessorStatus.FAILED, 0, detail="Failed to search catalog")
 
     def create_streaming_list(self, catalog_response: dict):
         # Based on catalog response, pop out features already in catalog and prepare rest for download
@@ -226,24 +234,22 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
                     response = await asset
                     if response:
                         self.progress = ((index + 1) / total_assets_to_be_processed) * 100
-                        # Successfully processed feature
-                        print(f"Successfully processed asset, progress: {self.progress}")
+                        self.log_job_execution(ProcessorStatus.IN_PROGRESS, self.progress, detail=f"Processed {asset}")
                     else:
                         # If the result is None, it means the request failed
                         # If one asset failed, should we push the feature to catalog?
-                        print(f"Failed to process asset")
-                self.publish_rspy_feature(feature)
-        # Update status once all features are processed
-        self.log_job_execution(ProcessorStatus.FINISHED)
+                        self.log_job_execution(ProcessorStatus.FAILED, self.progress, detail=f"Failed process: {asset}")
+                await self.publish_rspy_feature(feature)
+            # Update status once all features are processed
+            self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
 
-    def publish_rspy_feature(self, feature: dict):
+    async def publish_rspy_feature(self, feature: dict):
         # Publish feature to catalog
         # how to get user? // Do we need user? should /catalog/collection/collectionId/items works with apik?
         publish_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items"
         try:
             response = requests.post(publish_url, data=feature.json(), timeout=3)
             response.raise_for_status()  # Raise an error for HTTP error responses
-            self.create_streaming_list(response.json())
         except (
             requests.exceptions.HTTPError,
             requests.exceptions.Timeout,
