@@ -68,7 +68,16 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
     BUCKET = os.getenv("RSPY_STORAGE", "s3://test")
     status: ProcessorStatus = ProcessorStatus.QUEUED
 
-    def __init__(self, credentials: Headers, input_collection: Any, collection: str, item: str, db: tinydb, **kwargs):
+    def __init__(
+        self,
+        credentials: Headers,
+        input_collection: Any,
+        collection: str,
+        item: str,
+        provider: str,
+        db: tinydb,
+        **kwargs,
+    ):
         """
         Initialize the CADIPStaging processor with the input collection and catalog details.
 
@@ -102,6 +111,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         self.item_collection: dict = input_collection
         self.catalog_collection: str = collection
         self.catalog_item_name: str = item
+        self.provider = provider
 
     async def execute(self):
         self.log_job_execution(ProcessorStatus.CREATED)
@@ -203,10 +213,8 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
     async def process_rspy_features(self):
         # Process each feature, by starting streaming download of its assets to final bucket
         self.log_job_execution(ProcessorStatus.IN_PROGRESS)
-        stream_url = f"{self.download_url}/cadip/streaming"
-
+        stream_url = f"{self.download_url}/cadip/{self.provider}/streaming"
         total_assets_to_be_processed = sum(len(feature.assets) for feature in self.stream_list)
-
         async with aiohttp.ClientSession() as session:
             tasks = []
             for feature in self.stream_list:
@@ -231,7 +239,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
     def publish_rspy_feature(self, feature: dict):
         # Publish feature to catalog
         # how to get user? // Do we need user? should /catalog/collection/collectionId/items works with apik?
-        publish_url = f"{self.catalog_url}/catalog/collections/test_owner:{self.catalog_collection}/items"
+        publish_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items"
         try:
             response = requests.post(publish_url, data=feature.json(), timeout=3)
             response.raise_for_status()  # Raise an error for HTTP error responses

@@ -16,11 +16,8 @@
 # pylint: disable=E0401
 
 import os
-from typing import Dict, List, Optional
 
-import stac_pydantic.shared
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path
-from pydantic import BaseModel
 from pygeoapi.api import API
 from pygeoapi.config import get_config
 from rs_server_staging.processors import processors
@@ -31,33 +28,7 @@ from starlette.responses import JSONResponse
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from tinydb import Query, TinyDB
 
-
-# Use if you want to impose shaped-design of request
-class ExecuteRequest(BaseModel):  # pylint: disable = too-few-public-methods
-    """Class used to describe request structure."""
-
-    job_id: str
-    parameters: dict
-    # Add any other fields you expect in the request body
-
-
-class Feature(BaseModel):
-    # Custom model for RSPY with no restrictions on links and bbox
-    type: str
-    geometry: Optional[dict]
-    properties: Dict[str, str]
-    bbox: Optional[List[int | float]]  # Can be empty for 0.2
-    id: str
-    stac_version: str
-    assets: Dict[str, stac_pydantic.shared.Asset]
-    links: Optional[List[Dict[str, str]]]  # Can be empty for 0.2
-    stac_extensions: List[str]
-
-
-class RSPYFeatureCollection(BaseModel):
-    type: str
-    features: List[Feature]
-
+from .rspy_models import ProcessMetadataModel, RSPYFeatureCollectionModel
 
 # Initialize a FastAPI application
 app = FastAPI(title="rs-staging", root_path="", debug=True)
@@ -104,8 +75,12 @@ async def ping():
 
 @router.get("/processes")
 async def get_processes():
-    """Should return list of all available proceses from config maybe?"""
-    return JSONResponse(status_code=HTTP_200_OK, content="Check")
+    """Returns list of all available processes from config."""
+    processes = [
+        {"name": resource, "processor": api["config"]["resources"][resource]["processor"]["name"]}
+        for resource in api["config"]["resources"]
+    ]
+    return JSONResponse(status_code=200, content={"processes": processes})
 
 
 @router.get("/processes/{resource}")
@@ -116,13 +91,7 @@ async def get_resource():
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution")
-async def execute_process(
-    req: Request,
-    feature: RSPYFeatureCollection,
-    resource: str,
-    collection: str = None,
-    item: str = None,
-):
+async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
@@ -130,7 +99,14 @@ async def execute_process(
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        status = await processor(req, feature, collection, item, jobs_table).execute()
+        status = await processor(
+            req,
+            data.inputs.items,
+            data.inputs.collection.id,
+            data.outputs["result"].id,
+            data.inputs.provider,
+            jobs_table,
+        ).execute()
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")

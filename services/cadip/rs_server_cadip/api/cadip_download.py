@@ -165,18 +165,18 @@ def download_products(
     return JSONResponse(status_code=status.HTTP_200_OK, content={"started": "true"})
 
 
-@router.post("/cadip/streaming")
+@router.post("/cadip/{station}/streaming")
 @auth_validator(station="cadip", access_type="download")
-def streaming_download(request: Request, rspy_asset: Dict[str, stac_pydantic.shared.Asset]):
-    provider = init_cadip_provider("cadip")  # how to set station here?
+def streaming_download(request: Request, station: str, rspy_asset: Dict[str, stac_pydantic.shared.Asset]):
+    provider = init_cadip_provider(station)  # how to set station here?
     # get download token/basic auth
-    auth = provider.client._plugins_manager.get_auth_plugin('cadip').authenticate()
+    auth = provider.client._plugins_manager.get_auth_plugin(station).authenticate()
     asset_name, asset = next(iter(rspy_asset.items()))
-    cadip_id = asset.model_dump().get("cadip:id")
+    cadip_id = asset.model_dump().get("cadip:id")  # hmm, cadip:ip?
     eop = provider.create_eodag_product(cadip_id, asset_name)
     product_url = eop.properties.get("downloadLink")
     product_name = eop.properties.get("title")
-    # still need credentials :(
+
     s3_handler = S3StorageHandler(
         os.environ["S3_ACCESSKEY"],
         os.environ["S3_SECRETKEY"],
