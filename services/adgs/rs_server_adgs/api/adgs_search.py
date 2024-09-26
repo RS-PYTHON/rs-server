@@ -31,6 +31,9 @@ from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
 from rs_server_common.authentication.authentication import auth_validator
+from rs_server_common.authentication.authentication_to_external import (
+    set_eodag_auth_token,
+)
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -79,7 +82,7 @@ def search_products(  # pylint: disable=too-many-locals
     start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
-
+    set_eodag_auth_token("adgs", "auxip")
     try:
         time_range = TimeRange(start_date, stop_date)
         products = init_adgs_provider("adgs").search(time_range, items_per_page=limit)
@@ -120,7 +123,7 @@ def search_products(  # pylint: disable=too-many-locals
         ) from exception
 
     except Exception as exception:  # pylint: disable=broad-exception-caught
-        logger.error("General failure!")
+        logger.error(f"General failure! {exception}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",

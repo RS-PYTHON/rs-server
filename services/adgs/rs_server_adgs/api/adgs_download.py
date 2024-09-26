@@ -26,6 +26,9 @@ from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
 from rs_server_common.authentication.authentication import auth_validator
+from rs_server_common.authentication.authentication_to_external import (
+    set_eodag_auth_token,
+)
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
 from rs_server_common.utils.logging import Logging
@@ -100,6 +103,7 @@ def download_products(
     """
 
     try:
+        set_eodag_auth_token("adgs", "auxip")
         db_product = AdgsDownloadStatus.get(db, name=name)
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(exception)

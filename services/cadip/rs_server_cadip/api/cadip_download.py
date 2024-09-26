@@ -34,6 +34,9 @@ from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus, EDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_common.authentication.authentication import auth_validator
+from rs_server_common.authentication.authentication_to_external import (
+    set_eodag_auth_token,
+)
 from rs_server_common.db.database import get_db
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
@@ -126,7 +129,8 @@ def download_products(
             content={"started": "false"},
         )
 
-    # Reset status to not_started
+    set_eodag_auth_token(station.lower(), "cadip")
+
     db_product.not_started(db)
 
     # start a thread to run the action in background

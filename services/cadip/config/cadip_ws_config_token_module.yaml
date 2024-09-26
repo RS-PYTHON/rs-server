@@ -14,21 +14,11 @@
 
 cadip:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5000/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client_id
-      client_secret: client_secret
-      grant_type: password
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
-
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -109,22 +99,11 @@ cadip:
 
 ins:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -205,22 +184,11 @@ ins:
 
 mps:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -301,22 +269,11 @@ mps:
 
 mti:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -397,22 +354,11 @@ mti:
 
 nsg:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -493,22 +439,11 @@ nsg:
 
 sgs:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -590,22 +525,11 @@ sgs:
 
 cadip_session:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5000/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -722,29 +646,18 @@ cadip_session:
 
 ins_session:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5100/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
   search:
     type: ODataV4Search
-    api_endpoint: "http://127.0.0.1:5000/Sessions"
+    api_endpoint: "http://127.0.0.1:5100/Sessions"
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -854,22 +767,11 @@ ins_session:
 
 mps_session:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5101/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -986,22 +888,11 @@ mps_session:
 
 mti_session:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5102/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -1118,22 +1009,11 @@ mti_session:
 
 nsg_session:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5103/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -1250,22 +1130,11 @@ nsg_session:
 
 sgs_session:
   auth:
-    type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5104/oauth2/token'
-    token_type: json
-    token_key: access_token
-    request_method: POST
-    req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
-    credentials:
-      username: test
-      password: test
+    type: HTTPHeaderAuth
     headers:
-      Content-Type: application/x-www-form-urlencoded
+        Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
   products:
     S1_SAR_RAW:
       productType: RAW

@@ -82,6 +82,7 @@ from starlette.responses import (
 )
 from starlette.status import (
     HTTP_200_OK,
+    HTTP_201_CREATED,
     HTTP_302_FOUND,
     HTTP_307_TEMPORARY_REDIRECT,
     HTTP_400_BAD_REQUEST,
@@ -816,7 +817,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         request: Request,
         response: StreamingResponse,
     ) -> Response | JSONResponse:
-        """Remove the user name from obects and adapt all links.
+        """Remove the user name from objects and adapt all links.
 
         Args:
             request (Request): The client request.
@@ -1133,7 +1134,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         # Don't forward responses that fail.
         # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
-        if response.status_code not in (HTTP_200_OK, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
+        if response.status_code not in (HTTP_200_OK, HTTP_201_CREATED, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
             if response is None:
                 return None
 
