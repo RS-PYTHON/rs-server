@@ -147,6 +147,7 @@ def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, href: str) -> 
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
     href = re.sub(r"\(.*?\)", f'({product.properties["id"]})', href)
+    asset.pop("id")
     return Asset(href=href, roles=["cadu"], title=product.properties["Name"], **asset)
 
 

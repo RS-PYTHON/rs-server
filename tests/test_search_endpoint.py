@@ -639,7 +639,6 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
                                 "eviction_datetime": "2023-11-17T18:52:29.165Z",
                                 "file:size": "42",
                                 "href": "http://127.0.0.1:5000/Files(axd19d2f-29eb-4c18-bc1f-bf2769a3a16d)/$value",
-                                "id": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw",
                                 "roles": [
                                     "cadu",
                                 ],
@@ -656,7 +655,6 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
                                 "eviction_datetime": "2023-11-17T18:52:39.165Z",
                                 "file:size": "42",
                                 "href": "http://127.0.0.1:5000/Files(a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1)/$value",
-                                "id": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw",
                                 "roles": [
                                     "cadu",
                                 ],

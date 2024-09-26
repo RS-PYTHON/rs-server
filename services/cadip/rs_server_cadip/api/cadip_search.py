@@ -731,7 +731,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     except ValueError as exception:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Unable to map OData to STAC.",
+            detail=str(exception),
         ) from exception
 
 
