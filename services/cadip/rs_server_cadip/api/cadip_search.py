@@ -714,7 +714,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
                         cadip_sessions_collection,
                         sessions_products,
                         expanded_session_mapper,
-                        request,
                     ).model_dump()
                 case "_":
                     # Should / Must be non reacheable case

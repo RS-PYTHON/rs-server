@@ -21,6 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import os
 import os.path as osp
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional
@@ -134,17 +135,18 @@ def rename_keys(product: dict) -> dict:
     return product
 
 
-def update_product(product: dict) -> dict:
+def update_product(product: dict, href: str) -> dict:
     """Update product with renamed keys and default geometry."""
     product = rename_keys(product)
     product.update(DEFAULT_GEOM)
+    product["href"] = re.sub(r"\(.*?\)", f'({product["id"]})', href)
     return product
 
 
-def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starlette.requests.Request) -> Asset:
+def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, href: str) -> Asset:
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
-    href = f'{request.url.scheme}://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
+    href = re.sub(r"\(.*?\)", f'({product.properties["id"]})', href)
     return Asset(href=href, roles=["cadu"], title=product.properties["Name"], **asset)
 
 
@@ -153,7 +155,10 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
     Convert a list of sessions containing expanded files metadata into a list of files for serialization into the DB.
     """
     return [
-        eodag.EOProduct(provider="internal_session_product_file_from_cadip", properties=update_product(product))
+        eodag.EOProduct(
+            provider="internal_session_product_file_from_cadip",
+            properties=update_product(product, session.properties["href"]),
+        )
         for session in input_sessions
         for product in session.properties.get("Files", [])
     ]
@@ -163,7 +168,6 @@ def from_session_expand_to_assets_serializer(
     feature_collection: stac_pydantic.ItemCollection,
     input_session: eodag.EOProduct,
     mapper: dict,
-    request: starlette.requests.Request,
 ) -> stac_pydantic.ItemCollection:
     """
     Associate all expanded files with session from feature_collection and create a stac_pydantic.Asset for each file.
@@ -173,7 +177,7 @@ def from_session_expand_to_assets_serializer(
         for product in input_session:
             if product.properties["SessionID"] == session.id:
                 # Create Asset
-                asset: Asset = map_dag_file_to_asset(mapper, product, request)
+                asset: Asset = map_dag_file_to_asset(mapper, product, product.properties["href"])
                 # Add Asset to Item.
                 session.assets.update({asset.title: asset.model_dump()})  # type: ignore
         # Remove processed products from input_session

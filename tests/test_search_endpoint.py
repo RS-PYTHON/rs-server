@@ -46,7 +46,8 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
                 "type": "Feature",
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-                "geometry": None,
+                "bbox": [-10, 50, -5, 55],
+                "geometry": {"type": "Polygon", "coordinates": [[[-10, 50], [-10, 55], [-5, 55], [-5, 50], [-10, 50]]]},
                 "properties": {
                     "created": "2021-02-16T12:00:00Z",
                     "datetime": "1970-01-01T12:00:00Z",
@@ -73,7 +74,8 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
                 "type": "Feature",
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-                "geometry": None,
+                "bbox": [-10, 50, -5, 55],
+                "geometry": {"type": "Polygon", "coordinates": [[[-10, 50], [-10, 55], [-5, 55], [-5, 50], [-10, 50]]]},
                 "properties": {
                     "created": "2021-02-16T12:00:00Z",
                     "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
@@ -636,8 +638,8 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
                                 "created": "2023-11-17T18:52:29.165Z",
                                 "eviction_datetime": "2023-11-17T18:52:29.165Z",
                                 "file:size": "42",
-                                "href": "http://testserver/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch2_DSDB_"
-                                "00001.raw",
+                                "href": "http://127.0.0.1:5000/Files(axd19d2f-29eb-4c18-bc1f-bf2769a3a16d)/$value",
+                                "id": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00001.raw",
                                 "roles": [
                                     "cadu",
                                 ],
@@ -653,8 +655,8 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
                                 "created": "2023-11-17T18:52:39.165Z",
                                 "eviction_datetime": "2023-11-17T18:52:39.165Z",
                                 "file:size": "42",
-                                "href": "http://testserver/cadip/cadu?name=DCS_01_S2B_20231117170332034987_ch2_DSDB_"
-                                "00002.raw",
+                                "href": "http://127.0.0.1:5000/Files(a9c84e5d-3fbc-4a7d-8b2e-6d135c9e8af1)/$value",
+                                "id": "DCS_01_S2B_20231117170332034987_ch2_DSDB_00002.raw",
                                 "roles": [
                                     "cadu",
                                 ],
