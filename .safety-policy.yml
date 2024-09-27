@@ -35,3 +35,5 @@ security: # configuration for the `safety check` command
         reason: Vulnerability found in flask-cors version 5.0.0
     72731:
         reason: Vulnerability found in flask-cors version 5.0.0
+    42194:
+        reason: Vulnerability found in sqlalchemy-utils version 0.41.2

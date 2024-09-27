@@ -33,6 +33,7 @@ from fastapi import Depends, FastAPI, Request, Security
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.routing import APIRoute
+from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import settings as common_settings
@@ -419,7 +420,7 @@ async def lifespan(my_app: FastAPI):
                         sys.exit("Unable to start up catalog service")
                 await asyncio.sleep(my_app.state.pg_pause)
 
-        common_settings.set_http_client(httpx.AsyncClient())
+        common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
         yield
 
