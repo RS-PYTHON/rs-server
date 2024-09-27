@@ -29,7 +29,7 @@ RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
-# This also installs all the sub-dependencies e.g. fastapi ect ...
+# This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_cadip-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
