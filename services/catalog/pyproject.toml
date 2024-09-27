@@ -38,6 +38,8 @@ pytest-docker = "^3.1.0"
 pytest-dotenv = "^0.5.2"
 pytest-mock = "^3.14.0"
 moto = "==5.0.15"
+flask = "^3.0.3"
+flask-cors = "^5.0.0"
 # httpx is used by fastapi for test purpose
 httpx = "^0.27.0"
 # sqlalchemy-utils is used for pgstac test purpose
