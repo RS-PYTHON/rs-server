@@ -1658,6 +1658,7 @@ class TestAuthenticationPostOneItem:  # pylint: disable=duplicate-code
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 
+@pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
 @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
 async def test_error_when_not_authenticated(mocker, client, httpx_mock: HTTPXMock, test_apikey, test_oauth2):
