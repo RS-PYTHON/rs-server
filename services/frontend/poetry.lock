@@ -706,13 +706,13 @@ pytest = ">=4.6"
 
 [[package]]
 name = "pytest-httpx"
-version = "0.32.0"
+version = "0.31.2"
 description = "Send responses to httpx."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "pytest_httpx-0.32.0-py3-none-any.whl", hash = "sha256:685d93ce5e5edb5e52310b72342cdc190bebf83aab058328943dd8bd8f6ac790"},
-    {file = "pytest_httpx-0.32.0.tar.gz", hash = "sha256:7807647e8254e5cff79bf2041ae272449ce915d3cf1bbecaa581c384163adb87"},
+    {file = "pytest_httpx-0.31.2-py3-none-any.whl", hash = "sha256:aa996241bfc82e409a5c53f2a3dd14f395e7506f3883dbcd1d9de182df987510"},
+    {file = "pytest_httpx-0.31.2.tar.gz", hash = "sha256:a44cc59bdb67c78d495d4349d96af18146bd09d5ff2f2f7f93523fd5cfcb0115"},
 ]
 
 [package.dependencies]
@@ -929,4 +929,4 @@ standard = ["colorama (>=0.4)", "httptools (>=0.5.0)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "5d979a5019cc7872df8d67435d6bcb0e37ab3b7e3d6912e377632b3c97241979"
+content-hash = "d2d77657cfae2e7be1e8f92b544cff931d45c161a621600244217de5847e0dc2"
