@@ -177,26 +177,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # TEMP for https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-155
-      # For line: { include = "rs_server_common", from = "../common" },
-      # Copy the rs_server_common directory and remove the from=../common part.
-      - run: |
-          set -x
-          cd services/catalog
-          cp -r ../common/rs_server_common/ .
-          sed -i "s|^\(\s*\).*include.*rs_server_common.*$|\1{include=\"rs_server_common\"},|g" pyproject.toml
-        shell: bash
-
-      # NOTE: when RSPY-155 is resolved, remove the above step and uncomment the below step.
-
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
       # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      # - run: |
-      #     set -x
-      #     for dep in rs-server-common; do
-      #       sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/adgs/pyproject.toml
-      #     done
-      #   shell: bash
+      - run: |
+          set -x
+          for dep in rs-server-common; do
+            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/catalog/pyproject.toml
+          done
+        shell: bash
 
       - id: publish-wheel
         uses: ./.github/actions/publish-wheel
@@ -310,22 +298,18 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/catalog' Docker image"
-    # TODO: this has to be activated when Jira rspy-155 is solved
-    #needs: [services-common-whl, services-catalog-whl]
-    # TODO: this has to be deleted when Jira rspy-155 is solved
-    needs: [set-env, services-catalog-whl]
+    needs: [set-env, services-common-whl, services-catalog-whl]
     permissions: write-all
     outputs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
       - uses: actions/checkout@v4
       # Download .whl files into ./whl/
-      # TODO: the following 5 comments have to be activated when Jira rspy-155 is solved
-      #- name: Download .whl dependencies
-      #  uses: actions/download-artifact@v4
-      #  with:
-      #    name: ${{ needs.services-common-whl.outputs.package_name }}
-      #    path: ./whl
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.services-common-whl.outputs.package_name }}
+          path: ./whl
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:

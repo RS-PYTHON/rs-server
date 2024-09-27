@@ -23,6 +23,7 @@ from typing import Callable
 import httpx
 import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
+from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
@@ -115,7 +116,7 @@ def init_app(  # pylint: disable=too-many-locals
                     await asyncio.sleep(app.state.pg_pause)
 
         # Init objects for dependency injection
-        settings.set_http_client(httpx.AsyncClient())
+        settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
         # Call additional startup events
         for event in app.state.startup_events:

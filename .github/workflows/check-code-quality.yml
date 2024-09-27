@@ -82,15 +82,6 @@ jobs:
         if: always() # even if previous steps returned a non-zero exit code
         run: |
           set -x
-
-          # TEMP: add dependencies from the catalog service.
-          # The catalog is a distinct project because we have dependency conflicts
-          # between the main application and the stac-fastapi-pgstac dependency.
-          # TODO: resolve them and remove these lines
-          poetry run pip install stac-fastapi-pgstac sqlalchemy-utils || true # this is really dirty
-          poetry run pip install pydantic==2.6.1 || true # stac-fastapi-pgstac has downgraded pydantic to v1
-          # Now our dependencies are all messed up but it's OK for now since this is only for pylint
-
           poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
 
       - name: Run flake8
