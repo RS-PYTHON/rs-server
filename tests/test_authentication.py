@@ -172,6 +172,7 @@ async def test_oauth2_security(fastapi_app, mocker, client):  # pylint: disable=
     assert response.json() == {"user_login": username, "iam_roles": sorted(roles)}
 
 
+@pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
 @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
 @pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
