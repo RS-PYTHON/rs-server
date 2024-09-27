@@ -14,19 +14,41 @@
 
 import asyncio  # for handling asynchronous tasks
 import json
-import logging
 import os
+import time
 import uuid
 from enum import Enum
 from functools import wraps
-from typing import Any
+from typing import Any, Dict
 
 import aiohttp
+import dask
 import requests
+import stac_pydantic
 import tinydb  # temporary, migrate to psql
+from dask.distributed import Client, LocalCluster
+from dask.distributed.protocol import serialize
 from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
+from requests.auth import AuthBase
+from rs_server_common.authentication.authentication_to_external import (
+    get_station_token,
+    load_external_auth_config_by_station_service,
+)
+from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from rs_server_common.utils.logging import Logging
 from starlette.datastructures import Headers
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_201_CREATED,
+    HTTP_302_FOUND,
+    HTTP_307_TEMPORARY_REDIRECT,
+    HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
+    HTTP_404_NOT_FOUND,
+    HTTP_424_FAILED_DEPENDENCY,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
 
 
 class ProcessorStatus(Enum):
@@ -78,6 +100,49 @@ class MethodWrapperMeta(type):
         return super().__new__(cls, name, bases, attrs)
 
 
+# Custom authentication class
+class TokenAuth(AuthBase):
+    def __init__(self, token):
+        self.token = token
+
+    def __call__(self, r):
+        # Add the Authorization header to the request
+        r.headers["Authorization"] = f"Bearer {self.token}"
+        r.headers["Content-Type"] = "application/x-www-form-urlencoded"
+        return r
+
+
+@dask.delayed
+def streaming_download(rspy_asset: Dict[str, stac_pydantic.shared.Asset], auth: str):
+
+    try:
+        product_url = rspy_asset.get("href")
+        product_name = rspy_asset.get("title")
+    except KeyError as kerr_msg:
+        # raise HTTPException(
+        #         detail=f"Missing key in asset dictionary! {kerr_msg}",
+        #         status_code=HTTP_404_NOT_FOUND,
+        #     )
+        return False
+    s3_handler = S3StorageHandler(
+        os.environ["S3_ACCESSKEY"],
+        os.environ["S3_SECRETKEY"],
+        os.environ["S3_ENDPOINT"],
+        os.environ["S3_REGION"],  # "sbg",
+    )
+    try:
+        # path to be updated
+        time.sleep(4)
+        s3_handler.s3_streaming_upload(product_url, auth, "rs-cluster-catalog", f"stream/{product_name}")
+    except RuntimeError as exc:
+        # raise HTTPException(
+        #         detail=exc,
+        #         status_code=HTTP_424_FAILED_DEPENDENCY,
+        #     )
+        return False
+    return True
+
+
 class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
     BUCKET = os.getenv("RSPY_STORAGE", "s3://test")
     status: ProcessorStatus = ProcessorStatus.QUEUED
@@ -127,6 +192,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         self.catalog_collection: str = collection
         self.catalog_item_name: str = item
         self.provider = provider
+        self.logger = Logging.default(__name__)
 
     async def execute(self):
         self.log_job_execution(ProcessorStatus.CREATED)
@@ -232,30 +298,84 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
             self.log_job_execution(ProcessorStatus.FAILED)
             return None
 
+    # @dask.delayed
+
     async def process_rspy_features(self):
         # Process each feature, by starting streaming download of its assets to final bucket
         self.log_job_execution(ProcessorStatus.IN_PROGRESS)
-        stream_url = f"{self.download_url}/cadip/{self.provider}/streaming"
-        total_assets_to_be_processed = sum(len(feature.assets) for feature in self.stream_list)
-        async with aiohttp.ClientSession() as session:
-            tasks = []
-            for feature in self.stream_list:
-                for asset_name, asset_content in feature.assets.items():
-                    # fixmeee 1 how asset should be passed in order to be jsonified
-                    tasks.append(self.make_request(session, {asset_name: asset_content.json()}, stream_url))
+        # stream_url = f"{self.download_url}/cadip/{self.provider}/streaming"
+        # total_assets_to_be_processed = sum(len(feature.assets) for feature in self.stream_list)
+        # set_eodag_auth_token(f"{self.provider.lower()}", "cadip")
+        token = get_station_token(
+            load_external_auth_config_by_station_service(self.provider.lower(), "cadip"),
+        )
 
-                for index, asset in enumerate(asyncio.as_completed(tasks)):
-                    response = await asset
-                    if response:
-                        self.progress = ((index + 1) / total_assets_to_be_processed) * 100
-                        self.log_job_execution(ProcessorStatus.IN_PROGRESS, self.progress, detail=f"Processed {asset}")
-                    else:
-                        # If the result is None, it means the request failed
-                        # If one asset failed, should we push the feature to catalog?
-                        self.log_job_execution(ProcessorStatus.FAILED, self.progress, detail=f"Failed process: {asset}")
+        # async with aiohttp.ClientSession() as session:
+        # tasks = []
+        # gateway = Gateway("http://127.0.0.1:8000")
+        # try:
+        #     dask_clusters_list = gateway.list_clusters()
+        # except Exception as e:
+        #     self.logger.debug(f"dask_clusters_list exccept= {e}")
+        #     return
+        # self.logger.debug(f"dask_clusters_list = {dask_clusters_list}")
+        # if len(dask_clusters_list) > 0:
+        #     cluster = gateway.connect(dask_clusters_list[0].name)
+        # else:
+        #     cluster = gateway.new_cluster()
+        # self.logger.debug(f"cluster name = {cluster.name}")
+        # List of options available
+        # options = gateway.cluster_options()
+        # print(f"{options.worker_cores}")
+
+        # for key in options.keys():
+        #    print(f"{key}: {options[key]}")
+
+        # cluster = gateway.new_cluster(options)
+        # self.logger.debug(f"cluster name with options = {cluster.name}")
+        # gateway.scale_cluster(cluster.name, 2)
+        # cluster.adapt(minimum=2, maximum=10)
+        # Connect the client to the cluster
+        # client = Client(cluster)
+        # client = cluster.get_client()
+        # self.logger.debug(f"Cluster dashboard: {cluster.dashboard_link}")
+        # dask_clusters_list = gateway.list_clusters()
+        # self.logger.debug(f"dask_clusters_list = {dask_clusters_list}")
+        cluster = LocalCluster()
+        client = Client(cluster)
+        tasks = []
+        # Check the cluster dashboard
+        print(f"Cluster dashboard: {cluster.dashboard_link}")
+        for feature in self.stream_list:
+            for asset_name, asset_content in feature.assets.items():
+                # fixmeee 1 how asset should be passed in order to be jsonified
+                # tasks.append(self.make_request(session, {asset_name: asset_content.json()}, stream_url))
+                # send the job to dask cluster
+                # self.streaming_download(asset_content.dict(), TokenAuth(token))
+                tasks.append(dask.delayed(streaming_download)(asset_content.dict(), TokenAuth(token)))
+                # f = client.submit(streaming_download, asset_content.dict(),TokenAuth(token))
+
+            # for index, asset in enumerate(asyncio.as_completed(tasks)):
+            #     response = await asset
+            #     if response:
+            #         self.progress = ((index + 1) / total_assets_to_be_processed) * 100
+            #         self.log_job_execution(ProcessorStatus.IN_PROGRESS, self.progress, detail=f"Processed {asset}")
+            #     else:
+            #         # If the result is None, it means the request failed
+            #         # If one asset failed, should we push the feature to catalog?
+            #         self.log_job_execution(ProcessorStatus.FAILED, self.progress, detail=f"Failed process: {asset}")
+            try:
+                final_result = dask.compute(tasks)
+                self.logger.debug(f"final_result = {final_result}")
                 await self.publish_rspy_feature(feature)
-            # Update status once all features are processed
-            self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
+            except Exception as e:
+                self.logger.exception(f"Exception: {e}")
+
+        time.sleep(20)
+        client.close()
+        cluster.close()
+        # Update status once all features are processed
+        self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
 
     async def publish_rspy_feature(self, feature: dict):
         # Publish feature to catalog
