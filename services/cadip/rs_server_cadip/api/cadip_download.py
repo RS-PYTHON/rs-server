@@ -189,7 +189,7 @@ def streaming_download(request: Request, station: str, rspy_asset: Dict[str, sta
     )
     try:
         # path to be updated
-        s3_handler.s3_streaming_upload(product_url, auth, "test-data", f"stream/{product_name}")
+        s3_handler.s3_streaming_upload(product_url, auth, "rs-cluster-catalog", f"stream/{product_name}")
     except RuntimeError as exc:
         raise JSONResponse(status_code=status.HTTP_424_FAILED_DEPENDENCY, content=exc)
     return JSONResponse(status_code=status.HTTP_200_OK, content="Done.")
