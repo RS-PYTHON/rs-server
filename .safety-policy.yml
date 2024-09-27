@@ -31,5 +31,3 @@ security: # configuration for the `safety check` command
         reason: Vulnerability found in urllib3 version 2.0.7
     70612:
         reason: Vulnerability found in jinja2 version 3.1.4
-    70624:
-        reason: Vulnerability found in flask-cors version 4.0.1
