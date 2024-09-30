@@ -19,6 +19,7 @@ Authentication to external station module
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import requests
@@ -36,8 +37,14 @@ from starlette.status import (
 
 logger = Logging.default(__name__)
 
+# If default config path from /.config/rs-server-yaml doesn't exist, load the one from config.
 CONFIG_FILENAME = "rs-server.yaml"
 DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL = f"{os.path.expanduser('~')}/.config/{CONFIG_FILENAME}"
+if not os.path.isfile(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL):
+    DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL = str(
+        Path(os.path.realpath(os.path.dirname(__file__))).parent.parent / "config" / CONFIG_FILENAME,
+    )
+
 ACCESS_TK_KEY_IN_RESPONSE = "access_token"
 HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded"
 # if CLUSTER_MODE, the file ~/.config/rs-server.yaml has to be created, once, when the pod starts
