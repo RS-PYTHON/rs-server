@@ -23,7 +23,6 @@ import json
 import traceback
 import uuid
 from functools import wraps
-from itertools import chain
 from typing import Annotated, Any, Callable, List, Union
 
 import requests

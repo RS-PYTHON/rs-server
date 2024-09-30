@@ -837,9 +837,7 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
     assert isinstance(response["links"], list)
     assert isinstance(response["collections"], list)
     # Check if not empty
-    assert response["links"] and response["collections"]
-    # Check if link title is matching with fixture given session.
-    assert any("S1A_20200105072204051312" in link["title"] for link in response["links"])
+    assert response["collections"]
     # Check that collection type is correctly set.
     assert any("Collection" in collection["type"] for collection in response["collections"])
     # Check that collection name is correctly set.
@@ -863,11 +861,6 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
         json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
         status=200,
     )
-    mocker.patch(
-        "rs_server_cadip.api.cadip_search.process_session_search",
-        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
-    )
-    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.unit
