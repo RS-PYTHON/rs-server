@@ -102,6 +102,20 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
 
+def is_allowed(config: Union[dict[Any, Any], None], request: Request):
+    """Check if a user is allowed to use a specific configuration based on apikey."""
+    if not config:
+        # If nothing is selected, then just forward
+        return True
+    auth_roles = getattr(request.state, "auth_roles", None)
+
+    if not auth_roles:
+        # This must be local mode, then everything is allowed.
+        return True
+    # Check if user has read role for selected station
+    return any(all((config["station"] in role, "read" in role)) for role in auth_roles)
+
+
 @router.get("/cadip")
 @auth_validator(station="cadip", access_type="landing_page")
 def get_root_catalog(request: Request):
@@ -447,6 +461,9 @@ def search_cadip_endpoint(request: Request) -> dict:
     selected_config: Union[dict, None]
     query_params: dict
     selected_config, query_params = prepare_cadip_search(collection_name, request_params)
+    if not is_allowed(selected_config, request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to query this station.")
+
     query_params = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
@@ -507,6 +524,9 @@ def get_cadip_collection(
     """
     logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
+    if not is_allowed(selected_config, request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to query this station.")
+
     logger.debug(f"User selected collection: {collection_id}")
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
@@ -558,6 +578,9 @@ def get_cadip_collection_items(
     """
     logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
+    if not is_allowed(selected_config, request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to query this station.")
+
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"User selected collection: {collection_id}")
     logger.debug(f"Collection search params: {query_params}")
@@ -619,6 +642,8 @@ def get_cadip_collection_item_details(
     """
     logger.info(f"Starting {request.url.path}")
     selected_config: Union[dict, None] = select_config(collection_id)
+    if not is_allowed(selected_config, request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to query this station.")
 
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"User selected collection: {collection_id}")
