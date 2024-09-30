@@ -143,8 +143,8 @@ def streaming_download(rspy_asset: Dict[str, stac_pydantic.shared.Asset], auth: 
     return True
 
 
-class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
-    BUCKET = os.getenv("RSPY_STORAGE", "s3://test")
+class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
+    BUCKET = os.getenv("RSPY_CATALOG_BUCKET", "s3://test")
     status: ProcessorStatus = ProcessorStatus.QUEUED
 
     def __init__(
@@ -158,7 +158,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         **kwargs,
     ):
         """
-        Initialize the CADIPStaging processor with the input collection and catalog details.
+        Initialize the RSPYStaging processor with the input collection and catalog details.
 
         :param input_collection: The input collection of items to process.
         :param collection: The collection to use in the catalog.
@@ -172,13 +172,13 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         #################
         # Env section
         self.catalog_url = os.environ.get(
-            "RSPY_CATALOG_URL",
+            "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
         self.download_url = os.environ.get(
             "RSPY_RS_SERVER_CADIP_URL",
             "http://127.0.0.1:8000",
-        )  # get catalog href, loopback else
+        )  # get  href, loopback else  to be removed
         #################
         # Database section
         self.job_id = str(uuid.uuid4())  # Generate a unique job ID
@@ -307,7 +307,7 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
         # total_assets_to_be_processed = sum(len(feature.assets) for feature in self.stream_list)
         # set_eodag_auth_token(f"{self.provider.lower()}", "cadip")
         token = get_station_token(
-            load_external_auth_config_by_station_service(self.provider.lower(), "cadip"),
+            load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
         )
 
         # async with aiohttp.ClientSession() as session:
@@ -395,9 +395,9 @@ class CADIPStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for 
             self.log_job_execution(ProcessorStatus.FAILED)
 
     def __repr__(self):
-        """Returns a string representation of the CADIPStaging processor."""
-        return "CADIP Staging OGC API Processor"
+        """Returns a string representation of the RSPYStaging processor."""
+        return "RSPY Staging OGC API Processor"
 
 
 # Register the processor
-processors = {"CADIPStaging": CADIPStaging}
+processors = {"RSPYStaging": RSPYStaging}

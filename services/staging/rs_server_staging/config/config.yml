@@ -42,7 +42,7 @@ resources:
   staging:
     type: process
     processor:
-      name: CADIPStaging
+      name: RSPYStaging
 
 openapi:
   path: /openapi.json
