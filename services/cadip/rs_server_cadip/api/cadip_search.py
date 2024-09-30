@@ -47,6 +47,8 @@ from rs_server_cadip.cadip_utils import (
     select_config,
     validate_products,
 )
+from rs_server_common import settings
+from rs_server_common.authentication import authentication
 from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
@@ -93,6 +95,26 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
+def auth_validation(collection_id: str, access_type: str):
+    """
+    Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
+
+    Args:
+        collection_id (str): used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
+        from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
+        access_type (str): The type of access, such as "download" or "read".
+    """
+
+    # Find the collection which id == the input collection_id
+    collection = select_config(collection_id)
+    if not collection:
+        raise HTTPException(status.HTTP_404_INTERNAL_SERVER_ERROR, f"Unknown CADIP collection ID: {collection_id}")
+    station = collection["station"] + "_"
+
+    # Call the authentication function from the authentication module
+    authentication.auth_validation(station, access_type)
+
+
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
     """Used to create and map query values with default values."""
     required_keys: List[str] = ["station", "SessionId", "Satellite", "PublicationDate", "top", "orderby"]
@@ -100,20 +122,6 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
     if not selected_config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
-
-
-def is_allowed(config: Union[dict[Any, Any], None], request: Request):
-    """Check if a user is allowed to use a specific configuration based on apikey."""
-    if not config:
-        # If nothing is selected, then just forward
-        return True
-    auth_roles = getattr(request.state, "auth_roles", None)
-
-    if not auth_roles:
-        # This must be local mode, then everything is allowed.
-        return True
-    # Check if user has read role for selected station
-    return any(all((config["station"] in role, "read" in role)) for role in auth_roles)
 
 
 @router.get("/cadip")
@@ -188,25 +196,27 @@ def get_allowed_collections(request: Request):
     """
     # Based on api key, get all station a user can access.
     logger.info(f"Starting {request.url.path}")
-    allowed_stations = []
-    if hasattr(request.state, "auth_roles") and request.state.auth_roles is not None:
-        # Iterate over each auth_role in request.state.auth_roles
-        logger.debug(f"Request auth roles: {request.state.auth_roles}")
-        for auth_role in request.state.auth_roles:
-            try:
-                # Attempt to split the auth_role and extract the station part
-                station = auth_role.split("_")[2]
-                allowed_stations.append(station)
-            except IndexError:
-                # If there is an IndexError, ignore it and continue
-                continue
-    logger.debug(f"User allowed stations: {allowed_stations}")
-    configuration = read_conf()
 
-    # Filter and selected only collections that query allowed stations.
-    filtered_collections = [
-        collection for collection in configuration["collections"] if collection["station"] in allowed_stations
-    ]
+    configuration = read_conf()
+    all_collections = configuration["collections"]
+
+    # No authentication: select all collections
+    if settings.LOCAL_MODE:
+        filtered_collections = all_collections
+
+    # Check which stations the user has access to
+    else:
+        # Read the user roles defined in KeyCloak
+        try:
+            auth_roles = request.state.auth_roles_ or []
+        except AttributeError:
+            auth_roles = []
+
+        filtered_collections = []
+        for collection in all_collections:
+            if f"rs_cadip_{collection['station']}_read_" in auth_roles:
+                filtered_collections.append(collection)
+
     logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
     # Create JSON object.
     stac_object: dict = {"type": "Object", "links": [], "collections": []}
@@ -274,7 +284,6 @@ def get_all_queryables(request: Request):
 
 
 @router.get("/cadip/collections/{collection_id}/queryables")
-@auth_validator(station="cadip", access_type="landing_page")
 def get_collection_queryables(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
@@ -310,6 +319,7 @@ def get_collection_queryables(
     and `landing_page` access type.
     """
     logger.info(f"Starting {request.url.path}")
+    auth_validation(collection_id, "read")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
@@ -461,8 +471,6 @@ def search_cadip_endpoint(request: Request) -> dict:
     selected_config: Union[dict, None]
     query_params: dict
     selected_config, query_params = prepare_cadip_search(collection_name, request_params)
-    if not is_allowed(selected_config, request):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to query this station.")
 
     query_params = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
@@ -481,7 +489,6 @@ def search_cadip_endpoint(request: Request) -> dict:
 
 
 @router.get("/cadip/collections/{collection_id}")
-@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection(
     request: Request,
@@ -523,9 +530,8 @@ def get_cadip_collection(
     CADIP station.
     """
     logger.info(f"Starting {request.url.path}")
+    auth_validation(collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
-    if not is_allowed(selected_config, request):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to query this station.")
 
     logger.debug(f"User selected collection: {collection_id}")
     query_params: dict = create_session_search_params(selected_config)
@@ -545,7 +551,6 @@ def get_cadip_collection(
 
 
 @router.get("/cadip/collections/{collection_id}/items")
-@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection_items(
     request: Request,
@@ -577,9 +582,8 @@ def get_cadip_collection_items(
     This endpoint is protected by an API key validator, ensuring appropriate access to the CADIP station.
     """
     logger.info(f"Starting {request.url.path}")
+    auth_validation(collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
-    if not is_allowed(selected_config, request):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to query this station.")
 
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"User selected collection: {collection_id}")
@@ -596,7 +600,6 @@ def get_cadip_collection_items(
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
-@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection_item_details(
     request: Request,
@@ -641,9 +644,8 @@ def get_cadip_collection_item_details(
     The endpoint is protected by an API key validator, which requires appropriate access permissions.
     """
     logger.info(f"Starting {request.url.path}")
+    auth_validation(collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
-    if not is_allowed(selected_config, request):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to query this station.")
 
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"User selected collection: {collection_id}")
