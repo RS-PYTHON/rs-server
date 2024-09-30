@@ -216,19 +216,7 @@ def get_allowed_collections(request: Request):
         query_params = create_session_search_params(config)
         logger.debug(f"Collection {config['id']} params: {query_params}")
         collection: stac_pydantic.Collection = create_collection(config)
-        if links := process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ):
-            stac_object["links"].append(list(map(lambda link: link.model_dump(), links)))
-            stac_object["collections"].append(collection.model_dump())
-    # Flatten links if case:
-    stac_object["links"] = list(chain.from_iterable(stac_object["links"]))
+        stac_object["collections"].append(collection.model_dump())
     return stac_object
 
 
