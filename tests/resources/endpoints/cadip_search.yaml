@@ -518,3 +518,53 @@ collections:
         roles:
           - host
         url: 'https://home.rs-python.eu/'
+
+  ###
+  - id: cadip
+    station: cadip
+    query:
+      limit: 100
+  - id: ins
+    station: ins
+    query:
+      limit: 100
+  - id: mps
+    station: mps
+    query:
+      limit: 100
+  - id: mti
+    station: mti
+    query:
+      limit: 100
+  - id: nsg
+    station: nsg
+    query:
+      limit: 100
+  - id: sgs
+    station: sgs
+    query:
+      limit: 100
+  - id: s1_ins
+    station: ins
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s1_mps
+    station: mps
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s1_nsg
+    station: nsg
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s1_sgs
+    station: sgs
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s1_mti
+    station: mti
+    query: $filter=Satellite in ('S1A', 'S1C')
+  - id: s2_ins
+    station: ins
+    query: $filter=Satellite in ('S2A', 'S2B', 'S2C')
+  - id: s2_sgs
+    station: sgs
+    query: $filter=Satellite in ('S2A', 'S2B', 'S2C')
+  - id: s3_sgs
+    station: sgs
+    query: $filter=Satellite in ('S3A', 'S3B')

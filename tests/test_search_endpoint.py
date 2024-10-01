@@ -859,20 +859,6 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
     empty_response = client.get(endpoint).json()
     assert {"type": "Object", "links": [], "collections": []} == empty_response
 
-    # Test validationError case:
-    mocker.patch(
-        "rs_server_cadip.api.cadip_search.Request.state",
-        new_callable=mocker.PropertyMock,
-        return_value=mock_request_state,
-    )
-    # Mock the pickup response
-    responses.add(
-        responses.GET,
-        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20eq%20S1A"&$top=1&$expand=Files',
-        json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
-        status=200,
-    )
-
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
