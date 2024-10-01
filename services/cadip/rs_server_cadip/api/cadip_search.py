@@ -165,7 +165,6 @@ def get_root_catalog(request: Request):
 
 
 @router.get("/cadip/collections")
-@auth_validator(station="cadip", access_type="landing_page")
 @handle_exceptions
 def get_allowed_collections(request: Request):
     """
@@ -219,12 +218,20 @@ def get_allowed_collections(request: Request):
     # Create JSON object.
     stac_object: dict = {"type": "Object", "links": [], "collections": []}
 
+    # Foreach allowed collection, create links and append to response.
     for config in filtered_collections:
-        # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
         logger.debug(f"Collection {config['id']} params: {query_params}")
-        collection: stac_pydantic.Collection = create_collection(config)
-        stac_object["collections"].append(collection.model_dump())
+        try:
+            collection: stac_pydantic.Collection = create_collection(config)
+            stac_object["collections"].append(collection.model_dump())
+
+        # If a collection is incomplete in the configuration file, log the error and proceed
+        except HTTPException as exception:
+            if exception.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
+                logger.error(exception)
+            else:
+                raise
     return stac_object
 
 

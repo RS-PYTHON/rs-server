@@ -741,7 +741,7 @@ def test_invalid_cadip_collection(client, mock_token_validation):
     # Test that a non existing collection return 404 with specific response.
     response = client.get("/cadip/collections/invalid_configured_collection")
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json() == {"detail": "Cannot find a valid configuration"}
+    assert response.json() == {"detail": "Unknown CADIP collection: 'invalid_configured_collection'"}
 
     # Test with a miss configured collection: cadip_session_incomplete does not define a Extent.
     response = client.get("/cadip/collections/cadip_session_incomplete")
@@ -785,7 +785,7 @@ def test_landing_pages(client, endpoint):
 @pytest.mark.parametrize(
     "endpoint, role",
     [
-        ("/cadip/collections", "rs_cadip_authTest_landing_page"),
+        ("/cadip/collections", "rs_cadip_authTest_read"),
     ],
 )
 @responses.activate
@@ -812,6 +812,9 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
         role: The role used to simulate access control.
 
     """
+    # Mock authentication
+    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
+
     # Mock the request.state object
     mock_request_state = mocker.MagicMock()
     # Set mock auth_roles, set accest to "authTest" collection
@@ -844,9 +847,16 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
     assert any("test_collection" in collection["id"] for collection in response["collections"])
 
     # Disable patcher, set request state to empty (Simulating an apikey with no roles)
-    mocker.patch("rs_server_cadip.api.cadip_search.Request.state", new_callable=mocker.PropertyMock, return_value=[])
+    mock_empty_roles = mocker.MagicMock()
+    mock_empty_roles.auth_roles = []
+    mocker.patch(
+        "rs_server_cadip.api.cadip_search.Request.state",
+        new_callable=mocker.PropertyMock,
+        return_value=mock_empty_roles,
+    )
     # Test without using api-key, result should be 2 empty lists.
-    assert {"type": "Object", "links": [], "collections": []} == client.get(endpoint).json()
+    empty_response = client.get(endpoint).json()
+    assert {"type": "Object", "links": [], "collections": []} == empty_response
 
     # Test validationError case:
     mocker.patch(
