@@ -97,7 +97,7 @@ def auth_validator(station, access_type):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            auth_validation(*args, **kwargs)
+            auth_validation(station, access_type, *args, **kwargs)
             return func(*args, **kwargs)
 
         return wrapper
@@ -105,7 +105,7 @@ def auth_validator(station, access_type):
     return decorator
 
 
-def auth_validation(station, access_type, **kwargs):
+def auth_validation(station_type, access_type, **kwargs):
     """Function called by auth_validator"""
 
     # In local mode, there is no authentication to check
@@ -114,10 +114,10 @@ def auth_validation(station, access_type, **kwargs):
 
     # Read the full cadip station passed in parameter: ins, mps, mti, nsg, sgs, or cadip
     # No validation needed for landing pages.
-    if station == "cadip" and access_type != "landing_page":
+    if station_type == "cadip" and access_type != "landing_page":
         full_station = "cadip_" + kwargs["station"]
-    else:  # for adgs
-        full_station = station
+    else:
+        full_station = station_type
 
     requested_role = f"rs_{full_station}_{access_type}".upper()
     logger.debug(f"Requested role: {requested_role}")

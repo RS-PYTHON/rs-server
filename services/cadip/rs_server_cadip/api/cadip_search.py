@@ -95,7 +95,7 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def auth_validation(collection_id: str, access_type: str):
+def auth_validation(request: Request, collection_id: str, access_type: str):
     """
     Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
 
@@ -108,11 +108,11 @@ def auth_validation(collection_id: str, access_type: str):
     # Find the collection which id == the input collection_id
     collection = select_config(collection_id)
     if not collection:
-        raise HTTPException(status.HTTP_404_INTERNAL_SERVER_ERROR, f"Unknown CADIP collection ID: {collection_id}")
-    station = collection["station"] + "_"
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown CADIP collection: {collection_id!r}")
+    station = collection["station"]
 
     # Call the authentication function from the authentication module
-    authentication.auth_validation(station, access_type)
+    authentication.auth_validation("cadip", access_type, request=request, station=station)
 
 
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
@@ -319,7 +319,7 @@ def get_collection_queryables(
     and `landing_page` access type.
     """
     logger.info(f"Starting {request.url.path}")
-    auth_validation(collection_id, "read")
+    auth_validation(request, collection_id, "read")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
@@ -331,7 +331,7 @@ def get_collection_queryables(
 
 
 @router.get("/cadip/search/items", deprecated=True)
-@auth_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="landing_page")  # TODO: how to implement authentication ?
 @handle_exceptions
 def search_cadip_with_session_info(request: Request):
     """
@@ -369,7 +369,7 @@ def search_cadip_with_session_info(request: Request):
 
 
 @router.get("/cadip/search")
-@auth_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="landing_page")  # TODO: how to implement authentication ?
 @handle_exceptions
 def search_cadip_endpoint(request: Request) -> dict:
     """
@@ -530,7 +530,7 @@ def get_cadip_collection(
     CADIP station.
     """
     logger.info(f"Starting {request.url.path}")
-    auth_validation(collection_id, "read")
+    auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
 
     logger.debug(f"User selected collection: {collection_id}")
@@ -582,7 +582,7 @@ def get_cadip_collection_items(
     This endpoint is protected by an API key validator, ensuring appropriate access to the CADIP station.
     """
     logger.info(f"Starting {request.url.path}")
-    auth_validation(collection_id, "read")
+    auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
@@ -644,7 +644,7 @@ def get_cadip_collection_item_details(
     The endpoint is protected by an API key validator, which requires appropriate access permissions.
     """
     logger.info(f"Starting {request.url.path}")
-    auth_validation(collection_id, "read")
+    auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)
