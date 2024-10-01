@@ -1434,13 +1434,13 @@ email = ["email-validator (>=1.0.3)"]
 
 [[package]]
 name = "pygeoapi"
-version = "0.17.0"
+version = "0.18.0"
 description = "pygeoapi provides an API to geospatial data"
 optional = false
-python-versions = "*"
+python-versions = ">=3.10"
 files = [
-    {file = "pygeoapi-0.17.0-py2.py3-none-any.whl", hash = "sha256:e47b5dfa619efe7649c3fef0dad53ae1a7a32115a8700a7b509ad2d9df784c2a"},
-    {file = "pygeoapi-0.17.0.tar.gz", hash = "sha256:e889eb2444e81836abbb055c410a2ecc308062940c760f59d4c862bddc9bd8d1"},
+    {file = "pygeoapi-0.18.0-py2.py3-none-any.whl", hash = "sha256:2acdf508d207b1bc4b0c29d06201c053eb7dfb760454b4faba28cdd329293050"},
+    {file = "pygeoapi-0.18.0.tar.gz", hash = "sha256:3349c5aa9d5b2c8f2c0c59f1d2d265137cc1bd97d65359f93cdf036e0a9dc16f"},
 ]
 
 [package.dependencies]
@@ -1462,7 +1462,6 @@ requests = "*"
 shapely = "*"
 SQLAlchemy = "<2.0.0"
 tinydb = "*"
-unicodecsv = "*"
 
 [[package]]
 name = "pygeofilter"
@@ -2427,16 +2426,6 @@ tzdata = {version = "*", markers = "platform_system == \"Windows\""}
 devenv = ["check-manifest", "pytest (>=4.3)", "pytest-cov", "pytest-mock (>=3.3)", "zest.releaser"]
 
 [[package]]
-name = "unicodecsv"
-version = "0.14.1"
-description = "Python2's stdlib csv module is nice, but it doesn't support unicode. This module is a drop-in replacement which *does*."
-optional = false
-python-versions = "*"
-files = [
-    {file = "unicodecsv-0.14.1.tar.gz", hash = "sha256:018c08037d48649a0412063ff4eda26eaa81eff1546dbffa51fa5293276ff7fc"},
-]
-
-[[package]]
 name = "urllib3"
 version = "2.2.3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -2609,4 +2598,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "1af1e6212174ce3108b70842ed2b855c6e9e5392586124506afde24073784c3f"
+content-hash = "8f0ffbdecf1c06bb1a5486d325649f146c726291eff6ef14d4c971db15c413d2"
