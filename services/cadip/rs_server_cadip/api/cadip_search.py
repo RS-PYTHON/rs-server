@@ -203,7 +203,6 @@ def get_allowed_collections(request: Request):
     if settings.LOCAL_MODE:
         filtered_collections = all_collections
 
-    # Check which stations the user has access to
     else:
         # Read the user roles defined in KeyCloak
         try:
@@ -211,10 +210,10 @@ def get_allowed_collections(request: Request):
         except AttributeError:
             auth_roles = []
 
-        filtered_collections = []
-        for collection in all_collections:
-            if f"rs_cadip_{collection['station']}_read" in auth_roles:
-                filtered_collections.append(collection)
+        # Only keep the collections that are associated to a station that the user has access to
+        filtered_collections = [
+            collection for collection in all_collections if f"rs_cadip_{collection['station']}_read" in auth_roles
+        ]
 
     logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
     # Create JSON object.

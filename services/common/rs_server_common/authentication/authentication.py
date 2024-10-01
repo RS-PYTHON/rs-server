@@ -16,11 +16,9 @@
 Authentication functions implementation.
 """
 
-import os
 from functools import wraps
 from typing import Annotated
 
-import yaml
 from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
