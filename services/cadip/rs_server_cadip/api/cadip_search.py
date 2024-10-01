@@ -23,7 +23,6 @@ import json
 import traceback
 import uuid
 from functools import wraps
-from itertools import chain
 from typing import Annotated, Any, Callable, List, Union
 
 import requests
@@ -208,13 +207,13 @@ def get_allowed_collections(request: Request):
     else:
         # Read the user roles defined in KeyCloak
         try:
-            auth_roles = request.state.auth_roles_ or []
+            auth_roles = request.state.auth_roles or []
         except AttributeError:
             auth_roles = []
 
         filtered_collections = []
         for collection in all_collections:
-            if f"rs_cadip_{collection['station']}_read_" in auth_roles:
+            if f"rs_cadip_{collection['station']}_read" in auth_roles:
                 filtered_collections.append(collection)
 
     logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
@@ -226,19 +225,7 @@ def get_allowed_collections(request: Request):
         query_params = create_session_search_params(config)
         logger.debug(f"Collection {config['id']} params: {query_params}")
         collection: stac_pydantic.Collection = create_collection(config)
-        if links := process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ):
-            stac_object["links"].append(list(map(lambda link: link.model_dump(), links)))
-            stac_object["collections"].append(collection.model_dump())
-    # Flatten links if case:
-    stac_object["links"] = list(chain.from_iterable(stac_object["links"]))
+        stac_object["collections"].append(collection.model_dump())
     return stac_object
 
 
