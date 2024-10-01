@@ -165,6 +165,7 @@ def get_root_catalog(request: Request):
 
 
 @router.get("/cadip/collections")
+@auth_validator(station="cadip", access_type="landing_page")
 @handle_exceptions
 def get_allowed_collections(request: Request):
     """

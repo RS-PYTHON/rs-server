@@ -783,13 +783,13 @@ def test_landing_pages(client, endpoint):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "endpoint, role",
+    "endpoint, roles",
     [
-        ("/cadip/collections", "rs_cadip_authTest_read"),
+        ("/cadip/collections", ["rs_cadip_landing_page", "rs_cadip_authTest_read"]),
     ],
 )
 @responses.activate
-def test_collections_landing_page(client, mocker, mock_token_validation, endpoint, role):
+def test_collections_landing_page(client, mocker, mock_token_validation, endpoint, roles):
     """
     Unit test for validating the collections landing page response.
 
@@ -818,7 +818,7 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
     # Mock the request.state object
     mock_request_state = mocker.MagicMock()
     # Set mock auth_roles, set accest to "authTest" collection
-    mock_request_state.auth_roles = [role]
+    mock_request_state.auth_roles = roles
 
     # Patch the part where request.state.auth_roles is accessed
     mocker.patch(
@@ -847,14 +847,15 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
     assert any("test_collection" in collection["id"] for collection in response["collections"])
 
     # Disable patcher, set request state to empty (Simulating an apikey with no roles)
+    # Note: we still need the landing_page rights
     mock_empty_roles = mocker.MagicMock()
-    mock_empty_roles.auth_roles = []
+    mock_empty_roles.auth_roles = ["rs_cadip_landing_page"]
     mocker.patch(
         "rs_server_cadip.api.cadip_search.Request.state",
         new_callable=mocker.PropertyMock,
         return_value=mock_empty_roles,
     )
-    # Test without using api-key, result should be 2 empty lists.
+    # The result should be 2 empty lists.
     empty_response = client.get(endpoint).json()
     assert {"type": "Object", "links": [], "collections": []} == empty_response
 
