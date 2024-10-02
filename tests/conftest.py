@@ -73,6 +73,13 @@ def before_and_after(session_mocker):
     # Before all tests #
     ####################
 
+    # Use this default value for the configuration file for authentication to extenal stations.
+    session_mocker.patch(
+        "rs_server_common.authentication.authentication_to_external.CONFIG_PATH_AUTH_TO_EXTERNAL",
+        new=str((Path(__file__).parent.parent / "services/common/config/rs-server.yaml").resolve()),
+        autospec=False,
+    )
+
     # Avoid errors:
     # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in 1s
     session_mocker.patch(  # pylint: disable=protected-access
@@ -184,10 +191,9 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
         monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
         monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
         monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
-        # Deactivate the creation of ~/.config/rs-server.yaml file in case the CLUSTER_MODE is True
-        # we don't want to actually create the rs-server.yaml file.
-        # All the tests using it should create it in a temporary directory
-        mocker.patch("rs_server_common.fastapi_app.create_rs_server_config_yaml", side_effect=None)
+        # In cluster mode, deactivate the creation of the configuration file for authentication to extenal stations.
+        # All the tests that need it should create a mocked version in a temporary directory.
+        mocker.patch("rs_server_common.fastapi_app.init_rs_server_config_yaml", side_effect=None)
 
         # Reload the oauth2 module with the cluster info
         reload(oauth2)
