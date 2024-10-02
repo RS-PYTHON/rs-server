@@ -357,7 +357,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 with self.lock:
                     self.tasks_finished += 1
                     self.log_job_execution(
-                        ProcessorStatus.IN_PROGRESS, (self.tasks_finished / len(self.tasks)), detail="In progress",
+                        ProcessorStatus.IN_PROGRESS,
+                        (self.tasks_finished / len(self.tasks)),
+                        detail="In progress",
                     )
                     self.logger.debug("Task streaming completed")
             except Exception as e:
