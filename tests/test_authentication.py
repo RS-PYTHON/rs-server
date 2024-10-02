@@ -178,7 +178,7 @@ async def test_oauth2_security(fastapi_app, mocker, client):  # pylint: disable=
 @pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
 async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-many-locals
     fastapi_app,
-    client,    
+    client,
     mocker,
     monkeypatch,
     httpx_mock: HTTPXMock,
@@ -191,7 +191,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of the internal token module  for getting the token and setting it to the eodag
     mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
-    
+
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.authentication.authentication.FROM_PYTEST", new=True, autospec=False)
 
