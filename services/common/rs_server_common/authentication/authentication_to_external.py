@@ -13,17 +13,19 @@
 # limitations under the License.
 
 """
-Authentication to external station module
+Authentication to external stations module.
 """
 
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import requests
 import yaml
 from fastapi import HTTPException
+from rs_server_common import settings
 from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 from starlette.status import (
@@ -36,22 +38,40 @@ from starlette.status import (
 
 logger = Logging.default(__name__)
 
-CONFIG_FILENAME = "rs-server.yaml"
-DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL = f"{os.path.expanduser('~')}/.config/{CONFIG_FILENAME}"
+# RS-Server configuration file for authentication to extenal stations
+CONFIG_PATH_AUTH_TO_EXTERNAL: str | None = None
+DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL = f"{os.path.expanduser('~')}/.config/rs-server.yaml"  # default value
+
 ACCESS_TK_KEY_IN_RESPONSE = "access_token"
 HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded"
-# if CLUSTER_MODE, the file ~/.config/rs-server.yaml has to be created, once, when the pod starts
 
 
-def create_rs_server_config_yaml():
+def init_rs_server_config_yaml():
     """
-    Create the rs-server configuration YAML file from environment variables.
+    Init the rs-server configuration file for authentication to extenal stations.
 
+    In local mode, we use an existing local file, either customized by the user or released with the source code.
+
+    In cluster mode, we create the file from environment variables.
     The environment variables must follow the pattern:
     RSPY__TOKEN__<service>__<station>__<section_name>__<rest_of_the_info_for_key>
-
-    The YAML file is saved to ~/.config/rs-server.yaml by default.
     """
+    global CONFIG_PATH_AUTH_TO_EXTERNAL  # pylint: disable=global-statement
+
+    # Default path
+    CONFIG_PATH_AUTH_TO_EXTERNAL = DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL
+
+    # In local mode, if this local file exists, it means it could be customized by the user, so we use it.
+    # Else we use the default file released with the source code.
+    if settings.LOCAL_MODE:
+        if not os.path.isfile(CONFIG_PATH_AUTH_TO_EXTERNAL):
+            CONFIG_PATH_AUTH_TO_EXTERNAL = str(
+                (Path(__file__).parent.parent.parent / "config/rs-server.yaml").resolve(),
+            )
+        return
+
+    # Else, we are in cluster mode. We create the file from env variables.
+
     # read all the env vars. The pattern for all the env vars used is:
     # RSPY__TOKEN__<service>__<station>__<section_name>__<rest of the info for key>
     # Regular expression to match the pattern RSPY__TOKEN__<service>__<station>__<section>__<rest_of_the_key>
@@ -84,16 +104,16 @@ def create_rs_server_config_yaml():
                 station_data[section] = value
     try:
         # Create the directory if it doesn't exist
-        os.makedirs(os.path.dirname(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL), exist_ok=True)
+        os.makedirs(os.path.dirname(CONFIG_PATH_AUTH_TO_EXTERNAL), exist_ok=True)
 
         # Write the YAML data to the file
         main_dict = {"external_data_sources": config_data}
-        with open(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL, "w", encoding="utf-8") as yaml_file:
+        with open(CONFIG_PATH_AUTH_TO_EXTERNAL, "w", encoding="utf-8") as yaml_file:
             yaml.dump(main_dict, yaml_file, default_flow_style=False)
-        logger.info(f"Configuration successfully written to {DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL}")
+        logger.info(f"Configuration successfully written to {CONFIG_PATH_AUTH_TO_EXTERNAL}")
     except (OSError, IOError) as e:
-        logger.exception(f"Failed to write configuration to {DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}")
-        raise RuntimeError(f"Failed to write configuration to {DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}") from e
+        logger.exception(f"Failed to write configuration to {CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}")
+        raise RuntimeError(f"Failed to write configuration to {CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}") from e
 
 
 @dataclass
@@ -249,10 +269,50 @@ def validate_token_format(token: str) -> None:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid token format received from the station.")
 
 
+def read_config_file():
+    """
+    Reads and loads the external station authentication configuration from a YAML file.
+
+    This function attempts to read the configuration file located at the default path
+    (`CONFIG_PATH_AUTH_TO_EXTERNAL`) and load its contents as a dictionary.
+    If the file is not found, is improperly formatted, or an unexpected error occurs,
+    appropriate exceptions are raised with HTTP 500 status codes.
+
+    Returns:
+        dict: A dictionary containing the configuration data from the YAML file.
+
+    Raises:
+        HTTPException:
+            - If the configuration file cannot be found (`FileNotFoundError`).
+            - If there is an error in reading or parsing the YAML file (`yaml.YAMLError`).
+            - For any other unexpected errors that occur during the file reading process.
+    """
+    try:
+        if not CONFIG_PATH_AUTH_TO_EXTERNAL:
+            logger.error(msg := "Configuration for external stations authentication is undefined")
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
+
+        # Open the configuration file and load the YAML content
+        with open(CONFIG_PATH_AUTH_TO_EXTERNAL, encoding="utf-8") as f:
+            config_yaml = yaml.safe_load(f)
+
+        # Ensure the loaded configuration is a dictionary
+        if not isinstance(config_yaml, dict):
+            logger.error(msg := "Error loading the configuration for external stations authentication")
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
+
+    except (FileNotFoundError, yaml.YAMLError) as e:
+        logger.error(msg := f"Error loading configuration: {e}")
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from e
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.exception(msg := f"An unexpected error occurred: {e}")
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from e
+    return config_yaml
+
+
 def load_external_auth_config_by_station_service(
     station_id: str,
     service: str,
-    path: str | None = None,
 ) -> Optional[ExternalAuthenticationConfig]:
     """
     Load the external authentication configuration for a given station and service from a YAML file.
@@ -265,30 +325,8 @@ def load_external_auth_config_by_station_service(
         Optional[ExternalAuthenticationConfig]: An object representing the external authentication configuration,
         or None if the station or service is not found or if an error occurs.
 
-    Raises:
-        FileNotFoundError: If the configuration file cannot be found.
-        yaml.YAMLError: If there's an error parsing the YAML configuration file.
-        Exception: For any unexpected errors during the loading process.
     """
-    config_file = f"{path.rstrip('/')}/{CONFIG_FILENAME}" if path else DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL
-
-    try:
-        with open(config_file, encoding="utf-8") as f:
-            config_yaml = yaml.safe_load(f)
-
-    except (FileNotFoundError, yaml.YAMLError) as e:
-        logger.error(f"Error loading configuration: {e}")
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error loading configuration. {e}",
-        ) from e
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"An unexpected error occurred: {e}")
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred. {e}",
-        ) from e
-
+    config_yaml = read_config_file()
     # Retrieve station and service details from the YAML config
     station_dict = config_yaml.get("external_data_sources", {}).get(station_id, {})
     service_dict = station_dict.get("service", {})
@@ -302,7 +340,7 @@ def load_external_auth_config_by_station_service(
     return create_external_auth_config(station_id, station_dict, service_dict)
 
 
-def load_external_auth_config_by_domain(domain: str, path: str | None = None) -> Optional[ExternalAuthenticationConfig]:
+def load_external_auth_config_by_domain(domain: str) -> Optional[ExternalAuthenticationConfig]:
     """
     Load the external authentication configuration based on the domain from a YAML file.
 
@@ -312,36 +350,15 @@ def load_external_auth_config_by_domain(domain: str, path: str | None = None) ->
     Returns:
         Optional[ExternalAuthenticationConfig]: An object representing the external authentication configuration,
         or None if no matching domain is found or if an error occurs.
-
-    Raises:
-        FileNotFoundError: If the configuration file cannot be found.
-        yaml.YAMLError: If there's an error parsing the YAML configuration file.
-        Exception: For any unexpected errors during the loading process.
     """
-    config_file = path.rstrip("/") + f"/{CONFIG_FILENAME}" if path else DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL
-    try:
-        with open(config_file, encoding="utf-8") as f:
-            config_yaml = yaml.safe_load(f)
-            logger.info(f"Loaded configuration YAML: {config_yaml}")
 
-            # Iterate through the external data sources in the configuration
-            for station_id, station_dict in config_yaml.get("external_data_sources", {}).items():
-                if station_dict.get("domain") == domain:
-                    return create_external_auth_config(station_id, station_dict, station_dict.get("service", {}))
+    config_yaml = read_config_file()
+    # Iterate through the external data sources in the configuration
+    for station_id, station_dict in config_yaml.get("external_data_sources", {}).items():
+        if station_dict.get("domain") == domain:
+            return create_external_auth_config(station_id, station_dict, station_dict.get("service", {}))
 
-    except (FileNotFoundError, yaml.YAMLError) as e:
-        logger.error(f"Error loading configuration: {e}")
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error loading configuration. {e}",
-        ) from e
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"An unexpected error occurred: {e}")
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred. {e}",
-        ) from e
-
+    logger.warning(f"No matching service found for domain: {domain}")
     return None
 
 
@@ -409,7 +426,6 @@ def set_eodag_auth_token(
     station_id: str | None = None,
     service: str | None = None,
     domain: str | None = None,
-    path: str | None = None,
 ) -> None:
     """
     Set the Authorization environment variable for EODAG using a token retrieved from the station.
@@ -432,9 +448,9 @@ def set_eodag_auth_token(
         if "_session" in station_id:
             station_id = station_id.replace("_session", "")
             session = "_session"
-        ext_auth_config = load_external_auth_config_by_station_service(station_id.lower(), service, path)
+        ext_auth_config = load_external_auth_config_by_station_service(station_id.lower(), service)
     elif domain:
-        ext_auth_config = load_external_auth_config_by_domain(domain, path)
+        ext_auth_config = load_external_auth_config_by_domain(domain)
     else:
         raise ValueError("Either station_id and service or domain must be provided.")
 

@@ -188,6 +188,9 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     """
     Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
     """
+    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
+    # usage of the internal token module  for getting the token and setting it to the eodag
+    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
 
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.authentication.authentication.FROM_PYTEST", new=True, autospec=False)
@@ -385,7 +388,9 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
     """
     Test that the api key has the right roles for the http endpoints.
     """
-
+    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
+    # usage of the internal token module  for getting the token and setting it to the eodag
+    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
     # Mock the uac manager url
     if test_apikey:
         monkeypatch.setenv("RSPY_UAC_CHECK_URL", RSPY_UAC_CHECK_URL)

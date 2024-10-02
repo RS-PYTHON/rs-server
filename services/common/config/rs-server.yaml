@@ -1,0 +1,272 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+external_data_sources:
+  # AUXIP. For now only one ADGS but in the future there will be another one
+  adgs:
+    domain: mockup-auxip-adgs-svc.processing.svc.cluster.local
+    service:
+      name: auxip
+      url: http://127.0.0.1:5000
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5000/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization: Basic test
+
+  # CADIP stations. MPS has Authorization but no scope. MTI has scope but no Authorization
+  # the following one is for tests onlys
+  cadip:
+    domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5000
+    authentication:
+      auth_type: oauth2
+      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
+      token_url: http://127.0.0.1:5000/oauth2/token
+      grant_type: password
+      scope: sss
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+
+  ins:
+    domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5002
+    authentication:
+      auth_type: oauth2
+      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
+      token_url: http://127.0.0.1:5002/oauth2/token
+      grant_type: password
+      scope: sss
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+  mps:
+    domain: mockup-station-cadip-mps-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5003
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5004/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization: Basic test
+  mti:
+    domain: mockup-station-cadip-mti-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5004
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5004/oauth2/token
+      grant_type: password
+      scope: openid
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+  nsg:
+    domain: mockup-station-cadip-nsg-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5005
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5005/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+  sgs:
+    domain: mockup-station-cadip-sgs-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5006
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5006/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+
+  # CADIP stations for sessions. MPS has Authorization but no scope. MTI has scope but no Authorization
+  # the following one is for tests onlys
+  cadip_session:
+    domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5000
+    authentication:
+      auth_type: oauth2
+      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
+      token_url: http://127.0.0.1:5000/oauth2/token
+      grant_type: password
+      scope: sss
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+
+  ins_session:
+    domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5001
+    authentication:
+      auth_type: oauth2
+      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
+      token_url: http://127.0.0.1:5001/oauth2/token
+      grant_type: password
+      scope: sss
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+  mps_session:
+    domain: mockup-station-cadip-mps-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5002
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5002/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization: Basic test
+  mti_session:
+    domain: mockup-station-cadip-mti-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5003
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5003/oauth2/token
+      grant_type: password
+      scope: openid
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+  nsg_session:
+    domain: mockup-station-cadip-nsg-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5004
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5004/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+  sgs_session:
+    domain: mockup-station-cadip-sgs-svc.processing.svc.cluster.local
+    service:
+      name: cadip
+      url: http://127.0.0.1:5005
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5005/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization:
+
+  # LTA
+  lta:
+    domain: mockup-lta-lta-svc.processing.svc.cluster.local
+    service:
+      name: lta
+      url: http://127.0.0.1:5006
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5006/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization: Basic test
+
+  # PRIP (Production Services)
+  s1a:
+    domain: mockup-prip-s1a-svc.processing.svc.cluster.local
+    service:
+      name: prip
+      url: http://127.0.0.1:5007
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5007/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization: Basic test
+  s2a:
+    domain: mockup-prip-s2a-svc.processing.svc.cluster.local
+    service:
+      name: prip
+      url: http://127.0.0.1:5008
+    authentication:
+      auth_type: oauth2
+      token_url: http://127.0.0.1:5008/oauth2/token
+      grant_type: password
+      scope:
+      username: test
+      password: test
+      client_id: client_id
+      client_secret: client_secret
+      authorization: Basic test

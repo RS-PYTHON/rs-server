@@ -26,8 +26,8 @@ from fastapi import HTTPException
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     create_external_auth_config,
-    create_rs_server_config_yaml,
     get_station_token,
+    init_rs_server_config_yaml,
     load_external_auth_config_by_domain,
     load_external_auth_config_by_station_service,
     prepare_data,
@@ -61,13 +61,17 @@ def test_create_rs_server_config_yaml(
     set_token_env_var,  # pylint: disable=unused-argument
     expected_config_token_file,
 ):
-    """Test the creation of the rs-server config YAML file with both valid and invalid paths.
+    """Test the creation in cluster mode of the rs-server config YAML file with both valid and invalid paths.
 
     Args:
         mocker: Mocking utility for patching methods.
         set_env_var_token: Fixture to set environment variables for testing.
         expected_config_token_file: The expected YAML config structure.
     """
+
+    # Mock the cluster mode
+    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
     # Set environment variables by fixture set_token_env_var. In the production environment,
     # these variables are set through mounting of the secrets.
@@ -82,7 +86,7 @@ def test_create_rs_server_config_yaml(
         autospec=False,
     )
     # Call the function to create the config file
-    create_rs_server_config_yaml()
+    init_rs_server_config_yaml()
     # Assert the config file was created
     assert os.path.isfile(tmp_config_file)
     # Verify the contents of the config file match the expected YAML structure
@@ -99,7 +103,7 @@ def test_create_rs_server_config_yaml(
     )
     # Ensure the appropriate exception is raised when the file can't be created
     with pytest.raises(RuntimeError) as exc:
-        create_rs_server_config_yaml()
+        init_rs_server_config_yaml()
     # Check the raised exception contains the expected error message
     assert "Failed to write configuration" in str(exc.value)
 
@@ -295,11 +299,7 @@ def test_load_external_authentication_by_station_service_config_valid(mocker, ge
     """
     mocker.patch("builtins.open", mocker.mock_open(read_data=mock_yaml_content))
     mocker.patch("yaml.safe_load", return_value=yaml.safe_load(mock_yaml_content))
-    result = load_external_auth_config_by_station_service(
-        ext_auth_config.station_id,
-        ext_auth_config.service_name,
-        "/test/path",
-    )
+    result = load_external_auth_config_by_station_service(ext_auth_config.station_id, ext_auth_config.service_name)
     assert result is not None
     assert result.station_id == ext_auth_config.station_id
     assert result.service_name == ext_auth_config.service_name
@@ -435,7 +435,7 @@ def test_load_external_auth_config_by_station_service_no_matching_service(mocker
         return_value=yaml.safe_load(mock_yaml_content),
     )
     mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.warning")
-    result = load_external_auth_config_by_station_service(station_id, "unknwon_service", "/custom/path")
+    result = load_external_auth_config_by_station_service(station_id, "unknwon_service")
     assert result is None
     mock_logger.assert_called_once_with(
         f"No matching service found for station_id: {station_id} and service: unknwon_service",
@@ -481,7 +481,7 @@ def test_load_external_auth_config_by_station_service_no_matching_station(mocker
         return_value=yaml.safe_load(mock_yaml_content),
     )
     mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.warning")
-    result = load_external_auth_config_by_station_service("unknown_station", "known_service", "/custom/path")
+    result = load_external_auth_config_by_station_service("unknown_station", "known_service")
     assert result is None
     mock_logger.assert_called_once_with(
         "No matching service found for station_id: unknown_station and service: known_service",
@@ -532,7 +532,7 @@ def test_load_external_authentication_by_domain_config_valid(mocker, get_externa
         return_value=yaml.safe_load(mock_yaml_content),
     )
 
-    result = load_external_auth_config_by_domain(ext_auth_config.domain, "/test/path")
+    result = load_external_auth_config_by_domain(ext_auth_config.domain)
     assert result is not None
     assert result.station_id == ext_auth_config.station_id
     assert result.service_name == ext_auth_config.service_name
@@ -558,7 +558,7 @@ def test_load_external_auth_config_by_domain_file_not_found(mocker):
     """
     with mocker.patch("builtins.open", side_effect=FileNotFoundError):
         with pytest.raises(HTTPException) as excinfo:
-            load_external_auth_config_by_domain("domain_test", "/custom/path")
+            load_external_auth_config_by_domain("domain_test")
         assert excinfo.value.status_code == 500
         assert "Error loading configuration" in excinfo.value.detail
 
@@ -586,7 +586,7 @@ def test_load_external_auth_config_by_domain_yaml_error(mocker):
     )
     mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.error")
     with pytest.raises(HTTPException) as excinfo:
-        load_external_auth_config_by_domain("domain_test", "/custom/path")
+        load_external_auth_config_by_domain("domain_test")
     assert excinfo.value.status_code == 500
     assert "Error loading configuration" in excinfo.value.detail
     mock_logger.assert_called_once()
@@ -611,7 +611,7 @@ def test_load_external_auth_config_by_domain_unexpected_exception(mocker):
     mocker.patch("builtins.open", side_effect=Exception("Unexpected error"))
     mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.exception")
     with pytest.raises(HTTPException) as excinfo:
-        load_external_auth_config_by_domain("domain_test", "/custom/path")
+        load_external_auth_config_by_domain("domain_test")
     assert excinfo.value.status_code == 500
     assert "An unexpected error occurred" in excinfo.value.detail
     mock_logger.assert_called_once()
@@ -659,7 +659,7 @@ def test_load_external_auth_config_by_domain_no_matching_domain(mocker, get_exte
         "yaml.safe_load",
         return_value=yaml.safe_load(mock_yaml_content),
     )
-    result = load_external_auth_config_by_domain("unknwon_domain", "/custom/path")
+    result = load_external_auth_config_by_domain("unknwon_domain")
     assert result is None
 
 
@@ -988,7 +988,7 @@ def test_set_eodag_auth_token_config_not_found(mocker):
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        set_eodag_auth_token(station_id="adgs", service="auxip", path="/some/path")
+        set_eodag_auth_token(station_id="adgs", service="auxip")
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Could not retrieve the configuration for the station token."
