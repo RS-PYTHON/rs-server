@@ -26,8 +26,8 @@ from fastapi import HTTPException
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     create_external_auth_config,
-    create_rs_server_config_yaml,
     get_station_token,
+    init_rs_server_config_yaml,
     load_external_auth_config_by_domain,
     load_external_auth_config_by_station_service,
     prepare_data,
@@ -61,13 +61,17 @@ def test_create_rs_server_config_yaml(
     set_token_env_var,  # pylint: disable=unused-argument
     expected_config_token_file,
 ):
-    """Test the creation of the rs-server config YAML file with both valid and invalid paths.
+    """Test the creation in cluster mode of the rs-server config YAML file with both valid and invalid paths.
 
     Args:
         mocker: Mocking utility for patching methods.
         set_env_var_token: Fixture to set environment variables for testing.
         expected_config_token_file: The expected YAML config structure.
     """
+
+    # Mock the cluster mode
+    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
     # Set environment variables by fixture set_token_env_var. In the production environment,
     # these variables are set through mounting of the secrets.
@@ -82,7 +86,7 @@ def test_create_rs_server_config_yaml(
         autospec=False,
     )
     # Call the function to create the config file
-    create_rs_server_config_yaml()
+    init_rs_server_config_yaml()
     # Assert the config file was created
     assert os.path.isfile(tmp_config_file)
     # Verify the contents of the config file match the expected YAML structure
@@ -99,7 +103,7 @@ def test_create_rs_server_config_yaml(
     )
     # Ensure the appropriate exception is raised when the file can't be created
     with pytest.raises(RuntimeError) as exc:
-        create_rs_server_config_yaml()
+        init_rs_server_config_yaml()
     # Check the raised exception contains the expected error message
     assert "Failed to write configuration" in str(exc.value)
 
