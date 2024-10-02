@@ -28,7 +28,7 @@ from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.authentication_to_external import (
-    create_rs_server_config_yaml,
+    init_rs_server_config_yaml,
 )
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.db.database import sessionmanager
@@ -92,10 +92,9 @@ def init_app(  # pylint: disable=too-many-locals
         ###########
         # STARTUP #
         ###########
-        # When the app is launched as a pod in cluster, create the ~/.config/rs-server.yaml file for
-        # authentication_to_external module
-        if settings.CLUSTER_MODE:
-            create_rs_server_config_yaml()
+
+        # Init the rs-server configuration file for authentication to extenal stations
+        init_rs_server_config_yaml()
 
         # Open database session. Loop until the connection works.
         if app.state.init_db:
