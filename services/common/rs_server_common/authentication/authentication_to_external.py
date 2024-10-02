@@ -37,7 +37,7 @@ from starlette.status import (
 
 logger = Logging.default(__name__)
 
-# If default config path from /.config/rs-server-yaml doesn't exist, load the one from config.
+# If default config path from ~/.config/rs-server.yaml doesn't exist, load the one from config.
 CONFIG_FILENAME = "rs-server.yaml"
 DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL = f"{os.path.expanduser('~')}/.config/{CONFIG_FILENAME}"
 if not os.path.isfile(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL):
@@ -259,7 +259,6 @@ def validate_token_format(token: str) -> None:
 def load_external_auth_config_by_station_service(
     station_id: str,
     service: str,
-    path: str | None = None,
 ) -> Optional[ExternalAuthenticationConfig]:
     """
     Load the external authentication configuration for a given station and service from a YAML file.
@@ -277,10 +276,8 @@ def load_external_auth_config_by_station_service(
         yaml.YAMLError: If there's an error parsing the YAML configuration file.
         Exception: For any unexpected errors during the loading process.
     """
-    config_file = f"{path.rstrip('/')}/{CONFIG_FILENAME}" if path else DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL
-
     try:
-        with open(config_file, encoding="utf-8") as f:
+        with open(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL, encoding="utf-8") as f:
             config_yaml = yaml.safe_load(f)
 
     except (FileNotFoundError, yaml.YAMLError) as e:
@@ -309,7 +306,7 @@ def load_external_auth_config_by_station_service(
     return create_external_auth_config(station_id, station_dict, service_dict)
 
 
-def load_external_auth_config_by_domain(domain: str, path: str | None = None) -> Optional[ExternalAuthenticationConfig]:
+def load_external_auth_config_by_domain(domain: str) -> Optional[ExternalAuthenticationConfig]:
     """
     Load the external authentication configuration based on the domain from a YAML file.
 
@@ -325,9 +322,8 @@ def load_external_auth_config_by_domain(domain: str, path: str | None = None) ->
         yaml.YAMLError: If there's an error parsing the YAML configuration file.
         Exception: For any unexpected errors during the loading process.
     """
-    config_file = path.rstrip("/") + f"/{CONFIG_FILENAME}" if path else DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL
     try:
-        with open(config_file, encoding="utf-8") as f:
+        with open(DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL, encoding="utf-8") as f:
             config_yaml = yaml.safe_load(f)
             logger.info(f"Loaded configuration YAML: {config_yaml}")
 
@@ -416,7 +412,6 @@ def set_eodag_auth_token(
     station_id: str | None = None,
     service: str | None = None,
     domain: str | None = None,
-    path: str | None = None,
 ) -> None:
     """
     Set the Authorization environment variable for EODAG using a token retrieved from the station.
@@ -439,9 +434,9 @@ def set_eodag_auth_token(
         if "_session" in station_id:
             station_id = station_id.replace("_session", "")
             session = "_session"
-        ext_auth_config = load_external_auth_config_by_station_service(station_id.lower(), service, path)
+        ext_auth_config = load_external_auth_config_by_station_service(station_id.lower(), service)
     elif domain:
-        ext_auth_config = load_external_auth_config_by_domain(domain, path)
+        ext_auth_config = load_external_auth_config_by_domain(domain)
     else:
         raise ValueError("Either station_id and service or domain must be provided.")
 
