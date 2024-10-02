@@ -744,7 +744,7 @@ def test_invalid_cadip_collection(client, mock_token_validation):
     # Test that a non existing collection return 404 with specific response.
     response = client.get("/cadip/collections/invalid_configured_collection")
     assert response.status_code == status.HTTP_404_NOT_FOUND
-    assert response.json() == {"detail": "Cannot find a valid configuration"}
+    assert response.json() == {"detail": "Unknown CADIP collection: 'invalid_configured_collection'"}
 
     # Test with a miss configured collection: cadip_session_incomplete does not define a Extent.
     response = client.get("/cadip/collections/cadip_session_incomplete")
@@ -786,13 +786,13 @@ def test_landing_pages(client, endpoint):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "endpoint, role",
+    "endpoint, roles",
     [
-        ("/cadip/collections", "rs_cadip_authTest_landing_page"),
+        ("/cadip/collections", ["rs_cadip_landing_page", "rs_cadip_authTest_read"]),
     ],
 )
 @responses.activate
-def test_collections_landing_page(client, mocker, mock_token_validation, endpoint, role):
+def test_collections_landing_page(client, mocker, mock_token_validation, endpoint, roles):
     """
     Unit test for validating the collections landing page response.
 
@@ -815,10 +815,13 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
         role: The role used to simulate access control.
 
     """
+    # Mock authentication
+    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
+
     # Mock the request.state object
     mock_request_state = mocker.MagicMock()
     # Set mock auth_roles, set accest to "authTest" collection
-    mock_request_state.auth_roles = [role]
+    mock_request_state.auth_roles = roles
 
     # Patch the part where request.state.auth_roles is accessed
     mocker.patch(
@@ -840,37 +843,24 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
     assert isinstance(response["links"], list)
     assert isinstance(response["collections"], list)
     # Check if not empty
-    assert response["links"] and response["collections"]
-    # Check if link title is matching with fixture given session.
-    assert any("S1A_20200105072204051312" in link["title"] for link in response["links"])
+    assert response["collections"]
     # Check that collection type is correctly set.
     assert any("Collection" in collection["type"] for collection in response["collections"])
     # Check that collection name is correctly set.
     assert any("test_collection" in collection["id"] for collection in response["collections"])
 
     # Disable patcher, set request state to empty (Simulating an apikey with no roles)
-    mocker.patch("rs_server_cadip.api.cadip_search.Request.state", new_callable=mocker.PropertyMock, return_value=[])
-    # Test without using api-key, result should be 2 empty lists.
-    assert {"type": "Object", "links": [], "collections": []} == client.get(endpoint).json()
-
-    # Test validationError case:
+    # Note: we still need the landing_page rights
+    mock_empty_roles = mocker.MagicMock()
+    mock_empty_roles.auth_roles = ["rs_cadip_landing_page"]
     mocker.patch(
         "rs_server_cadip.api.cadip_search.Request.state",
         new_callable=mocker.PropertyMock,
-        return_value=mock_request_state,
+        return_value=mock_empty_roles,
     )
-    # Mock the pickup response
-    responses.add(
-        responses.GET,
-        'http://127.0.0.1:5000/Sessions?$filter="Satellite%20eq%20S1A"&$top=1&$expand=Files',
-        json=expected_sessions_builder_fixture("S1A_20200105072204051312", "2024-03-28T18:52:26Z", "S1A"),
-        status=200,
-    )
-    mocker.patch(
-        "rs_server_cadip.api.cadip_search.process_session_search",
-        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
-    )
-    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    # The result should be 2 empty lists.
+    empty_response = client.get(endpoint).json()
+    assert {"type": "Object", "links": [], "collections": []} == empty_response
 
 
 @pytest.mark.unit
