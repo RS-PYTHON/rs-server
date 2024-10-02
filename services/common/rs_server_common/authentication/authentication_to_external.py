@@ -56,7 +56,7 @@ def init_rs_server_config_yaml():
     The environment variables must follow the pattern:
     RSPY__TOKEN__<service>__<station>__<section_name>__<rest_of_the_info_for_key>
     """
-    global CONFIG_PATH_AUTH_TO_EXTERNAL
+    global CONFIG_PATH_AUTH_TO_EXTERNAL  # pylint: disable=global-statement
 
     # Default path
     CONFIG_PATH_AUTH_TO_EXTERNAL = DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL
@@ -288,28 +288,25 @@ def read_config_file():
             - For any other unexpected errors that occur during the file reading process.
     """
     try:
+        if not CONFIG_PATH_AUTH_TO_EXTERNAL:
+            logger.error(msg := "Configuration for external stations authentication is undefined")
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
+
         # Open the configuration file and load the YAML content
         with open(CONFIG_PATH_AUTH_TO_EXTERNAL, encoding="utf-8") as f:
             config_yaml = yaml.safe_load(f)
+
         # Ensure the loaded configuration is a dictionary
         if not isinstance(config_yaml, dict):
-            logger.error("Error loading the configuration for external stations authentication")
-            raise HTTPException(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error loading the configuration for external stations authentication",
-            )
+            logger.error(msg := "Error loading the configuration for external stations authentication")
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
+
     except (FileNotFoundError, yaml.YAMLError) as e:
-        logger.error(f"Error loading configuration: {e}")
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error loading configuration. {e}",
-        ) from e
+        logger.error(msg := f"Error loading configuration: {e}")
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from e
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"An unexpected error occurred: {e}")
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred. {e}",
-        ) from e
+        logger.exception(msg := f"An unexpected error occurred: {e}")
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from e
     return config_yaml
 
 
