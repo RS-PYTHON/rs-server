@@ -471,8 +471,11 @@ def test_valid_sessions_endpoint_request_list(
 
 
 @pytest.mark.unit
-def test_invalid_sessions_endpoint_request(client):
+def test_invalid_sessions_endpoint_request(client, mocker):
     """Test cases with invalid requests send to /session endpoint"""
+    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
+    # usage of the internal token module  for getting the token and setting it to the eodag
+    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
     # Test with missing all parameters
     assert client.get("/cadip/collections/cadip_session_incomplete/items").status_code == status.HTTP_400_BAD_REQUEST
     # Test only with start, without stop

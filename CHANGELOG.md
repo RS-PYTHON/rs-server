@@ -24,6 +24,30 @@ Changed
 
 None
 
+[0.2a4] - Sprint 14 - 2024-09-18
+================================
+
+## Added
+
+- RSPY-396: Implement missing fields of virtual STAC collections
+- RSPY-348: Implement STAC view of CADIP sessions (2/3: add root STAC endpoints)
+- RSPY-359: Implement STAC view of CADIP sessions (3/3: add Queryables endpoints)
+- RSPY-345: Access to RS-Catalog with OAuth2
+- RSPY-280: Implement the STAC authentication extension in Catalog (2/2: OIDC, Oauth2+PKCE)
+- RSPY-197: Update to stac-fastapi 3.0.0
+- RSPY-336: Dask cluster use cases study
+
+## Fixed
+
+- RSPY-381: Error during cluster creation
+- RSPY-382: Prometheus datasource not created
+- RSPY-385: CloudNative PG Deployment failed due to syntax issue on limit/request
+- RSPY-386: Grafana-Tempo deployment values don't match with apps.yaml
+- RSPY-387: Missing credential secret creation for Github Repository
+- RSPY-388: [Velero] First Deployment failed due to missing CRD
+- RSPY-399: Impossible to create PV (quota reached)
+- RSPY-405: uacCheckUrl or uacURL
+
 [0.2a3] - Sprint 13 - 2024-08-28
 ================================
 

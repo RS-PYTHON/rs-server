@@ -13,13 +13,18 @@ packages = [
 
     { include = "rs_server_adgs", from = "services/adgs"},
     { include = "rs_server_cadip", from = "services/cadip" },
+    { include = "rs_server_catalog", from = "services/catalog" },
     { include = "rs_server_common", from = "services/common"},
     { include = "rs_server_frontend", from = "services/frontend"},
+    { include = "rs_server_staging", from = "services/staging"},
 
     { include = "tests", format = "sdist" },
     # { include = "services/adgs/tests", format = "sdist" },
     # { include = "services/cadip/tests", format = "sdist" },
+    { include = "services/catalog/tests", format = "sdist" },
     { include = "services/common/tests", format = "sdist" },
+    { include = "services/frontend/tests", format = "sdist" },
+    { include = "services/staging/tests", format = "sdist" },
 ]
 
 # This root project is not used in release production.
@@ -30,9 +35,12 @@ packages = [
 python = "^3.11"
 rs-server-adgs = {path = "services/adgs", develop = true}
 rs-server-cadip = {path = "services/cadip", develop = true}
+rs-server-catalog = {path = "services/catalog", develop = true}
 rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
-stac-pydantic = "^3.1.2"
+# We cannot depend on rs-server-staging because it depends on sqlalchemy<2
+# rs-server-staging = {path = "services/staging", develop = true}
+pre-commit = "^3.8.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -44,7 +52,7 @@ pytest-asyncio = "^0.24.0"
 pytest-cov = "^5.0.0"
 pytest-docker = "^3.1.0"
 pytest-error-for-skips = "^2.0.2"
-pytest-httpx = "^0.31.1"
+pytest-httpx = "^0.32.0"
 pytest-mock = "^3.14.0"
 black = "^24.8.0"
 mypy = "^1.11.2"
@@ -65,6 +73,7 @@ orjson = [ # we need the same markers and versions as in eodag: https://github.c
     {version = "<3.10.0", markers = "python_version>='3.12' and platform_system=='Windows'"},
     {version = "^3.10", markers = "python_version<'3.12' or platform_system!='Windows'"},
 ]
+sqlalchemy-utils = "^0.41.2"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true

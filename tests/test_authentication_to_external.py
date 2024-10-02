@@ -295,11 +295,7 @@ def test_load_external_authentication_by_station_service_config_valid(mocker, ge
     """
     mocker.patch("builtins.open", mocker.mock_open(read_data=mock_yaml_content))
     mocker.patch("yaml.safe_load", return_value=yaml.safe_load(mock_yaml_content))
-    result = load_external_auth_config_by_station_service(
-        ext_auth_config.station_id,
-        ext_auth_config.service_name,
-        "/test/path",
-    )
+    result = load_external_auth_config_by_station_service(ext_auth_config.station_id, ext_auth_config.service_name)
     assert result is not None
     assert result.station_id == ext_auth_config.station_id
     assert result.service_name == ext_auth_config.service_name
@@ -435,7 +431,7 @@ def test_load_external_auth_config_by_station_service_no_matching_service(mocker
         return_value=yaml.safe_load(mock_yaml_content),
     )
     mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.warning")
-    result = load_external_auth_config_by_station_service(station_id, "unknwon_service", "/custom/path")
+    result = load_external_auth_config_by_station_service(station_id, "unknwon_service")
     assert result is None
     mock_logger.assert_called_once_with(
         f"No matching service found for station_id: {station_id} and service: unknwon_service",
@@ -481,7 +477,7 @@ def test_load_external_auth_config_by_station_service_no_matching_station(mocker
         return_value=yaml.safe_load(mock_yaml_content),
     )
     mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.warning")
-    result = load_external_auth_config_by_station_service("unknown_station", "known_service", "/custom/path")
+    result = load_external_auth_config_by_station_service("unknown_station", "known_service")
     assert result is None
     mock_logger.assert_called_once_with(
         "No matching service found for station_id: unknown_station and service: known_service",
@@ -532,7 +528,7 @@ def test_load_external_authentication_by_domain_config_valid(mocker, get_externa
         return_value=yaml.safe_load(mock_yaml_content),
     )
 
-    result = load_external_auth_config_by_domain(ext_auth_config.domain, "/test/path")
+    result = load_external_auth_config_by_domain(ext_auth_config.domain)
     assert result is not None
     assert result.station_id == ext_auth_config.station_id
     assert result.service_name == ext_auth_config.service_name
@@ -558,7 +554,7 @@ def test_load_external_auth_config_by_domain_file_not_found(mocker):
     """
     with mocker.patch("builtins.open", side_effect=FileNotFoundError):
         with pytest.raises(HTTPException) as excinfo:
-            load_external_auth_config_by_domain("domain_test", "/custom/path")
+            load_external_auth_config_by_domain("domain_test")
         assert excinfo.value.status_code == 500
         assert "Error loading configuration" in excinfo.value.detail
 
@@ -586,7 +582,7 @@ def test_load_external_auth_config_by_domain_yaml_error(mocker):
     )
     mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.error")
     with pytest.raises(HTTPException) as excinfo:
-        load_external_auth_config_by_domain("domain_test", "/custom/path")
+        load_external_auth_config_by_domain("domain_test")
     assert excinfo.value.status_code == 500
     assert "Error loading configuration" in excinfo.value.detail
     mock_logger.assert_called_once()
@@ -611,7 +607,7 @@ def test_load_external_auth_config_by_domain_unexpected_exception(mocker):
     mocker.patch("builtins.open", side_effect=Exception("Unexpected error"))
     mock_logger = mocker.patch("rs_server_common.authentication.authentication_to_external.logger.exception")
     with pytest.raises(HTTPException) as excinfo:
-        load_external_auth_config_by_domain("domain_test", "/custom/path")
+        load_external_auth_config_by_domain("domain_test")
     assert excinfo.value.status_code == 500
     assert "An unexpected error occurred" in excinfo.value.detail
     mock_logger.assert_called_once()
@@ -659,7 +655,7 @@ def test_load_external_auth_config_by_domain_no_matching_domain(mocker, get_exte
         "yaml.safe_load",
         return_value=yaml.safe_load(mock_yaml_content),
     )
-    result = load_external_auth_config_by_domain("unknwon_domain", "/custom/path")
+    result = load_external_auth_config_by_domain("unknwon_domain")
     assert result is None
 
 
@@ -988,7 +984,7 @@ def test_set_eodag_auth_token_config_not_found(mocker):
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        set_eodag_auth_token(station_id="adgs", service="auxip", path="/some/path")
+        set_eodag_auth_token(station_id="adgs", service="auxip")
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Could not retrieve the configuration for the station token."

@@ -15,6 +15,7 @@
 import asyncio  # for handling asynchronous tasks
 import json
 import os
+import threading
 import time
 import uuid
 from enum import Enum
@@ -26,7 +27,7 @@ import dask
 import requests
 import stac_pydantic
 import tinydb  # temporary, migrate to psql
-from dask.distributed import Client, as_completed, LocalCluster, CancelledError
+from dask.distributed import CancelledError, Client, LocalCluster, as_completed
 from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
 from requests.auth import AuthBase
@@ -36,12 +37,11 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
-import threading
 from starlette.datastructures import Headers
-
 
 DASK_TASK_ERROR = "error"
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
+
 
 class ProcessorStatus(Enum):
     QUEUED = "queued"  # Request received, processor will start soon
@@ -102,30 +102,29 @@ class TokenAuth(AuthBase):
         r.headers["Authorization"] = f"Bearer {self.token}"
         r.headers["Content-Type"] = "application/x-www-form-urlencoded"
         return r
-    
-def streaming_download(product_url: str, 
-                       auth: str,
-                       s3_file,                                           
-                       s3_handler = None):
-    
+
+
+def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
+
     try:
-        time.sleep(2)
+        # time.sleep(2)
         if not s3_handler:
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
                 os.environ["S3_SECRETKEY"],
                 os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"], 
-            )        
-        
-        s3_handler.s3_streaming_upload(product_url, auth, CATALOG_BUCKET, s3_file)        
+                os.environ["S3_REGION"],
+            )
+
+        s3_handler.s3_streaming_upload(product_url, auth, CATALOG_BUCKET, s3_file)
     except RuntimeError as e:
-        print(f"Error: The streaming process failed: {e}")        
+        print(f"Error: The streaming process failed: {e}")
         raise ValueError(f"Dask task failed to stream file s3://{s3_file}")
-    
+
     return s3_file
 
-class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed    
+
+class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
     status: ProcessorStatus = ProcessorStatus.QUEUED
 
     def __init__(
@@ -176,7 +175,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.assets_info = []
         self.tasks = []
         # Lock to protect access to percentage
-        self.lock = threading.Lock()  
+        self.lock = threading.Lock()
         # Tasks finished
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
@@ -195,7 +194,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             loop.run_until_complete(self.process_rspy_features())
 
         return {"started": self.job_id}
-        
+
     def create_job_execution(self):
         # Create job id and track it
         self.tracker.insert(
@@ -284,30 +283,30 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             # Log the error and update the status
             self.log_job_execution(ProcessorStatus.FAILED)
             return None
-       
+
     def prepare_streaming_tasks(self, feature):
         """Prepare tasks for the given feature to the Dask cluster.
 
         Args:
-            feature: The feature containing assets to download.            
+            feature: The feature containing assets to download.
 
         Returns:
             True if the info has been constructed, False otherwise
-        """     
-        
+        """
+
         for _, asset_content in feature.assets.items():
             try:
                 asset = asset_content.dict()
                 product_url = asset.get("href")
                 product_name = asset.get("title")
                 s3_obj_path = f"{feature.id.rstrip('/')}/{product_name}"
-                self.assets_info.append((product_url, s3_obj_path))                
+                self.assets_info.append((product_url, s3_obj_path))
             except KeyError as e:
-                self.logger.error(f"Error: Missing href or title in asset dictionary {e}")                
+                self.logger.error(f"Error: Missing href or title in asset dictionary {e}")
                 return False
 
         return True
-    
+
     def handle_task_failure(self, error):
         """Handle failures during task processing, including cancelling tasks and cleaning up S3 objects.
 
@@ -316,12 +315,14 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             tasks (list): List of Dask task futures.
             s3_objs (list): List of S3 object paths to clean up.
         """
-        # with self.lock:   
+        # with self.lock:
         #     self.callbacks_disabled = True
-        self.logger.error("Error during staging. Canceling all the remaining tasks. "
-                        "The assets already copied to the bucket will be deleted."
-                        f"The error: {error}")
-        
+        self.logger.error(
+            "Error during staging. Canceling all the remaining tasks. "
+            "The assets already copied to the bucket will be deleted."
+            f"The error: {error}",
+        )
+
         # Cancel remaining tasks
         for t in self.tasks:
             try:
@@ -329,19 +330,20 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                     self.logger.info(f"Canceling task {t.key} status {t.status}")
                     t.cancel()
             except CancelledError as e:
-                self.logger.error(f"Task was already cancelled: {e}")        
+                self.logger.error(f"Task was already cancelled: {e}")
 
     def task_callback(self):
         """
         Internal method to create a callback that differentiates between success and failure.
         Cancels all remaining tasks if a task fails.
         """
+
         def wrapped_callback(future):
             """
             Internal method to create a callback that differentiates between success and failure.
 
             Args:
-                task (future): Function to call upon task success.            
+                task (future): Function to call upon task success.
             """
             # with self.lock:  # Ensure that task_failed is accessed safely
             #     if self.callbacks_disabled:
@@ -354,22 +356,24 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 future.result()  # This will raise the exception from the task
                 with self.lock:
                     self.tasks_finished += 1
-                    self.log_job_execution(ProcessorStatus.IN_PROGRESS, (self.tasks_finished / len(self.tasks)), detail="In progress")
+                    self.log_job_execution(
+                        ProcessorStatus.IN_PROGRESS, (self.tasks_finished / len(self.tasks)), detail="In progress",
+                    )
                     self.logger.debug("Task streaming completed")
             except Exception as e:
-                print(f"Task failed with exception: {e}")            
-                self.handle_task_failure(e)                
+                print(f"Task failed with exception: {e}")
+                self.handle_task_failure(e)
 
         return wrapped_callback
-    
+
     def delete_files_from_bucket(self, bucket):
         # Clean up partial or fully copied S3 files
         s3_handler = S3StorageHandler(
-                    os.environ["S3_ACCESSKEY"],
-                    os.environ["S3_SECRETKEY"],
-                    os.environ["S3_ENDPOINT"],
-                    os.environ["S3_REGION"], 
-                ) 
+            os.environ["S3_ACCESSKEY"],
+            os.environ["S3_SECRETKEY"],
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_REGION"],
+        )
         if not s3_handler:
             self.logger.error("Error when trying to to delete files from the s3 bucket")
             return
@@ -378,17 +382,17 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 s3_handler.delete_file_from_s3(bucket, s3_obj[1])
             except RuntimeError as e:
                 self.logger.exception(f"Error when trying to delete s3://{bucket}/{s3_obj[1]} . Exception: {e}")
-                
+
     async def process_rspy_features(self):
         # Process each feature, by starting streaming download of its assets to final bucket
         self.log_job_execution(ProcessorStatus.IN_PROGRESS)
         # stream_url = f"{self.download_url}/cadip/{self.provider}/streaming"
         # total_assets_to_be_processed = sum(len(feature.assets) for feature in self.stream_list)
-        
-        for feature in self.stream_list:            
+
+        for feature in self.stream_list:
             if not self.prepare_streaming_tasks(feature):
                 self.log_job_execution(ProcessorStatus.FAILED, 100, detail="No tasks created")
-        
+
         # retrieve token
         token = get_station_token(
             load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
@@ -396,19 +400,19 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         cluster = LocalCluster()
         cluster.scale(1)
-        client = Client(cluster)        
+        client = Client(cluster)
         # Check the cluster dashboard
         self.logger.debug(f"Cluster dashboard: {cluster.dashboard_link}")
         self.tasks = []
-        
-        for asset_info in self.assets_info:        
+
+        for asset_info in self.assets_info:
             self.tasks.append(client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]))
-        
-        # Attaching callbacks for each future        
-        for t in as_completed(self.tasks):            
-            t.add_done_callback(self.task_callback())    
-        # wait for all the tasks to be completed (at first task error, this will raise an exception)       
-        try:            
+
+        # Attaching callbacks for each future
+        for t in as_completed(self.tasks):
+            t.add_done_callback(self.task_callback())
+        # wait for all the tasks to be completed (at first task error, this will raise an exception)
+        try:
             results = client.gather(self.tasks)
         except Exception as e:
             # wait for all the current running tasks to finish,
@@ -417,38 +421,40 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             # TODO set a timeout of 5 minutes ?
             timeout = 300
             while timeout > 0:
-                #self.logger.debug(f"Client stack_call = {client.call_stack()}")                
+                # self.logger.debug(f"Client stack_call = {client.call_stack()}")
                 if not client.call_stack():
                     break
                 time.sleep(1)
                 timeout -= 1
             client.close()
-            #cluster.close()
+            # cluster.close()
             self.logger.error(f"Error when gathering the results: {e}")
             # Update status once all features are processed
-            self.log_job_execution(ProcessorStatus.FAILED, 100, detail="Failed")            
-            #self.delete_files_from_bucket(CATALOG_BUCKET)
+            self.log_job_execution(ProcessorStatus.FAILED, 100, detail="Failed")
+            # self.delete_files_from_bucket(CATALOG_BUCKET)
             # delete all the s3 files
             s3_handler = S3StorageHandler(
-                    os.environ["S3_ACCESSKEY"],
-                    os.environ["S3_SECRETKEY"],
-                    os.environ["S3_ENDPOINT"],
-                    os.environ["S3_REGION"], 
-                ) 
+                os.environ["S3_ACCESSKEY"],
+                os.environ["S3_SECRETKEY"],
+                os.environ["S3_ENDPOINT"],
+                os.environ["S3_REGION"],
+            )
             if not s3_handler:
                 self.logger.error("Error when trying to to delete files from the s3 bucket")
                 return
             for s3_obj in self.assets_info:
-                try:                    
-                    #s3_handler.delete_file_from_s3(CATALOG_BUCKET, s3_obj[1])                    
+                try:
+                    # s3_handler.delete_file_from_s3(CATALOG_BUCKET, s3_obj[1])
                     self.logger.debug(f"DELETE FILE s3://{CATALOG_BUCKET}/{s3_obj[1]}")
                 except RuntimeError as e:
-                    self.logger.exception(f"Error when trying to delete s3://{CATALOG_BUCKET}/{s3_obj[1]} . Exception: {e}")
+                    self.logger.exception(
+                        f"Error when trying to delete s3://{CATALOG_BUCKET}/{s3_obj[1]} . Exception: {e}",
+                    )
             return
         self.logger.debug(results)
 
         # Publish all the features once processed
-        for feature in self.stream_list:            
+        for feature in self.stream_list:
             await self.publish_rspy_feature(feature)
 
         client.close()
