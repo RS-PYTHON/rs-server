@@ -21,7 +21,7 @@ from contextlib import asynccontextmanager
 
 from dask.distributed import Client, LocalCluster
 from dask_gateway import Gateway
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Path
+from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
 from pygeoapi.config import get_config
 from rs_server_common import settings as common_settings
@@ -37,6 +37,9 @@ from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from tinydb import Query, TinyDB
 
 from .rspy_models import ProcessMetadataModel, RSPYFeatureCollectionModel
+from rs_server_common.utils.logging import Logging
+
+logger = Logging.default(__name__)
 
 # Initialize a FastAPI application
 app = FastAPI(title="rs-staging", root_path="", debug=True)
@@ -64,7 +67,6 @@ app.add_middleware(
 api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAPI"])
 db = TinyDB(api.config["manager"]["connection"])
 jobs_table = db.table("jobs")
-cluster = None
 
 
 # Exception handlers
@@ -81,30 +83,32 @@ async def custom_http_exception_handler(
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
     # Lifespan for startup and shutdown logic
-    global cluster
-    print("Starting up the application...")
+    logger.info("Starting up the application...")
 
     # Create the LocalCluster and Dask Client at startup
     if common_settings.CLUSTER_MODE:
-        # TODO:
+        # TODO: write tcp
         gateway = Gateway()
         clusters = gateway.list_clusters()
-        cluster = gateway.connect(clusters[0].name)
+        try:
+            cluster = gateway.connect(clusters[0].name)
+        except KeyError:
+            cluster = gateway.new_cluster()
     else:
         cluster = LocalCluster()
-    # TEMP !
-    cluster.scale(1)
-    print(f"Cluster dashboard: {cluster.dashboard_link}")
-    print("Local Dask cluster created at startup.")
+    logger.debug(f"Cluster dashboard: {cluster.dashboard_link}")
+    
+    app.extra['dask_cluster'] = cluster
+    logger.info("Local Dask cluster created at startup.")
 
     # Yield control back to the application (this is where the app will run)
     yield
 
     # Shutdown logic (cleanup)
-    print("Shutting down the application...")
+    logger.info("Shutting down the application...")
     if not common_settings.CLUSTER_MODE and cluster:
         cluster.close()
-        print("Local Dask cluster shut down.")
+        logger.info("Local Dask cluster shut down.")
 
 
 # Health check route
@@ -132,7 +136,7 @@ async def get_resource():
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution")
-async def execute_process(req: Request, resource: str, data: ProcessMetadataModel, background_tasks: BackgroundTasks):
+async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
@@ -148,7 +152,7 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             data.outputs["result"].id,
             data.inputs.provider,
             jobs_table,
-            cluster,
+            app.extra['dask_cluster'],
         ).execute()
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
