@@ -532,6 +532,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         try:
             response = requests.post(publish_url, data=feature.json(), timeout=3)
             response.raise_for_status()  # Raise an error for HTTP error responses
+            return True
         except (
             requests.exceptions.HTTPError,
             requests.exceptions.Timeout,
@@ -542,6 +543,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             # logger.error here soon
             self.log_job_execution(ProcessorStatus.FAILED)
             self.delete_files_from_bucket(CATALOG_BUCKET)
+            return False
 
     def __repr__(self):
         """Returns a string representation of the RSPYStaging processor."""
