@@ -21,7 +21,7 @@ from contextlib import asynccontextmanager
 
 from dask.distributed import Client, LocalCluster
 from dask_gateway import Gateway
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path
+from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Path
 from pygeoapi.api import API
 from pygeoapi.config import get_config
 from rs_server_common import settings as common_settings
@@ -94,6 +94,7 @@ async def app_lifespan(app: FastAPI):
         cluster = LocalCluster()
     # TEMP !
     cluster.scale(1)
+    print(f"Cluster dashboard: {cluster.dashboard_link}")
     print("Local Dask cluster created at startup.")
 
     # Yield control back to the application (this is where the app will run)
@@ -131,7 +132,7 @@ async def get_resource():
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution")
-async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
+async def execute_process(req: Request, resource: str, data: ProcessMetadataModel, background_tasks: BackgroundTasks):
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
