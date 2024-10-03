@@ -15,11 +15,19 @@
 """rs server staging main module."""
 # pylint: disable=E0401
 
+import asyncio
 import os
+from contextlib import asynccontextmanager
 
+from dask.distributed import Client, LocalCluster
+from dask_gateway import Gateway
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path
 from pygeoapi.api import API
 from pygeoapi.config import get_config
+from rs_server_common import settings as common_settings
+from rs_server_common.authentication.authentication_to_external import (
+    init_rs_server_config_yaml,
+)
 from rs_server_staging.processors import processors
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -33,6 +41,8 @@ from .rspy_models import ProcessMetadataModel, RSPYFeatureCollectionModel
 # Initialize a FastAPI application
 app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
+# Init the rs-server configuration file for authentication to extenal stations
+init_rs_server_config_yaml()
 
 # CORS enabled origins
 app.add_middleware(
@@ -54,6 +64,7 @@ app.add_middleware(
 api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAPI"])
 db = TinyDB(api.config["manager"]["connection"])
 jobs_table = db.table("jobs")
+cluster = None
 
 
 # Exception handlers
@@ -64,6 +75,35 @@ async def custom_http_exception_handler(
 ):  # pylint: disable= unused-argument
     """HTTP handler"""
     return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
+
+
+# Create Dask LocalCluster when the application starts
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    # Lifespan for startup and shutdown logic
+    global cluster
+    print("Starting up the application...")
+
+    # Create the LocalCluster and Dask Client at startup
+    if common_settings.CLUSTER_MODE:
+        # TODO:
+        gateway = Gateway()
+        clusters = gateway.list_clusters()
+        cluster = gateway.connect(clusters[0].name)
+    else:
+        cluster = LocalCluster()
+    # TEMP !
+    cluster.scale(1)
+    print("Local Dask cluster created at startup.")
+
+    # Yield control back to the application (this is where the app will run)
+    yield
+
+    # Shutdown logic (cleanup)
+    print("Shutting down the application...")
+    if not common_settings.CLUSTER_MODE and cluster:
+        cluster.close()
+        print("Local Dask cluster shut down.")
 
 
 # Health check route
@@ -97,6 +137,7 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
+
     if processor_name in processors:
         processor = processors[processor_name]
         status = await processor(
@@ -106,6 +147,7 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             data.outputs["result"].id,
             data.inputs.provider,
             jobs_table,
+            cluster,
         ).execute()
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
@@ -157,6 +199,7 @@ async def get_specific_job_result(job_id):
 
 
 app.include_router(router)
+app.router.lifespan_context = app_lifespan
 
 # Mount pygeoapi endpoints
 app.mount(path="/oapi", app=api)

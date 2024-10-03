@@ -28,6 +28,7 @@ import requests
 import stac_pydantic
 import tinydb  # temporary, migrate to psql
 from dask.distributed import CancelledError, Client, LocalCluster, as_completed
+from dask_gateway import Gateway
 from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
 from requests.auth import AuthBase
@@ -104,8 +105,44 @@ class TokenAuth(AuthBase):
         return r
 
 
-def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
+# def schedule_async_callback(future, main_loop):
+#     main_loop.add_callback(async_callback, future)
 
+# async def async_callback(future):
+#     # Wait for the result in a non-blocking way
+#     if future.cancelled():
+#         print("Task is cancelled")
+#         return
+#     try:
+#         future.result()  # This will raise the exception from the task
+#         print("Task streaming completed")
+#     except Exception as e:
+#         print(f"Task failed with exception: {e}")
+
+
+def _callback(future):
+    # Wait for the result in a non-blocking way
+    if future.cancelled():
+        print("Task is cancelled")
+        return
+    try:
+        future.result()  # This will raise the exception from the task
+        print("Task streaming completed")
+    except Exception as e:
+        print(f"Task failed with exception: {e}")
+
+    # result = client.gather(future)  # No need for `await` here because gather is not async
+    # print(f"Job {future.key} completed with result: {result}")
+
+
+def streaming_download(product_url: str, auth: str, s3_file, tst, s3_handler=None):
+
+    if tst == 10:
+        raise ValueError("Dask task failed SIMULATING")
+    print(f"{tst}: Starting task !")
+
+    time.sleep(4)
+    print(f"{tst}: Continuing !")
     try:
         # time.sleep(2)
         if not s3_handler:
@@ -119,8 +156,8 @@ def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
         s3_handler.s3_streaming_upload(product_url, auth, CATALOG_BUCKET, s3_file)
     except RuntimeError as e:
         print(f"Error: The streaming process failed: {e}")
-        raise ValueError(f"Dask task failed to stream file s3://{s3_file}")
-
+        raise ValueError(f"Dask task failed to stream file s3://{s3_file}") from e
+    print(f"{tst}: End !")
     return s3_file
 
 
@@ -135,6 +172,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         item: str,
         provider: str,
         db: tinydb,
+        cluster: LocalCluster,
         **kwargs,
     ):
         """
@@ -179,11 +217,19 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         # Tasks finished
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
+        self.cluster = cluster
+        # self.callback_loop = tornado.ioloop.IOLoop.current()
+        # callback_loop = tornado.ioloop.IOLoop.current()
+
+    # def start_callback_loop(self):
+    #     self.callback_loop = asyncio.new_event_loop()  # Create a new event loop
+    #     asyncio.set_event_loop(self.callback_loop)
+    #     self.callback_loop.run_forever()  # Start running the loop
 
     async def execute(self):
         self.log_job_execution(ProcessorStatus.CREATED)
         # Execution section
-        self.check_catalog()
+        await self.check_catalog()
         # Start execution
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -217,7 +263,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             tiny_job.job_id == self.job_id,
         )
 
-    def check_catalog(self):
+    async def check_catalog(self):
         # Get each feature id and create /catalog/search argument
         # Note, only for GET, to be updated and create request body for POST
         ids = [feature.id for feature in self.item_collection.features]
@@ -284,7 +330,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             self.log_job_execution(ProcessorStatus.FAILED)
             return None
 
-    def prepare_streaming_tasks(self, feature):
+    async def prepare_streaming_tasks(self, feature):
         """Prepare tasks for the given feature to the Dask cluster.
 
         Args:
@@ -332,6 +378,27 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             except CancelledError as e:
                 self.logger.error(f"Task was already cancelled: {e}")
 
+    async def async_callback(self, future):
+        # Wait for the result in a non-blocking way
+        if future.cancelled():
+            self.logger.debug("Task is cancelled")
+            return
+        try:
+            future.result()  # This will raise the exception from the task
+            with self.lock:
+                self.tasks_finished += 1
+                self.log_job_execution(
+                    ProcessorStatus.IN_PROGRESS,
+                    (self.tasks_finished * 100 / len(self.tasks)),
+                    detail="In progress",
+                )
+                self.logger.debug("Task streaming completed")
+        except Exception as e:
+            print(f"Task failed with exception: {e}")
+            self.handle_task_failure(e)
+        # result = client.gather(future)  # No need for `await` here because gather is not async
+        # print(f"Job {future.key} completed with result: {result}")
+
     def task_callback(self):
         """
         Internal method to create a callback that differentiates between success and failure.
@@ -341,14 +408,10 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         def wrapped_callback(future):
             """
             Internal method to create a callback that differentiates between success and failure.
-
             Args:
                 task (future): Function to call upon task success.
+                task (future): Function to call upon task success.
             """
-            # with self.lock:  # Ensure that task_failed is accessed safely
-            #     if self.callbacks_disabled:
-            #         # Skip any further callbacks if a task has already failed
-            #         return
             if future.cancelled():
                 self.logger.debug("Task is cancelled")
                 return
@@ -358,7 +421,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                     self.tasks_finished += 1
                     self.log_job_execution(
                         ProcessorStatus.IN_PROGRESS,
-                        (self.tasks_finished / len(self.tasks)),
+                        (self.tasks_finished * 100 / len(self.tasks)),
                         detail="In progress",
                     )
                     self.logger.debug("Task streaming completed")
@@ -385,54 +448,79 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             except RuntimeError as e:
                 self.logger.exception(f"Error when trying to delete s3://{bucket}/{s3_obj[1]} . Exception: {e}")
 
+    def manage_callbacks(self):
+        for t in self.tasks:
+            t.add_done_callback(self.task_callback())
+            # Attach an asynchronous callback
+            # t.add_done_callback(lambda tsk: schedule_async_callback(tsk, self.callback_loop))
+            # t.add_done_callback(lambda tsk: asyncio.create_task(self.async_callback(tsk)))
+            # t.add_done_callback(_callback(t))
+
     async def process_rspy_features(self):
         # Process each feature, by starting streaming download of its assets to final bucket
-        self.log_job_execution(ProcessorStatus.IN_PROGRESS)
+        self.log_job_execution(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
         # stream_url = f"{self.download_url}/cadip/{self.provider}/streaming"
         # total_assets_to_be_processed = sum(len(feature.assets) for feature in self.stream_list)
 
         for feature in self.stream_list:
-            if not self.prepare_streaming_tasks(feature):
-                self.log_job_execution(ProcessorStatus.FAILED, 100, detail="No tasks created")
+            if not await self.prepare_streaming_tasks(feature):
+                self.log_job_execution(ProcessorStatus.FAILED, 0, detail="No tasks created")
 
         # retrieve token
         token = get_station_token(
             load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
         )
 
-        cluster = LocalCluster()
-        cluster.scale(1)
-        client = Client(cluster)
+        # cluster = LocalCluster()
+        # cluster.scale(1)
+        # gateway = Gateway()
+        # clusters = gateway.list_clusters()
+        # cluster = gateway.connect(clusters[0].name)
+        # client = cluster.get_client()
+        client = Client(self.cluster)
         # Check the cluster dashboard
-        self.logger.debug(f"Cluster dashboard: {cluster.dashboard_link}")
+        self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
         self.tasks = []
-
+        tst = 0
         for asset_info in self.assets_info:
-            self.tasks.append(client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]))
-
+            tst += 1
+            self.tasks.append(client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1], tst))
+        # starting another thread for callbacks
+        # callback_thread = threading.Thread(target = self.start_callback_loop)
+        # callback_thread.start()
         # Attaching callbacks for each future
-        for t in as_completed(self.tasks):
-            t.add_done_callback(self.task_callback())
+
+        # asyncio.to_thread(self.manage_callbacks())
+        # for t in as_completed(self.tasks):
+        #     #t.add_done_callback(self.task_callback())
+        #     # Attach an asynchronous callback
+        #     t.add_done_callback(lambda tsk: schedule_async_callback(tsk, self.callback_loop))
+        #     #t.add_done_callback(lambda tsk: asyncio.create_task(self.async_callback(tsk)))
+        #     #t.add_done_callback(_callback(t))
         # wait for all the tasks to be completed (at first task error, this will raise an exception)
         try:
-            results = client.gather(self.tasks)
-        except Exception as e:
+            # results = client.gather(self.tasks)
+            results = await client.gather(self.tasks, asynchronous=True)
+        except Exception as task_exception:
+            # at least one task failed, cancel the others and do a cleanup
+            self.handle_task_failure("One task failed !")
             # wait for all the current running tasks to finish,
             # otherwise they will still write data to the s3 bucket, after the
             # deletion of the s3 files has been performed (see bellow)
             # TODO set a timeout of 5 minutes ?
+
             timeout = 300
             while timeout > 0:
-                # self.logger.debug(f"Client stack_call = {client.call_stack()}")
+                self.logger.debug(f"Client stack_call = {client.call_stack()}")
                 if not client.call_stack():
                     break
                 time.sleep(1)
                 timeout -= 1
             client.close()
             # cluster.close()
-            self.logger.error(f"Error when gathering the results: {e}")
+            self.logger.error(f"Error when gathering the results: {task_exception}")
             # Update status once all features are processed
-            self.log_job_execution(ProcessorStatus.FAILED, 100, detail="Failed")
+            self.log_job_execution(ProcessorStatus.FAILED, None, detail="At least one of the tasks failed")
             # self.delete_files_from_bucket(CATALOG_BUCKET)
             # delete all the s3 files
             s3_handler = S3StorageHandler(
@@ -460,7 +548,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             await self.publish_rspy_feature(feature)
 
         client.close()
-        cluster.close()
         # Update status once all features are processed
         self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
 
