@@ -5,8 +5,25 @@ version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 [tool.poetry]
 name = "rs-server-staging"
 version = "0.0.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
+description = "Copernicus Sentinel rs-server, staging service."
+license = "Apache-2.0"
+authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
+readme = "README.md"
+homepage = "https://home.rs-python.eu/"
+repository = "https://github.com/RS-PYTHON/rs-server"
+documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
+keywords = ["stac", "copernicus", "sentinel", "processing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Framework :: OpenTelemetry",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Image Processing"
+]
 
 packages = [
     { include = "rs_server_staging" },
@@ -65,7 +82,7 @@ check_untyped_defs = true
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
-tagged-metadata = true
+metadata = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
