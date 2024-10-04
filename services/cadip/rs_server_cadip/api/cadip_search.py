@@ -20,6 +20,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 
 # pylint: disable=redefined-builtin
 import json
+import os
 import traceback
 import uuid
 from functools import wraps
@@ -171,6 +172,18 @@ def get_root_catalog(request: Request):
     contents.update(**get_conformance())  # conformsTo
     for link in links:
         link["href"] = link["href"].format(domain=domain)
+
+    # Add a link to the rs-server-catalog STAC catalog as the first chlid link
+    child_indexes = [i for i in range(len(links)) if links[i].get("rel") == "child"] or [-1]
+    links.insert(
+        child_indexes[0],
+        {
+            "rel": "child",
+            "type": "application/json",
+            "title": "RS-Server STAC catalog",
+            "href": os.environ["RSPY_LOCALHOST_CATALOG"],
+        },
+    )
 
     # Add collections as child links
     for collection in get_allowed_collections(request).get("collections", []):

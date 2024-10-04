@@ -840,7 +840,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                     return content
             # Manage local landing page of the catalog
             regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
-            for link in content["links"]:
+            links = content["links"]
+            for link in links:
                 link_parser = urlparse(link["href"])
 
                 if match := re.match(regex_catalog, link_parser.path):
@@ -850,6 +851,19 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             url = request.url._url  # pylint: disable=protected-access
             url = url[: len(url) - len(request.url.path)]
             content = add_prefix_link_landing_page(content, url)
+
+            # Add a link to the rs-server-cadip STAC catalog as the first chlid link
+            child_indexes = [i for i in range(len(links)) if links[i].get("rel") == "child"] or [-1]
+            links.insert(
+                child_indexes[0],
+                {
+                    "rel": "child",
+                    "type": "application/json",
+                    "title": "RS-Server CADIP collections",
+                    "href": os.environ["RSPY_LOCALHOST_CADIP"],
+                },
+            )
+
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
