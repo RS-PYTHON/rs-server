@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Base RSPY Stagging processor."""
+
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-arguments
 
 import asyncio  # for handling asynchronous tasks
 import json
@@ -19,6 +23,7 @@ import threading
 import time
 import uuid
 from enum import Enum
+from typing import Union
 
 import requests
 import tinydb  # temporary, migrate to psql
@@ -32,14 +37,20 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import Headers
+from starlette.requests import Request
 
-from .rspy_models import RSPYFeatureCollectionModel
+from .rspy_models import Feature, RSPYFeatureCollectionModel
 
 DASK_TASK_ERROR = "error"
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
 
 class ProcessorStatus(Enum):
+    """
+    Helper class used to enumerated processor job statuses.
+    It also contains serialization methods.
+    """
+
     QUEUED = "queued"  # Request received, processor will start soon
     CREATED = "created"  # Processor has been initialised
     STARTED = "started"  # Processor execution has started
@@ -53,16 +64,28 @@ class ProcessorStatus(Enum):
 
     # Serialization
     def __str__(self):
+        """
+        Returns the string representation of the ProcessorStatus instance.
+
+        Returns:
+            str: The value of the current ProcessorStatus instance.
+        """
         return self.value
 
     @classmethod
     def to_json(cls, status):
+        """
+        Serializes a ProcessorStatus instance to its JSON-compatible representation.
+        """
         if isinstance(status, cls):
             return status.value
         raise ValueError("Invalid ProcessorStatus")
 
     @classmethod
     def from_json(cls, value):
+        """
+        Deserializes a string value back into a ProcessorStatus instance.
+        """
         for status in cls:
             if status.value == value:
                 return status
@@ -71,14 +94,34 @@ class ProcessorStatus(Enum):
 
 # Custom authentication class
 class TokenAuth(AuthBase):
-    def __init__(self, token):
+    """Custom authentication class
+
+    Args:
+        AuthBase (ABC): Base auth class
+    """
+
+    def __init__(self, token: str):
+        """Init token auth
+
+        Args:
+            token (str): Token value
+        """
         self.token = token
 
-    def __call__(self, r):
-        # Add the Authorization header to the request
-        r.headers["Authorization"] = f"Bearer {self.token}"
-        r.headers["Content-Type"] = "application/x-www-form-urlencoded"
-        return r
+    def __call__(self, request: Request):
+        """Add the Authorization header to the request
+
+        Args:
+            request (Request): request to be modified
+
+        Returns:
+            Request: request with modified headers
+        """
+        request.headers = {"Authorization": f"Bearer {self.token}", "Content-Type": "application/x-www-form-urlencoded"}
+        return request
+
+    def __repr__(self) -> str:
+        return "RSPY Token handler"
 
 
 def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
@@ -125,6 +168,32 @@ def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
 
 
 class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
+    """
+    RSPY staging implementation, the processor should perform the following actions after being triggered:
+
+    • First, the RSPY catalog is searched to determine if some or all of the input features have already been staged.
+
+    • If all features are already staged, the process should return immediately.
+
+    • If there are features that haven’t been staged, the processor connects to a specified Dask cluster as a client.
+
+    • Once connected, the processor begins asynchronously streaming each feature directly into the rs-cluster-catalog
+    bucket using a Dask-distributed process.
+
+    • The job status is updated after each feature is processed, and overall progress can be tracked via the
+    /jobs/{job-id} endpoint.
+
+    • Upon successful completion of the streaming process, the processor publishes the features to the RSPY catalog.
+
+    • If an error occurs at any point during the streaming or publishing process, the operation is rolled back and an
+    appropriate error message is displayed.
+
+    Args:
+        BaseProcessor (OGCAPI): Base OGC API processor class
+    Returns:
+        JSON: JSON containing job_id for tracking.
+    """
+
     status: ProcessorStatus = ProcessorStatus.QUEUED
 
     def __init__(
@@ -136,14 +205,41 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         provider: str,
         db: tinydb.table.Table,
         cluster: LocalCluster,
-    ):
+    ):  # pylint: disable=super-init-not-called
         """
-        Initialize the RSPYStaging processor with the input collection and catalog details.
+        Initialize the RSPYStaging processor with credentials, input collection, catalog details,
+        database, and cluster configuration.
 
-        :param input_collection: The input collection of items to process.
-        :param collection: The collection to use in the catalog.
-        :param item: The item to process.
-        :param kwargs: Additional keyword arguments.
+        Args:
+            credentials (Headers): Authentication headers used for requests.
+            input_collection (RSPYFeatureCollectionModel): The input collection of RSPY features to process.
+            collection (str): The name of the collection from the catalog to use.
+            item (str): The specific item to process within the collection.
+            provider (str): The name of the provider offering the data for processing.
+            db (tinydb.table.Table): The database table used to track job execution status and metadata.
+            cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
+
+        Attributes:
+            headers (Headers): Stores the provided authentication headers.
+            stream_list (list): A list to hold streaming information for processing.
+            catalog_url (str): URL of the catalog service, fetched from environment or default value.
+            download_url (str): URL of the RS server, fetched from environment or default value.
+            job_id (str): A unique identifier for the processing job, generated using UUID.
+            detail (str): Status message describing the current state of the processing unit.
+            progress (int): Integer tracking the progress of the current job.
+            tracker (tinydb): A tinydb instance used to store job execution details.
+            item_collection (RSPYFeatureCollectionModel): Holds the input collection of features.
+            catalog_collection (str): Name of the catalog collection.
+            catalog_item_name (str): Name of the specific item in the catalog being processed.
+            provider (str): The data provider for the current processing task.
+            assets_info (list): Holds information about assets associated with the processing.
+            tasks (list): List of tasks to be executed for processing.
+            lock (threading.Lock): A threading lock to synchronize access to shared resources.
+            tasks_finished (int): Tracks the number of tasks completed.
+            logger (Logger): Logger instance for capturing log output.
+            cluster (LocalCluster): Dask LocalCluster instance managing computation resources.
+            client: (Optional) Client for interacting with the Dask cluster.
+
         """
         #################
         # Locals
@@ -163,7 +259,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
         self.detail: str = "Processing Unit was queued"
-        self.progress: int = 0
+        self.progress: float = 0.0
         self.tracker: tinydb = db
         self.create_job_execution()
         #################
@@ -180,9 +276,35 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
         self.cluster = cluster
-        self.client = None
+        self.client: Client = None
 
-    async def execute(self):
+    # Override from BaseProcessor, execute is async in RSPYProcessor
+    async def execute(self):  # pylint: disable=arguments-differ, invalid-overridden-method
+        """
+        Asynchronously execute the RSPY staging process, starting with a catalog check and
+        proceeding to feature processing if the check succeeds.
+
+        This method first logs the creation of a new job execution and verifies the connection to
+        the catalog service. If the catalog connection fails, it logs an error and stops further
+        execution. If the connection is successful, it initiates the asynchronous processing of
+        RSPY features.
+
+        If the current event loop is running, the feature processing task is scheduled asynchronously.
+        Otherwise, the event loop runs until the processing task is complete.
+
+        Returns:
+            dict: A dictionary containing the job ID and a status message indicating the job
+                has started.
+                Example: {"started": <job_id>}
+
+        Logs:
+            ProcessorStatus.CREATED: Logs the creation of a new processing job.
+            Error: Logs an error if connecting to the catalog service fails.
+
+        Raises:
+            None: This method doesn't raise any exceptions directly but logs errors if the
+                catalog check fails.
+        """
         self.log_job_execution(ProcessorStatus.CREATED)
         # Execution section
         if not await self.check_catalog():
@@ -227,7 +349,13 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             },
         )
 
-    def log_job_execution(self, status: ProcessorStatus = None, progress: int = None, detail: str = None):
+    def log_job_execution(
+        self,
+        status: Union[ProcessorStatus, None] = None,
+        progress: Union[float, None] = None,
+        detail: Union[str, None] = None,
+    ):
+        """Method used to log progress into db."""
         # Update both runtime and db status and progress
         self.status = status if status else self.status
         self.progress = progress if progress else self.progress
@@ -239,11 +367,14 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         )
 
     async def check_catalog(self):
+        """
+        Method used to check RSPY catalog if a feature from input_collection is already published.
+        """
         # Get each feature id and create /catalog/search argument
         # Note, only for GET, to be updated and create request body for POST
         ids = [feature.id for feature in self.item_collection.features]
         # Creating the filter string
-        filter_string = "id IN ({})".format(", ".join(["'{}'".format(id_) for id_ in ids]))
+        filter_string = f"id IN ({', '.join([f'{id_}' for id_ in ids])})"
 
         # Final filter object
         filter_object = {"filter-lang": "cql2-text", "filter": filter_string}
@@ -264,12 +395,38 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             requests.exceptions.RequestException,
             requests.exceptions.ConnectionError,
             json.JSONDecodeError,
-        ) as e:
-            # logger.error here soon
+        ) as exc:
+            self.logger.error("Error while searching catalog: %s", exc)
             self.log_job_execution(ProcessorStatus.FAILED, 0, detail="Failed to search catalog")
             return False
 
     def create_streaming_list(self, catalog_response: dict):
+        """
+        Prepares a list of items for download based on the catalog response.
+
+        This method compares the features in the provided `catalog_response` with the features
+        already present in `self.item_collection.features`. If all features have been returned
+        in the catalog response, the streaming list is cleared. Otherwise, it determines which
+        items are not yet downloaded and updates `self.stream_list` with those items.
+
+        Args:
+            catalog_response (dict): A dictionary response from a catalog search.
+
+        Behavior:
+            - If the number of items in `catalog_response["context"]["returned"]` matches the
+            total number of items in `self.item_collection.features`, `self.stream_list`
+            is set to an empty list, indicating that there are no new items to download.
+            - If the `catalog_response["features"]` is empty (i.e., no items were found in the search),
+            it assumes no items have been downloaded and sets `self.stream_list` to all features
+            in `self.item_collection.features`.
+            - Otherwise, it computes the difference between the items in `self.item_collection.features`
+            and the items already listed in the catalog response, updating `self.stream_list` to
+            contain only those that have not been downloaded yet.
+
+        Side Effects:
+            - Updates `self.stream_list` with the features that still need to be downloaded.
+
+        """
         # Based on catalog response, pop out features already in catalog and prepare rest for download
         if catalog_response["context"]["returned"] == len(self.item_collection.features):
             self.stream_list = []
@@ -299,19 +456,12 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         for asset_name, asset_content in feature.assets.items():
             try:
-                asset = asset_content.dict()
-                product_url = asset.get("href")
-                product_name = asset.get("title")
-                s3_obj_path = f"{feature.id.rstrip('/')}/{product_name}"
-                self.assets_info.append((product_url, s3_obj_path))
-                new_s3_href = {"s3": {"href": f"s3://{CATALOG_BUCKET}/{s3_obj_path}"}}
-                # asset_content = asset_content.copy(update = {"alternate": new_s3_href})
-                asset_content.alternate = new_s3_href
+                s3_obj_path = f"{feature.id.rstrip('/')}/{asset_content.title}"
+                self.assets_info.append((asset_content.href, s3_obj_path))
+                asset_content.alternate = {"s3": {"href": f"s3://{CATALOG_BUCKET}/{s3_obj_path}"}}
                 feature.assets[asset_name] = asset_content
-                # asset_content.href = f"s3://{CATALOG_BUCKET}/{s3_obj_path}"
-                asset["href"] = f"s3://{CATALOG_BUCKET}/{s3_obj_path}"
             except KeyError as e:
-                self.logger.error(f"Error: Missing href or title in asset dictionary {e}")
+                self.logger.error("Error: Missing href or title in asset dictionary %s", e)
                 return False
 
         return True
@@ -329,7 +479,8 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.logger.error(
             "Error during staging. Canceling all the remaining tasks. "
             "The assets already copied to the bucket will be deleted."
-            f"The error: {error}",
+            "The error: %s",
+            error,
         )
 
         # Cancel remaining tasks
@@ -389,6 +540,16 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             self.logger.error("Cannot connect to s3 storage, %s", exc)
 
     def manage_callbacks(self):
+        """
+        Method used to manage dask tasks.
+
+        As job are completed, progress is dinamically incremented and monitored into DB.
+        If a single tasks fails:
+            - handle_task_failure() is called
+            - processor waits (RSPY_STAGING_TIMEOUT or 600 seconds) untill running tasks are finished
+            - the execution of future tasks is canceled.
+            - When all streaming tasks are finished, processor removes all files streamed in s3 bucket.
+        """
         self.logger.info("Tasks monitoring started")
         if not self.client:
             return
@@ -406,11 +567,11 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 self.logger.error("Task failed with exception: %s", task_e)
                 self.handle_task_failure(task_e)
                 # Wait for all the current running tasks to complete.
-                # TODO: The timeout should be configurable
-                timeout = 500
+                timeout = int(os.environ.get("RSPY_STAGING_TIMEOUT", 600))
                 while timeout > 0:
                     self.logger.debug("Client stack_call = %s", self.client.call_stack())
                     if not self.client.call_stack():
+                        # Break loop when dask client call stack is empty (No tasks are running)
                         break
                     time.sleep(1)
                     timeout -= 1
@@ -429,6 +590,12 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.logger.info("Tasks monitoring finished")
 
     async def process_rspy_features(self):
+        """
+        Method used to trigger dask distributed streaming process.
+        It creates dask client object, gets the external data sources access token
+        Prepares the tasks for execution
+        Manage eventual runtime exceptions
+        """
         self.logger.debug("Starting main loop")
         # Process each feature, by starting streaming download of its assets to final bucket
         self.log_job_execution(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
@@ -461,7 +628,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.client.close()
         self.client = None
 
-    def publish_rspy_feature(self, feature: dict):
+    def publish_rspy_feature(self, feature: Feature):
         """
         Publishes a given feature to the RSPY catalog.
 

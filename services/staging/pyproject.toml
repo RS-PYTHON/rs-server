@@ -67,6 +67,7 @@ markers = [
 warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
+ignore_missing_imports = true
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true

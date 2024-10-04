@@ -23,17 +23,17 @@ from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
 from pygeoapi.config import get_config
 from rs_server_common import settings as common_settings
-from rs_server_common.authentication.authentication_to_external import \
-    init_rs_server_config_yaml
+from rs_server_common.authentication.authentication_to_external import (
+    init_rs_server_config_yaml,
+)
 from rs_server_common.utils.logging import Logging
+from rs_server_staging.processors import processors
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from tinydb import Query, TinyDB
-
-from rs_server_staging.processors import processors
 
 from .rspy_models import ProcessMetadataModel
 
@@ -73,11 +73,11 @@ async def custom_http_exception_handler(
 @asynccontextmanager
 async def app_lifespan(fastapi_app: FastAPI):
     """
-    Asynchronous context manager to handle the lifecycle of the FastAPI application, 
+    Asynchronous context manager to handle the lifecycle of the FastAPI application,
     managing the creation and shutdown of a Dask cluster.
 
-    This function is responsible for setting up a Dask cluster when the FastAPI application starts, 
-    either using a `LocalCluster` or connecting to an existing cluster via `Gateway`, depending 
+    This function is responsible for setting up a Dask cluster when the FastAPI application starts,
+    either using a `LocalCluster` or connecting to an existing cluster via `Gateway`, depending
     on the application settings. The Dask cluster is closed during the application's shutdown phase.
 
     Args:
@@ -87,7 +87,7 @@ async def app_lifespan(fastapi_app: FastAPI):
         None: Control is yielded back to the application, allowing it to run while the Dask cluster is active.
 
     Startup Logic:
-        - If `CLUSTER_MODE` is enabled in settings, the function attempts to connect to an existing 
+        - If `CLUSTER_MODE` is enabled in settings, the function attempts to connect to an existing
           Dask cluster via the `Gateway`. If no existing cluster is found, a new one is created.
         - If `CLUSTER_MODE` is disabled, a `LocalCluster` is created and scaled to 8 workers.
         - The Dask cluster information is stored in `app.extra["dask_cluster"]`.
@@ -151,9 +151,9 @@ async def get_processes():
 @router.get("/processes/{resource}")
 async def get_resource(resource: str):
     """Should return info about a specific resource."""
-    for defined_resource in api.config['resources']:
+    for defined_resource in api.config["resources"]:
         if defined_resource == resource:
-            return JSONResponse(status_code=HTTP_200_OK, content=api.config['resources'][defined_resource])
+            return JSONResponse(status_code=HTTP_200_OK, content=api.config["resources"][defined_resource])
 
 
 # Endpoint to execute the staging process and generate a job ID
