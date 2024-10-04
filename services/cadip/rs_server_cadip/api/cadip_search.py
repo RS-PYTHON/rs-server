@@ -248,8 +248,12 @@ def get_allowed_collections(request: Request):
 
     # Foreach allowed collection, create links and append to response.
     for config in filtered_collections:
+
+        config.setdefault("stac_version", "1.0.0")
+
         query_params = create_session_search_params(config)
         logger.debug(f"Collection {config['id']} params: {query_params}")
+
         try:
             collection: stac_pydantic.Collection = create_collection(config)
             stac_object["collections"].append(collection.model_dump())
@@ -565,7 +569,7 @@ def get_cadip_collection(
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-    if link := process_session_search(
+    if links := process_session_search(
         request,
         query_params["station"],
         query_params["SessionId"],
@@ -574,7 +578,8 @@ def get_cadip_collection(
         query_params["top"],
         "collection",
     ):
-        stac_collection.links.append(link)
+        for link in links:
+            stac_collection.links.append(link)
     return stac_collection.model_dump()
 
 
