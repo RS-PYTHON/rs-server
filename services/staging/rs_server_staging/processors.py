@@ -13,12 +13,8 @@
 # limitations under the License.
 """Base RSPY Stagging processor."""
 
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-arguments
-
 import asyncio  # for handling asynchronous tasks
 import json
-import logging
 import os
 import threading
 import time
@@ -44,22 +40,6 @@ from .rspy_models import Feature, RSPYFeatureCollectionModel
 
 DASK_TASK_ERROR = "error"
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
-
-# class Logging:
-#     @staticmethod
-#     def default(name: str):
-#         logger = logging.getLogger(name)
-#         logger.setLevel(logging.INFO)
-#         handler = logging.StreamHandler()  # You can also use other handlers (e.g., FileHandler)
-#         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(job_id)s - %(message)s')
-#         handler.setFormatter(formatter)
-#         logger.addHandler(handler)
-#         return logger
-
-# class LoggerAdapter(logging.LoggerAdapter):
-#     def process(self, msg, kwargs):
-#         # Inject the job_id into the log message automatically
-#         return f'{msg}', {**kwargs, 'extra': {'job_id': self.extra['job_id']}}
 
 
 class ProcessorStatus(Enum):
@@ -294,7 +274,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.lock = threading.Lock()
         # Tasks finished
         self.tasks_finished = 0
-        # self.logger = LoggerAdapter(Logging.default(__name__), {'job_id': self.job_id})
         self.logger = Logging.default(__name__)
         self.cluster = cluster
         self.client: Union[Client, None] = None

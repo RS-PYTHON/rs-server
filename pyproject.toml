@@ -125,7 +125,10 @@ max-line-length = 120
 max-line-length = 120
 disable = [
     "logging-fstring-interpolation",  # Logging f-string interpolation
-    "R0917"  # Too many positional arguments
+    "R0917",  # Too many positional arguments
+    "E0401", # import-error
+    "R0902", # too-many-instance-attributes
+    "R0913"  # too-many-arguments
 ]
 ignore-paths = '^docs/.*$'
 

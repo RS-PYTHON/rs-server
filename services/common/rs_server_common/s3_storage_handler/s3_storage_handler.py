@@ -784,7 +784,7 @@ retried for %s times. Aborting",
                 response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
 
                 # """
-                ## Default chunksize is set to 8Kb, can be manually increased
+                # Default chunksize is set to 8Kb, can be manually increased
                 # chunk_size = 64 * 1024  # 64kb
                 # with response.raw as data_stream:
                 #    self.s3_client.upload_fileobj(data_stream, bucket, key, Config=boto3.s3.transfer.TransferConfig(
