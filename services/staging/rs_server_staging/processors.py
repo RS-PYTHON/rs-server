@@ -429,7 +429,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             if not self.prepare_streaming_tasks(feature):
                 self.log_job_execution(ProcessorStatus.FAILED, 0, detail="No tasks created")
         if not self.tasks:
-            self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
+            self.logger.debug("No tasks to start. Exiting from main loop")
             return
         # retrieve token
         token = get_station_token(
