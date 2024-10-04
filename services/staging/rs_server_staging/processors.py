@@ -461,7 +461,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             try:
                 s3_obj_path = f"{feature.id.rstrip('/')}/{asset_content.title}"
                 self.assets_info.append((asset_content.href, s3_obj_path))
-                asset_content.alternate = {"s3": {"href": f"s3://{CATALOG_BUCKET}/{s3_obj_path}"}}
+                # update the s3 path, this will be checked in the rs-server-catalog in the
+                # publishing phase
+                asset_content.href = f"s3://rtmpop/{s3_obj_path}"
                 feature.assets[asset_name] = asset_content
             except KeyError as e:
                 self.logger.error("Error: Missing href or title in asset dictionary %s", e)

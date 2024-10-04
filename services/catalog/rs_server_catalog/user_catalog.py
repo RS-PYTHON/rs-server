@@ -423,7 +423,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     new_s3_href = {"s3": {"href": s3_key}}
                     content["assets"][asset].update({"alternate": new_s3_href})
                     # copy the key only if it isn't already on the final bucket
-                    files_s3_key.append(s3_filename)
+                    if not self.s3_handler.check_s3_key_on_bucket(CATALOG_BUCKET, "/".join(old_bucket_arr[3:])):
+                        files_s3_key.append(s3_filename)
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
                     # be deleted from the s3 bucket later on
@@ -696,7 +697,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                 item = await self.get_item_from_collection(request)
                 # !!!
                 # Removed since RSPY 326, no need for bucket movement
-                # content = self.update_stac_item_publication(content, request, item)
+                content = self.update_stac_item_publication(content, request, item)
                 # !!!
                 if content:
                     if request.method == "POST":
