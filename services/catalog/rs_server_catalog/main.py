@@ -354,7 +354,6 @@ items_get_request_model = create_request_model(
 )
 
 api = StacApi(
-    title="RS-Server STAC catalog",
     settings=settings,
     extensions=extensions,
     items_get_request_model=items_get_request_model,

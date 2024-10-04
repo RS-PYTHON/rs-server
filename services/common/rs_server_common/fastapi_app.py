@@ -23,6 +23,7 @@ from typing import Callable
 import httpx
 import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
@@ -35,7 +36,6 @@ from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
-from stac_fastapi.api.middleware import CORSMiddleware
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])

@@ -1,7 +1,7 @@
 {
     "type": "Catalog",
-    "title": "RS-Server CADIP collections",
-    "description": "RS-Server CADIP landing page",
+    "title": "RS-PYTHON CADIP collections",
+    "description": "RS-PYTHON CADIP landing page",
     "stac_version": "1.0.0",
     "links": [
         {
