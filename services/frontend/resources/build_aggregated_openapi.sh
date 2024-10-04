@@ -105,7 +105,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
 
     PYGEOAPI_CONFIG=$(realpath "${FRONT_DIR}/../staging/rs_server_staging/config/config.yml") \
     PYGEOAPI_OPENAPI=$(realpath "${FRONT_DIR}/../staging/rs_server_staging/config/openapi.json") \
-    run_local_service "../staging" "rs_server_staging.main:app" 8100 "_mgmt/ping"
+    run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
 fi
 
 services_file="${SCRIPT_DIR}/services.yml" # input file = describe services

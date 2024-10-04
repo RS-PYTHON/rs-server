@@ -103,7 +103,7 @@ def auth_validator(station, access_type):
     return decorator
 
 
-def auth_validation(station_type, access_type, **kwargs):
+def auth_validation(station_type, access_type, *args, **kwargs):
     """Function called by auth_validator"""
 
     # In local mode, there is no authentication to check

@@ -35,6 +35,7 @@ from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
+from stac_fastapi.api.middleware import CORSMiddleware
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
@@ -190,5 +191,15 @@ def init_app(  # pylint: disable=too-many-locals
     # Add routers to the FastAPI app
     app.include_router(need_auth_router)
     app.include_router(technical_router)
+
+    # Add CORS requests from the STAC browser
+    if settings.STAC_BROWSER_URLS:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.STAC_BROWSER_URLS,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            allow_credentials=True,
+        )
 
     return app
