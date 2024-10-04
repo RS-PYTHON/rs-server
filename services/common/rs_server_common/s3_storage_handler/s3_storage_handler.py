@@ -19,7 +19,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, List
+from typing import Any, List, Tuple
 
 import boto3
 import botocore
@@ -775,23 +775,26 @@ retried for %s times. Aborting",
 
         return failed_files
 
-    def s3_streaming_upload(self, stream_url: str, auth: requests.auth, bucket: str, key: str):
+    def s3_streaming_upload(self, stream_url: str, auth: Any, bucket: str, key: str):
+        """Method used to upload a file into a bucket used http byte-streaming."""
         try:
+            timeout: Tuple[int, int] = (10, 60)  # 10 seconds connect timeout, 60 seconds read timeout
             self.logger.info(f"Started streaming to s3://{bucket}/{key}")
-            with requests.get(stream_url, stream=True, auth=auth) as response:
+            with requests.get(stream_url, stream=True, auth=auth, timeout=timeout) as response:
                 response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
 
-                """
-                # Default chunksize is set to 8Kb, can be manually increased
-                chunk_size = 64 * 1024  # 64kb
-                with response.raw as data_stream:
-                    self.s3_client.upload_fileobj(data_stream, bucket, key, Config=boto3.s3.transfer.TransferConfig(
-                        multipart_threshold=chunk_size * 2))
-                """
+                # """
+                ## Default chunksize is set to 8Kb, can be manually increased
+                # chunk_size = 64 * 1024  # 64kb
+                # with response.raw as data_stream:
+                #    self.s3_client.upload_fileobj(data_stream, bucket, key, Config=boto3.s3.transfer.TransferConfig(
+                #        multipart_threshold=chunk_size * 2))
+                # """
+
                 # Upload the streamed data to S3
                 self.s3_client.upload_fileobj(response.raw, bucket, key)
 
                 self.logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Failed to upload to S3: {e}")
-            return RuntimeError(f"Failed to upload to S3: {e}")
+            raise RuntimeError(f"Failed to upload to S3: {e}") from e

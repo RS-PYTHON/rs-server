@@ -28,7 +28,6 @@ from typing import List, Optional
 
 import eodag
 import stac_pydantic
-import starlette.requests
 import yaml
 from pydantic import BaseModel
 from stac_pydantic.shared import Asset

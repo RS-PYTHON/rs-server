@@ -640,7 +640,7 @@ def get_cadip_collection_item_details(
 
 
 @validate_call(config={"arbitrary_types_allowed": True})
-def process_session_search(  # type: ignore  # pylint: disable=too-many-arguments, too-many-locals
+def process_session_search(  # type: ignore  # pylint: disable=too-many-arguments, too-many-locals, unused-argument
     request: Request,
     station: str,
     session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],

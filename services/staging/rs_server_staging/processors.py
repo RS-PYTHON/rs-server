@@ -108,7 +108,7 @@ class TokenAuth(AuthBase):
         """
         self.token = token
 
-    def __call__(self, request: Request):
+    def __call__(self, request: Request):  # type: ignore
         """Add the Authorization header to the request
 
         Args:
@@ -117,7 +117,10 @@ class TokenAuth(AuthBase):
         Returns:
             Request: request with modified headers
         """
-        request.headers = {"Authorization": f"Bearer {self.token}", "Content-Type": "application/x-www-form-urlencoded"}
+        request.headers = {  # type: ignore
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
         return request
 
     def __repr__(self) -> str:
@@ -260,7 +263,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
         self.detail: str = "Processing Unit was queued"
         self.progress: float = 0.0
-        self.tracker: tinydb = db
+        self.tracker: tinydb.table.Table = db
         self.create_job_execution()
         #################
         # Inputs section
@@ -276,7 +279,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
         self.cluster = cluster
-        self.client: Client = None
+        self.client: Union[Client, None] = None
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(self):  # pylint: disable=arguments-differ, invalid-overridden-method

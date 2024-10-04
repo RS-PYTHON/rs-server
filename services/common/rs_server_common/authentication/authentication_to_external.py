@@ -56,7 +56,7 @@ def init_rs_server_config_yaml():
     The environment variables must follow the pattern:
     RSPY__TOKEN__<service>__<station>__<section_name>__<rest_of_the_info_for_key>
     """
-    global CONFIG_PATH_AUTH_TO_EXTERNAL
+    global CONFIG_PATH_AUTH_TO_EXTERNAL  # pylint: disable=global-statement
 
     # Default path
     CONFIG_PATH_AUTH_TO_EXTERNAL = DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL
@@ -289,7 +289,7 @@ def read_config_file():
     """
     try:
         # Open the configuration file and load the YAML content
-        with open(CONFIG_PATH_AUTH_TO_EXTERNAL, encoding="utf-8") as f:
+        with open(CONFIG_PATH_AUTH_TO_EXTERNAL, encoding="utf-8") as f:  # type: ignore
             config_yaml = yaml.safe_load(f)
         # Ensure the loaded configuration is a dictionary
         if not isinstance(config_yaml, dict):

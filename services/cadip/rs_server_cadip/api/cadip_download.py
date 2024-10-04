@@ -22,9 +22,8 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from threading import Event
-from typing import Annotated, Dict
+from typing import Annotated
 
-import stac_pydantic
 from fastapi import APIRouter, Depends
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
@@ -38,7 +37,6 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.db.database import get_db
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     DWN_THREAD_START_TIMEOUT,
@@ -167,29 +165,3 @@ def download_products(
         return JSONResponse(status_code=status.HTTP_408_REQUEST_TIMEOUT, content={"started": "false"})
 
     return JSONResponse(status_code=status.HTTP_200_OK, content={"started": "true"})
-
-
-@router.post("/cadip/{station}/streaming")
-@auth_validator(station="cadip", access_type="download")
-def streaming_download(request: Request, station: str, rspy_asset: Dict[str, stac_pydantic.shared.Asset]):
-    provider = init_cadip_provider(station)  # how to set station here?
-    # get download token/basic auth
-    auth = provider.client._plugins_manager.get_auth_plugin(station).authenticate()
-    asset_name, asset = next(iter(rspy_asset.items()))
-    cadip_id = asset.model_dump().get("cadip:id")  # hmm, cadip:ip?
-    eop = provider.create_eodag_product(cadip_id, asset_name)
-    product_url = eop.properties.get("downloadLink")
-    product_name = eop.properties.get("title")
-
-    s3_handler = S3StorageHandler(
-        os.environ["S3_ACCESSKEY"],
-        os.environ["S3_SECRETKEY"],
-        os.environ["S3_ENDPOINT"],
-        os.environ["S3_REGION"],  # "sbg",
-    )
-    try:
-        # path to be updated
-        s3_handler.s3_streaming_upload(product_url, auth, "rs-cluster-catalog", f"stream/{product_name}")
-    except RuntimeError as exc:
-        raise JSONResponse(status_code=status.HTTP_424_FAILED_DEPENDENCY, content=exc)
-    return JSONResponse(status_code=status.HTTP_200_OK, content="Done.")
