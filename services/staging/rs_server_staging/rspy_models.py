@@ -18,7 +18,8 @@ from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 from stac_pydantic.shared import Asset  # Importing directly for clarity
 
-
+#pylint: disable=too-few-public-methods
+#pylint: disable= no-name-in-module
 class Feature(BaseModel):
     """Custom model for a STAC (SpatioTemporal Asset Catalog) feature.
 

@@ -54,6 +54,9 @@ line-length = 120
 [tool.flake8]
 max-line-length = 120
 
+[tool.pylint]
+max-line-length = 120
+
 [tool.pytest.ini_options]
 markers = [
     "unit", # mark a test as unittest
