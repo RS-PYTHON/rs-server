@@ -26,12 +26,15 @@ from dask.distributed import CancelledError, Client, LocalCluster, as_completed
 from pygeoapi.process.base import BaseProcessor
 from requests.auth import AuthBase
 from rs_server_common.authentication.authentication_to_external import (
-    get_station_token, load_external_auth_config_by_station_service)
-from rs_server_common.s3_storage_handler.s3_storage_handler import \
-    S3StorageHandler
+    get_station_token,
+    load_external_auth_config_by_station_service,
+)
+from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import Headers
+
 from .rspy_models import RSPYFeatureCollectionModel
+
 DASK_TASK_ERROR = "error"
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
@@ -80,28 +83,28 @@ class TokenAuth(AuthBase):
 
 def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
     """
-        Streams a file from a product URL and uploads it to an S3-compatible storage.
+    Streams a file from a product URL and uploads it to an S3-compatible storage.
 
-        This function downloads a file from the specified `product_url` using provided 
-        authentication and uploads it to an S3 bucket using a streaming mechanism. 
-        If no S3 handler is provided, it initializes a default `S3StorageHandler` using 
-        environment variables for credentials.
+    This function downloads a file from the specified `product_url` using provided
+    authentication and uploads it to an S3 bucket using a streaming mechanism.
+    If no S3 handler is provided, it initializes a default `S3StorageHandler` using
+    environment variables for credentials.
 
-        Args:
-            product_url (str): The URL of the product to download.
-            auth (str): The authentication token or credentials required for the download.
-            s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
-            s3_handler (S3StorageHandler, optional): An instance of a custom S3 handler for handling 
-                the streaming upload. If not provided, a default handler is created.
+    Args:
+        product_url (str): The URL of the product to download.
+        auth (str): The authentication token or credentials required for the download.
+        s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
+        s3_handler (S3StorageHandler, optional): An instance of a custom S3 handler for handling
+            the streaming upload. If not provided, a default handler is created.
 
-        Returns:
-            str: The S3 file path where the file was uploaded.
+    Returns:
+        str: The S3 file path where the file was uploaded.
 
-        Raises:
-            ValueError: If the streaming process fails, raises a ValueError with details of the failure.
+    Raises:
+        ValueError: If the streaming process fails, raises a ValueError with details of the failure.
 
-        Example:
-            streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
+    Example:
+        streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
     """
     try:
         if not s3_handler:
@@ -131,7 +134,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         item: str,
         provider: str,
         db: tinydb.table.Table,
-        cluster: LocalCluster
+        cluster: LocalCluster,
     ):
         """
         Initialize the RSPYStaging processor with the input collection and catalog details.
@@ -181,7 +184,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
     async def execute(self):
         self.log_job_execution(ProcessorStatus.CREATED)
         # Execution section
-        await self.check_catalog()
+        if not await self.check_catalog():
+            self.logger.error("Could not start the staging process. Connecting to rs-server-catalog failed !")
+            return
         # Start execution
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -197,8 +202,8 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         """
         Creates a new job execution entry and tracks its status.
 
-        This method creates a job entry in the tracker with the current job's ID, status, 
-        progress, and detail. The job information is stored in a persistent tracker to allow 
+        This method creates a job entry in the tracker with the current job's ID, status,
+        progress, and detail. The job information is stored in a persistent tracker to allow
         monitoring and updating of the job's execution state.
 
         The following information is stored:
@@ -251,6 +256,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             response.raise_for_status()  # Raise an error for HTTP error responses
             self.create_streaming_list(response.json())
             self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
+            return True
         except (
             requests.exceptions.HTTPError,
             requests.exceptions.Timeout,
@@ -260,6 +266,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         ) as e:
             # logger.error here soon
             self.log_job_execution(ProcessorStatus.FAILED, 0, detail="Failed to search catalog")
+            return False
 
     def create_streaming_list(self, catalog_response: dict):
         # Based on catalog response, pop out features already in catalog and prepare rest for download
@@ -331,9 +338,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         """
         Deletes partial or fully copied files from the specified S3 bucket.
 
-        This method iterates over the assets listed in `self.assets_info` and deletes 
-        them from the given S3 bucket. If no assets are present, the method returns 
-        without performing any actions. The S3 connection is established using credentials 
+        This method iterates over the assets listed in `self.assets_info` and deletes
+        them from the given S3 bucket. If no assets are present, the method returns
+        without performing any actions. The S3 connection is established using credentials
         from environment variables.
 
         Args:
@@ -350,7 +357,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             - The `self.assets_info` attribute is expected to be a list of asset information,
             with each entry containing details for deletion.
             - The S3 credentials (access key, secret key, endpoint, and region) are fetched
-            from environment variables: `S3_ACCESSKEY`, `S3_SECRETKEY`, `S3_ENDPOINT`, 
+            from environment variables: `S3_ACCESSKEY`, `S3_SECRETKEY`, `S3_ENDPOINT`,
             and `S3_REGION`.
         """
         if not self.assets_info:
@@ -375,6 +382,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             self.logger.error("Cannot connect to s3 storage, %s", exc)
 
     def manage_callbacks(self):
+        self.logger.info("Tasks monitoring started")
         if not self.client:
             return
         for task in as_completed(self.tasks):
@@ -402,7 +410,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 # Update status for the job
                 self.log_job_execution(ProcessorStatus.FAILED, None, detail="At least one of the tasks failed")
                 self.delete_files_from_bucket(CATALOG_BUCKET)
-
+                self.logger.error("Tasks monitoring finished with error. At least one of the tasks failed")
                 return
 
         # Publish all the features once processed
@@ -411,14 +419,18 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         # Update status once all features are processed
         self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
+        self.logger.info("Tasks monitoring finished")
 
     async def process_rspy_features(self):
+        self.logger.debug("Starting main loop")
         # Process each feature, by starting streaming download of its assets to final bucket
         self.log_job_execution(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
         for feature in self.stream_list:
             if not self.prepare_streaming_tasks(feature):
                 self.log_job_execution(ProcessorStatus.FAILED, 0, detail="No tasks created")
-
+        if not self.tasks:
+            self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
+            return
         # retrieve token
         token = get_station_token(
             load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
@@ -430,12 +442,12 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.tasks = []
         # Submit tasks
         for asset_info in self.assets_info:
-
             self.tasks.append(self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]))
         # starting another thread for managing the dask callbacks
+        self.logger.debug("Starting tasks monitoring thread")
         try:
             await asyncio.to_thread(self.manage_callbacks)
-        except Exception as e: # pylint: disable=broad-exception-caught
+        except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.debug("Exception caught: %s", e)
         self.assets_info = []
         self.client.close()
@@ -445,16 +457,16 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         """
         Publishes a given feature to the RSPY catalog.
 
-        This method sends a POST request to the catalog API to publish a feature (in the form 
-        of a dictionary) to a specified collection. The feature is serialized into JSON format 
+        This method sends a POST request to the catalog API to publish a feature (in the form
+        of a dictionary) to a specified collection. The feature is serialized into JSON format
         and published to the `/catalog/collections/{collectionId}/items` endpoint.
 
         Args:
-            feature (dict): The feature to be published, represented as a dictionary. It should 
+            feature (dict): The feature to be published, represented as a dictionary. It should
             include all necessary attributes required by the catalog.
 
         Returns:
-            bool: Returns `True` if the feature was successfully published, otherwise returns `False` 
+            bool: Returns `True` if the feature was successfully published, otherwise returns `False`
             in case of an error.
 
         Raises:
@@ -471,7 +483,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         Notes:
             - The `catalog_url` and `catalog_collection` attributes should be defined in the instance.
-            - The method assumes that API keys or other authorization mechanisms are handled at the 
+            - The method assumes that API keys or other authorization mechanisms are handled at the
             request level, though user information is not directly required.
             - Timeout for the request is set to 3 seconds.
         """
