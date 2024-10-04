@@ -65,7 +65,6 @@ from rs_server_common.utils.utils import (
     validate_str_list,
     write_search_products_to_db,
 )
-from stac_pydantic.links import Link, Links
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
@@ -161,7 +160,7 @@ def get_root_catalog(request: Request):
     logger.info(f"Starting {request.url.path}")
 
     # Read landing page contents from json file
-    with open(CADIP_CONFIG / "cadip_stac_landing_page.json") as f:
+    with open(CADIP_CONFIG / "cadip_stac_landing_page.json", encoding="utf-8") as f:
         contents = json.load(f)
 
     # Override some fields
@@ -267,7 +266,7 @@ def get_allowed_collections(request: Request):
 @router.get("/cadip/conformance")
 def get_conformance():
     """Return the STAC/OGC conformance classes implemented by this server."""
-    with open(CADIP_CONFIG / "cadip_stac_conforms_to.json") as f:
+    with open(CADIP_CONFIG / "cadip_stac_conforms_to.json", encoding="utf-8") as f:
         return json.load(f)
 
 
