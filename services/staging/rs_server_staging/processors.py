@@ -106,6 +106,7 @@ def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
     Example:
         streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
     """
+    time.sleep(2)
     try:
         if not s3_handler:
             s3_handler = S3StorageHandler(
@@ -296,13 +297,19 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             True if the info has been constructed, False otherwise
         """
 
-        for _, asset_content in feature.assets.items():
+        for asset_name, asset_content in feature.assets.items():
             try:
                 asset = asset_content.dict()
                 product_url = asset.get("href")
                 product_name = asset.get("title")
                 s3_obj_path = f"{feature.id.rstrip('/')}/{product_name}"
                 self.assets_info.append((product_url, s3_obj_path))
+                new_s3_href = {"s3": {"href": f"s3://{CATALOG_BUCKET}/{s3_obj_path}"}}
+                # asset_content = asset_content.copy(update = {"alternate": new_s3_href})
+                asset_content.alternate = new_s3_href
+                feature.assets[asset_name] = asset_content
+                # asset_content.href = f"s3://{CATALOG_BUCKET}/{s3_obj_path}"
+                asset["href"] = f"s3://{CATALOG_BUCKET}/{s3_obj_path}"
             except KeyError as e:
                 self.logger.error(f"Error: Missing href or title in asset dictionary {e}")
                 return False
@@ -428,8 +435,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         for feature in self.stream_list:
             if not self.prepare_streaming_tasks(feature):
                 self.log_job_execution(ProcessorStatus.FAILED, 0, detail="No tasks created")
-        if not self.tasks:
-            self.logger.debug("No tasks to start. Exiting from main loop")
+                return
+        if not self.assets_info:
+            self.logger.debug("No task to start. Exiting from main loop")
             return
         # retrieve token
         token = get_station_token(
