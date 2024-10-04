@@ -196,6 +196,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
+
+      # TEMP: because of the pydantic conflict:
+      # For line: { include = "rs_server_common", from = "../common" },
+      # Copy the rs_server_common directory and remove the from=../common part.
+      - run: |
+          set -x
+          cd services/staging
+          cp -r ../common/rs_server_common/ .
+          sed -i "s|^\(\s*\).*include.*rs_server_common.*$|\1{include=\"rs_server_common\"},|g" pyproject.toml
+        shell: bash
+
+      # NOTE: when the pydantic conflict is resolved, remove the above step and uncomment the below step.
+      # Hack the pyproject.toml. TODO: find a cleaner to do this.
+      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
+      # - run: |
+      #     set -x
+      #     for dep in rs-server-common; do
+      #       sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/staging/pyproject.toml
+      #     done
+      #   shell: bash
+
       - id: publish-wheel
         uses: ./.github/actions/publish-wheel
         with:
@@ -406,6 +427,9 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/staging' Docker image"
+    # TODO: this has to be activated when the pydantic conflict is solved
+    #needs: [set-env, services-common-whl, services-staging-whl]
+    # TODO: this has to be deleted when the pydantic conflict is solved
     needs: [set-env, services-staging-whl]
     permissions: write-all
     outputs:
@@ -414,6 +438,12 @@ jobs:
       - uses: actions/checkout@v4
 
       # Download .whl files into ./whl/
+      # TODO: the following 5 comments have to be activated when the pydantic conflict is solved
+      #- name: Download .whl dependencies
+      #  uses: actions/download-artifact@v4
+      #  with:
+      #    name: ${{ needs.services-common-whl.outputs.package_name }}
+      #    path: ./whl
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:

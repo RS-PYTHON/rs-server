@@ -28,6 +28,12 @@ classifiers = [
 packages = [
     { include = "rs_server_staging" },
     { include = "tests", format = "sdist" },
+
+    # TEMP: because of the pydantic conflict:
+    # Use the rs_server_common source directory instead of using rs-server-common as a dependency.
+    # But this doesn't work when building the wheel. So for the whl, copy the rs_server_common
+    # directory and remove the from=../common part.
+    { include = "rs_server_common", from = "../common" },
 ]
 
 # Add configuration files to the .whl package
