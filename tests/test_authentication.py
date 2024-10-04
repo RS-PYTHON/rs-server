@@ -147,14 +147,15 @@ async def test_oauth2_security(fastapi_app, mocker, client):  # pylint: disable=
     assert response.content == client.get("/auth/console_logged_message").content
 
     # To test the logout endpoint, we must mock other oauth2 and keycloack functions and endpoints
-    oauth2_end_session_endpoint = "http://oauth2_end_session_endpoint"
+    oauth2_end_session_endpoint = "oauth2_end_session_endpoint"
     mocker.patch.object(
         StarletteOAuth2App,
         "load_server_metadata",
         return_value={"end_session_endpoint": oauth2_end_session_endpoint},
     )
-    response = await mock_oauth2(mocker, client, "/auth/logout", user_id, username, roles)
-    assert response.request.url == oauth2_end_session_endpoint
+    response = await mock_oauth2(mocker, client, "/auth/logout", user_id, username, roles, assert_success=False)
+    assert response.status_code == status.HTTP_404_NOT_FOUND  # because the mocked end session endpoint doesn't exist
+    assert response.request.url.path == f"/auth/{oauth2_end_session_endpoint}"
 
     # Test endpoints that require the oauth2 authentication
     response = await mock_oauth2(

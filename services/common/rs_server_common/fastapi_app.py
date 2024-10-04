@@ -42,13 +42,6 @@ technical_router = APIRouter(tags=["Technical"])
 
 
 # include_in_schema=False: hide this endpoint from the swagger
-@technical_router.get("/", include_in_schema=False)
-async def home():
-    """Home endpoint."""
-    return {"message": "RS server home endpoint"}
-
-
-# include_in_schema=False: hide this endpoint from the swagger
 @technical_router.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
 async def health() -> HealthSchema:
     """
