@@ -173,7 +173,8 @@ def get_root_catalog(request: Request):
         link["href"] = link["href"].format(domain=domain)
 
     # Add collections as child links
-    for collection in get_allowed_collections(request).get("collections", []):
+    all_collections = get_allowed_collections(request=request)  # warning: use kwargs here
+    for collection in all_collections.get("collections", []):
         collection_id = collection["id"]
         links.append(
             {
