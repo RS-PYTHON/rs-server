@@ -88,58 +88,113 @@ collections:
     query:
       PublicationDate: 1940-03-10T12:00:00Z/2024-01-01T12:00:00Z
       top: 95
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Sentinel-1 Inuvik CADIP sessions'
+    description: 'Sentinel-1 Inuvik CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+
   - id: cadip_session_by_id
     station: cadip
     query:
       SessionId: S1A_20231120061537234567
       top: 2
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Sentinel-1 Inuvik CADIP sessions'
+    description: 'Sentinel-1 Inuvik CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+
   - id: cadip_session_by_satellite
     station: cadip
     query:
       Satellite: S1A, S2B
       limit: 2
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Sentinel-1 Inuvik CADIP sessions'
+    description: 'Sentinel-1 Inuvik CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+
   - id: cadip_session_incomplete_platf_no_start
     station: cadip
     query:
       Satellite: S1A
       PublicationDate: "invalid_stop/2020-02-16T12:00:00Z"
-  ###
-  - id: ins
-    station: ins
-    query:
-  - id: mps
-    station: mps
-    query:
-  - id: mti
-    station: mti
-    query:
-  - id: nsg
-    station: nsg
-    query:
-  - id: sgs
-    station: sgs
-    query:
-  - id: s1_ins
-    station: ins
-    query: $filter=Satellite in ('S1A', 'S1C')
-  - id: s1_mps
-    station: mps
-    query: $filter=Satellite in ('S1A', 'S1C')
-  - id: s1_nsg
-    station: nsg
-    query: $filter=Satellite in ('S1A', 'S1C')
-  - id: s1_sgs
-    station: sgs
-    query: $filter=Satellite in ('S1A', 'S1C')
-  - id: s1_mti
-    station: mti
-    query: $filter=Satellite in ('S1A', 'S1C')
-  - id: s2_ins
-    station: ins
-    query: $filter=Satellite in ('S2A', 'S2B', 'S2C')
-  - id: s2_sgs
-    station: sgs
-    query: $filter=Satellite in ('S2A', 'S2B', 'S2C')
-  - id: s3_sgs
-    station: sgs
-    query: $filter=Satellite in ('S3A', 'S3B')
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Sentinel-1 Inuvik CADIP sessions'
+    description: 'Sentinel-1 Inuvik CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'

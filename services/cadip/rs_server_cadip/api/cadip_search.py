@@ -23,7 +23,6 @@ import json
 import traceback
 import uuid
 from functools import wraps
-from itertools import chain
 from typing import Annotated, Any, Callable, List, Union
 
 import requests
@@ -47,6 +46,8 @@ from rs_server_cadip.cadip_utils import (
     select_config,
     validate_products,
 )
+from rs_server_common import settings
+from rs_server_common.authentication import authentication
 from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
@@ -91,6 +92,26 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
             ) from exc
 
     return wrapper
+
+
+def auth_validation(request: Request, collection_id: str, access_type: str):
+    """
+    Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
+
+    Args:
+        collection_id (str): used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
+        from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
+        access_type (str): The type of access, such as "download" or "read".
+    """
+
+    # Find the collection which id == the input collection_id
+    collection = select_config(collection_id)
+    if not collection:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown CADIP collection: {collection_id!r}")
+    station = collection["station"]
+
+    # Call the authentication function from the authentication module
+    authentication.auth_validation("cadip", access_type, request=request, station=station)
 
 
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
@@ -174,47 +195,44 @@ def get_allowed_collections(request: Request):
     """
     # Based on api key, get all station a user can access.
     logger.info(f"Starting {request.url.path}")
-    allowed_stations = []
-    if hasattr(request.state, "auth_roles") and request.state.auth_roles is not None:
-        # Iterate over each auth_role in request.state.auth_roles
-        logger.debug(f"Request auth roles: {request.state.auth_roles}")
-        for auth_role in request.state.auth_roles:
-            try:
-                # Attempt to split the auth_role and extract the station part
-                station = auth_role.split("_")[2]
-                allowed_stations.append(station)
-            except IndexError:
-                # If there is an IndexError, ignore it and continue
-                continue
-    logger.debug(f"User allowed stations: {allowed_stations}")
-    configuration = read_conf()
 
-    # Filter and selected only collections that query allowed stations.
-    filtered_collections = [
-        collection for collection in configuration["collections"] if collection["station"] in allowed_stations
-    ]
+    configuration = read_conf()
+    all_collections = configuration["collections"]
+
+    # No authentication: select all collections
+    if settings.LOCAL_MODE:
+        filtered_collections = all_collections
+
+    else:
+        # Read the user roles defined in KeyCloak
+        try:
+            auth_roles = request.state.auth_roles or []
+        except AttributeError:
+            auth_roles = []
+
+        # Only keep the collections that are associated to a station that the user has access to
+        filtered_collections = [
+            collection for collection in all_collections if f"rs_cadip_{collection['station']}_read" in auth_roles
+        ]
+
     logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
     # Create JSON object.
     stac_object: dict = {"type": "Object", "links": [], "collections": []}
 
+    # Foreach allowed collection, create links and append to response.
     for config in filtered_collections:
-        # Foreach allowed collection, create links and append to response.
         query_params = create_session_search_params(config)
         logger.debug(f"Collection {config['id']} params: {query_params}")
-        collection: stac_pydantic.Collection = create_collection(config)
-        if links := process_session_search(
-            request,
-            query_params["station"],
-            query_params["SessionId"],
-            query_params["Satellite"],
-            query_params["PublicationDate"],
-            query_params["top"],
-            "collection",
-        ):
-            stac_object["links"].append(list(map(lambda link: link.model_dump(), links)))
+        try:
+            collection: stac_pydantic.Collection = create_collection(config)
             stac_object["collections"].append(collection.model_dump())
-    # Flatten links if case:
-    stac_object["links"] = list(chain.from_iterable(stac_object["links"]))
+
+        # If a collection is incomplete in the configuration file, log the error and proceed
+        except HTTPException as exception:
+            if exception.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
+                logger.error(exception)
+            else:
+                raise
     return stac_object
 
 
@@ -260,7 +278,6 @@ def get_all_queryables(request: Request):
 
 
 @router.get("/cadip/collections/{collection_id}/queryables")
-@auth_validator(station="cadip", access_type="landing_page")
 def get_collection_queryables(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
@@ -296,6 +313,7 @@ def get_collection_queryables(
     and `landing_page` access type.
     """
     logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
@@ -307,7 +325,7 @@ def get_collection_queryables(
 
 
 @router.get("/cadip/search/items", deprecated=True)
-@auth_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="landing_page")  # TODO: how to implement authentication ?
 @handle_exceptions
 def search_cadip_with_session_info(request: Request):
     """
@@ -345,7 +363,7 @@ def search_cadip_with_session_info(request: Request):
 
 
 @router.get("/cadip/search")
-@auth_validator(station="cadip", access_type="read")
+@auth_validator(station="cadip", access_type="landing_page")  # TODO: how to implement authentication ?
 @handle_exceptions
 def search_cadip_endpoint(request: Request) -> dict:
     """
@@ -447,6 +465,7 @@ def search_cadip_endpoint(request: Request) -> dict:
     selected_config: Union[dict, None]
     query_params: dict
     selected_config, query_params = prepare_cadip_search(collection_name, request_params)
+
     query_params = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
@@ -464,7 +483,6 @@ def search_cadip_endpoint(request: Request) -> dict:
 
 
 @router.get("/cadip/collections/{collection_id}")
-@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection(
     request: Request,
@@ -506,7 +524,9 @@ def get_cadip_collection(
     CADIP station.
     """
     logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
+
     logger.debug(f"User selected collection: {collection_id}")
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
@@ -525,7 +545,6 @@ def get_cadip_collection(
 
 
 @router.get("/cadip/collections/{collection_id}/items")
-@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection_items(
     request: Request,
@@ -557,7 +576,9 @@ def get_cadip_collection_items(
     This endpoint is protected by an API key validator, ensuring appropriate access to the CADIP station.
     """
     logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
+
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"User selected collection: {collection_id}")
     logger.debug(f"Collection search params: {query_params}")
@@ -573,7 +594,6 @@ def get_cadip_collection_items(
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
-@auth_validator(station="cadip", access_type="read")
 @handle_exceptions
 def get_cadip_collection_item_details(
     request: Request,
@@ -618,6 +638,7 @@ def get_cadip_collection_item_details(
     The endpoint is protected by an API key validator, which requires appropriate access permissions.
     """
     logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
 
     query_params: dict = create_session_search_params(selected_config)

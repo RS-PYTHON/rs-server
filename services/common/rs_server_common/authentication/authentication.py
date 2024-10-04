@@ -16,11 +16,9 @@
 Authentication functions implementation.
 """
 
-import os
 from functools import wraps
 from typing import Annotated
 
-import yaml
 from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
@@ -29,17 +27,6 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import AuthInfo
 
 logger = Logging.default(__name__)
-
-# Look up table for stations
-STATIONS_AUTH_LUT = {
-    "adgs": "adgs",
-    "ins": "cadip_ins",
-    "mps": "cadip_mps",
-    "mti": "cadip_mti",
-    "nsg": "cadip_nsg",
-    "sgs": "cadip_sgs",
-    "cadip": "cadip_cadip",
-}
 
 # Mocker doesn't work on the authenticate function that is a FastAPI dependency,
 # I don't know why, so just use this hack to spy the function from the pytests.
@@ -108,60 +95,38 @@ def auth_validator(station, access_type):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if settings.CLUSTER_MODE:
-                logger.debug("Starting API-KEY validation.")
-                # Read the full cadip station passed in parameter e.g. INS, MPS, ...
-                # no validation needed for landing pages.
-                if station == "cadip" and access_type != "landing_page":
-                    logger.debug("API key validation for cadip search / download")
-                    # Get the collection id from kwargs, otherwise, get the request's query params, and then collection
-                    if collection_id := kwargs.get(
-                        "collection_id",
-                        kwargs.get("request", None).query_params.get("collection", None),
-                    ):
-                        logger.debug(f"Collection id: {collection_id}")
-                        with open(
-                            os.environ.get("RSPY_CADIP_SEARCH_CONFIG"),  # type: ignore
-                            encoding="utf-8",
-                        ) as search:
-                            config = yaml.safe_load(search)
-                        conf = next(
-                            (item for item in config["collections"] if item["id"] == collection_id),
-                            None,
-                        )
-                        logger.debug(f"CADIP search configuration: {conf}")
-                        cadip_station = (
-                            conf["station"] if conf else "unknown-cadip-station"
-                        )  # ins, mps, mti, nsg, sgs, or cadip
-                    else:
-                        cadip_station = kwargs["station"]
-                    logger.debug(f"CADIP station: {cadip_station}")
-                    try:
-                        full_station = STATIONS_AUTH_LUT[cadip_station.lower()]
-                    except KeyError as exception:
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Unknown CADIP station: {cadip_station!r}",
-                        ) from exception
-                else:  # for adgs
-                    full_station = station
-
-                requested_role = f"rs_{full_station}_{access_type}".upper()
-                logger.debug(f"Requested role: {requested_role}")
-                try:
-                    auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
-                except KeyError:
-                    auth_roles = []
-                logger.debug(f"Auth roles: {auth_roles}")
-                if requested_role not in auth_roles:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail=f"Authorization does not include the right role to {access_type} "
-                        f"from the {full_station!r} station",
-                    )
-
+            auth_validation(station, access_type, *args, **kwargs)
             return func(*args, **kwargs)
 
         return wrapper
 
     return decorator
+
+
+def auth_validation(station_type, access_type, **kwargs):
+    """Function called by auth_validator"""
+
+    # In local mode, there is no authentication to check
+    if settings.LOCAL_MODE:
+        return
+
+    # Read the full cadip station passed in parameter: ins, mps, mti, nsg, sgs, or cadip
+    # No validation needed for landing pages.
+    if station_type == "cadip" and access_type != "landing_page":
+        full_station = "cadip_" + kwargs["station"]
+    else:
+        full_station = station_type
+
+    requested_role = f"rs_{full_station}_{access_type}".upper()
+    logger.debug(f"Requested role: {requested_role}")
+    try:
+        auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
+    except KeyError:
+        auth_roles = []
+    logger.debug(f"Auth roles: {auth_roles}")
+    if requested_role not in auth_roles:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authorization does not include the right role to {access_type} "
+            f"from the {full_station!r} station",
+        )

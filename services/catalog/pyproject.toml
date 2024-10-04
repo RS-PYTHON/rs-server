@@ -5,8 +5,25 @@ version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 [tool.poetry]
 name = "rs-server-catalog"
 version = "0.0.0"
-description = "rs-server stac catalog"
-authors = ["Your Name <you@example.com>"]
+description = "Copernicus Sentinel rs-server, STAC catalog."
+license = "Apache-2.0"
+authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
+readme = "README.md"
+homepage = "https://home.rs-python.eu/"
+repository = "https://github.com/RS-PYTHON/rs-server"
+documentation = "https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/"
+keywords = ["stac", "copernicus", "sentinel", "processing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Framework :: OpenTelemetry",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Image Processing"
+]
 
 packages = [
     { include = "rs_server_catalog" },
@@ -37,7 +54,7 @@ pytest-error-for-skips = "^2.0.2"
 pytest-docker = "^3.1.0"
 pytest-dotenv = "^0.5.2"
 pytest-mock = "^3.14.0"
-moto = "==5.0.15"
+moto = "==5.0.16"
 flask = "^3.0.3"
 flask-cors = "^5.0.0"
 # httpx is used by fastapi for test purpose
@@ -67,7 +84,7 @@ asyncio_mode = "auto"
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true
-tagged-metadata = true
+metadata = false
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]

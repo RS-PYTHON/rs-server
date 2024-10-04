@@ -86,16 +86,39 @@ jobs:
   # Publish wheels #
   ##################
 
+  complete-whl:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "complete wheel"
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    outputs:
+      version_name: ${{ steps.publish-wheel.outputs.version_name }}
+      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+    continue-on-error: true # TODO see how to publish a "complete wheel", this currently doesn't work
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
+      - id: publish-wheel
+        uses: ./.github/actions/publish-wheel
+        with:
+          package_directory: .
+
   services-common-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/common' wheel"
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
       version_name: ${{ steps.publish-wheel.outputs.version_name }}
       package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
       - id: publish-wheel
         uses: ./.github/actions/publish-wheel
         with:
@@ -105,12 +128,16 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/adgs' wheel"
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
       version_name: ${{ steps.publish-wheel.outputs.version_name }}
       package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
 
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
       # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
@@ -130,12 +157,16 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/cadip' wheel"
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
       version_name: ${{ steps.publish-wheel.outputs.version_name }}
       package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
 
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
       # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
@@ -155,12 +186,16 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/staging' wheel"
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
       version_name: ${{ steps.publish-wheel.outputs.version_name }}
       package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
       - id: publish-wheel
         uses: ./.github/actions/publish-wheel
         with:
@@ -170,12 +205,16 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/catalog' wheel"
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
       version_name: ${{ steps.publish-wheel.outputs.version_name }}
       package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
 
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
       # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
@@ -195,12 +234,16 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/frontend' wheel"
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
       version_name: ${{ steps.publish-wheel.outputs.version_name }}
       package_name: ${{ steps.publish-wheel.outputs.package_name }}
-    continue-on-error: true # TODO remove when the right python repo will be set
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
       - uses: ./.github/actions/install-python
 
       # To pull ghcr.io/rs-python/apikey-manager

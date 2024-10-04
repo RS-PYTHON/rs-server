@@ -273,7 +273,6 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
                 response = client.request(
                     method,
                     endpoint,
-                    params=endpoint_params,
                     headers={APIKEY_HEADER: VALID_APIKEY} if test_apikey else None,
                 )
                 logger.debug(response)
@@ -330,10 +329,9 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         [CLUSTER_MODE, "/adgs/aux/status", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
         [CLUSTER_MODE, "/cadip", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
         [CLUSTER_MODE, "/cadip/collections", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
-        [CLUSTER_MODE, "/cadip/collections/{station}", "GET", CADIP_STATIONS, DATE_PARAM, "rs_cadip_{station}_read"],
         [
             CLUSTER_MODE,
-            "/cadip/collections/{station}/items",
+            "/cadip/collections/{collection_id}",
             "GET",
             CADIP_STATIONS,
             DATE_PARAM,
@@ -341,7 +339,15 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         ],
         [
             CLUSTER_MODE,
-            "/cadip/collections/{station}/items/specific_sid",
+            "/cadip/collections/{collection_id}/items",
+            "GET",
+            CADIP_STATIONS,
+            DATE_PARAM,
+            "rs_cadip_{station}_read",
+        ],
+        [
+            CLUSTER_MODE,
+            "/cadip/collections/{collection_id}/items/specific_sid",
             "GET",
             CADIP_STATIONS,
             DATE_PARAM,
@@ -362,13 +368,13 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         "/adgs/aux/search",
         "/adgs/aux",
         "/adgs/aux/status",
-        "/cadip/{station}/cadu/search",
         "/cadip",
         "/cadip/collections",
+        "/cadip/collections/{collection_id}",
+        "/cadip/collections/{collection_id}/items",
+        "/cadip/collections/{collection_id}/items/specific_sid",
         "/cadip/{station}/cadu",
         "/cadip/{station}/cadu/status",
-        "/cadip/collections/{station}/items",
-        "/cadip/collections/{station}/items/specific_sid",
     ],
 )
 async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-locals
@@ -435,7 +441,7 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
     # for each cadip station or just "adgs"
     for station in stations:
         # Replace the station in the endpoint and expected role
-        station_endpoint = endpoint.format(station=station)
+        station_endpoint = endpoint.format(collection_id=station, station=station)
         station_role = expected_role.format(station=station)
 
         logger.debug(f"Test the {station_endpoint!r} [{method}] authentication roles")
@@ -444,10 +450,18 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
         await mock_response({"iam_roles": [], "config": {}, "user_login": {}})
         response = client_request(station_endpoint)
 
-        # Test the error message with an unknown cadip station, skip for landing_pages since no need for stations.
+        # Test the error message with an unknown cadip station or collection,
+        # skip for landing_pages since no need for stations.
         if station == UNKNOWN_CADIP_STATION and "landing_page" not in station_role:
-            assert response.status_code == status.HTTP_400_BAD_REQUEST
-            assert f"Unknown CADIP station: {station!r}" in json.loads(response.content)["detail"]
+            message = json.loads(response.content)["detail"]
+            assert (
+                response.status_code == status.HTTP_401_UNAUTHORIZED
+                and f"Authorization does not include the right role to download from the 'cadip_{station}' station"
+                in message
+            ) or (
+                response.status_code == status.HTTP_404_NOT_FOUND
+                and f"Unknown CADIP collection: {station!r}" in message
+            )
             break  # no need to test the other endpoints
 
         # Else, with a valid station, we should receive an unauthorized response
