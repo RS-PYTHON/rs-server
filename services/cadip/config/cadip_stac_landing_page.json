@@ -1,7 +1,7 @@
 {
     "type": "Catalog",
-    "title": "RSPY CADIP Catalog",
-    "description": "RSPY CADIP landing page",
+    "title": "RS-Server CADIP collections",
+    "description": "RS-Server CADIP landing page",
     "stac_version": "1.0.0",
     "links": [
         {

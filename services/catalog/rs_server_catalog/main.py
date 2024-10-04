@@ -354,6 +354,7 @@ items_get_request_model = create_request_model(
 )
 
 api = StacApi(
+    title="RS-Server STAC catalog",
     settings=settings,
     extensions=extensions,
     items_get_request_model=items_get_request_model,
@@ -369,7 +370,7 @@ api = StacApi(
         Middleware(DontRaiseExceptions),
         Middleware(
             CORSMiddleware,  # WARNING: must be last !
-            allow_origins=settings.STAC_BROWSER_URLS,
+            allow_origins=common_settings.STAC_BROWSER_URLS,
             allow_methods=["*"],
             allow_headers=["*"],
             allow_credentials=True,
