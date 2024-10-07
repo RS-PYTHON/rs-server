@@ -112,7 +112,11 @@ async def authenticate(
             # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You must login")
 
             # In the meantime, use a fake user auth info that has no rights, so no collections will show.
-            auth_info = AuthInfo("stac-browser", [], {})
+            auth_info = AuthInfo(
+                "stac-browser",
+                ["rs_adgs_landing_page", "rs_cadip_landing_page", "rs_catalog_landing_page"],
+                {},
+            )
 
     # Not from the stac browser
     else:
