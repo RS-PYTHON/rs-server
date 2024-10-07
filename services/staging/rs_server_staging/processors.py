@@ -606,6 +606,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 self.log_job_execution(ProcessorStatus.FAILED, 0, detail="No tasks created")
                 return
         if not self.assets_info:
+            self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished with no tasks processed.")
             self.logger.debug("No task to start. Exiting from main loop")
             return
         # retrieve token

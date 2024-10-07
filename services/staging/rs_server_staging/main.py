@@ -55,8 +55,6 @@ app.add_middleware(
 )
 
 api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAPI"])
-db = TinyDB(api.config["manager"]["connection"])
-jobs_table = db.table("jobs")
 
 
 # Exception handlers
@@ -118,6 +116,12 @@ async def app_lifespan(fastapi_app: FastAPI):
         cluster.scale(8)
     logger.debug("Cluster dashboard: %s", cluster.dashboard_link)
 
+    db_location = api.config["manager"]["connection"]
+    if not os.path.isfile(db_location):
+        with open(db_location, "w", encoding="utf-8"):
+            pass
+    db = TinyDB(db_location)
+    fastapi_app.extra["db_table"] = db.table("jobs")
     fastapi_app.extra["dask_cluster"] = cluster
     logger.info("Local Dask cluster created at startup.")
 
@@ -129,6 +133,8 @@ async def app_lifespan(fastapi_app: FastAPI):
     if not common_settings.CLUSTER_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
+    # Remove db when app-shutdown
+    os.remove(db_location)
 
 
 # Health check route
@@ -173,7 +179,7 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             data.inputs.collection.id,
             data.outputs["result"].id,
             data.inputs.provider,
-            jobs_table,
+            app.extra["db_table"],
             app.extra["dask_cluster"],
         ).execute()
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
@@ -185,7 +191,7 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
 @router.get("/jobs/{job_id}")
 async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
-    job = jobs_table.get(Query().job_id == job_id)
+    job = app.extra["db_table"].get(Query().job_id == job_id)
 
     if job:
         return job
@@ -196,7 +202,7 @@ async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
 @router.get("/jobs")
 async def get_jobs():
     """Returns the status of all jobs."""
-    jobs = jobs_table.all()  # Retrieve all job entries from the jobs table
+    jobs = app.extra["db_table"].all()  # Retrieve all job entries from the jobs table
 
     if jobs:
         return JSONResponse(status_code=HTTP_200_OK, content=jobs)
@@ -209,10 +215,10 @@ async def get_jobs():
 async def delete_job(job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
     job_query = Query()
-    job = jobs_table.get(job_query.job_id == job_id)  # Check if the job exists
+    job = app.extra["db_table"].get(job_query.job_id == job_id)  # Check if the job exists
 
     if job:
-        jobs_table.remove(job_query.job_id == job_id)  # Delete the job if found
+        app.extra["db_table"].remove(job_query.job_id == job_id)  # Delete the job if found
         return JSONResponse(status_code=HTTP_200_OK, content={"message": f"Job {job_id} deleted successfully"})
 
     # Raise 404 if job not found
