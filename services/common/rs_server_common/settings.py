@@ -46,7 +46,7 @@ LOCAL_MODE: bool = env_bool("RSPY_LOCAL_MODE", False)
 CLUSTER_MODE: bool = not LOCAL_MODE
 
 # STAC browser URL(s), as seen from the user browser, separated by commas e.g. http://url1,http://url2
-STAC_BROWSER_URLS: list[str] = [url.strip() for url in os.environ.get("STAC_BROWSER_URLS", "").split(",") if url]
+STAC_BROWSER_URLS: list[str] = [url.strip() for url in os.environ.get("STAC_BROWSER_URLS", "").split(";") if url]
 
 
 def request_from_stacbrowser(request: Request) -> bool:

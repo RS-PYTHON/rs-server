@@ -33,6 +33,12 @@ info:
     <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
 
     ---
+    #### STAC Browser
+
+    <a href="${STAC_BROWSER_URL_CADIP}" target="_blank">CADIP</a> /
+    <a href="${STAC_BROWSER_URL_CATALOG}" target="_blank">Catalog</a>
+
+    ---
 services:
   adgs:
     openapi_url: http://localhost:8001/openapi.json
