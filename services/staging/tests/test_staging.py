@@ -14,6 +14,7 @@
 
 """Test staging module."""
 import pytest
+from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
@@ -52,7 +53,7 @@ async def test_get_jobs(mocker, staging_client):
     response = staging_client.get("/jobs")
 
     # Assert the correct response is returned
-    assert response.status_code == 200
+    assert response.status_code == HTTP_200_OK
     assert response.json() == mock_jobs  # Check if the returned data matches the mocked jobs
 
     # Mock with an empty db, should return 404 since there are no jobs.
@@ -60,7 +61,7 @@ async def test_get_jobs(mocker, staging_client):
     mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table})
     response = staging_client.get("/jobs")
 
-    assert response.status_code == 404
+    assert response.status_code == HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
@@ -113,7 +114,9 @@ async def test_get_job(mocker, staging_client, expected_job):
     # Call the API
     response = staging_client.get(f"/jobs/{expected_job['job_id']}")
     # assert response is OK and job info match, or not found for last case
-    assert (response.status_code == 200 and response.json() == expected_job) or response.status_code == 404
+    assert (
+        response.status_code == HTTP_200_OK and response.json() == expected_job
+    ) or response.status_code == HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
@@ -166,7 +169,9 @@ async def test_get_job_result(mocker, staging_client, expected_job):
     # Call the API
     response = staging_client.get(f"/jobs/{expected_job['job_id']}/results")
     # assert response is OK and job info match, or not found for last case
-    assert (response.status_code == 200 and response.json() == expected_job["status"]) or response.status_code == 404
+    assert (
+        response.status_code == HTTP_200_OK and response.json() == expected_job["status"]
+    ) or response.status_code == HTTP_404_NOT_FOUND
 
 
 @pytest.mark.asyncio
@@ -218,7 +223,7 @@ async def test_delete_job(mocker, staging_client, expected_job):
     # Call the API
     response = staging_client.delete(f"/jobs/{expected_job['job_id']}")
     # assert response is OK, or not found for last case
-    assert response.status_code in [200, 404]
+    assert response.status_code in [HTTP_200_OK, HTTP_404_NOT_FOUND]
 
 
 @pytest.mark.asyncio
@@ -282,5 +287,5 @@ async def test_specific_process(staging_client, resource_name, processor_name):
     """
     response = staging_client.get(f"/processes/{resource_name}")
     assert (
-        response.status_code == 200 and response.json()["processor"]["name"] == processor_name
-    ) or response.status_code == 404
+        response.status_code == HTTP_200_OK and response.json()["processor"]["name"] == processor_name
+    ) or response.status_code == HTTP_404_NOT_FOUND
