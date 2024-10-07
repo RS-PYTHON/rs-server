@@ -17,6 +17,7 @@
 import os
 
 from httpx import AsyncClient
+from starlette.requests import Request
 
 #########################
 # Environment variables #
@@ -46,6 +47,12 @@ CLUSTER_MODE: bool = not LOCAL_MODE
 
 # STAC browser URL(s), as seen from the user browser, separated by commas e.g. http://url1,http://url2
 STAC_BROWSER_URLS: list[str] = [url.strip() for url in os.environ.get("STAC_BROWSER_URLS", "").split(",") if url]
+
+
+def request_from_stacbrowser(request: Request) -> bool:
+    """Return if the HTTP request comes from the STAC browser."""
+    return (referer := request.headers.get("referer")) and (referer.rstrip("/") in STAC_BROWSER_URLS)
+
 
 ###################
 # Other variables #

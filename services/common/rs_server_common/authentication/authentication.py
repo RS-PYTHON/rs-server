@@ -16,13 +16,17 @@
 Authentication functions implementation.
 """
 
+import os
 from functools import wraps
 from typing import Annotated
 
+from asyncache import cached
+from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
+from jose import jwt
 from rs_server_common import settings
+from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
-from rs_server_common.authentication.oauth2 import get_user_info
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import AuthInfo
 
@@ -36,6 +40,24 @@ FROM_PYTEST = False
 def authenticate_from_pytest(auth_info: AuthInfo) -> AuthInfo:
     """'authenticate' function called from pytest."""
     return auth_info
+
+
+@cached(cache=TTLCache(maxsize=1, ttl=24 * 3600))  # cache the results for n seconds, they should not change often
+async def get_issuer_and_public_key() -> tuple[str, str]:
+    """Get issuer URL from OPENID_CONNECT_URL, and public key from the issuer."""
+
+    # Read environment variables
+    oidc_endpoint = os.environ["OIDC_ENDPOINT"]
+    oidc_realm = os.environ["OIDC_REALM"]
+    oidc_metadata_url = f"{oidc_endpoint}/realms/{oidc_realm}/.well-known/openid-configuration"
+
+    response = await settings.http_client().get(oidc_metadata_url)
+    issuer = response.json()["issuer"]
+    response = await settings.http_client().get(issuer)
+    public_key = response.json()["public_key"]
+
+    key = "-----BEGIN PUBLIC KEY-----\n" + public_key + "\n-----END PUBLIC KEY-----"
+    return (issuer, key)
 
 
 async def authenticate(
@@ -54,23 +76,63 @@ async def authenticate(
         or the user oauth2 account.
     """
 
-    # Try to authenticate with the api key value
-    auth_info = await apikey_security(apikey_value)
+    # If the request comes from the stac browser
+    if settings.request_from_stacbrowser(request):
 
-    # Else try to authenticate with oauth2
-    if not auth_info:
-        auth_info = await get_user_info(request)
+        auth_info = None
 
-    if not auth_info:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-        )
+        # With the stac browser, we don't use either api key or oauth2.
+        # It passes an authorization token in a specific header.
+        if token := request.headers.get("authorization"):
+            issuer, key = await get_issuer_and_public_key()
+            if token.startswith("Bearer "):
+                token = token[7:]  # remove the "Bearer " header
+
+            # Decode the token
+            userinfo = jwt.decode(token, key=key, issuer=issuer, audience=os.environ["OIDC_CLIENT_ID"])
+
+            # The result contains the auth roles we need, but still get them from keycloak
+            # so we are sure to have the same behaviour than with the apikey and oauth2
+            kc_info = oauth2.KCUTIL.get_user_info(userinfo.get("sub"))
+
+            user_login = userinfo.get("preferred_username")
+            if not kc_info.is_enabled:
+                raise HTTPException(
+                    # Don't use 401 or the stac browser will try to connect to this endpoint again and this will loop
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"User {user_login!r} is disabled from KeyCloak.",
+                )
+
+            # The configuration dict is only set with the API key
+            auth_info = AuthInfo(user_login=user_login, iam_roles=kc_info.roles, apikey_config={})
+
+        if not auth_info:
+            # Else, the best would be to force the browser to authenticate, but for now it doesn't work, see:
+            # https://github.com/radiantearth/stac-browser/issues/479
+            # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You must login")
+
+            # In the meantime, use a fake user auth info that has no rights, so no collections will show.
+            auth_info = AuthInfo("stac-browser", [], {})
+
+    # Not from the stac browser
+    else:
+        # Try to authenticate with the api key value
+        auth_info = await apikey_security(apikey_value)
+
+        # Else try to authenticate with oauth2
+        if not auth_info:
+            auth_info = await oauth2.get_user_info(request)
+
+        if not auth_info:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+            )
 
     # Save information in the request state and return it
+    request.state.user_login = auth_info.user_login
     request.state.auth_roles = auth_info.iam_roles
     request.state.auth_config = auth_info.apikey_config
-    request.state.user_login = auth_info.user_login
     return authenticate_from_pytest(auth_info) if FROM_PYTEST else auth_info
 
 
