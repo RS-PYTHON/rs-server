@@ -17,9 +17,9 @@
 import os
 from contextlib import asynccontextmanager
 
+import dask_gateway
 from dask.distributed import LocalCluster
 from dask_gateway import Gateway
-from dask_gateway import exceptions as dask_exceptions
 from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
 from pygeoapi.config import get_config
@@ -119,16 +119,16 @@ async def app_lifespan(fastapi_app: FastAPI):
             # TODO: Handle errors
             try:
                 cluster = gateway.new_cluster()
-            except dask_exceptions.GatewayServerError as e:
+            except dask_gateway.exceptions.GatewayServerError as e:
                 logger.error(f"Failed to create a new Dask cluster: {e}")
                 raise RuntimeError("Unable to create a Dask cluster") from e
-            except dask_exceptions.AuthenticationError as e:
+            except dask_gateway.exceptions.AuthenticationError as e:
                 logger.error(f"Authentication failed for Dask Gateway: {e}")
                 raise RuntimeError("Authentication failed") from e
             except TimeoutError as e:
                 logger.error(f"Timeout occurred while creating the Dask cluster: {e}")
                 raise RuntimeError("Cluster creation timed out") from e
-            except dask_exceptions.ClusterLimitExceeded as e:
+            except dask_gateway.exceptions.ClusterLimitExceeded as e:
                 logger.error(f"Cluster limit exceeded: {e}")
                 raise RuntimeError("Cannot create new cluster, limit reached") from e
 
