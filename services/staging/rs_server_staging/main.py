@@ -105,12 +105,20 @@ async def app_lifespan(fastapi_app: FastAPI):
     # Create the LocalCluster and Dask Client at startup
     if common_settings.CLUSTER_MODE:
         # to be implemented: write tcp
-        gateway = Gateway()
-        clusters = gateway.list_clusters()
+        try:
+            gateway = Gateway(address=os.environ["DASK_GATEWAY__ADDRESS"], auth=os.environ["DASK_GATEWAY__AUTH__TYPE"])
+            clusters = gateway.list_clusters()
+        except KeyError as e:
+            logger.error(f"Could not find the needed enveironment variable to use the daks gateway: {e}")
+            raise RuntimeError from e
         try:
             cluster = gateway.connect(clusters[0].name)
         except KeyError:
+            logger.warning("There is no dask cluster to connect to. Creating a new one....")
+            # TODO: Handle errors
             cluster = gateway.new_cluster()
+            logger.info("A new dask cluster has been created")
+
     else:
         cluster = LocalCluster()
         cluster.scale(8)
