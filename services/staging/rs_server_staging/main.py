@@ -171,19 +171,27 @@ async def ping():
 @router.get("/processes")
 async def get_processes():
     """Returns list of all available processes from config."""
-    processes = [
+    if processes := [
         {"name": resource, "processor": api.config["resources"][resource]["processor"]["name"]}
         for resource in api.config["resources"]
-    ]
-    return JSONResponse(status_code=200, content={"processes": processes})
+    ]:
+        return JSONResponse(status_code=200, content={"processes": processes})
+    return JSONResponse(status_code=404, content="No processes found")
 
 
 @router.get("/processes/{resource}")
 async def get_resource(resource: str):
     """Should return info about a specific resource."""
-    for defined_resource in api.config["resources"]:
-        if defined_resource == resource:
-            return JSONResponse(status_code=HTTP_200_OK, content=api.config["resources"][defined_resource])
+    if resource_info := next(
+        (
+            api.config["resources"][defined_resource]
+            for defined_resource in api.config["resources"]
+            if defined_resource == resource
+        ),
+        None,
+    ):
+        return JSONResponse(status_code=200, content=resource_info)
+    return JSONResponse(status_code=404, content={"detail": "Resource not found"})
 
 
 # Endpoint to execute the staging process and generate a job ID
@@ -252,7 +260,12 @@ async def delete_job(job_id: str = Path(..., title="The ID of the job to delete"
 @router.get("/jobs/{job_id}/results")
 async def get_specific_job_result(job_id):
     """Get result from a specific job."""
-    return JSONResponse(status_code=HTTP_200_OK, content=job_id)
+    job = app.extra["db_table"].get(Query().job_id == job_id)  # Check if the job exists
+    if job:
+        return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
+
+        # Raise 404 if job not found
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 app.include_router(router)

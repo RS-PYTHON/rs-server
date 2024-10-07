@@ -23,6 +23,8 @@ import os
 import os.path as osp
 from pathlib import Path
 
+import yaml
+
 # set pygeoapi env variables
 geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
 os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
@@ -39,3 +41,10 @@ def client_():
     # Test the FastAPI application, opens the database session
     with TestClient(app) as client:
         yield client
+
+
+@pytest.fixture(name="predefined_config")
+def config_():
+    """Fixture for pygeoapi yaml config"""
+    with open(geoapi_cfg, "r", encoding="utf-8") as yaml_file:
+        return yaml.safe_load(yaml_file)
