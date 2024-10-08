@@ -612,9 +612,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
         )
 
-        self.client = Client(self.cluster, asynchronous=True)
+        self.client = Client(self.cluster)
         # Check the cluster dashboard
-        # self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
+        self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
         self.tasks = []
         # Submit tasks
         for asset_info in self.assets_info:
