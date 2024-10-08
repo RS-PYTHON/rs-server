@@ -48,7 +48,7 @@ packages = [
 
 # All the dependencies for release are set in the sub-projects
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "==3.11.7"
 rs-server-adgs = {path = "services/adgs", develop = true}
 rs-server-cadip = {path = "services/cadip", develop = true}
 rs-server-catalog = {path = "services/catalog", develop = true}

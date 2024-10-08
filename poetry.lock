@@ -955,10 +955,7 @@ click = "*"
 geojson = "*"
 jsonpath-ng = "<1.6.0"
 lxml = "*"
-orjson = [
-    {version = "<3.10.0", markers = "python_version >= \"3.12\" and platform_system == \"Windows\""},
-    {version = "*", markers = "python_version < \"3.12\" or platform_system != \"Windows\""},
-]
+orjson = {version = "*", markers = "python_version < \"3.12\" or platform_system != \"Windows\""}
 pydantic = ">=2.1.0"
 pydantic-core = "*"
 pyproj = ">=2.1.0"
@@ -2234,19 +2231,6 @@ opentelemetry-sdk = "1.27.0"
 
 [[package]]
 name = "orjson"
-version = "3.9.15"
-description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "orjson-3.9.15-cp310-none-win_amd64.whl", hash = "sha256:b725da33e6e58e4a5d27958568484aa766e825e93aa20c26c91168be58e08cbb"},
-    {file = "orjson-3.9.15-cp312-none-win_amd64.whl", hash = "sha256:5bb399e1b49db120653a31463b4a7b27cf2fbfe60469546baf681d1b39f4edf2"},
-    {file = "orjson-3.9.15-cp39-cp39-macosx_10_15_x86_64.macosx_11_0_arm64.macosx_10_15_universal2.whl", hash = "sha256:6fc2fe4647927070df3d93f561d7e588a38865ea0040027662e3e541d592811e"},
-    {file = "orjson-3.9.15-cp39-none-win_amd64.whl", hash = "sha256:ea0b183a5fe6b2b45f3b854b0d19c4e932d6f5934ae1f723b07cf9560edd4ec7"},
-]
-
-[[package]]
-name = "orjson"
 version = "3.10.7"
 description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
 optional = false
@@ -2536,10 +2520,7 @@ files = [
 [package.dependencies]
 annotated-types = ">=0.6.0"
 pydantic-core = "2.23.4"
-typing-extensions = [
-    {version = ">=4.12.2", markers = "python_version >= \"3.13\""},
-    {version = ">=4.6.1", markers = "python_version < \"3.13\""},
-]
+typing-extensions = {version = ">=4.6.1", markers = "python_version < \"3.13\""}
 
 [package.extras]
 email = ["email-validator (>=2.0.0)"]
@@ -2750,10 +2731,7 @@ files = [
 [package.dependencies]
 astroid = ">=3.3.4,<=3.4.0-dev0"
 colorama = {version = ">=0.4.5", markers = "sys_platform == \"win32\""}
-dill = [
-    {version = ">=0.3.7", markers = "python_version >= \"3.12\""},
-    {version = ">=0.3.6", markers = "python_version >= \"3.11\" and python_version < \"3.12\""},
-]
+dill = {version = ">=0.3.6", markers = "python_version >= \"3.11\""}
 isort = ">=4.2.5,<5.13.0 || >5.13.0,<6"
 mccabe = ">=0.6,<0.8"
 platformdirs = ">=2.2.0"
@@ -3319,7 +3297,7 @@ name = "rs-server-adgs"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
-python-versions = "^3.11"
+python-versions = "==3.11.7"
 files = []
 develop = true
 
@@ -3335,7 +3313,7 @@ name = "rs-server-cadip"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
-python-versions = "^3.11"
+python-versions = "==3.11.7"
 files = []
 develop = true
 
@@ -3351,7 +3329,7 @@ name = "rs-server-catalog"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
-python-versions = "^3.11"
+python-versions = "==3.11.7"
 files = []
 develop = true
 
@@ -3369,7 +3347,7 @@ name = "rs-server-common"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
-python-versions = "^3.11"
+python-versions = "==3.11.7"
 files = []
 develop = true
 
@@ -3389,10 +3367,7 @@ opentelemetry-distro = "^0.48b0"
 opentelemetry-exporter-otlp = "^1.27.0"
 opentelemetry-instrumentation-aws-lambda = "^0.48b0"
 opentelemetry-test-utils = "^0.48b0"
-orjson = [
-    {version = "<3.10.0", markers = "python_version >= \"3.12\" and platform_system == \"Windows\""},
-    {version = ">=3.10,<4.0", markers = "python_version < \"3.12\" or platform_system != \"Windows\""},
-]
+orjson = {version = "^3.10", markers = "python_version < \"3.12\" or platform_system != \"Windows\""}
 psycopg2 = "^2.9.9"
 pydantic = ">=2.9.2"
 python-dotenv = "^1.0.0"
@@ -3411,7 +3386,7 @@ name = "rs-server-frontend"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
-python-versions = "^3.11"
+python-versions = "==3.11.7"
 files = []
 develop = true
 
@@ -4490,5 +4465,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.11"
-content-hash = "920d31c49e1651c21d29c3fb09eab887e5437f429ab30d8cc47c85fc234273c2"
+python-versions = "==3.11.7"
+content-hash = "a51abd53a84549674e8c3a87a1de6e4166bcd2ee55e90c74723474dbf9c9c80c"

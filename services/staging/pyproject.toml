@@ -42,7 +42,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "3.11.7"
+python = "==3.11.7"
 fastapi = "^0.115.0"
 pygeoapi = "^0.17.0"
 tinydb = "^4.8.0"
@@ -80,7 +80,7 @@ itsdangerous = "^2.2.0"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-python = "^3.11"
+python = "==3.11.7"
 pre-commit = "^3.7.1"
 bandit = "^1.7.9"
 pylint = "^3.3.0"
