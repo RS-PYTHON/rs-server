@@ -15,15 +15,18 @@
 """Unit tests for the authentication."""
 
 import json
+import os
 
 import pytest
 import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
+from fastapi import HTTPException
 from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication import authentication
+from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.authentication.authentication import authenticate
+from rs_server_common.authentication.keycloak_util import KCInfo
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest_utils import mock_oauth2
 from rs_server_common.utils.utils2 import AuthInfo
@@ -55,6 +58,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     # The function is updating request.state. We don't have a request object here,
     # so just create a dummy one of type State = an object that can be used to store arbitrary state.
     dummy_request = State()
+    dummy_request.headers = {}
     dummy_request.state = State()
 
     # Initial response expected from the function
@@ -147,14 +151,15 @@ async def test_oauth2_security(fastapi_app, mocker, client):  # pylint: disable=
     assert response.content == client.get("/auth/console_logged_message").content
 
     # To test the logout endpoint, we must mock other oauth2 and keycloack functions and endpoints
-    oauth2_end_session_endpoint = "http://oauth2_end_session_endpoint"
+    oauth2_end_session_endpoint = "oauth2_end_session_endpoint"
     mocker.patch.object(
         StarletteOAuth2App,
         "load_server_metadata",
         return_value={"end_session_endpoint": oauth2_end_session_endpoint},
     )
-    response = await mock_oauth2(mocker, client, "/auth/logout", user_id, username, roles)
-    assert response.request.url == oauth2_end_session_endpoint
+    response = await mock_oauth2(mocker, client, "/auth/logout", user_id, username, roles, assert_success=False)
+    assert response.status_code == status.HTTP_404_NOT_FOUND  # because the mocked end session endpoint doesn't exist
+    assert response.request.url.path == f"/auth/{oauth2_end_session_endpoint}"
 
     # Test endpoints that require the oauth2 authentication
     response = await mock_oauth2(
@@ -484,3 +489,58 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
             status.HTTP_401_UNAUTHORIZED,
             status.HTTP_403_FORBIDDEN,
         )
+
+
+@responses.activate
+@pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
+async def test_stac_browser_authent(
+    fastapi_app,  # pylint: disable=unused-argument
+    mocker,
+    httpx_mock: HTTPXMock,
+):
+    """Test the STAC browser authentication."""
+
+    # Mockup the OIDC issuer and public key
+    mocked_oidc_endpoint = os.environ["OIDC_ENDPOINT"]
+    mocked_oidc_realm = os.environ["OIDC_REALM"]
+    mocked_oidc_metadata_url = f"{mocked_oidc_endpoint}/realms/{mocked_oidc_realm}/.well-known/openid-configuration"
+    mocked_issuer = "http://mocked_issuer"
+    mocked_public_key = "mocked_public_key"
+
+    # Mock the HTTP requests
+    httpx_mock.add_response(url=mocked_oidc_metadata_url, json={"issuer": mocked_issuer})
+    httpx_mock.add_response(url=mocked_issuer, json={"public_key": mocked_public_key})
+
+    # Mock global vars
+    stac_browser_url = "http://stac_browser_url"
+    mocker.patch("rs_server_common.settings.STAC_BROWSER_URLS", new=[stac_browser_url], autospec=False)
+
+    # Mock functions
+    mocked_user_login = "mocked_user_login"
+    mocker.patch("jose.jwt.decode", return_value={"sub": "mocked_subject", "preferred_username": mocked_user_login})
+
+    # Mock a FastAPI Request from the stac browser
+    mocked_request = State()
+    mocked_request.headers = {"referer": stac_browser_url}
+    mocked_request.state = State()
+
+    # Without authentication, we should have these basic credentials
+    unauth_info = await authentication.authenticate(mocked_request)
+    assert unauth_info == AuthInfo(
+        "stac-browser",
+        ["rs_adgs_landing_page", "rs_cadip_landing_page", "rs_catalog_landing_page"],
+        {},
+    )
+
+    # With authentication but expired user, we should have an exception
+    mocked_request.headers["authorization"] = "Bearer mocked_token"
+    mocked_kc_info = KCInfo(is_enabled=False, roles=[])
+    mocker.patch.object(oauth2.KCUTIL, "get_user_info", return_value=mocked_kc_info)
+    with pytest.raises(HTTPException):
+        await authentication.authenticate(mocked_request)
+
+    # Else, we should have the user info from keycloak
+    mocked_kc_info = KCInfo(is_enabled=True, roles=["mocked_role1", "mocked_role2"])
+    mocker.patch.object(oauth2.KCUTIL, "get_user_info", return_value=mocked_kc_info)
+    auth_info = await authentication.authenticate(mocked_request)
+    assert auth_info == AuthInfo(user_login=mocked_user_login, iam_roles=mocked_kc_info.roles, apikey_config={})

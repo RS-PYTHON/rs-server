@@ -140,7 +140,7 @@ async def login(request: Request):
     # Check that the user is enabled in keycloak
     user_id = userinfo.get("sub")
     user_login = userinfo.get("preferred_username")
-    if not kcutil.get_user_info(user_id).is_enabled:  # pylint: disable=possibly-used-before-assignment
+    if not KCUTIL.get_user_info(user_id).is_enabled:  # pylint: disable=possibly-used-before-assignment
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"User {user_login!r} is disabled from KeyCloak.",
@@ -269,8 +269,7 @@ def get_router(app: FastAPI) -> APIRouter:  # pylint: disable=too-many-locals
 
 
 # Utility class to get user information from the KeyCloak server
-if settings.CLUSTER_MODE:
-    kcutil = KCUtil()
+KCUTIL = KCUtil() if settings.CLUSTER_MODE else None
 
 
 async def get_user_info(request: Request) -> AuthInfo:
@@ -319,7 +318,7 @@ async def get_user_info(request: Request) -> AuthInfo:
     user_login = user.get("preferred_username")
 
     # Now call the KeyCloak server again to get the user information (IAM roles, ...) from the user ID
-    user_info = kcutil.get_user_info(user_id)  # pylint: disable=possibly-used-before-assignment
+    user_info = KCUTIL.get_user_info(user_id)  # pylint: disable=possibly-used-before-assignment
 
     # If the user is still enabled in KeyCloak
     if user_info.is_enabled:

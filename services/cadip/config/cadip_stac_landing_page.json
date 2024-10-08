@@ -1,0 +1,62 @@
+{
+    "type": "Catalog",
+    "title": "RS-PYTHON CADIP collections",
+    "description": "RS-PYTHON CADIP landing page",
+    "stac_version": "1.0.0",
+    "links": [
+        {
+            "rel": "self",
+            "type": "application/json",
+            "href": "{domain}/cadip/"
+        },
+        {
+            "rel": "root",
+            "type": "application/json",
+            "href": "{domain}/cadip/"
+        },
+        {
+            "rel": "data",
+            "type": "application/json",
+            "href": "{domain}/cadip/collections"
+        },
+        {
+            "rel": "conformance",
+            "type": "application/json",
+            "title": "STAC/OGC conformance classes implemented by this server",
+            "href": "{domain}/cadip/conformance"
+        },
+        {
+            "rel": "search",
+            "type": "application/geo+json",
+            "title": "STAC search",
+            "href": "{domain}/cadip/search",
+            "method": "GET"
+        },
+        {
+            "rel": "search",
+            "type": "application/geo+json",
+            "title": "STAC search",
+            "href": "{domain}/cadip/search",
+            "method": "POST"
+        },
+        {
+            "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
+            "type": "application/schema+json",
+            "title": "Queryables",
+            "href": "{domain}/cadip/queryables",
+            "method": "GET"
+        },
+        {
+            "rel": "service-desc",
+            "type": "application/vnd.oai.openapi+json;version=3.0",
+            "title": "OpenAPI service description",
+            "href": "{domain}/openapi.json"
+        },
+        {
+            "rel": "service-doc",
+            "type": "text/html",
+            "title": "OpenAPI service documentation",
+            "href": "{domain}/docs"
+        }
+    ]
+}

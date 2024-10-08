@@ -367,7 +367,13 @@ api = StacApi(
         Middleware(ProxyHeaderMiddleware),
         Middleware(AuthenticationMiddleware),
         Middleware(DontRaiseExceptions),
-        Middleware(CORSMiddleware),  # WARNING: must be last !
+        Middleware(
+            CORSMiddleware,  # WARNING: must be last !
+            allow_origins=common_settings.STAC_BROWSER_URLS,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            allow_credentials=True,
+        ),
     ],
 )
 app = api.app

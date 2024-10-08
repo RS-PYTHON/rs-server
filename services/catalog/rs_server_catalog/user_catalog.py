@@ -888,6 +888,9 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                 self.request_ids["owner_id"],
                 user_login,
             )
+            # I don't know why but the STAC browser doesn't send authentication for the queryables endpoint.
+            # So allow this endpoint without authentication in this specific case.
+            and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith("/queryables"))
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)

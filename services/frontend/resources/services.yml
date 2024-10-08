@@ -33,13 +33,17 @@ info:
     <a href="${RSPY_UAC_HOMEPAGE}" target="_blank">API-Key Manager</a>
 
     ---
+    #### STAC Browser
+
+    <a href="${STAC_BROWSER_URL_CADIP}" target="_blank">CADIP</a> /
+    <a href="${STAC_BROWSER_URL_CATALOG}" target="_blank">Catalog</a>
+
+    ---
 services:
   adgs:
     openapi_url: http://localhost:8001/openapi.json
   cadip:
     openapi_url: http://localhost:8002/openapi.json
-  staging:
-    openapi_url: http://localhost:8100/openapi.json
   catalog:
     openapi_url: http://localhost:8003/api
     change_tags:
@@ -48,3 +52,5 @@ services:
       Transaction Extension: Catalog (Transaction Extension)
       Filter Extension: Catalog (Filter Extension)
       Bulk Transaction Extension: Catalog (Bulk Transaction Extension)
+  staging:
+    openapi_url: http://localhost:8004/openapi.json

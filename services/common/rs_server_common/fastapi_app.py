@@ -23,6 +23,7 @@ from typing import Callable
 import httpx
 import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
@@ -38,13 +39,6 @@ from rs_server_common.utils.logging import Logging
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
-
-
-# include_in_schema=False: hide this endpoint from the swagger
-@technical_router.get("/", include_in_schema=False)
-async def home():
-    """Home endpoint."""
-    return {"message": "RS server home endpoint"}
 
 
 # include_in_schema=False: hide this endpoint from the swagger
@@ -190,5 +184,15 @@ def init_app(  # pylint: disable=too-many-locals
     # Add routers to the FastAPI app
     app.include_router(need_auth_router)
     app.include_router(technical_router)
+
+    # Add CORS requests from the STAC browser
+    if settings.STAC_BROWSER_URLS:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.STAC_BROWSER_URLS,
+            allow_methods=["*"],
+            allow_headers=["*"],
+            allow_credentials=True,
+        )
 
     return app
