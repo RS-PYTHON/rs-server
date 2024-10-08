@@ -30,7 +30,7 @@ on:
         required: false
 
 env:
-  PYTHON_VERSION: 3.11
+  PYTHON_VERSION: 3.11.7
   DOCKER_REGISTRY: ghcr.io
 
 jobs:
