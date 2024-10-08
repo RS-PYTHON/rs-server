@@ -15,6 +15,7 @@
 """rs server staging main module."""
 # pylint: disable=E0401
 import os
+import threading
 from contextlib import asynccontextmanager
 
 import dask_gateway
@@ -56,6 +57,7 @@ app.add_middleware(
 )
 
 api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAPI"])
+tinydb_lock = threading.Lock()
 
 
 # Exception handlers
@@ -137,7 +139,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
 
     else:
         cluster = LocalCluster()
-        cluster.scale(8)
+    cluster.scale(8)
     logger.debug("Cluster dashboard: %s", cluster.dashboard_link)
 
     db_location = api.config["manager"]["connection"]
@@ -213,6 +215,7 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             data.inputs.provider,
             app.extra["db_table"],
             app.extra["dask_cluster"],
+            tinydb_lock,
         ).execute()
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
@@ -222,50 +225,58 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
 # Endpoint to get the status of a job by job_id
 @router.get("/jobs/{job_id}")
 async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
+    global tinydb_lock
     """Used to get status of processing job."""
-    job = app.extra["db_table"].get(Query().job_id == job_id)
+    with tinydb_lock:
+        job = app.extra["db_table"].get(Query().job_id == job_id)
 
-    if job:
-        return job
+        if job:
+            return job
 
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Job not found")
 
 
 @router.get("/jobs")
 async def get_jobs():
+    global tinydb_lock
     """Returns the status of all jobs."""
-    jobs = app.extra["db_table"].all()  # Retrieve all job entries from the jobs table
+    with tinydb_lock:
+        jobs = app.extra["db_table"].all()  # Retrieve all job entries from the jobs table
 
-    if jobs:
-        return JSONResponse(status_code=HTTP_200_OK, content=jobs)
+        if jobs:
+            return JSONResponse(status_code=HTTP_200_OK, content=jobs)
 
-    # If no jobs are found, return 404 with appropriate message
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No jobs found")
+        # If no jobs are found, return 404 with appropriate message
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No jobs found")
 
 
 @router.delete("/jobs/{job_id}")
 async def delete_job(job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
-    job_query = Query()
-    job = app.extra["db_table"].get(job_query.job_id == job_id)  # Check if the job exists
+    global tinydb_lock
+    with tinydb_lock:
+        job_query = Query()
+        job = app.extra["db_table"].get(job_query.job_id == job_id)  # Check if the job exists
 
-    if job:
-        app.extra["db_table"].remove(job_query.job_id == job_id)  # Delete the job if found
-        return JSONResponse(status_code=HTTP_200_OK, content={"message": f"Job {job_id} deleted successfully"})
+        if job:
+            app.extra["db_table"].remove(job_query.job_id == job_id)  # Delete the job if found
+            return JSONResponse(status_code=HTTP_200_OK, content={"message": f"Job {job_id} deleted successfully"})
 
-    # Raise 404 if job not found
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+        # Raise 404 if job not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 @router.get("/jobs/{job_id}/results")
 async def get_specific_job_result(job_id):
+    global tinydb_lock
     """Get result from a specific job."""
-    job = app.extra["db_table"].get(Query().job_id == job_id)  # Check if the job exists
-    if job:
-        return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
+    with tinydb_lock:
+        job = app.extra["db_table"].get(Query().job_id == job_id)  # Check if the job exists
+        if job:
+            return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
 
-        # Raise 404 if job not found
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+            # Raise 404 if job not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 app.include_router(router)

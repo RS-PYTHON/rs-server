@@ -16,7 +16,6 @@
 import asyncio  # for handling asynchronous tasks
 import json
 import os
-import threading
 import time
 import uuid
 from enum import Enum
@@ -149,7 +148,7 @@ def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
     Example:
         streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
     """
-    # time.sleep(4)
+    # time.sleep(3)
     try:
         if not s3_handler:
             s3_handler = S3StorageHandler(
@@ -205,6 +204,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         provider: str,
         db: tinydb.table.Table,
         cluster: LocalCluster,
+        tinydb_lock,
     ):  # pylint: disable=super-init-not-called
         """
         Initialize the RSPYStaging processor with credentials, input collection, catalog details,
@@ -267,7 +267,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.assets_info: list = []
         self.tasks: list = []
         # Lock to protect access to percentage
-        self.lock = threading.Lock()
+        self.lock = tinydb_lock
         # Tasks finished
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
@@ -353,14 +353,16 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
     ):
         """Method used to log progress into db."""
         # Update both runtime and db status and progress
-        self.status = status if status else self.status
-        self.progress = progress if progress else self.progress
-        self.detail = detail if detail else self.detail
-        tiny_job = tinydb.Query()
-        self.tracker.update(
-            {"status": ProcessorStatus.to_json(self.status), "progress": self.progress, "detail": self.detail},
-            tiny_job.job_id == self.job_id,
-        )
+        # tinydb doesn't handle multithreading
+        with self.lock:
+            self.status = status if status else self.status
+            self.progress = progress if progress else self.progress
+            self.detail = detail if detail else self.detail
+            tiny_job = tinydb.Query()
+            self.tracker.update(
+                {"status": ProcessorStatus.to_json(self.status), "progress": self.progress, "detail": self.detail},
+                tiny_job.job_id == self.job_id,
+            )
 
     async def check_catalog(self):
         """
@@ -559,7 +561,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 self.tasks_finished += 1
                 self.log_job_execution(
                     ProcessorStatus.IN_PROGRESS,
-                    (self.tasks_finished * 100 / len(self.tasks)),
+                    round((self.tasks_finished * 100 / len(self.tasks)), 2),
                     detail="In progress",
                 )
                 self.logger.debug("%s Task streaming completed", task.key)
@@ -576,9 +578,13 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                     time.sleep(1)
                     timeout -= 1
                 # Update status for the job
-                self.log_job_execution(ProcessorStatus.FAILED, None, detail="At least one of the tasks failed")
+                self.log_job_execution(
+                    ProcessorStatus.FAILED,
+                    None,
+                    detail=f"At least one of the tasks failed: {task_e}",
+                )
                 self.delete_files_from_bucket(CATALOG_BUCKET)
-                self.logger.error("Tasks monitoring finished with error. At least one of the tasks failed")
+                self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
 
         # Publish all the features once processed
