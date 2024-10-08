@@ -44,7 +44,7 @@ def authenticate_from_pytest(auth_info: AuthInfo) -> AuthInfo:
 
 @cached(cache=TTLCache(maxsize=1, ttl=24 * 3600))  # cache the results for n seconds, they should not change often
 async def get_issuer_and_public_key() -> tuple[str, str]:
-    """Get issuer URL from OPENID_CONNECT_URL, and public key from the issuer."""
+    """Get issuer URL from OIDC environment, and public key from the issuer."""
 
     # Read environment variables
     oidc_endpoint = os.environ["OIDC_ENDPOINT"]
