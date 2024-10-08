@@ -2367,13 +2367,13 @@ pbr = ">=2.0.0"
 
 [[package]]
 name = "tinydb"
-version = "4.8.0"
+version = "4.8.1"
 description = "TinyDB is a tiny, document oriented database optimized for your happiness :)"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "tinydb-4.8.0-py3-none-any.whl", hash = "sha256:30c06d12383d7c332e404ca6a6103fb2b32cbf25712689648c39d9a6bd34bd3d"},
-    {file = "tinydb-4.8.0.tar.gz", hash = "sha256:6dd686a9c5a75dfa9280088fd79a419aefe19cd7f4bd85eba203540ef856d564"},
+    {file = "tinydb-4.8.1-py3-none-any.whl", hash = "sha256:1c7c507ef520c789f94f1f5786f0722a98a59a85031a2e81e2accc701721f07f"},
+    {file = "tinydb-4.8.1.tar.gz", hash = "sha256:09c4c6a239da9be676b948f1f28074cffd1cf08e7af920c1df50424cc8bee8d6"},
 ]
 
 [[package]]
