@@ -31,6 +31,7 @@ import stac_pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
+from fastapi.responses import RedirectResponse
 from pydantic import ValidationError, WrapValidator, validate_call
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
@@ -64,7 +65,6 @@ from rs_server_common.utils.utils import (
     validate_str_list,
     write_search_products_to_db,
 )
-from stac_pydantic.links import Link, Links
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
@@ -123,6 +123,12 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
 
+@router.get("/", include_in_schema=False)
+async def home():
+    """Home endpoint. Redirect to the landing page."""
+    return RedirectResponse("/cadip")
+
+
 @router.get("/cadip")
 @auth_validator(station="cadip", access_type="landing_page")
 def get_root_catalog(request: Request):
@@ -152,15 +158,36 @@ def get_root_catalog(request: Request):
     - dict: A dictionary representation of the STAC catalog, including metadata and links.
     """
     logger.info(f"Starting {request.url.path}")
-    landing_page: stac_pydantic.Catalog = stac_pydantic.Catalog(
-        type="Catalog",
-        id=str(uuid.uuid4()),
-        description="RSPY CADIP landing page",
-        title="RSPY CADIP Catalog",
-        stac_version="1.0.0",
-        stac_extensions=[],
-        links=Links([Link(rel="data", href=f"{request.url.scheme}://{request.url.netloc}/cadip/collections")]),
-    )
+
+    # Read landing page contents from json file
+    with open(CADIP_CONFIG / "cadip_stac_landing_page.json", encoding="utf-8") as f:
+        contents = json.load(f)
+
+    # Override some fields
+    links = contents["links"]
+    domain = f"{request.url.scheme}://{request.url.netloc}"
+    contents["id"] = str(uuid.uuid4())
+    contents.update(**get_conformance())  # conformsTo
+    for link in links:
+        link["href"] = link["href"].format(domain=domain)
+
+    # Add collections as child links
+    all_collections = get_allowed_collections(request=request)  # warning: use kwargs here
+    for collection in all_collections.get("collections", []):
+        collection_id = collection["id"]
+        links.append(
+            {
+                "rel": "child",
+                "type": "application/json",
+                "title": collection_id,
+                "href": f"{domain}/cadip/collections/{collection_id}",
+            },
+        )
+
+    # Convert to dict and build a Catalog object so we can validate the contents
+    landing_page = stac_pydantic.Catalog.model_validate(contents)
+
+    # Once validated, convert back to dict and return value
     return landing_page.model_dump()
 
 
@@ -221,8 +248,12 @@ def get_allowed_collections(request: Request):
 
     # Foreach allowed collection, create links and append to response.
     for config in filtered_collections:
+
+        config.setdefault("stac_version", "1.0.0")
+
         query_params = create_session_search_params(config)
         logger.debug(f"Collection {config['id']} params: {query_params}")
+
         try:
             collection: stac_pydantic.Collection = create_collection(config)
             stac_object["collections"].append(collection.model_dump())
@@ -234,6 +265,13 @@ def get_allowed_collections(request: Request):
             else:
                 raise
     return stac_object
+
+
+@router.get("/cadip/conformance")
+def get_conformance():
+    """Return the STAC/OGC conformance classes implemented by this server."""
+    with open(CADIP_CONFIG / "cadip_stac_conforms_to.json", encoding="utf-8") as f:
+        return json.load(f)
 
 
 @router.get("/cadip/queryables")
@@ -531,7 +569,7 @@ def get_cadip_collection(
     query_params: dict = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-    if link := process_session_search(
+    if links := process_session_search(
         request,
         query_params["station"],
         query_params["SessionId"],
@@ -540,7 +578,8 @@ def get_cadip_collection(
         query_params["top"],
         "collection",
     ):
-        stac_collection.links.append(link)
+        for link in links:
+            stac_collection.links.append(link)
     return stac_collection.model_dump()
 
 
