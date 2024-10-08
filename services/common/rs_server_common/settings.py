@@ -51,7 +51,7 @@ STAC_BROWSER_URLS: list[str] = [url.strip() for url in os.environ.get("STAC_BROW
 
 def request_from_stacbrowser(request: Request) -> bool:
     """Return if the HTTP request comes from the STAC browser."""
-    return (referer := request.headers.get("referer")) and (referer.rstrip("/") in STAC_BROWSER_URLS)
+    return bool((referer := request.headers.get("referer")) and (referer.rstrip("/") in STAC_BROWSER_URLS))
 
 
 ###################
