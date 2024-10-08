@@ -102,6 +102,9 @@ def init_rs_server_config_yaml():
                 section_data[rest_of_key] = value
             else:
                 station_data[section] = value
+    if not config_data:
+        logger.exception(f"Failed to gather env vars to fill the configuration: {config_data}")
+        raise RuntimeError(f"Failed to gather env vars to fill the configuration: {config_data}")
     try:
         # Create the directory if it doesn't exist
         os.makedirs(os.path.dirname(CONFIG_PATH_AUTH_TO_EXTERNAL), exist_ok=True)
@@ -110,7 +113,10 @@ def init_rs_server_config_yaml():
         main_dict = {"external_data_sources": config_data}
         with open(CONFIG_PATH_AUTH_TO_EXTERNAL, "w", encoding="utf-8") as yaml_file:
             yaml.dump(main_dict, yaml_file, default_flow_style=False)
-        logger.info(f"Configuration successfully written to {CONFIG_PATH_AUTH_TO_EXTERNAL}")
+        logger.info(
+            f"Configuration for retrieving the token from external stations \
+successfully written to {CONFIG_PATH_AUTH_TO_EXTERNAL}",
+        )
     except (OSError, IOError) as e:
         logger.exception(f"Failed to write configuration to {CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}")
         raise RuntimeError(f"Failed to write configuration to {CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}") from e
