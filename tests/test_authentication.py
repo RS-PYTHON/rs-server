@@ -55,6 +55,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
     # The function is updating request.state. We don't have a request object here,
     # so just create a dummy one of type State = an object that can be used to store arbitrary state.
     dummy_request = State()
+    dummy_request.headers = {}
     dummy_request.state = State()
 
     # Initial response expected from the function
