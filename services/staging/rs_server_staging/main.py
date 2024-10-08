@@ -70,7 +70,7 @@ async def custom_http_exception_handler(
 
 # Create Dask LocalCluster when the application starts
 @asynccontextmanager
-async def app_lifespan(fastapi_app: FastAPI):
+async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statements
     """
     Asynchronous context manager to handle the lifecycle of the FastAPI application,
     managing the creation and shutdown of a Dask cluster.

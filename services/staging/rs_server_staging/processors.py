@@ -198,7 +198,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
     def __init__(
         self,
-        credentials: Headers,
+        credentials: Request,
         input_collection: RSPYFeatureCollectionModel,
         collection: str,
         item: str,
@@ -243,7 +243,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         """
         #################
         # Locals
-        self.headers: Headers = credentials
+        self.headers: Headers = credentials.headers
         self.stream_list: list = []
         #################
         # Env section
@@ -251,10 +251,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
-        self.download_url: str = os.environ.get(
-            "RSPY_RS_SERVER_CADIP_URL",
-            "http://127.0.0.1:8000",
-        )  # get  href, loopback else  to be removed
         #################
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
@@ -381,10 +377,12 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         search_url = f"{self.catalog_url}/catalog/search"
         try:
-            # forward apikey to access catalog
-            # requests.get(search_url, headers=self.headers, params=filter_object, timeout=3).json()
-            # not right now
-            response = requests.get(search_url, params=json.dumps(filter_object), timeout=3)
+            response = requests.get(
+                search_url,
+                headers={"cookie": self.headers.get("cookie", None)},
+                params=json.dumps(filter_object),
+                timeout=3,
+            )
             response.raise_for_status()  # Raise an error for HTTP error responses
             self.create_streaming_list(response.json())
             self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
@@ -669,7 +667,12 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         # how to get user? // Do we need user? should /catalog/collection/collectionId/items works with apik?
         publish_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items"
         try:
-            response = requests.post(publish_url, data=feature.json(), timeout=3)
+            response = requests.post(
+                publish_url,
+                headers={"cookie": self.headers.get("cookie", None)},
+                data=feature.json(),
+                timeout=3,
+            )
             response.raise_for_status()  # Raise an error for HTTP error responses
             return True
         except (
