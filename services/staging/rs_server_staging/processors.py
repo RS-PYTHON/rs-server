@@ -617,8 +617,14 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
         self.tasks = []
         # Submit tasks
-        for asset_info in self.assets_info:
-            self.tasks.append(self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]))
+        try:
+            for asset_info in self.assets_info:
+                self.tasks.append(
+                    self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]),
+                )
+        except Exception as e:
+            self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
+            return
         # starting another thread for managing the dask callbacks
         self.logger.debug("Starting tasks monitoring thread")
         try:
