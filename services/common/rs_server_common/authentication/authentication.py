@@ -79,8 +79,6 @@ async def authenticate(
     # If the request comes from the stac browser
     if settings.request_from_stacbrowser(request):
 
-        auth_info = None
-
         # With the stac browser, we don't use either api key or oauth2.
         # It passes an authorization token in a specific header.
         if token := request.headers.get("authorization"):
@@ -106,7 +104,7 @@ async def authenticate(
             # The configuration dict is only set with the API key
             auth_info = AuthInfo(user_login=user_login, iam_roles=kc_info.roles, apikey_config={})
 
-        if not auth_info:
+        else:
             # Else, the best would be to force the browser to authenticate, but for now it doesn't work, see:
             # https://github.com/radiantearth/stac-browser/issues/479
             # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You must login")

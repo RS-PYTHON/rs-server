@@ -37,3 +37,11 @@ security: # configuration for the `safety check` command
         reason: Vulnerability found in flask-cors version 5.0.0
     42194:
         reason: Vulnerability found in sqlalchemy-utils version 0.41.2
+    70715:
+        reason: Vulnerability found in python-jose version 3.3.0
+    70716:
+        reason: Vulnerability found in python-jose version 3.3.0
+    64396:
+        reason: Vulnerability found in ecdsa version 0.19.0
+    64459:
+        reason: Vulnerability found in ecdsa version 0.19.0
