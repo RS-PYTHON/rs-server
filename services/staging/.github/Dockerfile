@@ -14,7 +14,7 @@
 
 
 # Build stage for multi stage build.
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.11.7-slim-bookworm as builder
 
 # Install dependencies
 RUN apt update && apt install -y libpq-dev gcc
