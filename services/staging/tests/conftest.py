@@ -48,3 +48,14 @@ def config_():
     """Fixture for pygeoapi yaml config"""
     with open(geoapi_cfg, "r", encoding="utf-8") as yaml_file:
         return yaml.safe_load(yaml_file)
+
+
+@pytest.fixture(name="mock_jobs")
+def dbj_():
+    """Fixture used to mock output of tiny db jobs"""
+    return [
+        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": "Test detail"},
+        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": "Test detail"},
+        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
+        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
+    ]

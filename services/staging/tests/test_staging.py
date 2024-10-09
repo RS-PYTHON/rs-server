@@ -75,7 +75,7 @@ async def test_get_jobs(mocker, staging_client):
         {"job_id": "non_existing", "status": "finished", "progress": 100.0, "detail": "Test detail"},
     ],
 )
-async def test_get_job(mocker, staging_client, expected_job):
+async def test_get_job(mocker, staging_client, mock_jobs, expected_job):
     """
     Test the GET /jobs/{job_id} endpoint for retrieving job details.
 
@@ -94,12 +94,6 @@ async def test_get_job(mocker, staging_client, expected_job):
           details match the expected job dictionary when the job exists.
         - Asserts that the response status code is 404 when the job does not exist.
     """
-    mock_jobs = [
-        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": "Test detail"},
-        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": "Test detail"},
-        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
-        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
-    ]
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
     try:
@@ -130,7 +124,7 @@ async def test_get_job(mocker, staging_client, expected_job):
         {"job_id": "non_existing", "status": "finished", "progress": 100.0, "detail": "Test detail"},
     ],
 )
-async def test_get_job_result(mocker, staging_client, expected_job):
+async def test_get_job_result(mocker, staging_client, mock_jobs, expected_job):
     """
     Test the GET /jobs/{job_id}/results endpoint for retrieving job results.
 
@@ -149,12 +143,6 @@ async def test_get_job_result(mocker, staging_client, expected_job):
           matches the expected job status when the job exists.
         - Asserts that the response status code is 404 when the job does not exist.
     """
-    mock_jobs = [
-        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": "Test detail"},
-        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": "Test detail"},
-        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
-        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
-    ]
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
     try:
@@ -185,7 +173,7 @@ async def test_get_job_result(mocker, staging_client, expected_job):
         {"job_id": "non_existing", "status": "finished", "progress": 100.0, "detail": "Test detail"},
     ],
 )
-async def test_delete_job(mocker, staging_client, expected_job):
+async def test_delete_job(mocker, staging_client, mock_jobs, expected_job):
     """
     Test the DELETE /jobs/{job_id} endpoint for deleting a specific job.
 
@@ -203,12 +191,6 @@ async def test_delete_job(mocker, staging_client, expected_job):
         - Asserts that the response status code is 200 if the job is successfully deleted.
         - Asserts that the response status code is 404 if the job does not exist.
     """
-    mock_jobs = [
-        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": "Test detail"},
-        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": "Test detail"},
-        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
-        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
-    ]
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
     try:
