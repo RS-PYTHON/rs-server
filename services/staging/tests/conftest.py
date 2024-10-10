@@ -19,6 +19,7 @@
 # pylint: disable=C0413
 # flake8: noqa: F402
 
+import asyncio
 import os
 import os.path as osp
 from pathlib import Path
@@ -87,4 +88,18 @@ def staging(mocker):
         cluster=mock_cluster,
         tinydb_lock=mock_tinydb_lock,
     )
-    return staging_instance
+    yield staging_instance
+
+
+@pytest.fixture(name="asyncio_loop", scope="session")
+def event_loop():
+    """Override the default event loop to ensure proper cleanup."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+
+    # Wait for all tasks to complete before closing the loop
+    pending = asyncio.all_tasks(loop)  # Get all pending tasks
+    if pending:
+        loop.run_until_complete(asyncio.gather(*pending))  # Wait for them to finish
+    loop.close()

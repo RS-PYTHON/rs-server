@@ -534,10 +534,17 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 self.logger.error("Error when trying to to delete files from the s3 bucket")
                 return
             for s3_obj in self.assets_info:
-                s3_handler.delete_file_from_s3(bucket, s3_obj[1])
+                try:
+                    s3_handler.delete_file_from_s3(bucket, s3_obj[1])
+                except RuntimeError as re:
+                    self.logger.warning(
+                        "Could not delete from the bucket key s3://%s/%s : %s",
+                        CATALOG_BUCKET,
+                        s3_obj[1],
+                        re,
+                    )
+                    continue
                 self.logger.debug("Deleted s3://%s/%s", CATALOG_BUCKET, s3_obj[1])
-        except RuntimeError as e:
-            self.logger.error("Error when trying to delete s3://%s/%s . Exception: %s", bucket, s3_obj[1], e)
         except KeyError as exc:
             self.logger.error("Cannot connect to s3 storage, %s", exc)
 
@@ -586,7 +593,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 self.delete_files_from_bucket(CATALOG_BUCKET)
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
-
         # Publish all the features once processed
         for feature in self.stream_list:
             self.publish_rspy_feature(feature)
