@@ -38,7 +38,14 @@ permissions are technical and/or functional.
 Installing the rs-server
 ========================
 
-TODO explain how to install the rs-server locally or with a cluster.
+### Local mode
+
+Refer to [the rs-demo documentation](https://github.com/RS-PYTHON/rs-demo?tab=readme-ov-file#run-on-local-mode).
+
+### Cluster mode
+
+Refer to [the rs-helm documentation](https://github.com/RS-PYTHON/rs-helm?tab=readme-ov-file#usage).
+
 
 Using the rs-server
 ===================
@@ -59,7 +66,7 @@ Links
 
 -   Repository: <https://github.com/RS-PYTHON/rs-server>
 
--   Issue tracker: <https://github.com/RS-PYTHON/rs-server/issues>. In case of sensitive bugs like security vulnerabilities, please contact <my@email.com> directly instead of using issue tracker. We value your effort to improve the security and privacy of this project!
+-   Issue tracker: <https://github.com/RS-PYTHON/rs-server/issues>. In case of sensitive bugs like security vulnerabilities, please contact <ops_coprs@airbus.com> directly instead of using issue tracker. We value your effort to improve the security and privacy of this project!
 
 Licensing
 =========
