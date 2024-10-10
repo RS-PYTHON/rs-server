@@ -25,6 +25,7 @@ from pathlib import Path
 
 import yaml
 
+os.environ["RSPY_LOCAL_MODE"] = "1"
 # set pygeoapi env variables
 geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
 os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
