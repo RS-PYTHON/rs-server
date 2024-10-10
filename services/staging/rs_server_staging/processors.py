@@ -628,7 +628,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 self.tasks.append(
                     self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]),
                 )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
             return
         # starting another thread for managing the dask callbacks
