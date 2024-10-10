@@ -25,11 +25,7 @@ import os
 
 import psycopg2
 from prefect import flow, task
-from prefect.docker import DockerImage
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
-
-# import time
-
 
 BUCKET_NAME = "rs-cluster-catalog"
 
@@ -88,7 +84,8 @@ def manage_expired_items(expired_items: list, connection: psycopg2.extensions.co
             if "assets" in content:
                 assets = content["assets"]
                 for asset in assets:
-                    delete_asset_from_s3(assets[asset])
+                    if "alternate" in assets[asset] and "s3" in assets[asset]["alternate"]:
+                        delete_asset_from_s3(assets[asset]["alternate"]["s3"])
         update_expired_item(expired_item, connection)
 
 
@@ -213,9 +210,10 @@ def run():
 
 
 if __name__ == "__main__":
+
     run.deploy(
         name="data_life_cycle_deployment",
         work_pool_name="my-docker-pool",
-        image=DockerImage(name="data_life_cycle_image", tag="latest", dockerfile="Dockerfile"),
-        push=False,
+        image="cyouri/tests:data_life_cycle_image",
+        build=False,
     )
