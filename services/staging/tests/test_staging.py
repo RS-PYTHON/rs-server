@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """Test staging module."""
+import threading
+
 import pytest
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
@@ -47,7 +49,7 @@ async def test_get_jobs(mocker, staging_client):
     mock_db_table.all.return_value = mock_jobs  # Simulate TinyDB returning jobs
 
     # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table})
+    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
 
     # Call the API
     response = staging_client.get("/jobs")
@@ -58,7 +60,7 @@ async def test_get_jobs(mocker, staging_client):
 
     # Mock with an empty db, should return 404 since there are no jobs.
     mock_db_table.all.return_value = []
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table})
+    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
     response = staging_client.get("/jobs")
 
     assert response.status_code == HTTP_404_NOT_FOUND
@@ -103,7 +105,7 @@ async def test_get_job(mocker, staging_client, mock_jobs, expected_job):
         mock_db_table.get.return_value = []
 
     # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table})
+    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
 
     # Call the API
     response = staging_client.get(f"/jobs/{expected_job['job_id']}")
@@ -152,7 +154,7 @@ async def test_get_job_result(mocker, staging_client, mock_jobs, expected_job):
         mock_db_table.get.return_value = []
 
     # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table})
+    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
 
     # Call the API
     response = staging_client.get(f"/jobs/{expected_job['job_id']}/results")
@@ -200,7 +202,7 @@ async def test_delete_job(mocker, staging_client, mock_jobs, expected_job):
         mock_db_table.get.return_value = []
 
     # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table})
+    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
 
     # Call the API
     response = staging_client.delete(f"/jobs/{expected_job['job_id']}")
