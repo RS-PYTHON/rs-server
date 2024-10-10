@@ -423,7 +423,9 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     new_s3_href = {"s3": {"href": s3_key}}
                     content["assets"][asset].update({"alternate": new_s3_href})
                     # copy the key only if it isn't already on the final bucket
-                    if not self.s3_handler.check_s3_key_on_bucket(CATALOG_BUCKET, "/".join(old_bucket_arr[3:])):
+                    if not int(
+                        os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0),
+                    ) and not self.s3_handler.check_s3_key_on_bucket(CATALOG_BUCKET, "/".join(old_bucket_arr[3:])):
                         files_s3_key.append(s3_filename)
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
