@@ -111,7 +111,7 @@ def init_rs_server_config_yaml():
         with open(CONFIG_PATH_AUTH_TO_EXTERNAL, "w", encoding="utf-8") as yaml_file:
             yaml.dump(main_dict, yaml_file, default_flow_style=False)
         logger.info(
-            f"Configuration for external stations token module successfully \
+            f"The configuration for the external stations token module was successfully \
 written to {CONFIG_PATH_AUTH_TO_EXTERNAL}",
         )
     except (OSError, IOError) as e:

@@ -621,6 +621,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.client = Client(self.cluster)
         # Check the cluster dashboard
         self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
+        self.logger.debug(f"Dask Client: {self.client}")
         self.tasks = []
         # Submit tasks
         try:
