@@ -23,7 +23,10 @@ import os
 import os.path as osp
 from pathlib import Path
 
+import pytest
 import yaml
+from fastapi.testclient import TestClient
+from rs_server_staging.processors import RSPYStaging
 
 os.environ["RSPY_LOCAL_MODE"] = "1"
 # set pygeoapi env variables
@@ -31,8 +34,6 @@ geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_con
 os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
 os.environ["PYGEOAPI_OPENAPI"] = ""
 
-import pytest
-from fastapi.testclient import TestClient
 from rs_server_staging.main import app  # pylint: disable=import-error
 
 
@@ -60,3 +61,30 @@ def dbj_():
         {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
         {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
     ]
+
+
+@pytest.fixture(name="staging_instance")
+def staging(mocker):
+    """Fixture to mock RSPYStaging object"""
+    # Mock dependencies for RSPYStaging
+    mock_credentials = mocker.Mock()
+    mock_input_collection = mocker.Mock()
+    mock_collection = "test_collection"
+    mock_item = "test_item"
+    mock_provider = "test_provider"
+    mock_db = mocker.Mock()  # Mock for tinydb.table.Table
+    mock_cluster = mocker.Mock()  # Mock for LocalCluster
+    mock_tinydb_lock = mocker.Mock()
+
+    # Instantiate the RSPYStaging class with the mocked dependencies
+    staging_instance = RSPYStaging(
+        credentials=mock_credentials,
+        input_collection=mock_input_collection,
+        collection=mock_collection,
+        item=mock_item,
+        provider=mock_provider,
+        db=mock_db,
+        cluster=mock_cluster,
+        tinydb_lock=mock_tinydb_lock,
+    )
+    return staging_instance
