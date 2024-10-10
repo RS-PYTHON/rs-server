@@ -83,7 +83,7 @@ moto = "==5.0.16"
 flask = "^3.0.3"
 flask-cors = "^5.0.0"
 sphinx = "^7.4.7"
-sphinx-rtd-theme = "^2.0.0"
+sphinx-rtd-theme = "^3.0.1"
 orjson = [ # we need the same markers and versions as in eodag: https://github.com/CS-SI/eodag/blob/develop/setup.cfg
     {version = "<3.10.0", markers = "python_version>='3.12' and platform_system=='Windows'"},
     {version = "^3.10", markers = "python_version<'3.12' or platform_system!='Windows'"},
