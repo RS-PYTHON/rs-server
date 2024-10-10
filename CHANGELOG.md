@@ -24,6 +24,26 @@ Changed
 
 None
 
+[0.2a5] - Sprint 15 - 2024-10-09
+================================
+
+## Added
+
+- RSPY-60: Deploy to PyPi
+- RSPY-63: Complete Python CI/CD chain with distribution to the Python registry
+- RSPY-230: Deploy STAC browser
+- RSPY-352: Implement authentication to external data sources (CADIP+AUXIP)
+- RSPY-357: Simulated OAuth2 token endpoint in CADIP/AUXIP/LTA mockups
+- RSPY-358: Update helm charts to deploy RSPY-352
+- RSPY-424: Sprint 15 corrections of issues
+
+## Fixed
+
+- RSPY-155: Pydantic version conflict in rs-server catalog
+- RSPY-411: The first collection is created twice from SWAGGER interface
+- RSPY-419: [Rs-server] Errors with rs-server-staging
+- RSPY-430: /catalog/{collectionId}/queryables is not included in the links of the collection
+
 [0.2a4] - Sprint 14 - 2024-09-18
 ================================
 
