@@ -27,7 +27,7 @@ BRANCH_NAME="$1" # git branch name
 
 # Install components in the docker iamges
 apt update
-apt install -y git vim
+apt install -y git vim emacs
 
 # Add aliases to bash
 cat << EOF >> /home/user/.bashrc
