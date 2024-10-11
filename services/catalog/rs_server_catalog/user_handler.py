@@ -15,6 +15,7 @@
 """This library contains all functions needed for the fastAPI middleware."""
 
 import getpass
+import os
 import re
 from typing import Tuple
 
@@ -49,7 +50,7 @@ def get_user(endpoint_user: str | None, apikey_user: str | None):
         return endpoint_user
     if apikey_user:
         return apikey_user
-    return getpass.getuser()
+    return os.getenv("RSPY_HOST_USER", default=getpass.getuser())
 
 
 def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
