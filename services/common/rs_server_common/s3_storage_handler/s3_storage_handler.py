@@ -32,9 +32,13 @@ DWN_S3FILE_RETRIES = 20
 UP_S3FILE_RETRY_TIMEOUT = 6
 UP_S3FILE_RETRIES = 20
 SLEEP_TIME = 0.2
+S3_MAX_RETRIES = 3
+S3_RETRY_TIMEOUT = 5
 SET_PREFECT_LOGGING_LEVEL = "DEBUG"
 S3_ERR_FORBIDDEN_ACCESS = 403
 S3_ERR_NOT_FOUND = 404
+HTTP_CONNECTION_TIMEOUT = 10
+HTTP_READ_TIMEOUT = 120
 
 
 @dataclass
@@ -186,7 +190,7 @@ class S3StorageHandler:
         self.s3_client.close()
         self.s3_client = None
 
-    def delete_file_from_s3(self, bucket, s3_obj):
+    def delete_file_from_s3(self, bucket, s3_obj, max_retries=S3_MAX_RETRIES):
         """Delete a file from S3.
 
         Args:
@@ -196,17 +200,30 @@ class S3StorageHandler:
         Raises:
             RuntimeError: If an error occurs during the bucket access check.
         """
-        if self.s3_client is None or bucket is None or s3_obj is None:
+        if bucket is None or s3_obj is None:
             raise RuntimeError("Input error for deleting the file")
-        try:
-            self.logger.info("Delete key s3://%s/%s", bucket, s3_obj)
-            self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
-        except botocore.client.ClientError as e:
-            self.logger.exception(f"Failed to delete key s3://{bucket}/{s3_obj}: {e}")
-            raise RuntimeError(f"Failed to delete key s3://{bucket}/{s3_obj}") from e
-        except Exception as e:
-            self.logger.exception(f"Failed to delete key s3://{bucket}/{s3_obj}: {e}")
-            raise RuntimeError(f"Failed to delete key s3://{bucket}/{s3_obj}") from e
+        attempt = 0
+        while attempt < max_retries:
+            try:
+                self.connect_s3()
+                self.logger.info("Deleting key s3://%s/%s", bucket, s3_obj)
+                self.s3_client.delete_object(Bucket=bucket, Key=s3_obj)
+                return
+            except (botocore.client.ClientError, botocore.exceptions.BotoCoreError) as e:
+                attempt += 1
+                if attempt < max_retries:
+                    # keep retrying
+                    self.disconnect_s3()
+                    self.logger.exception(
+                        f"Retrying in {S3_RETRY_TIMEOUT} seconds. " f"Failed to delete key s3://{bucket}/{s3_obj}: {e}",
+                    )
+                    self.wait_timeout(S3_RETRY_TIMEOUT)
+                    continue
+                self.logger.exception(f"Failed to delete key s3://{bucket}/{s3_obj}: {e}")
+                raise RuntimeError(f"Failed to delete key s3://{bucket}/{s3_obj}") from e
+            except Exception as e:
+                self.logger.exception(f"Failed to delete key s3://{bucket}/{s3_obj}: {e}")
+                raise RuntimeError(f"Failed to delete key s3://{bucket}/{s3_obj}") from e
 
     # helper functions
 
@@ -775,26 +792,77 @@ retried for %s times. Aborting",
 
         return failed_files
 
-    def s3_streaming_upload(self, stream_url: str, auth: Any, bucket: str, key: str):
-        """Method used to upload a file into a bucket used http byte-streaming."""
-        try:
-            timeout: Tuple[int, int] = (10, 60)  # 10 seconds connect timeout, 60 seconds read timeout
-            self.logger.info(f"Started streaming to s3://{bucket}/{key}")
-            with requests.get(stream_url, stream=True, auth=auth, timeout=timeout) as response:
-                response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
+    def s3_streaming_upload(self, stream_url: str, auth: Any, bucket: str, key: str, max_retries=S3_MAX_RETRIES):
+        """
+        Upload a file to an S3 bucket using HTTP byte-streaming with retries.
 
-                # """
-                # Default chunksize is set to 8Kb, can be manually increased
-                # chunk_size = 64 * 1024  # 64kb
-                # with response.raw as data_stream:
-                #    self.s3_client.upload_fileobj(data_stream, bucket, key, Config=boto3.s3.transfer.TransferConfig(
-                #        multipart_threshold=chunk_size * 2))
-                # """
+        This method retrieves data from `stream_url` in chunks and uploads it to the specified S3 bucket (`bucket`) under the specified key (`key`). It includes retry logic for network and S3 client errors, with exponential backoff between retries. The method handles errors during both the HTTP request and the S3 upload process, raising a `RuntimeError` if the retries are exhausted without success.
 
-                # Upload the streamed data to S3
-                self.s3_client.upload_fileobj(response.raw, bucket, key)
+        Args:
+            stream_url (str): The URL of the file to be streamed and uploaded.
+            auth (Any): Authentication credentials for the HTTP request (if required).
+            bucket (str): The name of the target S3 bucket.
+            key (str): The S3 object key (file path) to store the streamed file.
+            max_retries (int, optional): The maximum number of retry attempts if an error occurs (default is `S3_MAX_RETRIES`).
 
-                self.logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Failed to upload to S3: {e}")
-            raise RuntimeError(f"Failed to upload to S3: {e}") from e
+        Raises:
+            RuntimeError: If there is a failure during the streaming upload process, either due to the HTTP request or the S3 upload, after exhausting all retries.
+
+        Process:
+            1. The function attempts to download the file from `stream_url` using streaming and upload it to S3.
+            2. If an error occurs (e.g., connection error, S3 client error), it retries the operation with exponential backoff.
+            3. The default chunk size for streaming is set to 64KB, and multipart upload configuration is used for large files.
+            4. After `max_retries` attempts, if the upload is unsuccessful, a `RuntimeError` is raised.
+
+        Retry Mechanism:
+            - Retries occur for network-related errors (`RequestException`) or S3 client errors (`ClientError`, `BotoCoreError`).
+            - The function waits before retrying, with the delay time increasing exponentially (based on the `backoff_factor`).
+            - The backoff formula is `backoff_factor * (2 ** (attempt - 1))`, allowing progressively longer wait times between retries.
+
+        Exception Handling:
+            - HTTP errors such as timeouts or bad responses (4xx, 5xx) are handled using `requests.exceptions.RequestException`.
+            - S3 client errors such as `ClientError` and `BotoCoreError` are captured, logged, and retried.
+            - Any other unexpected errors are caught and re-raised as `RuntimeError`.
+        """
+        timeout: Tuple[int, int] = (HTTP_CONNECTION_TIMEOUT, HTTP_READ_TIMEOUT)
+        backoff_factor = S3_RETRY_TIMEOUT
+        attempt = 0
+        while attempt < max_retries:
+            try:
+                self.connect_s3()
+                self.logger.info(f"Starting the streaming of {stream_url} to s3://{bucket}/{key}")
+                with requests.get(stream_url, stream=True, auth=auth, timeout=timeout) as response:
+                    response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
+
+                    # Default chunksize is set to 8Kb, can be manually increased
+                    chunk_size = 64 * 1024  # 64kb
+                    with response.raw as data_stream:
+                        self.s3_client.upload_fileobj(
+                            data_stream,
+                            bucket,
+                            key,
+                            Config=boto3.s3.transfer.TransferConfig(multipart_threshold=chunk_size * 2),
+                        )
+                    self.logger.info(f"Successfully uploaded to s3://{bucket}/{key}")
+                    return
+            except (
+                requests.exceptions.RequestException,
+                botocore.client.ClientError,
+                botocore.exceptions.BotoCoreError,
+            ) as e:
+                attempt += 1
+                if attempt < max_retries:
+                    # keep retrying
+                    self.disconnect_s3()
+                    delay = backoff_factor * (2 ** (attempt - 1))
+                    self.logger.exception(
+                        f"Retrying in {delay} seconds. "
+                        f"Failed to stream the file from {stream_url} to s3://{bucket}/{key}: {e}",
+                    )
+                    self.wait_timeout(S3_RETRY_TIMEOUT)
+                    continue
+                self.logger.error(f"Failed to upload to S3: {e}")
+                raise RuntimeError(f"Failed to upload to S3: {e}") from e
+            except Exception as e:
+                self.logger.exception(f"Failed to stream the file from {stream_url} to s3://{bucket}/{key}: {e}")
+                raise RuntimeError(f"Failed to stream the file from {stream_url} to s3://{bucket}/{key}: {e}") from e

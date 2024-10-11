@@ -123,7 +123,7 @@ class TokenAuth(AuthBase):
         return "RSPY Token handler"
 
 
-def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
+def streaming_download(product_url: str, auth: str, s3_file):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
@@ -136,8 +136,6 @@ def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
         product_url (str): The URL of the product to download.
         auth (str): The authentication token or credentials required for the download.
         s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
-        s3_handler (S3StorageHandler, optional): An instance of a custom S3 handler for handling
-            the streaming upload. If not provided, a default handler is created.
 
     Returns:
         str: The S3 file path where the file was uploaded.
@@ -150,14 +148,12 @@ def streaming_download(product_url: str, auth: str, s3_file, s3_handler=None):
     """
     # time.sleep(3)
     try:
-        if not s3_handler:
-            s3_handler = S3StorageHandler(
-                os.environ["S3_ACCESSKEY"],
-                os.environ["S3_SECRETKEY"],
-                os.environ["S3_ENDPOINT"],
-                os.environ["S3_REGION"],
-            )
-
+        s3_handler = S3StorageHandler(
+            os.environ["S3_ACCESSKEY"],
+            os.environ["S3_SECRETKEY"],
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_REGION"],
+        )
         s3_handler.s3_streaming_upload(product_url, auth, CATALOG_BUCKET, s3_file)
     except RuntimeError as e:
         raise ValueError(f"Dask task failed to stream file s3://{s3_file}") from e
@@ -624,27 +620,28 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
         )
 
-        with Client(self.cluster) as self.client:
-            # Check the cluster dashboard
-            self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
-            self.logger.debug(f"Dask Client: {self.client}")
-            self.tasks = []
-            # Submit tasks
-            try:
-                for asset_info in self.assets_info:
-                    self.tasks.append(
-                        self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]),
-                    )
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
-                return
-            # starting another thread for managing the dask callbacks
-            self.logger.debug("Starting tasks monitoring thread")
-            try:
-                await asyncio.to_thread(self.manage_callbacks)
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                self.logger.debug("Exception caught: %s", e)
+        self.client = Client(self.cluster)
+        # Check the cluster dashboard
+        self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
+        self.logger.debug(f"Dask Client: {self.client}")
+        self.tasks = []
+        # Submit tasks
+        try:
+            for asset_info in self.assets_info:
+                self.tasks.append(
+                    self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]),
+                )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
+            return
+        # starting another thread for managing the dask callbacks
+        self.logger.debug("Starting tasks monitoring thread")
+        try:
+            await asyncio.to_thread(self.manage_callbacks)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.debug("Exception caught: %s", e)
         self.assets_info = []
+        self.client.close()
         self.client = None
 
     def publish_rspy_feature(self, feature: Feature):

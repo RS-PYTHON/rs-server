@@ -138,7 +138,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     else:
         cluster = LocalCluster()
     # Temporary, the rs-server-staging should not scale the cluster, or create workers/schedulers
-    # cluster.scale(8)
+    cluster.scale(1)
     logger.debug("Cluster dashboard: %s", cluster.dashboard_link)
 
     tinydb_lock = threading.Lock()

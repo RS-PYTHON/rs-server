@@ -205,7 +205,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
         ) from e
 
     token = response.json()
-    # TODO: Is it worthy to validate it?
+    # TODO: Is it worth validating it?
     # validate_token_format(token.get("access_token", ""))
     if ACCESS_TK_KEY_IN_RESPONSE not in token:
         logger.error(
