@@ -570,8 +570,42 @@ class TestRSPYStagingMainExecution:
         # Features are not published here.
         mock_publish_feature.assert_not_called()
 
-    def test_process_rspy_features(self):
-        """."""
+    @pytest.mark.asyncio
+    async def test_process_rspy_features_empty_stream(self, mocker, staging_instance):
+        """Test that process_rspy_features logs the initial setup and starts the main loop."""
+
+        # Mock dependencies
+        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+        mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
+
+        # Set the stream_list to an empty list (no features to process)
+        staging_instance.stream_list = []
+
+        # Call the method
+        await staging_instance.process_rspy_features()
+
+        # Assert initial logging and job execution calls
+        mock_log_job.assert_any_call(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
+        mock_log_job.assert_called_with(ProcessorStatus.FINISHED, 100, detail="Finished with no tasks processed.")
+
+    @pytest.mark.asyncio
+    async def test_process_rspy_features_empty_assets(self, mocker, staging_instance):
+        """Test that process_rspy_features handles task preparation failure."""
+
+        # Mock dependencies
+        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+        mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=False)
+
+        # Set stream_list with one feature (to trigger task preparation)
+        mock_feature = mocker.Mock()
+        staging_instance.stream_list = [mock_feature]
+
+        # Call the method
+        await staging_instance.process_rspy_features()
+
+        # Ensure the task preparation failed, and method returned early
+        mock_log_job.assert_any_call(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
+        mock_log_job.assert_called_with(ProcessorStatus.FAILED, 0, detail="No tasks created")
 
 
 class TestRSPYStagingPublishCatalog:
@@ -632,8 +666,9 @@ class TestRSPYStagingPublishCatalog:
             )  # Ensure log_job_execution is called with FAILED status
             mock_delete_files.assert_called_once_with("rs-cluster-catalog")  # Ensure delete_files_from_bucket is called
 
-    def test_repr(self):
-        """."""
+    def test_repr(self, staging_instance):
+        """Test repr method for coverage"""
+        assert repr(staging_instance) == "RSPY Staging OGC API Processor"
 
 
 # Disabled for moment
