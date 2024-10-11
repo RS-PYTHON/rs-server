@@ -43,6 +43,7 @@ jobs:
     outputs:
       docker_tag: ${{ steps.set-env.outputs.docker_tag }}
       branch_name: ${{ steps.set-env.outputs.branch_name }}
+      debug_mode: ${{ steps.set-env.outputs.debug_mode }}
     steps:
       - id: set-env
         name: "Set environment"
@@ -77,9 +78,16 @@ jobs:
           # Replace special characters by -
           docker_tag=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$docker_tag")
 
+          # Always use the debug mode except for new tags
+          debug_mode=true
+          if [[ ${{ github.ref_type }} == tag ]]; then
+            debug_mode=false
+          fi
+
           # Save values
           echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
           echo "docker_tag=$docker_tag" >> $GITHUB_OUTPUT
+          echo "debug_mode=$debug_mode" >> $GITHUB_OUTPUT
         shell: bash
 
   ##################
@@ -303,27 +311,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Download .whl files into ./whl/
+      # Download .whl files into a local dir
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
-          path: ./whl
+          path: ./build_context_path
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-adgs-whl.outputs.package_name }}
-          path: ./whl
+          path: ./build_context_path
+
+      - name: Copy debug mode dependencies
+        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+        shell: bash
 
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
           dockerfile: ./services/adgs/.github/Dockerfile
-          build_context_path: ./whl
+          build_context_path: ./build_context_path
           image_suffix: -adgs
           version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   services-cadip-img:
     if: github.actor != 'dependabot[bot]'
@@ -336,27 +351,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Download .whl files into ./whl/
+      # Download .whl files into a local dir
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
-          path: ./whl
+          path: ./build_context_path
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-cadip-whl.outputs.package_name }}
-          path: ./whl
+          path: ./build_context_path
+
+      - name: Copy debug mode dependencies
+        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+        shell: bash
 
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
           dockerfile: ./services/cadip/.github/Dockerfile
-          build_context_path: ./whl
+          build_context_path: ./build_context_path
           image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   services-catalog-img:
     if: github.actor != 'dependabot[bot]'
@@ -368,27 +390,34 @@ jobs:
       docker_image: ${{ steps.publish-docker.outputs.docker_image}}
     steps:
       - uses: actions/checkout@v4
-      # Download .whl files into ./whl/
+      # Download .whl files into a local dir
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-common-whl.outputs.package_name }}
-          path: ./whl
+          path: ./build_context_path
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-catalog-whl.outputs.package_name }}
-          path: ./whl
+          path: ./build_context_path
+
+      - name: Copy debug mode dependencies
+        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+        shell: bash
 
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
           dockerfile: ./services/catalog/.github/Dockerfile
-          build_context_path: ./whl
+          build_context_path: ./build_context_path
           image_suffix: -catalog
           version_name: ${{ needs.services-catalog-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   services-frontend-img:
     if: github.actor != 'dependabot[bot]'
@@ -401,27 +430,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Download .whl files into ./whl/
+      # Download .whl files into a local dir
       - name: Download .whl dependencies
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-frontend-whl.outputs.package_name }}
-          path: ./whl
+          path: ./build_context_path
 
-      # Also copy the entrypoint script under the same dir
+      # Copy the entrypoint script under the same dir
       - name: Copy entrypoint script
-        run: cp ./services/frontend/.github/entrypoint_frontend.sh ./whl
+        run: cp ./services/frontend/.github/entrypoint_frontend.sh ./build_context_path
+        shell: bash
+
+      - name: Copy debug mode dependencies
+        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
         shell: bash
 
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
           dockerfile: ./services/frontend/.github/Dockerfile
-          build_context_path: ./whl
+          build_context_path: ./build_context_path
           image_suffix: -frontend
           version_name: ${{ needs.services-frontend-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   services-staging-img:
     if: github.actor != 'dependabot[bot]'
@@ -437,7 +473,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Download .whl files into ./whl/
+      # Download .whl files into a local dir
       # TODO: the following 5 comments have to be activated when the pydantic conflict is solved
       #- name: Download .whl dependencies
       #  uses: actions/download-artifact@v4
@@ -448,17 +484,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
-          path: ./whl
+          path: ./build_context_path
+
+      - name: Copy debug mode dependencies
+        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+        shell: bash
 
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
           dockerfile: ./services/staging/.github/Dockerfile
-          build_context_path: ./whl
+          build_context_path: ./build_context_path
           image_suffix: -staging
           version_name: ${{ needs.services-staging-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   ###########
   # TESTING #
