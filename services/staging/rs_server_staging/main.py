@@ -112,7 +112,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
             logger.debug(f"The list of clusters: {clusters}")
             cluster = gateway.connect(clusters[0].name)
         except KeyError as e:
-            logger.error(f"Could not find the needed enveironment variable to use the daks gateway: {e}")
+            logger.error(f"Could not find the needed environment variable to use the daks gateway: {e}")
             raise RuntimeError from e
         except IndexError:
             logger.warning("There is no dask cluster to connect to. Creating a new one....")

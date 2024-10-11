@@ -624,28 +624,27 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
         )
 
-        self.client = Client(self.cluster)
-        # Check the cluster dashboard
-        self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
-        self.logger.debug(f"Dask Client: {self.client}")
-        self.tasks = []
-        # Submit tasks
-        try:
-            for asset_info in self.assets_info:
-                self.tasks.append(
-                    self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]),
-                )
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
-            return
-        # starting another thread for managing the dask callbacks
-        self.logger.debug("Starting tasks monitoring thread")
-        try:
-            await asyncio.to_thread(self.manage_callbacks)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.debug("Exception caught: %s", e)
+        with Client(self.cluster) as self.client:
+            # Check the cluster dashboard
+            self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
+            self.logger.debug(f"Dask Client: {self.client}")
+            self.tasks = []
+            # Submit tasks
+            try:
+                for asset_info in self.assets_info:
+                    self.tasks.append(
+                        self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]),
+                    )
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
+                return
+            # starting another thread for managing the dask callbacks
+            self.logger.debug("Starting tasks monitoring thread")
+            try:
+                await asyncio.to_thread(self.manage_callbacks)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.logger.debug("Exception caught: %s", e)
         self.assets_info = []
-        self.client.close()
         self.client = None
 
     def publish_rspy_feature(self, feature: Feature):
