@@ -24,7 +24,6 @@ from dask_gateway import Gateway
 from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
 from pygeoapi.config import get_config
-from rs_server_common import settings as common_settings
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
