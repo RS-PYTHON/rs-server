@@ -105,7 +105,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     logger.info("Starting up the application...")
 
     # Create the LocalCluster and Dask Client at startup
-    if common_settings.CLUSTER_MODE:
+    if not bool(os.environ.get("RSPY_LOCAL_MODE", False)):
         # to be implemented: write tcp
         try:
             gateway = Gateway(address=os.environ["DASK_GATEWAY__ADDRESS"], auth=os.environ["DASK_GATEWAY__AUTH__TYPE"])
@@ -158,7 +158,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
 
     # Shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    if not common_settings.CLUSTER_MODE and cluster:
+    if bool(os.environ.get("RSPY_LOCAL_MODE", False)) and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
     # Remove db when app-shutdown

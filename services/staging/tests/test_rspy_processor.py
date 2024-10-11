@@ -385,8 +385,8 @@ class TestRSPYPrepareStreaming:
         feature = mocker.Mock()
         feature.id = "feature_id"
         feature.assets = {
-            "asset1": mocker.Mock(href="http://example.com/asset1", title="asset1_title"),
-            "asset2": mocker.Mock(href="http://example.com/asset2", title="asset2_title"),
+            "asset1": mocker.Mock(href="https://example.com/asset1", title="asset1_title"),
+            "asset2": mocker.Mock(href="https://example.com/asset2", title="asset2_title"),
         }
 
         result = staging_instance.prepare_streaming_tasks(feature)
@@ -395,8 +395,8 @@ class TestRSPYPrepareStreaming:
         assert result is True
         # Assert that assets_info has been populated correctly
         assert staging_instance.assets_info == [
-            ("http://example.com/asset1", "feature_id/asset1_title"),
-            ("http://example.com/asset2", "feature_id/asset2_title"),
+            ("https://example.com/asset1", "feature_id/asset1_title"),
+            ("https://example.com/asset2", "feature_id/asset2_title"),
         ]
         # Assert that asset hrefs are updated correctly
         assert feature.assets["asset1"].href == "s3://rtmpop/feature_id/asset1_title"
