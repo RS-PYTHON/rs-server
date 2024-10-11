@@ -27,6 +27,7 @@ from pygeoapi.config import get_config
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
+from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 from rs_server_staging.processors import processors
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -102,9 +103,8 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
         KeyError: If no clusters are found during an attempt to connect via the `Gateway`.
     """
     logger.info("Starting up the application...")
-
     # Create the LocalCluster and Dask Client at startup
-    if not bool(os.environ.get("RSPY_LOCAL_MODE", False)):
+    if not env_bool("RSPY_LOCAL_MODE", False):
         # to be implemented: write tcp
         try:
             gateway = Gateway(address=os.environ["DASK_GATEWAY__ADDRESS"], auth=os.environ["DASK_GATEWAY__AUTH__TYPE"])
@@ -157,7 +157,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
 
     # Shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    if bool(os.environ.get("RSPY_LOCAL_MODE", False)) and cluster:
+    if env_bool("RSPY_LOCAL_MODE", False) and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
     # Remove db when app-shutdown

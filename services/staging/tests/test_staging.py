@@ -13,9 +13,12 @@
 # limitations under the License.
 
 """Test staging module."""
+import os
 import threading
 
 import pytest
+from fastapi import FastAPI
+from rs_server_staging.main import app_lifespan
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
 
@@ -273,3 +276,40 @@ async def test_specific_process(staging_client, resource_name, processor_name):
     assert (
         response.status_code == HTTP_200_OK and response.json()["processor"]["name"] == processor_name
     ) or response.status_code == HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_app_lifespan_local_mode(mocker):
+    """Test app_lifespan when running in local mode (no Dask Gateway connection)."""
+
+    # Mock environment to simulate local mode
+    mocker.patch.dict(os.environ, {"RSPY_LOCAL_MODE": "1"})
+
+    mock_app = FastAPI()
+
+    async with app_lifespan(mock_app):
+        pass  # We are testing the startup logic
+
+    assert "dask_cluster" in mock_app.extra
+
+
+@pytest.mark.asyncio
+async def test_app_lifespan_gateway_error(mocker):
+    """Test app_lifespan when there is an error in connecting to the Dask Gateway."""
+
+    # Mock environment variables to simulate gateway mode
+    mocker.patch.dict(
+        os.environ,
+        {
+            "RSPY_LOCAL_MODE": "0",
+            "DASK_GATEWAY__ADDRESS": "mock-address",
+        },
+    )
+
+    # Mock FastAPI app
+    mock_app = FastAPI()
+
+    # Should raise RuntimeError because no DASK_GATEWAY__AUTH__TYPE was provided
+    with pytest.raises(RuntimeError):
+        async with app_lifespan(mock_app):
+            pass  # We are testing the error handling
