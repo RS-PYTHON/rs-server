@@ -32,7 +32,10 @@ inputs:
     description: secrets.GITHUB_TOKEN
     required: true
   docker_tag:
-    description: Tag the docker images
+    description: Tag the docker image
+    required: false
+  debug_mode:
+    description: Add debug tools to the docker image
     required: false
 
 outputs:
@@ -64,6 +67,37 @@ runs:
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/rs-server
+
+    # Replace some parts of the Dockerfile depending on wether we're in debug mode or not.
+    # It would be cleaner to use 'if' blocks in the Dockerfile but this doesn't exist...
+    - name: Configure Dockerfile for debug mode
+      run: |
+        set -x
+
+        if [[ ${{ inputs.debug_mode }} == true ]]; then        
+          commands=$(cat << "EOF"
+        ARG GIT_REPO=/home/user/rs-server
+        USER root
+        COPY ./.git ${GIT_REPO}/.git
+        COPY ./git_debug_image.sh ./git_debug_image.sh
+        RUN set -e; chmod u+x ./git_debug_image.sh; ./git_debug_image.sh ${GIT_REPO}; rm -f ./git_debug_image.sh
+        WORKDIR ${GIT_REPO}
+        EOF
+          )
+          # Use awk instead of sed for multiline replace, see: https://stackoverflow.com/a/10107668
+          awk -v r="$commands" '{gsub(/# \[DEBUG_MODE_COMMANDS\]/,r)}1' ${{ inputs.dockerfile }} > tmp
+          mv tmp ${{ inputs.dockerfile }}
+          sed -i "s@\[DEBUG_MODE_RELOAD\]@--reload@g" ${{ inputs.dockerfile }}
+          sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@--reload@g" ${{ inputs.dockerfile }}
+          sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@ENV RELOAD=true@g" ${{ inputs.dockerfile }}
+        else
+          sed -i "s@# \[DEBUG_MODE_COMMANDS\]@@g" ${{ inputs.dockerfile }}
+          sed -i "s@, \"\[DEBUG_MODE_RELOAD\]\"@@g" ${{ inputs.dockerfile }}
+          sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@@g" ${{ inputs.dockerfile }}
+          sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@@g" ${{ inputs.dockerfile }}
+        fi
+        cat ${{ inputs.dockerfile }}
+      shell: bash
 
     # Checkout code from the current branch and build Docker image.
     - name: Build Docker image
