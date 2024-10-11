@@ -41,6 +41,7 @@ HTTP_CONNECTION_TIMEOUT = 10
 HTTP_READ_TIMEOUT = 120
 
 
+# pylint: disable=too-many-lines
 @dataclass
 class GetKeysFromS3Config:
     """S3 configuration for download
@@ -796,31 +797,42 @@ retried for %s times. Aborting",
         """
         Upload a file to an S3 bucket using HTTP byte-streaming with retries.
 
-        This method retrieves data from `stream_url` in chunks and uploads it to the specified S3 bucket (`bucket`) under the specified key (`key`). It includes retry logic for network and S3 client errors, with exponential backoff between retries. The method handles errors during both the HTTP request and the S3 upload process, raising a `RuntimeError` if the retries are exhausted without success.
+        This method retrieves data from `stream_url` in chunks and uploads it to the specified S3 bucket
+        (`bucket`) under the specified key (`key`). It includes retry logic for network and S3 client errors,
+        with exponential backoff between retries. The method handles errors during both the HTTP request and the
+        S3 upload process, raising a `RuntimeError` if the retries are exhausted without success.
 
         Args:
             stream_url (str): The URL of the file to be streamed and uploaded.
             auth (Any): Authentication credentials for the HTTP request (if required).
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
-            max_retries (int, optional): The maximum number of retry attempts if an error occurs (default is `S3_MAX_RETRIES`).
+            max_retries (int, optional): The maximum number of retry attempts if an error occurs
+            (default is `S3_MAX_RETRIES`).
 
         Raises:
-            RuntimeError: If there is a failure during the streaming upload process, either due to the HTTP request or the S3 upload, after exhausting all retries.
+            RuntimeError: If there is a failure during the streaming upload process, either due to the HTTP request
+            or the S3 upload, after exhausting all retries.
 
         Process:
             1. The function attempts to download the file from `stream_url` using streaming and upload it to S3.
-            2. If an error occurs (e.g., connection error, S3 client error), it retries the operation with exponential backoff.
-            3. The default chunk size for streaming is set to 64KB, and multipart upload configuration is used for large files.
+            2. If an error occurs (e.g., connection error, S3 client error), it retries the operation with exponential
+            backoff.
+            3. The default chunk size for streaming is set to 64KB, and multipart upload configuration is used for
+            large files.
             4. After `max_retries` attempts, if the upload is unsuccessful, a `RuntimeError` is raised.
 
         Retry Mechanism:
-            - Retries occur for network-related errors (`RequestException`) or S3 client errors (`ClientError`, `BotoCoreError`).
-            - The function waits before retrying, with the delay time increasing exponentially (based on the `backoff_factor`).
-            - The backoff formula is `backoff_factor * (2 ** (attempt - 1))`, allowing progressively longer wait times between retries.
+            - Retries occur for network-related errors (`RequestException`) or S3 client errors
+            (`ClientError`, `BotoCoreError`).
+            - The function waits before retrying, with the delay time increasing exponentially
+            (based on the `backoff_factor`).
+            - The backoff formula is `backoff_factor * (2 ** (attempt - 1))`, allowing progressively
+            longer wait times between retries.
 
         Exception Handling:
-            - HTTP errors such as timeouts or bad responses (4xx, 5xx) are handled using `requests.exceptions.RequestException`.
+            - HTTP errors such as timeouts or bad responses (4xx, 5xx) are handled using
+            `requests.exceptions.RequestException`.
             - S3 client errors such as `ClientError` and `BotoCoreError` are captured, logged, and retried.
             - Any other unexpected errors are caught and re-raised as `RuntimeError`.
         """
