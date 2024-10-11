@@ -23,7 +23,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 
 # Read input arguments
-GIT_REPO="$1" # git repository local to the docker image. This is only the .git dir.
+BRANCH_NAME="$1" # git branch name
 
 # Install components in the docker iamges
 apt update
@@ -35,14 +35,13 @@ alias ll='ls -alFh'
 alias ls='ls --color=auto'
 EOF
 
-# Be sure to use the HTTP authentication so we don't need any ssh key to pull 
-# the rspy repository, which is public. 
+# Git clone the project branch with HTTP authentication so we don't need any 
+# ssh key to pull the rspy repository, which is public. 
 # To be discussed: how to push to the repo ? I guess we would need a ssh key 
 # in the pod but I'm not sure it would be secure.
-cd "${GIT_REPO}"
-git config --global --add safe.directory $(pwd)
-git remote set-url origin https://github.com/RS-PYTHON/rs-server.git
-git reset --hard # the .git dir is empty, so restore all the project files and dirs.
+cd /home/user
+git clone -b "$BRANCH_NAME" https://github.com/RS-PYTHON/rs-server.git
+cd ./rs-server
 
 # The rspy modules used by the fastapi service are installed under /usr/local/lib/python3.11/site-packages
 # We tell the service to use the git dirs instead. So we replace them by symlinks to git.
@@ -71,7 +70,7 @@ for dir in "config" "resources"; do
 done
 
 # Owner = the docker image user
-chown -R user:user "${GIT_REPO}"
+chown -R user:user /home/user/rs-server
 
 # Clean everything
 rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*

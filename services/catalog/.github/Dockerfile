@@ -58,10 +58,10 @@ WORKDIR /home/user
 # The CI/CD will replace this tag in debug mode or else remove it
 # [DEBUG_MODE_COMMANDS]
 
+# [DEBUG_MODE_RELOAD_CATALOG]
+
 # After this, make sure we're still non-root
 USER user
-
-# [DEBUG_MODE_RELOAD_CATALOG]
 
 # See: rs_server_catalog/main.py
 # uvicorn.run(

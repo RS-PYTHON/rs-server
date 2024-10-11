@@ -34,6 +34,9 @@ inputs:
   docker_tag:
     description: Tag the docker image
     required: false
+  branch_name:
+    description: Current git branch name
+    required: true
   debug_mode:
     description: Add debug tools to the docker image
     required: false
@@ -73,15 +76,13 @@ runs:
     - name: Configure Dockerfile for debug mode
       run: |
         set -x
-
         if [[ ${{ inputs.debug_mode }} == true ]]; then        
           commands=$(cat << "EOF"
-        ARG GIT_REPO=/home/user/rs-server
         USER root
-        COPY ./.git ${GIT_REPO}/.git
         COPY ./git_debug_image.sh ./git_debug_image.sh
-        RUN set -e; chmod u+x ./git_debug_image.sh; ./git_debug_image.sh ${GIT_REPO}; rm -f ./git_debug_image.sh
-        WORKDIR ${GIT_REPO}
+        RUN set -e; chmod u+x ./git_debug_image.sh; ./git_debug_image.sh ${{ inputs.branch_name }}; \
+            rm -f ./git_debug_image.sh
+        WORKDIR /home/user/rs-server
         EOF
           )
           # Use awk instead of sed for multiline replace, see: https://stackoverflow.com/a/10107668
