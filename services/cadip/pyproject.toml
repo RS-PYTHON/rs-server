@@ -36,7 +36,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "==3.11.7"
 rs-server-common = {path = "../common", develop = true}
 
 [tool.poetry.group.dev]

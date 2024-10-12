@@ -102,7 +102,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "health"
     run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health"
     run_local_service "../catalog" "rs_server_catalog.main:app" 8003 "_mgmt/ping"
-
+    export RSPY_LOCAL_MODE=1
     PYGEOAPI_CONFIG=$(realpath "${FRONT_DIR}/../staging/rs_server_staging/config/config.yml") \
     PYGEOAPI_OPENAPI=$(realpath "${FRONT_DIR}/../staging/rs_server_staging/config/openapi.json") \
     run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"

@@ -110,7 +110,10 @@ def init_rs_server_config_yaml():
         main_dict = {"external_data_sources": config_data}
         with open(CONFIG_PATH_AUTH_TO_EXTERNAL, "w", encoding="utf-8") as yaml_file:
             yaml.dump(main_dict, yaml_file, default_flow_style=False)
-        logger.info(f"Configuration successfully written to {CONFIG_PATH_AUTH_TO_EXTERNAL}")
+        logger.info(
+            f"The configuration for the external stations token module was successfully \
+written to {CONFIG_PATH_AUTH_TO_EXTERNAL}",
+        )
     except (OSError, IOError) as e:
         logger.exception(f"Failed to write configuration to {CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}")
         raise RuntimeError(f"Failed to write configuration to {CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}") from e
@@ -202,7 +205,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
         ) from e
 
     token = response.json()
-    # TODO: Is it worthy to validate it?
+    # TODO: Is it worth validating it?
     # validate_token_format(token.get("access_token", ""))
     if ACCESS_TK_KEY_IN_RESPONSE not in token:
         logger.error(
@@ -293,7 +296,7 @@ def read_config_file():
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
 
         # Open the configuration file and load the YAML content
-        with open(CONFIG_PATH_AUTH_TO_EXTERNAL, encoding="utf-8") as f:
+        with open(CONFIG_PATH_AUTH_TO_EXTERNAL, encoding="utf-8") as f:  # type: ignore
             config_yaml = yaml.safe_load(f)
 
         # Ensure the loaded configuration is a dictionary

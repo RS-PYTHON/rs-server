@@ -28,6 +28,7 @@ import requests
 from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3_RETRY_TIMEOUT,
     SLEEP_TIME,
     GetKeysFromS3Config,
     PutFilesToS3Config,
@@ -46,6 +47,7 @@ FULL_FOLDER = RESOURCES_FOLDER / "s3" / "full_s3_storage_handler_test"
 SHORT_FOLDER = RESOURCES_FOLDER / "s3" / "short_s3_storage_handler_test"
 
 
+# pylint: disable=too-many-lines
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "endpoint",
@@ -952,10 +954,31 @@ def test_transfer_from_s3_to_s3(
 
 
 @pytest.mark.unit
-def test_delete_file_from_s3():
-    """Test handling of s3 client exceptions while deleting a file from a bucket"""
+def test_delete_file_from_s3(mocker):
+    """Test the deletion of a file from an S3 bucket.
 
+    This unit test verifies the functionality of deleting a file from an S3 bucket using the `delete_file_from_s3`
+    method in the `S3StorageHandler` class. It ensures proper handling of errors and retries during deletion.
+
+    Test flow:
+        1. Initializes a mock S3 server using `ThreadedMotoServer`.
+        2. Creates a bucket and uploads a test file to it.
+        3. Deletes the file and verifies that no exceptions are raised.
+        4. Re-uploads the file and tests the retry mechanism when an S3 exception is thrown.
+        5. Verifies that the retry logic is triggered and succeeds in deleting the file.
+
+    Args:
+        mocker: Pytest fixture used to mock certain behaviors, such as sleep delays and boto3 exceptions.
+
+    Raises:
+        AssertionError: If any part of the file deletion process fails or raises an unexpected exception.
+    """
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # create the test bucket
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
@@ -963,12 +986,78 @@ def test_delete_file_from_s3():
         secrets["region"],
     )
 
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.delete_file_from_s3("some_s3_2", None)
-    assert str(exc.value) == "Input error for deleting the file"
-
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    file_to_be_deleted = "file_to_be_deleted.txt"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_deleted, Body="testing\n")
+    try:
+        s3_handler.delete_file_from_s3(bucket, file_to_be_deleted)
+    except RuntimeError:
+        assert False, "s3_handler.delete_file_from_s3 raised exception !"
+    assert not s3_handler.list_s3_files_obj(bucket, "")
+    # copy again the file to be deleted
+    s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_deleted, Body="testing\n")
+    assert len(s3_handler.list_s3_files_obj(bucket, "")) == 1
+    # test when the retrying succeeds after all
+    res = mocker.patch("time.sleep", side_effect=None)
+    # mock the current client
     boto_mocker = Stubber(s3_handler.s3_client)
-    boto_mocker.add_client_error("delete_object", 500)
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.delete_file_from_s3("some_s3_1", "some_file_1")
-    assert str(exc.value) == "Failed to delete key s3://some_s3_1/some_file_1"
+    # mock the s3 delete_object function to throw an exception. for the second retrial there will be another client
+    boto_mocker.add_client_error("delete_object", service_error_code="botocore.exceptions.BotoCoreError")
+    boto_mocker.activate()
+    try:
+        s3_handler.delete_file_from_s3(bucket, file_to_be_deleted)
+    except RuntimeError:
+        assert False, "s3_handler.delete_file_from_s3 raised exception !"
+    assert res.call_count == int(S3_RETRY_TIMEOUT / SLEEP_TIME)
+    assert not s3_handler.list_s3_files_obj(bucket, "")
+    boto_mocker.deactivate()
+    server.stop()
+
+
+# @pytest.mark.unit
+# def test_s3_streaming_upload(mocker):
+#     """Test the streaming of a file to an S3 bucket using HTPP streaming.
+#     """
+#     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+#     # create the test bucket
+#     # Test with a running s3 server
+#     server = ThreadedMotoServer()
+#     server.start()
+#     requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+#     s3_handler = S3StorageHandler(
+#         secrets["accesskey"],
+#         secrets["secretkey"],
+#         secrets["s3endpoint"],
+#         secrets["region"],
+#     )
+
+#     # prepare a bucket for tests
+#     bucket = "s3-bucket-streaming"
+#     s3_handler.s3_client.create_bucket(Bucket=bucket)
+
+
+#     try:
+#         s3_handler.s3_streaming_upload(bucket, file_to_be_deleted)
+#     except RuntimeError:
+#         assert False, "s3_handler.delete_file_from_s3 raised exception !"
+#     assert not s3_handler.list_s3_files_obj(bucket, "")
+#     # copy again the file to be deleted
+#     s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_deleted, Body="testing\n")
+#     assert len(s3_handler.list_s3_files_obj(bucket, "")) == 1
+#     # test when the retrying succeeds after all
+#     res = mocker.patch("time.sleep", side_effect=None)
+#     # mock the current client
+#     boto_mocker = Stubber(s3_handler.s3_client)
+#     # mock the s3 delete_object function to throw an exception. for the second retrial there will be another client
+#     boto_mocker.add_client_error("delete_object", service_error_code='botocore.exceptions.BotoCoreError')
+#     boto_mocker.activate()
+#     try:
+#         s3_handler.delete_file_from_s3(bucket, file_to_be_deleted)
+#     except RuntimeError:
+#         assert False, "s3_handler.delete_file_from_s3 raised exception !"
+#     assert res.call_count == int(S3_RETRY_TIMEOUT / SLEEP_TIME)
+#     assert not s3_handler.list_s3_files_obj(bucket, "")
+#     boto_mocker.deactivate()
+#     server.stop()

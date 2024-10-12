@@ -14,14 +14,21 @@
 
 """rs server staging main module."""
 # pylint: disable=E0401
-
 import os
-import uuid
+import threading
+from contextlib import asynccontextmanager
 
+import dask_gateway
+from dask.distributed import LocalCluster
+from dask_gateway import Gateway
 from fastapi import APIRouter, FastAPI, HTTPException, Path
-from pydantic import BaseModel
 from pygeoapi.api import API
 from pygeoapi.config import get_config
+from rs_server_common.authentication.authentication_to_external import (
+    init_rs_server_config_yaml,
+)
+from rs_server_common.settings import env_bool
+from rs_server_common.utils.logging import Logging
 from rs_server_staging.processors import processors
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -30,19 +37,15 @@ from starlette.responses import JSONResponse
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from tinydb import Query, TinyDB
 
+from .rspy_models import ProcessMetadataModel
 
-# Use if you want to impose shaped-design of request
-class ExecuteRequest(BaseModel):  # pylint: disable = too-few-public-methods
-    """Class used to describe request structure."""
-
-    job_id: str
-    parameters: dict
-    # Add any other fields you expect in the request body
-
+logger = Logging.default(__name__)
 
 # Initialize a FastAPI application
 app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
+# Init the rs-server configuration file for authentication to extenal stations
+init_rs_server_config_yaml()
 
 # CORS enabled origins
 app.add_middleware(
@@ -53,17 +56,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize pygeoapi API
-# config_path = pathlib.Path("rs_server_staging/config/config.yml").absolute()
-# openapi_path = pathlib.Path("rs_server_staging/config/openapi.json").absolute()
-# os.environ['PYGEOAPI_CONFIG']  = str(config_path)
-# os.environ['PYGEOAPI_OPENAPI'] = str(openapi_path)
-# config = get_config(config_path)
-# openapi = openapi_path  # You should load the actual content of your OpenAPI spec here if it's not a file path
-
 api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAPI"])
-db = TinyDB(api.config["manager"]["connection"])
-jobs_table = db.table("jobs")
 
 
 # Exception handlers
@@ -76,6 +69,101 @@ async def custom_http_exception_handler(
     return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
 
 
+# Create Dask LocalCluster when the application starts
+@asynccontextmanager
+async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statements
+    """
+    Asynchronous context manager to handle the lifecycle of the FastAPI application,
+    managing the creation and shutdown of a Dask cluster.
+
+    This function is responsible for setting up a Dask cluster when the FastAPI application starts,
+    either using a `LocalCluster` or connecting to an existing cluster via `Gateway`, depending
+    on the application settings. The Dask cluster is closed during the application's shutdown phase.
+
+    Args:
+        fastapi_app (FastAPI): The FastAPI application instance.
+
+    Yields:
+        None: Control is yielded back to the application, allowing it to run while the Dask cluster is active.
+
+    Startup Logic:
+        - If `CLUSTER_MODE` is enabled in settings, the function attempts to connect to an existing
+          Dask cluster via the `Gateway`. If no existing cluster is found, a new one is created.
+        - If `CLUSTER_MODE` is disabled, a `LocalCluster` is created and scaled to 8 workers.
+        - The Dask cluster information is stored in `app.extra["dask_cluster"]`.
+
+    Shutdown Logic:
+        - When the application shuts down, the Dask cluster is closed if it was a `LocalCluster`.
+
+    Notes:
+        - The Dask cluster is configured to scale based on the environment.
+        - If connecting to a remote cluster using `Gateway`, ensure correct access rights.
+
+    Raises:
+        KeyError: If no clusters are found during an attempt to connect via the `Gateway`.
+    """
+    logger.info("Starting up the application...")
+    # Create the LocalCluster and Dask Client at startup
+    if not env_bool("RSPY_LOCAL_MODE", False):
+        # to be implemented: write tcp
+        try:
+            gateway = Gateway(address=os.environ["DASK_GATEWAY__ADDRESS"], auth=os.environ["DASK_GATEWAY__AUTH__TYPE"])
+            clusters = gateway.list_clusters()
+            logger.debug(f"The list of clusters: {clusters}")
+            cluster = gateway.connect(clusters[0].name)
+        except KeyError as e:
+            logger.error(f"Could not find the needed environment variable to use the daks gateway: {e}")
+            raise RuntimeError from e
+        except IndexError:
+            logger.warning("There is no dask cluster to connect to. Creating a new one....")
+            # TODO: Handle errors
+            try:
+                cluster = gateway.new_cluster()
+            except dask_gateway.exceptions.GatewayServerError as e:
+                logger.error(f"Failed to create a new Dask cluster: {e}")
+                raise RuntimeError("Unable to create a Dask cluster") from e
+            except dask_gateway.exceptions.AuthenticationError as e:
+                logger.error(f"Authentication failed for Dask Gateway: {e}")
+                raise RuntimeError("Authentication failed") from e
+            except TimeoutError as e:
+                logger.error(f"Timeout occurred while creating the Dask cluster: {e}")
+                raise RuntimeError("Cluster creation timed out") from e
+            except dask_gateway.exceptions.ClusterLimitExceeded as e:
+                logger.error(f"Cluster limit exceeded: {e}")
+                raise RuntimeError("Cannot create new cluster, limit reached") from e
+
+            logger.debug("Creatied a new cluster ")
+            logger.info("A new dask cluster has been created")
+
+    else:
+        cluster = LocalCluster()
+    # Temporary, the rs-server-staging should not scale the cluster, or create workers/schedulers
+    cluster.scale(1)
+    logger.debug("Cluster dashboard: %s", cluster.dashboard_link)
+
+    tinydb_lock = threading.Lock()
+    fastapi_app.extra["db_handler"] = tinydb_lock
+    db_location = api.config["manager"]["connection"]
+    if not os.path.isfile(db_location):
+        with open(db_location, "w", encoding="utf-8"):
+            pass
+    db = TinyDB(db_location)
+    fastapi_app.extra["db_table"] = db.table("jobs")
+    fastapi_app.extra["dask_cluster"] = cluster
+    logger.info("Local Dask cluster created at startup.")
+
+    # Yield control back to the application (this is where the app will run)
+    yield
+
+    # Shutdown logic (cleanup)
+    logger.info("Shutting down the application...")
+    if env_bool("RSPY_LOCAL_MODE", False) and cluster:
+        cluster.close()
+        logger.info("Local Dask cluster shut down.")
+    # Remove db when app-shutdown
+    os.remove(db_location)
+
+
 # Health check route
 @router.get("/_mgmt/ping", include_in_schema=False)
 async def ping():
@@ -85,35 +173,52 @@ async def ping():
 
 @router.get("/processes")
 async def get_processes():
-    """Should return list of all available proceses from config maybe?"""
-    return JSONResponse(status_code=HTTP_200_OK, content="Check")
+    """Returns list of all available processes from config."""
+    if processes := [
+        {"name": resource, "processor": api.config["resources"][resource]["processor"]["name"]}
+        for resource in api.config["resources"]
+    ]:
+        return JSONResponse(status_code=HTTP_200_OK, content={"processes": processes})
+    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content="No processes found")
 
 
 @router.get("/processes/{resource}")
-async def get_resource():
+async def get_resource(resource: str):
     """Should return info about a specific resource."""
-    return JSONResponse(status_code=HTTP_200_OK, content="Check")
+    if resource_info := next(
+        (
+            api.config["resources"][defined_resource]
+            for defined_resource in api.config["resources"]
+            if defined_resource == resource
+        ),
+        None,
+    ):
+        return JSONResponse(status_code=HTTP_200_OK, content=resource_info)
+    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"detail": "Resource not found"})
 
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution")
-async def execute_process(request: dict, resource: str):
+async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
     """Used to execute processing jobs."""
-    job_id = str(uuid.uuid4())  # Generate a unique job ID
-    parameters = request.get("parameters", {})
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
-    processor_name = "HelloWorld"
+    processor_name = api.config["resources"][resource]["processor"]["name"]
+
     if processor_name in processors:
         processor = processors[processor_name]
-        result = processor(parameters)
-
-        # Store job status in TinyDB
-        jobs_table.insert({"job_id": job_id, "status": "completedOK"})
-
-        # Process result as needed and return a response
-        return {"job_id": job_id, "message": "Process executed successfully", "result": result}
+        status = await processor(
+            req,
+            data.inputs.items,
+            data.inputs.collection.id,
+            data.outputs["result"].id,
+            data.inputs.provider,
+            app.extra["db_table"],
+            app.extra["dask_cluster"],
+            app.extra["db_handler"],
+        ).execute()
+        return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 
@@ -122,33 +227,57 @@ async def execute_process(request: dict, resource: str):
 @router.get("/jobs/{job_id}")
 async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
-    job = jobs_table.get(Query().job_id == job_id)
+    with app.extra["db_handler"]:
+        job = app.extra["db_table"].get(Query().job_id == job_id)
 
-    if job:
-        return job
+        if job:
+            return job
 
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Job not found")
 
 
 @router.get("/jobs")
 async def get_jobs():
-    """Should return status of all jobs"""
-    return JSONResponse(status_code=HTTP_200_OK, content="Check")
+    """Returns the status of all jobs."""
+    with app.extra["db_handler"]:
+        jobs = app.extra["db_table"].all()  # Retrieve all job entries from the jobs table
+
+        if jobs:
+            return JSONResponse(status_code=HTTP_200_OK, content=jobs)
+
+        # If no jobs are found, return 404 with appropriate message
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No jobs found")
 
 
 @router.delete("/jobs/{job_id}")
-async def delete_job(job_id):
-    """Should delete a specific job from db."""
-    return JSONResponse(status_code=HTTP_200_OK, content=job_id)
+async def delete_job(job_id: str = Path(..., title="The ID of the job to delete")):
+    """Deletes a specific job from the database."""
+    with app.extra["db_handler"]:
+        job_query = Query()
+        job = app.extra["db_table"].get(job_query.job_id == job_id)  # Check if the job exists
+
+        if job:
+            app.extra["db_table"].remove(job_query.job_id == job_id)  # Delete the job if found
+            return JSONResponse(status_code=HTTP_200_OK, content={"message": f"Job {job_id} deleted successfully"})
+
+        # Raise 404 if job not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 @router.get("/jobs/{job_id}/results")
 async def get_specific_job_result(job_id):
     """Get result from a specific job."""
-    return JSONResponse(status_code=HTTP_200_OK, content=job_id)
+    with app.extra["db_handler"]:
+        job = app.extra["db_table"].get(Query().job_id == job_id)  # Check if the job exists
+        if job:
+            return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
+
+            # Raise 404 if job not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 app.include_router(router)
+app.router.lifespan_context = app_lifespan
 
 # Mount pygeoapi endpoints
 app.mount(path="/oapi", app=api)

@@ -239,3 +239,59 @@ def test_transfer_from_s3_to_s3_fail(mocker):
     assert res.call_count == int(DWN_S3FILE_RETRY_TIMEOUT / SLEEP_TIME)
     server.stop()
     boto_mocker.deactivate()
+
+
+@pytest.mark.unit
+def test_delete_file_from_s3_fail():
+    """Test handling of s3 client exceptions while deleting a file from a bucket
+
+    Test error handling when attempting to delete a file from an S3 bucket with invalid
+    inputs and simulated S3 client failures.
+
+    This unit test verifies the behavior of the `delete_file_from_s3` method in the `S3StorageHandler` class when:
+        1. An invalid input (e.g., `None` for the file name) is provided.
+        2. The S3 client raises an exception during the deletion process.
+
+    The test ensures that the method raises the expected `RuntimeError` in both cases.
+
+    Test flow:
+        1. Start a mock S3 server using `ThreadedMotoServer`.
+        2. Attempt to delete a file from a non-existent bucket with an invalid file name (`None`).
+        3. Simulate an S3 client failure during the file deletion process and ensure the proper exception is raised.
+
+    Raises:
+        AssertionError: If the `RuntimeError` is not raised as expected or if the exception message does not
+        match the expected value.
+    """
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # create the test bucket
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    # test when there is no file to be deleted
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.delete_file_from_s3("some_s3_2", None)
+    assert str(exc.value) == "Input error for deleting the file"
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+
+    # test when an exception occurs for the delete_object s3 function
+    boto_mocker = Stubber(s3_handler.s3_client)
+    boto_mocker.add_client_error("delete_object", service_error_code="botocore.exceptions.BotoCoreError")
+    boto_mocker.activate()
+
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.delete_file_from_s3(bucket, "some_file_1", 1)
+
+    assert str(exc.value) == f"Failed to delete key s3://{bucket}/some_file_1"
+    boto_mocker.deactivate()
+
+    server.stop()

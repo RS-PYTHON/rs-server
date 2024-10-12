@@ -29,4 +29,4 @@ sed -i "s|\${STAC_BROWSER_URL_CADIP}|${STAC_BROWSER_URL_CADIP:-}|g" $RSPY_OPENAP
 sed -i "s|\${STAC_BROWSER_URL_CATALOG}|${STAC_BROWSER_URL_CATALOG:-}|g" $RSPY_OPENAPI_FILE
 
 # Run the FastAPI application
-python -m uvicorn --factory rs_server_frontend.main:start_app --host 0.0.0.0 --port 8000
+python -m uvicorn --factory rs_server_frontend.main:start_app --host 0.0.0.0 --port 8000 "$@"

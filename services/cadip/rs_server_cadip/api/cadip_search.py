@@ -700,7 +700,7 @@ def get_cadip_collection_item_details(
 
 
 @validate_call(config={"arbitrary_types_allowed": True})
-def process_session_search(  # type: ignore  # pylint: disable=too-many-arguments, too-many-locals
+def process_session_search(  # type: ignore  # pylint: disable=too-many-arguments, too-many-locals, unused-argument
     request: Request,
     station: str,
     session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
@@ -774,7 +774,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
                         cadip_sessions_collection,
                         sessions_products,
                         expanded_session_mapper,
-                        request,
                     ).model_dump()
                 case "_":
                     # Should / Must be non reacheable case
@@ -792,7 +791,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     except ValueError as exception:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Unable to map OData to STAC.",
+            detail=str(exception),
         ) from exception
 
 
