@@ -40,7 +40,7 @@ python = "^3.11"
 fastapi = "^0.115.0"
 pygeoapi = "^0.18.0"
 tinydb = "^4.8.0"
-uvicorn = "^0.30.6"
+uvicorn = ">=0.30.6,<0.32.0"
 opentelemetry-distro = "^0.48b0" # then run 'poetry run opentelemetry-bootstrap -a install'
 opentelemetry-instrumentation-aws-lambda = "^0.48b0"
 opentelemetry-test-utils = "^0.48b0"
