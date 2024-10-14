@@ -17,12 +17,16 @@
 # pylint: disable=R0913,R0914 # Too many arguments, Too many local variables
 
 
+import botocore
 import pytest
 import requests
+import responses
 from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
+from requests.auth import HTTPBasicAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     DWN_S3FILE_RETRY_TIMEOUT,
+    S3_MAX_RETRIES,
     SLEEP_TIME,
     GetKeysFromS3Config,
     PutFilesToS3Config,
@@ -293,5 +297,125 @@ def test_delete_file_from_s3_fail():
 
     assert str(exc.value) == f"Failed to delete key s3://{bucket}/some_file_1"
     boto_mocker.deactivate()
+
+    server.stop()
+
+
+@pytest.mark.unit
+@responses.activate
+def test_s3_streaming_upload_fail(mocker):
+    """Unit test to validate error handling in the `s3_streaming_upload` method when streaming a file from
+    an HTTP URL to an S3 bucket fails under various conditions.
+
+    This test ensures that the `s3_streaming_upload` method in the `S3StorageHandler` class handles
+    input validation errors, HTTP request failures, and S3 client errors correctly by raising a
+    `RuntimeError` with appropriate messages.
+
+    Steps:
+    1. **S3 Server Setup**:
+        - A `ThreadedMotoServer` is used to simulate an S3-compatible server for testing purposes.
+        - The test creates a bucket (`s3-bucket-streaming`) in this mock S3 server.
+
+    2. **Input Validation Errors**:
+        - It tests that the method raises `RuntimeError` when invalid inputs (such as a `None` bucket
+          or key) are provided, ensuring proper input validation.
+
+    3. **HTTP Request Failures**:
+        - The test patches `requests.get` to simulate different HTTP errors (`HTTPError`, `Timeout`,
+          `RequestException`, and `ConnectionError`) and checks that the method correctly handles
+          each error, retries up to `S3_MAX_RETRIES`, and raises a `RuntimeError` if retries are exhausted.
+
+    4. **S3 Client Failures**:
+        - The test simulates S3 client errors (`BotoCoreError`, `ClientError`) during the `upload_fileobj`
+          call by using `Stubber`. It verifies that the retry mechanism is triggered and a `RuntimeError`
+          is raised after the maximum retry attempts.
+
+    5. **Patch & Assertion**:
+        - The `wait_timeout` method in `S3StorageHandler` is patched to speed up the retries for testing.
+        - It asserts that the appropriate error messages are included in the raised exceptions and that
+          the retry logic behaves as expected.
+
+    Args:
+        mocker: Pytest mocker fixture used for patching and stubbing functions during tests.
+
+    Raises:
+        RuntimeError: Raised in the following cases:
+            - Invalid input parameters (e.g., missing bucket or key).
+            - HTTP request failures (e.g., timeout, connection errors).
+            - S3 client failures (e.g., failed uploads due to S3-related exceptions).
+
+        AssertionError: If any part of the test fails.
+    """
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    stream_url = "http://127.0.0.1:6000/file"
+    auth = HTTPBasicAuth("user", "pass")
+
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    # prepare a bucket for tests
+    bucket = "s3-bucket-streaming"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_key = "test_key.tst"
+
+    # test when there is no file to be deleted
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.s3_streaming_upload(stream_url, auth, None, s3_key)
+    assert "Input error for streaming the file from" in str(exc.value)
+    # test when there is no file to be deleted
+    with pytest.raises(RuntimeError) as exc:
+        s3_handler.s3_streaming_upload(stream_url, auth, bucket, None)
+    assert "Input error for streaming the file from" in str(exc.value)
+    # mock the rs_server_common.s3_storage_handler.wait_timeout function to speed up the test
+    res = mocker.patch(
+        "rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.wait_timeout",
+        side_effect=None,
+    )
+    # test when an exception occurs for requests.get function
+    # Loop trough all possible exception raised during request.get and check if failure happen
+    for possible_exception in [
+        requests.exceptions.HTTPError,
+        requests.exceptions.Timeout,
+        requests.exceptions.RequestException,
+        requests.exceptions.ConnectionError,
+    ]:
+        mocker.patch("requests.get", side_effect=possible_exception("HTTP Error"))
+        with pytest.raises(RuntimeError) as exc:
+            s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
+
+        assert "Failed to stream the file from" in str(exc.value)
+        assert res.call_count == S3_MAX_RETRIES - 1
+        res.call_count = 0
+    body = "some byte-array data to test the streaming of a file from http to a s3 bucket\n"
+    # Add a server response for downloading one file
+    responses.add(
+        responses.GET,
+        stream_url,
+        body=body,
+        status=200,
+    )
+    # test when an exception occurs for the upload_fileobj s3 function
+    for possible_exception in [
+        botocore.exceptions.BotoCoreError,
+        botocore.client.ClientError,
+    ]:
+        boto_mocker = Stubber(s3_handler.s3_client)
+        boto_mocker.add_client_error("upload_fileobj", service_error_code=possible_exception)
+        boto_mocker.activate()
+
+        with pytest.raises(RuntimeError) as exc:
+            s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
+
+        assert "Failed to stream the file from" in str(exc.value)
+        assert res.call_count == S3_MAX_RETRIES - 1
+        res.call_count = 0
+        boto_mocker.deactivate()
 
     server.stop()
