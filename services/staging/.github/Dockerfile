@@ -14,7 +14,7 @@
 
 
 # Build stage for multi stage build.
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.11-slim-bookworm AS builder
 
 # Install dependencies
 RUN apt update && apt install -y libpq-dev gcc
@@ -59,4 +59,12 @@ RUN useradd -m user
 USER user
 WORKDIR /home/user
 
-ENTRYPOINT [ "python", "-m", "uvicorn", "rs_server_staging.main:app", "--host", "0.0.0.0", "--port", "8000" ]
+# The CI/CD will replace this tag in debug mode or else remove it
+# [DEBUG_MODE_COMMANDS]
+
+# After this, make sure we're still non-root
+USER user
+
+ENTRYPOINT [ \
+    "python", "-m", "uvicorn", "rs_server_staging.main:app", \
+    "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
