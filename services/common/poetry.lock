@@ -561,13 +561,13 @@ gmpy2 = ["gmpy2"]
 
 [[package]]
 name = "eodag"
-version = "3.0.0b3"
+version = "3.0.0"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "eodag-3.0.0b3-py3-none-any.whl", hash = "sha256:03e09a5a0ea21b6f21d7c308964c3d23f2eb674b661f6eeee445e29570d48a53"},
-    {file = "eodag-3.0.0b3.tar.gz", hash = "sha256:909ac37c7651f9dc5a2360bce315cf47c6eb4db309cc39d460bd66b029c9f953"},
+    {file = "eodag-3.0.0-py3-none-any.whl", hash = "sha256:24bde878112a41f4250b654346e4c76b21ce1e6710c6711585dc800f974995eb"},
+    {file = "eodag-3.0.0.tar.gz", hash = "sha256:6e42b98420491b8f83cd775587e4a2f77b5ebf726341066d8bdad67758d3e1d5"},
 ]
 
 [package.dependencies]
@@ -591,7 +591,7 @@ python-dateutil = "*"
 PyYAML = "*"
 requests = "*"
 setuptools = "*"
-shapely = ">=2.0.0"
+shapely = ">=2.0.6"
 stream-zip = "*"
 tqdm = "*"
 typing-extensions = ">=4.8.0"
@@ -603,7 +603,7 @@ all = ["eodag[all-providers,csw,server,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
 dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (<3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (<0.24.0)", "stdlib-list", "tox", "twine", "wheel"]
-docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs"]
+docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs", "sphinxemoji"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
 server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
@@ -1861,6 +1861,7 @@ files = [
     {file = "pyproj-3.7.0-cp312-cp312-win_amd64.whl", hash = "sha256:0692f806224e8ed82fe4acfa57268ff444fdaf9f330689f24c0d96e59480cce1"},
     {file = "pyproj-3.7.0-cp313-cp313-macosx_12_0_x86_64.whl", hash = "sha256:94e8b903a9e83448fd2379c49dec3e8cd83c9ed36f54354e68b601cef56d5426"},
     {file = "pyproj-3.7.0-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:64cb5c17d6f6305a8b978a40f95560c87c5b363fcac40632337955664437875a"},
+    {file = "pyproj-3.7.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2c54e9bdda7ab9c4a5af50f9d6e6ee7704e05fafd504896b96ed1208c7aea098"},
     {file = "pyproj-3.7.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:24fa4e9e0abba875f9524808410cc520067eaf38fd5549ed0ef7c43ac39923c9"},
     {file = "pyproj-3.7.0-cp313-cp313-win32.whl", hash = "sha256:b9e8353fc3c79dc14d1f5ac758a1a6e4eee04102c3c0b138670f121f5ac52eb4"},
     {file = "pyproj-3.7.0-cp313-cp313-win_amd64.whl", hash = "sha256:10a8dc6ec61af97c89ff032647d743f8dc023645773da42ef43f7ae1125b3509"},
@@ -2688,4 +2689,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "9f09606f09d60428dd5ab4232febfb5dc13506f4683af9ca5e274d56ca91c439"
+content-hash = "9021c1d86a4d06316201b6ee35043729ec1bcb79955553499e391d0bd796dccb"
