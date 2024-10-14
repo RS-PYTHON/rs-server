@@ -561,13 +561,13 @@ gmpy2 = ["gmpy2"]
 
 [[package]]
 name = "eodag"
-version = "3.0.0"
+version = "3.0.0b3"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "eodag-3.0.0-py3-none-any.whl", hash = "sha256:24bde878112a41f4250b654346e4c76b21ce1e6710c6711585dc800f974995eb"},
-    {file = "eodag-3.0.0.tar.gz", hash = "sha256:6e42b98420491b8f83cd775587e4a2f77b5ebf726341066d8bdad67758d3e1d5"},
+    {file = "eodag-3.0.0b3-py3-none-any.whl", hash = "sha256:03e09a5a0ea21b6f21d7c308964c3d23f2eb674b661f6eeee445e29570d48a53"},
+    {file = "eodag-3.0.0b3.tar.gz", hash = "sha256:909ac37c7651f9dc5a2360bce315cf47c6eb4db309cc39d460bd66b029c9f953"},
 ]
 
 [package.dependencies]
@@ -591,7 +591,7 @@ python-dateutil = "*"
 PyYAML = "*"
 requests = "*"
 setuptools = "*"
-shapely = ">=2.0.6"
+shapely = ">=2.0.0"
 stream-zip = "*"
 tqdm = "*"
 typing-extensions = ">=4.8.0"
@@ -603,7 +603,7 @@ all = ["eodag[all-providers,csw,server,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
 dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (<3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (<0.24.0)", "stdlib-list", "tox", "twine", "wheel"]
-docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs", "sphinxemoji"]
+docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-autodoc-typehints", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
 server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
@@ -613,18 +613,18 @@ usgs = ["usgs (>=0.3.1)"]
 
 [[package]]
 name = "fastapi"
-version = "0.115.0"
+version = "0.115.2"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi-0.115.0-py3-none-any.whl", hash = "sha256:17ea427674467486e997206a5ab25760f6b09e069f099b96f5b55a32fb6f1631"},
-    {file = "fastapi-0.115.0.tar.gz", hash = "sha256:f93b4ca3529a8ebc6fc3fcf710e5efa8de3df9b41570958abf1d97d843138004"},
+    {file = "fastapi-0.115.2-py3-none-any.whl", hash = "sha256:61704c71286579cc5a598763905928f24ee98bfcc07aabe84cfefb98812bbc86"},
+    {file = "fastapi-0.115.2.tar.gz", hash = "sha256:3995739e0b09fa12f984bce8fa9ae197b35d433750d3d312422d846e283697ee"},
 ]
 
 [package.dependencies]
 pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0 || >2.0.0,<2.0.1 || >2.0.1,<2.1.0 || >2.1.0,<3.0.0"
-starlette = ">=0.37.2,<0.39.0"
+starlette = ">=0.37.2,<0.41.0"
 typing-extensions = ">=4.8.0"
 
 [package.extras]
@@ -2689,4 +2689,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "9021c1d86a4d06316201b6ee35043729ec1bcb79955553499e391d0bd796dccb"
+content-hash = "9f09606f09d60428dd5ab4232febfb5dc13506f4683af9ca5e274d56ca91c439"
