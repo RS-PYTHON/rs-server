@@ -24,6 +24,7 @@ from typing import Union
 import requests
 import tinydb  # temporary, migrate to psql
 from dask.distributed import CancelledError, Client, LocalCluster, as_completed
+from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
 from requests.auth import AuthBase
 from rs_server_common.authentication.authentication_to_external import (
@@ -146,7 +147,7 @@ def streaming_download(product_url: str, auth: str, s3_file):
     Example:
         streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
     """
-    # time.sleep(3)
+    # time.sleep(2)
     try:
         s3_handler = S3StorageHandler(
             os.environ["S3_ACCESSKEY"],
@@ -540,7 +541,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                         re,
                     )
                     continue
-                self.logger.debug("Deleted s3://%s/%s", CATALOG_BUCKET, s3_obj[1])
         except KeyError as exc:
             self.logger.error("Cannot connect to s3 storage, %s", exc)
 
@@ -616,9 +616,17 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             self.logger.debug("No task to start. Exiting from main loop")
             return
         # retrieve token
-        token = get_station_token(
-            load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
-        )
+        try:
+            token = get_station_token(
+                load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
+            )
+        except HTTPException as e:
+            self.log_job_execution(
+                ProcessorStatus.FAILED,
+                0,
+                detail="Could not retrieve the token for connecting to external station",
+            )
+            raise e
 
         self.client = Client(self.cluster)
         # Check the cluster dashboard
@@ -633,6 +641,11 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
+            self.log_job_execution(
+                ProcessorStatus.FAILED,
+                0,
+                detail=f"Submitting task to dask cluster failed. Reason: {e}",
+            )
             return
         # starting another thread for managing the dask callbacks
         self.logger.debug("Starting tasks monitoring thread")
@@ -640,6 +653,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             await asyncio.to_thread(self.manage_callbacks)
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.debug("Exception caught: %s", e)
+            self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"Exception caught: {e}")
         self.assets_info = []
         self.client.close()
         self.client = None

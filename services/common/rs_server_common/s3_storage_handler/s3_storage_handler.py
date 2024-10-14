@@ -14,6 +14,7 @@
 
 """TODO Docstring to be added."""
 
+import logging
 import ntpath
 import os
 import time
@@ -132,6 +133,10 @@ class S3StorageHandler:
         self.region_name = region_name
         self.s3_client: boto3.client = None
         self.connect_s3()
+        # Suppress botocore debug messages
+        logging.getLogger("botocore").setLevel(logging.INFO)
+        logging.getLogger("boto3").setLevel(logging.INFO)
+        logging.getLogger("urllib3").setLevel(logging.INFO)
         self.logger.debug("S3StorageHandler created !")
 
     def __get_s3_client(self, access_key_id, secret_access_key, endpoint_url, region_name):
@@ -207,8 +212,9 @@ class S3StorageHandler:
         while attempt < max_retries:
             try:
                 self.connect_s3()
-                self.logger.info("Deleting key s3://%s/%s", bucket, key)
+                self.logger.debug("Deleting s3 key s3://%s/%s", bucket, key)
                 self.s3_client.delete_object(Bucket=bucket, Key=key)
+                self.logger.info("S3 key deleted: s3://%s/%s", bucket, key)
                 return
             except (botocore.client.ClientError, botocore.exceptions.BotoCoreError) as e:
                 attempt += 1
@@ -752,7 +758,6 @@ retried for %s times. Aborting",
                     )
                     if not config.copy_only:
                         self.delete_file_from_s3(config.bucket_src, collection_file[1])
-                        self.logger.debug("Key deleted s3://%s/%s", config.bucket_src, collection_file[1])
                     copied = True
                     break
                 except (botocore.client.ClientError, botocore.exceptions.EndpointConnectionError) as error:
