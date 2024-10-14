@@ -64,6 +64,7 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
     validate_str_list,
     write_search_products_to_db,
+    map_stac_platform
 )
 
 router = APIRouter(tags=cadip_tags)
@@ -498,6 +499,8 @@ def search_cadip_endpoint(request: Request) -> dict:
     """
     logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
+    if platform := request_params.get("platform", None):
+        request_params["platform"] = map_stac_platform(platform)
     collection_name: Union[str, None] = request_params.pop("collection", None)
     logger.debug(f"User selected collection: {collection_name}")
     selected_config: Union[dict, None]

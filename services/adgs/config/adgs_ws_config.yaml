@@ -66,6 +66,18 @@ adgs:
         completionTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
+        attr_ptype:
+            - null
+            - '$.attr_ptype'
+        attr_serial_identif:
+            - null
+            - '$.attr_serial_identif'
+        attr_platform_short_name:
+            - null
+            - '$.attr_platform_short_name'
+        attr_processing_date:
+            - null
+            - '$.attr_processing_date'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5000/Products({id})/$value'
         title: '$.Name'
@@ -78,6 +90,10 @@ adgs:
             and:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
+              - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')"
+              - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq '{attr_serial_identif}')"
+              - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq '{attr_platform_short_name}')"
+              - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{attr_processing_date#to_iso_utc_datetime}')"
 
     pagination:
       max_items_per_page: 1000

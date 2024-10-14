@@ -40,6 +40,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 from stac_pydantic.links import Link
+import yaml
 
 # pylint: disable=too-few-public-methods
 
@@ -537,3 +538,23 @@ def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
                 reverse=order == "-",
             )
     return feature_collection
+
+def get_codes(data, query):
+    results = []
+    for satellite in data['satellites']:
+        # Each satellite is a dictionary with one key (satellite name)
+        for sat_name, sat_info in satellite.items():
+            # Case 1: Direct match with satellite name (e.g., 'sentinel-1a')
+            if query == sat_name:
+                return sat_info['code']
+            
+            # Case 2: Match constellation name (e.g., 'sentinel-1')
+            if 'constellation' in sat_info and sat_info['constellation'] == query:
+                results.append(sat_info['code'])
+    
+    # If the query is a constellation, return the list of matching codes
+    return results if results else None
+
+def map_stac_platform(platform: str) -> Union[str, List[str]]:
+    with open(Path(__file__).parent.parent.parent / "config" / "constellation.yaml") as cf:
+        return get_codes(yaml.safe_load(cf), platform)
