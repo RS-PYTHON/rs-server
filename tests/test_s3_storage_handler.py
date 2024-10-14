@@ -1060,9 +1060,9 @@ def test_s3_streaming_upload(mocker):
     Raises:
         AssertionError: If any part of the test fails.
     """
-    secrets, stream_url, auth, body = setup_test_env()
+    secrets, stream_url, auth, body = streaming_setup_test_env()
     # Start the moto server and create S3 handler
-    server, s3_handler, bucket, s3_key = setup_s3_handler_and_bucket(secrets)
+    server, s3_handler, bucket, s3_key = streaming_setup_s3_handler_and_bucket(secrets)
 
     try:
         s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
@@ -1070,16 +1070,16 @@ def test_s3_streaming_upload(mocker):
         assert False, "s3_handler.s3_streaming_upload raised exception !"
 
     # Check that the file was uploaded successfully
-    verify_s3_file(s3_handler, bucket, s3_key, body)
+    streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
 
     # Test retry behavior with stubbed S3 client errors
-    test_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body)
+    streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body)
 
     server.stop()
 
 
-# Helper Functions
-def setup_test_env():
+# Helper Functions for test_s3_streaming_upload (otherwise, pylint is complaining about too many statements)
+def streaming_setup_test_env():
     """Set up test environment variables, stream URL, and mock HTTP response."""
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     stream_url = "http://127.0.0.1:6000/file"
@@ -1092,7 +1092,7 @@ def setup_test_env():
     return secrets, stream_url, auth, body
 
 
-def setup_s3_handler_and_bucket(secrets):
+def streaming_setup_s3_handler_and_bucket(secrets):
     """Set up S3 handler, start the moto server, and create the test bucket."""
     server = ThreadedMotoServer()
     server.start()
@@ -1110,7 +1110,7 @@ def setup_s3_handler_and_bucket(secrets):
     return server, s3_handler, bucket, s3_key
 
 
-def verify_s3_file(s3_handler, bucket, s3_key, body):
+def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
     """Verify that the uploaded file exists in S3 and its contents match."""
     try:
         s3_files = s3_handler.list_s3_files_obj(bucket, "")
@@ -1141,10 +1141,10 @@ def verify_s3_file(s3_handler, bucket, s3_key, body):
         assert False, "s3_handler.delete_file_from_s3 raised exception!"
 
 
-def test_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body):
+def streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body):
     """Test S3 retry behavior using Stubber to simulate errors."""
     # Patch time.sleep to speed up retries
-    mocker.patch("time.sleep", side_effect=None)
+    res = mocker.patch("time.sleep", side_effect=None)
 
     # Stub S3 client errors to test retry logic
     boto_mocker = Stubber(s3_handler.s3_client)
@@ -1157,10 +1157,12 @@ def test_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body)
         assert False, "s3_handler.s3_streaming_upload raised exception!"
 
     # Check if retries were attempted
-    retry_timeout = S3_RETRY_TIMEOUT / SLEEP_TIME
-    assert mocker.patch("time.sleep").call_count == int(retry_timeout)
+    assert res.call_count == int(S3_RETRY_TIMEOUT / SLEEP_TIME)
 
     # Verify file after retry logic
-    verify_s3_file(s3_handler, bucket, s3_key, body)
+    streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
 
     boto_mocker.deactivate()
+
+
+# end of the helper functions
