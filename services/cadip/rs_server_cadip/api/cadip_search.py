@@ -20,9 +20,12 @@ It includes an API endpoint, utility functions, and initialization for accessing
 
 # pylint: disable=redefined-builtin
 import json
+import traceback
 import uuid
 from typing import Annotated, Any, List, Union
 
+import requests
+import sqlalchemy
 import stac_pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
@@ -30,6 +33,7 @@ from fastapi import Query, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import WrapValidator, validate_call
 from rs_server_cadip import cadip_tags
+from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
@@ -48,7 +52,7 @@ from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
-from rs_server_common.data_retrieval.provider import TimeRange
+from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     Queryables,
@@ -57,8 +61,10 @@ from rs_server_common.utils.utils import (
     create_stac_collection,
     handle_exceptions,
     map_stac_platform,
+    sort_feature_collection,
     validate_inputs_format,
     validate_str_list,
+    write_search_products_to_db,
 )
 
 router = APIRouter(tags=cadip_tags)
@@ -766,4 +772,127 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Unable to map OData to STAC.",
+        ) from exception
+
+
+######################################
+# DEPRECATED CODE, WILL BE REMOVED !!!
+######################################
+@router.get("/cadip/{station}/cadu/search", deprecated=True)
+@auth_validator(station="cadip", access_type="read")
+def search_products(  # pylint: disable=too-many-locals, too-many-arguments
+    request: Request,  # pylint: disable=unused-argument
+    datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
+    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
+    session_id: Annotated[str, Query(description="Session from which file belong")] = "",
+    limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
+    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
+) -> list[dict] | dict:
+    """Endpoint to retrieve a list of products from the CADU system for a specified station.
+    This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
+    writes the search results to the database, and generates a STAC Feature Collection from the products.
+    Args:
+        request (Request): The request object (unused).
+        datetime (str): Time interval in ISO 8601 format.
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        session_id (str): Session from which file belong.
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
+    Returns:
+        list[dict] | dict: A list of STAC Feature Collections or an error message.
+                           If no products are found in the specified time range, returns an empty list.
+    Raises:
+        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
+        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
+        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
+        HTTPException (fastapi.exceptions): If there is a connection error to the station.
+        HTTPException (fastapi.exceptions): If there is a general failure during the process.
+    """
+    return process_files_search(datetime, station, session_id, limit, sortby, deprecated=True)
+
+
+def process_files_search(  # pylint: disable=too-many-locals
+    datetime: str,
+    station: str,
+    session_id: str,
+    limit=None,
+    sortby=None,
+    **kwargs,
+) -> list[dict] | dict:
+    """Endpoint to retrieve a list of products from the CADU system for a specified station.
+    This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
+    writes the search results to the database, and generates a STAC Feature Collection from the products.
+    Args:
+        request (Request): The request object (unused).
+        datetime (str): Time interval in ISO 8601 format.
+        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
+        session_id (str): Session from which file belong.
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
+    Returns:
+        list[dict] | dict: A list of STAC Feature Collections or an error message.
+                           If no products are found in the specified time range, returns an empty list.
+    Raises:
+        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
+        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
+        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
+        HTTPException (fastapi.exceptions): If there is a connection error to the station.
+        HTTPException (fastapi.exceptions): If there is a general failure during the process.
+    """
+    if not (datetime or session_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
+    start_date, stop_date = validate_inputs_format(datetime)
+    session: Union[List[str], str, None] = (
+        ([sid.strip() for sid in session_id.split(",")] if session_id and "," in session_id else session_id)
+        if session_id
+        else None
+    )
+    if limit < 1:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
+    # Init dataretriever / get products / return
+    try:
+        set_eodag_auth_token(station.lower(), "cadip")
+        products = init_cadip_provider(station).search(
+            TimeRange(start_date, stop_date),
+            id=session,
+            items_per_page=limit,
+        )
+        if kwargs.get("deprecated", False):
+            write_search_products_to_db(CadipDownloadStatus, products)
+        feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
+        stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
+        with (
+            open(feature_template_path, encoding="utf-8") as template,
+            open(stac_mapper_path, encoding="utf-8") as stac_map,
+        ):
+            feature_template = json.loads(template.read())
+            stac_mapper = json.loads(stac_map.read())
+            cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
+        logger.info("Succesfully listed and processed products from CADIP station")
+        return sort_feature_collection(cadip_item_collection.model_dump(), sortby)
+    # pylint: disable=duplicate-code
+    except CreateProviderFailed as exception:
+        logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Bad station identifier: {exception}",
+        ) from exception
+    # pylint: disable=duplicate-code
+    except sqlalchemy.exc.OperationalError as exception:
+        logger.error("Failed to connect to database!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database connection error: {exception}",
+        ) from exception
+    except requests.exceptions.ConnectionError as exception:
+        logger.error("Failed to connect to station!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Station {station} connection error: {exception}",
+        ) from exception
+    except Exception as exception:  # pylint: disable=broad-exception-caught
+        logger.error("General failure!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"General failure: {exception}",
         ) from exception
