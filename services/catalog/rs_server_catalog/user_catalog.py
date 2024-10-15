@@ -431,8 +431,11 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     # remove the asset from the item, all assets that remain shall
                     # be deleted from the s3 bucket later on
                     item["assets"].pop(asset)
-            except (IndexError, AttributeError, KeyError) as exc:
-                raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
+            except (IndexError, AttributeError, KeyError, RuntimeError) as exc:
+                raise HTTPException(
+                    detail=f"Could not handle the s3 level. Reason: {exc}",
+                    status_code=HTTP_400_BAD_REQUEST,
+                ) from exc
 
         # 3 - include new stac extension if not present
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"

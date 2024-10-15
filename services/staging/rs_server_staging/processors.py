@@ -156,9 +156,11 @@ def streaming_download(product_url: str, auth: str, bucket: str, s3_file: str):
         )
         s3_handler.s3_streaming_upload(product_url, auth, bucket, s3_file)
     except RuntimeError as e:
-        raise ValueError(f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}") from e
+        raise ValueError(
+            f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
+        ) from e
     except KeyError as exc:
-        raise ValueError("Cannot create s3 connector object.") from exc
+        raise ValueError(f"Cannot create s3 connector object. Reason: {exc}") from exc
     return s3_file
 
 

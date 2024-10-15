@@ -458,6 +458,7 @@ class S3StorageHandler:
 
         try:
             self.connect_s3()
+            self.logger.debug(f"Check for s3 key presence: s3://{bucket}/{s3_key}")
             self.s3_client.head_object(Bucket=bucket, Key=s3_key)
         except botocore.client.ClientError as error:
             # check that it was a 404 vs 403 errors
@@ -467,8 +468,7 @@ class S3StorageHandler:
                 self.logger.exception((f"{bucket} is a private bucket. Forbidden access!"))
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
             if error_code == S3_ERR_NOT_FOUND:
-                self.logger.exception((f"The key s3://{bucket}/s3_key does not exist!"))
-                # raise RuntimeError(f"The key s3://{bucket}/s3_key does not exist!") from error
+                self.logger.exception((f"The key s3://{bucket}/{s3_key} does not exist!"))
                 return False
             self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
             raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
@@ -478,6 +478,7 @@ class S3StorageHandler:
         except Exception as error:
             self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
+
         return True
 
     def wait_timeout(self, timeout):
