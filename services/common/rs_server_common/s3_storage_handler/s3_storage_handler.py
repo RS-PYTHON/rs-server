@@ -213,6 +213,9 @@ class S3StorageHandler:
             try:
                 self.connect_s3()
                 self.logger.debug("Deleting s3 key s3://%s/%s", bucket, key)
+                if not self.check_s3_key_on_bucket(bucket, key):
+                    self.logger.debug("Deleting s3 key s3://%s/%s", bucket, key)
+                    return
                 self.s3_client.delete_object(Bucket=bucket, Key=key)
                 self.logger.info("S3 key deleted: s3://%s/%s", bucket, key)
                 return
@@ -226,11 +229,11 @@ class S3StorageHandler:
                     )
                     self.wait_timeout(S3_RETRY_TIMEOUT)
                     continue
-                self.logger.exception(f"Failed to delete key s3://{bucket}/{key}: {e}")
-                raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}") from e
+                self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
+                raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
             except Exception as e:
-                self.logger.exception(f"Failed to delete key s3://{bucket}/{key}: {e}")
-                raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}") from e
+                self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
+                raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
 
     # helper functions
 

@@ -305,6 +305,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
             HTTPException: If there are errors during the S3 transfer or deletion process.
         """
         if not self.s3_handler or not files_s3_key:
+            logger.debug(f"s3_bucket_handling: nothing to done: {self.s3_handler} | {files_s3_key}")
             return
 
         try:
@@ -414,6 +415,8 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 # Check if the S3 key exists
+                # TBD: The catalog should have nothing to do anymore with the
+                # s3 level. This part has to be removed
                 if not self.check_s3_key(item, asset, s3_key):
                     # update the 'href' key with the download link
                     new_href = f"https://{request.url.netloc}/catalog/\
@@ -422,7 +425,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     # Update the S3 path to use the catalog bucket and create the alternate field
                     new_s3_href = {"s3": {"href": s3_key}}
                     content["assets"][asset].update({"alternate": new_s3_href})
-                    # copy the key only if it isn't already on the final bucket
+                    # copy the key only if it isn't already in the final bucket
                     if not int(
                         os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0),
                     ) and not self.s3_handler.check_s3_key_on_bucket(CATALOG_BUCKET, "/".join(old_bucket_arr[3:])):

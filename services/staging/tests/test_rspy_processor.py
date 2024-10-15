@@ -651,8 +651,6 @@ class TestRSPYStagingPublishCatalog:
 
             # Mock the logger and other methods called on failure
             mock_logger = mocker.patch.object(staging_instance, "logger")
-            mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
-            mock_delete_files = mocker.patch.object(staging_instance, "delete_files_from_bucket")
 
             result = staging_instance.publish_rspy_feature(feature)
 
@@ -664,10 +662,6 @@ class TestRSPYStagingPublishCatalog:
                 timeout=3,
             )
             mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
-            mock_log_job.assert_called_once_with(
-                ProcessorStatus.FAILED,
-            )  # Ensure log_job_execution is called with FAILED status
-            mock_delete_files.assert_called_once_with()  # Ensure delete_files_from_bucket is called
 
     def test_repr(self, staging_instance):
         """Test repr method for coverage"""

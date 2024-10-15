@@ -590,9 +590,17 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
         # Publish all the features once processed
+        published_featurs_ids: list[str] = []
         for feature in self.stream_list:
-            self.publish_rspy_feature(feature)
-
+            if not self.publish_rspy_feature(feature):
+                # cleanup
+                self.log_job_execution(ProcessorStatus.FAILED)
+                # delete the files
+                self.delete_files_from_bucket()
+                # delete the published items
+                self.unpublish_rspy_features(published_featurs_ids)
+                return
+            published_featurs_ids.append(feature.id)
         # Update status once all features are processed
         self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
         self.logger.info("Tasks monitoring finished")
@@ -719,9 +727,62 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             json.JSONDecodeError,
         ) as exc:
             self.logger.error("Error while publishing items to rspy catalog %s", exc)
-            self.log_job_execution(ProcessorStatus.FAILED)
-            self.delete_files_from_bucket()
             return False
+
+    def unpublish_rspy_features(self, feature_ids: list[str]):
+        """Deletes specified features from the RSPy catalog by sending DELETE requests to the
+        catalog API endpoint for each feature ID.
+
+        This method iterates over a list of feature IDs, constructs the API URL to delete each feature,
+        and sends an HTTP DELETE request to the corresponding endpoint. If the DELETE request
+        fails due to HTTP errors, timeouts, or connection issues, it logs the error with appropriate details.
+
+        Args:
+            feature_ids (list): A list of feature IDs to be deleted from the RSPy catalog.
+
+        Raises:
+            requests.exceptions.HTTPError: If the server responds with an HTTP error code (4xx or 5xx).
+            requests.exceptions.Timeout: If the DELETE request times out.
+            requests.exceptions.RequestException: For general request-related errors.
+            requests.exceptions.ConnectionError: If there is a network-related error.
+            json.JSONDecodeError: If an invalid response body is encountered when attempting to decode.
+
+        Behavior:
+        1. **Request Construction**:
+            - For each `feature_id` in the list, the method constructs the DELETE request URL using the
+            base catalog URL, the collection name, and the feature ID.
+            - The request includes a `cookie` header obtained from `self.headers`.
+
+        2. **Error Handling**:
+            - The method handles the following exceptions:
+                - `HTTPError`: Raised if the server returns a 4xx or 5xx status code.
+                - `Timeout`: Raised if the DELETE request takes longer than 3 seconds.
+                - `RequestException`: Raised for other request-related issues, such as invalid requests.
+                - `ConnectionError`: Raised when there is a connection issue (e.g., network failure).
+                - `JSONDecodeError`: Raised when there is an issue decoding the response body (if expected).
+            - For each error encountered, an appropriate message is logged with the exception details.
+
+        3. **Logging**:
+            - Success and failure events are logged, allowing tracing of which feature deletions
+            were successful or failed, along with the relevant error information.
+        """
+        for feature_id in feature_ids:
+            catalog_delete_item = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items/{feature_id}"
+            try:
+                response = requests.delete(
+                    catalog_delete_item,
+                    headers={"cookie": self.headers.get("cookie", None)},
+                    timeout=3,
+                )
+                response.raise_for_status()  # Raise an error for HTTP error responses
+            except (
+                requests.exceptions.HTTPError,
+                requests.exceptions.Timeout,
+                requests.exceptions.RequestException,
+                requests.exceptions.ConnectionError,
+                json.JSONDecodeError,
+            ) as exc:
+                self.logger.error("Error while deleting the item from rspy catalog %s", exc)
 
     def __repr__(self):
         """Returns a string representation of the RSPYStaging processor."""
