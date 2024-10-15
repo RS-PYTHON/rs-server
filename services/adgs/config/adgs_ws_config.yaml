@@ -51,9 +51,15 @@ adgs:
         ContentLength:
           - null
           - '$.ContentLength'
+        ContentType:
+          - null
+          - '$.ContentType'
         PublicationDate:
           - null
           - '$.PublicationDate'
+        EvictionDate:
+          - null
+          - '$.EvictionDate'
         Start:
           - null
           - '$.ContentDate.Start'
@@ -66,6 +72,9 @@ adgs:
         completionTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
+        ChecksumValue:
+          - null
+          - '$.Checksum[0].Value'
         attr_ptype:
             - null
             - '$.attr_ptype'
@@ -78,6 +87,9 @@ adgs:
         attr_processing_date:
             - null
             - '$.attr_processing_date'
+        attrs:
+            - null
+            - '$.Attributes'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5000/Products({id})/$value'
         title: '$.Name'
@@ -97,7 +109,7 @@ adgs:
 
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Attributes'
       total_items_nb_key_path: '$.total'
 
   download:

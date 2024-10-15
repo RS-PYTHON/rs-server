@@ -23,11 +23,13 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, List, Tuple, Union
 
 import sqlalchemy
 import stac_pydantic
+import yaml
 from eodag import EOProduct, setup_logging
 from fastapi import HTTPException, status
 from pydantic import BaseModel, Field, ValidationError, ValidatorFunctionWrapHandler
@@ -40,7 +42,6 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.utils.logging import Logging
 from stac_pydantic.links import Link
-import yaml
 
 # pylint: disable=too-few-public-methods
 
@@ -454,19 +455,26 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
                 feature_template["properties"][stac_key] = odata_dict[eodag_key]
             elif stac_key == "id":
                 feature_template["id"] = odata_dict[eodag_key]
-            elif stac_key == "file:size":
+            elif stac_key in feature_template["assets"]["file"]:
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
     return feature_template
 
 
 def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
     """This function is creating key:value pairs from an EOProduct properties"""
+    eo_product.properties.update(
+        {item.get("Name", None): item.get("Value", None) for item in eo_product.properties.get("attrs", [])},
+    )
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
 
 
-def create_links(products: List[EOProduct]):
+def create_links(products: List[EOProduct], provider):
     """Used to create stac_pydantic Link objects based on sessions lists."""
-    return [Link(rel="item", title=product.properties["SessionId"], href="./simple-item.json") for product in products]
+    if provider == "CADIP":
+        return [
+            Link(rel="item", title=product.properties["SessionId"], href="./simple-item.json") for product in products
+        ]
+    return [Link(rel="item", title=product.properties["Name"], href="./simple-item.json") for product in products]
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:
@@ -539,22 +547,50 @@ def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
             )
     return feature_collection
 
+
 def get_codes(data, query):
+    """Function used to format sattelite/constellation mappings."""
     results = []
-    for satellite in data['satellites']:
+    for satellite in data["satellites"]:
         # Each satellite is a dictionary with one key (satellite name)
         for sat_name, sat_info in satellite.items():
             # Case 1: Direct match with satellite name (e.g., 'sentinel-1a')
             if query == sat_name:
-                return sat_info['code']
-            
+                return sat_info["code"]
+
             # Case 2: Match constellation name (e.g., 'sentinel-1')
-            if 'constellation' in sat_info and sat_info['constellation'] == query:
-                results.append(sat_info['code'])
-    
+            if "constellation" in sat_info and sat_info["constellation"] == query:
+                results.append(sat_info["code"])
+
     # If the query is a constellation, return the list of matching codes
     return results if results else None
 
+
 def map_stac_platform(platform: str) -> Union[str, List[str]]:
-    with open(Path(__file__).parent.parent.parent / "config" / "constellation.yaml") as cf:
+    """Function used to read and interpret from constellation.yaml"""
+    with open(Path(__file__).parent.parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
         return get_codes(yaml.safe_load(cf), platform)
+
+
+def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors while creating/validating
+    items."""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except KeyError as exc:
+            logger.error(f"KeyError caught in {func.__name__}")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Cannot create STAC Collection -> Missing {exc}",
+            ) from exc
+        except ValidationError as exc:
+            logger.error(f"ValidationError caught in {func.__name__}")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Parameters validation error: {exc}",
+            ) from exc
+
+    return wrapper
