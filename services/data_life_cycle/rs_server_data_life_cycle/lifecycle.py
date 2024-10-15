@@ -173,6 +173,7 @@ def run():
     db_host = os.environ["POSTGRES_HOST"]
 
     print("Connect to the database 💾.")
+    connection = None
     try:
         connection = psycopg2.connect(
             user=db_user,
@@ -210,10 +211,10 @@ def run():
 
 
 if __name__ == "__main__":
-
-    run.deploy(
-        name="data_life_cycle_deployment",
-        work_pool_name="my-docker-pool",
-        image="cyouri/tests:data_life_cycle_image",
-        build=False,
-    )
+    run()
+    # run.deploy(
+    #     name="data_life_cycle_deployment",
+    #     work_pool_name="my-docker-pool",
+    #     image=DockerImage(name="data_life_cycle_image", tag="latest", dockerfile="Dockerfile"),
+    #     push=False,
+    # )

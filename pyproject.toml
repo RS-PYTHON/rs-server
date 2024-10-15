@@ -33,6 +33,7 @@ rs-server-cadip = {path = "services/cadip", develop = true}
 rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
 stac-pydantic = "^3.1.2"
+prefect-docker = "^0.6.1"
 
 [tool.poetry.group.dev]
 optional = true
