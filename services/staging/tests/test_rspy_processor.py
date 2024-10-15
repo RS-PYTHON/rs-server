@@ -105,7 +105,7 @@ def test_streaming_download_incorrect_env(mocker):
         {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
     )
     with pytest.raises(ValueError, match=r"Cannot create s3 connector object."):
-        streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
+        streaming_download("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
 
 
 def test_streaming_download_runtime_error(mocker):
@@ -126,8 +126,11 @@ def test_streaming_download_runtime_error(mocker):
         side_effect=RuntimeError("Streaming failed"),
     )
     # If s3-streaming raise runtime error, we forward value error? to be checked
-    with pytest.raises(ValueError, match=r"Dask task failed to stream file s3://bucket/file.zip"):
-        streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
+    with pytest.raises(
+        ValueError,
+        match=r"Dask task failed to stream file from " r"https://example.com/product.zip to s3://bucket/file.zip",
+    ):
+        streaming_download("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
 
 
 class TestRSPYStaging:
@@ -450,7 +453,7 @@ class TestRSPYStagingDeleteFromBucket:
         mock_s3_handler = mocker.Mock()
         mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
         # Call the delete_files_from_bucket method
-        staging_instance.delete_files_from_bucket("fake_bucket")
+        staging_instance.delete_files_from_bucket()
         # Assert that S3StorageHandler was instantiated with the correct environment variables
         mock_s3_handler.delete_file_from_s3.assert_called_once_with("fake_bucket", "fake_s3_path")
 
@@ -461,7 +464,7 @@ class TestRSPYStagingDeleteFromBucket:
         mock_s3_handler = mocker.Mock()
         mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
         # Call the method
-        staging_instance.delete_files_from_bucket("fake_bucket")
+        staging_instance.delete_files_from_bucket()
         # Assert that delete_file_from_s3 was never called since there are no assets
         mock_s3_handler.delete_file_from_s3.assert_not_called()
 
@@ -482,7 +485,7 @@ class TestRSPYStagingDeleteFromBucket:
         # Mock the logger to check if the error is logged
         mock_logger = mocker.patch.object(staging_instance, "logger")
         # Call the method and expect it to handle KeyError
-        staging_instance.delete_files_from_bucket("fake_bucket")
+        staging_instance.delete_files_from_bucket()
         # Assert that the error was logged
         mock_logger.error.assert_called_once_with("Cannot connect to s3 storage, %s", mocker.ANY)
 
@@ -508,7 +511,7 @@ class TestRSPYStagingDeleteFromBucket:
         # Mock the logger to verify error handling
         mock_logger = mocker.patch.object(staging_instance, "logger")
         # Call the method and expect it to handle RuntimeError
-        staging_instance.delete_files_from_bucket("fake_bucket")
+        staging_instance.delete_files_from_bucket()
         # Assert that the error was logged
         mock_logger.warning.assert_called()
 
@@ -664,7 +667,7 @@ class TestRSPYStagingPublishCatalog:
             mock_log_job.assert_called_once_with(
                 ProcessorStatus.FAILED,
             )  # Ensure log_job_execution is called with FAILED status
-            mock_delete_files.assert_called_once_with("rs-cluster-catalog")  # Ensure delete_files_from_bucket is called
+            mock_delete_files.assert_called_once_with()  # Ensure delete_files_from_bucket is called
 
     def test_repr(self, staging_instance):
         """Test repr method for coverage"""

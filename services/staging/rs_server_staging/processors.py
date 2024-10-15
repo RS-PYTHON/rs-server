@@ -39,7 +39,6 @@ from starlette.requests import Request
 from .rspy_models import Feature, RSPYFeatureCollectionModel
 
 DASK_TASK_ERROR = "error"
-CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
 
 class ProcessorStatus(Enum):
@@ -124,7 +123,7 @@ class TokenAuth(AuthBase):
         return "RSPY Token handler"
 
 
-def streaming_download(product_url: str, auth: str, s3_file):
+def streaming_download(product_url: str, auth: str, bucket: str, s3_file: str):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
@@ -147,7 +146,7 @@ def streaming_download(product_url: str, auth: str, s3_file):
     Example:
         streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
     """
-    # time.sleep(2)
+
     try:
         s3_handler = S3StorageHandler(
             os.environ["S3_ACCESSKEY"],
@@ -155,9 +154,9 @@ def streaming_download(product_url: str, auth: str, s3_file):
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
-        s3_handler.s3_streaming_upload(product_url, auth, CATALOG_BUCKET, s3_file)
+        s3_handler.s3_streaming_upload(product_url, auth, bucket, s3_file)
     except RuntimeError as e:
-        raise ValueError(f"Dask task failed to stream file s3://{s3_file}") from e
+        raise ValueError(f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}") from e
     except KeyError as exc:
         raise ValueError("Cannot create s3 connector object.") from exc
     return s3_file
@@ -270,6 +269,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.logger = Logging.default(__name__)
         self.cluster = cluster
         self.client: Union[Client, None] = None
+        self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(self):  # pylint: disable=arguments-differ, invalid-overridden-method
@@ -491,7 +491,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             except CancelledError as e:
                 self.logger.error("Task was already cancelled: %s", e)
 
-    def delete_files_from_bucket(self, bucket):
+    def delete_files_from_bucket(self):
         """
         Deletes partial or fully copied files from the specified S3 bucket.
 
@@ -499,9 +499,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         them from the given S3 bucket. If no assets are present, the method returns
         without performing any actions. The S3 connection is established using credentials
         from environment variables.
-
-        Args:
-            bucket (str): The name of the S3 bucket from which to delete the files.
 
         Raises:
             RuntimeError: If there is an issue deleting a file from the S3 bucket.
@@ -513,6 +510,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         Notes:
             - The `self.assets_info` attribute is expected to be a list of asset information,
             with each entry containing details for deletion.
+            - The `self.catalog_bucket` is expected to be already set from init
             - The S3 credentials (access key, secret key, endpoint, and region) are fetched
             from environment variables: `S3_ACCESSKEY`, `S3_SECRETKEY`, `S3_ENDPOINT`,
             and `S3_REGION`.
@@ -532,11 +530,11 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 return
             for s3_obj in self.assets_info:
                 try:
-                    s3_handler.delete_file_from_s3(bucket, s3_obj[1])
+                    s3_handler.delete_file_from_s3(self.catalog_bucket, s3_obj[1])
                 except RuntimeError as re:
                     self.logger.warning(
                         "Could not delete from the bucket key s3://%s/%s : %s",
-                        CATALOG_BUCKET,
+                        self.catalog_bucket,
                         s3_obj[1],
                         re,
                     )
@@ -586,7 +584,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                     None,
                     detail=f"At least one of the tasks failed: {task_e}",
                 )
-                self.delete_files_from_bucket(CATALOG_BUCKET)
+                self.delete_files_from_bucket()
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
         # Publish all the features once processed
@@ -613,20 +611,21 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 return
         if not self.assets_info:
             self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished with no tasks processed.")
-            self.logger.debug("No task to start. Exiting from main loop")
+            self.logger.info("There is no task to start. Exiting...")
             return
         # retrieve token
         try:
             token = get_station_token(
                 load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
             )
-        except HTTPException as e:
+        except HTTPException as http_exception:
             self.log_job_execution(
                 ProcessorStatus.FAILED,
                 0,
-                detail="Could not retrieve the token for connecting to external station",
+                detail="Could not retrieve the token for connecting to external station.",
             )
-            raise e
+            self.logger.error(f"Could not retrieve the token for connecting to external station: {http_exception}")
+            return
 
         self.client = Client(self.cluster)
         # Check the cluster dashboard
@@ -637,7 +636,13 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         try:
             for asset_info in self.assets_info:
                 self.tasks.append(
-                    self.client.submit(streaming_download, asset_info[0], TokenAuth(token), asset_info[1]),
+                    self.client.submit(
+                        streaming_download,
+                        asset_info[0],
+                        TokenAuth(token),
+                        self.catalog_bucket,
+                        asset_info[1],
+                    ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
@@ -713,7 +718,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         ) as exc:
             self.logger.error("Error while publishing items to rspy catalog %s", exc)
             self.log_job_execution(ProcessorStatus.FAILED)
-            self.delete_files_from_bucket(CATALOG_BUCKET)
+            self.delete_files_from_bucket()
             return False
 
     def __repr__(self):

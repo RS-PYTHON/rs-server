@@ -76,6 +76,12 @@ def staging(mocker):
     mock_db = mocker.Mock()  # Mock for tinydb.table.Table
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
     mock_tinydb_lock = mocker.Mock()
+    mocker.patch.dict(
+        os.environ,
+        {
+            "RSPY_CATALOG_BUCKET": "fake_bucket",
+        },
+    )
 
     # Instantiate the RSPYStaging class with the mocked dependencies
     staging_instance = RSPYStaging(
