@@ -461,7 +461,7 @@ class S3StorageHandler:
 
         try:
             self.connect_s3()
-            self.logger.debug(f"Check for s3 key presence: s3://{bucket}/{s3_key}")
+            self.logger.debug(f"Checking for the presence of the s3 key s3://{bucket}/{s3_key}")
             self.s3_client.head_object(Bucket=bucket, Key=s3_key)
         except botocore.client.ClientError as error:
             # check that it was a 404 vs 403 errors

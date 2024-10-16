@@ -376,6 +376,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         # Final filter object
         filter_object = {"filter-lang": "cql2-text", "filter": filter_string}
 
+        search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search"
         search_url = f"{self.catalog_url}/catalog/search"
         try:
             response = requests.get(
@@ -385,6 +386,8 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 timeout=3,
             )
             response.raise_for_status()  # Raise an error for HTTP error responses
+            self.logger.debug(response.json()["context"]["returned"])
+            self.logger.debug(response.json())
             self.create_streaming_list(response.json())
             self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
             return True
@@ -557,6 +560,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         """
         self.logger.info("Tasks monitoring started")
         if not self.client:
+            self.logger.error("The dask cluster client object is not created. Exiting")
             return
         for task in as_completed(self.tasks):
             try:
@@ -621,7 +625,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 return
         if not self.assets_info:
             self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished with no tasks processed.")
-            self.logger.info("There is no task to start. Exiting...")
+            self.logger.info("There isn't at least one asset to stage. Exiting...")
             return
         # retrieve token
         try:
@@ -629,15 +633,29 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
             )
         except HTTPException as http_exception:
+            self.logger.error(f"Could not retrieve the token for connecting to external station: {http_exception}")
             self.log_job_execution(
                 ProcessorStatus.FAILED,
                 0,
-                detail="Could not retrieve the token for connecting to external station.",
+                detail=f"Could not retrieve the token for connecting to external station: {http_exception}",
             )
-            self.logger.error(f"Could not retrieve the token for connecting to external station: {http_exception}")
             return
 
         self.client = Client(self.cluster)
+        try:
+            workers = self.client.scheduler_info()["workers"]
+            print(f"Number of running workers: {len(workers)}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception(f"Failed to retrieve worker info: {e}")
+            self.log_job_execution(
+                ProcessorStatus.FAILED,
+                0,
+                detail=f"Failed to retrieve worker info: {e}",
+            )
+            return
+        if workers == 0:
+            self.logger.info("There is no running worker in the dask cluster. Scaling to 1")
+        self.cluster.scale(1)
         # Check the cluster dashboard
         self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
         self.logger.debug(f"Dask Client: {self.client}")
