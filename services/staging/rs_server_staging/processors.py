@@ -369,24 +369,24 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         """
         # Get each feature id and create /catalog/search argument
         # Note, only for GET, to be updated and create request body for POST
-        ids = [feature.id for feature in self.item_collection.features]
+        # ids = [feature.id for feature in self.item_collection.features]
         # Creating the filter string
-        filter_string = f"id IN ({', '.join([f'{id_}' for id_ in ids])})"
+        # filter_string = f"id IN ({', '.join([f'{id_}' for id_ in ids])})"
 
         # Final filter object
-        filter_object = {"filter-lang": "cql2-text", "filter": filter_string}
+        # filter_object = {"filter-lang": "cql2-text", "filter": filter_string}
 
         search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search"
-        search_url = f"{self.catalog_url}/catalog/search"
+
         try:
             response = requests.get(
                 search_url,
                 headers={"cookie": self.headers.get("cookie", None)},
-                params=json.dumps(filter_object),
+                # params=json.dumps(filter_object),
                 timeout=3,
             )
             response.raise_for_status()  # Raise an error for HTTP error responses
-            self.logger.debug(response.json()["context"]["returned"])
+            # self.logger.debug(response.json()["context"]["returned"])
             self.logger.debug(response.json())
             self.create_streaming_list(response.json())
             self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
@@ -644,7 +644,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.client = Client(self.cluster)
         try:
             workers = self.client.scheduler_info()["workers"]
-            print(f"Number of running workers: {len(workers)}")
+            self.logger.info(f"Number of running workers: {len(workers)}")
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception(f"Failed to retrieve worker info: {e}")
             self.log_job_execution(
@@ -654,8 +654,8 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             )
             return
         if workers == 0:
-            self.logger.info("There is no running worker in the dask cluster. Scaling to 1")
-        self.cluster.scale(1)
+            self.logger.info("No workers are currently running in the Dask cluster. Scaling up to 1.")
+            self.cluster.scale(1)
         # Check the cluster dashboard
         self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
         self.logger.debug(f"Dask Client: {self.client}")
