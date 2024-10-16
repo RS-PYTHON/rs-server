@@ -14,7 +14,6 @@
 
 """This module is used to share common functions between apis endpoints"""
 
-import copy
 import os
 import shutil
 import threading
@@ -23,16 +22,13 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 import sqlalchemy
-import stac_pydantic
-import yaml
 from eodag import EOProduct, setup_logging
 from fastapi import HTTPException, status
-from pydantic import BaseModel, Field, ValidationError, ValidatorFunctionWrapHandler
+from pydantic import ValidationError, ValidatorFunctionWrapHandler
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import DownloadStatus, EDownloadStatus
@@ -41,26 +37,8 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.utils.logging import Logging
-from stac_pydantic.links import Link
 
 # pylint: disable=too-few-public-methods
-
-
-class Queryables(BaseModel):
-    """BaseModel used to describe queryable holder."""
-
-    schema: str = Field("https://json-schema.org/draft/2019-09/schema", alias="$schema")  # type: ignore
-    id: str = Field("https://stac-api.example.com/queryables", alias="$id")
-    type: str
-    title: str
-    description: str
-    properties: dict[str, Any]
-
-    class Config:
-        """Used to overwrite BaseModel config and display aliases in model_dump."""
-
-        allow_population_by_field_name = True
-
 
 logger = Logging.default(__name__)
 
@@ -466,131 +444,3 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
         {item.get("Name", None): item.get("Value", None) for item in eo_product.properties.get("attrs", [])},
     )
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
-
-
-def create_links(products: List[EOProduct], provider):
-    """Used to create stac_pydantic Link objects based on sessions lists."""
-    if provider == "CADIP":
-        return [
-            Link(rel="item", title=product.properties["SessionId"], href="./simple-item.json") for product in products
-        ]
-    return [Link(rel="item", title=product.properties["Name"], href="./simple-item.json") for product in products]
-
-
-def create_collection(collection: dict) -> stac_pydantic.Collection:
-    """Used to create stac_pydantic Model Collection based on given collection data."""
-    try:
-        stac_collection = stac_pydantic.Collection(type="Collection", **collection)
-        return stac_collection
-    except ValidationError as exc:
-        raise HTTPException(
-            detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        ) from exc
-
-
-def create_stac_collection(
-    products: List[EOProduct],
-    feature_template: dict,
-    stac_mapper: dict,
-) -> stac_pydantic.ItemCollection:
-    """
-    Creates a STAC feature collection based on a given template for a list of EOProducts.
-
-    Args:
-        products (List[EOProduct]): A list of EOProducts to create STAC features for.
-        feature_template (dict): The template for generating STAC features.
-        stac_mapper (dict): The mapping dictionary for converting EOProduct data to STAC properties.
-
-    Returns:
-        dict: The STAC feature collection containing features for each EOProduct.
-    """
-    items: list = []
-
-    for product in products:
-        product_data = extract_eo_product(product, stac_mapper)
-        feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
-        item = stac_pydantic.Item(**feature_tmp)
-        items.append(item)
-    return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
-
-
-def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
-    """
-    Sorts a STAC feature collection based on a given criteria.
-
-    Args:
-        feature_collection (dict): The STAC feature collection to be sorted.
-        sortby (str): The sorting criteria. Use "+fieldName" for ascending order
-            or "-fieldName" for descending order. Use "+doNotSort" to skip sorting.
-
-    Returns:
-        dict: The sorted STAC feature collection.
-
-    Note:
-        If sortby is not in the format of "+fieldName" or "-fieldName",
-        the function defaults to ascending order by the "datetime" field.
-    """
-    # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
-    if sortby != "+doNotSort":
-        order = sortby[0]
-        if order not in ["+", "-"]:
-            order = "+"
-
-        if len(feature_collection["features"]) and "properties" in feature_collection["features"][0]:
-            field = sortby[1:]
-            by = "datetime" if field not in feature_collection["features"][0]["properties"].keys() else field
-            feature_collection["features"] = sorted(
-                feature_collection["features"],
-                key=lambda feature: feature["properties"][by],
-                reverse=order == "-",
-            )
-    return feature_collection
-
-
-def get_codes(data, query):
-    """Function used to format sattelite/constellation mappings."""
-    results = []
-    for satellite in data["satellites"]:
-        # Each satellite is a dictionary with one key (satellite name)
-        for sat_name, sat_info in satellite.items():
-            # Case 1: Direct match with satellite name (e.g., 'sentinel-1a')
-            if query == sat_name:
-                return sat_info["code"]
-
-            # Case 2: Match constellation name (e.g., 'sentinel-1')
-            if "constellation" in sat_info and sat_info["constellation"] == query:
-                results.append(sat_info["code"])
-
-    # If the query is a constellation, return the list of matching codes
-    return results if results else None
-
-
-def map_stac_platform(platform: str) -> Union[str, List[str]]:
-    """Function used to read and interpret from constellation.yaml"""
-    with open(Path(__file__).parent.parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
-        return get_codes(yaml.safe_load(cf), platform)
-
-
-def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors while creating/validating
-    items."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return func(*args, **kwargs)
-        except KeyError as exc:
-            logger.error(f"KeyError caught in {func.__name__}")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Cannot create STAC Collection -> Missing {exc}",
-            ) from exc
-        except ValidationError as exc:
-            logger.error(f"ValidationError caught in {func.__name__}")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Parameters validation error: {exc}",
-            ) from exc
-
-    return wrapper

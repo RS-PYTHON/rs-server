@@ -753,12 +753,13 @@ def test_invalid_cadip_collection(client, mock_token_validation):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "endpoint",
+    "endpoint, collection_link",
     [
-        "/cadip",
+        ("/cadip", "/cadip/collections"),
+        ("/auxip", "/auxip/collections")
     ],
 )
-def test_landing_pages(client, endpoint):
+def test_landing_pages(client, endpoint, collection_link):
     """
     Unit test for checking the structure and links of the landing page.
 
@@ -781,7 +782,7 @@ def test_landing_pages(client, endpoint):
     assert response["type"] == "Catalog"
     assert response["links"]
     # Check for data relationship and redirect to /collections.
-    assert any("/cadip/collections" in link["href"] for link in response["links"] if link["rel"] == "data")
+    assert any(collection_link in link["href"] for link in response["links"] if link["rel"] == "data")
 
 
 @pytest.mark.unit

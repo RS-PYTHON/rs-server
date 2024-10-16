@@ -46,22 +46,24 @@ from rs_server_cadip.cadip_utils import (
     select_config,
     validate_products,
 )
-from rs_server_common import settings
 from rs_server_common.authentication import authentication
 from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
-from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import (
+from rs_server_common.stac_api_common import (
     Queryables,
     create_collection,
     create_links,
     create_stac_collection,
+    filter_allowed_collections,
     handle_exceptions,
     map_stac_platform,
     sort_feature_collection,
+)
+from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import (
     validate_inputs_format,
     validate_str_list,
     write_search_products_to_db,
@@ -202,46 +204,7 @@ def get_allowed_cadip_collections(request: Request):
 
     configuration = read_conf()
     all_collections = configuration["collections"]
-
-    # No authentication: select all collections
-    if settings.LOCAL_MODE:
-        filtered_collections = all_collections
-
-    else:
-        # Read the user roles defined in KeyCloak
-        try:
-            auth_roles = request.state.auth_roles or []
-        except AttributeError:
-            auth_roles = []
-
-        # Only keep the collections that are associated to a station that the user has access to
-        filtered_collections = [
-            collection for collection in all_collections if f"rs_cadip_{collection['station']}_read" in auth_roles
-        ]
-
-    logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
-    # Create JSON object.
-    stac_object: dict = {"type": "Object", "links": [], "collections": []}
-
-    # Foreach allowed collection, create links and append to response.
-    for config in filtered_collections:
-
-        config.setdefault("stac_version", "1.0.0")
-
-        query_params = create_session_search_params(config)
-        logger.debug(f"Collection {config['id']} params: {query_params}")
-
-        try:
-            collection: stac_pydantic.Collection = create_collection(config)
-            stac_object["collections"].append(collection.model_dump())
-
-        # If a collection is incomplete in the configuration file, log the error and proceed
-        except HTTPException as exception:
-            if exception.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
-                logger.error(exception)
-            else:
-                raise
-    return stac_object
+    return filter_allowed_collections(all_collections, "cadip", create_session_search_params, request)
 
 
 @router.get("/cadip/conformance")

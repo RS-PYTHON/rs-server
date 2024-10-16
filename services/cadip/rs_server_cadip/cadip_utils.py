@@ -23,13 +23,13 @@ import os
 import os.path as osp
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import eodag
 import stac_pydantic
 import starlette.requests
 import yaml
-from pydantic import BaseModel
+from rs_server_common.stac_api_common import RSPYQueryableField
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
@@ -37,17 +37,7 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-class CADIPQueryableField(BaseModel):
-    """BaseModel used to describe queryable item."""
-
-    title: str
-    type: str
-    description: Optional[str] = None
-    format: Optional[str] = None
-    items: Optional[dict] = None
-
-
-def generate_queryables(collection_id: str) -> dict[str, CADIPQueryableField]:
+def generate_queryables(collection_id: str) -> dict[str, RSPYQueryableField]:
     """Function used to get available queryables based on a given collection."""
     config = select_config(collection_id)
     if config:
@@ -65,22 +55,22 @@ def generate_queryables(collection_id: str) -> dict[str, CADIPQueryableField]:
     return get_cadip_queryables()
 
 
-def get_cadip_queryables() -> dict[str, CADIPQueryableField]:
+def get_cadip_queryables() -> dict[str, RSPYQueryableField]:
     """Function to list all available queryables for CADIP session search."""
     return {
-        "PublicationDate": CADIPQueryableField(
+        "PublicationDate": RSPYQueryableField(
             title="PublicationDate",
             type="Interval",
             description="Session Publication Date",
             format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
         ),
-        "Satellite": CADIPQueryableField(
+        "Satellite": RSPYQueryableField(
             title="Satellite",
             type="[string, array]",
             description="Session satellite acquisition target",
             format="S1A or S1A, S2B",
         ),
-        "SessionId": CADIPQueryableField(
+        "SessionId": RSPYQueryableField(
             title="SessionId",
             type="[string, array]",
             description="Session ID descriptor",

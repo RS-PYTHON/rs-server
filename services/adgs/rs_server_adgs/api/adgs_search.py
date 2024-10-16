@@ -33,22 +33,28 @@ from fastapi import Request, status
 from fastapi.responses import RedirectResponse
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_retriever import init_adgs_provider
-from rs_server_adgs.adgs_utils import read_conf, select_config, serialize_adgs_asset
-from rs_server_common import settings
+from rs_server_adgs.adgs_utils import (
+    get_adgs_queryables,
+    read_conf,
+    select_config,
+    serialize_adgs_asset,
+)
 from rs_server_common.authentication import authentication
 from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
-from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import (
+from rs_server_common.stac_api_common import (
+    Queryables,
     create_collection,
     create_links,
     create_stac_collection,
+    filter_allowed_collections,
     handle_exceptions,
-    validate_inputs_format,
 )
+from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import validate_inputs_format
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=adgs_tags)
@@ -88,13 +94,6 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
 async def home_endpoint():
     """Redirect to the landing page."""
     return RedirectResponse("/auxip")
-
-
-@router.get("/auxip/conformance")
-def get_conformance():
-    """Return the STAC/OGC conformance classes implemented by this server."""
-    with open(ADGS_CONFIG / "adgs_stac_conforms_to.json", encoding="utf-8") as f:
-        return json.load(f)
 
 
 @router.get("/auxip")
@@ -159,80 +158,36 @@ def get_root_catalog(request: Request):
     return landing_page.model_dump()
 
 
+@router.get("/auxip/conformance")
+def get_conformance():
+    """Return the STAC/OGC conformance classes implemented by this server."""
+    with open(ADGS_CONFIG / "adgs_stac_conforms_to.json", encoding="utf-8") as f:
+        return json.load(f)
+
+
 @router.get("/auxip/collections")
 @auth_validator(station="adgs", access_type="landing_page")
 @handle_exceptions
 def get_allowed_adgs_collections(request: Request):
-    """
-        Endpoint to retrieve an object containing collections and links that a user is authorized to
-        access based on their API key.
-
-    This endpoint reads the API key from the request to determine the roles associated with the user.
-    Using these roles, it identifies the stations the user can access and filters the available collections
-    accordingly. The endpoint then constructs a JSON, which includes links to the collections that match the allowed
-    stations.
-
-    - It begins by extracting roles from the `request.state.auth_roles` and derives the station names
-      the user has access to.
-    - Then, it filters the collections from the configuration to include only those belonging to the
-      allowed stations.
-    - For each filtered collection, a corresponding STAC collection is created with links to detailed
-      session searches.
-
-    The final response is a dictionary representation of the STAC catalog, which includes details about
-    the collections the user is allowed to access.
-
-    Returns:
-        dict: Object containing an array of Collection objects in the Catalog, and Link relations.
-
-    Raises:
-        HTTPException: If there are issues with reading configurations or processing session searches.
-    """
     # Based on api key, get all station a user can access.
     logger.info(f"Starting {request.url.path}")
 
     configuration = read_conf()
     all_collections = configuration["collections"]
 
-    # No authentication: select all collections
-    if settings.LOCAL_MODE:
-        filtered_collections = all_collections
+    return filter_allowed_collections(all_collections, "adgs", create_auxip_product_search_params, request)
 
-    else:
-        # Read the user roles defined in KeyCloak
-        try:
-            auth_roles = request.state.auth_roles or []
-        except AttributeError:
-            auth_roles = []
 
-        # Only keep the collections that are associated to a station that the user has access to
-        filtered_collections = [
-            collection for collection in all_collections if f"rs_cadip_{collection['station']}_read" in auth_roles
-        ]
-
-    logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
-    # Create JSON object.
-    stac_object: dict = {"type": "Object", "links": [], "collections": []}
-
-    # Foreach allowed collection, create links and append to response.
-    for config in filtered_collections:
-
-        config.setdefault("stac_version", "1.0.0")
-
-        query_params = create_auxip_product_search_params(config)
-        logger.debug(f"Collection {config['id']} params: {query_params}")
-
-        try:
-            collection: stac_pydantic.Collection = create_collection(config)
-            stac_object["collections"].append(collection.model_dump())
-
-        # If a collection is incomplete in the configuration file, log the error and proceed
-        except HTTPException as exception:
-            if exception.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
-                logger.error(exception)
-            else:
-                raise
-    return stac_object
+@router.get("/auxip/queryables")
+@auth_validator(station="adgs", access_type="landing_page")
+def get_all_queryables(request: Request):
+    logger.info(f"Starting {request.url.path}")
+    return Queryables(
+        type="object",
+        title="Queryables for CADIP Search API",
+        description="Queryable names for the CADIP Search API Item Search filter.",
+        properties=get_adgs_queryables(),
+    ).model_dump(by_alias=True)
 
 
 @router.get("/auxip/collections/{collection_id}")
