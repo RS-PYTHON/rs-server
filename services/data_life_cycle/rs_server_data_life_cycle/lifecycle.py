@@ -29,7 +29,6 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHand
 
 BUCKET_NAME = "rs-cluster-catalog"
 
-
 @task
 def check_expired_items(connection: psycopg2.extensions.connection) -> list:
     """Select each item with an 'expires' field that has already expired.
