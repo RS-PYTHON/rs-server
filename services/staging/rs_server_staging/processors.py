@@ -472,7 +472,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         for asset_name, asset_content in feature.assets.items():
             try:
                 # TODO: add the user_collection as main directory
-                s3_obj_path = f"{feature.id.rstrip('/')}/{asset_content.title}"
+                s3_obj_path = f"{self.catalog_collection}/{feature.id.rstrip('/')}/{asset_content.title}"
                 self.assets_info.append((asset_content.href, s3_obj_path))
                 # update the s3 path, this will be checked in the rs-server-catalog in the
                 # publishing phase
