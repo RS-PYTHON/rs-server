@@ -31,6 +31,7 @@ import getpass
 import json
 import os
 import re
+from datetime import datetime
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
 
@@ -305,7 +306,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
             HTTPException: If there are errors during the S3 transfer or deletion process.
         """
         if not self.s3_handler or not files_s3_key:
-            logger.debug(f"s3_bucket_handling: nothing to done: {self.s3_handler} | {files_s3_key}")
+            logger.debug(f"s3_bucket_handling: nothing to do: {self.s3_handler} | {files_s3_key}")
             return
 
         try:
@@ -1142,7 +1143,10 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             if not self.manage_delete_request(request):
                 return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
 
+        logger.debug("Sending the request to pgstac")
+        pgstac_start = datetime.now()
         response = await call_next(request)
+        logger.debug(f"Execution from pgstac finished in {datetime.now() - pgstac_start}")
 
         # Don't forward responses that fail.
         # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
