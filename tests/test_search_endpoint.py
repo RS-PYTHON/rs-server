@@ -754,10 +754,7 @@ def test_invalid_cadip_collection(client, mock_token_validation):
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "endpoint, collection_link",
-    [
-        ("/cadip", "/cadip/collections"),
-        ("/auxip", "/auxip/collections")
-    ],
+    [("/cadip", "/cadip/collections"), ("/auxip", "/auxip/collections")],
 )
 def test_landing_pages(client, endpoint, collection_link):
     """

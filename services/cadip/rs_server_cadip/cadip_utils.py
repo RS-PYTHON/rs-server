@@ -29,7 +29,7 @@ import eodag
 import stac_pydantic
 import starlette.requests
 import yaml
-from rs_server_common.stac_api_common import RSPYQueryableField
+from rs_server_common.stac_api_common import RSPYQueryableField, map_stac_platform
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
@@ -182,3 +182,30 @@ def validate_products(products: eodag.EOProduct):
         except eodag.utils.exceptions.MisconfiguredError:
             continue
     return valid_eo_products
+
+
+def cadip_map_mission(platform: str, constellation: str):
+    """
+    Custom function for CADIP, to read constellation mapper and return propper
+    values for platform and serial.
+    Eodag maps this values to Satellite
+
+    Input: platform = sentinel-1a       Output: A
+    Input: constellation = sentinel-1   Output: A, B, C
+    """
+    data = map_stac_platform()
+    if platform:
+        config = [satellite[platform] for satellite in data["satellites"] if platform in satellite][0]
+        sat = config.get("code", None)
+    elif constellation:
+        sat = ", ".join(
+            [
+                satellite_info["code"]
+                for satellite in data["satellites"]
+                for satellite_info in satellite.values()
+                if satellite_info.get("constellation") == constellation
+            ],
+        )
+    else:
+        sat = None
+    return sat

@@ -16,7 +16,7 @@
 import copy
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, List, Union, Optional
+from typing import Any, Callable, List, Optional, Union
 
 import stac_pydantic
 import stac_pydantic.links
@@ -29,6 +29,7 @@ from rs_server_common.utils.utils import extract_eo_product, odata_to_stac
 
 logger = Logging.default(__name__)
 
+
 class Queryables(BaseModel):
     """BaseModel used to describe queryable holder."""
 
@@ -39,10 +40,11 @@ class Queryables(BaseModel):
     description: str
     properties: dict[str, Any]
 
-    class Config: #pylint: disable=too-few-public-methods
+    class Config:  # pylint: disable=too-few-public-methods
         """Used to overwrite BaseModel config and display aliases in model_dump."""
 
         allow_population_by_field_name = True
+
 
 class RSPYQueryableField(BaseModel):
     """BaseModel used to describe queryable item."""
@@ -58,13 +60,13 @@ def create_links(products: List[Any], provider):
     """Used to create stac_pydantic Link objects based on sessions lists."""
     if provider == "CADIP":
         return [
-            stac_pydantic.links.Link(rel="item",
-                                     title=product.properties["SessionId"],
-                                     href="./simple-item.json") for product in products
+            stac_pydantic.links.Link(rel="item", title=product.properties["SessionId"], href="./simple-item.json")
+            for product in products
         ]
-    return [stac_pydantic.links.Link(rel="item",
-                                     title=product.properties["Name"],
-                                     href="./simple-item.json") for product in products]
+    return [
+        stac_pydantic.links.Link(rel="item", title=product.properties["Name"], href="./simple-item.json")
+        for product in products
+    ]
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:
@@ -106,38 +108,38 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
 def filter_allowed_collections(all_collections, role, collection_search_func, request):
     """Filters collections based on user roles and permissions.
 
-    This function returns only the collections that a user is allowed to read based on their 
-    assigned roles in KeyCloak. If the application is running in local mode, all collections 
+    This function returns only the collections that a user is allowed to read based on their
+    assigned roles in KeyCloak. If the application is running in local mode, all collections
     are returned without filtering.
 
     Parameters:
-        all_collections (list[dict]): A list of all available collections, where each collection 
+        all_collections (list[dict]): A list of all available collections, where each collection
                                        is represented as a dictionary.
-        role (str): The role of the user requesting access to the collections, which is used to 
+        role (str): The role of the user requesting access to the collections, which is used to
                     build the required authorization key for filtering collections.
-        collection_search_func (Callable): A function that takes a collection configuration 
-                                            and returns query parameters for searching that 
+        collection_search_func (Callable): A function that takes a collection configuration
+                                            and returns query parameters for searching that
                                             collection.
-        request (Request): The request object, which contains user authentication roles 
+        request (Request): The request object, which contains user authentication roles
                            available through `request.state.auth_roles`.
 
     Returns:
-        dict: A JSON object containing the type, links, and a list of filtered collections 
-              that the user is allowed to access. The structure of the returned object is 
+        dict: A JSON object containing the type, links, and a list of filtered collections
+              that the user is allowed to access. The structure of the returned object is
               as follows:
               - type (str): The type of the STAC object, which is always "Object".
               - links (list): A list of links associated with the STAC object (currently empty).
-              - collections (list[dict]): A list of filtered collections, where each collection 
+              - collections (list[dict]): A list of filtered collections, where each collection
                                            is a dictionary representation of a STAC collection.
 
     Logging:
-        Debug-level logging is used to log the IDs of collections the user is allowed to 
-        access and the query parameters generated for each allowed collection. Errors during 
+        Debug-level logging is used to log the IDs of collections the user is allowed to
+        access and the query parameters generated for each allowed collection. Errors during
         collection creation are also logged.
 
     Raises:
-        HTTPException: If a collection configuration is incomplete or invalid, an 
-                       HTTPException is raised with status code 422. Other exceptions 
+        HTTPException: If a collection configuration is incomplete or invalid, an
+                       HTTPException is raised with status code 422. Other exceptions
                        are propagated as-is.
     """
     # No authentication: select all collections
@@ -180,28 +182,12 @@ def filter_allowed_collections(all_collections, role, collection_search_func, re
                 raise
     return stac_object
 
-def get_codes(data, query):
-    """Function used to format sattelite/constellation mappings."""
-    results = []
-    for satellite in data["satellites"]:
-        # Each satellite is a dictionary with one key (satellite name)
-        for sat_name, sat_info in satellite.items():
-            # Case 1: Direct match with satellite name (e.g., 'sentinel-1a')
-            if query == sat_name:
-                return sat_info["code"]
 
-            # Case 2: Match constellation name (e.g., 'sentinel-1')
-            if "constellation" in sat_info and sat_info["constellation"] == query:
-                results.append(sat_info["code"])
-
-    # If the query is a constellation, return the list of matching codes
-    return results if results else None
-
-
-def map_stac_platform(platform: str) -> Union[str, List[str]]:
+def map_stac_platform() -> Union[str, List[str]]:
     """Function used to read and interpret from constellation.yaml"""
-    with open(Path(__file__).parent.parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
-        return get_codes(yaml.safe_load(cf), platform)
+    with open(Path(__file__).parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
 
 def create_stac_collection(
     products: List[Any],
@@ -227,6 +213,7 @@ def create_stac_collection(
         item = stac_pydantic.Item(**feature_tmp)
         items.append(item)
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
+
 
 def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
     """

@@ -34,6 +34,7 @@ from fastapi.responses import RedirectResponse
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_retriever import init_adgs_provider
 from rs_server_adgs.adgs_utils import (
+    auxip_map_mission,
     get_adgs_queryables,
     read_conf,
     select_config,
@@ -61,12 +62,22 @@ router = APIRouter(tags=adgs_tags)
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
-def create_auxip_product_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
+def create_auxip_product_search_params(
+    selected_config: Union[dict[Any, Any], None],
+) -> dict[Any, Any]:
     """Used to create and map query values with default values."""
-    required_keys: List[str] = ["productType", "PublicationDate", "platform", "top", "orderby"]
+    required_keys: List[str] = [
+        "productType",
+        "PublicationDate",
+        "top",
+        "orderby",
+    ]
     default_values: List[Union[str | None]] = [None, None, None, None, "-datetime"]
     if not selected_config:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cannot find a valid configuration",
+        )
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
 
@@ -190,6 +201,27 @@ def get_all_queryables(request: Request):
     ).model_dump(by_alias=True)
 
 
+@router.get("/auxip/search")
+@auth_validator(station="adgs", access_type="landing_page")
+@handle_exceptions
+def search_auxip_endpoint(request: Request) -> dict:
+    logger.info(f"Starting {request.url.path}")
+    request_params = dict(request.query_params)
+    request_params["platformShortName"], request_params["platformSerialIdentifier"] = auxip_map_mission(
+        request_params.pop("platform", None),
+        request_params.pop("constellation", None),
+    )
+    return process_product_search(
+        request,
+        request_params.get("productType", None),
+        request_params.get("PublicationDate", None),
+        "items",
+        request_params.get("top", None),
+        attr_platform_short_name=request_params.get("platformShortName", None),
+        attr_serial_identif=request_params.get("platformSerialIdentifier", None),
+    )
+
+
 @router.get("/auxip/collections/{collection_id}")
 @handle_exceptions
 def get_adgs_collection(
@@ -208,7 +240,6 @@ def get_adgs_collection(
         request,
         query_params["productType"],
         query_params["PublicationDate"],
-        query_params["platform"],
         "collection",
         query_params["top"],
     ):
@@ -234,7 +265,6 @@ def get_adgs_collection_items(
         request,
         query_params["productType"],
         query_params["PublicationDate"],
-        query_params["platform"],
         "items",
         query_params["top"],
     )
@@ -266,7 +296,6 @@ def get_adgs_collection_specific_item(
             request,
             query_params["productType"],
             query_params["PublicationDate"],
-            query_params["platform"],
             "items",
             query_params["top"],
         ),
@@ -281,9 +310,9 @@ def process_product_search(
     request,
     product_type,
     publication_date,
-    platform,
     selector,
     limit,
+    **kwargs,
 ):  # pylint: disable=too-many-arguments, too-many-locals
     """
     This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
@@ -307,15 +336,15 @@ def process_product_search(
     """
     set_eodag_auth_token("adgs", "auxip")
     limit = limit if limit else 1000
-    if not (product_type or publication_date):
+    if not (product_type or publication_date or kwargs):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
     (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
         products = init_adgs_provider("adgs").search(
             TimeRange(start_date, stop_date),
-            platform=platform,
             attr_ptype=product_type,
             items_per_page=limit,
+            **kwargs,
         )
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"

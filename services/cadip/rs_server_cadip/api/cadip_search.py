@@ -37,6 +37,7 @@ from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
+    cadip_map_mission,
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
     generate_queryables,
@@ -59,7 +60,6 @@ from rs_server_common.stac_api_common import (
     create_stac_collection,
     filter_allowed_collections,
     handle_exceptions,
-    map_stac_platform,
     sort_feature_collection,
 )
 from rs_server_common.utils.logging import Logging
@@ -438,8 +438,10 @@ def search_cadip_endpoint(request: Request) -> dict:
     """
     logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
-    if platform := request_params.get("platform", None):
-        request_params["platform"] = map_stac_platform(platform)
+    request_params["platform"] = cadip_map_mission(
+        request_params.pop("platform", None),
+        request_params.pop("constellation", None),
+    )
     collection_name: Union[str, None] = request_params.pop("collection", None)
     logger.debug(f"User selected collection: {collection_name}")
     selected_config: Union[dict, None]

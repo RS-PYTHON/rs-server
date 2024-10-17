@@ -54,5 +54,6 @@ satellites:
         serialid: B
         active: true
     - sentinel-5p:
+        constellation: sentinel-5P
         code: S5P
         active: true
