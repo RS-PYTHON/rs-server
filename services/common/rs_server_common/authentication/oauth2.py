@@ -140,6 +140,11 @@ async def login(request: Request):
     # Check that the user is enabled in keycloak
     user_id = userinfo.get("sub")
     user_login = userinfo.get("preferred_username")
+    if KCUTIL is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="login method called in local mode",
+        )
     if not KCUTIL.get_user_info(user_id).is_enabled:  # pylint: disable=possibly-used-before-assignment
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -316,6 +321,12 @@ async def get_user_info(request: Request) -> AuthInfo:
     # Read the user ID and name from the cookie = from the OAuth2 authentication process
     user_id = user.get("sub")
     user_login = user.get("preferred_username")
+
+    if KCUTIL is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="get_user_info method called in local mode",
+        )
 
     # Now call the KeyCloak server again to get the user information (IAM roles, ...) from the user ID
     user_info = KCUTIL.get_user_info(user_id)  # pylint: disable=possibly-used-before-assignment
