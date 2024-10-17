@@ -306,7 +306,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.log_job_execution(ProcessorStatus.CREATED)
         # Execution section
         if not await self.check_catalog():
-            self.logger.error("Could not start the staging process. Connecting to rs-server-catalog failed !")
+            self.logger.error(
+                "Could not start the staging process. " f"Checking the collection {self.catalog_collection} failed !",
+            )
             return
         # Start execution
         loop = asyncio.get_event_loop()
@@ -401,6 +403,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             requests.exceptions.RequestException,
             requests.exceptions.ConnectionError,
             json.JSONDecodeError,
+            RuntimeError,
         ) as exc:
             self.logger.error("Error while searching catalog: %s", exc)
             self.log_job_execution(ProcessorStatus.FAILED, 0, detail="Failed to search catalog")
@@ -434,9 +437,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         """
         # Based on catalog response, pop out features already in catalog and prepare rest for download
-        if catalog_response["context"]["returned"] == len(self.item_collection.features):
-            self.stream_list = []
-        else:
+        try:
             if not catalog_response["features"]:
                 # No search result found, process everything from self.item_collection
                 self.stream_list = self.item_collection.features
@@ -449,6 +450,14 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                     item for item in self.item_collection.features if item.id not in already_downloaded_ids
                 ]
                 self.stream_list = not_downloaded_features
+        except KeyError as ke:
+            self.logger.exception(
+                "The 'features' field is missing in the response from the catalog service. "
+                f"Unable to check the collection {self.catalog_collection}. {ke}",
+            )
+            raise RuntimeError(
+                "The 'features' field is missing in the response from the catalog service. ",
+            ) from ke
 
     def prepare_streaming_tasks(self, feature):
         """Prepare tasks for the given feature to the Dask cluster.
