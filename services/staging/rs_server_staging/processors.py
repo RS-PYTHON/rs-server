@@ -14,6 +14,7 @@
 """Base RSPY Stagging processor."""
 
 import asyncio  # for handling asynchronous tasks
+import getpass
 import json
 import os
 import time
@@ -242,6 +243,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         #################
         # Locals
         self.headers: Headers = credentials.headers
+        # self.user = credentials.user if credentials.user else getpass.getuser()
         self.stream_list: list = []
         #################
         # Env section
@@ -375,6 +377,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         # Final filter object
         # filter_object = {"filter-lang": "cql2-text", "filter": filter_string}
+        filter_object = {"limit": "200"}
 
         search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search"
 
@@ -382,7 +385,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             response = requests.get(
                 search_url,
                 headers={"cookie": self.headers.get("cookie", None)},
-                # params=json.dumps(filter_object),
+                params=json.dumps(filter_object),
                 timeout=3,
             )
             response.raise_for_status()  # Raise an error for HTTP error responses
@@ -458,6 +461,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         for asset_name, asset_content in feature.assets.items():
             try:
+                # TODO: add the user_collection as main directory
                 s3_obj_path = f"{feature.id.rstrip('/')}/{asset_content.title}"
                 self.assets_info.append((asset_content.href, s3_obj_path))
                 # update the s3 path, this will be checked in the rs-server-catalog in the
@@ -653,7 +657,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 detail=f"Failed to retrieve worker info: {e}",
             )
             return
-        if workers == 0:
+        if len(workers) == 0:
             self.logger.info("No workers are currently running in the Dask cluster. Scaling up to 1.")
             self.cluster.scale(1)
         # Check the cluster dashboard
