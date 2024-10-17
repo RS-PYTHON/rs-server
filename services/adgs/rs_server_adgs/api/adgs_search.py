@@ -35,6 +35,7 @@ from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_retriever import init_adgs_provider
 from rs_server_adgs.adgs_utils import (
     auxip_map_mission,
+    generate_adgs_queryables,
     get_adgs_queryables,
     read_conf,
     select_config,
@@ -304,6 +305,23 @@ def get_adgs_collection_specific_item(
         (item.to_dict() for item in item_collection.features if item.id == item_id),
         HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP {item_id} not found."),  # type: ignore
     )
+
+
+@router.get("/auxip/collections/{collection_id}/queryables")
+def get_collection_queryables(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="AUXIP collection ID.", max_length=100, description="E.G. ins_s1")],
+):
+    logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
+    return Queryables(
+        schema="https://json-schema.org/draft/2019-09/schema",
+        id="https://stac-api.example.com/queryables",
+        type="object",
+        title="Queryables for CADIP Search API",
+        description="Queryable names for the CADIP Search API Item Search filter.",
+        properties=generate_adgs_queryables(collection_id),
+    ).model_dump(by_alias=True)
 
 
 def process_product_search(

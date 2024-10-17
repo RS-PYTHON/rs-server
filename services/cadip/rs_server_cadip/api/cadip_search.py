@@ -40,7 +40,7 @@ from rs_server_cadip.cadip_utils import (
     cadip_map_mission,
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
-    generate_queryables,
+    generate_cadip_queryables,
     get_cadip_queryables,
     prepare_cadip_search,
     read_conf,
@@ -298,7 +298,7 @@ def get_collection_queryables(
         type="object",
         title="Queryables for CADIP Search API",
         description="Queryable names for the CADIP Search API Item Search filter.",
-        properties=generate_queryables(collection_id),
+        properties=generate_cadip_queryables(collection_id),
     ).model_dump(by_alias=True)
 
 

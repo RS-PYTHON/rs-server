@@ -29,7 +29,11 @@ import eodag
 import stac_pydantic
 import starlette.requests
 import yaml
-from rs_server_common.stac_api_common import RSPYQueryableField, map_stac_platform
+from rs_server_common.stac_api_common import (
+    RSPYQueryableField,
+    generate_queryables,
+    map_stac_platform,
+)
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
@@ -37,22 +41,10 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-def generate_queryables(collection_id: str) -> dict[str, RSPYQueryableField]:
+def generate_cadip_queryables(collection_id: str) -> dict[str, RSPYQueryableField]:
     """Function used to get available queryables based on a given collection."""
     config = select_config(collection_id)
-    if config:
-        # Top and limit are pagination-related quaryables, remove if there.
-        if isinstance(config.get("query"), dict):
-            config["query"].pop("limit", None)
-            config["query"].pop("top", None)
-        # Get all defined quaryables.
-        all_queryables = get_cadip_queryables()
-        # Remove the ones already defined, and keep only the ones that can be added.
-        for key in set(config["query"].keys()).intersection(set(all_queryables.keys())):
-            all_queryables.pop(key)
-        return all_queryables
-    # If config is not found, return all available queryables.
-    return get_cadip_queryables()
+    return generate_queryables(config, get_cadip_queryables)
 
 
 def get_cadip_queryables() -> dict[str, RSPYQueryableField]:
