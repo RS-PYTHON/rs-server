@@ -23,13 +23,17 @@ import os
 import os.path as osp
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import eodag
 import stac_pydantic
 import starlette.requests
 import yaml
-from pydantic import BaseModel
+from rs_server_common.stac_api_common import (
+    RSPYQueryableField,
+    generate_queryables,
+    map_stac_platform,
+)
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
@@ -37,50 +41,28 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-class CADIPQueryableField(BaseModel):
-    """BaseModel used to describe queryable item."""
-
-    title: str
-    type: str
-    description: Optional[str] = None
-    format: Optional[str] = None
-    items: Optional[dict] = None
-
-
-def generate_queryables(collection_id: str) -> dict[str, CADIPQueryableField]:
+def generate_cadip_queryables(collection_id: str) -> dict[str, RSPYQueryableField]:
     """Function used to get available queryables based on a given collection."""
     config = select_config(collection_id)
-    if config:
-        # Top and limit are pagination-related quaryables, remove if there.
-        if isinstance(config.get("query"), dict):
-            config["query"].pop("limit", None)
-            config["query"].pop("top", None)
-        # Get all defined quaryables.
-        all_queryables = get_cadip_queryables()
-        # Remove the ones already defined, and keep only the ones that can be added.
-        for key in set(config["query"].keys()).intersection(set(all_queryables.keys())):
-            all_queryables.pop(key)
-        return all_queryables
-    # If config is not found, return all available queryables.
-    return get_cadip_queryables()
+    return generate_queryables(config, get_cadip_queryables)
 
 
-def get_cadip_queryables() -> dict[str, CADIPQueryableField]:
+def get_cadip_queryables() -> dict[str, RSPYQueryableField]:
     """Function to list all available queryables for CADIP session search."""
     return {
-        "PublicationDate": CADIPQueryableField(
+        "PublicationDate": RSPYQueryableField(
             title="PublicationDate",
             type="Interval",
             description="Session Publication Date",
             format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
         ),
-        "Satellite": CADIPQueryableField(
+        "Satellite": RSPYQueryableField(
             title="Satellite",
             type="[string, array]",
             description="Session satellite acquisition target",
             format="S1A or S1A, S2B",
         ),
-        "SessionId": CADIPQueryableField(
+        "SessionId": RSPYQueryableField(
             title="SessionId",
             type="[string, array]",
             description="Session ID descriptor",
@@ -192,3 +174,30 @@ def validate_products(products: eodag.EOProduct):
         except eodag.utils.exceptions.MisconfiguredError:
             continue
     return valid_eo_products
+
+
+def cadip_map_mission(platform: str, constellation: str):
+    """
+    Custom function for CADIP, to read constellation mapper and return propper
+    values for platform and serial.
+    Eodag maps this values to Satellite
+
+    Input: platform = sentinel-1a       Output: A
+    Input: constellation = sentinel-1   Output: A, B, C
+    """
+    data = map_stac_platform()
+    if platform:
+        config = [satellite[platform] for satellite in data["satellites"] if platform in satellite][0]
+        sat = config.get("code", None)
+    elif constellation:
+        sat = ", ".join(
+            [
+                satellite_info["code"]
+                for satellite in data["satellites"]
+                for satellite_info in satellite.values()
+                if satellite_info.get("constellation") == constellation
+            ],
+        )
+    else:
+        sat = None
+    return sat
