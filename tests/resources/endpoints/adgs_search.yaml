@@ -41,3 +41,32 @@ collections:
         roles:
           - host
         url: 'https://home.rs-python.eu/'
+
+  - id: test_collection
+    station: authTest
+    query:
+      platformShortName: Sentinel-1
+      top: 20
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Test collection'
+    description: 'Sentinel-1 test CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
