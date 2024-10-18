@@ -26,6 +26,7 @@ from typing import Union
 import requests
 import tinydb  # temporary, migrate to psql
 from dask.distributed import CancelledError, Client, LocalCluster, as_completed
+from dask_gateway import Gateway
 from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
 from requests.auth import AuthBase
@@ -237,9 +238,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             lock (threading.Lock): A threading lock to synchronize access to shared resources.
             tasks_finished (int): Tracks the number of tasks completed.
             logger (Logger): Logger instance for capturing log output.
-            cluster (LocalCluster): Dask LocalCluster instance managing computation resources.
-            client: (Optional) Client for interacting with the Dask cluster.
-
+            cluster (LocalCluster): Dask LocalCluster instance managing computation resources, used in local mode
+                If this is None, it means we are in cluster mode, and we should dynamically connect
+                to the Dask cluster for each job.
         """
         #################
         # Locals
@@ -273,7 +274,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
         self.cluster = cluster
-        self.client: Union[Client, None] = None
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
@@ -303,13 +303,27 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             None: This method doesn't raise any exceptions directly but logs errors if the
                 catalog check fails.
         """
+        if not self.item_collection:
+            self.log_job_execution(
+                ProcessorStatus.FINISHED,
+                0,
+                detail="No items were provided in the input for staging",
+            )
+            return {"finished": self.job_id}
         self.log_job_execution(ProcessorStatus.CREATED)
         # Execution section
         if not await self.check_catalog():
             self.logger.error(
-                "Could not start the staging process. " f"Checking the collection {self.catalog_collection} failed !",
+                f"Could not start the staging process. Checking the collection '{self.catalog_collection}' failed !",
             )
-            return
+            self.log_job_execution(
+                ProcessorStatus.FAILED,
+                0,
+                detail="Could not start the staging process. "
+                "fChecking the collection '{self.catalog_collection}' failed !",
+            )
+            return {"failed": self.job_id}
+        self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
         # Start execution
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -372,30 +386,51 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         """
         Method used to check RSPY catalog if a feature from input_collection is already published.
         """
+        # TODO: The following url should be used for searching in the catalog:
+        # /catalog/collections/{self.catalog_collection}/search"
+        # and the filter_object should be applied for params.
+        # See the comment bellow. If this is fixed in the rs-server-catalog side,
+        # the following code should be uncommented. The /catalog/collections/{self.catalog_collection}/items
+        # endpoint should be removed as well/
+        # The behavior of the catalog endpoint is not the expected one. Instead, it is returning all the
+        # items instead of those requested. The source code from
+        # rs-server-catalog should be checked, function 'search_endpoint_in_collection_get'
+        # from services/catalog/rs-server-catalog/search.py
+        # For now, just get all the items from the collection and filter them
         # Get each feature id and create /catalog/search argument
-        # Note, only for GET, to be updated and create request body for POST
         # ids = [feature.id for feature in self.item_collection.features]
+
         # Creating the filter string
         # filter_string = f"id IN ({', '.join([f'{id_}' for id_ in ids])})"
 
         # Final filter object
-        # filter_object = {"filter-lang": "cql2-text", "filter": filter_string}
-        filter_object = {"limit": "200"}
+        # filter_object = {"filter-lang": "cql2-text", "filter": filter_string, "limit": len(ids)}
 
-        search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search"
+        # search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search"
+        # end of TODO
+
+        search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items"
 
         try:
             response = requests.get(
                 search_url,
                 headers={"cookie": self.headers.get("cookie", None)},
-                params=json.dumps(filter_object),
-                timeout=3,
+                # params=json.dumps(filter_object),
+                timeout=5,
             )
             response.raise_for_status()  # Raise an error for HTTP error responses
-            # self.logger.debug(response.json()["context"]["returned"])
-            self.logger.debug(response.json())
-            self.create_streaming_list(response.json())
-            self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
+            # check the response type
+            resp_json = response.json()
+            if not resp_json.get("type") or resp_json.get("type") != "FeatureCollection":
+                self.logger.error("Failed to search catalog, no expected response received")
+                self.log_job_execution(
+                    ProcessorStatus.FAILED,
+                    0,
+                    detail="Failed to search catalog, no expected response received",
+                )
+                return False
+            self.logger.debug(resp_json)
+            self.create_streaming_list(resp_json)
             return True
         except (
             requests.exceptions.HTTPError,
@@ -405,8 +440,8 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             json.JSONDecodeError,
             RuntimeError,
         ) as exc:
-            self.logger.error("Error while searching catalog: %s", exc)
-            self.log_job_execution(ProcessorStatus.FAILED, 0, detail="Failed to search catalog")
+            self.logger.error(f"Error while searching catalog: {exc}")
+            self.log_job_execution(ProcessorStatus.FAILED, 0, detail="Failed to search catalog: {exc}")
             return False
 
     def create_streaming_list(self, catalog_response: dict):
@@ -561,7 +596,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         except KeyError as exc:
             self.logger.error("Cannot connect to s3 storage, %s", exc)
 
-    def manage_callbacks(self):
+    def manage_callbacks(self, client):
         """
         Method used to manage dask tasks.
 
@@ -573,7 +608,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             - When all streaming tasks are finished, processor removes all files streamed in s3 bucket.
         """
         self.logger.info("Tasks monitoring started")
-        if not self.client:
+        if not client:
             self.logger.error("The dask cluster client object is not created. Exiting")
             return
         for task in as_completed(self.tasks):
@@ -592,8 +627,8 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 # Wait for all the current running tasks to complete.
                 timeout = int(os.environ.get("RSPY_STAGING_TIMEOUT", 600))
                 while timeout > 0:
-                    self.logger.debug("Client stack_call = %s", self.client.call_stack())
-                    if not self.client.call_stack():
+                    self.logger.debug("Client stack_call = %s", client.call_stack())
+                    if not client.call_stack():
                         # Break loop when dask client call stack is empty (No tasks are running)
                         break
                     time.sleep(1)
@@ -623,6 +658,145 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
         self.logger.info("Tasks monitoring finished")
 
+    def dask_cluster_connect(self):
+        """Connects a dask cluster scheduler
+        Establishes a connection to a Dask cluster, either in a local environment or via a Dask Gateway in
+        a Kubernetes cluster. This method checks if the cluster is already created (for local mode) or connects
+        to a Dask Gateway to find or create a cluster scheduler (for Kubernetes mode, see RSPY_LOCAL_MODE env var).
+
+        1. **Local Mode**:
+        - If `self.cluster` already exists, it assumes the Dask cluster was created when the application started,
+            and proceeds without creating a new cluster.
+
+        2. **Kubernetes Mode**:
+        - If `self.cluster` is not already defined, the method attempts to connect to a Dask Gateway
+            (using environment variables `DASK_GATEWAY__ADDRESS` and `DASK_GATEWAY__AUTH__TYPE`) to
+            retrieve a list of existing clusters.
+        - If no clusters are available, it attempts to create a new cluster scheduler.
+
+        Args:
+            None
+
+        Raises:
+            RuntimeError: Raised if required environment variables are missing, cluster creation fails,
+                        or authentication errors occur.
+            KeyError: Raised if the necessary Dask Gateway environment variables (`DASK_GATEWAY__ADDRESS`,
+                    `DASK_GATEWAY__AUTH__TYPE`) are not set.
+            IndexError: Raised if no clusters are found in the Dask Gateway and new cluster creation is attempted.
+            dask_gateway.exceptions.GatewayServerError: Raised when there is a server-side error in Dask Gateway.
+            dask_gateway.exceptions.AuthenticationError: Raised if authentication to the Dask Gateway fails.
+            dask_gateway.exceptions.ClusterLimitExceeded: Raised if the limit on the number of clusters is exceeded.
+
+        Behavior:
+        1. **Cluster Creation and Connection**:
+            - In Kubernetes mode, the method tries to connect to an existing cluster or creates
+            a new one if none exists.
+            - Error handling includes catching issues like missing environment variables, authentication failures,
+            cluster creation timeouts, or exceeding cluster limits.
+
+        2. **Logging**:
+            - Logs the list of available clusters if connected via the Dask Gateway.
+            - Logs the success of the connection or any errors encountered during the process.
+            - Logs the Dask dashboard URL and the number of active workers.
+
+        3. **Client Initialization**:
+            - Once connected to the Dask cluster, the method creates a Dask `Client` object for managing tasks
+            and logs the number of running workers.
+            - If no workers are found, it scales the cluster to 1 worker.
+
+        4. **Error Handling**:
+            - Handles various exceptions during the connection and creation process, including:
+            - Missing environment variables.
+            - Failures during cluster creation.
+            - Issues related to cluster scaling, worker retrieval, or client creation.
+            - If an error occurs, the method logs the error and attempts to gracefully handle failure.
+
+        Returns:
+            None
+        """
+        # if the self.cluster is created already, means we are in local mode,
+        # and the cluster has been created at the start of the app
+        if not self.cluster:
+            # in kubernetes cluster mode, we have to connect to the gateway and get the list of the clusters
+            try:
+                gateway = Gateway(
+                    address=os.environ["DASK_GATEWAY__ADDRESS"],
+                    auth=os.environ["DASK_GATEWAY__AUTH__TYPE"],
+                )
+                clusters = gateway.list_clusters()
+                self.logger.debug(f"The list of clusters: {clusters}")
+                self.cluster = gateway.connect(clusters[0].name)
+                self.logger.info("Connection with the dask cluster succeeded.")
+            except KeyError as e:
+                self.logger.error(f"Could not find the needed environment variable to use the dask gateway: {e}")
+                raise RuntimeError from e
+            except IndexError as e:
+                self.logger.exception(f"There is no dask cluster to connect {e}")
+                raise RuntimeError(f"There is no dask cluster to connect {e}") from e
+
+        self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
+        # create the client as well
+        client = Client(self.cluster)
+
+        # TODO: This is a temporary fix for the dask cluster settings which does not create a scheduler by default
+        # This code should be removed as soon as this is fixed in the kubernetes cluster
+        try:
+            workers = client.scheduler_info()["workers"]
+            self.logger.info(f"Number of running workers: {len(workers)}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception(f"Failed to retrieve worker info: {e}")
+            raise RuntimeError(f"Failed to retrieve worker info: {e}") from e
+        if len(workers) == 0:
+            self.logger.info("No workers are currently running in the Dask cluster. Scaling up to 1.")
+            self.cluster.scale(1)
+        # end of TODO
+
+        # Check the cluster dashboard
+        self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
+        return client
+
+    def submit_tasks_to_dask_cluster(self, token: str, client: Client):
+        """Submits multiple tasks to a Dask cluster for asynchronous processing.
+
+        Each task involves downloading a file stream (using `streaming_download`) and uploading it to an S3 bucket
+        or similar storage, authenticated using the provided token.
+
+        The function iterates through a list of assets (created previously after checking the catalog), represented by
+        `self.assets_info`, and submitsa Dask task for each asset to the cluster. Tasks are appended to `self.tasks` for
+        later monitoring.
+
+        Args:
+            token (str): Authentication token used for accessing and processing the asset download
+            from the external station (wrapped in `TokenAuth`).
+            client (Client): The dask cluster client created in the dask_cluster_connect function
+
+        Raises:
+            None directly (all exceptions are caught and logged).
+
+        Returns:
+            None
+
+        Exceptions:
+            - **Generic Exception**: Catches all exceptions during task submission
+        """
+        # empty the list
+        self.tasks = []
+        # Submit tasks
+        try:
+            for asset_info in self.assets_info:
+                self.tasks.append(
+                    client.submit(
+                        streaming_download,
+                        asset_info[0],
+                        TokenAuth(token),
+                        self.catalog_bucket,
+                        asset_info[1],
+                    ),
+                )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
+            raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
+
     async def process_rspy_features(self):
         """
         Method used to trigger dask distributed streaming process.
@@ -631,17 +805,19 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         Manage eventual runtime exceptions
         """
         self.logger.debug("Starting main loop")
-        # Process each feature, by starting streaming download of its assets to final bucket
         self.log_job_execution(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
+
+        # Process each feature by initiating the streaming download of its assets to the final bucket.
         for feature in self.stream_list:
             if not self.prepare_streaming_tasks(feature):
-                self.log_job_execution(ProcessorStatus.FAILED, 0, detail="No tasks created")
+                self.log_job_execution(ProcessorStatus.FAILED, 0, detail="Failed to create tasks for the dask cluster")
                 return
         if not self.assets_info:
-            self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished with no tasks processed.")
-            self.logger.info("There isn't at least one asset to stage. Exiting...")
+            self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Completed without processing any tasks")
+            self.logger.info("There are no assets to stage. Exiting....")
             return
-        # retrieve token
+
+        # retrieve the token
         try:
             token = get_station_token(
                 load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
@@ -655,55 +831,26 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             )
             return
 
-        self.client = Client(self.cluster)
+        # connect to the dask cluster
         try:
-            workers = self.client.scheduler_info()["workers"]
-            self.logger.info(f"Number of running workers: {len(workers)}")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.exception(f"Failed to retrieve worker info: {e}")
-            self.log_job_execution(
-                ProcessorStatus.FAILED,
-                0,
-                detail=f"Failed to retrieve worker info: {e}",
-            )
+            dask_client = self.dask_cluster_connect()
+            self.submit_tasks_to_dask_cluster(token, dask_client)
+        except RuntimeError as re:
+            self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"{re}")
+            self.logger.error("Couldn't start the staging process")
             return
-        if len(workers) == 0:
-            self.logger.info("No workers are currently running in the Dask cluster. Scaling up to 1.")
-            self.cluster.scale(1)
-        # Check the cluster dashboard
-        self.logger.debug(f"Cluster dashboard: {self.cluster.dashboard_link}")
-        self.logger.debug(f"Dask Client: {self.client}")
-        self.tasks = []
-        # Submit tasks
-        try:
-            for asset_info in self.assets_info:
-                self.tasks.append(
-                    self.client.submit(
-                        streaming_download,
-                        asset_info[0],
-                        TokenAuth(token),
-                        self.catalog_bucket,
-                        asset_info[1],
-                    ),
-                )
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
-            self.log_job_execution(
-                ProcessorStatus.FAILED,
-                0,
-                detail=f"Submitting task to dask cluster failed. Reason: {e}",
-            )
-            return
+
         # starting another thread for managing the dask callbacks
         self.logger.debug("Starting tasks monitoring thread")
         try:
-            await asyncio.to_thread(self.manage_callbacks)
+            await asyncio.to_thread(self.manage_callbacks, dask_client)
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.debug("Exception caught: %s", e)
-            self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"Exception caught: {e}")
+            self.logger.debug(f"Error from tasks monitoring thread: {e}")
+            self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"Error from tasks monitoring thread: {e}")
+
+        # cleanup by disconnecting the dask client
         self.assets_info = []
-        self.client.close()
-        self.client = None
+        dask_client.close()
 
     def publish_rspy_feature(self, feature: Feature):
         """
@@ -732,12 +879,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             - Logs an error message with details if the request fails.
             - Logs the job status as `ProcessorStatus.FAILED` if the feature publishing fails.
             - Calls `self.delete_files_from_bucket()` to clean up related files in case of failure.
-
-        Notes:
-            - The `catalog_url` and `catalog_collection` attributes should be defined in the instance.
-            - The method assumes that API keys or other authorization mechanisms are handled at the
-            request level, though user information is not directly required.
-            - Timeout for the request is set to 3 seconds.
         """
         # Publish feature to catalog
         # how to get user? // Do we need user? should /catalog/collection/collectionId/items works with apik?
@@ -747,7 +888,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 publish_url,
                 headers={"cookie": self.headers.get("cookie", None)},
                 data=feature.json(),
-                timeout=3,
+                timeout=10,
             )
             response.raise_for_status()  # Raise an error for HTTP error responses
             return True
