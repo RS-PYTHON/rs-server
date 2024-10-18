@@ -211,7 +211,7 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
         "description": "Endpoint.",
         "operationId": "Get_search_collection",
         "responses": {
-            "200": {"description": "Successful Response", "content": {"application/json": {"schema": {}}}},
+            "200": {"description": "Successful Response", "content": {"application/geo+json": {"schema": {}}}},
         },
         "parameters": [
             {
@@ -239,7 +239,7 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
         "description": "Endpoint.",
         "operationId": "Post_search_collection",
         "responses": {
-            "200": {"description": "Successful Response", "content": {"application/geojson": {"schema": {}}}},
+            "200": {"description": "Successful Response", "content": {"application/geo+json": {"schema": {}}}},
         },
     }
 

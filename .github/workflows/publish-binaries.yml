@@ -104,6 +104,13 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: .
+      - id: publish-pypi
+        uses: ./.github/actions/publish-pypi
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        with:
+          package_directory: .
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-common-whl:
     if: github.actor != 'dependabot[bot]'
@@ -123,6 +130,13 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/common
+      - id: publish-pypi
+        uses: ./.github/actions/publish-pypi
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        with:
+          package_directory: services/common
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-adgs-whl:
     if: github.actor != 'dependabot[bot]'
@@ -152,6 +166,13 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/adgs
+      - id: publish-pypi
+        uses: ./.github/actions/publish-pypi
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        with:
+          package_directory: services/adgs
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-cadip-whl:
     if: github.actor != 'dependabot[bot]'
@@ -181,6 +202,13 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/cadip
+      - id: publish-pypi
+        uses: ./.github/actions/publish-pypi
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        with:
+          package_directory: services/cadip
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-staging-whl:
     if: github.actor != 'dependabot[bot]'
@@ -200,6 +228,13 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/staging
+      - id: publish-pypi
+        uses: ./.github/actions/publish-pypi
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        with:
+          package_directory: services/staging
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-catalog-whl:
     if: github.actor != 'dependabot[bot]'
@@ -229,6 +264,13 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/catalog
+      - id: publish-pypi
+        uses: ./.github/actions/publish-pypi
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        with:
+          package_directory: services/catalog
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-frontend-whl:
     if: github.actor != 'dependabot[bot]'
@@ -266,6 +308,13 @@ jobs:
         uses: ./.github/actions/publish-wheel
         with:
           package_directory: services/frontend
+      - id: publish-pypi
+        uses: ./.github/actions/publish-pypi
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        with:
+          package_directory: services/frontend
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   #########################
   # Publish Docker images #
@@ -301,6 +350,8 @@ jobs:
           build_context_path: ./whl
           image_suffix: -adgs
           version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
@@ -334,6 +385,8 @@ jobs:
           build_context_path: ./whl
           image_suffix: -cadip
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
@@ -366,6 +419,8 @@ jobs:
           build_context_path: ./whl
           image_suffix: -catalog
           version_name: ${{ needs.services-catalog-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
@@ -399,6 +454,8 @@ jobs:
           build_context_path: ./whl
           image_suffix: -frontend
           version_name: ${{ needs.services-frontend-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
@@ -427,6 +484,8 @@ jobs:
           build_context_path: ./whl
           image_suffix: -staging
           version_name: ${{ needs.services-staging-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
 
