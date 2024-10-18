@@ -498,11 +498,11 @@ def search_cadip_endpoint(request: Request) -> dict:
     """
     logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
-    collection_name: Union[str, None] = request_params.pop("collection", None)
-    logger.debug(f"User selected collection: {collection_name}")
+    collection_names: Union[str, None] = request_params.pop("collections", None)
+    logger.debug(f"User selected collections: {collection_names}")
     selected_config: Union[dict, None]
     query_params: dict
-    selected_config, query_params = prepare_cadip_search(collection_name, request_params)
+    selected_config, query_params = prepare_cadip_search(collection_names, request_params)
 
     query_params = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
