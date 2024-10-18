@@ -130,7 +130,8 @@ def auxip_map_mission(platform: str, constellation: str):
                 raise KeyError
     except (KeyError, IndexError, StopIteration) as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot map platform/constellation",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot map platform/constellation",
         ) from exc
     return platform_short_name, platform_serial_identifier
 

@@ -209,6 +209,7 @@ def cadip_map_mission(platform: str, constellation: str):
             satellite = const_sat
     except (KeyError, IndexError, StopIteration) as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot map platform/constellation",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Cannot map platform/constellation",
         ) from exc
     return satellite

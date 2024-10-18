@@ -32,6 +32,8 @@ from .conftest import (  # pylint: disable=no-name-in-module
     expected_sessions_builder_fixture,
 )
 
+# pylint: disable=too-many-lines, too-few-public-methods
+
 
 # TC-001 : User1 send a CURL request to a CADIP-Server on URL /cadip/{station}/cadu/list .
 # He receives the list of CADU in the interval.
@@ -755,37 +757,6 @@ def test_invalid_cadip_collection(client, mock_token_validation):
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
-    "endpoint, collection_link",
-    [("/cadip", "/cadip/collections"), ("/auxip", "/auxip/collections")],
-)
-def test_landing_pages(client, endpoint, collection_link):
-    """
-    Unit test for checking the structure and links of the landing page.
-
-    This test verifies that the landing page at the specified endpoint
-    returns a response of type 'Catalog' and includes the necessary links.
-    It checks that:
-    - The 'type' field in the response is 'Catalog'.
-    - The response contains links.
-    - At least one link with the 'rel' attribute set to 'data' points to the
-      '/cadip/collections' endpoint.
-
-    Args:
-        client: The test client to send requests.
-        endpoint: The endpoint to test, e.g., "/cadip".
-        role: The role to use for authentication (not used directly in the test).
-
-    """
-    # Check for response type and links to /collections.
-    response = client.get(endpoint).json()
-    assert response["type"] == "Catalog"
-    assert response["links"]
-    # Check for data relationship and redirect to /collections.
-    assert any(collection_link in link["href"] for link in response["links"] if link["rel"] == "data")
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
     "endpoint, roles",
     [
         ("/cadip/collections", ["rs_cadip_landing_page", "rs_cadip_authTest_read"]),
@@ -863,48 +834,9 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
     assert {"type": "Object", "links": [], "collections": []} == empty_response
 
 
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "endpoint",
-    [
-        "/cadip/search?collection=cadip_session_by_id_list",
-        "/cadip/search/items?collection=cadip_session_by_id_list",
-        "/cadip/collections/cadip_session_by_id_list",
-        "/cadip/collections/cadip_session_by_id_list/items",
-        "/cadip/collections/cadip_session_by_id_list/items/sessionId",
-    ],
-)
-def test_validation_errors(client, mocker, endpoint):
-    """Test used to mock a validation error on pydantic model, should return HTTP 422."""
-    mocker.patch(
-        "rs_server_cadip.api.cadip_search.process_session_search",
-        side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
-    )
-    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize(
-    "endpoint",
-    ["/cadip/search?collection=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
-)
-def test_collection_creation_failure(client, mocker, endpoint):
-    """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
-    mocker.patch("rs_server_cadip.api.cadip_search.process_session_search", side_effect=KeyError)
-    assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-
-
-@pytest.mark.parametrize(
-    "endpoint",
-    ["/cadip/queryables", "/cadip/collections/cadip_session_by_id_list/queryables"],
-)
-@pytest.mark.unit
-def test_queryables(client, endpoint):
-    """Endpoint to test all queryables."""
-    resp = client.get(endpoint).json()
-    assert resp["title"] == "Queryables for CADIP Search API"
-    assert "Satellite" in resp["properties"].keys()
-    assert "PublicationDate" in resp["properties"].keys()
+#########################
+# Reworked tests section
+#########################
 
 
 class TestConstellationMapping:
@@ -941,7 +873,6 @@ class TestConstellationMapping:
         """Pytest using only invalid inputs, output is not verified, function should raise exception."""
         with pytest.raises(HTTPException):
             auxip_map_mission(platform, constellation)
-            assert False
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -975,4 +906,144 @@ class TestConstellationMapping:
         """Pytest using only invalid inputs, output is not verified, function should raise exception."""
         with pytest.raises(HTTPException):
             cadip_map_mission(platform, constellation)
-            assert False
+
+
+class TestSearchEndpoints:
+    """Class used to group search endpoints tests."""
+
+    def test_cadip_search(self):
+        """CADIP search tests to be implemented here"""
+
+    def test_adgs_search(self):
+        """ADGS search tests to be implemented here"""
+
+
+class TestLandingPagesEndpoints:
+    """Class for landing page tests."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint, collection_link",
+        [("/cadip", "/cadip/collections"), ("/auxip", "/auxip/collections")],
+    )
+    def test_landing_pages(self, client, endpoint, collection_link):
+        """
+        Unit test for checking the structure and links of the landing page.
+
+        This test verifies that the landing page at the specified endpoint
+        returns a response of type 'Catalog' and includes the necessary links.
+        It checks that:
+        - The 'type' field in the response is 'Catalog'.
+        - The response contains links.
+        - At least one link with the 'rel' attribute set to 'data' points to the
+        '/cadip/collections' endpoint.
+
+        Args:
+            client: The test client to send requests.
+            endpoint: The endpoint to test, e.g., "/cadip".
+            role: The role to use for authentication (not used directly in the test).
+
+        """
+        # Check for response type and links to /collections.
+        response = client.get(endpoint).json()
+        assert response["type"] == "Catalog"
+        assert response["links"]
+        # Check for data relationship and redirect to /collections.
+        assert any(collection_link in link["href"] for link in response["links"] if link["rel"] == "data")
+
+
+class TestQueryablesEndpoints:
+    """Class used to group tests for */queryables endpoints"""
+
+    @pytest.mark.parametrize(
+        "endpoint, title, expected_queryables",
+        [
+            ("/cadip/queryables", "Queryables for CADIP Search API", ["Satellite", "PublicationDate"]),
+            ("/auxip/queryables", "Queryables for ADGS Search API", ["platformShortName", "PublicationDate"]),
+        ],
+    )
+    @pytest.mark.unit
+    def test_general_queryables(self, client, endpoint, title, expected_queryables):
+        """Endpoint to test all queryables."""
+        resp = client.get(endpoint).json()
+        assert resp["title"] == title
+        for queryable in expected_queryables:
+            assert queryable in resp["properties"].keys()
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint, expected_queryables",
+        [
+            ("/cadip/collections/cadip_session_by_id_list/queryables", ["Satellite", "PublicationDate"]),
+            ("/auxip/collections/adgs_by_platform/queryables", ["PublicationDate", "platformSerialIdentifier"]),
+        ],
+    )
+    def test_collection_queryables(self, client, endpoint, expected_queryables):
+        """Endpoint to test specific collection queryables."""
+        resp = client.get(endpoint).json()
+        for queryable in expected_queryables:
+            assert queryable in resp["properties"].keys()
+
+
+class TestModelValidationError:
+    """Class used to group tests for error when validating."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/cadip/search?collection=cadip_session_by_id_list",
+            "/cadip/search/items?collection=cadip_session_by_id_list",
+            "/cadip/collections/cadip_session_by_id_list",
+            "/cadip/collections/cadip_session_by_id_list/items",
+            "/cadip/collections/cadip_session_by_id_list/items/sessionId",
+        ],
+    )
+    def test_cadip_validation_errors(self, client, mocker, endpoint):
+        """Test used to mock a validation error on pydantic model, should return HTTP 422."""
+        mocker.patch(
+            "rs_server_cadip.api.cadip_search.process_session_search",
+            side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+        )
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/auxip/collections/adgs_by_platform",
+            "/auxip/collections/adgs_by_platform/items",
+            "/auxip/collections/adgs_by_platform/items/sessionId",
+        ],
+    )
+    def test_adgs_validation_errors(self, client, mocker, endpoint):
+        """Test used to mock a validation error on pydantic model, should return HTTP 422."""
+        mocker.patch(
+            "rs_server_adgs.api.adgs_search.process_product_search",
+            side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
+        )
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestErrorWhileBuildUpCollection:
+    """Class used to group tests for error when processing."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        ["/cadip/search?collection=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
+    )
+    def test_cadip_collection_creation_failure(self, client, mocker, endpoint):
+        """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
+        mocker.patch("rs_server_cadip.api.cadip_search.process_session_search", side_effect=KeyError)
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        ["/auxip/search?collection=adgs_by_platform", "/auxip/collections/adgs_by_platform"],
+    )
+    def test_adgs_collection_creation_failure(self, client, mocker, endpoint):
+        """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
+        mocker.patch("rs_server_adgs.api.adgs_search.process_product_search", side_effect=KeyError)
+        assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

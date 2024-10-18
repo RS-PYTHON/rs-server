@@ -82,6 +82,7 @@ def create_auxip_product_search_params(
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
 
+## To be updated
 def auth_validation(request: Request, collection_id: str, access_type: str):
     """
     Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
@@ -100,6 +101,9 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
 
     # Call the authentication function from the authentication module
     authentication.auth_validation("cadip", access_type, request=request, station=station)
+
+
+###
 
 
 @router.get("/", include_in_schema=False)
@@ -196,8 +200,8 @@ def get_all_queryables(request: Request):
     logger.info(f"Starting {request.url.path}")
     return Queryables(
         type="object",
-        title="Queryables for CADIP Search API",
-        description="Queryable names for the CADIP Search API Item Search filter.",
+        title="Queryables for ADGS Search API",
+        description="Queryable names for the ADGS Search API Item Search filter.",
         properties=get_adgs_queryables(),
     ).model_dump(by_alias=True)
 
