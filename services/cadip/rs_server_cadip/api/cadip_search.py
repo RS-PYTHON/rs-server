@@ -54,6 +54,7 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
+from rs_server_common.fastapi_app import MockPgstac
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     Queryables,
@@ -75,9 +76,9 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
     items."""
 
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
         except KeyError as exc:
             logger.error(f"KeyError caught in {func.__name__}")
             raise HTTPException(
@@ -123,6 +124,23 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
 
+class MockPgstacCadip(MockPgstac):
+    """
+    Mock a pgstac database that will call functions from this module instead of actually accessing a database.
+    """
+
+    async def fetchval(self, query, *args, column=0, timeout=None):
+
+        query = query.strip()
+
+        # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
+        if query == "SELECT * FROM all_collections();":
+            response = await get_allowed_collections(request=self.request)  # warning: use kwargs here
+            return response["collections"]
+
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
+
+
 @router.get("/", include_in_schema=False)
 async def home():
     """Home endpoint. Redirect to the landing page."""
@@ -130,8 +148,7 @@ async def home():
 
 
 @router.get("/cadip")
-@auth_validator(station="cadip", access_type="landing_page")
-def get_root_catalog(request: Request):
+async def get_root_catalog(request: Request):
     """
     Retrieve the RSPY CADIP Search catalog landing page.
 
@@ -158,43 +175,15 @@ def get_root_catalog(request: Request):
     - dict: A dictionary representation of the STAC catalog, including metadata and links.
     """
     logger.info(f"Starting {request.url.path}")
+    authentication.auth_validation("cadip", "landing_page", request=request)
 
-    # Read landing page contents from json file
-    with open(CADIP_CONFIG / "cadip_stac_landing_page.json", encoding="utf-8") as f:
-        contents = json.load(f)
-
-    # Override some fields
-    links = contents["links"]
-    domain = f"{request.url.scheme}://{request.url.netloc}"
-    contents["id"] = str(uuid.uuid4())
-    contents.update(**get_conformance())  # conformsTo
-    for link in links:
-        link["href"] = link["href"].format(domain=domain)
-
-    # Add collections as child links
-    all_collections = get_allowed_collections(request=request)  # warning: use kwargs here
-    for collection in all_collections.get("collections", []):
-        collection_id = collection["id"]
-        links.append(
-            {
-                "rel": "child",
-                "type": "application/json",
-                "title": collection_id,
-                "href": f"{domain}/cadip/collections/{collection_id}",
-            },
-        )
-
-    # Convert to dict and build a Catalog object so we can validate the contents
-    landing_page = stac_pydantic.Catalog.model_validate(contents)
-
-    # Once validated, convert back to dict and return value
-    return landing_page.model_dump()
+    request.app.state.get_connection = MockPgstacCadip.get_connection
+    return await request.app.state.pgstac_client.landing_page(request=request)
 
 
 @router.get("/cadip/collections")
-@auth_validator(station="cadip", access_type="landing_page")
 @handle_exceptions
-def get_allowed_collections(request: Request):
+async def get_allowed_collections(request: Request):
     """
         Endpoint to retrieve an object containing collections and links that a user is authorized to
         access based on their API key.
@@ -222,6 +211,7 @@ def get_allowed_collections(request: Request):
     """
     # Based on api key, get all station a user can access.
     logger.info(f"Starting {request.url.path}")
+    authentication.auth_validation("cadip", "landing_page", request=request)
 
     configuration = read_conf()
     all_collections = configuration["collections"]
@@ -251,8 +241,8 @@ def get_allowed_collections(request: Request):
 
         config.setdefault("stac_version", "1.0.0")
 
-        query_params = create_session_search_params(config)
-        logger.debug(f"Collection {config['id']} params: {query_params}")
+        # query_params = create_session_search_params(config)
+        # logger.debug(f"Collection {config['id']} params: {query_params}")
 
         try:
             collection: stac_pydantic.Collection = create_collection(config)
@@ -363,9 +353,8 @@ def get_collection_queryables(
 
 
 @router.get("/cadip/search/items", deprecated=True)
-@auth_validator(station="cadip", access_type="landing_page")  # TODO: how to implement authentication ?
 @handle_exceptions
-def search_cadip_with_session_info(request: Request):
+async def search_cadip_with_session_info(request: Request):
     """
     Endpoint used to search cadip collections and directly return items properties and assets.
 
@@ -381,6 +370,7 @@ def search_cadip_with_session_info(request: Request):
         are missing.
     """
     logger.info(f"Starting {request.url.path}")
+    authentication.auth_validation("cadip", "landing_page", request=request)  # TODO: how to implement authentication ?
     request_params: dict = dict(request.query_params)
     collection: Union[str, None] = request_params.pop("collection", None)
     logger.debug(f"User selected collection: {collection}")
@@ -401,9 +391,8 @@ def search_cadip_with_session_info(request: Request):
 
 
 @router.get("/cadip/search")
-@auth_validator(station="cadip", access_type="landing_page")  # TODO: how to implement authentication ?
 @handle_exceptions
-def search_cadip_endpoint(request: Request) -> dict:
+async def search_cadip_endpoint(request: Request) -> dict:
     """
     Search CADIP Collections and Retrieve STAC-Compliant Data.
 
@@ -497,6 +486,7 @@ def search_cadip_endpoint(request: Request) -> dict:
     }
     """
     logger.info(f"Starting {request.url.path}")
+    authentication.auth_validation("cadip", "landing_page", request=request)  # TODO: how to implement authentication ?
     request_params = dict(request.query_params)
     collection_name: Union[str, None] = request_params.pop("collection", None)
     logger.debug(f"User selected collection: {collection_name}")
@@ -522,7 +512,7 @@ def search_cadip_endpoint(request: Request) -> dict:
 
 @router.get("/cadip/collections/{collection_id}")
 @handle_exceptions
-def get_cadip_collection(
+async def get_cadip_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
 ) -> list[dict] | dict:
@@ -585,7 +575,7 @@ def get_cadip_collection(
 
 @router.get("/cadip/collections/{collection_id}/items")
 @handle_exceptions
-def get_cadip_collection_items(
+async def get_cadip_collection_items(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
 ):
@@ -634,7 +624,7 @@ def get_cadip_collection_items(
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
 @handle_exceptions
-def get_cadip_collection_item_details(
+async def get_cadip_collection_item_details(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
     session_id: Annotated[

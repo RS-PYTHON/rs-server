@@ -16,13 +16,15 @@
 
 import asyncio
 import typing
+from abc import abstractmethod
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from os import environ as env
-from typing import Callable
+from typing import AsyncIterator, Callable, Literal, Self
 
 import httpx
 import sqlalchemy
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
@@ -36,6 +38,17 @@ from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
+from stac_fastapi.api.models import create_post_request_model
+from stac_fastapi.extensions.core import (
+    FieldsExtension,
+    FilterExtension,
+    SortExtension,
+    TokenPaginationExtension,
+)
+from stac_fastapi.pgstac.core import CoreCrudClient
+from stac_fastapi.pgstac.extensions import QueryExtension
+from stac_fastapi.pgstac.extensions.filter import FiltersClient
+from stac_fastapi.pgstac.types.search import PgstacSearch
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
@@ -156,6 +169,21 @@ def init_app(  # pylint: disable=too-many-locals
     app.state.startup_events = startup_events or []
     app.state.shutdown_events = shutdown_events or []
 
+    # Init a pgstac client for adgs and cadip.
+    # TODO: remove this when adgs and cadip switch to a stac_fastapi application.
+    # Example taken from: https://github.com/stac-utils/stac-fastapi-pgstac/blob/main/tests/api/test_api.py
+    extensions = [  # no transactions because we don't update the database
+        # TransactionExtension(client=TransactionsClient(), settings=api_settings),
+        QueryExtension(),
+        SortExtension(),
+        FieldsExtension(),
+        TokenPaginationExtension(),
+        FilterExtension(client=FiltersClient()),
+        # BulkTransactionExtension(client=BulkTransactionsClient()),
+    ]
+    search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
+    app.state.pgstac_client = CoreCrudClient(post_request_model=search_post_request_model)
+
     dependencies = []
     if settings.CLUSTER_MODE:
 
@@ -196,3 +224,36 @@ def init_app(  # pylint: disable=too-many-locals
         )
 
     return app
+
+
+@dataclass
+class MockPgstac:
+    """
+    Mock a pgstac database for the services that use stac_fastapi but don't need a database.
+    TODO: move this class to the stac_fastapi application used by adgs and cadip when it will be implemented.
+    """
+
+    request: Request
+    readwrite: Literal["r", "w"]
+
+    async def fetchval(self, query, *args, column=0, timeout=None):
+        """Run a query and return a value in the first row.
+
+        :param str query: Query text.
+        :param args: Query arguments.
+        :param int column: Numeric index within the record of the value to
+                           return (defaults to 0).
+        :param float timeout: Optional timeout value in seconds.
+                            If not specified, defaults to the value of
+                            ``command_timeout`` argument to the ``Connection``
+                            instance constructor.
+
+        :return: The value of the specified column of the first record, or
+                 None if no records were returned by the query.
+        """
+
+    @classmethod
+    @asynccontextmanager
+    async def get_connection(cls, request: Request, readwrite: Literal["r", "w"] = "r") -> AsyncIterator[Self]:
+        """Return a class instance"""
+        yield cls(request, readwrite)
