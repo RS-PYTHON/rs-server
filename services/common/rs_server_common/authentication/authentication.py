@@ -106,7 +106,10 @@ async def authenticate(
 
         else:
             # Else, return an "unauthorized" error to force the browser to authenticate
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication needed from the STAC browser")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication needed from the STAC browser",
+            )
 
     # Not from the stac browser
     else:
