@@ -1,9 +1,18 @@
 {
     "id": "Name",
-    "adgs:id": "id",
+    "auxip:id": "id",
     "created": "PublicationDate",
     "datetime": "Start",
     "start_datetime": "Start",
     "end_datetime": "End",
-    "file:size": "ContentLength"
+    "file:size": "ContentLength",
+    "type": "ContentType",
+    "eviction_datetime": "EvictionDate",
+    "product:type": "productType",
+    "processing:datetime": "processingDate",
+    "published": "PublicationDate",
+    "file:checksum": "ChecksumValue",
+    "platform": "platformSerialIdentifier",
+    "constellation": "platformShortName",
+    "processing:facility": "processingCenter"
 }
