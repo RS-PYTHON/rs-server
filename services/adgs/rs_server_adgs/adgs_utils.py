@@ -20,11 +20,19 @@ import os
 import os.path as osp
 from functools import lru_cache
 from pathlib import Path
-from rs_server_common.stac_api_common import RSPYQueryableField, map_stac_platform, generate_queryables
+from typing import Union
+
 import yaml
+from fastapi import HTTPException, status
+from rs_server_common.stac_api_common import (
+    RSPYQueryableField,
+    generate_queryables,
+    map_stac_platform,
+)
 
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"
+
 
 @lru_cache(maxsize=1)
 def read_conf():
@@ -34,6 +42,7 @@ def read_conf():
         config = yaml.safe_load(search_conf)
     return config
 
+
 def select_config(configuration_id: str) -> dict | None:
     """Used to select a specific configuration from yaml file, returns None if not found."""
     return next(
@@ -41,12 +50,14 @@ def select_config(configuration_id: str) -> dict | None:
         None,
     )
 
+
 def serialize_adgs_asset(feature_collection, request):
     """Used to update adgs asset with propper href and format {asset_name: asset_body}."""
     for feature in feature_collection.features:
-        feature.assets['file'].href = f'{request.url.scheme}://{request.url.netloc}/adgs/aux?name={feature.id}'
-        feature.assets[feature.id] = feature.assets.pop('file')
+        feature.assets["file"].href = f"{request.url.scheme}://{request.url.netloc}/adgs/aux?name={feature.id}"
+        feature.assets[feature.id] = feature.assets.pop("file")
     return feature_collection
+
 
 def get_adgs_queryables() -> dict[str, RSPYQueryableField]:
     """Function to list all available queryables for CADIP session search."""
@@ -95,16 +106,34 @@ def auxip_map_mission(platform: str, constellation: str):
     Input: constellation = sentinel-1   Output: sentinel-1, None
     """
     data = map_stac_platform()
-    if platform:
-        config = [satellite[platform] for satellite in data['satellites'] if platform in satellite][0]
-        platform_short_name = config.get('constellation', None)
-        platform_serial_identifier = config.get('serialid', None)
-    elif constellation:
-        platform_short_name = constellation
-        platform_serial_identifier = None
-    else:
-        platform_short_name = platform_serial_identifier = None
+    platform_short_name: Union[str, None] = None
+    platform_serial_identifier: Union[str, None] = None
+    try:
+        if platform:
+            config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
+            platform_short_name = config.get("constellation", None)
+            platform_serial_identifier = config.get("serialid", None)
+        if constellation:
+            if platform_short_name and platform_short_name != constellation:
+                # Inconsistent combination of platform / constellation case
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid combination of platform-constellation",
+                )
+            if any(
+                satellite[list(satellite.keys())[0]]["constellation"] == constellation
+                for satellite in data["satellites"]
+            ):
+                platform_short_name = constellation
+                platform_serial_identifier = None
+            else:
+                raise KeyError
+    except (KeyError, IndexError, StopIteration) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot map platform/constellation",
+        ) from exc
     return platform_short_name, platform_serial_identifier
+
 
 def generate_adgs_queryables(collection_id: str) -> dict[str, RSPYQueryableField]:
     """Function used to get available queryables based on a given collection."""

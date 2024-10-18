@@ -21,7 +21,9 @@ import sqlalchemy
 from fastapi import HTTPException, status
 from pydantic import ValidationError
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
+from rs_server_adgs.adgs_utils import auxip_map_mission
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
+from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.db.database import get_db
 from rs_server_common.db.models.download_status import EDownloadStatus
@@ -903,3 +905,74 @@ def test_queryables(client, endpoint):
     assert resp["title"] == "Queryables for CADIP Search API"
     assert "Satellite" in resp["properties"].keys()
     assert "PublicationDate" in resp["properties"].keys()
+
+
+class TestConstellationMapping:
+    """Class used to group tests for platform/constellation mapping."""
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "platform, constellation, short_name, serial_id",
+        [
+            ("sentinel-1a", None, "sentinel-1", "A"),
+            ("sentinel-2b", None, "sentinel-2", "B"),
+            ("sentinel-5p", None, "sentinel-5P", None),
+            (None, "sentinel-1", "sentinel-1", None),
+            (None, "sentinel-2", "sentinel-2", None),
+            (None, "sentinel-5P", "sentinel-5P", None),
+        ],
+    )
+    def test_valid_adgs_mapping(self, platform, constellation, short_name, serial_id):
+        """Pytest with only valid inputs, output is verified."""
+        assert auxip_map_mission(platform, constellation) == (short_name, serial_id)
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "platform, constellation",
+        [
+            ("sentinel-invalid", None),  # invalid platform
+            (None, "sentinel-invalid"),  # invalid constellation
+            ("sentinel-invalid", "sentinel-1"),  # invalid platform, valid constellation
+            ("sentinel-1a", "sentinel-invalid"),  # valid platform, invalid constellation
+            ("sentinel-1a", "sentinel-5p"),  # invalid relation between platform and const
+        ],
+    )
+    def test_invalid_adgs_mapping(self, platform, constellation):
+        """Pytest using only invalid inputs, output is not verified, function should raise exception."""
+        with pytest.raises(HTTPException):
+            auxip_map_mission(platform, constellation)
+            assert False
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "platform, constellation, satellite",
+        [
+            ("sentinel-1a", None, "S1A"),
+            ("sentinel-2b", None, "S2B"),
+            ("sentinel-5p", None, "S5P"),
+            # if both plaftorm and const are defined, priority is to get constellation since it contanis more results
+            ("sentinel-1a", "sentinel-1", "S1A, S1B, S1C"),
+            ("sentinel-5p", "sentinel-5P", "S5P"),
+            (None, "sentinel-1", "S1A, S1B, S1C"),
+            (None, "sentinel-2", "S2A, S2B, S2C"),
+            (None, "sentinel-5P", "S5P"),
+        ],
+    )
+    def test_valid_cadip_mapping(self, platform, constellation, satellite):
+        """Pytest with only valid inputs, output is verified."""
+        assert cadip_map_mission(platform, constellation) == satellite
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "platform, constellation",
+        [
+            ("sentinel-invalid", None),  # invalid platform
+            ("sentinel-1a", "sentinel-invalid"),  # valid platform, invalid constellation
+            ("sentinel-1a", "sentinel-5p"),  # invalid relation between platform and const
+        ],
+    )
+    def test_invalid_cadip_mapping(self, platform, constellation):
+        """Pytest using only invalid inputs, output is not verified, function should raise exception."""
+        with pytest.raises(HTTPException):
+            cadip_map_mission(platform, constellation)
+            assert False

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-collections: 
+collections:
   - id: s1_adgs_OPER_AUX_ECMWFD_PDMC
     station: adgs
-    query: 
+    query:
       productType: OPER_AUX_ECMWFD_PDMC
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Sentinel-1 Inuvik CADIP sessions'
@@ -40,10 +40,10 @@ collections:
         roles:
           - host
         url: 'https://home.rs-python.eu/'
-      
+
   - id: s2_adgs2_AUX_OBMEMC
     station: adgs2
-    query: 
+    query:
       productType: AUX_OBMEMC
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Sentinel-1 Inuvik CADIP sessions'
@@ -71,7 +71,7 @@ collections:
 
   - id: aux_interval
     station: adgs
-    query: 
+    query:
       PublicationDate: 2023-01-01T12:00:00Z/2024-01-01T12:00:00Z
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Sentinel-1 Inuvik CADIP sessions'

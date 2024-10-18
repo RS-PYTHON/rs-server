@@ -23,12 +23,13 @@ import os
 import os.path as osp
 from functools import lru_cache
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 import eodag
 import stac_pydantic
 import starlette.requests
 import yaml
+from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import (
     RSPYQueryableField,
     generate_queryables,
@@ -185,19 +186,29 @@ def cadip_map_mission(platform: str, constellation: str):
     Input: platform = sentinel-1a       Output: A
     Input: constellation = sentinel-1   Output: A, B, C
     """
-    data = map_stac_platform()
-    if platform:
-        config = [satellite[platform] for satellite in data["satellites"] if platform in satellite][0]
-        sat = config.get("code", None)
-    elif constellation:
-        sat = ", ".join(
-            [
-                satellite_info["code"]
-                for satellite in data["satellites"]
-                for satellite_info in satellite.values()
-                if satellite_info.get("constellation") == constellation
-            ],
-        )
-    else:
-        sat = None
-    return sat
+    data: dict = map_stac_platform()
+    satellite: Union[None, str] = None
+    try:
+        if platform:
+            config = next(sat[platform] for sat in data["satellites"] if platform in sat)
+            satellite = config.get("code", None)
+        if constellation:
+            const_sat: str = ", ".join(
+                [
+                    satellite_info["code"]
+                    for satellite in data["satellites"]
+                    for satellite_info in satellite.values()
+                    if satellite_info.get("constellation") == constellation
+                ],
+            )
+            if satellite and satellite not in const_sat:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid combination of platform-constellation",
+                )
+            satellite = const_sat
+    except (KeyError, IndexError, StopIteration) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot map platform/constellation",
+        ) from exc
+    return satellite
