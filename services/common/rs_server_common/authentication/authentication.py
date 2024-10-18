@@ -105,15 +105,10 @@ async def authenticate(
             auth_info = AuthInfo(user_login=user_login, iam_roles=kc_info.roles, apikey_config={})
 
         else:
-            # Else, the best would be to force the browser to authenticate, but for now it doesn't work, see:
-            # https://github.com/radiantearth/stac-browser/issues/479
-            # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You must login")
-
-            # In the meantime, use a fake user auth info that has no rights, so no collections will show.
-            auth_info = AuthInfo(
-                "stac-browser",
-                ["rs_adgs_landing_page", "rs_cadip_landing_page", "rs_catalog_landing_page"],
-                {},
+            # Else, return an "unauthorized" error to force the browser to authenticate
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication needed from the STAC browser",
             )
 
     # Not from the stac browser

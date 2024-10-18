@@ -176,7 +176,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         Returns:
             dict: The collection passed in parameter with adapted links
         """
-        links = my_object["links"]
+        links = my_object.get("links", [])
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
             if "properties" in my_object:  # If my_object is an item
