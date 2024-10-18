@@ -208,6 +208,8 @@ def get_all_queryables(request: Request):
 def search_auxip_endpoint(request: Request) -> dict:
     logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
+    if not set(request_params.keys()).issubset(set(get_adgs_queryables().keys())):
+        raise HTTPException(status_code=422, detail="Given parameters are not queryables.")
     request_params["platformShortName"], request_params["platformSerialIdentifier"] = auxip_map_mission(
         request_params.pop("platform", None),
         request_params.pop("constellation", None),
