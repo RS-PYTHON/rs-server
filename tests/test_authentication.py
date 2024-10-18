@@ -524,13 +524,9 @@ async def test_stac_browser_authent(
     mocked_request.headers = {"referer": stac_browser_url}
     mocked_request.state = State()
 
-    # Without authentication, we should have these basic credentials
-    unauth_info = await authentication.authenticate(mocked_request)
-    assert unauth_info == AuthInfo(
-        "stac-browser",
-        ["rs_adgs_landing_page", "rs_cadip_landing_page", "rs_catalog_landing_page"],
-        {},
-    )
+    # Without authentication, we should have a 401 error
+    with pytest.raises(HTTPException):
+        await authentication.authenticate(mocked_request)
 
     # With authentication but expired user, we should have an exception
     mocked_request.headers["authorization"] = "Bearer mocked_token"
