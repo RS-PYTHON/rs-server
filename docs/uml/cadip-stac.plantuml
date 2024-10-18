@@ -39,7 +39,7 @@ newpage
 John -> RS_Server_CADIP: GET /cadip/queryables
 RS_Server_CADIP --> John: {platform}
 
-John -> RS_Server_CADIP: POST /cadip/search?collection=s1_nsg&platform=sentinel-1a
+John -> RS_Server_CADIP: POST /cadip/search?collections=s1_nsg&platform=sentinel-1a
 RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc
 RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
 RS_Server_CADIP --> John : {STAC response}
