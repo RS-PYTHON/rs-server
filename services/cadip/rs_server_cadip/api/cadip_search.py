@@ -415,14 +415,14 @@ def search_cadip_endpoint(request: Request) -> dict:
     - `/cadip/search`
 
     ### Query Parameters:
-    - `collection` (optional, string): The name of the CADIP collection to search within (e.g., `s1_cadip`).
+    - `collections` (optional, string): The name of the CADIP collections to search within (e.g., `s1_cadip`).
     - `id` (optional, string): The session ID to filter the search (e.g., `S1A_20200105072204051312`).
-    - Additional query parameters may be passed to filter sessions within the collection.
+    - Additional query parameters may be passed to filter sessions within the collections.
 
     ### Functionality:
-    1. **Extract Parameters**: Reads query parameters from the request and identifies the collection name, if provided.
+    1. **Extract Parameters**: Reads query parameters from the request and identifies the collection names, if provided.
     2. **Search Preparation**: Uses the `prepare_cadip_search` function to build a configuration and query parameter set
-       based on the collection and additional parameters.
+       based on the collections and additional parameters.
     3. **STAC Collection Creation**: Constructs a STAC-compliant collection using the session data retrieved from CADIP.
     4. **Session Search Link**: Adds links to detailed session information within the STAC collection response.
 
@@ -498,11 +498,11 @@ def search_cadip_endpoint(request: Request) -> dict:
     """
     logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
-    collection_name: Union[str, None] = request_params.pop("collection", None)
-    logger.debug(f"User selected collection: {collection_name}")
+    collection_names: Union[str, None] = request_params.pop("collections", None)
+    logger.debug(f"User selected collections: {collection_names}")
     selected_config: Union[dict, None]
     query_params: dict
-    selected_config, query_params = prepare_cadip_search(collection_name, request_params)
+    selected_config, query_params = prepare_cadip_search(collection_names, request_params)
 
     query_params = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
