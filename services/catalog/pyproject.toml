@@ -37,7 +37,6 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-stac-fastapi-pgstac = "3.0.0"
 pygeofilter = "^0.2.4"
 rs-server-common = {path = "../common", develop = true}
 
