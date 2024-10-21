@@ -80,7 +80,10 @@ def create_auxip_product_search_params(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cannot find a valid configuration",
         )
-    return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+    try:
+        return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+    except (AttributeError, KeyError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid queryables set.") from exc
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -101,6 +104,7 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
 
     # Call the authentication function from the authentication module
     authentication.auth_validation("adgs", access_type, request=request, station=station)
+
 
 @router.get("/", include_in_schema=False)
 async def home_endpoint():

@@ -99,7 +99,10 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
     default_values: List[Union[str | None]] = ["cadip", None, None, None, None, None, "-datetime"]
     if not selected_config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
-    return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+    try:
+        return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+    except (AttributeError, KeyError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid queryables set.") from exc
 
 
 @router.get("/", include_in_schema=False)
