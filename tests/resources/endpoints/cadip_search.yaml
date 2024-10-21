@@ -53,7 +53,7 @@ collections:
   - id: cadip_session_by_id
     station: cadip
     query:
-      SessionId: S1A_20240328185208053186
+      SessionId: S1A_20200105072204051312
       top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Test collection'

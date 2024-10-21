@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unittests for cadip search endpoint."""
+"""Unittests for rs-server search endpoints."""
 import os
 from contextlib import contextmanager
 
@@ -730,8 +730,8 @@ def test_cadip_collection(client, mock_token_validation):
             assert sid in link["title"]
 
 
-@responses.activate
 @pytest.mark.unit
+@responses.activate
 def test_invalid_cadip_collection(client, mock_token_validation):
     """Test cases with invalid requests/collections."""
     # Test a correctly configured collection with a bad query.
@@ -933,13 +933,13 @@ class TestLandingPagesEndpoints:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, roles",
+        "endpoint, roles, request_path",
         [
-            ("/cadip/collections", ["rs_cadip_landing_page"]),
-            ("/auxip/collections", ["rs_adgs_landing_page"]),
+            ("/cadip/collections", ["rs_cadip_landing_page"], "rs_server_cadip.api.cadip_search.Request.state"),
+            ("/auxip/collections", ["rs_adgs_landing_page"], "rs_server_adgs.api.adgs_search.Request.state"),
         ],
     )
-    def test_cluster_landing_page_without_roles(self, client, mocker, endpoint, roles):
+    def test_cluster_landing_page_without_roles(self, client, mocker, endpoint, roles, request_path):
         """Test verifies the behavior when no propper roles are available:
         - It ensures that the response returns empty lists for 'links' and
         'collections' when the request state has no propper roles.
@@ -950,16 +950,8 @@ class TestLandingPagesEndpoints:
         # Note: we still need the landing_page rights
         mock_empty_roles = mocker.MagicMock()
         mock_empty_roles.auth_roles = roles
-        mocker.patch(
-            "rs_server_cadip.api.cadip_search.Request.state",
-            new_callable=mocker.PropertyMock,
-            return_value=mock_empty_roles,
-        )
-        mocker.patch(
-            "rs_server_adgs.api.adgs_search.Request.state",
-            new_callable=mocker.PropertyMock,
-            return_value=mock_empty_roles,
-        )
+        mocker.patch(request_path, new_callable=mocker.PropertyMock, return_value=mock_empty_roles)
+
         # The result should be 2 empty lists.
         empty_response = client.get(endpoint).json()
         assert {"type": "Object", "links": [], "collections": []} == empty_response
@@ -993,6 +985,7 @@ class TestLandingPagesEndpoints:
 class TestQueryablesEndpoints:
     """Class used to group tests for */queryables endpoints"""
 
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "endpoint, title, expected_queryables",
         [
@@ -1000,7 +993,6 @@ class TestQueryablesEndpoints:
             ("/auxip/queryables", "Queryables for ADGS Search API", ["platformShortName", "PublicationDate"]),
         ],
     )
-    @pytest.mark.unit
     def test_general_queryables(self, client, endpoint, title, expected_queryables):
         """Endpoint to test all queryables."""
         resp = client.get(endpoint).json()
@@ -1085,3 +1077,45 @@ class TestErrorWhileBuildUpCollection:
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
         mocker.patch("rs_server_adgs.api.adgs_search.process_product_search", side_effect=KeyError)
         assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestFeatureOdataStacMapping:
+    """Class that group unittests for /*/collections/{collection-id}/items/{item-id} mapping from odata to stac."""
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_cadip_feature_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
+        """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
+        Visit conftest to view content of cadip_feature and cadip_response.
+        """
+        # Mock pickup response and token validation
+        mock_token_validation()
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
+            "$expand=Files",
+            json=cadip_response,
+            status=200,
+        )
+        response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312").json()
+        # Assert that receive odata response is correctly mapped to stac feature.
+        assert response == cadip_feature, "Features doesn't match"
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_adgs_feature_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
+        """Test mapping of an adgs reponse with expanded attributes"""
+        mock_token_validation()
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+            "&$expand=Attributes",
+            json=adgs_response,
+            status=200,
+        )
+        response = client.get(
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+        ).json()
+        # Assert that receive odata response is correctly mapped to stac feature.
+        assert response == adgs_feature, "Features doesn't match"

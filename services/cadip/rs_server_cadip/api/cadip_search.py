@@ -204,7 +204,7 @@ def get_allowed_cadip_collections(request: Request):
 
     configuration = read_conf()
     all_collections = configuration["collections"]
-    return filter_allowed_collections(all_collections, "cadip", create_session_search_params, request)
+    return filter_allowed_collections(all_collections, "cadip", request)
 
 
 @router.get("/cadip/conformance")

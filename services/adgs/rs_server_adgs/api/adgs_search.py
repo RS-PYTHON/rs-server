@@ -70,6 +70,7 @@ def create_auxip_product_search_params(
     required_keys: List[str] = [
         "productType",
         "PublicationDate",
+        "platformShortName",
         "top",
         "orderby",
     ]
@@ -191,7 +192,7 @@ def get_allowed_adgs_collections(request: Request):
     configuration = read_conf()
     all_collections = configuration["collections"]
 
-    return filter_allowed_collections(all_collections, "adgs", create_auxip_product_search_params, request)
+    return filter_allowed_collections(all_collections, "adgs", request)
 
 
 @router.get("/auxip/queryables")
@@ -305,6 +306,8 @@ def get_adgs_collection_specific_item(
             query_params["PublicationDate"],
             "items",
             query_params["top"],
+            attr_platform_short_name=query_params.get("platformShortName", None),
+            attr_serial_identif=query_params.get("platformSerialIdentifier", None),
         ),
     )
     return next(

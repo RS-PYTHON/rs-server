@@ -105,7 +105,7 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def filter_allowed_collections(all_collections, role, collection_search_func, request):
+def filter_allowed_collections(all_collections, role, request):
     """Filters collections based on user roles and permissions.
 
     This function returns only the collections that a user is allowed to read based on their
@@ -117,9 +117,6 @@ def filter_allowed_collections(all_collections, role, collection_search_func, re
                                        is represented as a dictionary.
         role (str): The role of the user requesting access to the collections, which is used to
                     build the required authorization key for filtering collections.
-        collection_search_func (Callable): A function that takes a collection configuration
-                                            and returns query parameters for searching that
-                                            collection.
         request (Request): The request object, which contains user authentication roles
                            available through `request.state.auth_roles`.
 
@@ -166,9 +163,6 @@ def filter_allowed_collections(all_collections, role, collection_search_func, re
     for config in filtered_collections:
 
         config.setdefault("stac_version", "1.0.0")
-
-        query_params = collection_search_func(config)
-        logger.debug(f"Collection {config['id']} params: {query_params}")
 
         try:
             collection: stac_pydantic.Collection = create_collection(config)
