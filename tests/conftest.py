@@ -53,7 +53,9 @@ from tests.app import init_app
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
+ADGS_SEARCH = RESOURCES_FOLDER / "endpoints" / "adgs_search.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
+os.environ["RSPY_ADGS_SEARCH_CONFIG"] = str(ADGS_SEARCH.absolute())
 
 TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
 TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
@@ -521,3 +523,235 @@ def validate_token(mocker):
         return service  # If needed, return the value to be used later in the test
 
     return _validate_token
+
+
+@pytest.fixture(name="cadip_feature")
+def cadip_stac_feature():
+    """Fixture used to verify the output of rs-server translation of cadip_pickup_response fixture."""
+    return {
+        "type": "Feature",
+        "geometry": None,
+        "properties": {
+            "datetime": "2020-01-05T07:22:04.051000+00:00",
+            "start_datetime": "2020-01-05T07:22:04.051000+00:00",
+            "end_datetime": "2020-01-05T07:42:04.051000+00:00",
+            "platform": "S1A",
+            "published": "2020-01-05T18:52:26.165Z",
+            "cadip:id": "a5e9d3b8-7c4f-4a92-b76a-fa09e1e1b59c",
+            "cadip:num_channels": 2,
+            "cadip:station_unit_id": "01",
+            "sat:absolute_orbit": 53186,
+            "cadip:acquisition_id": 531861,
+            "cadip:antenna_id": "MSP21",
+            "cadip:front_end_id": "01",
+            "cadip:retransfer": False,
+            "cadip:antenna_status_ok": True,
+            "cadip:front_end_status_ok": True,
+            "cadip:planned_data_start": "2020-01-05T07:22:04.051Z",
+            "cadip:planned_data_stop": "2020-01-05T07:31:04.051Z",
+            "cadip:downlink_status_ok": True,
+            "cadip:delivery_push_ok": True,
+        },
+        "id": "S1A_20200105072204051312",
+        "stac_version": "1.0.0",
+        "assets": {
+            "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw": {
+                "href": "http://testserver/cadip/cadu?name=DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw",
+                "title": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw",
+                "roles": ["cadu"],
+                "cadip:id": "e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d",
+                "cadip:retransfer": False,
+                "cadip:final_block": False,
+                "cadip:block_number": 1,
+                "cadip:channel": 1,
+                "cadip:session_id": "S1A_20200105072204051312",
+                "created": "2020-01-05T18:52:29.165Z",
+                "eviction_datetime": "2020-01-05T18:52:29.165Z",
+                "file:size": "42",
+            },
+            "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw": {
+                "href": "http://testserver/cadip/cadu?name=DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw",
+                "title": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw",
+                "roles": ["cadu"],
+                "cadip:id": "cd24aa8b-2719-4a1e-b4a7-f7c9df6de300",
+                "cadip:retransfer": False,
+                "cadip:final_block": False,
+                "cadip:block_number": 1,
+                "cadip:channel": 1,
+                "cadip:session_id": "S1A_20200105072204051312",
+                "created": "2020-01-05T18:52:32.165Z",
+                "eviction_datetime": "2020-01-05T18:52:32.165Z",
+                "file:size": "51",
+            },
+        },
+        "links": [],
+        "stac_extensions": ["https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"],
+    }
+
+
+@pytest.fixture(name="cadip_response")
+def cadip_pickup_response():
+    """Fixture used to mock the response from CADIP data pickup-point."""
+    return {
+        "responses": [
+            {
+                "Id": "a5e9d3b8-7c4f-4a92-b76a-fa09e1e1b59c",
+                "SessionId": "S1A_20200105072204051312",
+                "NumChannels": 2,
+                "PublicationDate": "2020-01-05T18:52:26.165Z",
+                "Satellite": "S1A",
+                "StationUnitId": "01",
+                "DownlinkOrbit": 53186,
+                "AcquisitionId": "53186_1",
+                "AntennaId": "MSP21",
+                "FrontEndId": "01",
+                "Retransfer": False,
+                "AntennaStatusOK": True,
+                "FrontEndStatusOK": True,
+                "PlannedDataStart": "2020-01-05T07:22:04.051Z",
+                "PlannedDataStop": "2020-01-05T07:31:04.051Z",
+                "DownlinkStart": "2020-01-05T07:22:04.051Z",
+                "DownlinkStop": "2020-01-05T07:42:04.051Z",
+                "DownlinkStatusOK": True,
+                "DeliveryPushOK": True,
+                "Files": [
+                    {
+                        "Id": "e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d",
+                        "Name": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw",
+                        "SessionID": "S1A_20200105072204051312",
+                        "Channel": 1,
+                        "BlockNumber": 1,
+                        "FinalBlock": False,
+                        "PublicationDate": "2020-01-05T18:52:29.165Z",
+                        "EvictionDate": "2020-01-05T18:52:29.165Z",
+                        "Size": "42",
+                        "Retransfer": False,
+                    },
+                    {
+                        "Id": "cd24aa8b-2719-4a1e-b4a7-f7c9df6de300",
+                        "Name": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw",
+                        "SessionID": "S1A_20200105072204051312",
+                        "Channel": 1,
+                        "BlockNumber": 1,
+                        "FinalBlock": False,
+                        "PublicationDate": "2020-01-05T18:52:32.165Z",
+                        "EvictionDate": "2020-01-05T18:52:32.165Z",
+                        "Size": "51",
+                        "Retransfer": False,
+                    },
+                ],
+            },
+        ],
+    }
+
+
+@pytest.fixture(name="adgs_feature")
+def adgs_stac_feature():
+    """Fixture used to verify the output of rs-server translation of adgs_pickup_response fixture."""
+    return {
+        "type": "Feature",
+        "geometry": None,
+        "properties": {
+            "datetime": "2021-02-21T00:00:00Z",
+            "created": "2021-02-14T00:00:00Z",
+            "start_datetime": "2021-02-21T00:00:00Z",
+            "end_datetime": "2021-02-21T00:00:00Z",
+            "platform": "A",
+            "instruments": ["PLACEHOLDER"],
+            "constellation": "SENTINEL-1",
+            "auxip:id": "0a88d2a2-6e73-41a1-abce-2cdf29dfcf04",
+            "published": "2021-02-14T00:00:00.000Z",
+            "product:type": "AUX_OBMEMC",
+            "processing:datetime": "2021-02-21T00:00:00.000Z",
+            "processing:facility": "FOS",
+        },
+        "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+        "stac_version": "1.0.0",
+        "assets": {
+            "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF": {
+                "href": "http://testserver/adgs/aux?name=S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+                "type": "application/octet-stream",
+                "file:size": 2100565,
+                "file:checksum": "144921A67fc7EdE75e4818121fcf4d6C",
+                "eviction_datetime": "2021-02-21T00:00:00.000Z",
+            },
+        },
+        "links": [],
+        "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
+    }
+
+
+@pytest.fixture(name="adgs_response")
+def adgs_pickup_response():
+    """Fixture used to mock the response from ADGS data pickup-point."""
+    return {
+        "responses": [
+            {
+                "Id": "0a88d2a2-6e73-41a1-abce-2cdf29dfcf04",
+                "Name": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+                "ContentType": "application/octet-stream",
+                "ContentLength": "2100565",
+                "OriginDate": "2024-04-12T15:16:47.000Z",
+                "PublicationDate": "2021-02-14T00:00:00.000Z",
+                "EvictionDate": "2021-02-21T00:00:00.000Z",
+                "Checksum": [
+                    {
+                        "Algorithm": "MD5",
+                        "Value": "144921A67fc7EdE75e4818121fcf4d6C",
+                        "ChecksumDate": "2021-02-14T00:00:00.000Z",
+                    },
+                ],
+                "ContentDate": {"Start": "2021-02-21T00:00:00.000Z", "End": "2021-02-21T00:00:00.000Z"},
+                "Attributes": [
+                    {
+                        "@odata.type": "#OData.CSC.StringAttribute",
+                        "Name": "platformShortName",
+                        "ValueType": "String",
+                        "Value": "SENTINEL-1",
+                    },
+                    {
+                        "@odata.type": "#OData.CSC.StringAttribute",
+                        "Name": "platformSerialIdentifier",
+                        "ValueType": "String",
+                        "Value": "A",
+                    },
+                    {
+                        "@odata.type": "#OData.CSC.StringAttribute",
+                        "Name": "productType",
+                        "ValueType": "String",
+                        "Value": "AUX_OBMEMC",
+                    },
+                    {
+                        "@odata.type": "#OData.CSC.DateTimeOffsetAttribute",
+                        "Name": "beginningDateTime",
+                        "ValueType": "DateTimeOffset",
+                        "Value": "2024-04-12T15:16:47.000Z",
+                    },
+                    {
+                        "@odata.type": "#OData.CSC.DateTimeOffsetAttribute",
+                        "Name": "endingDateTime",
+                        "ValueType": "DateTimeOffset",
+                        "Value": "2021-02-21T00:00:00.000Z",
+                    },
+                    {
+                        "@odata.type": "#OData.CSC.StringAttribute",
+                        "Name": "processingCenter",
+                        "ValueType": "String",
+                        "Value": "FOS",
+                    },
+                    {
+                        "@odata.type": "#OData.CSC.StringAttribute",
+                        "Name": "processorVersion",
+                        "ValueType": "String",
+                        "Value": "3.0",
+                    },
+                    {
+                        "@odata.type": "#OData.CSC.DateTimeOffsetAttribute",
+                        "Name": "processingDate",
+                        "ValueType": "DateTimeOffset",
+                        "Value": "2021-02-21T00:00:00.000Z",
+                    },
+                ],
+            },
+        ],
+    }
