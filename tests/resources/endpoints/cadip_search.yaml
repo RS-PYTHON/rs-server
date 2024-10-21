@@ -462,7 +462,7 @@ collections:
         url: 'https://home.rs-python.eu/'
 
 
-  - id: cadip_valid_auth
+  - id: apik_valid_auth
     station: cadip
     query:
       top: 1
