@@ -559,7 +559,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     detail = {"error": "Owner Id can't be implicit in local mode"}
                     return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
                 request = search_endpoint_in_collection_post(content, request, owner_id, collection_id)
-            elif "filter" in content and "collections" in content:  # /catalo/search ENDPOINT.
+            elif "filter" in content and "collections" in content:  # /catalog/search ENDPOINT.
                 owner_id, collection_id, request = search_endpoint_post(content=content, request=request)
             if (
                 not owner_id or not collection_id
@@ -574,7 +574,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 collection_id = self.request_ids["collection_id"]
                 request = search_endpoint_in_collection_get(query, request, owner_id, collection_id)
             elif "filter" in query and "collections" in query:  # /catalog/search ENDPOINT.
-                owner_id, collection_id, request = search_endpoint_get(query=query, request=request)
+                owner_id, collection_id, request = search_endpoint_get(query=query, request=request)  ### Modify request with owner_id
             if (
                 not owner_id or not collection_id
             ):  # TODO find a solution to get authorisations in this case for next stories

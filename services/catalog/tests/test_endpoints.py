@@ -77,8 +77,30 @@ def clear_aws_credentials():
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/api.html")
     assert response.status_code == fastapi.status.HTTP_200_OK
+    print(f"Response vaut: {response}")
 
-
+def test_matthieu_search_specific_collection(client):
+    #response = client.get("/catalog/collections/jovyan:")
+    #/catalog
+    #/catalog/collections
+    #/catalog/collections/user:my_collection/search
+    
+    # Filter
+    # {
+    # "filter-lang": "cql2-text",
+    # "filter": "id IN (S1A_20231120061537234567)",
+    # }
+    
+    #test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
+    test_params = {
+        "filter-lang": "cql2-text",
+        "filter": "owner='toto' AND id IN ('fe916452-ba6f-4631-9154-c249924a122d')",
+    }
+    #response = client.get("/catalog/collections/toto:S1_L1/search")
+    response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
+    resp_dict = json.loads(response.content)
+    print(f"Result: {resp_dict}")
+  
 def test_update_stac_catalog_metadata(client):
     """
     Test the update of the stac catalog metadata when the `/catalog/ endpoint is called

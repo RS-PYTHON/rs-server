@@ -88,8 +88,17 @@ def search_endpoint_post(content: Dict[str, Any], request: Request) -> Union[str
     filters = parse_cql2_json(qs_filter)
     owner_id = find_owner_id(filters)
     collection_id = content["collections"][0]
+    
+    # if owner_id:
+    #     content["collections"] = [f"{owner_id}_{collection_id}"]
+    
+    # Concatenate owner_id to all collections
     if owner_id:
-        content["collections"] = [f"{owner_id}_{collection_id}"]
+        if isinstance(content["collections"], list): 
+            content["collections"] = [f"{owner_id}_{coll}" for coll in content["collections"]]
+        else:
+            raise TypeError("Expected list !")
+    
     request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
     return owner_id, collection_id, request
 
@@ -107,7 +116,6 @@ def search_endpoint_in_collection_get(
         request (Request): The search request.
         owner_id (str): The owner id.
         collection_id (str): The collection id.
-
 
     Returns:
         Request | JSONResponse: Returns the updated request or an error.
