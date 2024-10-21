@@ -1103,6 +1103,24 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    def test_cadip_empty_feature_mapping(self, client, mock_token_validation, cadip_feature):
+        """Test to verify the output of rs-server when pick-up point response is empty."""
+        mock_token_validation()
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
+            "$expand=Files",
+            json={"responses": []},
+            status=200,
+        )
+        response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312")
+        # Assert that receive odata response is correctly mapped to stac feature.
+        assert response.json() != cadip_feature, "Features doesn't match"
+        assert response.json()["detail"] == "Session S1A_20200105072204051312 not found."
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.unit
+    @responses.activate
     def test_adgs_feature_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
         """Test mapping of an adgs reponse with expanded attributes"""
         mock_token_validation()
@@ -1119,3 +1137,86 @@ class TestFeatureOdataStacMapping:
         ).json()
         # Assert that receive odata response is correctly mapped to stac feature.
         assert response == adgs_feature, "Features doesn't match"
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_adgs_empty_feature_mapping(self, client, mock_token_validation, adgs_feature):
+        """Test to verify the output of rs-server when pick-up point response is empty."""
+        mock_token_validation()
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+            "&$expand=Attributes",
+            json={"responses": []},
+            status=200,
+        )
+        response = client.get(
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+        )
+        # Assert that receive odata response is correctly mapped to stac feature.
+        assert response.json() != adgs_feature, "Features doesn't match"
+        assert (
+            response.json()["detail"] == "AUXIP S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF not found."
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint, detail",
+        [
+            (
+                "/auxip/collections/INVALID_COLLECTION/items/S1A_OPER_MPL_ORBPRE_20210214T021411_.EOF",
+                {"detail": "Unknown AUXIP collection: 'INVALID_COLLECTION'"},
+            ),
+            (
+                "/cadip/collections/INVALID_COLLECTION/items/S1A_20200105072204051312",
+                {"detail": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
+            ),
+        ],
+    )
+    def test_invalid_collection_mapping(self, client, endpoint, detail):
+        """Test to verify the output of rs-server when given item collection is invalid."""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json() == detail
+
+
+class TestFeatureCollectionOdataStacMapping:
+    """Class that group unittests for /*/collections/{collection-id}/items mapping from odata to stac."""
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_cadip_feature_collection_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
+        """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
+        Visit conftest to view content of cadip_feature and cadip_response.
+        """
+        # Mock pickup response and token validation
+        mock_token_validation()
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
+            "$expand=Files",
+            json=cadip_response,
+            status=200,
+        )
+        response = client.get("/cadip/collections/cadip_session_by_id/items").json()
+        # Assert that receive odata response is correctly mapped to stac feature.
+        assert response == {"type": "FeatureCollection", "features": [cadip_feature]}, "Features doesn't match"
+
+    @pytest.mark.unit
+    @responses.activate
+    def test_adgs_feature_collection_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
+        """Test mapping of an adgs reponse with expanded attributes"""
+        mock_token_validation()
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+            "&$expand=Attributes",
+            json=adgs_response,
+            status=200,
+        )
+        response = client.get("/auxip/collections/s2_adgs2_AUX_OBMEMC/items").json()
+        # Assert that receive odata response is correctly mapped to stac feature.
+        assert response == {"type": "FeatureCollection", "features": [adgs_feature]}, "Features doesn't match"

@@ -83,29 +83,24 @@ def create_auxip_product_search_params(
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
 
-## To be updated
 def auth_validation(request: Request, collection_id: str, access_type: str):
     """
-    Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
+    Check if the user KeyCloak roles contain the right for this specific AUXIP collection and access type.
 
     Args:
-        collection_id (str): used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
-        from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
+        collection_id (str): used to find the AUXIP station ("ADGS1, ADGS2")
+        from the RSPY_ADGS_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
     """
 
     # Find the collection which id == the input collection_id
     collection = select_config(collection_id)
     if not collection:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown CADIP collection: {collection_id!r}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown AUXIP collection: {collection_id!r}")
     station = collection["station"]
 
     # Call the authentication function from the authentication module
-    authentication.auth_validation("cadip", access_type, request=request, station=station)
-
-
-###
-
+    authentication.auth_validation("adgs", access_type, request=request, station=station)
 
 @router.get("/", include_in_schema=False)
 async def home_endpoint():
@@ -310,10 +305,11 @@ def get_adgs_collection_specific_item(
             attr_serial_identif=query_params.get("platformSerialIdentifier", None),
         ),
     )
-    return next(
-        (item.to_dict() for item in item_collection.features if item.id == item_id),
-        HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP {item_id} not found."),  # type: ignore
-    )
+    try:
+        item = next(item for item in item_collection.features if item.id == item_id)
+        return item.to_dict()
+    except StopIteration as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP {item_id} not found.") from exc
 
 
 @router.get("/auxip/collections/{collection_id}/queryables")
