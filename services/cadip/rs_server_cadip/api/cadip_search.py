@@ -114,8 +114,20 @@ class MockPgstacCadip(MockPgstac):
 
         # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
         if query == "SELECT * FROM all_collections();":
-            response = await get_allowed_collections(request=self.request)  # warning: use kwargs here
+            all_collections = read_conf()["collections"]
+            response = filter_allowed_collections(all_collections, "cadip", self.request)
             return response["collections"]
+
+        # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
+        # TODO: implement authorization in a middleware in the same way as the catalog
+        if query == "SELECT * FROM get_queryables($1::text);":
+
+            # Return queryables for a specific collection
+            if args:
+                return Queryables(properties=generate_cadip_queryables(args[0])).model_dump(by_alias=True)
+
+            # If no argument is provided, return queryables for all collections
+            return Queryables(properties=get_cadip_queryables()).model_dump(by_alias=True)
 
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
@@ -155,7 +167,6 @@ async def get_root_catalog(request: Request):
     """
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("cadip", "landing_page", request=request)
-
     return await request.app.state.pgstac_client.landing_page(request=request)
 
 
@@ -190,105 +201,13 @@ async def get_allowed_cadip_collections(request: Request):
     # Based on api key, get all station a user can access.
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("cadip", "landing_page", request=request)
-
-    configuration = read_conf()
-    all_collections = configuration["collections"]
-    return filter_allowed_collections(all_collections, "cadip", create_session_search_params, request)
+    return await request.app.state.pgstac_client.all_collections(request=request)
 
 
 @router.get("/cadip/conformance")
-def get_conformance():
+async def get_conformance(request: Request):
     """Return the STAC/OGC conformance classes implemented by this server."""
-    with open(CADIP_CONFIG / "cadip_stac_conforms_to.json", encoding="utf-8") as f:
-        return json.load(f)
-
-
-@router.get("/cadip/queryables")
-@auth_validator(station="cadip", access_type="landing_page")
-def get_all_queryables(request: Request):
-    """
-    Get All Queryable Fields for CADIP Search API
-
-    This endpoint returns a JSON schema describing all the queryable fields available within
-    the CADIP Search API. These fields represent the metadata attributes that can be used to filter
-    search results globally across the API. The returned schema helps clients understand the
-    available fields for constructing queries.
-
-    **Response:**
-    - A JSON object following the JSON Schema Draft 2019-09 specification, which includes:
-        - `schema`: URL of the JSON Schema specification (e.g., "https://json-schema.org/draft/2019-09/schema").
-        - `id`: Unique identifier for this queryables schema (e.g., "https://stac-api.example.com/queryables").
-        - `type`: The type of the schema object, typically "object".
-        - `title`: Title describing the queryables (e.g., "Queryables for CADIP Search API").
-        - `description`: Description of what the queryables represent (e.g., "Queryable names for the CADIP Search API
-        Item Search filter.").
-        - `properties`: Dictionary of queryable fields and their attributes, including their data types, titles, and
-        descriptions.
-
-    **Responses:**
-    - `200 OK`: Returns the queryables schema for the CADIP Search API.
-    - `401 Unauthorized`: If the request is missing or has an invalid API key.
-    - `403 Forbidden`: If the API key does not have the required permissions for the `cadip` station and `landing_page`
-     access type.
-
-    **Security:**
-    - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
-    and `landing_page` access type.
-    """
-    logger.info(f"Starting {request.url.path}")
-    return Queryables(
-        type="object",
-        title="Queryables for CADIP Search API",
-        description="Queryable names for the CADIP Search API Item Search filter.",
-        properties=get_cadip_queryables(),
-    ).model_dump(by_alias=True)
-
-
-@router.get("/cadip/collections/{collection_id}/queryables")
-def get_collection_queryables(
-    request: Request,
-    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
-):
-    """
-    Get Queryable Fields for a Specific Collection
-
-    This endpoint returns a JSON schema describing the queryable fields available for a specified
-    collection within the CADIP Search API. Queryable fields represent metadata attributes that can
-    be used to filter search results within the collection. The returned schema helps clients
-    understand which fields are available for filtering.
-
-    **Path Parameters:**
-    - `collection_id` (str): The unique identifier for the collection for which queryable fields are retrieved.
-
-    **Response:**
-    - A JSON object following the JSON Schema Draft 2019-09 specification, which includes:
-        - `schema`: URL of the JSON Schema specification (e.g., "https://json-schema.org/draft/2019-09/schema").
-        - `id`: Unique identifier for this queryables schema (e.g., "https://stac-api.example.com/queryables").
-        - `type`: The type of the schema object, typically "object".
-        - `title`: Title describing the queryables (e.g., "Queryables for CADIP Search API").
-        - `description`: Description of what the queryables represent (e.g., "Queryable names for the CADIP Search API
-        Item Search filter.").
-        - `properties`: Dictionary of queryable fields and their attributes, including their data types, titles, and
-        descriptions.
-
-    **Responses:**
-    - `200 OK`: Returns the queryables schema for the specified collection.
-    - `404 Not Found`: If the collection with the provided `collection_id` does not exist.
-
-    **Security:**
-    - Requires API key validation. Access is restricted to users with appropriate permissions for the `cadip` station
-    and `landing_page` access type.
-    """
-    logger.info(f"Starting {request.url.path}")
-    auth_validation(request, collection_id, "read")
-    return Queryables(
-        schema="https://json-schema.org/draft/2019-09/schema",
-        id="https://stac-api.example.com/queryables",
-        type="object",
-        title="Queryables for CADIP Search API",
-        description="Queryable names for the CADIP Search API Item Search filter.",
-        properties=generate_cadip_queryables(collection_id),
-    ).model_dump(by_alias=True)
+    return await request.app.state.pgstac_client.conformance()
 
 
 @router.get("/cadip/search/items", deprecated=True)
@@ -331,7 +250,7 @@ async def search_cadip_with_session_info(request: Request):
 
 @router.get("/cadip/search")
 @handle_exceptions
-async def search_cadip_endpoint(request: Request) -> dict:
+async def search_cadip_endpoint(request: Request, collection: str) -> dict:
     """
     Search CADIP Collections and Retrieve STAC-Compliant Data.
 

@@ -31,14 +31,16 @@ logger = Logging.default(__name__)
 
 
 class Queryables(BaseModel):
-    """BaseModel used to describe queryable holder."""
+    """
+    BaseModel used to describe queryable holder.
+    See: site-packages/pypgstac/migrations/pgstac.0.8.6.sql
+    """
 
-    schema: str = Field("https://json-schema.org/draft/2019-09/schema", alias="$schema")  # type: ignore
-    id: str = Field("https://stac-api.example.com/queryables", alias="$id")
-    type: str
-    title: str
-    description: str
-    properties: dict[str, Any]
+    id: str = Field("", alias="$id")
+    type: str = Field("object")
+    title: str = Field("STAC Queryables.")
+    schema: str = Field("http://json-schema.org/draft-07/schema#", alias="$schema")  # type: ignore
+    properties: dict[str, Any] = Field({})
 
     class Config:  # pylint: disable=too-few-public-methods
         """Used to overwrite BaseModel config and display aliases in model_dump."""
@@ -86,9 +88,9 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
     items."""
 
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
         except KeyError as exc:
             logger.error(f"KeyError caught in {func.__name__}")
             raise HTTPException(
@@ -105,7 +107,7 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def filter_allowed_collections(all_collections, role, collection_search_func, request):
+def filter_allowed_collections(all_collections, role, request):
     """Filters collections based on user roles and permissions.
 
     This function returns only the collections that a user is allowed to read based on their
@@ -117,9 +119,6 @@ def filter_allowed_collections(all_collections, role, collection_search_func, re
                                        is represented as a dictionary.
         role (str): The role of the user requesting access to the collections, which is used to
                     build the required authorization key for filtering collections.
-        collection_search_func (Callable): A function that takes a collection configuration
-                                            and returns query parameters for searching that
-                                            collection.
         request (Request): The request object, which contains user authentication roles
                            available through `request.state.auth_roles`.
 
@@ -166,9 +165,6 @@ def filter_allowed_collections(all_collections, role, collection_search_func, re
     for config in filtered_collections:
 
         config.setdefault("stac_version", "1.0.0")
-
-        query_params = collection_search_func(config)
-        logger.debug(f"Collection {config['id']} params: {query_params}")
 
         try:
             collection: stac_pydantic.Collection = create_collection(config)

@@ -16,11 +16,10 @@
 
 import asyncio
 import typing
-from abc import abstractmethod
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from os import environ as env
-from typing import AsyncIterator, Callable, Literal, Self
+from typing import AsyncIterator, Literal, Self, Type
 
 import httpx
 import sqlalchemy
@@ -72,8 +71,7 @@ def init_app(  # pylint: disable=too-many-locals
     init_db: bool = True,
     pause: int = 3,
     timeout: int = None,
-    startup_events: list[Callable] = None,
-    shutdown_events: list[Callable] = None,
+    router_prefix: str = "",
 ):  # pylint: disable=too-many-arguments
     """
     Init the FastAPI application.
@@ -86,8 +84,7 @@ def init_app(  # pylint: disable=too-many-locals
         init_db (bool): should we init the database session ?
         timeout (int): timeout in seconds to wait for the database connection.
         pause (int): pause in seconds to wait for the database connection.
-        startup_events (list[Callable]): list of functions that should be run before the application starts
-        shutdown_events (list[Callable]): list of functions that should be run when the application is shutting down
+        router_prefix (str): used by stac_fastapi
     """
 
     logger = Logging.default(__name__)
@@ -124,19 +121,11 @@ def init_app(  # pylint: disable=too-many-locals
         # Init objects for dependency injection
         settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
-        # Call additional startup events
-        for event in app.state.startup_events:
-            event()
-
         yield
 
         ############
         # SHUTDOWN #
         ############
-
-        # Call additional shutdown events
-        for event in app.state.shutdown_events:
-            event()
 
         # Close objects for dependency injection
         await settings.del_http_client()
@@ -166,12 +155,11 @@ def init_app(  # pylint: disable=too-many-locals
     app.state.init_db = init_db
     app.state.pg_pause = pause
     app.state.pg_timeout = timeout
-    app.state.startup_events = startup_events or []
-    app.state.shutdown_events = shutdown_events or []
 
     # Init a pgstac client for adgs and cadip.
     # TODO: remove this when adgs and cadip switch to a stac_fastapi application.
     # Example taken from: https://github.com/stac-utils/stac-fastapi-pgstac/blob/main/tests/api/test_api.py
+    app.state.router_prefix = router_prefix  # NOTE: maybe we should keep this one
     extensions = [  # no transactions because we don't update the database
         # TransactionExtension(client=TransactionsClient(), settings=api_settings),
         QueryExtension(),
@@ -183,6 +171,14 @@ def init_app(  # pylint: disable=too-many-locals
     ]
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
     app.state.pgstac_client = CoreCrudClient(post_request_model=search_post_request_model)
+
+    # TODO: remove this when adgs and cadip switch to a stac_fastapi application.
+    app.state.pgstac_client.extensions = extensions
+    for ext in extensions:
+        ext.register(app)
+    app.state.pgstac_client.stac_version = app.version
+    app.state.pgstac_client.title = app.title
+    app.state.pgstac_client.description = app.description
 
     dependencies = []
     if settings.CLUSTER_MODE:
@@ -233,8 +229,8 @@ class MockPgstac:
     TODO: move this class to the stac_fastapi application used by adgs and cadip when it will be implemented.
     """
 
-    request: Request
-    readwrite: Literal["r", "w"]
+    request: Request | None = None
+    readwrite: Literal["r", "w"] | None = None
 
     async def fetchval(self, query, *args, column=0, timeout=None):
         """Run a query and return a value in the first row.
@@ -257,3 +253,20 @@ class MockPgstac:
     async def get_connection(cls, request: Request, readwrite: Literal["r", "w"] = "r") -> AsyncIterator[Self]:
         """Return a class instance"""
         yield cls(request, readwrite)
+
+    @dataclass
+    class ReadPool:
+        """Used to mock the readpool function."""
+
+        # Outer MockPgstac class type
+        outer_cls: Type["MockPgstac"]
+
+        @asynccontextmanager
+        async def acquire(self) -> AsyncIterator[Self]:
+            """Return an outer class instance"""
+            yield self.outer_cls()
+
+    @classmethod
+    def readpool(cls):
+        """Mock the readpool function."""
+        return cls.ReadPool(cls)
