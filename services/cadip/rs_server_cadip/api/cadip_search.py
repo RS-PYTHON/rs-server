@@ -22,8 +22,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import traceback
 import uuid
-from functools import wraps
-from typing import Annotated, Any, Callable, List, Union
+from typing import Annotated, Any, List, Union
 
 import requests
 import sqlalchemy
@@ -32,22 +31,22 @@ from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
 from fastapi.responses import RedirectResponse
-from pydantic import ValidationError, WrapValidator, validate_call
+from pydantic import WrapValidator, validate_call
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
+    cadip_map_mission,
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
-    generate_queryables,
+    generate_cadip_queryables,
     get_cadip_queryables,
     prepare_cadip_search,
     read_conf,
     select_config,
     validate_products,
 )
-from rs_server_common import settings
 from rs_server_common.authentication import authentication
 from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
@@ -55,13 +54,17 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.fastapi_app import MockPgstac
-from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import (
+from rs_server_common.stac_api_common import (
     Queryables,
     create_collection,
     create_links,
     create_stac_collection,
+    filter_allowed_collections,
+    handle_exceptions,
     sort_feature_collection,
+)
+from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import (
     validate_inputs_format,
     validate_str_list,
     write_search_products_to_db,
@@ -69,30 +72,6 @@ from rs_server_common.utils.utils import (
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
-
-
-def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors while creating/validating
-    items."""
-
-    @wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return await func(*args, **kwargs)
-        except KeyError as exc:
-            logger.error(f"KeyError caught in {func.__name__}")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Cannot create STAC Collection -> Missing {exc}",
-            ) from exc
-        except ValidationError as exc:
-            logger.error(f"ValidationError caught in {func.__name__}")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Parameters validation error: {exc}",
-            ) from exc
-
-    return wrapper
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -182,7 +161,7 @@ async def get_root_catalog(request: Request):
 
 @router.get("/cadip/collections")
 @handle_exceptions
-async def get_allowed_collections(request: Request):
+async def get_allowed_cadip_collections(request: Request):
     """
         Endpoint to retrieve an object containing collections and links that a user is authorized to
         access based on their API key.
@@ -214,46 +193,7 @@ async def get_allowed_collections(request: Request):
 
     configuration = read_conf()
     all_collections = configuration["collections"]
-
-    # No authentication: select all collections
-    if settings.LOCAL_MODE:
-        filtered_collections = all_collections
-
-    else:
-        # Read the user roles defined in KeyCloak
-        try:
-            auth_roles = request.state.auth_roles or []
-        except AttributeError:
-            auth_roles = []
-
-        # Only keep the collections that are associated to a station that the user has access to
-        filtered_collections = [
-            collection for collection in all_collections if f"rs_cadip_{collection['station']}_read" in auth_roles
-        ]
-
-    logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
-    # Create JSON object.
-    stac_object: dict = {"type": "Object", "links": [], "collections": []}
-
-    # Foreach allowed collection, create links and append to response.
-    for config in filtered_collections:
-
-        config.setdefault("stac_version", "1.0.0")
-
-        # query_params = create_session_search_params(config)
-        # logger.debug(f"Collection {config['id']} params: {query_params}")
-
-        try:
-            collection: stac_pydantic.Collection = create_collection(config)
-            stac_object["collections"].append(collection.model_dump())
-
-        # If a collection is incomplete in the configuration file, log the error and proceed
-        except HTTPException as exception:
-            if exception.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
-                logger.error(exception)
-            else:
-                raise
-    return stac_object
+    return filter_allowed_collections(all_collections, "cadip", create_session_search_params, request)
 
 
 @router.get("/cadip/conformance")
@@ -347,7 +287,7 @@ def get_collection_queryables(
         type="object",
         title="Queryables for CADIP Search API",
         description="Queryable names for the CADIP Search API Item Search filter.",
-        properties=generate_queryables(collection_id),
+        properties=generate_cadip_queryables(collection_id),
     ).model_dump(by_alias=True)
 
 
@@ -487,6 +427,10 @@ async def search_cadip_endpoint(request: Request) -> dict:
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("cadip", "landing_page", request=request)  # TODO: how to implement authentication ?
     request_params = dict(request.query_params)
+    request_params["platform"] = cadip_map_mission(
+        request_params.pop("platform", None),
+        request_params.pop("constellation", None),
+    )
     collection_name: Union[str, None] = request_params.pop("collection", None)
     logger.debug(f"User selected collection: {collection_name}")
     selected_config: Union[dict, None]
@@ -754,7 +698,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
             match add_assets:
                 case "collection":
-                    return create_links(products)
+                    return create_links(products, "CADIP")
                 # case "items":
                 #     return create_stac_collection(products, feature_template, stac_mapper)
                 case True | "items":
@@ -799,10 +743,8 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
-
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
-
     Args:
         request (Request): The request object (unused).
         datetime (str): Time interval in ISO 8601 format.
@@ -810,11 +752,9 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         session_id (str): Session from which file belong.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
         sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
-
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.
                            If no products are found in the specified time range, returns an empty list.
-
     Raises:
         HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
         HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
@@ -823,49 +763,6 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
     return process_files_search(datetime, station, session_id, limit, sortby, deprecated=True)
-
-
-@router.get("/cadip/{station}/session", deprecated=True)
-@auth_validator(station="cadip", access_type="read")
-def search_session(
-    request: Request,  # pylint: disable=unused-argument
-    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
-    id: Annotated[
-        Union[str, None],
-        Query(
-            description='Session identifier eg: "S1A_20200105072204051312" or '
-            '"S1A_20200105072204051312, S1A_20220715090550123456"',
-        ),
-    ] = None,
-    platform: Annotated[Union[str, None], Query(description='Satellite identifier eg: "S1A" or "S1A, S1B"')] = None,
-    start_date: Annotated[Union[str, None], Query(description='Start time e.g. "2024-01-01T00:00:00Z"')] = None,
-    stop_date: Annotated[Union[str, None], Query(description='Stop time e.g. "2024-01-01T00:00:00Z"')] = None,
-    limit: int = 1000,
-):  # pylint: disable=too-many-arguments, too-many-locals
-    """Endpoint to retrieve a list of sessions from any CADIP station.
-
-    A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
-    (*start_date* and *stop_date* correctly defined).
-
-    Args:
-        request (Request): The request object (unused).
-        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        id (str, optional): Session identifier(s), comma-separated. Defaults to None.
-        platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
-        start_date (str, optional): Start time in ISO 8601 format. Defaults to None.
-        stop_date (str, optional): Stop time in ISO 8601 format. Defaults to None.
-        limit (int, optional): Maximum number of products to return. Defaults to 1000.
-
-    Returns:
-        dict (dict): A STAC Feature Collection of the sessions.
-
-    Raises:
-        HTTPException (fastapi.exceptions): If search parameters are missing.
-        HTTPException (fastapi.exceptions): If there is a JSON mapping error.
-        HTTPException (fastapi.exceptions): If there is a value error during mapping.
-    """
-
-    return process_session_search(request, station, id, platform, f"{start_date}/{stop_date}", limit)  # type: ignore
 
 
 def process_files_search(  # pylint: disable=too-many-locals
@@ -877,10 +774,8 @@ def process_files_search(  # pylint: disable=too-many-locals
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
-
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
-
     Args:
         request (Request): The request object (unused).
         datetime (str): Time interval in ISO 8601 format.
@@ -888,11 +783,9 @@ def process_files_search(  # pylint: disable=too-many-locals
         session_id (str): Session from which file belong.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
         sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
-
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.
                            If no products are found in the specified time range, returns an empty list.
-
     Raises:
         HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
         HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
@@ -931,7 +824,6 @@ def process_files_search(  # pylint: disable=too-many-locals
             cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from CADIP station")
         return sort_feature_collection(cadip_item_collection.model_dump(), sortby)
-
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
@@ -939,7 +831,6 @@ def process_files_search(  # pylint: disable=too-many-locals
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Bad station identifier: {exception}",
         ) from exception
-
     # pylint: disable=duplicate-code
     except sqlalchemy.exc.OperationalError as exception:
         logger.error("Failed to connect to database!")
@@ -947,14 +838,12 @@ def process_files_search(  # pylint: disable=too-many-locals
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Database connection error: {exception}",
         ) from exception
-
     except requests.exceptions.ConnectionError as exception:
         logger.error("Failed to connect to station!")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Station {station} connection error: {exception}",
         ) from exception
-
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error("General failure!")
         raise HTTPException(
