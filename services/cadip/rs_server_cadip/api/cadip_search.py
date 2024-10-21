@@ -177,7 +177,6 @@ async def get_root_catalog(request: Request):
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("cadip", "landing_page", request=request)
 
-    request.app.state.get_connection = MockPgstacCadip.get_connection
     return await request.app.state.pgstac_client.landing_page(request=request)
 
 
