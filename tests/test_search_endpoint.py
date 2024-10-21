@@ -1080,7 +1080,7 @@ class TestErrorWhileBuildUpCollection:
 
 
 class TestFeatureOdataStacMapping:
-    """Class that group unittests for /*/collections/{collection-id}/items/{item-id} mapping from odata to stac."""
+    """Class that group unittests for /*/collections/{collection_id}/items/{item_id} mapping from odata to stac."""
 
     @pytest.mark.unit
     @responses.activate
@@ -1181,6 +1181,26 @@ class TestFeatureOdataStacMapping:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json() == detail
 
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint, detail",
+        [
+            (
+                "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/INVALID_ITEM",
+                {"detail": "AUXIP INVALID_ITEM not found."},
+            ),
+            (
+                "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
+                {"detail": "Session INVALID_ITEM not found."},
+            ),
+        ],
+    )
+    def test_invalid_item_mapping(self, client, endpoint, detail):
+        """Test to verify the output of rs-server when given item is invalid."""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json() == detail
+
 
 class TestFeatureCollectionOdataStacMapping:
     """Class that group unittests for /*/collections/{collection-id}/items mapping from odata to stac."""
@@ -1220,3 +1240,124 @@ class TestFeatureCollectionOdataStacMapping:
         response = client.get("/auxip/collections/s2_adgs2_AUX_OBMEMC/items").json()
         # Assert that receive odata response is correctly mapped to stac feature.
         assert response == {"type": "FeatureCollection", "features": [adgs_feature]}, "Features doesn't match"
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint, detail",
+        [
+            (
+                "/auxip/collections/INVALID_COLLECTION/items",
+                {"detail": "Unknown AUXIP collection: 'INVALID_COLLECTION'"},
+            ),
+            (
+                "/cadip/collections/INVALID_COLLECTION/items",
+                {"detail": "Unknown CADIP collection: 'INVALID_COLLECTION'"},
+            ),
+        ],
+    )
+    def test_feature_collection_not_found(self, client, endpoint, detail):
+        """Test with an invalid collection request, should raise 404."""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json() == detail
+
+
+class TestCollection:
+    """Class used to group tests for */collections/{collection_id}"""
+
+    def setup(self, selector, cadip_response, adgs_response):
+        """Helper function used to select fixture ouput for pickup response"""
+        if selector == "adgs":
+            return adgs_response
+        return cadip_response
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize(
+        "endpoint, odata_request, href, selector",
+        [
+            (
+                "/cadip/collections/cadip_session_by_id",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
+                "$top=20&$expand=Files",
+                {"href": "./simple-item.json", "rel": "item", "title": "S1A_20200105072204051312"},
+                "cadip",
+            ),
+            (
+                "/auxip/collections/s2_adgs2_AUX_OBMEMC",
+                "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att"
+                "/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&"
+                "$top=1000&$expand=Attributes",
+                {
+                    "href": "./simple-item.json",
+                    "rel": "item",
+                    "title": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+                },
+                "adgs",
+            ),
+        ],
+    )
+    def test_valid_collection_request(
+        self,
+        client,
+        mock_token_validation,
+        endpoint,
+        odata_request,
+        href,
+        selector,
+        cadip_response,
+        adgs_response,
+    ):
+        """Test a valid call to /collections endpoint, check that found collection is converted to a item link."""
+        mock_token_validation()
+        selected_response = self.setup(selector, cadip_response, adgs_response)
+        responses.add(responses.GET, odata_request, json=selected_response, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_200_OK
+        assert href in response.json()["links"]
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize(
+        "endpoint, odata_request, href, self_href",
+        [
+            (
+                "/cadip/collections/cadip_session_by_id",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
+                "$expand=Files",
+                {"href": "./simple-item.json", "rel": "item", "title": "S1A_20200105072204051312"},
+                {
+                    "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
+                    "Sentinel_Data_Terms_and_Conditions.pdf",
+                    "rel": "license",
+                    "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information",
+                },
+            ),
+            (
+                "/auxip/collections/s2_adgs2_AUX_OBMEMC",
+                "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+                "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+                "&$expand=Attributes",
+                {
+                    "href": "./simple-item.json",
+                    "rel": "item",
+                    "title": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+                },
+                {
+                    "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
+                    "Sentinel_Data_Terms_and_Conditions.pdf",
+                    "rel": "license",
+                    "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information",
+                },
+            ),
+        ],
+    )
+    def test_valid_empty_collection(self, client, mock_token_validation, endpoint, odata_request, href, self_href):
+        """Test when response from pickup is empty, the result should still be 200 oK,
+        but with no other links than self references"""
+        mock_token_validation()
+        responses.add(responses.GET, odata_request, json={"responses": []}, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_200_OK
+        assert href not in response.json()["links"]
+        assert response.json()["links"][0] == self_href
