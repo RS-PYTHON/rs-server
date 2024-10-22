@@ -185,6 +185,7 @@ def get_conformance():
 @auth_validator(station="adgs", access_type="landing_page")
 @handle_exceptions
 def get_allowed_adgs_collections(request: Request):
+    """Docstring will be added."""
     # Based on api key, get all station a user can access.
     logger.info(f"Starting {request.url.path}")
 
@@ -236,6 +237,7 @@ def get_all_queryables(request: Request):
 @auth_validator(station="adgs", access_type="landing_page")
 @handle_exceptions
 def search_auxip_endpoint(request: Request) -> dict:
+    """Docstring will be added."""
     logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
     if not set(request_params.keys()).issubset(set(get_adgs_queryables().keys())):
@@ -261,6 +263,7 @@ def get_adgs_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
 ) -> list[dict] | dict:
+    """Docstring will be added."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
