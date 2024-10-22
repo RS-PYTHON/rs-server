@@ -36,8 +36,8 @@ SLEEP_TIME = 0.2
 S3_MAX_RETRIES = 3
 S3_RETRY_TIMEOUT = 5
 SET_PREFECT_LOGGING_LEVEL = "DEBUG"
-S3_ERR_FORBIDDEN_ACCESS = 403
-S3_ERR_NOT_FOUND = 404
+S3_ERR_FORBIDDEN_ACCESS = "403"
+S3_ERR_NOT_FOUND = "404"
 HTTP_CONNECTION_TIMEOUT = 10
 HTTP_READ_TIMEOUT = 120
 # the maximum number of attempts that are made on a single request
@@ -222,7 +222,7 @@ class S3StorageHandler:
                 self.connect_s3()
                 self.logger.debug("Deleting s3 key s3://%s/%s", bucket, key)
                 if not self.check_s3_key_on_bucket(bucket, key):
-                    self.logger.debug("Deleting s3 key s3://%s/%s", bucket, key)
+                    self.logger.debug("S3 key to be deleted s3://%s/%s does not exist", bucket, key)
                     return
                 self.s3_client.delete_object(Bucket=bucket, Key=key)
                 self.logger.info("S3 key deleted: s3://%s/%s", bucket, key)
@@ -233,7 +233,7 @@ class S3StorageHandler:
                     # keep retrying
                     self.disconnect_s3()
                     self.logger.error(
-                        f"Failed to delete key s3://{bucket}/{key}: {e}" f"\nRetrying in {S3_RETRY_TIMEOUT} seconds. ",
+                        f"Failed to delete key s3://{bucket}/{key}: {e} \nRetrying in {S3_RETRY_TIMEOUT} seconds. ",
                     )
                     self.wait_timeout(S3_RETRY_TIMEOUT)
                     continue
@@ -242,7 +242,7 @@ class S3StorageHandler:
             except RuntimeError as e:
                 self.logger.exception(f"Failed to check the key s3://{bucket}/{key}. Useless to retry. Reason: {e}")
                 raise RuntimeError(
-                    f"Failed to check the key s3://{bucket}/{key}. " f"Useless to retry. Reason: {e}",
+                    f"Failed to check the key s3://{bucket}/{key}. Useless to retry. Reason: {e}",
                 ) from e
             except Exception as e:
                 self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
@@ -444,7 +444,7 @@ class S3StorageHandler:
         except botocore.client.ClientError as error:
             # check that it was a 404 vs 403 errors
             # If it was a 404 error, then the bucket does not exist.
-            error_code = int(error.response["Error"]["Code"])
+            error_code = error.response["Error"]["Code"]
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
                 self.logger.exception((f"{bucket} is a private bucket. Forbidden access!"))
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
@@ -471,7 +471,6 @@ class S3StorageHandler:
             RuntimeError: If an error occurs during the bucket access check or if
             the s3_key is not available.
         """
-
         try:
             self.connect_s3()
             self.logger.debug(f"Checking for the presence of the s3 key s3://{bucket}/{s3_key}")
@@ -479,7 +478,7 @@ class S3StorageHandler:
         except botocore.client.ClientError as error:
             # check that it was a 404 vs 403 errors
             # If it was a 404 error, then the bucket does not exist.
-            error_code = int(error.response["Error"]["Code"])
+            error_code = error.response["Error"]["Code"]
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
                 self.logger.exception((f"{bucket} is a private bucket. Forbidden access!"))
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
@@ -488,7 +487,11 @@ class S3StorageHandler:
                 return False
             self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
             raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
-        except botocore.exceptions.EndpointConnectionError as error:
+        except (
+            botocore.exceptions.EndpointConnectionError,
+            botocore.exceptions.NoCredentialsError,
+            botocore.exceptions.PartialCredentialsError,
+        ) as error:
             self.logger.exception(f"Failed to connect to the endpoint when trying to access {bucket}: {error}")
             raise RuntimeError(f"Failed to connect to the endpoint when trying to access {bucket}!") from error
         except Exception as error:

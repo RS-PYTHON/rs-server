@@ -1030,6 +1030,42 @@ def test_delete_file_from_s3(mocker):
 
 
 @pytest.mark.unit
+def test_check_s3_key_on_bucket_success(mocker):
+    """Test case for successful key check in S3 bucket."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # create the test bucket
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    file_to_be_checked = "test/key.txt"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_checked, Body="testing\n")
+
+    mock_logger = mocker.patch.object(s3_handler, "logger")
+
+    # Call the function
+    result = s3_handler.check_s3_key_on_bucket(bucket, file_to_be_checked)
+
+    # Assertions
+    mock_logger.debug.assert_called_once_with(
+        f"Checking for the presence of the s3 key s3://{bucket}/{file_to_be_checked}",
+    )
+
+    assert result is True
+    server.stop()
+
+
+@pytest.mark.unit
 @responses.activate
 def test_s3_streaming_upload(mocker):
     """Unit test for testing the streaming of a file from an HTTP URL to an

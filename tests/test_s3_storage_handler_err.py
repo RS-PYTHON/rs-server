@@ -26,6 +26,8 @@ from moto.server import ThreadedMotoServer
 from requests.auth import HTTPBasicAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     DWN_S3FILE_RETRY_TIMEOUT,
+    S3_ERR_FORBIDDEN_ACCESS,
+    S3_ERR_NOT_FOUND,
     S3_MAX_RETRIES,
     SLEEP_TIME,
     GetKeysFromS3Config,
@@ -55,25 +57,23 @@ def test_client_exception_while_checking_access_handling():
         secrets["s3endpoint"],
         secrets["region"],
     )
-    boto_mocker = Stubber(s3_handler.s3_client)
+    with Stubber(s3_handler.s3_client) as boto_mocker:
+        boto_mocker.add_client_error("head_bucket", S3_ERR_FORBIDDEN_ACCESS)
 
-    boto_mocker.add_client_error("head_bucket", 403)
-    boto_mocker.activate()
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.check_bucket_access("some_s3_1")
-    assert str(exc.value) == "some_s3_1 is a private bucket. Forbidden access!"
+        with pytest.raises(RuntimeError) as exc:
+            s3_handler.check_bucket_access("some_s3_1")
+        assert str(exc.value) == "some_s3_1 is a private bucket. Forbidden access!"
 
-    boto_mocker.add_client_error("head_bucket", 404)
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.check_bucket_access("some_s3_2")
-    assert str(exc.value) == "some_s3_2 bucket does not exist!"
-    assert str(exc.value) != "Exception when checking the access to some_s3_1 bucket!"
+        boto_mocker.add_client_error("head_bucket", S3_ERR_NOT_FOUND)
+        with pytest.raises(RuntimeError) as exc:
+            s3_handler.check_bucket_access("some_s3_2")
+        assert str(exc.value) == "some_s3_2 bucket does not exist!"
+        assert str(exc.value) != "Exception when checking the access to some_s3_1 bucket!"
 
-    boto_mocker.add_client_error("head_bucket", 500)
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.check_bucket_access("some_s3_3")
-    assert str(exc.value) == "Exception when checking the access to some_s3_3 bucket"
-    boto_mocker.deactivate()
+        boto_mocker.add_client_error("head_bucket", "500")
+        with pytest.raises(RuntimeError) as exc:
+            s3_handler.check_bucket_access("some_s3_3")
+        assert str(exc.value) == "Exception when checking the access to some_s3_3 bucket"
 
 
 @pytest.mark.unit
@@ -428,5 +428,154 @@ def test_s3_streaming_upload_fail(mocker):
         assert res.call_count == S3_MAX_RETRIES - 1
         res.call_count = 0
         boto_mocker.deactivate()
+
+    server.stop()
+
+
+def test_check_s3_key_on_bucket_forbidden(mocker):
+    """Test case for forbidden access to S3 bucket."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_key = "test_key.tst"
+    mock_logger = mocker.patch.object(s3_handler, "logger")
+    with Stubber(s3_handler.s3_client) as boto_mocker:
+        boto_mocker.add_client_error(
+            "head_object",
+            service_message="Forbidden",
+            service_error_code=str(S3_ERR_FORBIDDEN_ACCESS),
+        )
+
+        # Call the function and verify it raises RuntimeError
+        with pytest.raises(RuntimeError, match=f"{bucket} is a private bucket. Forbidden access!"):
+            s3_handler.check_s3_key_on_bucket(bucket, s3_key)
+            mock_logger.exception.assert_called_once_with(f"{bucket} is a private bucket. Forbidden access!")
+    server.stop()
+
+
+def test_check_s3_key_on_bucket_not_found(mocker):
+    """Test case for S3 key not found."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_key = "test_key.tst"
+    mock_logger = mocker.patch.object(s3_handler, "logger")
+    with Stubber(s3_handler.s3_client) as boto_mocker:
+        boto_mocker.add_client_error("head_object", service_message="Not Found", service_error_code=S3_ERR_NOT_FOUND)
+
+        # Call the function
+        result = s3_handler.check_s3_key_on_bucket(bucket, s3_key)
+        mock_logger.exception.assert_called_once_with(f"The key s3://{bucket}/{s3_key} does not exist!")
+        assert result is False
+
+    server.stop()
+
+
+def test_check_s3_key_on_bucket_unchecked_client_error(mocker):
+    """Test case for S3 key not found."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_key = "test_key.tst"
+    mock_logger = mocker.patch.object(s3_handler, "logger")
+    with Stubber(s3_handler.s3_client) as boto_mocker:
+        boto_mocker.add_client_error(
+            "head_object",
+            service_message="Not Found",
+            service_error_code="UNCHECKED_CLIENT_ERROR",
+        )
+
+        # Call the function
+        with pytest.raises(RuntimeError, match=f"Exception when checking the access to {bucket} bucket"):
+            s3_handler.check_s3_key_on_bucket(bucket, s3_key)
+            mock_logger.exception.assert_called_once_with(f"Exception when checking the access to {bucket} bucket")
+
+    server.stop()
+
+
+def test_check_s3_key_on_bucket_connection_error(mocker):
+    """Test case for connection error when accessing S3 bucket."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_key = "test_key.tst"
+    mock_logger = mocker.patch.object(s3_handler, "logger")
+    server.stop()
+
+    # Call the function
+    with pytest.raises(RuntimeError, match=f"Failed to connect to the endpoint when trying to access {bucket}!"):
+        s3_handler.check_s3_key_on_bucket(bucket, s3_key)
+        mock_logger.exception.assert_called_once_with(
+            f"Failed to connect to the endpoint when trying to access {bucket}: Connection error",
+        )
+
+
+def test_check_s3_key_on_bucket_general_exception(mocker):
+    """Test case for general exception during S3 bucket access."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_key = "test_key.tst"
+    mock_logger = mocker.patch.object(s3_handler, "logger")
+    mocker.patch.object(s3_handler.s3_client, "head_object", side_effect=Exception)
+    # Call the function
+    with pytest.raises(RuntimeError, match=f"General exception when trying to access bucket {bucket}"):
+        s3_handler.check_s3_key_on_bucket(bucket, s3_key)
+        mock_logger.exception.assert_called_once_with(f"General exception when trying to access bucket {bucket}")
 
     server.stop()
