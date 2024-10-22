@@ -420,6 +420,12 @@ class TestErrorWhileBuildUpCollection:
 class TestFeatureOdataStacMapping:
     """Class that group unittests for /*/collections/{collection_id}/items/{item_id} mapping from odata to stac."""
 
+    def setup(self, selector, cadip_response, adgs_response):
+        """Helper function used to select fixture ouput for pickup response"""
+        if selector == "adgs":
+            return adgs_response
+        return cadip_response
+
     @pytest.mark.unit
     @responses.activate
     def test_cadip_feature_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
@@ -519,23 +525,44 @@ class TestFeatureOdataStacMapping:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json() == detail
 
-    # This is passing, but why it is so slow for cadip?
     @pytest.mark.unit
+    @responses.activate
     @pytest.mark.parametrize(
-        "endpoint, detail",
+        "endpoint, odata_url, detail",
         [
             (
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/INVALID_ITEM",
+                "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+                "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+                "&$expand=Attributes",
                 {"detail": "AUXIP INVALID_ITEM not found."},
             ),
             (
                 "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
+                "$top=20&$expand=Files",
                 {"detail": "Session INVALID_ITEM not found."},
             ),
         ],
     )
-    def test_invalid_item_mapping(self, client, endpoint, detail):
-        """Test to verify the output of rs-server when given item is invalid."""
+    def test_invalid_item_mapping(
+        self,
+        client,
+        mock_token_validation,
+        cadip_response,
+        adgs_response,
+        endpoint,
+        odata_url,
+        detail,
+    ):
+        """Test to verify the output of rs-server when given collection is valid and item is invalid."""
+        mock_token_validation()
+        responses.add(
+            responses.GET,
+            odata_url,
+            json=self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_response, adgs_response),
+            status=200,
+        )
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json() == detail
@@ -613,14 +640,13 @@ class TestCollection:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize(
-        "endpoint, odata_request, href, selector",
+        "endpoint, odata_request, href",
         [
             (
                 "/cadip/collections/cadip_session_by_id",
                 "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
                 "$top=20&$expand=Files",
                 {"href": "./simple-item.json", "rel": "item", "title": "S1A_20200105072204051312"},
-                "cadip",
             ),
             (
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC",
@@ -632,7 +658,6 @@ class TestCollection:
                     "rel": "item",
                     "title": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
                 },
-                "adgs",
             ),
         ],
     )
@@ -643,13 +668,12 @@ class TestCollection:
         endpoint,
         odata_request,
         href,
-        selector,
         cadip_response,
         adgs_response,
     ):
         """Test a valid call to /collections endpoint, check that found collection is converted to a item link."""
         mock_token_validation()
-        selected_response = self.setup(selector, cadip_response, adgs_response)
+        selected_response = self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_response, adgs_response)
         responses.add(responses.GET, odata_request, json=selected_response, status=200)
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
