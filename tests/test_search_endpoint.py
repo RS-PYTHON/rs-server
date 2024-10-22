@@ -91,10 +91,11 @@ class TestOperatorDefinedCollections:
             ("/auxip/collections/adgs_invalid_no_stop/items", status.HTTP_400_BAD_REQUEST),
         ],
     )
-    def test_invalid_defined_collections(self, client, mocker, endpoint, code):
+    def test_invalid_defined_collections(self, client, mocker, mock_token_validation, endpoint, code):
         """Test cases with invalid defined collections requests send to /session endpoint"""
         # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
         # usage of the internal token module  for getting the token and setting it to the eodag
+        mock_token_validation()
         mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
         assert client.get(endpoint).status_code == code
 
