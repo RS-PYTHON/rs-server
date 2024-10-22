@@ -325,11 +325,11 @@ def test_load_external_auth_config_by_station_service_file_not_found(mocker, sta
     Assertions:
         - HTTPException is raised with a status code of 500 and a relevant error message.
     """
-    with mocker.patch("builtins.open", side_effect=FileNotFoundError):
-        with pytest.raises(HTTPException) as excinfo:
-            load_external_auth_config_by_station_service(station_id, "auxip" if station_id == "adgs" else "cadip")
-        assert excinfo.value.status_code == 500
-        assert "Error loading configuration" in excinfo.value.detail
+    mocker.patch("builtins.open", side_effect=FileNotFoundError)
+    with pytest.raises(HTTPException) as excinfo:
+        load_external_auth_config_by_station_service(station_id, "auxip" if station_id == "adgs" else "cadip")
+    assert excinfo.value.status_code == 500
+    assert "Error loading configuration" in excinfo.value.detail
 
 
 @pytest.mark.unit
@@ -556,11 +556,11 @@ def test_load_external_auth_config_by_domain_file_not_found(mocker):
     Assertions:
         - HTTPException is raised with a status code of 500 and a relevant error message.
     """
-    with mocker.patch("builtins.open", side_effect=FileNotFoundError):
-        with pytest.raises(HTTPException) as excinfo:
-            load_external_auth_config_by_domain("domain_test")
-        assert excinfo.value.status_code == 500
-        assert "Error loading configuration" in excinfo.value.detail
+    mocker.patch("builtins.open", side_effect=FileNotFoundError)
+    with pytest.raises(HTTPException) as excinfo:
+        load_external_auth_config_by_domain("domain_test")
+    assert excinfo.value.status_code == 500
+    assert "Error loading configuration" in excinfo.value.detail
 
 
 @pytest.mark.unit

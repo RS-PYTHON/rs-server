@@ -14,18 +14,14 @@
 
 """Test module for RSPYStaging processor."""
 import asyncio
-
-# import json
 import os
 import threading
+from typing import Dict
 from unittest.mock import call
 
 import pytest
 import requests
-
-# from dask.distributed import Client
-# from dask_gateway import Gateway
-# from dask_gateway.auth import JupyterHubAuth
+from dask_gateway import Gateway
 from rs_server_staging.processors import ProcessorStatus, TokenAuth, streaming_download
 
 # pylint: disable=undefined-variable
@@ -585,60 +581,54 @@ class TestRSPYStagingDeleteFromBucket:
 class TestRSPYStagingMainExecution:
     """Class to test Item processing"""
 
-    # def test_dask_cluster_connect(self, mocker, staging_instance):
-    #     """Test to mock the connection to a dask cluster"""
-    #     # Mock environment variables to simulate gateway mode
-    #     mocker.patch.dict(
-    #         os.environ,
-    #         {
-    #             "DASK_GATEWAY__ADDRESS": "gateway-address",
-    #             "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
-    #             "JUPYTERHUB_API_TOKEN": "mock_api_token"
-    #         },
-    #     )
-    #     staging_instance.cluster = None
-    #     staging_instance.logger = mocker.Mock()
-    #     # Mock the JupyterHubAuth, Gateway, and Client classes
-    #     mock_auth = mocker.patch('dask_gateway.auth.JupyterHubAuth',
-    #                              return_value=JupyterHubAuth(api_token="mock_api_token"))
-    #     mock_gateway = mocker.patch('dask_gateway.Gateway')
-    #     mock_list_clusters = mocker.patch.object(Gateway, 'list_clusters')
-    #     mock_connect = mocker.patch.object(Gateway, 'connect')
-    #     mock_client = mocker.patch('rs_server_staging.processors.Client', autospec=True, return_value=None)
-    #     # Mock the Security object
-    #     mock_security = mocker.patch('dask.distributed.Security')
-    #     # Mock the cluster with the required attributes for Client
-    #     mock_cluster = mocker.Mock()
-    #     mock_cluster.name = "test-cluster"
-    #     mock_cluster.dashboard_link = "http://mock-dashboard"
-    #     mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
-    #     mock_cluster.security = mock_security  # Add mocked security attribute
-    #     mock_list_clusters.return_value = [mock_cluster]
-    #     mock_connect.return_value = mock_cluster
+    def test_dask_cluster_connect(self, mocker, staging_instance):
+        """Test to mock the connection to a dask cluster"""
+        # Mock environment variables to simulate gateway mode
+        mocker.patch.dict(
+            os.environ,
+            {
+                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
+                "JUPYTERHUB_API_TOKEN": "mock_api_token",
+            },
+        )
+        staging_instance.cluster = None
+        staging_instance.logger = mocker.Mock()
+        # Mock the JupyterHubAuth, Gateway, and Client classes
+        mock_list_clusters = mocker.patch.object(Gateway, "list_clusters")
+        mock_connect = mocker.patch.object(Gateway, "connect")
+        mock_client = mocker.patch("rs_server_staging.processors.Client", autospec=True, return_value=None)
+        # Mock the Security object
+        mock_security = mocker.patch("dask.distributed.Security")
+        # Mock the cluster with the required attributes for Client
+        mock_cluster = mocker.Mock()
+        mock_cluster.name = "test-cluster"
+        mock_cluster.dashboard_link = "http://mock-dashboard"
+        mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
+        mock_cluster.security = mock_security  # Add mocked security attribute
+        mock_list_clusters.return_value = [mock_cluster]
+        mock_connect.return_value = mock_cluster
 
-    #     # Setup client mock
-    #     mock_scheduler_info = {"workers": {"worker-1": {}, "worker-2": {}}}
-    #     mock_client_instance = mocker.Mock()
-    #     mock_client_instance.scheduler_info.return_value = mock_scheduler_info
-    #     mock_client.return_value = mock_client_instance
+        # Setup client mock
+        mock_scheduler_info: Dict[str, Dict] = {"workers": {"worker-1": {}, "worker-2": {}}}
+        mock_client_instance = mocker.Mock()
+        mock_client_instance.scheduler_info.return_value = mock_scheduler_info
+        mock_client.return_value = mock_client_instance
 
-    #     # Call the method under test
-    #     client = staging_instance.dask_cluster_connect()
+        # Call the method under test
+        client = staging_instance.dask_cluster_connect()
 
-    #     # Assert that the Gateway was instantiated correctly
-    #     mock_auth.assert_called_once_with(api_token="mock_api_token")
-    #     mock_gateway.assert_called_once_with(
-    #         address="gateway-address", auth=mock_auth.return_value
-    #     )
-    #     mock_list_clusters.assert_called_once()
-    #     mock_connect.assert_called_once_with("test-cluster")
-    #     mock_client.assert_called_once_with(staging_instance.cluster)
+        # assertions
+        mock_list_clusters.assert_called_once()
+        mock_connect.assert_called_once_with("test-cluster")
+        mock_client.assert_called_once_with(staging_instance.cluster)
 
-    #     # Ensure logging was called as expected
-    #     staging_instance.logger.debug.assert_any_call(f"The list of clusters: {mock_list_clusters.return_value}")
-    #     staging_instance.logger.info.assert_any_call("Number of running workers: 2")
-    #     staging_instance.logger.debug.assert_any_call(
-    # f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}")
+        # Ensure logging was called as expected
+        staging_instance.logger.debug.assert_any_call(f"The list of clusters: {mock_list_clusters.return_value}")
+        staging_instance.logger.info.assert_any_call("Number of running workers: 2")
+        staging_instance.logger.debug.assert_any_call(
+            f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}",
+        )
 
     def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance):
         """Test to mock the connection to a dask cluster"""

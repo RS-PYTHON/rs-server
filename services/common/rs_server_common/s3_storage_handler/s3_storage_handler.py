@@ -40,6 +40,11 @@ S3_ERR_FORBIDDEN_ACCESS = 403
 S3_ERR_NOT_FOUND = 404
 HTTP_CONNECTION_TIMEOUT = 10
 HTTP_READ_TIMEOUT = 120
+# the maximum number of attempts that are made on a single request
+# this defines the number of retries at the s3 protocol level
+# there is also another retry mechanism set on the application level
+# see functions like delete_file_from_s3 / get_keys_from_s3 / put_files_to_s3
+S3_PROTOCOL_MAX_ATTEMPTS = 5
 
 
 # pylint: disable=too-many-lines
@@ -159,7 +164,7 @@ class S3StorageHandler:
             # attempts in trying connection
             # note:  the default behaviour of boto3 is retrying
             # connections multiple times and exponentially backing off in between
-            retries={"total_max_attempts": 5},
+            retries={"total_max_attempts": S3_PROTOCOL_MAX_ATTEMPTS},
         )
         try:
             return boto3.client(
@@ -198,6 +203,9 @@ class S3StorageHandler:
 
     def delete_file_from_s3(self, bucket, key, max_retries=S3_MAX_RETRIES):
         """Delete a file from S3.
+        The functionality implies a retry mechanism at the application level, which is different
+        than the retry mechanism from the s3 protocol level, with "retries" parameter from the s3 Config
+
 
         Args:
             bucket (str): The S3 bucket name.
@@ -231,6 +239,11 @@ class S3StorageHandler:
                     continue
                 self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
                 raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
+            except RuntimeError as e:
+                self.logger.exception(f"Failed to check the key s3://{bucket}/{key}. Useless to retry. Reason: {e}")
+                raise RuntimeError(
+                    f"Failed to check the key s3://{bucket}/{key}. " f"Useless to retry. Reason: {e}",
+                ) from e
             except Exception as e:
                 self.logger.exception(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}")
                 raise RuntimeError(f"Failed to delete key s3://{bucket}/{key}. Reason: {e}") from e
