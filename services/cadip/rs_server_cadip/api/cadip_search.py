@@ -21,7 +21,6 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-import uuid
 from typing import Annotated, Any, List, Union
 
 import requests
@@ -74,6 +73,38 @@ router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
 
 
+class MockPgstacCadip(MockPgstac):
+    """
+    Mock a pgstac database that will call functions from this module instead of actually accessing a database.
+    """
+
+    async def fetchval(self, query, *args, column=0, timeout=None):
+
+        query = query.strip()
+
+        # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
+        if query == "SELECT * FROM all_collections();":
+            return filter_allowed_collections(read_conf()["collections"], "cadip", self.request)
+
+        # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
+        # TODO: implement authorization in a middleware in the same way as the catalog
+        if query == "SELECT * FROM get_queryables($1::text);":
+
+            # Return queryables for a specific collection
+            if args:
+                return Queryables(properties=generate_cadip_queryables(args[0])).model_dump(by_alias=True)
+
+            # If no argument is provided, return queryables for all collections
+            return Queryables(properties=get_cadip_queryables()).model_dump(by_alias=True)
+
+        # from stac_fastapi.pgstac.core.CoreCrudClient::_search_base
+        if query == "SELECT * FROM search($1::text::jsonb);":
+            params = json.loads(args[0]) if args else {}
+            return await pgstac_search(self.request, params)
+
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
+
+
 def auth_validation(request: Request, collection_id: str, access_type: str):
     """
     Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
@@ -101,35 +132,6 @@ def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -
     if not selected_config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
-
-
-class MockPgstacCadip(MockPgstac):
-    """
-    Mock a pgstac database that will call functions from this module instead of actually accessing a database.
-    """
-
-    async def fetchval(self, query, *args, column=0, timeout=None):
-
-        query = query.strip()
-
-        # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
-        if query == "SELECT * FROM all_collections();":
-            all_collections = read_conf()["collections"]
-            response = filter_allowed_collections(all_collections, "cadip", self.request)
-            return response["collections"]
-
-        # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
-        # TODO: implement authorization in a middleware in the same way as the catalog
-        if query == "SELECT * FROM get_queryables($1::text);":
-
-            # Return queryables for a specific collection
-            if args:
-                return Queryables(properties=generate_cadip_queryables(args[0])).model_dump(by_alias=True)
-
-            # If no argument is provided, return queryables for all collections
-            return Queryables(properties=get_cadip_queryables()).model_dump(by_alias=True)
-
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
 
 @router.get("/", include_in_schema=False)
@@ -210,6 +212,99 @@ async def get_conformance(request: Request):
     return await request.app.state.pgstac_client.conformance()
 
 
+async def pgstac_search(request: Request, params: dict):
+    """
+    Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
+    """
+
+    def format_dict(field: dict):
+        """Used for error handling."""
+        return json.dumps(field, indent=0).replace("\n", "").replace('"', "'")
+
+    # Number of results per page
+    limit = params.pop("limit", None)
+
+    # Sort results
+    sortby_list = params.pop("sortby", [])
+    if len(sortby_list) > 1:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Only one 'sortby' search parameter is allowed: {sortby_list!r}",
+        )
+    if not sortby_list:
+        sortby = ""
+    else:
+        sortby_dict = sortby_list[0]
+        sortby = "+" if sortby_dict["direction"] == "asc" else "-"
+        sortby += sortby_dict["field"]
+
+    # Collections to search
+    collections = params.pop("collections", [])
+
+    # datetime interval = PublicationDate
+    datetime = params.pop("datetime", None)
+    if datetime:
+        try:
+            validate_inputs_format(datetime, raise_errors=True)
+        except HTTPException as exception:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Invalid datetime interval: {datetime!r}. "
+                "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
+            ) from exception
+
+    # Read filters
+    platform = None
+    constellation = None
+    session_id = None
+
+    # Read the CQL2 filter
+    filter = params.pop("filter", {})
+    if filter.get("op") not in ("and", "=", None):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Invalid CQL2 filter, only one EQUAL or AND level is allowed: {format_dict(filter)}",
+        )
+    for arg in filter.get("args", []):
+        sub_args = arg.get("args", [])
+        if (arg.get("op") not in ("=", None)) or (len(sub_args) != 2) or not (property := sub_args[0].get("property")):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Invalid CQL2 filter, only EQUAL is allowed: {format_dict(arg)}",
+            )
+        if property == "PublicationDate":
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "'PublicationDate' filter is not allowed, use 'datetime' interval instead",
+            )
+        value = sub_args[1]
+        if property.lower() == "platform":
+            platform = value
+        elif property.lower() == "constellation":
+            constellation = value
+        elif property.lower() == "sessionid":
+            session_id = value
+        else:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid search property: {property!r}")
+
+    # Discard these search parameters
+    params.pop("conf", None)
+    params.pop("filter-lang", None)
+
+    # If search parameters remain, they are not implemented
+    if params:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"Unimplemented search parameters: {format_dict(params)}",
+        )
+
+    # TODO: handle auth
+
+    # TODO: next page ?
+
+    bp = 0
+
+
 @router.get("/cadip/search/items", deprecated=True)
 @handle_exceptions
 async def search_cadip_with_session_info(request: Request):
@@ -248,7 +343,7 @@ async def search_cadip_with_session_info(request: Request):
     )
 
 
-@router.get("/cadip/search")
+@router.get("/cadip/search/old")
 @handle_exceptions
 async def search_cadip_endpoint(request: Request, collection: str) -> dict:
     """
@@ -257,9 +352,6 @@ async def search_cadip_endpoint(request: Request, collection: str) -> dict:
     This endpoint allows users to search for sessions (extending or improving collection queryable) within CADIP
     stations and retrieve results in a stac-pydantic validated format. The search is based on query parameters provided
     in the URL, which are used to filter and return the appropriate session data.
-
-    ### Path:
-    - `/cadip/search`
 
     ### Query Parameters:
     - `collection` (optional, string): The name of the CADIP collection to search within (e.g., `s1_cadip`).
@@ -276,72 +368,6 @@ async def search_cadip_endpoint(request: Request, collection: str) -> dict:
     ### Response:
     - Returns a **STAC Collection** object in dictionary format, validated by staf-pydantic model, containing metadata,
     spatial/temporal extents, links to sessions, and providers' information.
-
-    ### Response Example:
-
-    ```json
-    {
-        "id": "s1_cadip",
-        "description": "Sentinel-1 Inuvik CADIP sessions",
-        "links": [
-            {
-                "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_
-                Conditions.pdf",
-                "rel": "license",
-                "title": "Legal notice on the use of Copernicus Sentinel Data and Service Information"
-            },
-            [
-                {
-                    "href": "./simple-item.json",
-                    "rel": "item",
-                    "title": "S1A_20200105072204051312"
-                }
-            ]
-        ],
-        "stac_extensions": [
-            "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
-            "https://stac-extensions.github.io/view/v1.0.0/schema.json"
-        ],
-        "title": "Sentinel-1 Inuvik CADIP sessions",
-        "type": "Collection",
-        "license": "other",
-        "extent": {
-            "spatial": {
-                "bbox": [[-180, -82.85, 180, 82.82]]
-            },
-            "temporal": {
-                "interval": [
-                    [
-                        "2024-06-12T02:57:21.459000Z",
-                        "2024-08-22T11:30:12.767000Z"
-                    ]
-                ]
-            }
-        },
-        "providers": [
-            {
-                "name": "European Union/ESA/Copernicus",
-                "roles": [
-                    "producer",
-                    "licensor"
-                ],
-                "url": "https://sentiwiki.copernicus.eu/web/s1-mission"
-            },
-            {
-                "name": "Reference System",
-                "roles": [
-                    "host"
-                ],
-                "url": "https://home.rs-python.eu/"
-            }
-        ],
-        "station": "cadip",
-        "query": {
-            "Satellite": "S1A, S1C",
-            "SessionId": "S1A_20200105072204051312"
-        }
-    }
     """
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("cadip", "landing_page", request=request)  # TODO: how to implement authentication ?

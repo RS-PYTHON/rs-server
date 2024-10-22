@@ -158,17 +158,14 @@ def filter_allowed_collections(all_collections, role, request):
         ]
 
     logger.debug(f"User allowed collections: {[collection['id'] for collection in filtered_collections]}")
-    # Create JSON object.
-    stac_object: dict = {"type": "Object", "links": [], "collections": []}
 
     # Foreach allowed collection, create links and append to response.
+    stac_collections = []
     for config in filtered_collections:
-
         config.setdefault("stac_version", "1.0.0")
-
         try:
             collection: stac_pydantic.Collection = create_collection(config)
-            stac_object["collections"].append(collection.model_dump())
+            stac_collections.append(collection.model_dump())
 
         # If a collection is incomplete in the configuration file, log the error and proceed
         except HTTPException as exception:
@@ -176,7 +173,7 @@ def filter_allowed_collections(all_collections, role, request):
                 logger.error(exception)
             else:
                 raise
-    return stac_object
+    return stac_collections
 
 
 def map_stac_platform() -> Union[str, List[str]]:

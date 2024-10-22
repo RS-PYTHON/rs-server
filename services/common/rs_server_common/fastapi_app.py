@@ -37,7 +37,8 @@ from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
-from stac_fastapi.api.models import create_post_request_model
+from stac_fastapi.api.app import StacApi
+from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (
     FieldsExtension,
     FilterExtension,
@@ -48,6 +49,7 @@ from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.datastructures import State
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
@@ -179,6 +181,18 @@ def init_app(  # pylint: disable=too-many-locals
     app.state.pgstac_client.stac_version = app.version
     app.state.pgstac_client.title = app.title
     app.state.pgstac_client.description = app.description
+    # Implement the /search endpoints by simulating a StacApi object, TODO remove this also
+    app.settings = State()
+    app.settings.enable_response_models = False
+    app.settings.use_api_hydrate = False
+    app.state.settings = app.settings
+    app.client = app.state.pgstac_client
+    app.search_get_request_model = create_get_request_model(extensions)
+    app.search_post_request_model = search_post_request_model
+    app.router.prefix = router_prefix  # TODO should be used by other endpoints ?
+    StacApi.register_get_search(app)
+    StacApi.register_post_search(app)
+    app.router.prefix = ""
 
     dependencies = []
     if settings.CLUSTER_MODE:
