@@ -407,7 +407,8 @@ def get_adgs_collection_specific_item(
 def get_collection_queryables(
     request: Request,
     collection_id: Annotated[
-        str, FPath(title="AUXIP collection ID.", max_length=100, description="E.G. s1_adgs_OPER_AUX_ECMWFD_PDMC"),
+        str,
+        FPath(title="AUXIP collection ID.", max_length=100, description="E.G. s1_adgs_OPER_AUX_ECMWFD_PDMC"),
     ],
 ):
     """
