@@ -41,6 +41,9 @@ RUN \
     apt install -y libpq-dev && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
+# TEST !
+RUN apt install -y libexpat1 && find / -name libexpat.so.1
+
 # Copy the whole /usr/local dir (that contains the python installation) from the build stage
 COPY --from=builder /usr/local /usr/local
 
