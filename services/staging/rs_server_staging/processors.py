@@ -143,9 +143,6 @@ def streaming_task(product_url: str, auth: str, bucket: str, s3_file: str):
 
     Raises:
         ValueError: If the streaming process fails, raises a ValueError with details of the failure.
-
-    Example:
-        streaming_task("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
     """
 
     try:
