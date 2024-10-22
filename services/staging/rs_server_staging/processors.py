@@ -397,7 +397,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         filter_string = f"id IN ({', '.join(stry)})"
 
         # Final filter object
-        filter_object = {"filter-lang": "cql2-text", "filter": filter_string, "limit": len(ids)}
+        filter_object = {"filter-lang": "cql2-text", "filter": filter_string, "limit": f"{len(ids)}"}
 
         search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search"
 
@@ -738,9 +738,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
         # create the client as well
-        import pdb
-
-        pdb.set_trace()
         client = Client(self.cluster)
 
         # TODO: This is a temporary fix for the dask cluster settings which does not create a scheduler by default
