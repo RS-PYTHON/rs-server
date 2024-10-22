@@ -206,14 +206,14 @@ def get_all_queryables(request: Request):
     JSON object, adhering to the JSON Schema specification.
 
     Args:
-        request (Request): The HTTP request object.
+    - request (Request): The HTTP request object.
 
     Returns:
-        dict: A JSON object containing all queryable properties for the ADGS Search
+    - dict: A JSON object containing all queryable properties for the ADGS Search
             API. The response structure follows the JSON Schema format.
 
     Example:
-        A successful response will return:
+    A successful response will return: \n
         {
             "type": "object",
             "title": "Queryables for ADGS Search API",
@@ -298,15 +298,15 @@ def get_adgs_collection_items(
     the items based on defined query parameters.
 
     Args:
-        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
             (e.g., 'ins_s1'). Maximum length of 100 characters.
 
     Returns:
-        list[dict]: A FeatureCollection of items belonging to the specified collection, or an
+    - list[dict]: A FeatureCollection of items belonging to the specified collection, or an
                     error message if the collection is not found.
 
     Raises:
-        HTTPException: If the authentication fails, or if there are issues with the
+    - HTTPException: If the authentication fails, or if there are issues with the
                     collection ID provided.
     """
     logger.info(f"Starting {request.url.path}")
@@ -347,22 +347,22 @@ def get_adgs_collection_specific_item(
     validate access and return item information.
 
     Args:
-        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
             (e.g., 'ins_s1'). Maximum length of 100 characters.
-        item_id (str): AUXIP item ID. Must be a valid item identifier
+    - item_id (str): AUXIP item ID. Must be a valid item identifier
             (e.g., 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF').
             Maximum length of 100 characters.
 
     Returns:
-        dict: A JSON object containing details of the specified item, or an error
+    - dict: A JSON object containing details of the specified item, or an error
             message if the item is not found.
 
     Raises:
-        HTTPException: If the authentication fails, or if the specified item is
+    - HTTPException: If the authentication fails, or if the specified item is
                     not found in the collection.
 
     Example:
-        A successful response will return:
+    A successful response will return: \n
         {
             "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
             "type": "Feature",
@@ -406,7 +406,9 @@ def get_adgs_collection_specific_item(
 @router.get("/auxip/collections/{collection_id}/queryables")
 def get_collection_queryables(
     request: Request,
-    collection_id: Annotated[str, FPath(title="AUXIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    collection_id: Annotated[
+        str, FPath(title="AUXIP collection ID.", max_length=100, description="E.G. s1_adgs_OPER_AUX_ECMWFD_PDMC"),
+    ],
 ):
     """
     Retrieve queryable properties for a specified AUXIP collection.
@@ -416,27 +418,27 @@ def get_collection_queryables(
     are represented in a JSON Schema format.
 
     Args:
-        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
             (e.g., 's1_adgs_OPER_AUX_ECMWFD_PDMC'). Maximum length of 100 characters.
 
     Returns:
-        dict: A JSON object containing queryable properties for the specified collection.
+    - dict: A JSON object containing queryable properties for the specified collection.
             The response is structured based on the JSON Schema specification.
 
     Raises:
-        HTTPException: If the authentication or authorization fails.
+    - HTTPException: If the authentication or authorization fails.
 
     Example:
-        A successful response will return:
-        {
-        "$schema": "https://json-schema.org/draft/2019-09/schema",
-        "id": "https://stac-api.example.com/queryables",
-        "type": "object",
-        "title": "Queryables for AUXIP Search API",
-        "description": "Queryable names for the AUXIP Search API Item Search filter.",
-        "properties": { ... }  # dynamically generated queryable properties
-        }
+    A successful response will return: \n
 
+        {
+            "$schema": "https://json-schema.org/draft/2019-09/schema",
+            "id": "https://stac-api.example.com/queryables",
+            "type": "object",
+            "title": "Queryables for AUXIP Search API",
+            "description": "Queryable names for the AUXIP Search API Item Search filter.",
+            "properties": { ... }  # dynamically generated queryable properties
+        }
     """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
