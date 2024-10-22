@@ -22,7 +22,6 @@ from unittest.mock import call
 import pytest
 import requests
 from dask_gateway import Gateway
-from moto.server import ThreadedMotoServer
 from rs_server_staging.processors import ProcessorStatus, TokenAuth, streaming_task
 
 # pylint: disable=undefined-variable
@@ -104,29 +103,26 @@ class TestTokenAuth:
 def test_streaming_task(mocker):
     """Test a error while creating s3 handler"""
     # mock init of s3 handler without S3_ACCESSKEY, should raise an error while creating s3 handler
-    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": "", "secretkey": "", "region": ""}
+    # Mock S3StorageHandler and its delete_file_from_s3 method
     mocker.patch.dict(
-        "os.environ",
+        os.environ,
         {
-            "S3_ACCESSKEY": secrets["accesskey"],
-            "S3_SECRETKEY": secrets["secretkey"],
-            "S3_ENDPOINT": secrets["s3endpoint"],
-            "S3_REGION": secrets["region"],
+            "S3_ACCESSKEY": "fake_access_key",
+            "S3_SECRETKEY": "fake_secret_key",
+            "S3_ENDPOINT": "fake_endpoint",
+            "S3_REGION": "fake_region",
         },
     )
-    # create the test bucket
-    # Test with a running s3 server
-    server = ThreadedMotoServer()
-    server.start()
-    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+    mock_s3_handler = mocker.Mock()
+    mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
 
     s3_key = "s3_path/file.zip"
     mocker.patch(
         "rs_server_staging.processors.S3StorageHandler.s3_streaming_upload",
         return_value=None,
     )
+
     assert streaming_task("https://example.com/product.zip", "Bearer token", "bucket", s3_key) == s3_key
-    server.stop()
 
 
 def test_streaming_task_incorrect_env(mocker):
