@@ -1,0 +1,59 @@
+{
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+        "datetime": "2020-01-05T07:22:04.051000+00:00",
+        "start_datetime": "2020-01-05T07:22:04.051000+00:00",
+        "end_datetime": "2020-01-05T07:42:04.051000+00:00",
+        "platform": "S1A",
+        "published": "2020-01-05T18:52:26.165Z",
+        "cadip:id": "a5e9d3b8-7c4f-4a92-b76a-fa09e1e1b59c",
+        "cadip:num_channels": 2,
+        "cadip:station_unit_id": "01",
+        "sat:absolute_orbit": 53186,
+        "cadip:acquisition_id": 531861,
+        "cadip:antenna_id": "MSP21",
+        "cadip:front_end_id": "01",
+        "cadip:retransfer": false,
+        "cadip:antenna_status_ok": true,
+        "cadip:front_end_status_ok": true,
+        "cadip:planned_data_start": "2020-01-05T07:22:04.051Z",
+        "cadip:planned_data_stop": "2020-01-05T07:31:04.051Z",
+        "cadip:downlink_status_ok": true,
+        "cadip:delivery_push_ok": true
+    },
+    "id": "S1A_20200105072204051312",
+    "stac_version": "1.0.0",
+    "assets": {
+        "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw": {
+            "href": "http://testserver/cadip/cadu?name=DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw",
+            "title": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw",
+            "roles": ["cadu"],
+            "cadip:id": "e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d",
+            "cadip:retransfer": false,
+            "cadip:final_block": false,
+            "cadip:block_number": 1,
+            "cadip:channel": 1,
+            "cadip:session_id": "S1A_20200105072204051312",
+            "created": "2020-01-05T18:52:29.165Z",
+            "eviction_datetime": "2020-01-05T18:52:29.165Z",
+            "file:size": "42"
+        },
+        "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw": {
+            "href": "http://testserver/cadip/cadu?name=DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw",
+            "title": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw",
+            "roles": ["cadu"],
+            "cadip:id": "cd24aa8b-2719-4a1e-b4a7-f7c9df6de300",
+            "cadip:retransfer": false,
+            "cadip:final_block": false,
+            "cadip:block_number": 1,
+            "cadip:channel": 1,
+            "cadip:session_id": "S1A_20200105072204051312",
+            "created": "2020-01-05T18:52:32.165Z",
+            "eviction_datetime": "2020-01-05T18:52:32.165Z",
+            "file:size": "51"
+        }
+    },
+    "links": [],
+    "stac_extensions": ["https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"]
+}

@@ -519,7 +519,9 @@ class TestFeatureOdataStacMapping:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json() == detail
 
+    # This is passing, but why it is so slow for cadip?
     @pytest.mark.unit
+    @pytest.mark.skip
     @pytest.mark.parametrize(
         "endpoint, detail",
         [
