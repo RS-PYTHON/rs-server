@@ -521,7 +521,6 @@ class TestFeatureOdataStacMapping:
 
     # This is passing, but why it is so slow for cadip?
     @pytest.mark.unit
-    @pytest.mark.skip
     @pytest.mark.parametrize(
         "endpoint, detail",
         [
