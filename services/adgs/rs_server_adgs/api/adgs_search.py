@@ -197,6 +197,32 @@ def get_allowed_adgs_collections(request: Request):
 @router.get("/auxip/queryables")
 @auth_validator(station="adgs", access_type="landing_page")
 def get_all_queryables(request: Request):
+    """
+    Retrieve all queryable properties for the ADGS Search API.
+
+    This endpoint returns a comprehensive list of queryable names that can be used
+    to filter items in the ADGS Search API. The queryables are structured as a
+    JSON object, adhering to the JSON Schema specification.
+
+    Args:
+        request (Request): The HTTP request object.
+
+    Returns:
+        dict: A JSON object containing all queryable properties for the ADGS Search
+            API. The response structure follows the JSON Schema format.
+
+    Example:
+        A successful response will return:
+        {
+            "type": "object",
+            "title": "Queryables for ADGS Search API",
+            "description": "Queryable names for the ADGS Search API Item Search filter.",
+            "properties": {
+                ...  # Dynamically generated queryable properties
+            }
+        }
+
+    """
     logger.info(f"Starting {request.url.path}")
     return Queryables(
         type="object",
@@ -261,6 +287,25 @@ def get_adgs_collection_items(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
 ) -> list[dict] | dict:
+    """
+    Retrieve a list of items from a specified AUXIP collection.
+
+    This endpoint returns a collection of items associated with the given AUXIP
+    collection ID. It utilizes the collection ID to validate access and fetches
+    the items based on defined query parameters.
+
+    Args:
+        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+            (e.g., 'ins_s1'). Maximum length of 100 characters.
+
+    Returns:
+        list[dict]: A FeatureCollection of items belonging to the specified collection, or an
+                    error message if the collection is not found.
+
+    Raises:
+        HTTPException: If the authentication fails, or if there are issues with the
+                    collection ID provided.
+    """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
@@ -291,6 +336,45 @@ def get_adgs_collection_specific_item(
         ),
     ],
 ) -> list[dict] | dict:
+    """
+    Retrieve a specific item from a specified AUXIP collection.
+
+    This endpoint fetches details of a specific item within the given AUXIP collection
+    by its unique item ID. It utilizes the provided collection ID and item ID to
+    validate access and return item information.
+
+    Args:
+        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+            (e.g., 'ins_s1'). Maximum length of 100 characters.
+        item_id (str): AUXIP item ID. Must be a valid item identifier
+            (e.g., 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF').
+            Maximum length of 100 characters.
+
+    Returns:
+        dict: A JSON object containing details of the specified item, or an error
+            message if the item is not found.
+
+    Raises:
+        HTTPException: If the authentication fails, or if the specified item is
+                    not found in the collection.
+
+    Example:
+        A successful response will return:
+        {
+            "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+            "type": "Feature",
+            "properties": {
+                ...  # Detailed properties of the item
+            },
+            "geometry": {
+                ...  # Geometry details of the item
+            },
+            "links": [
+                ...  # Links associated with the item
+            ]
+        }
+
+    """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
@@ -321,14 +405,44 @@ def get_collection_queryables(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP collection ID.", max_length=100, description="E.G. ins_s1")],
 ):
+    """
+    Retrieve queryable properties for a specified AUXIP collection.
+
+    This endpoint returns the available queryable names that can be used to filter
+    items in the CADIP Search API based on the specified collection. The queryables
+    are represented in a JSON Schema format.
+
+    Args:
+        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+            (e.g., 's1_adgs_OPER_AUX_ECMWFD_PDMC'). Maximum length of 100 characters.
+
+    Returns:
+        dict: A JSON object containing queryable properties for the specified collection.
+            The response is structured based on the JSON Schema specification.
+
+    Raises:
+        HTTPException: If the authentication or authorization fails.
+
+    Example:
+        A successful response will return:
+        {
+        "$schema": "https://json-schema.org/draft/2019-09/schema",
+        "id": "https://stac-api.example.com/queryables",
+        "type": "object",
+        "title": "Queryables for AUXIP Search API",
+        "description": "Queryable names for the AUXIP Search API Item Search filter.",
+        "properties": { ... }  # dynamically generated queryable properties
+        }
+
+    """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
         type="object",
-        title="Queryables for CADIP Search API",
-        description="Queryable names for the CADIP Search API Item Search filter.",
+        title="Queryables for AUXIP Search API",
+        description="Queryable names for the AUXIP Search API Item Search filter.",
         properties=generate_adgs_queryables(collection_id),
     ).model_dump(by_alias=True)
 
