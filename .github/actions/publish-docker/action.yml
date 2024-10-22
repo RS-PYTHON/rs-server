@@ -76,7 +76,7 @@ runs:
     - name: Configure Dockerfile for debug mode
       run: |
         set -x
-        if [[ ${{ inputs.debug_mode }} == true ]]; then        
+        if [[ ${{ inputs.debug_mode }} == true ]]; then
           commands=$(cat << "EOF"
         USER root
         COPY ./git_debug_image.sh ./git_debug_image.sh

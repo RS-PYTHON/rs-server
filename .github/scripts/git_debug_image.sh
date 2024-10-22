@@ -35,9 +35,9 @@ alias ll='ls -alFh'
 alias ls='ls --color=auto'
 EOF
 
-# Git clone the project branch with HTTP authentication so we don't need any 
-# ssh key to pull the rspy repository, which is public. 
-# To be discussed: how to push to the repo ? I guess we would need a ssh key 
+# Git clone the project branch with HTTP authentication so we don't need any
+# ssh key to pull the rspy repository, which is public.
+# To be discussed: how to push to the repo ? I guess we would need a ssh key
 # in the pod but I'm not sure it would be secure.
 cd /home/user
 git clone -b "$BRANCH_NAME" https://github.com/RS-PYTHON/rs-server.git

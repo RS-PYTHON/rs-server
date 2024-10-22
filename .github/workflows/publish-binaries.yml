@@ -337,7 +337,7 @@ jobs:
           version_name: ${{ needs.services-adgs-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
-          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   services-cadip-img:
@@ -377,7 +377,7 @@ jobs:
           version_name: ${{ needs.services-cadip-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
-          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   services-catalog-img:
@@ -416,7 +416,7 @@ jobs:
           version_name: ${{ needs.services-catalog-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
-          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   services-frontend-img:
@@ -456,7 +456,7 @@ jobs:
           version_name: ${{ needs.services-frontend-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
-          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   services-staging-img:
@@ -500,7 +500,7 @@ jobs:
           version_name: ${{ needs.services-staging-whl.outputs.version_name }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
-          branch_name: ${{ needs.set-env.outputs.branch_name }} 
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
   ###########
