@@ -454,8 +454,8 @@ class S3StorageHandler:
             self.logger.exception(f"Exception when checking the access to {bucket} bucket: {error}")
             raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
         except botocore.exceptions.EndpointConnectionError as error:
-            self.logger.exception(f"Could not connect to the endpoint when trying to access {bucket}: {error}")
-            raise RuntimeError(f"Could not connect to the endpoint when trying to access {bucket}!") from error
+            self.logger.exception(f"Failed to connect to the endpoint when trying to access {bucket}: {error}")
+            raise RuntimeError(f"Failed to connect to the endpoint when trying to access {bucket}!") from error
         except Exception as error:
             self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
@@ -489,8 +489,8 @@ class S3StorageHandler:
             self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
             raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
         except botocore.exceptions.EndpointConnectionError as error:
-            self.logger.exception(f"Could not connect to the endpoint when trying to access {bucket}: {error}")
-            raise RuntimeError(f"Could not connect to the endpoint when trying to access {bucket}!") from error
+            self.logger.exception(f"Failed to connect to the endpoint when trying to access {bucket}: {error}")
+            raise RuntimeError(f"Failed to connect to the endpoint when trying to access {bucket}!") from error
         except Exception as error:
             self.logger.exception(f"General exception when trying to access bucket {bucket}: {error}")
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error

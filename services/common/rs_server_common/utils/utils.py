@@ -410,13 +410,13 @@ def eodag_download(
             )
             s3_handler.put_files_to_s3(s3_config)
         except (RuntimeError, KeyError) as e:
-            logger.exception(f"Could not connect to the s3 storage: {e}")
+            logger.exception(f"Failed to connect to the s3 storage: {e}")
             # Try n times to update the status to FAILED in the database
             update_db(
                 db,
                 db_product,
                 EDownloadStatus.FAILED,
-                "Could not connect to the s3 storage",
+                "Failed to connect to the s3 storage",
             )
             return
         except Exception as e:  # pylint: disable=broad-except
