@@ -311,7 +311,7 @@ class TestRSPYStagingCatalog:
 
         # Construct the expected filter string
         expected_filter_string = "id IN ('1', '2')"
-        expected_filter_object = {"filter-lang": "cql2-text", "filter": expected_filter_string, "limit": 2}
+        expected_filter_object = {"filter-lang": "cql2-text", "filter": expected_filter_string, "limit": "2"}
         collection = "test_collection"
         # Assert that requests.get was called with the correct parameters
         requests.get.assert_called_once_with(  # type: ignore
