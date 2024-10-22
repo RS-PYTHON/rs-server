@@ -12,55 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-stations:
-  # developer test station
-  cadip:
-    endpoint:
-      url: http://127.0.0.1:8000
-      secret:
-        username: test
-        password: test
-  ####
-  ins:
-    endpoint:
-      url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080
-      secret:
-        username: test
-        password: test
-  mps:
-    endpoint:
-      url: http://mockup-station-cadip-mps-svc.processing.svc.cluster.local:8080
-      secret:
-        username: test
-        password: test
-  mti:
-    endpoint:
-      url: http://mockup-station-cadip-mti-svc.processing.svc.cluster.local:8080
-      secret:
-        username: test
-        password: test
-  nsg:
-    endpoint:
-      url: http://mockup-station-cadip-nsg-svc.processing.svc.cluster.local:8080
-      secret:
-        username: test
-        password: test
-  sgs:
-    endpoint:
-      url: http://mockup-station-cadip-sgs-svc.processing.svc.cluster.local:8080
-      secret:
-        username: test
-        password: test
-
 collections:
-
-  - id: s1_cadip
+  - id: cadip_sessions_id
     station: cadip
     query:
-      Satellite: 'S1A, S1C'
+      SessionId: S1A_20170501121534062343,S1A_20240328185208053186
+      top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Sentinel-1 Inuvik CADIP sessions'
-    description: 'Sentinel-1 Inuvik CADIP sessions'
+    title: 'Test collection'
+    description: 'Sentinel-1 test CADIP sessions'
     license: other
     extent:
       spatial:
@@ -82,102 +42,102 @@ collections:
           - host
         url: 'https://home.rs-python.eu/'
 
-  # Developer test collection
-  - id: interval_cadip
-    station: cadip
-    query:
-      PublicationDate: 1940-03-10T12:00:00Z/2024-01-01T12:00:00Z
-      top: 95
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Sentinel-1 Inuvik CADIP sessions'
-    description: 'Sentinel-1 Inuvik CADIP sessions'
-    license: other
-    extent:
-      spatial:
-        bbox: [[ -180, -82.85, 180, 82.82 ]]
-      temporal:
-        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
-    links:
-      - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
-        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
-    providers:
-      - name: 'European Union/ESA/Copernicus'
-        roles:
-          - producer
-          - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
-      - name: 'Reference System'
-        roles:
-          - host
-        url: 'https://home.rs-python.eu/'
-
-  - id: cadip_session_by_id
-    station: cadip
-    query:
-      SessionId: S1A_20231120061537234567
-      top: 2
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Sentinel-1 Inuvik CADIP sessions'
-    description: 'Sentinel-1 Inuvik CADIP sessions'
-    license: other
-    extent:
-      spatial:
-        bbox: [[ -180, -82.85, 180, 82.82 ]]
-      temporal:
-        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
-    links:
-      - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
-        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
-    providers:
-      - name: 'European Union/ESA/Copernicus'
-        roles:
-          - producer
-          - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
-      - name: 'Reference System'
-        roles:
-          - host
-        url: 'https://home.rs-python.eu/'
-
-  - id: cadip_session_by_satellite
-    station: cadip
-    query:
-      Satellite: S1A, S2B
-      limit: 2
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Sentinel-1 Inuvik CADIP sessions'
-    description: 'Sentinel-1 Inuvik CADIP sessions'
-    license: other
-    extent:
-      spatial:
-        bbox: [[ -180, -82.85, 180, 82.82 ]]
-      temporal:
-        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
-    links:
-      - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
-        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
-    providers:
-      - name: 'European Union/ESA/Copernicus'
-        roles:
-          - producer
-          - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
-      - name: 'Reference System'
-        roles:
-          - host
-        url: 'https://home.rs-python.eu/'
-
-  - id: cadip_session_incomplete_platf_no_start
+  - id: cadip_s1A
     station: cadip
     query:
       Satellite: S1A
-      PublicationDate: "invalid_stop/2020-02-16T12:00:00Z"
+      top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Sentinel-1 Inuvik CADIP sessions'
-    description: 'Sentinel-1 Inuvik CADIP sessions'
+    title: 'Test collection'
+    description: 'Sentinel-1 test CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+
+  - id: mti_s1A
+    station: mti
+    query:
+      Satellite: S1A
+      top: 20
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Test collection'
+    description: 'Sentinel-1 test CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [ [ -180, -82.85, 180, 82.82 ] ]
+      temporal:
+        interval: [ [ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ] ]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+
+  - id: sgs_s1A
+    station: sgs
+    query:
+      Satellite: S1A
+      top: 20
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Test collection'
+    description: 'Sentinel-1 test CADIP sessions'
+    license: other
+    extent:
+      spatial:
+        bbox: [ [ -180, -82.85, 180, 82.82 ] ]
+      temporal:
+        interval: [ [ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ] ]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
+    providers:
+      - name: 'European Union/ESA/Copernicus'
+        roles:
+          - producer
+          - licensor
+        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
+      - name: 'Reference System'
+        roles:
+          - host
+        url: 'https://home.rs-python.eu/'
+
+  - id: cadip_s1a_interval
+    station: cadip
+    query:
+      PublicationDate: "2020-02-16T12:00:00Z/2023-02-16T12:00:00Z"
+      Satellite: S1A
+      top: 20
+    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
+    title: 'Test collection'
+    description: 'Sentinel-1 test CADIP sessions'
     license: other
     extent:
       spatial:
