@@ -604,11 +604,9 @@ class TestRSPYStagingMainExecution:
     #     mock_gateway = mocker.patch('dask_gateway.Gateway')
     #     mock_list_clusters = mocker.patch.object(Gateway, 'list_clusters')
     #     mock_connect = mocker.patch.object(Gateway, 'connect')
-    #     mock_client = mocker.patch('dask.distributed.Client')
-
+    #     mock_client = mocker.patch('rs_server_staging.processors.Client', autospec=True, return_value=None)
     #     # Mock the Security object
     #     mock_security = mocker.patch('dask.distributed.Security')
-
     #     # Mock the cluster with the required attributes for Client
     #     mock_cluster = mocker.Mock()
     #     mock_cluster.name = "test-cluster"
