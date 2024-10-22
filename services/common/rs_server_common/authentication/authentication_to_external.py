@@ -174,7 +174,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
     if not external_auth_config:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
-            detail="Could not retrieve the configuration for the station token.",
+            detail="Failed to retrieve the configuration for the station token.",
         )
 
     headers = prepare_headers(external_auth_config)
@@ -189,12 +189,12 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
         )
         if response.status_code != HTTP_200_OK:
             logger.error(
-                f"Could not get the token from the station {external_auth_config.station_id}. "
+                f"Failed to get the token from the station {external_auth_config.station_id}. "
                 f"Response from the station: {response.text or ''}",
             )
             raise HTTPException(
                 status_code=response.status_code,
-                detail=f"Could not get the token from the station {external_auth_config.station_id}. "
+                detail=f"Failed to get the token from the station {external_auth_config.station_id}. "
                 f"Response from the station: {response.text or ''}",
             )
     except requests.exceptions.RequestException as e:
@@ -460,7 +460,7 @@ def set_eodag_auth_token(
     if not ext_auth_config:
         raise HTTPException(
             status_code=HTTP_404_NOT_FOUND,
-            detail="Could not retrieve the configuration for the station token.",
+            detail="Failed to retrieve the configuration for the station token.",
         )
     ext_auth_config.station_id = ext_auth_config.station_id + session
     # call the module implemented for rspy-352

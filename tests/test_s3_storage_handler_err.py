@@ -114,7 +114,7 @@ def test_get_keys_from_s3_download_fail(mocker):
     res = mocker.patch("time.sleep", side_effect=None)
     # The internal exception should be: "Exception: An error occurred (404) when calling
     # the HeadObject operation: Not Found:
-    # and the error: "Could not download the file path1. The download was retried for 1 times. Aborting"
+    # and the error: "Failed to download the file path1. The download was retried for 1 times. Aborting"
     # Same thing for the path2
     ret = s3_handler.get_keys_from_s3(config)
     assert ret == ["path1", "path2"]
@@ -125,7 +125,7 @@ def test_get_keys_from_s3_download_fail(mocker):
     # Stop the server and re-test the function again
     # this time, the exception should be "botocore.exceptions.EndpointConnectionError:
     # Failed to connect to the endpoint URL: "http://localhost:5000/"
-    # and the error: Could not download the file path1. The download was retried for 1 times. Aborting
+    # and the error: Failed to download the file path1. The download was retried for 1 times. Aborting
     # Same thing for the path2
     ret = s3_handler.get_keys_from_s3(config)
     assert ret == ["path1", "path2"]
@@ -235,7 +235,7 @@ def test_transfer_from_s3_to_s3_fail(mocker):
     boto_mocker.activate()
     # The internal exception should be: "Exception: An error occurred (404) when calling
     # the HeadObject operation: Not Found:
-    # and the error: "Could not download the file path1. The download was retried for 1 times. Aborting"
+    # and the error: "Failed to download the file path1. The download was retried for 1 times. Aborting"
     # Same thing for the path2
     ret = s3_handler.transfer_from_s3_to_s3(config)
     assert ret == ["s3_storage_handler_test/no_root_file1"]

@@ -264,7 +264,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
             item_s3_path = existing_asset["alternate"]["s3"]["href"]
         except KeyError as exc:
             raise HTTPException(
-                detail=f"Could not get the s3 path for the asset {asset_name}",
+                detail=f"Failed to get the s3 path for the asset {asset_name}",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
         if item_s3_path != s3_key:
@@ -341,7 +341,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
                     self.s3_keys_to_be_deleted.append(item["assets"][asset]["alternate"]["s3"]["href"])
         except KeyError as kerr:
             raise HTTPException(
-                detail=f"{err_message} Could not find S3 credentials.",
+                detail=f"{err_message} Failed to find S3 credentials.",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr
         except RuntimeError as rte:
@@ -379,7 +379,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
         user = self.request_ids.get("owner_id", None)
         if not collection_id or not user:
             raise HTTPException(
-                detail="Could not get the user or the name of the collection!",
+                detail="Failed to get the user or the name of the collection!",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
         verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
@@ -437,7 +437,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     item["assets"].pop(asset)
             except (IndexError, AttributeError, KeyError, RuntimeError) as exc:
                 raise HTTPException(
-                    detail=f"Could not handle the s3 level. Reason: {exc}",
+                    detail=f"Failed to handle the s3 level. Reason: {exc}",
                     status_code=HTTP_400_BAD_REQUEST,
                 ) from exc
 
@@ -471,7 +471,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 .lstrip("/")
             )
         except KeyError:
-            return f"Could not find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
+            return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
@@ -485,9 +485,9 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except KeyError:
-            return "Could not find s3 credentials", HTTP_400_BAD_REQUEST
+            return "Failed to find s3 credentials", HTTP_400_BAD_REQUEST
         except botocore.exceptions.ClientError:
-            return "Could not generate presigned url", HTTP_400_BAD_REQUEST
+            return "Failed to generate presigned url", HTTP_400_BAD_REQUEST
         return response, HTTP_302_FOUND
 
     def find_owner_id(self, ecql_ast: Node) -> str:

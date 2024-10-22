@@ -126,7 +126,7 @@ def test_get_station_token(
     # Test error when no configuration object is provided
     with pytest.raises(HTTPException) as exc:
         get_station_token(None)
-    assert "Could not retrieve the configuration for the station token." in str(exc.value)
+    assert "Failed to retrieve the configuration for the station token." in str(exc.value)
 
     ext_auth_config = get_external_auth_config
 
@@ -151,7 +151,7 @@ def test_get_station_token(
     # Test error when station responds with an error
     with pytest.raises(HTTPException) as exc:
         get_station_token(ext_auth_config)
-    assert f"Could not get the token from the station {ext_auth_config.station_id}" in str(exc.value)
+    assert f"Failed to get the token from the station {ext_auth_config.station_id}" in str(exc.value)
 
     # Simulate an invalid format of the token response from the authentication service
     response = {"unexpected_field": TOKEN, "token_type": "Bearer", "expires_in": 3600}
@@ -991,4 +991,4 @@ def test_set_eodag_auth_token_config_not_found(mocker):
         set_eodag_auth_token(station_id="adgs", service="auxip")
 
     assert exc_info.value.status_code == 404
-    assert exc_info.value.detail == "Could not retrieve the configuration for the station token."
+    assert exc_info.value.detail == "Failed to retrieve the configuration for the station token."

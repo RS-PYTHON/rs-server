@@ -629,7 +629,7 @@ Couldn't get the s3 client. Retrying in %s seconds for %s more times",
 
             if not downloaded:
                 self.logger.error(
-                    "Could not download the file %s. The download was \
+                    "Failed to download the file %s. The download was \
 retried for %s times. Aborting",
                     s3_file,
                     config.max_retries,
@@ -712,7 +712,7 @@ Couldn't get the s3 client. Retrying in %s seconds for %s more times",
 
             if not uploaded:
                 self.logger.error(
-                    "Could not upload the file %s. The upload was \
+                    "Failed to upload the file %s. The upload was \
 retried for %s times. Aborting",
                     file_to_be_uploaded,
                     config.max_retries,
@@ -804,7 +804,7 @@ Couldn't get the s3 client. Retrying in %s seconds for %s more times",
 
             if not copied:
                 self.logger.error(
-                    "Could not copy the file s3://%s/%s to s3://%s. The copy was \
+                    "Failed to copy the file s3://%s/%s to s3://%s. The copy was \
 retried for %s times. Aborting",
                     config.bucket_src,
                     collection_file[1],

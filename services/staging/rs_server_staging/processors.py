@@ -308,12 +308,12 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         # Execution section
         if not await self.check_catalog():
             self.logger.error(
-                f"Could not start the staging process. Checking the collection '{self.catalog_collection}' failed !",
+                f"Failed to start the staging process. Checking the collection '{self.catalog_collection}' failed !",
             )
             self.log_job_execution(
                 ProcessorStatus.FAILED,
                 0,
-                detail="Could not start the staging process. "
+                detail="Failed to start the staging process. "
                 f"Checking the collection '{self.catalog_collection}' failed !",
             )
             return {"failed": self.job_id}
@@ -565,7 +565,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                     s3_handler.delete_file_from_s3(self.catalog_bucket, s3_obj[1])
                 except RuntimeError as re:
                     self.logger.warning(
-                        "Could not delete from the bucket key s3://%s/%s : %s",
+                        "Failed to delete from the bucket key s3://%s/%s : %s",
                         self.catalog_bucket,
                         s3_obj[1],
                         re,
@@ -718,7 +718,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 self.cluster = gateway.connect(clusters[0].name)
                 self.logger.info("Connection with the dask cluster succeeded.")
             except KeyError as e:
-                self.logger.exception(f"Could not find the needed environment variable to use the dask gateway: {e}")
+                self.logger.exception(f"Failed to find the needed environment variable to use the dask gateway: {e}")
                 raise RuntimeError from e
             except IndexError as e:
                 self.logger.exception(f"There is no dask cluster to connect {e}")
@@ -795,7 +795,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         Manage eventual runtime exceptions
         """
         self.logger.debug("Starting main loop")
-        self.log_job_execution(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
 
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         for feature in self.stream_list:
@@ -813,11 +812,13 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
             )
         except HTTPException as http_exception:
-            self.logger.error(f"Could not retrieve the token for connecting to external station: {http_exception}")
+            self.logger.error(
+                f"Failed to retrieve the token required to connect to the external station: {http_exception}",
+            )
             self.log_job_execution(
                 ProcessorStatus.FAILED,
                 0,
-                detail=f"Could not retrieve the token for connecting to external station: {http_exception}",
+                detail=f"Failed to retrieve the token required to connect to the external station: {http_exception}",
             )
             return
 
@@ -829,6 +830,9 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"{re}")
             self.logger.error("Couldn't start the staging process")
             return
+
+        # Set the status to IN_PROGRESS for the job
+        self.log_job_execution(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
 
         # starting another thread for managing the dask callbacks
         self.logger.debug("Starting tasks monitoring thread")
