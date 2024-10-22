@@ -14,16 +14,18 @@
 
 """Test module for RSPYStaging processor."""
 import asyncio
-import json
+
+# import json
 import os
 import threading
 from unittest.mock import call
 
 import pytest
 import requests
-from dask.distributed import Client
-from dask_gateway import Gateway
-from dask_gateway.auth import JupyterHubAuth
+
+# from dask.distributed import Client
+# from dask_gateway import Gateway
+# from dask_gateway.auth import JupyterHubAuth
 from rs_server_staging.processors import ProcessorStatus, TokenAuth, streaming_download
 
 # pylint: disable=undefined-variable
@@ -597,7 +599,8 @@ class TestRSPYStagingMainExecution:
     #     staging_instance.cluster = None
     #     staging_instance.logger = mocker.Mock()
     #     # Mock the JupyterHubAuth, Gateway, and Client classes
-    #     mock_auth = mocker.patch('dask_gateway.auth.JupyterHubAuth', return_value=JupyterHubAuth(api_token="mock_api_token"))
+    #     mock_auth = mocker.patch('dask_gateway.auth.JupyterHubAuth',
+    #                              return_value=JupyterHubAuth(api_token="mock_api_token"))
     #     mock_gateway = mocker.patch('dask_gateway.Gateway')
     #     mock_list_clusters = mocker.patch.object(Gateway, 'list_clusters')
     #     mock_connect = mocker.patch.object(Gateway, 'connect')
@@ -636,7 +639,8 @@ class TestRSPYStagingMainExecution:
     #     # Ensure logging was called as expected
     #     staging_instance.logger.debug.assert_any_call(f"The list of clusters: {mock_list_clusters.return_value}")
     #     staging_instance.logger.info.assert_any_call("Number of running workers: 2")
-    #     staging_instance.logger.debug.assert_any_call(f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}")
+    #     staging_instance.logger.debug.assert_any_call(
+    # f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}")
 
     def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance):
         """Test to mock the connection to a dask cluster"""
