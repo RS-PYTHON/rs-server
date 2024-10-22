@@ -631,7 +631,10 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             if "filter" in query:
                 qs_filter_json = query["filter"]
                 filters = parse_cql2_json(qs_filter_json)
-        owner_id = self.find_owner_id(filters)
+        try:
+            owner_id = self.find_owner_id(filters)
+        except AttributeError:
+            owner_id = self.request_ids["owner_id"]
         if "collections" in query:
             collection_id = query["collections"][0].removeprefix(owner_id)
 
@@ -643,7 +646,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
 
         # Add the stac authentication extension
         await self.add_authentication_extension(content)
-
+        logger.debug(f"content = {content}")
         return JSONResponse(content, status_code=response.status_code)
 
     async def manage_put_post_request(  # pylint: disable=too-many-branches

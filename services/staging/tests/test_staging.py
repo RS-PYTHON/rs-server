@@ -291,6 +291,7 @@ async def test_app_lifespan_local_mode(mocker):
         pass  # We are testing the startup logic
 
     assert "dask_cluster" in mock_app.extra
+    assert mock_app.extra["dask_cluster"] is not None
 
 
 @pytest.mark.asyncio
@@ -302,14 +303,14 @@ async def test_app_lifespan_gateway_error(mocker):
         os.environ,
         {
             "RSPY_LOCAL_MODE": "0",
-            "DASK_GATEWAY__ADDRESS": "mock-address",
         },
     )
 
     # Mock FastAPI app
     mock_app = FastAPI()
 
-    # Should raise RuntimeError because no DASK_GATEWAY__AUTH__TYPE was provided
-    with pytest.raises(RuntimeError):
-        async with app_lifespan(mock_app):
-            pass  # We are testing the error handling
+    async with app_lifespan(mock_app):
+        pass  # We are testing the startup logic
+
+    assert "dask_cluster" in mock_app.extra
+    assert mock_app.extra["dask_cluster"] is None
