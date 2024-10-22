@@ -22,10 +22,12 @@ from unittest.mock import call
 import pytest
 import requests
 from dask_gateway import Gateway
-from rs_server_staging.processors import ProcessorStatus, TokenAuth, streaming_download
+from moto.server import ThreadedMotoServer
+from rs_server_staging.processors import ProcessorStatus, TokenAuth, streaming_task
 
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
+# pylint: disable=too-many-lines
 
 
 class TestProcessorStatus:
@@ -99,7 +101,35 @@ class TestTokenAuth:
         assert repr(auth) == "RSPY Token handler"
 
 
-def test_streaming_download_incorrect_env(mocker):
+def test_streaming_task(mocker):
+    """Test a error while creating s3 handler"""
+    # mock init of s3 handler without S3_ACCESSKEY, should raise an error while creating s3 handler
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": "", "secretkey": "", "region": ""}
+    mocker.patch.dict(
+        "os.environ",
+        {
+            "S3_ACCESSKEY": secrets["accesskey"],
+            "S3_SECRETKEY": secrets["secretkey"],
+            "S3_ENDPOINT": secrets["s3endpoint"],
+            "S3_REGION": secrets["region"],
+        },
+    )
+    # create the test bucket
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+
+    s3_key = "s3_path/file.zip"
+    mocker.patch(
+        "rs_server_staging.processors.S3StorageHandler.s3_streaming_upload",
+        return_value=None,
+    )
+    assert streaming_task("https://example.com/product.zip", "Bearer token", "bucket", s3_key) == s3_key
+    server.stop()
+
+
+def test_streaming_task_incorrect_env(mocker):
     """Test a error while creating s3 handler"""
     # mock init of s3 handler without S3_ACCESSKEY, should raise an error while creating s3 handler
     mocker.patch.dict(
@@ -107,10 +137,10 @@ def test_streaming_download_incorrect_env(mocker):
         {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
     )
     with pytest.raises(ValueError, match=r"Cannot create s3 connector object."):
-        streaming_download("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
+        streaming_task("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
 
 
-def test_streaming_download_runtime_error(mocker):
+def test_streaming_task_runtime_error(mocker):
     """Test a runtimeerror while streaming-download."""
     mocker.patch.dict(
         "os.environ",
@@ -132,7 +162,7 @@ def test_streaming_download_runtime_error(mocker):
         ValueError,
         match=r"Dask task failed to stream file from " r"https://example.com/product.zip to s3://bucket/file.zip",
     ):
-        streaming_download("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
+        streaming_task("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
 
 
 class TestRSPYStaging:
@@ -160,6 +190,36 @@ class TestRSPYStaging:
         mock_check_catalog.assert_called_once()
         mock_process_rspy.assert_called_once()  # Ensures processing is scheduled
         assert result == {"started": staging_instance.job_id}
+
+    @pytest.mark.asyncio
+    async def test_execute_fails_in_checking_catalog(self, mocker, staging_instance, asyncio_loop):
+        """Test execute method while a asyncio loop is running"""
+        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+        mock_check_catalog = mocker.patch.object(staging_instance, "check_catalog", return_value=False)
+
+        # Simulate an already running event loop
+        mocker.patch.object(asyncio, "get_event_loop", return_value=asyncio_loop)
+        mocker.patch.object(asyncio_loop, "is_running", return_value=True)
+
+        # Call the async execute method
+        result = await staging_instance.execute()
+
+        # Assertions
+        assert mock_log_job.call_count == 2
+        mock_log_job.assert_has_calls(
+            [
+                call(ProcessorStatus.CREATED),
+                call(
+                    ProcessorStatus.FAILED,
+                    0,
+                    detail="Could not start the staging process. "
+                    f"Checking the collection '{staging_instance.catalog_collection}' failed !",
+                ),
+            ],
+        )
+        mock_check_catalog.assert_called_once()
+
+        assert result == {"failed": staging_instance.job_id}
 
     @pytest.mark.asyncio
     async def test_execute_with_running_loop_without_item_collection(self, mocker, staging_instance, asyncio_loop):
@@ -324,16 +384,31 @@ class TestRSPYStagingCatalog:
         mock_log_job_execution.called_once()
 
     @pytest.mark.asyncio
+    async def test_check_catalog_get_wrong_response(self, mocker, staging_instance):
+        """docstring to be added"""
+        # Mocking the item_collection and its features
+        staging_instance.item_collection = mocker.Mock()
+        staging_instance.item_collection.features = [mocker.Mock(id="1"), mocker.Mock(id="2")]
+
+        # Setting up the catalog_url and headers
+        staging_instance.catalog_url = "https://test_rspy_catalog_url.com"
+        staging_instance.headers = {"cookie": "test_cookie"}
+
+        # Mock the requests.get method
+        mock_response = mocker.Mock()
+        mock_response.json.return_value = {"wrong_key": "Unknown_test", "features": []}  # Mocking the JSON response
+        mock_response.raise_for_status = mocker.Mock()  # Mock raise_for_status to do nothing
+        mocker.patch("requests.get", return_value=mock_response)
+
+        # Call the method under test
+        result = await staging_instance.check_catalog()
+
+        # Assert that the result is True (successful catalog check)
+        assert result is False
+
+    @pytest.mark.asyncio
     async def test_check_catalog_failure(self, mocker, staging_instance):
-        """Test the check_catalog method for successful execution.
-
-        This test verifies that the check_catalog method correctly formats the request
-        to the catalog URL and handles the response appropriately.
-
-        Args:
-            mocker: The mocker fixture to patch methods and objects during tests.
-            staging_instance (RSPYStaging): An instance of the RSPYStaging class, pre-initialized for testing.
-        """
+        """docstring to be added"""
         # Mocking the item_collection and its features
         staging_instance.item_collection = mocker.Mock()
         staging_instance.item_collection.features = [mocker.Mock(id=1), mocker.Mock(id=2)]
@@ -430,12 +505,27 @@ class TestRSPYPrepareStreaming:
         staging_instance.item_collection.features = [feature_1, feature_2, feature_3]
 
         # Create a mock catalog response indicating only some features have been downloaded
-        catalog_response = {"context": {"returned": 1}, "features": [{"id": 1}]}  # Only feature 1 has been downloaded
+        # Only feature 1 has been already staged
+        catalog_response = {"context": {"returned": 1}, "features": [{"id": 1}]}
 
         staging_instance.create_streaming_list(catalog_response)
 
         # Assert that stream_list contains features 2 and 3 (not downloaded)
         assert staging_instance.stream_list == [feature_2, feature_3]
+
+    def test_create_streaming_list_wrong_catalog_input(self, mocker, staging_instance):
+        """Test create_streaming_list when a wrong response is received from the catalog."""
+        feature_1 = mocker.Mock(id=1)
+        feature_2 = mocker.Mock(id=2)
+        feature_3 = mocker.Mock(id=3)
+        staging_instance.item_collection.features = [feature_1, feature_2, feature_3]
+
+        # Create a mock catalog response which is malformed
+        catalog_response = {"context": {"returned": 1}, "wrong_key": [{"id": 1}]}
+
+        with pytest.raises(RuntimeError) as exc_info:
+            staging_instance.create_streaming_list(catalog_response)
+            assert "The 'features' field is missing in the response from the catalog service. " in str(exc_info.value)
 
     def test_prepare_streaming_tasks_all_valid(self, mocker, staging_instance):
         """Test prepare_streaming_tasks when all assets are valid."""
@@ -466,6 +556,19 @@ asset1_title"
             == f"s3://rtmpop/{staging_instance.catalog_collection}/{feature.id}/\
 asset2_title"
         )
+
+    def test_prepare_streaming_tasks_one_invalid(self, mocker, staging_instance):
+        """Test prepare_streaming_tasks when all assets are valid."""
+        feature = mocker.Mock()
+        feature.id = "feature_id"
+        feature.assets = {
+            "asset1": mocker.Mock(href="", title="asset1_title"),
+            "asset2": mocker.Mock(href="https://example.com/asset2", title="asset2_title"),
+        }
+        result = staging_instance.prepare_streaming_tasks(feature)
+
+        # Assert that the method returns False
+        assert result is False
 
 
 class TestRSPYStagingTaskFailure:  # pylint: disable=too-few-public-methods
@@ -552,7 +655,7 @@ class TestRSPYStagingDeleteFromBucket:
         mock_logger.error.assert_called_once_with("Cannot connect to s3 storage, %s", mocker.ANY)
 
     def test_delete_files_from_bucket_fail_while_in_progress(self, mocker, staging_instance):
-        """Test a runtimeerror while using s3_handler.delete_file_from_s3, should produce a logger error,
+        """Test a runtime error while using s3_handler.delete_file_from_s3, should produce a logger error,
         nothing else?
         """
         mocker.patch.dict(
@@ -698,6 +801,42 @@ class TestRSPYStagingMainExecution:
         # Features are not published here.
         mock_publish_feature.assert_not_called()
 
+    def test_manage_dask_tasks_failed_to_publish(self, mocker, staging_instance):
+        """Test to mock managing of successul tasks"""
+        # Mock tasks that will succeed
+        task1 = mocker.Mock()
+        task1.result = mocker.Mock(return_value=None)  # Simulate a successful task
+        task1.key = "task1"
+
+        task2 = mocker.Mock()
+        task2.result = mocker.Mock(return_value=None)  # Simulate another successful task
+        task2.key = "task2"
+        # mock dask client
+        client = mocker.Mock(return_value=True)
+        staging_instance.tasks = [task1, task2]  # Set tasks
+        staging_instance.stream_list = [task1, task2]  # set streaming list
+        # mock distributed as_completed
+        mocker.patch("rs_server_staging.processors.as_completed", return_value=[task1, task2])
+        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+
+        mocker.patch.object(staging_instance, "publish_rspy_feature", return_value=False)
+        mock_delete_file_from_bucket = mocker.patch.object(staging_instance, "delete_files_from_bucket")
+
+        staging_instance.manage_dask_tasks_results(client)
+
+        mock_log_job.assert_any_call(
+            ProcessorStatus.FAILED,
+            None,
+            detail=f"The item {task1.id} couldn't be " "published in the catalog. Cleaning up",
+        )
+        mock_delete_file_from_bucket.assert_called()
+
+    def test_manage_dask_tasks_no_dask_client(self, mocker, staging_instance):
+        """Test the manage_dask_tasks when no valid dask client is received"""
+        mock_logger = mocker.patch.object(staging_instance, "logger")
+        staging_instance.manage_dask_tasks_results(None)
+        mock_logger.error.assert_called_once_with("The dask cluster client object is not created. Exiting")
+
     @pytest.mark.asyncio
     async def test_process_rspy_features_empty_stream(self, mocker, staging_instance):
         """Test that process_rspy_features logs the initial setup and starts the main loop."""
@@ -787,6 +926,67 @@ class TestRSPYStagingPublishCatalog:
                 timeout=10,
             )
             mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
+
+    def test_repr(self, staging_instance):
+        """Test repr method for coverage"""
+        assert repr(staging_instance) == "RSPY Staging OGC API Processor"
+
+
+class TestRSPYStagingUnpublishCatalog:
+    """Class to group tests for catalog unpublishing after streaming failed"""
+
+    def test_unpublish_rspy_features_success(self, mocker, staging_instance):
+        """Test successful unpublishing feature ids to the catalog."""
+        feature_ids = ["feature-1", "feature-2"]
+        mock_logger = mocker.patch.object(staging_instance, "logger")
+
+        staging_instance.headers = {"cookie": "fake-cookie"}
+        # Mock requests.delete to return a successful response
+
+        mock_delete = mocker.patch("requests.delete")
+        mock_delete.return_value.status_code = 200
+
+        staging_instance.unpublish_rspy_features(feature_ids)
+
+        # Assert that delete was called with the correct URL and headers
+        mock_delete.assert_any_call(
+            f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/items/feature-1",
+            headers={"cookie": staging_instance.headers.get("cookie", None)},
+            timeout=3,
+        )
+        mock_delete.assert_any_call(
+            f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/items/feature-2",
+            headers={"cookie": staging_instance.headers.get("cookie", None)},
+            timeout=3,
+        )
+        # Ensure no error was logged
+        mock_logger.error.assert_not_called()
+
+    def test_unpublish_rspy_features_fail(self, mocker, staging_instance):
+        """Test failure during feature unpublishing ."""
+        feature_ids = ["feature-1"]
+
+        for possible_exception in [
+            requests.exceptions.HTTPError,
+            requests.exceptions.Timeout,
+            requests.exceptions.RequestException,
+            requests.exceptions.ConnectionError,
+        ]:
+            # Mock requests.post to raise an exception
+            mock_delete = mocker.patch("requests.delete", side_effect=possible_exception("HTTP Error occurred"))
+
+            # Mock the logger and other methods called on failure
+            mock_logger = mocker.patch.object(staging_instance, "logger")
+
+            staging_instance.unpublish_rspy_features(feature_ids)
+
+            mock_delete.assert_any_call(
+                f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/\
+items/feature-1",
+                headers={"cookie": staging_instance.headers.get("cookie", None)},
+                timeout=3,
+            )
+            mock_logger.error.assert_called_once_with("Error while deleting the item from rspy catalog %s", mocker.ANY)
 
     def test_repr(self, staging_instance):
         """Test repr method for coverage"""

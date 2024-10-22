@@ -14,8 +14,6 @@
 """Base RSPY Stagging processor."""
 
 import asyncio  # for handling asynchronous tasks
-
-# import getpass
 import json
 import os
 import time
@@ -126,7 +124,7 @@ class TokenAuth(AuthBase):
         return "RSPY Token handler"
 
 
-def streaming_download(product_url: str, auth: str, bucket: str, s3_file: str):
+def streaming_task(product_url: str, auth: str, bucket: str, s3_file: str):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
@@ -147,7 +145,7 @@ def streaming_download(product_url: str, auth: str, bucket: str, s3_file: str):
         ValueError: If the streaming process fails, raises a ValueError with details of the failure.
 
     Example:
-        streaming_download("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
+        streaming_task("https://example.com/product.zip", "Bearer token", "bucket/file.zip")
     """
 
     try:
@@ -245,7 +243,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         #################
         # Locals
         self.headers: Headers = credentials.headers
-        # self.user = credentials.user if credentials.user else getpass.getuser()
         self.stream_list: list = []
         #################
         # Env section
@@ -320,7 +317,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 ProcessorStatus.FAILED,
                 0,
                 detail="Could not start the staging process. "
-                "fChecking the collection '{self.catalog_collection}' failed !",
+                f"Checking the collection '{self.catalog_collection}' failed !",
             )
             return {"failed": self.job_id}
         self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
@@ -417,11 +414,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             resp_json = response.json()
             if not resp_json.get("type") or resp_json.get("type") != "FeatureCollection":
                 self.logger.error("Failed to search catalog, no expected response received")
-                self.log_job_execution(
-                    ProcessorStatus.FAILED,
-                    0,
-                    detail="Failed to search catalog, no expected response received",
-                )
                 return False
             self.logger.debug(resp_json)
             self.create_streaming_list(resp_json)
@@ -499,18 +491,16 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         """
 
         for asset_name, asset_content in feature.assets.items():
-            try:
-                # TODO: add the user_collection as main directory
-                s3_obj_path = f"{self.catalog_collection}/{feature.id.rstrip('/')}/{asset_content.title}"
-                self.assets_info.append((asset_content.href, s3_obj_path))
-                # update the s3 path, this will be checked in the rs-server-catalog in the
-                # publishing phase
-                asset_content.href = f"s3://rtmpop/{s3_obj_path}"
-                feature.assets[asset_name] = asset_content
-            except KeyError as e:
-                self.logger.error("Error: Missing href or title in asset dictionary %s", e)
+            if not asset_content.href or not asset_content.title:
+                self.logger.error("Missing href or title in asset dictionary")
                 return False
-
+            # TODO: add the user_collection as main directory
+            s3_obj_path = f"{self.catalog_collection}/{feature.id.rstrip('/')}/{asset_content.title}"
+            self.assets_info.append((asset_content.href, s3_obj_path))
+            # update the s3 path, this will be checked in the rs-server-catalog in the
+            # publishing phase
+            asset_content.href = f"s3://rtmpop/{s3_obj_path}"
+            feature.assets[asset_name] = asset_content
         return True
 
     def handle_task_failure(self, error):
@@ -521,8 +511,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             tasks (list): List of Dask task futures.
             s3_objs (list): List of S3 object paths to clean up.
         """
-        # with self.lock:
-        #     self.callbacks_disabled = True
+
         self.logger.error(
             "Error during staging. Canceling all the remaining tasks. "
             "The assets already copied to the bucket will be deleted."
@@ -573,9 +562,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
             )
-            if not s3_handler:
-                self.logger.error("Error when trying to to delete files from the s3 bucket")
-                return
+
             for s3_obj in self.assets_info:
                 try:
                     s3_handler.delete_file_from_s3(self.catalog_bucket, s3_obj[1])
@@ -641,7 +628,11 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         for feature in self.stream_list:
             if not self.publish_rspy_feature(feature):
                 # cleanup
-                self.log_job_execution(ProcessorStatus.FAILED)
+                self.log_job_execution(
+                    ProcessorStatus.FAILED,
+                    None,
+                    detail=f"The item {feature.id} couldn't be " "published in the catalog. Cleaning up",
+                )
                 # delete the files
                 self.delete_files_from_bucket()
                 # delete the published items
@@ -760,7 +751,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
     def submit_tasks_to_dask_cluster(self, token: str, client: Client):
         """Submits multiple tasks to a Dask cluster for asynchronous processing.
 
-        Each task involves downloading a file stream (using `streaming_download`) and uploading it to an S3 bucket
+        Each task involves downloading a file stream (using `streaming_task`) and uploading it to an S3 bucket
         or similar storage, authenticated using the provided token.
 
         The function iterates through a list of assets (created previously after checking the catalog), represented by
@@ -788,7 +779,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             for asset_info in self.assets_info:
                 self.tasks.append(
                     client.submit(
-                        streaming_download,
+                        streaming_task,
                         asset_info[0],
                         TokenAuth(token),
                         self.catalog_bucket,
