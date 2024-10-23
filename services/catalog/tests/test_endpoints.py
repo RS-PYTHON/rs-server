@@ -94,7 +94,7 @@ def test_matthieu_search_specific_collection(client):
     #test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
     test_params = {
         "filter-lang": "cql2-text",
-        "filter": "owner='toto' AND id IN ('fe916452-ba6f-4631-9154-c249924a122d')",
+        "filter": "owner='toto' AND id IN (S1A_20200105072204051312)",
     }
     #response = client.get("/catalog/collections/toto:S1_L1/search")
     response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)

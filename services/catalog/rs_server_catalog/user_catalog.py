@@ -57,6 +57,7 @@ from rs_server_catalog.user_handler import (
     remove_user_from_collection,
     remove_user_from_feature,
     reroute_url,
+    get_user
 )
 from rs_server_catalog.utils import (
     get_s3_filename_from_asset,
@@ -529,20 +530,33 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
 
         Returns:
             Request: the new request with the collection name updated.
-        """
-        auth_roles = []
-        user_login = ""
-        owner_id = ""
-        collection_id = ""
-        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
-            auth_roles = request.state.auth_roles
-            user_login = request.state.user_login
-        if request.method == "POST":  # POST method.
+        """    
+        # ------ Handle exceptions
+        # Check authorisation in cluster mode
+        if common_settings.CLUSTER_MODE and not \
+        get_authorisation(
+                self.request_ids["collection_id"],
+                [],
+                "read",
+                self.request_ids["owner_id"],
+                self.request_ids["user_login"],
+            ):
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        
+        # Check that the collection from the request exists
+        if self.request_ids['collection_id']:
+            if not await self.collection_exists(request, f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"):
+                detail = {"error": f"Collection {self.request_ids['collection_id']} not found."}
+                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
+        
+        # ------ POST method.
+        if request.method == "POST":  
             content = await request.json()
-            if (
-                "filter-lang" not in content and "filter" in content
-            ):  # If not specified, the default value of filter_lang in a post method is cql2-json.
-                filter_lang = {"filter-lang": "cql2-json"}
+            
+            # Add optional filter to the content
+            if "filter" in content:
+                filter_lang = {"filter-lang": "cql2-json"} if "filter-lang" not in content else content["filter-lang"]
                 stac_filter = {}
                 stac_filter["filter"] = content.pop("filter")
                 content = {
@@ -550,51 +564,28 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     **filter_lang,
                     **stac_filter,
                 }  # The "filter_lang" field has to be placed BEFORE the filter.
-            if self.request_ids["collection_id"]:  # /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
-                owner_id = (
-                    user_login if not self.request_ids["owner_id"] else self.request_ids["owner_id"]
-                )  # Implicit owner_id.
-                collection_id = self.request_ids["collection_id"]
-                if not owner_id:  # We don't have owner_id in local mode --> error.
-                    detail = {"error": "Owner Id can't be implicit in local mode"}
-                    return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-                request = search_endpoint_in_collection_post(content, request, owner_id, collection_id)
-            elif "filter" in content and "collections" in content:  # /catalog/search ENDPOINT.
-                owner_id, collection_id, request = search_endpoint_post(content=content, request=request)
-            if (
-                not owner_id or not collection_id
-            ):  # TODO find a solution to get authorisations in this case for next stories
-                return request
-        else:  # GET method.
+            
+            # Call /catalog/collections/{owner_id}:{collection_id}/search endpoint.
+            if self.request_ids["collection_id"]:  
+                request = search_endpoint_in_collection_post(content, request,self.request_ids["owner_id"], self.request_ids["collection_id"])
+            
+            # Call /catalog/search with POST method endpoint
+            elif all(x in content for x in ["filter", "collections"]):
+                self.request_ids["owner_id"], self.request_ids["collection_id"], request = search_endpoint_post(content=content, request=request)
+        
+        # ----- GET method.
+        else:
+            # Get the query parameters
             query = parse_qs(request.url.query)
-            if self.request_ids["collection_id"]:  # /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
-                owner_id = (
-                    user_login if not self.request_ids["owner_id"] else self.request_ids["owner_id"]
-                )  # Implicit owner_id.
-                collection_id = self.request_ids["collection_id"]
-                request = search_endpoint_in_collection_get(query, request, owner_id, collection_id)
-            elif "filter" in query and "collections" in query:  # /catalog/search ENDPOINT.
-                owner_id, collection_id, request = search_endpoint_get(query=query, request=request)  ### Modify request with owner_id
-            if (
-                not owner_id or not collection_id
-            ):  # TODO find a solution to get authorisations in this case for next stories
-                return request
-        if (  # If we are in cluster mode and the user_login is not authorized
-            # to put/post returns a HTTP_401_UNAUTHORIZED status.
-            common_settings.CLUSTER_MODE
-            and not get_authorisation(
-                collection_id,
-                auth_roles,
-                "read",
-                owner_id,
-                user_login,
-            )
-        ):
-            detail = {"error": "Unauthorized access."}
-            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-        if not await self.collection_exists(request, f"{owner_id}_{collection_id}"):
-            detail = {"error": f"Collection {collection_id} not found."}
-            return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
+            
+            # Call /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
+            if self.request_ids["collection_id"]:  
+                request = search_endpoint_in_collection_get(query, request, self.request_ids["owner_id"], self.request_ids["collection_id"]) ### Update of the request by concatenating owner_id to the collection
+            
+            # Call /catalog/search with GET method endpoint.
+            elif all(x in query for x in ["filter", "collections"]):
+                self.request_ids["owner_id"], self.request_ids["collection_id"], request = search_endpoint_get(query=query, request=request)  ### Modify request with owner_id
+           
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -824,6 +815,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             Response: The response updated.
         """
         user = self.request_ids["owner_id"]
+        
+        # Load content of the response as a dictionary
         body = [chunk async for chunk in response.body_iterator]
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
         content = json.loads(dec_content)
@@ -834,12 +827,13 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
+        
+        # Manage local landing page of the catalog
         if request.scope["path"] == "/":
             if common_settings.CLUSTER_MODE:  # /catalog
                 content = manage_landing_page(auth_roles, user_login, content)
                 if hasattr(content, "status_code"):  # Unauthorized
                     return content
-            # Manage local landing page of the catalog
             regex_catalog = r"/collections/(?P<owner_id>.+?)_(?P<collection_id>.*)"
             for link in content["links"]:
                 link_parser = urlparse(link["href"])
@@ -851,6 +845,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             url = request.url._url  # pylint: disable=protected-access
             url = url[: len(url) - len(request.url.path)]
             content = add_prefix_link_landing_page(content, url)
+        
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if user:
                 content["collections"] = filter_collections(content["collections"], user)
@@ -873,8 +868,9 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                 content["links"][1]["href"] += "catalog/"
                 content["links"][2]["href"] = self_parser._replace(path="/catalog/collections").geturl()
 
-        elif (  # If we are in cluster mode and the user_login is not authorized
-            # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
+        # If we are in cluster mode and the user_login is not authorized
+        # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
+        elif (
             common_settings.CLUSTER_MODE
             and self.request_ids["collection_id"]
             and self.request_ids["owner_id"]
@@ -891,6 +887,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        
         elif (
             "/collections" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
@@ -1082,28 +1079,75 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             return ("", "")
 
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
-        """Redirect the user catalog specific endpoint and adapt the response content."""
+        """
+        Redirect the user catalog specific endpoint and adapt the response content.
+        
+        Args: 
+            request (Request): Initial request
+            call_next: next call to apply
+        
+        Returns:
+            response (Response): Response to the current request
+        """
         request_body = None if request.method not in ["POST", "PUT"] else await request.json()
-        # Get the the user_login calling the endpoint. If this is not set (the authentication.authenticate function
-        # is not called), the local user shall be used (later on, in rereoute_url)
-        # The common_settings.CLUSTER_MODE may not be used because for some endpoints like /api
-        # the authenticate is not called even if common_settings.CLUSTER_MODE is True. Thus, the presence of
-        # user_login has to be checked instead
-        try:
-            user_login = request.state.user_login
-        except (NameError, AttributeError):
-            # The current running user (if in local mode) will be used if needed in rerouting
-            user_login = None
+        auth_roles = None
+        user_login = None
+        owner_id = None
+        
+        # ---------- Management of  authentification (retrieve user_login + default owner_id)
+        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
+            auth_roles = request.state.auth_roles
+            try: 
+                user_login = request.state.user_login
+            # Case of endpoints that do not call the authenticate function
+            # Get the the user_login calling the endpoint. If this is not set (the authentication.authenticate function
+            # is not called), the local user shall be used (later on, in rereoute_url)
+            # The common_settings.CLUSTER_MODE may not be used because for some endpoints like /api
+            # the authenticate is not called even if common_settings.CLUSTER_MODE is True. Thus, the presence of
+            # user_login has to be checked instead
+            except (NameError, AttributeError):
+                user_login = None
+            # By default, we set the owner_id with the user_login. We will later overwrite it if necesary with
+            # the owner_id specified in the request url or request body
+            owner_id = user_login 
+        elif common_settings.LOCAL_MODE:
+            owner_id = get_user(None, None) # Get default local owner_id
+            user_login = owner_id # in this case, owner_id and user_login are the same because we have only one local user
+        if not owner_id:  
+            raise HTTPException(
+                status_code=500,
+                detail=f"owner_id not defined !",
+            )
         logger.debug(
             f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
         )
-        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login)
+        
+        # ---------- Request rerouting
+        self.request_ids =  {"auth_roles": auth_roles, "user_login": user_login, "owner_id": owner_id, "collection_id": "", "item_id": ""}
+        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
             return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
+        
+        # Ensure that user_login and owner_id are not null after rerouting
+        if not self.request_ids['user_login']:
+            raise HTTPException(
+                status_code=500,
+                detail=f"user_login is not defined !",
+            )
+        if not self.request_ids['owner_id']:
+              raise HTTPException(
+                status_code=500,
+                detail=f"owner_id is not defined !",
+            )
+            
+        # ---------- Body data recovery
         # Overwrite user and collection id with the ones provided in the request body
         # This is available in POST/PUT/PATCH methods only
         if request_body:
+            # Edit owner_id with the corresponding body content if exist
+            self.request_ids["owner_id"] = request_body.get("owner", self.request_ids["owner_id"])
+            
             self.request_ids["owner_id"] = self.request_ids.get("owner_id") or request_body.get("owner")
             # received a POST/PUT/PATCH for a STAC item or
             # a STAC collection is created
@@ -1115,12 +1159,16 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         if "/health" in request.scope["path"]:
             # return true if up and running
             return JSONResponse(content="Healthy", status_code=HTTP_200_OK)
+        
+        
+        # ---------- Calling endpoints
         # Handle requests
         if request.scope["path"] == "/search":
             # URL: GET: '/catalog/search'
             request = await self.manage_search_request(request)
             if hasattr(request, "status_code"):  # Unauthorized
                 return request
+        
         elif request.method in {"POST", "PUT"} and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
