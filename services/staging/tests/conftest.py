@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 import yaml
 from fastapi.testclient import TestClient
-from rs_server_staging.processors import RSPYStaging
+from rs_server_staging.processors import Staging
 
 os.environ["RSPY_LOCAL_MODE"] = "1"
 # set pygeoapi env variables
@@ -66,9 +66,10 @@ def dbj_():
 
 @pytest.fixture(name="staging_instance")
 def staging(mocker):
-    """Fixture to mock RSPYStaging object"""
-    # Mock dependencies for RSPYStaging
+    """Fixture to mock Staging object"""
+    # Mock dependencies for Staging
     mock_credentials = mocker.Mock()
+    mock_credentials.headers = {"cookie": "fake-cookie"}
     mock_input_collection = mocker.Mock()
     mock_collection = "test_collection"
     mock_item = "test_item"
@@ -83,8 +84,8 @@ def staging(mocker):
         },
     )
 
-    # Instantiate the RSPYStaging class with the mocked dependencies
-    staging_instance = RSPYStaging(
+    # Instantiate the Staging class with the mocked dependencies
+    staging_instance = Staging(
         credentials=mock_credentials,
         input_collection=mock_input_collection,
         collection=mock_collection,

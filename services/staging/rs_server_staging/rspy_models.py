@@ -56,7 +56,7 @@ class Feature(BaseModel):
     stac_extensions: List[str]
 
 
-class RSPYCollectionModel(BaseModel):
+class CollectionModel(BaseModel):
     """Model representing a collection in the input data.
 
     This model describes a collection with metadata such as title, description, and
@@ -81,7 +81,7 @@ class RSPYCollectionModel(BaseModel):
     maxOccurs: int
 
 
-class RSPYFeatureCollectionModel(BaseModel):
+class FeatureCollectionModel(BaseModel):
     """Model representing a collection of features.
 
     This model is used to group multiple `Feature` objects into a single collection.
@@ -95,24 +95,24 @@ class RSPYFeatureCollectionModel(BaseModel):
     features: List[Feature]
 
 
-class RSPYInputModel(BaseModel):
+class InputModel(BaseModel):
     """Model for input data.
 
     This model encapsulates the input information, including a collection of features,
     metadata, and the provider.
 
     Attributes:
-        collection (RSPYCollectionModel): The collection of metadata for the input.
-        items (RSPYFeatureCollectionModel): A collection of features related to the input.
+        collection (CollectionModel): The collection of metadata for the input.
+        items (FeatureCollectionModel): A collection of features related to the input.
         provider (str): The name or identifier of the data provider.
     """
 
-    collection: RSPYCollectionModel
-    items: RSPYFeatureCollectionModel
+    collection: CollectionModel
+    items: FeatureCollectionModel
     provider: str
 
 
-class RSPYOutputModel(BaseModel):
+class OutputModel(BaseModel):
     """Model representing output data metadata.
 
     This model describes the metadata associated with output data, including schema
@@ -154,9 +154,9 @@ class ProcessMetadataModel(BaseModel):
             the job control options available for the process.
         keywords (List[str]): A list of keywords related to the process.
         links (List[Dict[str, str]]): A list of dictionaries representing related links.
-        inputs (RSPYInputModel): The inputs required for the process.
-        outputs (Dict[str, RSPYOutputModel]): A dictionary representing the outputs
-            of the process, where keys are output names and values are `RSPYOutputModel`
+        inputs (InputModel): The inputs required for the process.
+        outputs (Dict[str, OutputModel]): A dictionary representing the outputs
+            of the process, where keys are output names and values are `OutputModel`
             objects.
     """
 
@@ -167,5 +167,5 @@ class ProcessMetadataModel(BaseModel):
     jobControlOptions: Union[List[str], str]
     keywords: List[str]
     links: List[Dict[str, str]]
-    inputs: RSPYInputModel
-    outputs: Dict[str, RSPYOutputModel]
+    inputs: InputModel
+    outputs: Dict[str, OutputModel]

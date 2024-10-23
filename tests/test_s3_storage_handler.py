@@ -1061,7 +1061,7 @@ def test_check_s3_key_on_bucket_success(mocker):
         f"Checking for the presence of the s3 key s3://{bucket}/{file_to_be_checked}",
     )
 
-    assert result is True
+    assert result
     server.stop()
 
 
@@ -1114,6 +1114,7 @@ def test_s3_streaming_upload(mocker):
     try:
         s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
     except RuntimeError:
+        server.stop()
         assert False, "s3_handler.s3_streaming_upload raised exception !"
 
     # Check that the file was uploaded successfully
@@ -1125,7 +1126,6 @@ def test_s3_streaming_upload(mocker):
     server.stop()
 
 
-# Helper Functions for test_s3_streaming_upload (otherwise, pylint is complaining about too many statements)
 def streaming_setup_test_env():
     """Set up test environment variables, stream URL, and mock HTTP response."""
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}

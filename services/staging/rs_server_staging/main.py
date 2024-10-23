@@ -42,8 +42,6 @@ logger = Logging.default(__name__)
 # Initialize a FastAPI application
 app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
-# Init the rs-server configuration file for authentication to extenal stations
-init_rs_server_config_yaml()
 
 # CORS enabled origins
 app.add_middleware(
@@ -101,6 +99,8 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
         KeyError: If no clusters are found during an attempt to connect via the `Gateway`.
     """
     logger.info("Starting up the application...")
+    # Init the rs-server configuration file for authentication to the external stations
+    init_rs_server_config_yaml()
 
     cluster = None
     if env_bool("RSPY_LOCAL_MODE", False):

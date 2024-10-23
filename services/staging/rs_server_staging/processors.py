@@ -37,7 +37,7 @@ from rs_server_common.utils.logging import Logging
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
-from .rspy_models import Feature, RSPYFeatureCollectionModel
+from .rspy_models import Feature, FeatureCollectionModel
 
 DASK_TASK_ERROR = "error"
 
@@ -162,7 +162,7 @@ def streaming_task(product_url: str, auth: str, bucket: str, s3_file: str):
     return s3_file
 
 
-class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
+class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
     """
     RSPY staging implementation, the processor should perform the following actions after being triggered:
 
@@ -194,7 +194,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
     def __init__(
         self,
         credentials: Request,
-        input_collection: RSPYFeatureCollectionModel,
+        input_collection: FeatureCollectionModel,
         collection: str,
         item: str,
         provider: str,
@@ -203,12 +203,12 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         tinydb_lock,
     ):  # pylint: disable=super-init-not-called
         """
-        Initialize the RSPYStaging processor with credentials, input collection, catalog details,
+        Initialize the Staging processor with credentials, input collection, catalog details,
         database, and cluster configuration.
 
         Args:
             credentials (Headers): Authentication headers used for requests.
-            input_collection (RSPYFeatureCollectionModel): The input collection of RSPY features to process.
+            input_collection (FeatureCollectionModel): The input collection of RSPY features to process.
             collection (str): The name of the collection from the catalog to use.
             item (str): The specific item to process within the collection.
             provider (str): The name of the provider offering the data for processing.
@@ -224,7 +224,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             detail (str): Status message describing the current state of the processing unit.
             progress (int): Integer tracking the progress of the current job.
             tracker (tinydb): A tinydb instance used to store job execution details.
-            item_collection (RSPYFeatureCollectionModel): Holds the input collection of features.
+            item_collection (FeatureCollectionModel): Holds the input collection of features.
             catalog_collection (str): Name of the catalog collection.
             catalog_item_name (str): Name of the specific item in the catalog being processed.
             provider (str): The data provider for the current processing task.
@@ -256,7 +256,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         self.create_job_execution()
         #################
         # Inputs section
-        self.item_collection: RSPYFeatureCollectionModel = input_collection
+        self.item_collection: FeatureCollectionModel = input_collection
         self.catalog_collection: str = collection
         self.catalog_item_name: str = item
         self.provider: str = provider
@@ -297,13 +297,29 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             None: This method doesn't raise any exceptions directly but logs errors if the
                 catalog check fails.
         """
-        if not self.item_collection:
+        # Check for the proper input
+        # Check if item collection is provided
+        if not self.item_collection or not hasattr(self.item_collection, "features"):
             self.log_job_execution(
                 ProcessorStatus.FINISHED,
                 0,
-                detail="No items were provided in the input for staging",
+                detail="No valid items were provided in the input for staging",
             )
             return {"finished": self.job_id}
+
+        # Filter out features with no assets
+        self.item_collection.features = [feature for feature in self.item_collection.features if feature.assets]
+
+        # Check if any features with assets remain
+        if not self.item_collection.features:
+            self.log_job_execution(
+                ProcessorStatus.FINISHED,
+                0,
+                detail="No items with assets were found in the input for staging",
+            )
+            return {"finished": self.job_id}
+
+        # set the CREATED status for the job
         self.log_job_execution(ProcessorStatus.CREATED)
         # Execution section
         if not await self.check_catalog():
@@ -391,7 +407,7 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
         filter_string = f"id IN ({', '.join(stry)})"
 
         # Final filter object
-        filter_object = {"filter-lang": "cql2-text", "filter": filter_string, "limit": f"{len(ids)}"}
+        filter_object = {"filter-lang": "cql2-text", "filter": filter_string, "limit": str(len(ids))}
 
         search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search"
 
@@ -408,12 +424,15 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             )
             response.raise_for_status()  # Raise an error for HTTP error responses
             # check the response type
-            resp_json = response.json()
-            if not resp_json.get("type") or resp_json.get("type") != "FeatureCollection":
+            item_collection = response.json()
+            if not item_collection.get("type") or item_collection.get("type") != "FeatureCollection":
                 self.logger.error("Failed to search catalog, no expected response received")
                 return False
-            self.logger.debug(resp_json)
-            self.create_streaming_list(resp_json)
+            # TODO: for debugging only
+            for item in item_collection.get("features"):
+                self.logger.debug(f"Session {item.get('id')} has {len(item.get('assets'))} assets")
+            # end of TODO
+            self.create_streaming_list(item_collection)
             return True
         except (
             requests.exceptions.HTTPError,
@@ -505,8 +524,6 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
 
         Args:
             error (Exception): The exception that occurred.
-            tasks (list): List of Dask task futures.
-            s3_objs (list): List of S3 object paths to clean up.
         """
 
         self.logger.error(
@@ -933,28 +950,30 @@ class RSPYStaging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for s
             - Success and failure events are logged, allowing tracing of which feature deletions
             were successful or failed, along with the relevant error information.
         """
-        for feature_id in feature_ids:
-            catalog_delete_item = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items/{feature_id}"
-            try:
+        try:
+            for feature_id in feature_ids:
+                catalog_delete_item = (
+                    f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items/{feature_id}"
+                )
                 response = requests.delete(
                     catalog_delete_item,
                     headers={"cookie": self.headers.get("cookie", None)},
                     timeout=3,
                 )
                 response.raise_for_status()  # Raise an error for HTTP error responses
-            except (
-                requests.exceptions.HTTPError,
-                requests.exceptions.Timeout,
-                requests.exceptions.RequestException,
-                requests.exceptions.ConnectionError,
-                json.JSONDecodeError,
-            ) as exc:
-                self.logger.error("Error while deleting the item from rspy catalog %s", exc)
+        except (
+            requests.exceptions.HTTPError,
+            requests.exceptions.Timeout,
+            requests.exceptions.RequestException,
+            requests.exceptions.ConnectionError,
+            json.JSONDecodeError,
+        ) as exc:
+            self.logger.error("Error while deleting the item from rspy catalog %s", exc)
 
     def __repr__(self):
-        """Returns a string representation of the RSPYStaging processor."""
+        """Returns a string representation of the Staging processor."""
         return "RSPY Staging OGC API Processor"
 
 
 # Register the processor
-processors = {"RSPYStaging": RSPYStaging}
+processors = {"Staging": Staging}

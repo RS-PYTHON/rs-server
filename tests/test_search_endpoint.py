@@ -46,8 +46,11 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
                 "type": "Feature",
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-                "bbox": [-10, 50, -5, 55],
-                "geometry": {"type": "Polygon", "coordinates": [[[-10, 50], [-10, 55], [-5, 55], [-5, 50], [-10, 50]]]},
+                "bbox": [-180.0, -90.0, 180.0, 90.0],
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+                },
                 "properties": {
                     "created": "2021-02-16T12:00:00Z",
                     "datetime": "1970-01-01T12:00:00Z",
@@ -74,8 +77,11 @@ from .conftest import (  # pylint: disable=no-name-in-module
                 "stac_extensions": ["https://stac-extensions.github.io/file/v2.1.0/schema.json"],
                 "type": "Feature",
                 "id": "DCS_01_S1A_20170501121534062343_ch1_DSDB_00001.raw",
-                "bbox": [-10, 50, -5, 55],
-                "geometry": {"type": "Polygon", "coordinates": [[[-10, 50], [-10, 55], [-5, 55], [-5, 50], [-10, 50]]]},
+                "bbox": [-180.0, -90.0, 180.0, 90.0],
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+                },
                 "properties": {
                     "created": "2021-02-16T12:00:00Z",
                     "adgs:id": "2b17b57d-fff4-4645-b539-91f305c27c69",
@@ -605,9 +611,9 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
                         "id": "S2B_20231117033237234567",
                         "geometry": {
                             "type": "Polygon",
-                            "coordinates": [[[-10, 50], [-10, 55], [-5, 55], [-5, 50], [-10, 50]]],
+                            "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
                         },
-                        "bbox": [-10, 50, -5, 55],
+                        "bbox": [-180.0, -90.0, 180.0, 90.0],
                         "properties": {
                             "start_datetime": "2023-11-17T06:05:37.234000+00:00",
                             "datetime": "2023-11-17T06:05:37.234000+00:00",

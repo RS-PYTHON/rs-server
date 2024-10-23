@@ -42,7 +42,7 @@ resources:
   staging:
     type: process
     processor:
-      name: RSPYStaging
+      name: Staging
 
 openapi:
   path: /openapi.json
