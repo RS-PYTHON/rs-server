@@ -47,7 +47,7 @@ DWN_THREAD_START_TIMEOUT = 5
 
 
 def is_valid_date_format(date: str) -> bool:
-    """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS.sssZ".
+    """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS[.sss]Z".
 
     Args:
         date (str): The string to be validated for the specified date format.
@@ -57,10 +57,15 @@ def is_valid_date_format(date: str) -> bool:
 
     """
     try:
-        datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+        datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")  # test without milliseconds
         return True
     except ValueError:
-        return False
+        try:
+            datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")  # test with milliseconds
+            return True
+        except ValueError:
+            pass
+    return False
 
 
 def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> Union[List, str]:

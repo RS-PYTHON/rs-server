@@ -19,6 +19,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 """
 
 # pylint: disable=redefined-builtin
+import copy
 import json
 import traceback
 from typing import Annotated, Any, List, Union
@@ -41,9 +42,9 @@ from rs_server_cadip.cadip_utils import (
     from_session_expand_to_dag_serializer,
     generate_cadip_queryables,
     get_cadip_queryables,
-    prepare_cadip_search,
     read_conf,
     select_config,
+    stac_to_odata,
     validate_products,
 )
 from rs_server_common.authentication import authentication
@@ -123,15 +124,6 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
 
     # Call the authentication function from the authentication module
     authentication.auth_validation("cadip", access_type, request=request, station=station)
-
-
-def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
-    """Used to create and map query values with default values."""
-    required_keys: List[str] = ["station", "SessionId", "Satellite", "PublicationDate", "top", "orderby"]
-    default_values: List[Union[str | None]] = ["cadip", None, None, None, None, None, "-datetime"]
-    if not selected_config:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
-    return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
 
 
 @router.get("/", include_in_schema=False)
@@ -239,7 +231,10 @@ async def pgstac_search(request: Request, params: dict):
         sortby += sortby_dict["field"]
 
     # Collections to search
-    collections = params.pop("collections", [])
+    collection_ids = params.pop("collections", [])
+
+    # Cadip session IDs to search
+    session_ids = params.pop("ids", [])
 
     # datetime interval = PublicationDate
     datetime = params.pop("datetime", None)
@@ -253,43 +248,65 @@ async def pgstac_search(request: Request, params: dict):
                 "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
             ) from exception
 
-    # Read filters
+    # Read query and/or CQL filter
     platform = None
     constellation = None
-    session_id = None
 
-    # Read the CQL2 filter
-    filter = params.pop("filter", {})
-    if filter.get("op") not in ("and", "=", None):
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Invalid CQL2 filter, only one EQUAL or AND level is allowed: {format_dict(filter)}",
-        )
-    for arg in filter.get("args", []):
-        sub_args = arg.get("args", [])
-        if (arg.get("op") not in ("=", None)) or (len(sub_args) != 2) or not (property := sub_args[0].get("property")):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Invalid CQL2 filter, only EQUAL is allowed: {format_dict(arg)}",
-            )
-        if property == "PublicationDate":
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                "'PublicationDate' filter is not allowed, use 'datetime' interval instead",
-            )
-        value = sub_args[1]
+    def read_property(property: str, value: Any):
+        """Read a query or CQL filter property"""
+        nonlocal platform, constellation
         if property.lower() == "platform":
             platform = value
         elif property.lower() == "constellation":
             constellation = value
-        elif property.lower() == "sessionid":
-            session_id = value
         else:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid search property: {property!r}")
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Invalid query or CQL property: {property!r}, " "valid properties are: 'platform', 'constellation'",
+            )
+
+    def read_cql(filter: dict):
+        """Use a recursive function to read all CQL filter levels"""
+        op = filter.get("op")
+        args = filter.get("args", [])
+
+        # Read a single property
+        if op == "=":
+            if (len(args) != 2) or not (property := args[0].get("property")):
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid CQL2 filter: {format_dict(filter)}")
+            value = args[1]
+            return read_property(property, value)
+
+        # Else we are reading several properties
+        elif op != "and":
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filter)}",
+            )
+        for sub_filter in args:
+            read_cql(sub_filter)
+
+    read_cql(params.pop("filter", {}))
+
+    # Read the query
+    query = params.pop("query", {})
+    for property, operator in query.items():
+        if (len(operator) != 1) or not (value := operator.get("eq")):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Invalid query: {{{property!r}: {format_dict(operator)}}}"
+                ", only {'<property>': {'eq': <value>}} is allowed",
+            )
+        read_property(property, value)
 
     # Discard these search parameters
     params.pop("conf", None)
     params.pop("filter-lang", None)
+
+    # Discard the "fields" parameter only if its "include" and "exclude" properties are empty
+    fields = params.get("fields", {})
+    if not fields.get("include") and not fields.get("exclude"):
+        params.pop("fields", None)
 
     # If search parameters remain, they are not implemented
     if params:
@@ -298,9 +315,75 @@ async def pgstac_search(request: Request, params: dict):
             f"Unimplemented search parameters: {format_dict(params)}",
         )
 
-    # TODO: handle auth
+    # TODO another function
 
-    # TODO: next page ?
+    # Stac search parameters
+    stac_params = {
+        "id": session_ids,
+        # datetime param = filter on publication date
+        "published": datetime,
+        # pap stac platform/constellation to odata satellite... which is called "platform" in the stac standard.
+        "platform": cadip_map_mission(platform, constellation),
+    }
+
+    # Only keey the authorized collections
+    allowed = filter_allowed_collections(read_conf()["collections"], "cadip", request)
+    allowed_ids = set(collection["id"] for collection in allowed)
+    if not collection_ids:
+        collection_ids = allowed_ids
+    else:
+        collection_ids = allowed_ids.intersection(collection_ids)
+
+    # For each collection to search
+    for collection_id in collection_ids:
+
+        # Some OData search params are defined in the collection configuration.
+        # Copy it so we can modify it without modifying the cache.
+        collection = copy.deepcopy(select_config(collection_id))
+        odata = collection.get("query", {})
+
+        # Update it with the user search parameters, with STAC keys converted to OData keys.
+        # Don't overwrite existing values.
+        user_odata = stac_to_odata(stac_params)
+        odata.update({**user_odata, **odata})
+
+        # Overwrite the pagination parameters
+        odata["top"] = limit or odata.get("top") or 20  # default = 20 results per page
+
+        process_session_search(
+            request,
+            collection.get("station", "cadip"),
+            odata.get("SessionId"),
+            odata.get("Satellite"),
+            odata.get("PublicationDate"),
+            odata.get("top"),
+            "collection",
+        )
+
+        bp = 0
+
+    # """Used to create and map query values with default values."""
+    # required_keys: List[str] = ["station", "SessionId", "Satellite", "PublicationDate", "top", "orderby"]
+    # default_values: List[Union[str | None]] = ["cadip", None, None, None, None, None, "-datetime"]
+    # if not selected_config:
+    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
+    # return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+
+    #     query_params = create_session_search_params(selected_config)
+    #     logger.debug(f"Collection search params: {query_params}")
+    #     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
+    #     if link := process_session_search(
+    #         request,
+    #         query_params["station"],
+    #         query_params["SessionId"],
+    #         query_params["Satellite"],
+    #         query_params["PublicationDate"],
+    #         query_params["top"], limit
+    #         "collection",
+    #     ):
+    #         stac_collection.links.append(link)
+
+    # return stac_collection.model_dump()
 
     bp = 0
 
@@ -329,7 +412,7 @@ async def search_cadip_with_session_info(request: Request):
     logger.debug(f"User selected collection: {collection}")
     selected_config: Union[dict, None]
     query_params: dict
-    selected_config, query_params = prepare_cadip_search(collection, request_params)
+    selected_config, query_params = stac_to_odata(collection, request_params)
     query_params = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
     return process_session_search(
@@ -380,7 +463,7 @@ async def search_cadip_endpoint(request: Request, collection: str) -> dict:
     logger.debug(f"User selected collection: {collection_name}")
     selected_config: Union[dict, None]
     query_params: dict
-    selected_config, query_params = prepare_cadip_search(collection_name, request_params)
+    selected_config, query_params = stac_to_odata(collection_name, request_params)
 
     query_params = create_session_search_params(selected_config)
     logger.debug(f"Collection search params: {query_params}")
@@ -618,6 +701,8 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     limit = limit if limit else 1000
     if not (session_id or platform or (time_interval[0] and time_interval[1])):  # type: ignore
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
+
+    return
 
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")

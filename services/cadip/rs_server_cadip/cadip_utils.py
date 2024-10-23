@@ -89,23 +89,12 @@ def select_config(configuration_id: str) -> dict | None:
     )
 
 
-def prepare_cadip_search(collection, queryables):
-    """Function used to prepare cadip /search endpoint.
-    Map queryables from stac to odata format, read and update existing configuration.
-    """
-
-    selected_config = select_config(collection)
-
+def stac_to_odata(stac_params: dict) -> dict:
+    """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
     stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
     with open(stac_mapper_path, encoding="utf-8") as stac_map:
         stac_mapper = json.loads(stac_map.read())
-        query_params = {stac_mapper.get(k, k): v for k, v in queryables.items()}
-
-    if selected_config:
-        # Update selected_config query values with the ones coming in request.query_params
-        for query_config_key in query_params:
-            selected_config["query"][query_config_key] = query_params[query_config_key]
-    return selected_config, query_params
+        return {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
 
 
 def rename_keys(product: dict) -> dict:
@@ -179,9 +168,7 @@ def validate_products(products: eodag.EOProduct):
 
 def cadip_map_mission(platform: str, constellation: str):
     """
-    Custom function for CADIP, to read constellation mapper and return propper
-    values for platform and serial.
-    Eodag maps this values to Satellite
+    Map STAC platform and constellation into OData Satellite.
 
     Input: platform = sentinel-1a       Output: A
     Input: constellation = sentinel-1   Output: A, B, C
