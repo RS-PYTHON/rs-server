@@ -20,10 +20,12 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
+import json
 import os
 import os.path as osp
 import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
+from functools import lru_cache
 from pathlib import Path
 
 # We are in local mode (no cluster).
@@ -523,3 +525,39 @@ def validate_token(mocker):
         return service  # If needed, return the value to be used later in the test
 
     return _validate_token
+
+
+@pytest.fixture(name="cadip_feature")
+@lru_cache(maxsize=1)
+def cadip_stac_feature():
+    """Fixture used to verify the output of rs-server translation of cadip_pickup_response fixture."""
+    cadip_feature_json = RESOURCES_FOLDER / "endpoints" / "cadip_feature.json"
+    with open(cadip_feature_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="cadip_response")
+@lru_cache(maxsize=1)
+def cadip_pickup_response():
+    """Fixture used to mock the response from CADIP data pickup-point."""
+    cadip_response_json = RESOURCES_FOLDER / "endpoints" / "cadip_pickup_response.json"
+    with open(cadip_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="adgs_feature")
+@lru_cache(maxsize=1)
+def adgs_stac_feature():
+    """Fixture used to verify the output of rs-server translation of adgs_pickup_response fixture."""
+    adgs_feature_json = RESOURCES_FOLDER / "endpoints" / "adgs_feature.json"
+    with open(adgs_feature_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="adgs_response")
+@lru_cache(maxsize=1)
+def adgs_pickup_response():
+    """Fixture used to mock the response from ADGS data pickup-point."""
+    adgs_response_json = RESOURCES_FOLDER / "endpoints" / "adgs_pickup_response.json"
+    with open(adgs_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())

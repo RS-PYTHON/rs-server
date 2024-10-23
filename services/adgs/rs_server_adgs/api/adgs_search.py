@@ -70,6 +70,7 @@ def create_auxip_product_search_params(
     required_keys: List[str] = [
         "productType",
         "PublicationDate",
+        "platformShortName",
         "top",
         "orderby",
     ]
@@ -79,31 +80,30 @@ def create_auxip_product_search_params(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cannot find a valid configuration",
         )
-    return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+    try:
+        return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+    except (AttributeError, KeyError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid queryables set.") from exc
 
 
-## To be updated
 def auth_validation(request: Request, collection_id: str, access_type: str):
     """
-    Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
+    Check if the user KeyCloak roles contain the right for this specific AUXIP collection and access type.
 
     Args:
-        collection_id (str): used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
-        from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
+        collection_id (str): used to find the AUXIP station ("ADGS1, ADGS2")
+        from the RSPY_ADGS_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
     """
 
     # Find the collection which id == the input collection_id
     collection = select_config(collection_id)
     if not collection:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown CADIP collection: {collection_id!r}")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown AUXIP collection: {collection_id!r}")
     station = collection["station"]
 
     # Call the authentication function from the authentication module
-    authentication.auth_validation("cadip", access_type, request=request, station=station)
-
-
-###
+    authentication.auth_validation("adgs", access_type, request=request, station=station)
 
 
 @router.get("/", include_in_schema=False)
@@ -185,18 +185,45 @@ def get_conformance():
 @auth_validator(station="adgs", access_type="landing_page")
 @handle_exceptions
 def get_allowed_adgs_collections(request: Request):
+    """Docstring will be added."""
     # Based on api key, get all station a user can access.
     logger.info(f"Starting {request.url.path}")
 
     configuration = read_conf()
     all_collections = configuration["collections"]
 
-    return filter_allowed_collections(all_collections, "adgs", create_auxip_product_search_params, request)
+    return filter_allowed_collections(all_collections, "adgs", request)
 
 
 @router.get("/auxip/queryables")
 @auth_validator(station="adgs", access_type="landing_page")
 def get_all_queryables(request: Request):
+    """
+    Retrieve all queryable properties for the ADGS Search API.
+
+    This endpoint returns a comprehensive list of queryable names that can be used
+    to filter items in the ADGS Search API. The queryables are structured as a
+    JSON object, adhering to the JSON Schema specification.
+
+    Args:
+    - request (Request): The HTTP request object.
+
+    Returns:
+    - dict: A JSON object containing all queryable properties for the ADGS Search
+            API. The response structure follows the JSON Schema format.
+
+    Example:
+    A successful response will return: \n
+        {
+            "type": "object",
+            "title": "Queryables for ADGS Search API",
+            "description": "Queryable names for the ADGS Search API Item Search filter.",
+            "properties": {
+                ...  # Dynamically generated queryable properties
+            }
+        }
+
+    """
     logger.info(f"Starting {request.url.path}")
     return Queryables(
         type="object",
@@ -210,6 +237,7 @@ def get_all_queryables(request: Request):
 @auth_validator(station="adgs", access_type="landing_page")
 @handle_exceptions
 def search_auxip_endpoint(request: Request) -> dict:
+    """Docstring will be added."""
     logger.info(f"Starting {request.url.path}")
     request_params = dict(request.query_params)
     if not set(request_params.keys()).issubset(set(get_adgs_queryables().keys())):
@@ -235,6 +263,7 @@ def get_adgs_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
 ) -> list[dict] | dict:
+    """Docstring will be added."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
@@ -261,6 +290,25 @@ def get_adgs_collection_items(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
 ) -> list[dict] | dict:
+    """
+    Retrieve a list of items from a specified AUXIP collection.
+
+    This endpoint returns a collection of items associated with the given AUXIP
+    collection ID. It utilizes the collection ID to validate access and fetches
+    the items based on defined query parameters.
+
+    Args:
+    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+            (e.g., 'ins_s1'). Maximum length of 100 characters.
+
+    Returns:
+    - list[dict]: A FeatureCollection of items belonging to the specified collection, or an
+                    error message if the collection is not found.
+
+    Raises:
+    - HTTPException: If the authentication fails, or if there are issues with the
+                    collection ID provided.
+    """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
@@ -291,6 +339,45 @@ def get_adgs_collection_specific_item(
         ),
     ],
 ) -> list[dict] | dict:
+    """
+    Retrieve a specific item from a specified AUXIP collection.
+
+    This endpoint fetches details of a specific item within the given AUXIP collection
+    by its unique item ID. It utilizes the provided collection ID and item ID to
+    validate access and return item information.
+
+    Args:
+    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+            (e.g., 'ins_s1'). Maximum length of 100 characters.
+    - item_id (str): AUXIP item ID. Must be a valid item identifier
+            (e.g., 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF').
+            Maximum length of 100 characters.
+
+    Returns:
+    - dict: A JSON object containing details of the specified item, or an error
+            message if the item is not found.
+
+    Raises:
+    - HTTPException: If the authentication fails, or if the specified item is
+                    not found in the collection.
+
+    Example:
+    A successful response will return: \n
+        {
+            "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+            "type": "Feature",
+            "properties": {
+                ...  # Detailed properties of the item
+            },
+            "geometry": {
+                ...  # Geometry details of the item
+            },
+            "links": [
+                ...  # Links associated with the item
+            ]
+        }
+
+    """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     selected_config: Union[dict, None] = select_config(collection_id)
@@ -305,27 +392,63 @@ def get_adgs_collection_specific_item(
             query_params["PublicationDate"],
             "items",
             query_params["top"],
+            attr_platform_short_name=query_params.get("platformShortName", None),
+            attr_serial_identif=query_params.get("platformSerialIdentifier", None),
         ),
     )
-    return next(
-        (item.to_dict() for item in item_collection.features if item.id == item_id),
-        HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP {item_id} not found."),  # type: ignore
-    )
+    try:
+        item = next(item for item in item_collection.features if item.id == item_id)
+        return item.to_dict()
+    except StopIteration as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP {item_id} not found.") from exc
 
 
 @router.get("/auxip/collections/{collection_id}/queryables")
 def get_collection_queryables(
     request: Request,
-    collection_id: Annotated[str, FPath(title="AUXIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    collection_id: Annotated[
+        str,
+        FPath(title="AUXIP collection ID.", max_length=100, description="E.G. s1_adgs_OPER_AUX_ECMWFD_PDMC"),
+    ],
 ):
+    """
+    Retrieve queryable properties for a specified AUXIP collection.
+
+    This endpoint returns the available queryable names that can be used to filter
+    items in the CADIP Search API based on the specified collection. The queryables
+    are represented in a JSON Schema format.
+
+    Args:
+    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+            (e.g., 's1_adgs_OPER_AUX_ECMWFD_PDMC'). Maximum length of 100 characters.
+
+    Returns:
+    - dict: A JSON object containing queryable properties for the specified collection.
+            The response is structured based on the JSON Schema specification.
+
+    Raises:
+    - HTTPException: If the authentication or authorization fails.
+
+    Example:
+    A successful response will return: \n
+
+        {
+            "$schema": "https://json-schema.org/draft/2019-09/schema",
+            "id": "https://stac-api.example.com/queryables",
+            "type": "object",
+            "title": "Queryables for AUXIP Search API",
+            "description": "Queryable names for the AUXIP Search API Item Search filter.",
+            "properties": { ... }  # dynamically generated queryable properties
+        }
+    """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     return Queryables(
         schema="https://json-schema.org/draft/2019-09/schema",
         id="https://stac-api.example.com/queryables",
         type="object",
-        title="Queryables for CADIP Search API",
-        description="Queryable names for the CADIP Search API Item Search filter.",
+        title="Queryables for AUXIP Search API",
+        description="Queryable names for the AUXIP Search API Item Search filter.",
         properties=generate_adgs_queryables(collection_id),
     ).model_dump(by_alias=True)
 

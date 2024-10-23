@@ -654,10 +654,11 @@ async def get_cadip_collection_item_details(
             query_params["top"],
         ),
     )
-    return next(
-        (item.to_dict() for item in item_collection.features if item.id == session_id),
-        HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found."),
-    )
+    try:
+        item = next(item for item in item_collection.features if item.id == session_id)
+        return item.to_dict()
+    except StopIteration as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Session {session_id} not found.") from exc
 
 
 @validate_call(config={"arbitrary_types_allowed": True})
