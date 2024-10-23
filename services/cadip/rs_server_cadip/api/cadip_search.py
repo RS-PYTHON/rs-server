@@ -57,7 +57,6 @@ from rs_server_common.fastapi_app import MockPgstac
 from rs_server_common.stac_api_common import (
     Queryables,
     create_collection,
-    create_links,
     create_stac_collection,
     filter_allowed_collections,
     handle_exceptions,
@@ -204,7 +203,7 @@ async def get_conformance(request: Request):
     return await request.app.state.pgstac_client.conformance()
 
 
-async def pgstac_search(request: Request, params: dict):
+async def pgstac_search(request: Request, params: dict) -> stac_pydantic.ItemCollection:
     """
     Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
     """
@@ -267,6 +266,8 @@ async def pgstac_search(request: Request, params: dict):
 
     def read_cql(filter: dict):
         """Use a recursive function to read all CQL filter levels"""
+        if not filter:
+            return
         op = filter.get("op")
         args = filter.get("args", [])
 
@@ -326,13 +327,16 @@ async def pgstac_search(request: Request, params: dict):
         "platform": cadip_map_mission(platform, constellation),
     }
 
-    # Only keey the authorized collections
+    # Only keep the authorized collections
     allowed = filter_allowed_collections(read_conf()["collections"], "cadip", request)
     allowed_ids = set(collection["id"] for collection in allowed)
     if not collection_ids:
         collection_ids = allowed_ids
     else:
         collection_ids = allowed_ids.intersection(collection_ids)
+
+    # Items for all collections
+    all_items = stac_pydantic.ItemCollection(features=[], type="FeatureCollection")
 
     # For each collection to search
     for collection_id in collection_ids:
@@ -350,42 +354,25 @@ async def pgstac_search(request: Request, params: dict):
         # Overwrite the pagination parameters
         odata["top"] = limit or odata.get("top") or 20  # default = 20 results per page
 
-        process_session_search(
+        # Do the search for this collection
+        items: stac_pydantic.ItemCollection = process_session_search(
             request,
             collection.get("station", "cadip"),
             odata.get("SessionId"),
             odata.get("Satellite"),
             odata.get("PublicationDate"),
             odata.get("top"),
-            "collection",
         )
 
-        bp = 0
+        # Add the collection information
+        for item in items.features:
+            item.collection = collection_id
 
-    # """Used to create and map query values with default values."""
-    # required_keys: List[str] = ["station", "SessionId", "Satellite", "PublicationDate", "top", "orderby"]
-    # default_values: List[Union[str | None]] = ["cadip", None, None, None, None, None, "-datetime"]
-    # if not selected_config:
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
-    # return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
+        # Concatenate items for all collections
+        all_items.features.extend(items.features)
 
-    #     query_params = create_session_search_params(selected_config)
-    #     logger.debug(f"Collection search params: {query_params}")
-    #     stac_collection: stac_pydantic.Collection = create_collection(selected_config)
-    #     if link := process_session_search(
-    #         request,
-    #         query_params["station"],
-    #         query_params["SessionId"],
-    #         query_params["Satellite"],
-    #         query_params["PublicationDate"],
-    #         query_params["top"], limit
-    #         "collection",
-    #     ):
-    #         stac_collection.links.append(link)
-
-    # return stac_collection.model_dump()
-
-    bp = 0
+    # Return results as a dict
+    return all_items.model_dump()
 
 
 @router.get("/cadip/search/items", deprecated=True)
@@ -675,8 +662,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Union[int, None],
         Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
     ],
-    add_assets: Union[bool, str] = True,
-):
+) -> stac_pydantic.ItemCollection:
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
     A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
@@ -689,7 +675,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         time_interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
         limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
-        add_assets (str | bool, optional): Used to set how item assets are formatted.
 
     Returns:
         dict (dict): A STAC Feature Collection of the sessions.
@@ -702,8 +687,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     limit = limit if limit else 1000
     if not (session_id or platform or (time_interval[0] and time_interval[1])):  # type: ignore
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
-
-    return
 
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
@@ -727,27 +710,14 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
-            match add_assets:
-                case "collection":
-                    return create_links(products, "CADIP")
-                # case "items":
-                #     return create_stac_collection(products, feature_template, stac_mapper)
-                case True | "items":
-                    cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
-                    return from_session_expand_to_assets_serializer(
-                        cadip_sessions_collection,
-                        sessions_products,
-                        expanded_session_mapper,
-                        request,
-                    ).model_dump()
-                case "_":
-                    # Should / Must be non reacheable case
-                    raise HTTPException(
-                        detail="Unselected output formatter.",
-                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    )
-    # except [OSError, FileNotFoundError] as exception:
-    #     return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Error: {exception}")
+            cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
+            return from_session_expand_to_assets_serializer(
+                cadip_sessions_collection,
+                sessions_products,
+                expanded_session_mapper,
+                request,
+            )
+
     except json.JSONDecodeError as exception:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

@@ -25,7 +25,7 @@ from typing import Union
 import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import (
-    RSPYQueryableField,
+    QueryableField,
     generate_queryables,
     map_stac_platform,
 )
@@ -59,34 +59,34 @@ def serialize_adgs_asset(feature_collection, request):
     return feature_collection
 
 
-def get_adgs_queryables() -> dict[str, RSPYQueryableField]:
+def get_adgs_queryables() -> dict[str, QueryableField]:
     """Function to list all available queryables for CADIP session search."""
     return {
-        "PublicationDate": RSPYQueryableField(
+        "PublicationDate": QueryableField(
             title="PublicationDate",
             type="Interval",
             description="Session Publication Date",
             format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
         ),
-        "processingDate": RSPYQueryableField(
+        "processingDate": QueryableField(
             title="Processing Date",
             type="DateTimeOffset",
             description="Auxip processing date",
             format="2019-02-16T12:00:00.000Z",
         ),
-        "platformSerialIdentifier": RSPYQueryableField(
+        "platformSerialIdentifier": QueryableField(
             title="Platform Serial Identifier",
             type="StringAttribute",
             description="Mission identifier (A/B/C)",
             format="A / B / C",
         ),
-        "platformShortName": RSPYQueryableField(
+        "platformShortName": QueryableField(
             title="Platform Short Name",
             type="StringAttribute",
             description="Platform Short name",
             format="SENTINEL-2 / SENTINEL-1",
         ),
-        "constellation": RSPYQueryableField(
+        "constellation": QueryableField(
             title="constellation",
             type="StringAttribute",
             description="constellation name",
@@ -136,7 +136,7 @@ def auxip_map_mission(platform: str, constellation: str):
     return platform_short_name, platform_serial_identifier
 
 
-def generate_adgs_queryables(collection_id: str) -> dict[str, RSPYQueryableField]:
+def generate_adgs_queryables(collection_id: str) -> dict[str, QueryableField]:
     """Function used to get available queryables based on a given collection."""
     config = select_config(collection_id)
     return generate_queryables(config, get_adgs_queryables)

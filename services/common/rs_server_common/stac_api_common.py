@@ -48,27 +48,14 @@ class Queryables(BaseModel):
         allow_population_by_field_name = True
 
 
-class RSPYQueryableField(BaseModel):
+class QueryableField(BaseModel):
     """BaseModel used to describe queryable item."""
 
-    title: str
     type: str
-    description: Optional[str] = None
+    title: str
     format: Optional[str] = None
-    items: Optional[dict] = None
-
-
-def create_links(products: List[Any], provider):
-    """Used to create stac_pydantic Link objects based on sessions lists."""
-    if provider == "CADIP":
-        return [
-            stac_pydantic.links.Link(rel="item", title=product.properties["SessionId"], href="./simple-item.json")
-            for product in products
-        ]
-    return [
-        stac_pydantic.links.Link(rel="item", title=product.properties["Name"], href="./simple-item.json")
-        for product in products
-    ]
+    pattern: Optional[str] = None
+    description: Optional[str] = None
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:
@@ -241,7 +228,7 @@ def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
     return feature_collection
 
 
-def generate_queryables(config: dict, queryables_handler: Callable) -> dict[str, RSPYQueryableField]:
+def generate_queryables(config: dict, queryables_handler: Callable) -> dict[str, QueryableField]:
     """Function used to get available queryables based on a given collection."""
     if config:
         # Top and limit are pagination-related quaryables, remove if there.

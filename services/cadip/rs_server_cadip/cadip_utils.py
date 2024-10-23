@@ -31,7 +31,7 @@ import starlette.requests
 import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import (
-    RSPYQueryableField,
+    QueryableField,
     generate_queryables,
     map_stac_platform,
 )
@@ -42,32 +42,26 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-def generate_cadip_queryables(collection_id: str) -> dict[str, RSPYQueryableField]:
+def generate_cadip_queryables(collection_id: str) -> dict[str, QueryableField]:
     """Function used to get available queryables based on a given collection."""
     config = select_config(collection_id)
     return generate_queryables(config, get_cadip_queryables)
 
 
-def get_cadip_queryables() -> dict[str, RSPYQueryableField]:
+def get_cadip_queryables() -> dict[str, QueryableField]:
     """Function to list all available queryables for CADIP session search."""
     return {
-        "PublicationDate": RSPYQueryableField(
-            title="PublicationDate",
-            type="Interval",
-            description="Session Publication Date",
-            format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
+        "platform": QueryableField(
+            type="string",
+            title="platform",
+            format="string",
+            description="String",
         ),
-        "Satellite": RSPYQueryableField(
-            title="Satellite",
-            type="[string, array]",
-            description="Session satellite acquisition target",
-            format="S1A or S1A, S2B",
-        ),
-        "SessionId": RSPYQueryableField(
-            title="SessionId",
-            type="[string, array]",
-            description="Session ID descriptor",
-            format="S1A_20231120061537234567",
+        "constellation": QueryableField(
+            type="string",
+            title="constellation",
+            format="string",
+            description="String",
         ),
     }
 
@@ -147,7 +141,7 @@ def from_session_expand_to_assets_serializer(
                 # Create Asset
                 asset: Asset = map_dag_file_to_asset(mapper, product, request)
                 # Add Asset to Item.
-                session.assets.update({asset.title: asset.model_dump()})  # type: ignore
+                session.assets.update({asset.title: asset})
         # Remove processed products from input_session
         input_session = [product for product in input_session if product.properties["SessionID"] != session.id]
 
