@@ -623,7 +623,7 @@ Exception: %s. Retrying in %s seconds for %s more times",
                 except RuntimeError:
                     self.logger.exception(
                         "Error when downloading the file %s. \
-Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+Failed to get the s3 client. Retrying in %s seconds for %s more times",
                         s3_file,
                         DWN_S3FILE_RETRY_TIMEOUT,
                         config.max_retries - keep_trying,
@@ -706,7 +706,7 @@ Exception: %s. Retrying in %s seconds for %s more times",
                 except RuntimeError:
                     self.logger.exception(
                         "Error when uploading the file %s. \
-Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+Failed to get the s3 client. Retrying in %s seconds for %s more times",
                         file_to_be_uploaded,
                         UP_S3FILE_RETRY_TIMEOUT,
                         config.max_retries - keep_trying,
@@ -796,7 +796,7 @@ Exception: %s. Retrying in %s seconds for %s more times",
                 except RuntimeError:
                     self.logger.exception(
                         "Error when copying the file s3://%s/%s to s3://%s. \
-Couldn't get the s3 client. Retrying in %s seconds for %s more times",
+Failed to get the s3 client. Retrying in %s seconds for %s more times",
                         config.bucket_src,
                         collection_file[1],
                         config.bucket_dst,

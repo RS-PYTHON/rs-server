@@ -994,7 +994,7 @@ class TestStagingMainExecution:
 
         # Verify log_job_execution is called with the error details
         mock_log_job.assert_called_once_with(ProcessorStatus.FAILED, 0, detail="Dask connection failed")
-        mock_logger.error.assert_called_once_with("Couldn't start the staging process")
+        mock_logger.error.assert_called_once_with("Failed to start the staging process")
 
         # Verify that the task submission and monitoring thread are not executed
         mock_submit_tasks.assert_not_called()

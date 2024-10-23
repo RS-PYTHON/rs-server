@@ -738,8 +738,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 self.logger.exception(f"Failed to find the needed environment variable to use the dask gateway: {e}")
                 raise RuntimeError from e
             except IndexError as e:
-                self.logger.exception(f"There is no dask cluster to connect {e}")
-                raise RuntimeError(f"There is no dask cluster to connect {e}") from e
+                self.logger.exception(f"There is no dask cluster to connect. Exception: {e}")
+                raise RuntimeError("There is no dask cluster to connect") from e
 
         self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
         # create the client as well
@@ -845,7 +845,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             self.submit_tasks_to_dask_cluster(token, dask_client)
         except RuntimeError as re:
             self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"{re}")
-            self.logger.error("Couldn't start the staging process")
+            self.logger.error("Failed to start the staging process")
             return
 
         # Set the status to IN_PROGRESS for the job

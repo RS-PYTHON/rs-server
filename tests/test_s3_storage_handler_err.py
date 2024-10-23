@@ -120,9 +120,9 @@ def test_get_keys_from_s3_download_fail(mocker):
     assert ret == ["path1", "path2"]
     # nb of calls to time.sleep for retrying the download  of 2 files
     assert res.call_count >= int(DWN_S3FILE_RETRY_TIMEOUT / SLEEP_TIME)
-    server.stop()
 
     # Stop the server and re-test the function again
+    server.stop()
     # this time, the exception should be "botocore.exceptions.EndpointConnectionError:
     # Failed to connect to the endpoint URL: "http://localhost:5000/"
     # and the error: Failed to download the file path1. The download was retried for 1 times. Aborting
