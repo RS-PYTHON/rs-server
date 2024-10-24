@@ -544,7 +544,7 @@ async def test_stac_browser_authent(
 
     # Mock functions
     mocked_user_login = "mocked_user_login"
-    mocker.patch("jose.jwt.decode", return_value={"sub": "mocked_subject", "preferred_username": mocked_user_login})
+    mocker.patch("jwt.decode", return_value={"sub": "mocked_subject", "preferred_username": mocked_user_login})
 
     # Mock a FastAPI Request from the stac browser
     mocked_request = State()

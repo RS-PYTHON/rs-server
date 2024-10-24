@@ -360,7 +360,7 @@ class TestModelValidationError:
     @pytest.mark.parametrize(
         "endpoint",
         [
-            "/cadip/search?collection=cadip_session_by_id_list",
+            "/cadip/search?collections=cadip_session_by_id_list",
             "/cadip/search/items?collection=cadip_session_by_id_list",
             "/cadip/collections/cadip_session_by_id_list",
             "/cadip/collections/cadip_session_by_id_list/items",
@@ -399,7 +399,7 @@ class TestErrorWhileBuildUpCollection:
     @pytest.mark.unit
     @pytest.mark.parametrize(
         "endpoint",
-        ["/cadip/search?collection=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
+        ["/cadip/search?collections=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
     )
     def test_cadip_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
