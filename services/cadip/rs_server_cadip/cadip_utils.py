@@ -30,11 +30,7 @@ import stac_pydantic
 import starlette.requests
 import yaml
 from fastapi import HTTPException, status
-from rs_server_common.stac_api_common import (
-    QueryableField,
-    generate_queryables,
-    map_stac_platform,
-)
+from rs_server_common.stac_api_common import QueryableField, map_stac_platform
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
@@ -42,26 +38,38 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-def generate_cadip_queryables(collection_id: str) -> dict[str, QueryableField]:
-    """Function used to get available queryables based on a given collection."""
-    config = select_config(collection_id)
-    return generate_queryables(config, get_cadip_queryables)
-
-
-def get_cadip_queryables() -> dict[str, QueryableField]:
+def get_cadip_queryables(collection_id: str | None) -> dict[str, QueryableField]:
     """Function to list all available queryables for CADIP session search."""
+
+    # If the collection has the Satellite field hard-coded,
+    # the user cannot query on platform and constellation
+    if collection_id and select_config(collection_id).get("query", {}).get("Satellite"):
+        return {}
+
+    # Read all platforms and constellations from the configuration file
+    config = {}
+    for c in map_stac_platform().get("satellites", {}):
+        config.update(c)
+    platforms = sorted(set(config.keys()))
+    connstellations = sorted(
+        set([platform["constellation"] for platform in config.values() if "constellation" in platform]),
+    )
+
+    # Return queryables with stac keys
     return {
         "platform": QueryableField(
             type="string",
             title="platform",
             format="string",
             description="String",
+            enum=platforms,
         ),
         "constellation": QueryableField(
             type="string",
             title="constellation",
             format="string",
             description="String",
+            enum=connstellations,
         ),
     }
 

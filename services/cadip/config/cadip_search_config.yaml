@@ -16,11 +16,10 @@ collections:
   - id: cadip_sessions_id
     station: cadip
     query:
-      SessionId: S1A_20170501121534062343,S1A_20240328185208053186
       top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Test collection'
-    description: 'Sentinel-1 test CADIP sessions'
+    title: "'cadip' station"
+    description: "'cadip' station"
     license: other
     extent:
       spatial:
@@ -48,8 +47,8 @@ collections:
       Satellite: S1A
       top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Test collection'
-    description: 'Sentinel-1 test CADIP sessions'
+    title: "'cadip' station - S1A"
+    description: "'cadip' station - S1A"
     license: other
     extent:
       spatial:
@@ -77,8 +76,8 @@ collections:
       Satellite: S1A
       top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Test collection'
-    description: 'Sentinel-1 test CADIP sessions'
+    title: "'mti' station - S1A"
+    description: "'mti' station - S1A"
     license: other
     extent:
       spatial:
@@ -106,8 +105,8 @@ collections:
       Satellite: S1A
       top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Test collection'
-    description: 'Sentinel-1 test CADIP sessions'
+    title: "'sgs' station - S1A"
+    description: "'sgs' station - S1A"
     license: other
     extent:
       spatial:
@@ -132,12 +131,12 @@ collections:
   - id: cadip_s1a_interval
     station: cadip
     query:
-      PublicationDate: "2020-02-16T12:00:00Z/2023-02-16T12:00:00Z"
+      PublicationDate: "2020-00-01T00:00:00Z/2024-01-01T00:00:00Z"
       Satellite: S1A
       top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Test collection'
-    description: 'Sentinel-1 test CADIP sessions'
+    title: "'cadip' station - S1A 2020/2023"
+    description: "'cadip' station - S1A 2020/2023"
     license: other
     extent:
       spatial:

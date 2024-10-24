@@ -56,6 +56,7 @@ class QueryableField(BaseModel):
     format: Optional[str] = None
     pattern: Optional[str] = None
     description: Optional[str] = None
+    enum: Optional[List[str]] = None
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:
@@ -226,22 +227,3 @@ def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
                 reverse=order == "-",
             )
     return feature_collection
-
-
-def generate_queryables(config: dict, queryables_handler: Callable) -> dict[str, QueryableField]:
-    """Function used to get available queryables based on a given collection."""
-    if config:
-        # Top and limit are pagination-related quaryables, remove if there.
-        if isinstance(config.get("query"), dict):
-            config["query"].pop("limit", None)
-            config["query"].pop("top", None)
-        # Get all defined quaryables.
-        all_queryables = queryables_handler()
-        # Remove the ones already defined, and keep only the ones that can be added.
-        # e.g. if a collection has "Satellite: S1A" it means it only contains S1A products
-        # so it's no use to filter on the "Satellite" field.
-        for key in set(config["query"].keys()).intersection(set(all_queryables.keys())):
-            all_queryables.pop(key)
-        return all_queryables
-    # If config is not found, return all available queryables.
-    return queryables_handler()
