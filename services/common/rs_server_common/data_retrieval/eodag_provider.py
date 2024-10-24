@@ -24,12 +24,14 @@ from typing import List, Union
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.utils.exceptions import RequestError
+from rs_server_common.utils.logging import Logging
 
-from .provider import CreateProviderFailed, Provider, TimeRange
-
-# TODO: See TODO invalid token. Import 'from .provider SearchProductFailed' if needed
+from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
 
 # from fastapi import HTTPException
+
+
+logger = Logging.default(__name__)
 
 
 class EodagProvider(Provider):
@@ -115,9 +117,9 @@ class EodagProvider(Provider):
         if session_id:
             # If request contains session id, map it to eodag parameter accordingly (SessionID for single, Ids for list)
             if isinstance(session_id, list):
-                mapped_search_args["SessionIds"] = ", ".join(session_id)
+                mapped_search_args["SessionIds"] = ", ".join(f"'{s}'" for s in session_id)
             elif isinstance(session_id, str):
-                mapped_search_args["SessionID"] = session_id
+                mapped_search_args["SessionID"] = "'" + session_id + "'"
 
         if sessions_search:
             # If request is for session search, handle platform - if any provided.
@@ -125,12 +127,12 @@ class EodagProvider(Provider):
 
             # Very annoying, for files odata is **SessionID**, for sessions is **SessionId**
             if "SessionID" in mapped_search_args:
-                mapped_search_args["SessionId"] = mapped_search_args.pop("SessionID")
+                mapped_search_args["SessionId"] = "'" + mapped_search_args.pop("SessionID") + "'"
             if platform:
                 if isinstance(platform, list):
-                    mapped_search_args["platforms"] = ", ".join(platform)
+                    mapped_search_args["platforms"] = ", ".join(f"'{p}'" for p in platform)
                 elif isinstance(platform, str):
-                    mapped_search_args["platform"] = platform
+                    mapped_search_args["platform"] = "'" + platform + "'"
 
         if between:
             # Since now both for files and sessions, time interval is optional, map it if provided.
@@ -141,7 +143,10 @@ class EodagProvider(Provider):
                 },
             )
 
+        mapped_search_args["sort_by"] = [("publicationDate", "DESC")]
+
         try:
+            logger.info(f"Searching from {self.provider} with parameters {mapped_search_args}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
             products = self.client.search(
                 **mapped_search_args,  # type: ignore
@@ -150,17 +155,19 @@ class EodagProvider(Provider):
                 productType="S1_SAR_RAW" if "adgs" not in self.provider.lower() else "CAMS_GRF_AUX",
                 **kwargs,
             )
-        except RequestError:
-            # except RequestError as e:
-            # TODO invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
-            # Should we handle this specifically by raising an exception, or follow the current approach
-            # where any error results in returning an empty list?
-            # if e.args and "FORBIDDEN" in e.args[0]:
-            #     raise SearchProductFailed(
-            #         f"Can't search provider {self.provider} " "because the used token is not valid",
-            #     ) from e
-            # Empty list if something goes wrong in eodag
-            return []
+        except RequestError as e:
+            # invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
+            if e.args and "FORBIDDEN" in e.args[0]:
+                raise SearchProductFailed(
+                    f"Can't search provider {self.provider} " "because the used token is not valid",
+                ) from e
+            raise SearchProductFailed(e)
+
+        if products.number_matched:
+            logger.info(f"Returned {products.number_matched} session from {self.provider}")
+
+        if products.errors:
+            logger.error(f"Errors from {self.provider}: {products.errors}")
 
         return products
 

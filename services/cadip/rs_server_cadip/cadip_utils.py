@@ -30,11 +30,14 @@ import stac_pydantic
 import starlette.requests
 import yaml
 from pydantic import BaseModel
+from rs_server_common.utils.logging import Logging
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
+
+logger = Logging.default(__name__)
 
 
 class CADIPQueryableField(BaseModel):
@@ -155,7 +158,7 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
     return [
         eodag.EOProduct(provider="internal_session_product_file_from_cadip", properties=update_product(product))
         for session in input_sessions
-        for product in session.properties.get("Files", [])
+        for product in (session.properties.get("Files", []) or [])
     ]
 
 
@@ -189,6 +192,7 @@ def validate_products(products: eodag.EOProduct):
         try:
             str(product)
             valid_eo_products.append(product)
-        except eodag.utils.exceptions.MisconfiguredError:
+        except eodag.utils.exceptions.MisconfiguredError as e:
+            logger.warn(e)
             continue
     return valid_eo_products
