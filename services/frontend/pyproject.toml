@@ -37,7 +37,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "==3.11.7"
 fastapi = "^0.115.0"
 uvicorn = ">=0.31,<0.33"
 requests = "^2.32.3"

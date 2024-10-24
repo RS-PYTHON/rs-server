@@ -28,6 +28,12 @@ classifiers = [
 packages = [
     { include = "rs_server_staging" },
     { include = "tests", format = "sdist" },
+
+    # TEMP: because of the pydantic conflict:
+    # Use the rs_server_common source directory instead of using rs-server-common as a dependency.
+    # But this doesn't work when building the wheel. So for the whl, copy the rs_server_common
+    # directory and remove the from=../common part.
+    { include = "rs_server_common", from = "../common" },
 ]
 
 # Add configuration files to the .whl package
@@ -36,7 +42,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "==3.11.7"
 fastapi = "^0.115.0"
 pygeoapi = "^0.18.0"
 tinydb = "^4.8.0"
@@ -46,13 +52,36 @@ opentelemetry-instrumentation-aws-lambda = "^0.48b0"
 opentelemetry-test-utils = "^0.48b0"
 opentelemetry-exporter-otlp = "^1.27.0"
 python-logging-loki = "^0.3.1"
+stac-pydantic = "2.0.0"
+aiohttp = "^3.10.5"
+dask = {extras = ["distributed"], version = "2024.1.0"}
+dask-gateway = "2024.1.0"
+msgpack = "1.0.7"
+toolz = "0.12.0"
+tornado = "6.4"
+
+# TEMP: because of the pydantic conflict
+# we also need the rs-server-common dependencies. We duplicate them here
+# except duplicates and dependencies on which we have version conflicts.
+boto3 = "==1.28.85"
+botocore = "==1.31.85"
+markdown = "^3.6"
+python-dotenv = "^1.0.0"
+psycopg2 = "^2.9.9"
+filelock = "^3.16.1"
+httpx = "^0.27.2"
+cachetools = ">=5.3.*" # idem as stac-fastapi-pgstac
+asyncache = "^0.3.1"
+authlib = "^1.3.1"
+python-keycloak = "^4.5.0"
+itsdangerous = "^2.2.0"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-python = "^3.11"
-pre-commit = ">=3.7.1,<5.0.0"
+python = "==3.11.7"
+pre-commit = "^3.7.1"
 bandit = "^1.7.9"
 pylint = "^3.3.0"
 pytest = "^8.3.3"
@@ -69,6 +98,9 @@ line-length = 120
 [tool.flake8]
 max-line-length = 120
 
+[tool.pylint]
+max-line-length = 120
+
 [tool.pytest.ini_options]
 markers = [
     "unit", # mark a test as unittest
@@ -79,6 +111,7 @@ markers = [
 warn_redundant_casts = true
 # Force analyze of partially annotate function signatures
 check_untyped_defs = true
+ignore_missing_imports = true
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true

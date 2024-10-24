@@ -39,10 +39,18 @@ manager:
   output_dir: /tmp/
 
 resources:
-  staging:
+  test_resource1:
     type: process
     processor:
-      name: HelloWorld
+      name: HelloWorld1
+  test_resource2:
+    type: process
+    processor:
+      name: HelloWorld2
+  test_resource3:
+    type: process
+    processor:
+      name: HelloWorld3
 
 openapi:
   path: /openapi.json

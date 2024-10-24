@@ -20,4 +20,4 @@ import pytest
 @pytest.mark.integration
 def test_integration():
     """TODO: implement integration tests."""
-    return True
+    assert True

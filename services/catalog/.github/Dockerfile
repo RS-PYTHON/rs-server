@@ -14,7 +14,7 @@
 
 
 # Build stage for multi stage build.
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.11.7-slim-bookworm AS builder
 
 # Install dependencies
 RUN apt update && apt install -y libpq-dev gcc
@@ -38,7 +38,7 @@ FROM python:3.11-slim-bookworm
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
 RUN \
     apt update && \
-    apt install -y libpq-dev && \
+    apt install -y libpq-dev libexpat1 && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
 # Copy the whole /usr/local dir (that contains the python installation) from the build stage
@@ -54,6 +54,14 @@ RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/
 RUN useradd -m user
 USER user
 WORKDIR /home/user
+
+# The CI/CD will replace this tag in debug mode or else remove it
+# [DEBUG_MODE_COMMANDS]
+
+# [DEBUG_MODE_RELOAD_CATALOG]
+
+# After this, make sure we're still non-root
+USER user
 
 # See: rs_server_catalog/main.py
 # uvicorn.run(

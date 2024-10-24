@@ -48,7 +48,7 @@ packages = [
 
 # All the dependencies for release are set in the sub-projects
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "==3.11.7"
 rs-server-adgs = {path = "services/adgs", develop = true}
 rs-server-cadip = {path = "services/cadip", develop = true}
 rs-server-catalog = {path = "services/catalog", develop = true}
@@ -56,6 +56,7 @@ rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
 # We cannot depend on rs-server-staging because it depends on sqlalchemy<2
 # rs-server-staging = {path = "services/staging", develop = true}
+pre-commit = "^3.8.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -71,7 +72,7 @@ pytest-httpx = "^0.32.0"
 pytest-mock = "^3.14.0"
 black = "^24.10.0"
 mypy = "^1.11.2"
-pre-commit = "^4.0.1"
+pre-commit = "^3.8.0"
 types-requests = "^2.32.0.20241016"
 flake8 = "^7.1.1"
 bandit = "^1.7.9"
@@ -124,7 +125,10 @@ max-line-length = 120
 max-line-length = 120
 disable = [
     "logging-fstring-interpolation",  # Logging f-string interpolation
-    "R0917"  # Too many positional arguments
+    "R0917",  # Too many positional arguments
+    "E0401", # import-error
+    "R0902", # too-many-instance-attributes
+    "R0913"  # too-many-arguments
 ]
 ignore-paths = '^docs/.*$'
 

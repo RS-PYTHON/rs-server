@@ -14,7 +14,7 @@
 
 
 # Build stage for multi stage build.
-FROM python:3.11-slim-bookworm as builder
+FROM python:3.11.7-slim-bookworm AS builder
 
 # Install dependencies
 RUN apt update && apt install -y libpq-dev gcc
@@ -58,4 +58,10 @@ RUN useradd -m user
 USER user
 WORKDIR /home/user
 
-ENTRYPOINT [ "/bin/bash", "-c", "set -x; /scripts/entrypoint_frontend.sh" ]
+# The CI/CD will replace this tag in debug mode or else remove it
+# [DEBUG_MODE_COMMANDS]
+
+# After this, make sure we're still non-root
+USER user
+
+ENTRYPOINT [ "/bin/bash", "-c", "set -x; /scripts/entrypoint_frontend.sh [DEBUG_MODE_RELOAD_FRONTEND]" ]
