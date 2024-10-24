@@ -24,11 +24,7 @@ from typing import Union
 
 import yaml
 from fastapi import HTTPException, status
-from rs_server_common.stac_api_common import (
-    QueryableField,
-    generate_queryables,
-    map_stac_platform,
-)
+from rs_server_common.stac_api_common import QueryableField, map_stac_platform
 
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"

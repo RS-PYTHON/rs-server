@@ -50,7 +50,6 @@ from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeR
 from rs_server_common.stac_api_common import (
     Queryables,
     create_collection,
-    create_links,
     create_stac_collection,
     filter_allowed_collections,
     handle_exceptions,
