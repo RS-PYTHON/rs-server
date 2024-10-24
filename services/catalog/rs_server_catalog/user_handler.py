@@ -18,7 +18,7 @@ import getpass
 import os
 import re
 from typing import Tuple
-
+from starlette.requests import Request
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
@@ -57,8 +57,7 @@ def get_user(endpoint_user: str | None, apikey_user: str | None):
     return os.getenv("RSPY_HOST_USER", default=getpass.getuser())
 
 def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
-    path: str,
-    method: str,
+    request: Request,
     ids_dict: dict[str, str] = None
 ) -> Tuple[str, dict]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
@@ -75,12 +74,9 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
         str: Return the URL path with prefix removed.
         dict: Return a dictionary containing owner, collection and item ID.
     """
-
-
+    path = request.url.path
+    method = request.method
     patterns = [r"/_mgmt/ping", r"/api", r"/favicon.ico"]
-
-    # if path == "/":
-    #     raise ValueError(f"URL ({path}) is invalid.")
 
     if "/health" in path:
         return "/health", ids_dict
@@ -91,49 +87,49 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
 
     match path:
         case "/catalog/":
-            return "/", ids_dict
+            path = "/"
         case "/":
-            return "/", ids_dict
+            path = "/"
         case "/catalog/search":
-            return "/search", ids_dict
+            path = "/search"
         case "/catalog/queryables":
-            return "/queryables", ids_dict
+            path = "/queryables"
         case "/catalog/api":
-            return "/api", ids_dict
+            path = "/api"
         case "/catalog/api.html":
-            return "/api.html", ids_dict
+            path = "/api.html"
         case "/catalog/docs/oauth2-redirect":
-            return "/docs/oauth2-redirect", ids_dict
+            path = "/docs/oauth2-redirect"
         case "/catalog/queryables":
-            return "/queryables", ids_dict
+            path = "/queryables"
         case "/catalog/conformance":
-            return "/conformance", ids_dict
+            path = "/conformance"
 
     if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
         return "/collections", ids_dict
 
-    # To catch the endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items
+    # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items
     if match := re.fullmatch(BULK_ITEMS_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
         ids_dict["collection_id"] = groups["collection_id"]
-        return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/bulk_items", ids_dict
+        path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/bulk_items"
 
-    # To catch the endpoint /catalog/collections/[{owner_id}:]{collection_id}/queryables
+    # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/queryables
     if match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"],  ids_dict["user_login"])
         ids_dict["collection_id"] = groups["collection_id"]
-        return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/queryables", ids_dict
+        path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/queryables"
 
-    # To catch the endpoint /catalog/collections/{owner_id}:{collection_id}/search
+    # Catch endpoint /catalog/collections/{owner_id}:{collection_id}/search
     if match := re.fullmatch(COLLECTIONS_SEARCH_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"],  ids_dict["user_login"])
         ids_dict["collection_id"] = groups["collection_id"]
-        return "/search", ids_dict
-
-    # To catch all the other endpoints.
+        path = "/search"
+    
+    # Catch all other endpoints.
     if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
         if groups["owner_collection_id"]:
@@ -166,10 +162,11 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
                 ids_dict["item_id"] = ids_dict["item_id"][1:]
                 path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items/{ids_dict['item_id']}"
 
+    # Finally, update the path of the request with the new route
+    request.scope['path'] = path
+    
     ###elif not any(re.fullmatch(pattern, path) for pattern in patterns):
         ###return "", {}
-    return path, ids_dict
-
 
 def add_user_prefix(  # pylint: disable=too-many-return-statements
     path: str,

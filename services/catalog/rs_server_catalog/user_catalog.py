@@ -33,6 +33,7 @@ import os
 import re
 from typing import Any, Optional
 from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlencode
 
 import botocore
 from fastapi import HTTPException
@@ -531,29 +532,9 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         Returns:
             Request: the new request with the collection name updated.
         """    
-        # ------ Handle exceptions
-        # Check authorisation in cluster mode
-        if common_settings.CLUSTER_MODE and not \
-        get_authorisation(
-                self.request_ids["collection_id"],
-                [],
-                "read",
-                self.request_ids["owner_id"],
-                self.request_ids["user_login"],
-            ):
-            detail = {"error": "Unauthorized access."}
-            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-        
-        # Check that the collection from the request exists
-        if self.request_ids['collection_id']:
-            if not await self.collection_exists(request, f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"):
-                detail = {"error": f"Collection {self.request_ids['collection_id']} not found."}
-                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
-        
-        # ------ POST method.
+        # ------ POST requests
         if request.method == "POST":  
             content = await request.json()
-            
             # Add optional filter to the content
             if "filter" in content:
                 filter_lang = {"filter-lang": "cql2-json"} if "filter-lang" not in content else content["filter-lang"]
@@ -573,19 +554,55 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             elif all(x in content for x in ["filter", "collections"]):
                 self.request_ids["owner_id"], self.request_ids["collection_id"], request = search_endpoint_post(content=content, request=request)
         
-        # ----- GET method.
-        else:
-            # Get the query parameters
-            query = parse_qs(request.url.query)
-            
-            # Call /catalog/collections/{owner_id}:{collection_id}/search ENDPOINT.
-            if self.request_ids["collection_id"]:  
-                request = search_endpoint_in_collection_get(query, request, self.request_ids["owner_id"], self.request_ids["collection_id"]) ### Update of the request by concatenating owner_id to the collection
-            
-            # Call /catalog/search with GET method endpoint.
-            elif all(x in query for x in ["filter", "collections"]):
-                self.request_ids["owner_id"], self.request_ids["collection_id"], request = search_endpoint_get(query=query, request=request)  ### Modify request with owner_id
+        # ----- GET requests
+        elif request.method == "GET":  
+            # Get dictionary of query parameters
+            query_params_dict = dict(request.query_params)
+            sep = "_"
+            # Case in which a filter is specified
+            if "filter" in query_params_dict:
+                qs_filter = query_params_dict["filter"][0]
+                filters = parse_ecql(qs_filter)
+                
+                # Overwrite owner_id with the one from the filter
+                owner_id = self.find_owner_id(filters)
+                if owner_id:
+                    self.request_ids["owner_id"]  = owner_id
+
+            # Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
+            if "collections" in query_params_dict:
+                # Concatenate owner_id to the collection name
+                coll_list = query_params_dict["collections"].split(',')
+                for i, coll in enumerate(coll_list):
+                    if sep in coll:
+                        self.request_ids["owner_id"], self.request_ids["collection_id"] = coll.split(sep)[0], coll
+                    # Concatenate owner_id to the collection_id
+                    else:
+                        coll_list[i] = f"{self.request_ids['owner_id']}_{coll}"
+                        self.request_ids["collection_id"] = query_params_dict["collections"]
+                # Update the request with the modified query
+                query_params_dict["collections"]  = ','.join(coll_list)
+                request.scope['query_string'] = urlencode(query_params_dict, doseq=True).encode('utf-8')
            
+          # ------ Handle exceptions
+        # Check authorisation in cluster mode
+        if common_settings.CLUSTER_MODE and not \
+        get_authorisation(
+                self.request_ids["collection_id"],
+                [],
+                "read",
+                self.request_ids["owner_id"],
+                self.request_ids["user_login"],
+            ):
+            detail = {"error": "Unauthorized access."}
+            return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
+        
+        # Check that the collection from the request exists
+        if self.request_ids['collection_id']:
+            ###if not await self.collection_exists(request, f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"):
+            if not await self.collection_exists(request, f"{self.request_ids['collection_id']}"):
+                detail = {"error": f"Collection {self.request_ids['collection_id']} not found."}
+                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -1124,7 +1141,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         
         # ---------- Request rerouting
         self.request_ids =  {"auth_roles": auth_roles, "user_login": user_login, "owner_id": owner_id, "collection_id": "", "item_id": ""}
-        request.scope["path"], self.request_ids = reroute_url(request.url.path, request.method, user_login, self.request_ids)
+        reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
             return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
@@ -1161,15 +1178,9 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             return JSONResponse(content="Healthy", status_code=HTTP_200_OK)
         
         
-        # ---------- Calling endpoints
-        # Handle requests
-        if request.scope["path"] == "/search":
-            # URL: GET: '/catalog/search'
-            request = await self.manage_search_request(request)
-            if hasattr(request, "status_code"):  # Unauthorized
-                return request
-        
-        elif request.method in {"POST", "PUT"} and self.request_ids["owner_id"]:
+        # ---------- Apply specific changes for each endpoint
+
+        if request.method in {"POST", "PUT"} and self.request_ids["owner_id"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)
@@ -1180,6 +1191,12 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         elif request.method == "DELETE":
             if not self.manage_delete_request(request):
                 return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
+        
+        elif request.scope["path"] == "/search":
+            # URL: GET: '/catalog/search'
+            request = await self.manage_search_request(request)
+            if hasattr(request, "status_code"):  # Unauthorized
+                return request
 
         response = await call_next(request)
 
@@ -1204,9 +1221,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         elif request.method == "GET" and "download" in request.url.path:
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
-        elif request.method == "GET" and (
-            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections", "/queryables"]
-        ):
+        elif request.method == "GET" and request.scope["path"] in ["/", "/collections", "/queryables"]:
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             # URL: GET: '/catalog/'
             # URL: GET: '/catalog/collections

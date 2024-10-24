@@ -25,30 +25,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 
-def find_owner_id(ecql_ast: Node) -> str:
-    """Browse an abstract syntax tree (AST) to find the owner_id.
-    Then return it.
-
-    Args:
-        ecql_ast (Node): The AST
-
-    Returns:
-        str: The owner_id
-    """
-    res = ""
-    if hasattr(ecql_ast, "lhs"):
-        if isinstance(ecql_ast.lhs, Attribute) and ecql_ast.lhs.name == "owner":
-            if isinstance(ecql_ast, Like):
-                res = ecql_ast.pattern
-            elif isinstance(ecql_ast, Equal):
-                res = ecql_ast.rhs
-        elif left := find_owner_id(ecql_ast.lhs):
-            res = left
-        elif right := find_owner_id(ecql_ast.rhs):
-            res = right
-    return res
-
-
 def search_endpoint_get(query: dict[str, list[str]], request: Request) -> Union[str, str, Request]:
     """Endpoint /catalog/search with GET method.
 
