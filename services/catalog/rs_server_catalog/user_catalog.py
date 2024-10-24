@@ -539,7 +539,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             content = await request.json()
             # Add optional filter to the content
             if "filter" in content:
-                filter_lang = {"filter-lang": "cql2-json"} if "filter-lang" not in content else content["filter-lang"]
+                filter_lang = {"filter-lang": "cql2-text"} if "filter-lang" not in content \
+                else {"filter-lang": content["filter-lang"]}
                 stac_filter = {}
                 stac_filter["filter"] = content.pop("filter")
                 content = {
@@ -554,7 +555,20 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             
             # Call /catalog/search with POST method endpoint
             elif all(x in content for x in ["filter", "collections"]):
-                self.request_ids["owner_id"], self.request_ids["collection_id"], request = search_endpoint_post(content=content, request=request)
+                ###self.request_ids["owner_id"], self.request_ids["collection_id"], request = search_endpoint_post(content=content, request=request)
+                # We have to get the owner_id in the cql2-json query so we can update de "collections" field.
+                filters = parse_cql2_json(content["filter"])
+                owner_id = self.find_owner_id(filters)                
+                # Concatenate owner_id to all collections
+                if owner_id:
+                    if isinstance(content["collections"], list): 
+                        content["collections"] = [f"{owner_id}_{coll}" for coll in content["collections"]]
+                    else:
+                        raise TypeError("Expected list !")
+                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
+    
+        
+        
         
         # ----- GET requests
         elif request.method == "GET":  
@@ -1202,7 +1216,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         
         # ---------- Apply specific changes for each endpoint
 
-        if request.method in {"POST", "PUT"} and self.request_ids["owner_id"]:
+        if request.method in {"POST", "PUT"} and request.scope["path"] != "/search":
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)
