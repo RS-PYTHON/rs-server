@@ -87,10 +87,9 @@ cadip:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -183,10 +182,9 @@ ins:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -279,10 +277,9 @@ mps:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -375,10 +372,9 @@ mti:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -471,10 +467,9 @@ nsg:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -567,10 +562,9 @@ sgs:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -698,13 +692,12 @@ cadip_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -830,13 +823,12 @@ ins_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -962,13 +954,12 @@ mps_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -1094,13 +1085,12 @@ mti_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -1226,13 +1216,12 @@ nsg_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -1358,13 +1347,12 @@ sgs_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 

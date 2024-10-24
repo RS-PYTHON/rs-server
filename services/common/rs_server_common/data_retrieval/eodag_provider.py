@@ -115,9 +115,9 @@ class EodagProvider(Provider):
         if session_id:
             # If request contains session id, map it to eodag parameter accordingly (SessionID for single, Ids for list)
             if isinstance(session_id, list):
-                mapped_search_args["SessionIds"] = ", ".join(session_id)
+                mapped_search_args["SessionIds"] = "%2C ".join(f"%27{s}%27" for s in session_id)
             elif isinstance(session_id, str):
-                mapped_search_args["SessionID"] = session_id
+                mapped_search_args["SessionID"] = "%27" + session_id + "%27"
 
         if sessions_search:
             # If request is for session search, handle platform - if any provided.
@@ -125,12 +125,12 @@ class EodagProvider(Provider):
 
             # Very annoying, for files odata is **SessionID**, for sessions is **SessionId**
             if "SessionID" in mapped_search_args:
-                mapped_search_args["SessionId"] = mapped_search_args.pop("SessionID")
+                mapped_search_args["SessionId"] = "%27" + mapped_search_args.pop("SessionID") + "%27"
             if platform:
                 if isinstance(platform, list):
-                    mapped_search_args["platforms"] = ", ".join(platform)
+                    mapped_search_args["platforms"] = "%2C ".join(f"%27{p}%27" for p in platform)
                 elif isinstance(platform, str):
-                    mapped_search_args["platform"] = platform
+                    mapped_search_args["platform"] = "%27" + platform + "%27"
 
         if between:
             # Since now both for files and sessions, time interval is optional, map it if provided.
