@@ -77,10 +77,10 @@ cadip:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -162,10 +162,10 @@ ins:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -247,10 +247,10 @@ mps:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -332,10 +332,10 @@ mti:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -417,10 +417,10 @@ nsg:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -502,10 +502,10 @@ sgs:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
             and:
-              - 'SessionID in {SessionIds}'
+              - 'SessionID in ({SessionIds})'
               - 'SessionID eq {SessionID}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -514,6 +514,17 @@ sgs:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
       total_items_nb_key_path: '$.total'
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
@@ -538,7 +549,7 @@ cadip_session:
     type: ODataV4Search
     api_endpoint: "http://127.0.0.1:5000/Sessions"
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
         - null
@@ -622,13 +633,13 @@ cadip_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -636,6 +647,17 @@ cadip_session:
       max_items_per_page: 1000
       next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Files"
       total_items_nb_key_path: "$.total"
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
@@ -659,7 +681,7 @@ ins_session:
     type: ODataV4Search
     api_endpoint: "http://127.0.0.1:5100/Sessions"
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
         - null
@@ -743,13 +765,13 @@ ins_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -757,6 +779,17 @@ ins_session:
       max_items_per_page: 1000
       next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Files"
       total_items_nb_key_path: "$.total"
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
@@ -780,7 +813,7 @@ mps_session:
     type: ODataV4Search
     api_endpoint: "http://127.0.0.1:5101/Sessions"
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
         - null
@@ -864,13 +897,13 @@ mps_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -878,6 +911,17 @@ mps_session:
       max_items_per_page: 1000
       next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Files"
       total_items_nb_key_path: "$.total"
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
@@ -901,7 +945,7 @@ mti_session:
     type: ODataV4Search
     api_endpoint: "http://127.0.0.1:5102/Sessions"
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
         - null
@@ -985,13 +1029,13 @@ mti_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -999,6 +1043,17 @@ mti_session:
       max_items_per_page: 1000
       next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Files"
       total_items_nb_key_path: "$.total"
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
@@ -1022,7 +1077,7 @@ nsg_session:
     type: ODataV4Search
     api_endpoint: "http://127.0.0.1:5103/Sessions"
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
         - null
@@ -1106,13 +1161,13 @@ nsg_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -1120,6 +1175,17 @@ nsg_session:
       max_items_per_page: 1000
       next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Files"
       total_items_nb_key_path: "$.total"
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
@@ -1143,7 +1209,7 @@ sgs_session:
     type: ODataV4Search
     api_endpoint: "http://127.0.0.1:5104/Sessions"
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
         - null
@@ -1227,13 +1293,13 @@ sgs_session:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
@@ -1241,6 +1307,17 @@ sgs_session:
       max_items_per_page: 1000
       next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Files"
       total_items_nb_key_path: "$.total"
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
