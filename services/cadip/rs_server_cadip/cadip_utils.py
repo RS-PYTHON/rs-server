@@ -30,11 +30,14 @@ import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import map_stac_platform
+from rs_server_common.utils.logging import Logging
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
+
+logger = Logging.default(__name__)
 
 
 def read_conf():
@@ -96,7 +99,7 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
             properties=update_product(product, session.properties["href"]),
         )
         for session in input_sessions
-        for product in session.properties.get("Files", [])
+        for product in (session.properties.get("Files", []) or [])
     ]
 
 
@@ -129,7 +132,8 @@ def validate_products(products: eodag.EOProduct):
         try:
             str(product)
             valid_eo_products.append(product)
-        except eodag.utils.exceptions.MisconfiguredError:
+        except eodag.utils.exceptions.MisconfiguredError as e:
+            logger.warn(e)
             continue
     return valid_eo_products
 
