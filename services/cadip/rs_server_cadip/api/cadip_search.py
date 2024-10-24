@@ -21,7 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-from typing import Annotated, Any, List, Union
+from typing import Annotated, List, Union
 
 import requests
 import sqlalchemy
@@ -72,42 +72,20 @@ logger = Logging.default(__name__)
 
 
 class MockPgstacCadip(MockPgstac):
-    """
-    Mock a pgstac database that will call functions from this module instead of actually accessing a database.
-    """
+    """Cadip implementation of MockPgstac"""
 
-    async def fetchval(self, query, *args, column=0, timeout=None):
+    # service="cadip",
+    # collections=lambda: read_conf()["collections"],
+    # select_config=select_config,
+    # get_queryables=get_cadip_queryables,
 
-        query = query.strip()
+    async def read_search_params(self, params: dict, stac_params: dict):
+        """Child specific search parameter reading."""
 
-        # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
-        if query == "SELECT * FROM all_collections();":
-            return filter_allowed_collections(read_conf()["collections"], "cadip", self.request)
-
-        # From stac_fastapi.pgstac.core.CoreCrudClient::get_collection
-        if query == "SELECT * FROM get_collection($1::text);":
-
-            # Find the collection which id == the input collection_id
-            collection_id = args[0]
-            collection = select_config(collection_id)
-            if not collection:
-                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown CADIP collection: {collection_id!r}")
-
-            # Convert into stac object (to ensure validity) then back to dict
-            collection.setdefault("stac_version", "1.0.0")
-            return create_collection(collection).model_dump()
-
-        # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
-        # args[0] contains the collection_id, if any.
-        if query == "SELECT * FROM get_queryables($1::text);":
-            return Queryables(properties=get_cadip_queryables(args[0] if args else None)).model_dump(by_alias=True)
-
-        # from stac_fastapi.pgstac.core.CoreCrudClient::_search_base
-        if query == "SELECT * FROM search($1::text::jsonb);":
-            params = json.loads(args[0]) if args else {}
-            return await pgstac_search(self.request, params)
-
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
+        # Cadip session IDs to search, set in parameter or in the request state
+        # by the /collections/{collection_id}/items/{session_id} endpoint
+        session_ids = params.pop("ids", None) or self.request.state._state.get("session_id")
+        stac_params["id"] = session_ids
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -337,194 +315,6 @@ async def get_cadip_collection_item_details(
     auth_validation(request, collection_id, "read")
     request.state.session_id = session_id  # save for later
     return await request.app.state.pgstac_client.item_collection(collection_id, request)
-
-
-async def pgstac_search(request: Request, params: dict) -> stac_pydantic.ItemCollection:
-    """
-    Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
-    """
-
-    #
-    # Step 1: read input params
-
-    def format_dict(field: dict):
-        """Used for error handling."""
-        return json.dumps(field, indent=0).replace("\n", "").replace('"', "'")
-
-    # Number of results per page
-    limit = params.pop("limit", None)
-
-    # Sort results
-    sortby_list = params.pop("sortby", [])
-    if len(sortby_list) > 1:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Only one 'sortby' search parameter is allowed: {sortby_list!r}",
-        )
-    if not sortby_list:
-        sortby = ""
-    else:
-        sortby_dict = sortby_list[0]
-        sortby = "+" if sortby_dict["direction"] == "asc" else "-"
-        sortby += sortby_dict["field"]
-
-    # Collections to search
-    collection_ids = params.pop("collections", [])
-
-    # Cadip session IDs to search, set in parameter or in the request state
-    # by the /collections/{collection_id}/items/{session_id} endpoint
-    session_ids = params.pop("ids", None) or request.state._state.get("session_id")
-
-    # datetime interval = PublicationDate
-    datetime = params.pop("datetime", None)
-    if datetime:
-        try:
-            validate_inputs_format(datetime, raise_errors=True)
-        except HTTPException as exception:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Invalid datetime interval: {datetime!r}. "
-                "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
-            ) from exception
-
-    # Read query and/or CQL filter
-    platform = None
-    constellation = None
-
-    def read_property(property: str, value: Any):
-        """Read a query or CQL filter property"""
-        nonlocal platform, constellation
-        if property.lower() == "platform":
-            platform = value
-        elif property.lower() == "constellation":
-            constellation = value
-        else:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Invalid query or CQL property: {property!r}, " "valid properties are: 'platform', 'constellation'",
-            )
-
-    def read_cql(filter: dict):
-        """Use a recursive function to read all CQL filter levels"""
-        if not filter:
-            return
-        op = filter.get("op")
-        args = filter.get("args", [])
-
-        # Read a single property
-        if op == "=":
-            if (len(args) != 2) or not (property := args[0].get("property")):
-                raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Invalid CQL2 filter: {format_dict(filter)}")
-            value = args[1]
-            return read_property(property, value)
-
-        # Else we are reading several properties
-        elif op != "and":
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filter)}",
-            )
-        for sub_filter in args:
-            read_cql(sub_filter)
-
-    read_cql(params.pop("filter", {}))
-
-    # Read the query
-    query = params.pop("query", {})
-    for property, operator in query.items():
-        if (len(operator) != 1) or not (value := operator.get("eq")):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Invalid query: {{{property!r}: {format_dict(operator)}}}"
-                ", only {'<property>': {'eq': <value>}} is allowed",
-            )
-        read_property(property, value)
-
-    # Discard these search parameters
-    params.pop("conf", None)
-    params.pop("filter-lang", None)
-
-    # Discard the "fields" parameter only if its "include" and "exclude" properties are empty
-    fields = params.get("fields", {})
-    if not fields.get("include") and not fields.get("exclude"):
-        params.pop("fields", None)
-
-    # If search parameters remain, they are not implemented
-    if params:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            f"Unimplemented search parameters: {format_dict(params)}",
-        )
-
-    #
-    # Step 2: do the search
-
-    # Stac search parameters
-    stac_params = {
-        "id": session_ids,
-        # datetime param = filter on publication date
-        "published": datetime,
-        # pap stac platform/constellation to odata satellite... which is called "platform" in the stac standard.
-        "platform": cadip_map_mission(platform, constellation),
-    }
-
-    # Convert them from STAC keys to OData keys
-    user_odata = stac_to_odata(stac_params)
-
-    # Only keep the authorized collections
-    allowed = filter_allowed_collections(read_conf()["collections"], "cadip", request)
-    allowed_ids = set(collection["id"] for collection in allowed)
-    if not collection_ids:
-        collection_ids = allowed_ids
-    else:
-        collection_ids = allowed_ids.intersection(collection_ids)
-
-    # Items for all collections
-    all_items = stac_pydantic.ItemCollection(features=[], type="FeatureCollection")
-
-    first_exception = None
-
-    # For each collection to search
-    for collection_id in collection_ids:
-        try:
-
-            # Some OData search params are defined in the collection configuration.
-            collection = select_config(collection_id)
-            collection_odata = collection.get("query", {})
-
-            # The final params to use come from the collection (higher priority) and the user
-            odata = {**user_odata, **collection_odata}
-
-            # Overwrite the pagination parameters
-            odata["top"] = limit or odata.get("top") or 20  # default = 20 results per page
-
-            # Do the search for this collection
-            items: stac_pydantic.ItemCollection = process_session_search(
-                request,
-                collection.get("station", "cadip"),
-                odata.get("SessionId"),
-                odata.get("Satellite"),
-                odata.get("PublicationDate"),
-                odata.get("top"),
-            )
-
-            # Add the collection information
-            for item in items.features:
-                item.collection = collection_id
-
-            # Concatenate items for all collections
-            all_items.features.extend(items.features)
-
-        except Exception as exception:
-            logger.error(traceback.format_exc())
-            first_exception = first_exception or exception
-
-    # If there are no results and we had at least one exception, raise the first one
-    if not all_items.features and first_exception:
-        raise first_exception
-
-    # Return results as a dict
-    return all_items.model_dump()
 
 
 @validate_call(config={"arbitrary_types_allowed": True})

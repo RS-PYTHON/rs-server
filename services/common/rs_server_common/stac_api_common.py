@@ -13,19 +13,38 @@
 # limitations under the License.
 
 """Module to share common functionalities for validating / creating stac items"""
+import abc
 import copy
+import json
+import traceback
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Union
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    List,
+    Literal,
+    Optional,
+    Self,
+    Type,
+    Union,
+)
 
 import stac_pydantic
 import stac_pydantic.links
 import yaml
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import extract_eo_product, odata_to_stac
+from rs_server_common.utils.utils import (
+    extract_eo_product,
+    odata_to_stac,
+    validate_inputs_format,
+)
 
 logger = Logging.default(__name__)
 
@@ -57,6 +76,286 @@ class QueryableField(BaseModel):
     pattern: Optional[str] = None
     description: Optional[str] = None
     enum: Optional[List[str]] = None
+
+
+@dataclass
+class MockPgstac:
+    """
+    Mock a pgstac database for the services (adgs, cadip, ...) that use stac_fastapi but don't need a database.
+    """
+
+    # Set by stac-fastapi
+    request: Request | None = None
+    readwrite: Literal["r", "w"] | None = None
+
+    # adgs, cadip, ...
+    service: str
+
+    # adgs or cadip function
+    all_collections: Callable = None
+    select_config: Callable = None
+    get_queryables: Callable = None
+    stac_to_odata: Callable = None
+    map_mission: Callable = None
+
+    @classmethod
+    @asynccontextmanager
+    async def get_connection(cls, request: Request, readwrite: Literal["r", "w"] = "r") -> AsyncIterator[Self]:
+        """Return a class instance"""
+        yield cls(request, readwrite)
+
+    @dataclass
+    class ReadPool:
+        """Used to mock the readpool function."""
+
+        # Outer MockPgstac class type
+        outer_cls: Type["MockPgstac"]
+
+        @asynccontextmanager
+        async def acquire(self) -> AsyncIterator[Self]:
+            """Return an outer class instance"""
+            yield self.outer_cls()
+
+    @classmethod
+    def readpool(cls):
+        """Mock the readpool function."""
+        return cls.ReadPool(cls)
+
+    async def fetchval(self, query, *args, column=0, timeout=None):
+        """Run a query and return a value in the first row.
+
+        :param str query: Query text.
+        :param args: Query arguments.
+        :param int column: Numeric index within the record of the value to
+                           return (defaults to 0).
+        :param float timeout: Optional timeout value in seconds.
+                            If not specified, defaults to the value of
+                            ``command_timeout`` argument to the ``Connection``
+                            instance constructor.
+
+        :return: The value of the specified column of the first record, or
+                 None if no records were returned by the query.
+        """
+        query = query.strip()
+
+        # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
+        if query == "SELECT * FROM all_collections();":
+            return filter_allowed_collections(self.all_collections(), self.service, self.request)
+
+        # From stac_fastapi.pgstac.core.CoreCrudClient::get_collection
+        if query == "SELECT * FROM get_collection($1::text);":
+
+            # Find the collection which id == the input collection_id
+            collection_id = args[0]
+            collection = self.select_config(collection_id)
+            if not collection:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown {self.service} collection: {collection_id!r}")
+
+            # Convert into stac object (to ensure validity) then back to dict
+            collection.setdefault("stac_version", "1.0.0")
+            return create_collection(collection).model_dump()
+
+        # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
+        # args[0] contains the collection_id, if any.
+        if query == "SELECT * FROM get_queryables($1::text);":
+            return Queryables(properties=self.get_queryables(args[0] if args else None)).model_dump(by_alias=True)
+
+        # from stac_fastapi.pgstac.core.CoreCrudClient::_search_base
+        if query == "SELECT * FROM search($1::text::jsonb);":
+            params = json.loads(args[0]) if args else {}
+            return await self.search(self.request, params)
+
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
+
+    @abc.abstractmethod
+    async def read_search_params(self, params: dict, stac_params: dict):
+        """Child specific search parameter reading."""
+
+    async def search(self, params: dict) -> stac_pydantic.ItemCollection:
+        """
+        Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
+        """
+
+        #
+        # Step 1: read input params
+
+        # Input params will be converted into stac params
+        stac_params = {}
+
+        # Call the child method
+        await self.read_search_params(params, stac_params)
+
+        def format_dict(field: dict):
+            """Used for error handling."""
+            return json.dumps(field, indent=0).replace("\n", "").replace('"', "'")
+
+        # Number of results per page
+        limit = params.pop("limit", None)
+
+        # Sort results
+        sortby_list = params.pop("sortby", [])
+        if len(sortby_list) > 1:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Only one 'sortby' search parameter is allowed: {sortby_list!r}",
+            )
+        if not sortby_list:
+            sortby = ""
+        else:
+            sortby_dict = sortby_list[0]
+            sortby = "+" if sortby_dict["direction"] == "asc" else "-"
+            sortby += sortby_dict["field"]
+
+        # Collections to search
+        collection_ids = params.pop("collections", [])
+
+        # datetime interval = PublicationDate
+        datetime = params.pop("datetime", None)
+        if datetime:
+            try:
+                validate_inputs_format(datetime, raise_errors=True)
+                stac_params["published"] = datetime
+            except HTTPException as exception:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Invalid datetime interval: {datetime!r}. "
+                    "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
+                ) from exception
+
+        #
+        # Read query and/or CQL filter
+
+        # Only the queryable properties are allowed
+        allowed_properties = self.get_queryables().keys()
+
+        def read_property(property: str, value: Any):
+            """Read a query or CQL filter property"""
+            nonlocal stac_params
+            if True or not property in allowed_properties:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Invalid query or CQL property: {property!r}, " f"allowed properties are: {allowed_properties}",
+                )
+            stac_params[property] = value
+
+        def read_cql(filter: dict):
+            """Use a recursive function to read all CQL filter levels"""
+            if not filter:
+                return
+            op = filter.get("op")
+            args = filter.get("args", [])
+
+            # Read a single property
+            if op == "=":
+                if (len(args) != 2) or not (property := args[0].get("property")):
+                    raise HTTPException(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        f"Invalid CQL2 filter: {format_dict(filter)}",
+                    )
+                value = args[1]
+                return read_property(property, value)
+
+            # Else we are reading several properties
+            elif op != "and":
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filter)}",
+                )
+            for sub_filter in args:
+                read_cql(sub_filter)
+
+        read_cql(params.pop("filter", {}))
+
+        # Read the query
+        query = params.pop("query", {})
+        for property, operator in query.items():
+            if (len(operator) != 1) or not (value := operator.get("eq")):
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Invalid query: {{{property!r}: {format_dict(operator)}}}"
+                    ", only {'<property>': {'eq': <value>}} is allowed",
+                )
+            read_property(property, value)
+
+        # Discard these search parameters
+        params.pop("conf", None)
+        params.pop("filter-lang", None)
+
+        # Discard the "fields" parameter only if its "include" and "exclude" properties are empty
+        fields = params.get("fields", {})
+        if not fields.get("include") and not fields.get("exclude"):
+            params.pop("fields", None)
+
+        # If search parameters remain, they are not implemented
+        if params:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Unimplemented search parameters: {format_dict(params)}",
+            )
+
+        #
+        # Step 2: do the search
+
+        # map stac platform/constellation to odata satellite... which is called "platform" in the stac standard.
+        stac_params["platform"] = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
+
+        # Convert them from STAC keys to OData keys
+        user_odata = self.stac_to_odata(stac_params)
+
+        # Only keep the authorized collections
+        allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
+        allowed_ids = set(collection["id"] for collection in allowed)
+        if not collection_ids:
+            collection_ids = allowed_ids
+        else:
+            collection_ids = allowed_ids.intersection(collection_ids)
+
+        # Items for all collections
+        all_items = stac_pydantic.ItemCollection(features=[], type="FeatureCollection")
+
+        first_exception = None
+
+        # For each collection to search
+        for collection_id in collection_ids:
+            try:
+
+                # Some OData search params are defined in the collection configuration.
+                collection = self.select_config(collection_id)
+                collection_odata = collection.get("query", {})
+
+                # The final params to use come from the collection (higher priority) and the user
+                odata = {**user_odata, **collection_odata}
+
+                # Overwrite the pagination parameters
+                odata["top"] = limit or odata.get("top") or 20  # default = 20 results per page
+
+                # Do the search for this collection
+                items: stac_pydantic.ItemCollection = process_session_search(
+                    self.request,
+                    collection.get("station", "cadip"),
+                    odata.get("SessionId"),
+                    odata.get("Satellite"),
+                    odata.get("PublicationDate"),
+                    odata.get("top"),
+                )
+
+                # Add the collection information
+                for item in items.features:
+                    item.collection = collection_id
+
+                # Concatenate items for all collections
+                all_items.features.extend(items.features)
+
+            except Exception as exception:
+                logger.error(traceback.format_exc())
+                first_exception = first_exception or exception
+
+        # If there are no results and we had at least one exception, raise the first one
+        if not all_items.features and first_exception:
+            raise first_exception
+
+        # Return results as a dict
+        return all_items.model_dump()
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:

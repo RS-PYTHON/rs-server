@@ -47,6 +47,7 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
+from rs_server_common.fastapi_app import MockPgstac
 from rs_server_common.stac_api_common import (
     Queryables,
     create_collection,
@@ -60,6 +61,45 @@ from rs_server_common.utils.utils import validate_inputs_format
 logger = Logging.default(__name__)
 router = APIRouter(tags=adgs_tags)
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
+
+
+class MockPgstacCadip(MockPgstac):
+    """
+    Mock a pgstac database that will call functions from this module instead of actually accessing a database.
+    """
+
+    async def fetchval(self, query, *args, column=0, timeout=None):
+
+        query = query.strip()
+
+        # From stac_fastapi.pgstac.core.CoreCrudClient::all_collections
+        if query == "SELECT * FROM all_collections();":
+            return filter_allowed_collections(read_conf()["collections"], "adgs", self.request)
+
+        # From stac_fastapi.pgstac.core.CoreCrudClient::get_collection
+        if query == "SELECT * FROM get_collection($1::text);":
+
+            # Find the collection which id == the input collection_id
+            collection_id = args[0]
+            collection = select_config(collection_id)
+            if not collection:
+                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown AUXIP collection: {collection_id!r}")
+
+            # Convert into stac object (to ensure validity) then back to dict
+            collection.setdefault("stac_version", "1.0.0")
+            return create_collection(collection).model_dump()
+
+        # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
+        # args[0] contains the collection_id, if any.
+        if query == "SELECT * FROM get_queryables($1::text);":
+            return Queryables(properties=get_adgs_queryables(args[0] if args else None)).model_dump(by_alias=True)
+
+        # from stac_fastapi.pgstac.core.CoreCrudClient::_search_base
+        if query == "SELECT * FROM search($1::text::jsonb);":
+            params = json.loads(args[0]) if args else {}
+            return await pgstac_search(self.request, params)
+
+        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
 
 def create_auxip_product_search_params(

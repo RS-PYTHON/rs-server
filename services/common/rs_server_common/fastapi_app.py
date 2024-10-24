@@ -17,13 +17,11 @@
 import asyncio
 import typing
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from os import environ as env
-from typing import AsyncIterator, Literal, Self, Type
 
 import httpx
 import sqlalchemy
-from fastapi import APIRouter, Depends, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
@@ -233,53 +231,3 @@ def init_app(  # pylint: disable=too-many-locals
         )
 
     return app
-
-
-@dataclass
-class MockPgstac:
-    """
-    Mock a pgstac database for the services that use stac_fastapi but don't need a database.
-    TODO: move this class to the stac_fastapi application used by adgs and cadip when it will be implemented.
-    """
-
-    request: Request | None = None
-    readwrite: Literal["r", "w"] | None = None
-
-    async def fetchval(self, query, *args, column=0, timeout=None):
-        """Run a query and return a value in the first row.
-
-        :param str query: Query text.
-        :param args: Query arguments.
-        :param int column: Numeric index within the record of the value to
-                           return (defaults to 0).
-        :param float timeout: Optional timeout value in seconds.
-                            If not specified, defaults to the value of
-                            ``command_timeout`` argument to the ``Connection``
-                            instance constructor.
-
-        :return: The value of the specified column of the first record, or
-                 None if no records were returned by the query.
-        """
-
-    @classmethod
-    @asynccontextmanager
-    async def get_connection(cls, request: Request, readwrite: Literal["r", "w"] = "r") -> AsyncIterator[Self]:
-        """Return a class instance"""
-        yield cls(request, readwrite)
-
-    @dataclass
-    class ReadPool:
-        """Used to mock the readpool function."""
-
-        # Outer MockPgstac class type
-        outer_cls: Type["MockPgstac"]
-
-        @asynccontextmanager
-        async def acquire(self) -> AsyncIterator[Self]:
-            """Return an outer class instance"""
-            yield self.outer_cls()
-
-    @classmethod
-    def readpool(cls):
-        """Mock the readpool function."""
-        return cls.ReadPool(cls)
