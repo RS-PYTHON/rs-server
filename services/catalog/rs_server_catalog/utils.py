@@ -17,7 +17,7 @@
 import re
 
 from fastapi import HTTPException
-from starlette.status import HTTP_400_BAD_REQUEST
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 
 # Regular expression pattern to match 's3://path/to/file'
 S3_KEY_PATTERN = r"^s3:\/\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.\/]+$"
@@ -45,7 +45,7 @@ def verify_existing_item_from_catalog(method: str, item: dict, content_id_str: s
         raise HTTPException(
             detail=f"Conflict error! The item {item['id']} \
 already exists in the {user_collection_str} collection",
-            status_code=HTTP_400_BAD_REQUEST,
+            status_code=HTTP_409_CONFLICT,
         )
     # Protection for cases where a PUT or PATCH request is made for an item
     # that does not exist in the database.

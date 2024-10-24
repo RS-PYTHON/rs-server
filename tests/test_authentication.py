@@ -517,20 +517,16 @@ async def test_stac_browser_authent(
 
     # Mock functions
     mocked_user_login = "mocked_user_login"
-    mocker.patch("jose.jwt.decode", return_value={"sub": "mocked_subject", "preferred_username": mocked_user_login})
+    mocker.patch("jwt.decode", return_value={"sub": "mocked_subject", "preferred_username": mocked_user_login})
 
     # Mock a FastAPI Request from the stac browser
     mocked_request = State()
     mocked_request.headers = {"referer": stac_browser_url}
     mocked_request.state = State()
 
-    # Without authentication, we should have these basic credentials
-    unauth_info = await authentication.authenticate(mocked_request)
-    assert unauth_info == AuthInfo(
-        "stac-browser",
-        ["rs_adgs_landing_page", "rs_cadip_landing_page", "rs_catalog_landing_page"],
-        {},
-    )
+    # Without authentication, we should have a 401 error
+    with pytest.raises(HTTPException):
+        await authentication.authenticate(mocked_request)
 
     # With authentication but expired user, we should have an exception
     mocked_request.headers["authorization"] = "Bearer mocked_token"

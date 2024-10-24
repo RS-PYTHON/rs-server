@@ -71,6 +71,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     TransferFromS3ToS3Config,
 )
 from rs_server_common.utils.logging import Logging
+from stac_fastapi.api.models import GeoJSONResponse
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.types.errors import NotFoundError
 from starlette.requests import Request
@@ -175,7 +176,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         Returns:
             dict: The collection passed in parameter with adapted links
         """
-        links = my_object["links"]
+        links = my_object.get("links", [])
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
             if "properties" in my_object:  # If my_object is an item
@@ -645,8 +646,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
 
         # Add the stac authentication extension
         await self.add_authentication_extension(content)
-        logger.debug(f"content = {content}")
-        return JSONResponse(content, status_code=response.status_code)
+
+        return GeoJSONResponse(content, status_code=response.status_code)
 
     async def manage_put_post_request(  # pylint: disable=too-many-branches
         self,
@@ -929,7 +930,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         # Add the stac authentication extension
         await self.add_authentication_extension(content)
 
-        return JSONResponse(content, status_code=response.status_code)
+        media_type = "application/geo+json" if "/items" in request.scope["path"] else None
+        return JSONResponse(content, status_code=response.status_code, media_type=media_type)
 
     async def manage_download_response(self, request: Request, response: StreamingResponse) -> Response:
         """
@@ -1010,7 +1012,8 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             return JSONResponse(content=f"Failed to clean temporary bucket: {exc}", status_code=HTTP_400_BAD_REQUEST)
         except Exception as exc:  # pylint: disable=broad-except
             JSONResponse(content=f"Bad request: {exc}", status_code=HTTP_400_BAD_REQUEST)
-        return JSONResponse(response_content, status_code=response.status_code)
+        media_type = "application/geo+json" if "/items" in request.scope["path"] else None
+        return JSONResponse(response_content, status_code=response.status_code, media_type=media_type)
 
     async def manage_delete_response(self, response: StreamingResponse, user: str) -> Response:
         """Change the name of the deleted collection by removing owner_id.

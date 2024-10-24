@@ -15,6 +15,7 @@
 """This library contains all functions needed for the fastAPI middleware."""
 
 import getpass
+import os
 import re
 from typing import Tuple
 
@@ -49,7 +50,7 @@ def get_user(endpoint_user: str | None, apikey_user: str | None):
         return endpoint_user
     if apikey_user:
         return apikey_user
-    return getpass.getuser()
+    return os.getenv("RSPY_HOST_USER", default=getpass.getuser())
 
 
 def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
@@ -243,7 +244,7 @@ def remove_user_from_collection(collection: dict, user: str) -> dict:
     Returns:
         dict: The collection without the user ID in the id section.
     """
-    if user in collection["id"]:
+    if user in collection.get("id", ""):
         collection["id"] = collection["id"].removeprefix(f"{user}_")
     return collection
 

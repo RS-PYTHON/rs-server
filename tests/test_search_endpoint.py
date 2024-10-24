@@ -877,7 +877,7 @@ def test_collections_landing_page(client, mocker, mock_token_validation, endpoin
 @pytest.mark.parametrize(
     "endpoint",
     [
-        "/cadip/search?collection=cadip_session_by_id_list",
+        "/cadip/search?collections=cadip_session_by_id_list",
         "/cadip/search/items?collection=cadip_session_by_id_list",
         "/cadip/collections/cadip_session_by_id_list",
         "/cadip/collections/cadip_session_by_id_list/items",
@@ -896,7 +896,7 @@ def test_validation_errors(client, mocker, endpoint):
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "endpoint",
-    ["/cadip/search?collection=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
+    ["/cadip/search?collections=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
 )
 def test_collection_creation_failure(client, mocker, endpoint):
     """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
