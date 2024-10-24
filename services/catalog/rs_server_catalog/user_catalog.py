@@ -204,6 +204,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             link_parser = urlparse(link["href"])
             new_path = add_user_prefix(link_parser.path, user, collection_id)
             links[i]["href"] = link_parser._replace(path=new_path).geturl()
+        # Go through each item and apply corrections to the links
         for i in range(len(content[object_name])):
             content[object_name][i] = self.adapt_object_links(content[object_name][i], user)
         return content
@@ -519,6 +520,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             logger.error("Collection %s not found: %s", collection_id, e)
             return False
 
+
     async def manage_search_request(  # pylint: disable=too-many-branches
         self,
         request: Request,
@@ -569,17 +571,28 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 if owner_id:
                     self.request_ids["owner_id"]  = owner_id
 
+            # Catch endpoint /catalog/collections/{owner_id}:{collection_id}/search
+            if self.request_ids["collection_id"]:
+                query = parse_qs(request.url.query)
+                collections = ','.join([x for x in self.request_ids['collection_id']])
+                new_query = {
+                    "collections": collections,
+                    "filter-lang": "cql2-text",
+                }
+                query.update(new_query)
+                request.scope["query_string"] = urlencode(query, doseq=True).encode('utf-8')
+            
             # Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
                 # Concatenate owner_id to the collection name
                 coll_list = query_params_dict["collections"].split(',')
                 for i, coll in enumerate(coll_list):
                     if sep in coll:
-                        self.request_ids["owner_id"], self.request_ids["collection_id"] = coll.split(sep)[0], coll
+                        self.request_ids["owner_id"] = coll.split(sep)[0]
                     # Concatenate owner_id to the collection_id
                     else:
                         coll_list[i] = f"{self.request_ids['owner_id']}_{coll}"
-                        self.request_ids["collection_id"] = query_params_dict["collections"]
+                self.request_ids["collection_id"] = coll_list
                 # Update the request with the modified query
                 query_params_dict["collections"]  = ','.join(coll_list)
                 request.scope['query_string'] = urlencode(query_params_dict, doseq=True).encode('utf-8')
@@ -598,11 +611,13 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
         
         # Check that the collection from the request exists
-        if self.request_ids['collection_id']:
+        if self.request_ids["collection_id"]:
             ###if not await self.collection_exists(request, f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"):
-            if not await self.collection_exists(request, f"{self.request_ids['collection_id']}"):
-                detail = {"error": f"Collection {self.request_ids['collection_id']} not found."}
-                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
+            
+            for collection in  self.request_ids['collection_id']:
+                if not await self.collection_exists(request, collection):
+                    detail = {"error": f"Collection {collection} not found."}
+                    return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
@@ -619,7 +634,6 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             Response: The updated response.
         """
         filters: Optional[Node] = None
-        owner_id, collection_id = "", ""
         if request.method == "GET":
             query = parse_qs(request.url.query)
             if "filter" in query:
@@ -630,15 +644,24 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             if "filter" in query:
                 qs_filter_json = query["filter"]
                 filters = parse_cql2_json(qs_filter_json)
+        
         owner_id = self.find_owner_id(filters)
+        if owner_id:
+            self.request_ids["owner_id"] = owner_id
+        
         if "collections" in query:
-            collection_id = query["collections"][0].removeprefix(owner_id)
+            ###self.response_ids["collection_id"] = query["collections"][0].removeprefix(owner_id)
+            self.request_ids["collection_id"] = [
+                coll.removeprefix(f"{self.request_ids['owner_id']}_") 
+                for coll in query["collections"][0].split(',')
+            ]
 
         body = [chunk async for chunk in response.body_iterator]
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
         content = json.loads(dec_content)
-        content = self.remove_user_from_objects(content, owner_id, "features")
-        content = self.adapt_links(content, owner_id, collection_id, "features")
+        content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "features")
+        for collection_id in self.request_ids["collection_id"]:
+            content = self.adapt_links(content, self.request_ids["owner_id"], collection_id, "features")
 
         # Add the stac authentication extension
         await self.add_authentication_extension(content)
@@ -1165,7 +1188,6 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             # Edit owner_id with the corresponding body content if exist
             self.request_ids["owner_id"] = request_body.get("owner", self.request_ids["owner_id"])
             
-            self.request_ids["owner_id"] = self.request_ids.get("owner_id") or request_body.get("owner")
             # received a POST/PUT/PATCH for a STAC item or
             # a STAC collection is created
             if not self.request_ids["collection_id"]:
