@@ -178,7 +178,6 @@ def init_app(  # pylint: disable=too-many-locals
     app.state.pgstac_client.extensions = extensions
     for ext in extensions:
         ext.register(app)
-    app.state.pgstac_client.stac_version = app.version
     app.state.pgstac_client.title = app.title
     app.state.pgstac_client.description = app.description
     # Implement the /search endpoints by simulating a StacApi object, TODO remove this also
