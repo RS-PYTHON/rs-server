@@ -22,7 +22,6 @@ import json
 import os
 import os.path as osp
 import re
-from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional
 
@@ -89,7 +88,6 @@ def get_cadip_queryables() -> dict[str, CADIPQueryableField]:
     }
 
 
-@lru_cache(maxsize=1)
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
     cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
