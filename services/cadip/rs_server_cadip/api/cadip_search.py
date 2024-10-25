@@ -21,7 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-from typing import Annotated, List, Union
+from typing import Annotated, List, Literal, Union
 
 import requests
 import sqlalchemy
@@ -39,7 +39,6 @@ from rs_server_cadip.cadip_utils import (
     cadip_map_mission,
     from_session_expand_to_assets_serializer,
     from_session_expand_to_dag_serializer,
-    get_cadip_queryables,
     read_conf,
     select_config,
     stac_to_odata,
@@ -51,12 +50,9 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
-from rs_server_common.fastapi_app import MockPgstac
 from rs_server_common.stac_api_common import (
-    Queryables,
-    create_collection,
+    MockPgstac,
     create_stac_collection,
-    filter_allowed_collections,
     handle_exceptions,
     sort_feature_collection,
 )
@@ -74,18 +70,28 @@ logger = Logging.default(__name__)
 class MockPgstacCadip(MockPgstac):
     """Cadip implementation of MockPgstac"""
 
-    # service="cadip",
-    # collections=lambda: read_conf()["collections"],
-    # select_config=select_config,
-    # get_queryables=get_cadip_queryables,
+    def __init__(self, request: Request = None, readwrite: Literal["r", "w"] = None):
+        """Constructor"""
+        super().__init__(
+            service="cadip",
+            request=request,
+            readwrite=readwrite,
+            all_collections=lambda: read_conf()["collections"],
+            select_config=select_config,
+            stac_to_odata=stac_to_odata,
+            map_mission=cadip_map_mission,
+        )
 
-    async def read_search_params(self, params: dict, stac_params: dict):
-        """Child specific search parameter reading."""
-
-        # Cadip session IDs to search, set in parameter or in the request state
-        # by the /collections/{collection_id}/items/{session_id} endpoint
-        session_ids = params.pop("ids", None) or self.request.state._state.get("session_id")
-        stac_params["id"] = session_ids
+    async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
+        """Do the search for the given collection and OData parameters."""
+        return process_session_search(
+            self.request,
+            collection.get("station", "cadip"),
+            odata_params.get("SessionId"),
+            odata_params.get("Satellite"),
+            odata_params.get("PublicationDate"),
+            odata_params.get("top"),
+        )
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -146,6 +152,13 @@ async def get_root_catalog(request: Request):
     return await request.app.state.pgstac_client.landing_page(request=request)
 
 
+@router.get("/cadip/conformance")
+async def get_conformance(request: Request):
+    """Return the STAC/OGC conformance classes implemented by this server."""
+    authentication.auth_validation("cadip", "landing_page", request=request)
+    return await request.app.state.pgstac_client.conformance()
+
+
 @router.get("/cadip/collections")
 @handle_exceptions
 async def get_allowed_cadip_collections(request: Request):
@@ -177,12 +190,6 @@ async def get_allowed_cadip_collections(request: Request):
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("cadip", "landing_page", request=request)
     return await request.app.state.pgstac_client.all_collections(request=request)
-
-
-@router.get("/cadip/conformance")
-async def get_conformance(request: Request):
-    """Return the STAC/OGC conformance classes implemented by this server."""
-    return await request.app.state.pgstac_client.conformance()
 
 
 @router.get("/cadip/collections/{collection_id}")

@@ -44,7 +44,7 @@ collections:
   - id: cadip_s1A
     station: cadip
     query:
-      Satellite: S1A
+      Satellite: S1A, S1B
       top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: "'cadip' station - S1A"
@@ -131,7 +131,7 @@ collections:
   - id: cadip_s1a_interval
     station: cadip
     query:
-      PublicationDate: "2020-00-01T00:00:00Z/2024-01-01T00:00:00Z"
+      PublicationDate: "2020-01-01T00:00:00Z/2024-01-01T00:00:00Z"
       Satellite: S1A
       top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
@@ -142,7 +142,7 @@ collections:
       spatial:
         bbox: [[ -180, -82.85, 180, 82.82 ]]
       temporal:
-        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+        interval: [[ '2020-01-01T00:00:00Z', '2024-01-01T00:00:00Z' ]]
     links:
       - rel: license
         href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'

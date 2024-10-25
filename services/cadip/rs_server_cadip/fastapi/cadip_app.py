@@ -14,7 +14,6 @@
 
 """Init the FastAPI application."""
 
-
 # Import the database table modules before initializing the FastAPI,
 # that will init the database session and create the tables.
 # pylint: disable=unused-import, import-outside-toplevel

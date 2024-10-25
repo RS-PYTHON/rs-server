@@ -38,42 +38,6 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-def get_cadip_queryables(collection_id: str | None) -> dict[str, QueryableField]:
-    """Function to list all available queryables for CADIP session search."""
-
-    # If the collection has the Satellite field hard-coded,
-    # the user cannot query on platform and constellation
-    if collection_id and select_config(collection_id).get("query", {}).get("Satellite"):
-        return {}
-
-    # Read all platforms and constellations from the configuration file
-    config = {}
-    for c in map_stac_platform().get("satellites", {}):
-        config.update(c)
-    platforms = sorted(set(config.keys()))
-    connstellations = sorted(
-        set([platform["constellation"] for platform in config.values() if "constellation" in platform]),
-    )
-
-    # Return queryables with stac keys
-    return {
-        "platform": QueryableField(
-            type="string",
-            title="platform",
-            format="string",
-            description="String",
-            enum=platforms,
-        ),
-        "constellation": QueryableField(
-            type="string",
-            title="constellation",
-            format="string",
-            description="String",
-            enum=connstellations,
-        ),
-    }
-
-
 @lru_cache(maxsize=1)
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""

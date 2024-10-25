@@ -16,6 +16,7 @@
 Module for interacting with ADGS system through a FastAPI APIRouter.
 """
 
+import json
 import os
 import os.path as osp
 from functools import lru_cache
@@ -45,6 +46,14 @@ def select_config(configuration_id: str) -> dict | None:
         (item for item in read_conf()["collections"] if item["id"] == configuration_id),
         None,
     )
+
+
+def stac_to_odata(stac_params: dict) -> dict:
+    """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
+    stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
+    with open(stac_mapper_path, encoding="utf-8") as stac_map:
+        stac_mapper = json.loads(stac_map.read())
+        return {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
 
 
 def serialize_adgs_asset(feature_collection, request):
@@ -130,9 +139,3 @@ def auxip_map_mission(platform: str, constellation: str):
             detail="Cannot map platform/constellation",
         ) from exc
     return platform_short_name, platform_serial_identifier
-
-
-def generate_adgs_queryables(collection_id: str) -> dict[str, QueryableField]:
-    """Function used to get available queryables based on a given collection."""
-    config = select_config(collection_id)
-    return generate_queryables(config, get_adgs_queryables)

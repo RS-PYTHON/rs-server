@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """Module to share common functionalities for validating / creating stac items"""
-import abc
 import copy
 import json
 import traceback
+from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import wraps
@@ -79,24 +79,30 @@ class QueryableField(BaseModel):
 
 
 @dataclass
-class MockPgstac:
+class MockPgstac(ABC):
     """
     Mock a pgstac database for the services (adgs, cadip, ...) that use stac_fastapi but don't need a database.
     """
+
+    service: Literal["adgs", "cadip"]
 
     # Set by stac-fastapi
     request: Request | None = None
     readwrite: Literal["r", "w"] | None = None
 
-    # adgs, cadip, ...
-    service: str
-
     # adgs or cadip function
     all_collections: Callable = None
     select_config: Callable = None
-    get_queryables: Callable = None
     stac_to_odata: Callable = None
     map_mission: Callable = None
+
+    # Is the service adgs or cadip ?
+    adgs: bool = False
+    cadip: bool = False
+
+    def __post_init__(self):
+        self.adgs = self.service in ("adgs", "auxip")
+        self.cadip = self.service == "cadip"
 
     @classmethod
     @asynccontextmanager
@@ -120,6 +126,58 @@ class MockPgstac:
     def readpool(cls):
         """Mock the readpool function."""
         return cls.ReadPool(cls)
+
+    def get_queryables(self, collection_id: str | None = None) -> dict[str, QueryableField]:
+        """Function to list all available queryables for CADIP session search."""
+
+        # Note: the queryables contain stac keys
+        queryables = {}
+
+        if self.adgs:
+            queryables["product:type"] = QueryableField(
+                type="string",
+                title="productType",
+                format="string",
+                description="String",
+            )
+
+        # If the collection has the Satellite field hard-coded with a single value,
+        # the user cannot query on platform and constellation
+        can_query = True
+        if collection_id:
+            satellites = self.select_config(collection_id).get("query", {}).get("Satellite", "")
+            if "," not in satellites:
+                can_query = False
+
+        # Read all platforms and constellations from the configuration file
+        if can_query:
+            config = {}
+            for satellite in map_stac_platform().get("satellites", {}):
+                config.update(satellite)
+            platforms = sorted(set(config.keys()))
+            connstellations = sorted(
+                set([platform["constellation"] for platform in config.values() if "constellation" in platform]),
+            )
+            queryables.update(
+                {
+                    "platform": QueryableField(
+                        type="string",
+                        title="platform",
+                        format="string",
+                        description="String",
+                        enum=platforms,
+                    ),
+                    "constellation": QueryableField(
+                        type="string",
+                        title="constellation",
+                        format="string",
+                        description="String",
+                        enum=connstellations,
+                    ),
+                },
+            )
+
+        return queryables
 
     async def fetchval(self, query, *args, column=0, timeout=None):
         """Run a query and return a value in the first row.
@@ -163,13 +221,9 @@ class MockPgstac:
         # from stac_fastapi.pgstac.core.CoreCrudClient::_search_base
         if query == "SELECT * FROM search($1::text::jsonb);":
             params = json.loads(args[0]) if args else {}
-            return await self.search(self.request, params)
+            return await self.search(params)
 
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
-
-    @abc.abstractmethod
-    async def read_search_params(self, params: dict, stac_params: dict):
-        """Child specific search parameter reading."""
 
     async def search(self, params: dict) -> stac_pydantic.ItemCollection:
         """
@@ -179,29 +233,31 @@ class MockPgstac:
         #
         # Step 1: read input params
 
-        # Input params will be converted into stac params
-        stac_params = {}
-
-        # Call the child method
-        await self.read_search_params(params, stac_params)
-
         def format_dict(field: dict):
             """Used for error handling."""
             return json.dumps(field, indent=0).replace("\n", "").replace('"', "'")
+
+        # Read input params in the OData format
+        odata_params = {}
+
+        # Cadip session IDs to search, set in parameter or in the request state
+        # by the /collections/{collection_id}/items/{session_id} endpoint
+        if self.cadip:
+            session_ids = params.pop("ids", None) or self.request.state._state.get("session_id")
+            odata_params["SessionId"] = session_ids
 
         # Number of results per page
         limit = params.pop("limit", None)
 
         # Sort results
+        sortby = "-datetime"  # default value
         sortby_list = params.pop("sortby", [])
         if len(sortby_list) > 1:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 f"Only one 'sortby' search parameter is allowed: {sortby_list!r}",
             )
-        if not sortby_list:
-            sortby = ""
-        else:
+        if sortby_list:
             sortby_dict = sortby_list[0]
             sortby = "+" if sortby_dict["direction"] == "asc" else "-"
             sortby += sortby_dict["field"]
@@ -214,7 +270,7 @@ class MockPgstac:
         if datetime:
             try:
                 validate_inputs_format(datetime, raise_errors=True)
-                stac_params["published"] = datetime
+                odata_params["PublicationDate"] = datetime
             except HTTPException as exception:
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -224,6 +280,9 @@ class MockPgstac:
 
         #
         # Read query and/or CQL filter
+
+        # They keys are stac compliant fields
+        stac_params = {}
 
         # Only the queryable properties are allowed
         allowed_properties = self.get_queryables().keys()
@@ -277,6 +336,14 @@ class MockPgstac:
                 )
             read_property(property, value)
 
+        # map stac platform/constellation values to odata values...
+        mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
+        # ... still saved with stac keys for now
+        if self.adgs:
+            stac_params["constellation"], stac_params["platform"] = mission
+        if self.cadip:
+            stac_params["platform"] = mission
+
         # Discard these search parameters
         params.pop("conf", None)
         params.pop("filter-lang", None)
@@ -296,11 +363,8 @@ class MockPgstac:
         #
         # Step 2: do the search
 
-        # map stac platform/constellation to odata satellite... which is called "platform" in the stac standard.
-        stac_params["platform"] = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
-
-        # Convert them from STAC keys to OData keys
-        user_odata = self.stac_to_odata(stac_params)
+        # Convert search params from STAC keys to OData keys
+        odata_params.update(self.stac_to_odata(stac_params))
 
         # Only keep the authorized collections
         allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
@@ -324,20 +388,15 @@ class MockPgstac:
                 collection_odata = collection.get("query", {})
 
                 # The final params to use come from the collection (higher priority) and the user
-                odata = {**user_odata, **collection_odata}
+                odata = {**odata_params, **collection_odata}
 
                 # Overwrite the pagination parameters
                 odata["top"] = limit or odata.get("top") or 20  # default = 20 results per page
 
+                # TODO: what to do with the sortby parameter ?
+
                 # Do the search for this collection
-                items: stac_pydantic.ItemCollection = process_session_search(
-                    self.request,
-                    collection.get("station", "cadip"),
-                    odata.get("SessionId"),
-                    odata.get("Satellite"),
-                    odata.get("PublicationDate"),
-                    odata.get("top"),
-                )
+                items: stac_pydantic.ItemCollection = await self.process_search(collection, odata)
 
                 # Add the collection information
                 for item in items.features:
@@ -356,6 +415,11 @@ class MockPgstac:
 
         # Return results as a dict
         return all_items.model_dump()
+
+    @abstractmethod
+    async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
+        """Do the search for the given collection and OData parameters."""
+        pass
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:

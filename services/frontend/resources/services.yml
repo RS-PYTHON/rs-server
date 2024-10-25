@@ -35,6 +35,7 @@ info:
     ---
     #### STAC Browser
 
+    <a href="${STAC_BROWSER_URL_ADGS}" target="_blank">ADGS</a> /
     <a href="${STAC_BROWSER_URL_CADIP}" target="_blank">CADIP</a> /
     <a href="${STAC_BROWSER_URL_CATALOG}" target="_blank">Catalog</a>
 
