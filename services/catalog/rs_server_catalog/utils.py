@@ -14,9 +14,11 @@
 # pylint: disable=too-many-return-statements
 """This library contains functions used in handling the user catalog."""
 
+import os
 import re
 
 from fastapi import HTTPException
+from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
 
 # Regular expression pattern to match 's3://path/to/file'
@@ -145,3 +147,22 @@ def get_temp_bucket_name(files_s3_key: list[str]) -> str | None:
         )
 
     return bucket_names.pop()
+
+
+def get_s3_handler():
+    """Used to create the s3_handler to be used with s3 buckets."""
+    try:
+        s3_handler = S3StorageHandler(
+            os.environ["S3_ACCESSKEY"],
+            os.environ["S3_SECRETKEY"],
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_REGION"],
+        )
+    except KeyError:
+        print("Failed to find s3 credentials when trying to create the s3 handler")
+        return None
+    except RuntimeError:
+        print("Failed to create the s3 handler")
+        return None
+
+    return s3_handler
