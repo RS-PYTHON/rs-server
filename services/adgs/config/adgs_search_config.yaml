@@ -19,7 +19,7 @@ collections:
       productType: OPER_AUX_ECMWFD_PDMC
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: "'OPER_AUX_ECMWFD_PDMC' products"
-    description: 'Sentinel-1 Inuvik CADIP sessions'
+    description: "'OPER_AUX_ECMWFD_PDMC' products"
     license: other
     extent:
       spatial:
@@ -47,7 +47,7 @@ collections:
       productType: AUX_OBMEMC
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: "'AUX_OBMEMC' products"
-    description: 'Sentinel-1 Inuvik CADIP sessions'
+    description: "'AUX_OBMEMC' products"
     license: other
     extent:
       spatial:

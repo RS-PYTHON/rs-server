@@ -285,12 +285,12 @@ class MockPgstac(ABC):
         stac_params = {}
 
         # Only the queryable properties are allowed
-        allowed_properties = self.get_queryables().keys()
+        allowed_properties = sorted(self.get_queryables().keys())
 
         def read_property(property: str, value: Any):
             """Read a query or CQL filter property"""
             nonlocal stac_params
-            if True or not property in allowed_properties:
+            if not property in allowed_properties:
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query or CQL property: {property!r}, " f"allowed properties are: {allowed_properties}",
@@ -383,12 +383,39 @@ class MockPgstac(ABC):
         for collection_id in collection_ids:
             try:
 
-                # Some OData search params are defined in the collection configuration.
+                # Some OData search params are hardcoded in the collection configuration.
                 collection = self.select_config(collection_id)
-                collection_odata = collection.get("query", {})
+                odata_hardcoded = collection.get("query", {})
 
-                # The final params to use come from the collection (higher priority) and the user
-                odata = {**odata_params, **collection_odata}
+                # The final params to use come from the hardcoded collection (higher priority),
+                # else from the user.
+                odata = {**odata_params, **odata_hardcoded}
+
+                # # But for some fields of type list, we must calculate the intersection between the two values.
+                # # Note: an empty list means "take everything".
+                # for key in ("Name", "Id", "PublicationDate", "platformSerialIdentifier", "platformShortName", "SessionId"):
+
+                #     # Check if the key is defined by the user and hardcoded
+                #     values = (odata_params.get(key), odata_hardcoded.get(key))
+
+                #     # If it's
+
+                #     if (not values[0]) or (not values[1]):
+                #         continue
+
+                #     for i, value in enumerate(values):
+
+                #         # Convert the strings to lists, split by comma
+                #         if isinstance(value, str):
+                #             values[i] = value.split(",")
+
+                #         # Strip all values
+                #         values[i] = [element.strip() for element in values[i]]
+
+                #     # Check again that the two lists are not empty and keep the intersection
+                #     if (not values[0]) or (not values[1]):
+                #         continue
+                #     odata[key] = set(values[0]).intersection(values[1])
 
                 # Overwrite the pagination parameters
                 odata["top"] = limit or odata.get("top") or 20  # default = 20 results per page

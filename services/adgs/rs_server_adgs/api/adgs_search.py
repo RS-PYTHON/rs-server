@@ -265,8 +265,7 @@ async def get_adgs_collection_specific_item(
     # TODO: allow the search function to take the item ID instead.
     items = await request.app.state.pgstac_client.item_collection(collection_id, request)
     try:
-        item = next(item for item in items.features if item.id == item_id)
-        return item.to_dict()
+        return next(item for item in items.get("features", {}) if item.get("id") == item_id)
     except StopIteration as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP {item_id} not found.") from exc
 
