@@ -43,8 +43,14 @@ info:
 services:
   adgs:
     openapi_url: http://localhost:8001/openapi.json
+    change_tags:
+      "": ADGS stations
+      Filter Extension: ADGS (Filter Extension)
   cadip:
     openapi_url: http://localhost:8002/openapi.json
+    change_tags:
+      "": CADIP stations
+      Filter Extension: CADIP (Filter Extension)
   catalog:
     openapi_url: http://localhost:8003/api
     change_tags:
