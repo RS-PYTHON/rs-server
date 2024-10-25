@@ -79,11 +79,11 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     patterns = [r"/_mgmt/ping", r"/api", r"/favicon.ico"]
 
     if "/health" in path:
-        return "/health", ids_dict
+        path = "/health"
 
     # Authentication endpoints
-    if path.startswith(f"{AUTH_PREFIX}/"):
-        return path, ids_dict
+    # if path.startswith(f"{AUTH_PREFIX}/"):
+    #     return path, ids_dict
 
     match path:
         case "/catalog/":
@@ -106,7 +106,7 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
             path = "/conformance"
 
     if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
-        return "/collections", ids_dict
+        path = "/collections"
 
     # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items
     if match := re.fullmatch(BULK_ITEMS_REGEX, path):

@@ -566,10 +566,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     else:
                         raise TypeError("Expected list !")
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-    
-        
-        
-        
+
         # ----- GET requests
         elif request.method == "GET":  
             # Get dictionary of query parameters
@@ -694,23 +691,17 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         Returns:
             Request: The request updated.
         """
-        user_login = ""
-        auth_roles = []
-        if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
-            auth_roles = request.state.auth_roles
-            user_login = request.state.user_login
         try:
-            user = self.request_ids["owner_id"]
             content = await request.json()
             if (  # If we are in cluster mode and the user_login is not authorized
                 # to put/post returns a HTTP_401_UNAUTHORIZED status.
                 common_settings.CLUSTER_MODE
                 and not get_authorisation(
                     self.request_ids["collection_id"],
-                    auth_roles,
+                    [],
                     "write",
                     self.request_ids["owner_id"],
-                    user_login,
+                    self.request_ids["user_login"],
                 )
             ):
                 detail = {"error": "Unauthorized access."}
@@ -718,24 +709,25 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
 
             if (
                 request.scope["path"] == "/collections"  # POST collection
-                or request.scope["path"] == f"/collections/{user}_{self.request_ids['collection_id']}"  # PUT collection
+                or request.scope["path"] == f"/collections/{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"  # PUT collection
             ):
                 # Manage a collection creation. The apikey user should be the same as the owner
                 # field in the body request. In other words, an apikey user cannot create a
                 # collection owned by another user.
                 # We don't care for local mode, any user may create / delete collection owned by another user
-                if common_settings.CLUSTER_MODE and user != user_login:
+                if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != self.request_ids["user_login"]:
                     detail = {
-                        "error": f"The '{user_login}' user cannot create a \
-collection owned by the '{user}' user. Additionally, modifying the 'owner' field is not permitted also.",
+                        "error": f"The '{self.request_ids['user_login']}' user cannot create a \
+collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' field is not permitted also.",
                     }
                     logger.error(detail["error"])
                     return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-                content["id"] = f"{user}_{content['id']}"
+                content["id"] = f"{self.request_ids['owner_id']}_{content['id']}"
                 if not content.get("owner"):
-                    content["owner"] = user
+                    content["owner"] = self.request_ids["owner_id"]
                 logger.debug(f"Handling for collection {content['id']}")
                 # TODO update the links also?
+            
             # The following section handles the request to create/update an item
             elif "items" in request.scope["path"]:
                 # try to get the item if it is already part from the collection
@@ -1177,7 +1169,15 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         )
         
         # ---------- Request rerouting
-        self.request_ids =  {"auth_roles": auth_roles, "user_login": user_login, "owner_id": owner_id, "collection_id": "", "item_id": ""}
+        
+        # Dictionary to easily access main data from the request
+        self.request_ids =  {
+            "auth_roles": auth_roles, 
+            "user_login": user_login, 
+            "owner_id": owner_id, 
+            "collection_id": "", 
+            "item_id": ""
+        }
         reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
             return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
