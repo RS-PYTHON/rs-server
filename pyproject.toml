@@ -56,7 +56,6 @@ rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
 # We cannot depend on rs-server-staging because it depends on sqlalchemy<2
 # rs-server-staging = {path = "services/staging", develop = true}
-pre-commit = "^3.8.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -71,8 +70,8 @@ pytest-error-for-skips = "^2.0.2"
 pytest-httpx = "^0.32.0"
 pytest-mock = "^3.14.0"
 black = "^24.10.0"
-mypy = "^1.11.2"
-pre-commit = "^3.8.0"
+mypy = "^1.13.0"
+pre-commit = "^4.0.1"
 types-requests = "^2.32.0.20241016"
 flake8 = "^7.1.1"
 bandit = "^1.7.9"
@@ -80,7 +79,7 @@ safety = "^3.2.3"
 pylint = "^3.3.0"
 flake8-pyproject = "^1.2.3"
 httpx = "^0.27.2"
-moto = "==5.0.17"
+moto = "==5.0.18"
 flask = "^3.0.3"
 flask-cors = "^5.0.0"
 sphinx = "^8.1.3"
