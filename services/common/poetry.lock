@@ -1851,7 +1851,6 @@ files = [
     {file = "pyproj-3.7.0-cp312-cp312-win_amd64.whl", hash = "sha256:0692f806224e8ed82fe4acfa57268ff444fdaf9f330689f24c0d96e59480cce1"},
     {file = "pyproj-3.7.0-cp313-cp313-macosx_12_0_x86_64.whl", hash = "sha256:94e8b903a9e83448fd2379c49dec3e8cd83c9ed36f54354e68b601cef56d5426"},
     {file = "pyproj-3.7.0-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:64cb5c17d6f6305a8b978a40f95560c87c5b363fcac40632337955664437875a"},
-    {file = "pyproj-3.7.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2c54e9bdda7ab9c4a5af50f9d6e6ee7704e05fafd504896b96ed1208c7aea098"},
     {file = "pyproj-3.7.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:24fa4e9e0abba875f9524808410cc520067eaf38fd5549ed0ef7c43ac39923c9"},
     {file = "pyproj-3.7.0-cp313-cp313-win32.whl", hash = "sha256:b9e8353fc3c79dc14d1f5ac758a1a6e4eee04102c3c0b138670f121f5ac52eb4"},
     {file = "pyproj-3.7.0-cp313-cp313-win_amd64.whl", hash = "sha256:10a8dc6ec61af97c89ff032647d743f8dc023645773da42ef43f7ae1125b3509"},
@@ -2046,13 +2045,13 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-keycloak"
-version = "4.6.3"
+version = "4.6.2"
 description = "python-keycloak is a Python package providing access to the Keycloak API."
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "python_keycloak-4.6.3-py3-none-any.whl", hash = "sha256:eef1bd19b372414fb800bbec2679c6e2427a6829cfb1fb3fa0500fc90ec5cdaf"},
-    {file = "python_keycloak-4.6.3.tar.gz", hash = "sha256:c1195e392af9e732ba302ffa110f51a9edc5a849e61b70295d07bcc3ad9a7768"},
+    {file = "python_keycloak-4.6.2-py3-none-any.whl", hash = "sha256:2fcf77f858da4062578f02843e74482e45256df4f885ec8046783272ca882832"},
+    {file = "python_keycloak-4.6.2.tar.gz", hash = "sha256:184462526fc512546b9b5d2c584b0cdf7539f9ba2854a5b08b7727458c2569f9"},
 ]
 
 [package.dependencies]
