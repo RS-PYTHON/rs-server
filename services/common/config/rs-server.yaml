@@ -36,11 +36,11 @@ external_data_sources:
     domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
     service:
       name: cadip
-      url: http://127.0.0.1:5002
+      url: http://127.0.0.1:5000
     authentication:
       auth_type: oauth2
       #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
-      token_url: http://127.0.0.1:5002/oauth2/token
+      token_url: http://127.0.0.1:5000/oauth2/token
       grant_type: password
       scope: sss
       username: test
@@ -132,11 +132,11 @@ external_data_sources:
     domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
     service:
       name: cadip
-      url: http://127.0.0.1:5002
+      url: http://127.0.0.1:5000
     authentication:
       auth_type: oauth2
       #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
-      token_url: http://127.0.0.1:5002/oauth2/token
+      token_url: http://127.0.0.1:5000/oauth2/token
       grant_type: password
       scope: sss
       username: test
