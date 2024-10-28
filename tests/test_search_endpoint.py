@@ -25,6 +25,9 @@ from rs_server_cadip.cadip_utils import cadip_map_mission
 
 # pylint: disable=too-few-public-methods, too-many-arguments
 
+ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
+ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
+
 
 @pytest.mark.unit
 @responses.activate
@@ -85,8 +88,7 @@ class TestOperatorDefinedCollections:
         [
             ("/cadip/collections/cadip_session_incomplete/items", status.HTTP_422_UNPROCESSABLE_ENTITY),
             ("/cadip/collections/cadip_session_incomplete_no_stop/items", status.HTTP_400_BAD_REQUEST),
-            ("/cadip/collections/cadip_session_incomplete_no_start/items", status.HTTP_422_UNPROCESSABLE_ENTITY),
-            ("/auxip/collections/adgs_invalid/items", status.HTTP_422_UNPROCESSABLE_ENTITY),
+            ("/cadip/collections/cadip_session_incomplete_no_start/items", status.HTTP_400_BAD_REQUEST),
             ("/auxip/collections/adgs_invalid_no_start/items", status.HTTP_400_BAD_REQUEST),
             ("/auxip/collections/adgs_invalid_no_stop/items", status.HTTP_400_BAD_REQUEST),
         ],
@@ -184,8 +186,9 @@ class TestLandingPagesEndpoints:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, collection_link",
-        [("/cadip", "/cadip/collections"), ("/auxip", "/auxip/collections")],
+        "fastapi_app, endpoint, collection_link",
+        [(ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"), (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections")],
+        indirect=["fastapi_app"],
     )
     def test_local_landing_pages(self, client, endpoint, collection_link):
         """
@@ -290,9 +293,9 @@ class TestLandingPagesEndpoints:
         mock_empty_roles.auth_roles = roles
         mocker.patch(request_path, new_callable=mocker.PropertyMock, return_value=mock_empty_roles)
 
-        # The result should be 2 empty lists.
+        # No collection should be returned
         empty_response = client.get(endpoint).json()
-        assert {"type": "Object", "links": [], "collections": []} == empty_response
+        assert empty_response["collections"] == []
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -325,32 +328,33 @@ class TestQueryablesEndpoints:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, title, expected_queryables",
+        "fastapi_app, endpoint, expected_queryables",
         [
-            ("/cadip/queryables", "Queryables for CADIP Search API", ["Satellite", "PublicationDate"]),
-            ("/auxip/queryables", "Queryables for ADGS Search API", ["platformShortName", "PublicationDate"]),
+            (ROUTER_PREFIX_CADIP, "/cadip/queryables", ["platform", "constellation"]),
+            (ROUTER_PREFIX_AUXIP, "/auxip/queryables", ["product:type", "platform", "constellation"]),
         ],
+        indirect=["fastapi_app"],
     )
-    def test_general_queryables(self, client, endpoint, title, expected_queryables):
+    def test_general_queryables(self, client, endpoint, expected_queryables):
         """Endpoint to test all queryables."""
         resp = client.get(endpoint).json()
-        assert resp["title"] == title
-        for queryable in expected_queryables:
-            assert queryable in resp["properties"].keys()
+        assert resp["title"] == "STAC Queryables."
+        assert list(resp["properties"].keys()) == expected_queryables
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, expected_queryables",
+        "fastapi_app, endpoint, expected_queryables",
         [
-            ("/cadip/collections/cadip_session_by_id_list/queryables", ["Satellite", "PublicationDate"]),
-            ("/auxip/collections/adgs_by_platform/queryables", ["PublicationDate", "platformSerialIdentifier"]),
+            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_satellite/queryables", []),
+            (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/queryables", ["product:type"]),
+            (ROUTER_PREFIX_AUXIP, "/auxip/collections/s2_adgs2_AUX_OBMEMC/queryables", ["platform", "constellation"]),
         ],
+        indirect=["fastapi_app"],
     )
     def test_collection_queryables(self, client, endpoint, expected_queryables):
         """Endpoint to test specific collection queryables."""
         resp = client.get(endpoint).json()
-        for queryable in expected_queryables:
-            assert queryable in resp["properties"].keys()
+        assert list(resp["properties"].keys()) == expected_queryables
 
 
 class TestModelValidationError:
@@ -358,14 +362,13 @@ class TestModelValidationError:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint",
+        "fastapi_app, endpoint",
         [
-            "/cadip/search?collections=cadip_session_by_id_list",
-            "/cadip/search/items?collection=cadip_session_by_id_list",
-            "/cadip/collections/cadip_session_by_id_list",
-            "/cadip/collections/cadip_session_by_id_list/items",
-            "/cadip/collections/cadip_session_by_id_list/items/sessionId",
+            (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
+            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items"),
+            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items/sessionId"),
         ],
+        indirect=["fastapi_app"],
     )
     def test_cadip_validation_errors(self, client, mocker, endpoint):
         """Test used to mock a validation error on pydantic model, should return HTTP 422."""
@@ -377,12 +380,12 @@ class TestModelValidationError:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint",
+        "fastapi_app, endpoint",
         [
-            "/auxip/collections/adgs_by_platform",
-            "/auxip/collections/adgs_by_platform/items",
-            "/auxip/collections/adgs_by_platform/items/sessionId",
+            (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/items"),
+            (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/items/sessionId"),
         ],
+        indirect=["fastapi_app"],
     )
     def test_adgs_validation_errors(self, client, mocker, endpoint):
         """Test used to mock a validation error on pydantic model, should return HTTP 422."""

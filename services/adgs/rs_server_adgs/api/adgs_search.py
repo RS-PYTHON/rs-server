@@ -79,6 +79,7 @@ class MockPgstacAdgs(MockPgstac):
             map_mission=auxip_map_mission,
         )
 
+    @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
         return process_product_search(

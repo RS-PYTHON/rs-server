@@ -124,21 +124,31 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # Note: the queryables contain stac keys
         queryables = {}
 
+        # If the collection has a product type field hard-coded with a single value,
+        # the user cannot query on it.
+        # TODO: factorize this code for all query parameters.
         if self.adgs:
-            queryables["product:type"] = QueryableField(
-                type="string",
-                title="productType",
-                format="string",
-                description="String",
-            )
+            can_query = True
+            if collection_id:
+                value = self.select_config(collection_id).get("query", {}).get("productType", "")
+                if value and ("," not in value):
+                    can_query = False
+            if can_query:
+                queryables["product:type"] = QueryableField(
+                    type="string",
+                    title="productType",
+                    format="string",
+                    description="String",
+                )
 
-        # If the collection has the Satellite field hard-coded with a single value,
-        # the user cannot query on platform and constellation
+        # Idem for satellite or platform
         can_query = True
         if collection_id:
-            satellites = self.select_config(collection_id).get("query", {}).get("Satellite", "")
-            if "," not in satellites:
-                can_query = False
+            for field in "platformSerialIdentifier", "platformShortName", "Satellite":
+                value = self.select_config(collection_id).get("query", {}).get(field, "")
+                if value and ("," not in value):
+                    can_query = False
+                    break
 
         # Read all platforms and constellations from the configuration file
         if can_query:
