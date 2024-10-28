@@ -21,7 +21,6 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import os
 import os.path as osp
-from functools import lru_cache
 from pathlib import Path
 from typing import List, Union
 
@@ -30,7 +29,7 @@ import stac_pydantic
 import starlette.requests
 import yaml
 from fastapi import HTTPException, status
-from rs_server_common.stac_api_common import QueryableField, map_stac_platform
+from rs_server_common.stac_api_common import map_stac_platform
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
@@ -38,7 +37,6 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-@lru_cache(maxsize=1)
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
     cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
@@ -113,7 +111,7 @@ def from_session_expand_to_assets_serializer(
                 # Create Asset
                 asset: Asset = map_dag_file_to_asset(mapper, product, request)
                 # Add Asset to Item.
-                session.assets.update({asset.title: asset})
+                session.assets.update({asset.title or "": asset})
         # Remove processed products from input_session
         input_session = [product for product in input_session if product.properties["SessionID"] != session.id]
 

@@ -21,17 +21,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    List,
-    Literal,
-    Optional,
-    Self,
-    Type,
-    Union,
-)
+from typing import Any, AsyncIterator, Callable, List, Literal, Optional, Self, Type
 
 import stac_pydantic
 import stac_pydantic.links
@@ -45,6 +35,7 @@ from rs_server_common.utils.utils import (
     odata_to_stac,
     validate_inputs_format,
 )
+from stac_pydantic.item import Item
 
 logger = Logging.default(__name__)
 
@@ -79,22 +70,22 @@ class QueryableField(BaseModel):
 
 
 @dataclass
-class MockPgstac(ABC):
+class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     """
     Mock a pgstac database for the services (adgs, cadip, ...) that use stac_fastapi but don't need a database.
     """
 
-    service: Literal["adgs", "cadip"]
+    service: Literal["adgs", "cadip"] | None
 
     # Set by stac-fastapi
     request: Request | None = None
     readwrite: Literal["r", "w"] | None = None
 
     # adgs or cadip function
-    all_collections: Callable = None
-    select_config: Callable = None
-    stac_to_odata: Callable = None
-    map_mission: Callable = None
+    all_collections: Callable = lambda: None
+    select_config: Callable = lambda: None
+    stac_to_odata: Callable = lambda: None
+    map_mission: Callable = lambda: None
 
     # Is the service adgs or cadip ?
     adgs: bool = False
@@ -108,7 +99,7 @@ class MockPgstac(ABC):
     @asynccontextmanager
     async def get_connection(cls, request: Request, readwrite: Literal["r", "w"] = "r") -> AsyncIterator[Self]:
         """Return a class instance"""
-        yield cls(request, readwrite)
+        yield cls(None, request, readwrite)
 
     @dataclass
     class ReadPool:
@@ -118,9 +109,9 @@ class MockPgstac(ABC):
         outer_cls: Type["MockPgstac"]
 
         @asynccontextmanager
-        async def acquire(self) -> AsyncIterator[Self]:
+        async def acquire(self) -> AsyncIterator["MockPgstac"]:
             """Return an outer class instance"""
-            yield self.outer_cls()
+            yield self.outer_cls(None)
 
     @classmethod
     def readpool(cls):
@@ -156,7 +147,7 @@ class MockPgstac(ABC):
                 config.update(satellite)
             platforms = sorted(set(config.keys()))
             connstellations = sorted(
-                set([platform["constellation"] for platform in config.values() if "constellation" in platform]),
+                {platform["constellation"] for platform in config.values() if "constellation" in platform},
             )
             queryables.update(
                 {
@@ -179,20 +170,18 @@ class MockPgstac(ABC):
 
         return queryables
 
-    async def fetchval(self, query, *args, column=0, timeout=None):
+    async def fetchval(self, query, *args, column=0, timeout=None):  # pylint: disable=unused-argument
         """Run a query and return a value in the first row.
 
-        :param str query: Query text.
-        :param args: Query arguments.
-        :param int column: Numeric index within the record of the value to
-                           return (defaults to 0).
-        :param float timeout: Optional timeout value in seconds.
-                            If not specified, defaults to the value of
-                            ``command_timeout`` argument to the ``Connection``
-                            instance constructor.
+        Args:
+            query (str): Query text.
+            args: Query arguments.
+            column (int): Numeric index within the record of the value to return (defaults to 0).
+            timeout (timeout): Optional timeout value in seconds. If not specified, defaults to the value of
+            ``command_timeout`` argument to the ``Connection`` instance constructor.
 
-        :return: The value of the specified column of the first record, or
-                 None if no records were returned by the query.
+        Returns: The value of the specified column of the first record,
+        or None if no records were returned by the query.
         """
         query = query.strip()
 
@@ -216,7 +205,9 @@ class MockPgstac(ABC):
         # from stac_fastapi.pgstac.extensions.filter.FiltersClient::get_queryables
         # args[0] contains the collection_id, if any.
         if query == "SELECT * FROM get_queryables($1::text);":
-            return Queryables(properties=self.get_queryables(args[0] if args else None)).model_dump(by_alias=True)
+            return Queryables(properties=self.get_queryables(args[0] if args else None)).model_dump(  # type: ignore
+                by_alias=True,
+            )
 
         # from stac_fastapi.pgstac.core.CoreCrudClient::_search_base
         if query == "SELECT * FROM search($1::text::jsonb);":
@@ -225,7 +216,10 @@ class MockPgstac(ABC):
 
         raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
-    async def search(self, params: dict) -> stac_pydantic.ItemCollection:
+    async def search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
+        self,
+        params: dict,
+    ) -> dict[str, Any]:
         """
         Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
         """
@@ -243,8 +237,14 @@ class MockPgstac(ABC):
         # Cadip session IDs to search, set in parameter or in the request state
         # by the /collections/{collection_id}/items/{session_id} endpoint
         if self.cadip:
-            session_ids = params.pop("ids", None) or self.request.state._state.get("session_id")
-            odata_params["SessionId"] = session_ids
+            session_ids = params.pop("ids", None)
+            if not session_ids and self.request:
+                try:
+                    session_ids = self.request.state.session_id
+                except AttributeError:
+                    pass
+            if session_ids:
+                odata_params["SessionId"] = session_ids
 
         # Number of results per page
         limit = params.pop("limit", None)
@@ -287,38 +287,39 @@ class MockPgstac(ABC):
         # Only the queryable properties are allowed
         allowed_properties = sorted(self.get_queryables().keys())
 
-        def read_property(property: str, value: Any):
+        def read_property(prop: str, value: Any):
             """Read a query or CQL filter property"""
             nonlocal stac_params
-            if not property in allowed_properties:
+            if prop not in allowed_properties:
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid query or CQL property: {property!r}, " f"allowed properties are: {allowed_properties}",
+                    f"Invalid query or CQL property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
-            stac_params[property] = value
+            stac_params[prop] = value
 
-        def read_cql(filter: dict):
+        def read_cql(filt: dict):
             """Use a recursive function to read all CQL filter levels"""
-            if not filter:
+            if not filt:
                 return
-            op = filter.get("op")
-            args = filter.get("args", [])
+            op = filt.get("op")
+            args = filt.get("args", [])
 
             # Read a single property
             if op == "=":
-                if (len(args) != 2) or not (property := args[0].get("property")):
+                if (len(args) != 2) or not (prop := args[0].get("property")):
                     raise HTTPException(
                         status.HTTP_422_UNPROCESSABLE_ENTITY,
-                        f"Invalid CQL2 filter: {format_dict(filter)}",
+                        f"Invalid CQL2 filter: {format_dict(filt)}",
                     )
                 value = args[1]
-                return read_property(property, value)
+                read_property(prop, value)
+                return
 
             # Else we are reading several properties
-            elif op != "and":
+            if op != "and":
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filter)}",
+                    f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filt)}",
                 )
             for sub_filter in args:
                 read_cql(sub_filter)
@@ -327,14 +328,14 @@ class MockPgstac(ABC):
 
         # Read the query
         query = params.pop("query", {})
-        for property, operator in query.items():
+        for prop, operator in query.items():
             if (len(operator) != 1) or not (value := operator.get("eq")):
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid query: {{{property!r}: {format_dict(operator)}}}"
+                    f"Invalid query: {{{prop!r}: {format_dict(operator)}}}"
                     ", only {'<property>': {'eq': <value>}} is allowed",
                 )
-            read_property(property, value)
+            read_property(prop, value)
 
         # map stac platform/constellation values to odata values...
         mission = self.map_mission(stac_params.get("platform"), stac_params.get("constellation"))
@@ -375,7 +376,7 @@ class MockPgstac(ABC):
             collection_ids = allowed_ids.intersection(collection_ids)
 
         # Items for all collections
-        all_items = stac_pydantic.ItemCollection(features=[], type="FeatureCollection")
+        all_items: List[Item] = []
 
         first_exception = None
 
@@ -393,7 +394,8 @@ class MockPgstac(ABC):
 
                 # # But for some fields of type list, we must calculate the intersection between the two values.
                 # # Note: an empty list means "take everything".
-                # for key in ("Name", "Id", "PublicationDate", "platformSerialIdentifier", "platformShortName", "SessionId"):
+                # for key in ("Name", "Id", "PublicationDate", "platformSerialIdentifier", "platformShortName",
+                # "SessionId"):
 
                 #     # Check if the key is defined by the user and hardcoded
                 #     values = (odata_params.get(key), odata_hardcoded.get(key))
@@ -430,23 +432,22 @@ class MockPgstac(ABC):
                     item.collection = collection_id
 
                 # Concatenate items for all collections
-                all_items.features.extend(items.features)
+                all_items.extend(items.features)
 
-            except Exception as exception:
+            except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error(traceback.format_exc())
                 first_exception = first_exception or exception
 
         # If there are no results and we had at least one exception, raise the first one
-        if not all_items.features and first_exception:
+        if not all_items and first_exception:
             raise first_exception
 
         # Return results as a dict
-        return all_items.model_dump()
+        return stac_pydantic.ItemCollection(features=all_items, type="FeatureCollection").model_dump()
 
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        pass
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:
@@ -554,7 +555,7 @@ def filter_allowed_collections(all_collections, role, request):
     return stac_collections
 
 
-def map_stac_platform() -> Union[str, List[str]]:
+def map_stac_platform() -> dict:
     """Function used to read and interpret from constellation.yaml"""
     with open(Path(__file__).parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
         return yaml.safe_load(cf)

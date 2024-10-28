@@ -65,7 +65,7 @@ async def health() -> HealthSchema:
 
 
 @typing.no_type_check
-def init_app(  # pylint: disable=too-many-locals
+def init_app(  # pylint: disable=too-many-locals, too-many-statements
     api_version: str,
     routers: list[APIRouter],
     init_db: bool = True,

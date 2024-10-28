@@ -67,7 +67,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 class MockPgstacAdgs(MockPgstac):
     """Adgs implementation of MockPgstac"""
 
-    def __init__(self, request: Request = None, readwrite: Literal["r", "w"] = None):
+    def __init__(self, request: Request | None = None, readwrite: Literal["r", "w"] | None = None):
         """Constructor"""
         super().__init__(
             service="adgs",
@@ -159,6 +159,7 @@ async def get_conformance(request: Request):
 @router.get("/auxip/collections")
 @handle_exceptions
 async def get_allowed_adgs_collections(request: Request):
+    """Return the ADGS collections to which the user has access to."""
     logger.info(f"Starting {request.url.path}")
     authentication.auth_validation("adgs", "landing_page", request=request)
     return await request.app.state.pgstac_client.all_collections(request=request)
@@ -170,6 +171,7 @@ async def get_adgs_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
 ) -> list[dict] | dict:
+    """Return a specific ADGS collection."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     return await request.app.state.pgstac_client.get_collection(collection_id, request)
@@ -270,13 +272,13 @@ async def get_adgs_collection_specific_item(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP {item_id} not found.") from exc
 
 
-def process_product_search(
+def process_product_search(  # pylint: disable=too-many-locals
     request,
     product_type,
     publication_date,
     limit,
     **kwargs,
-) -> stac_pydantic.ItemCollection:  # pylint: disable=too-many-arguments, too-many-locals
+) -> stac_pydantic.ItemCollection:
     """
     This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.

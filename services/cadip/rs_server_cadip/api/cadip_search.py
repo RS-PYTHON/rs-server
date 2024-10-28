@@ -70,7 +70,7 @@ logger = Logging.default(__name__)
 class MockPgstacCadip(MockPgstac):
     """Cadip implementation of MockPgstac"""
 
-    def __init__(self, request: Request = None, readwrite: Literal["r", "w"] = None):
+    def __init__(self, request: Request | None = None, readwrite: Literal["r", "w"] | None = None):
         """Constructor"""
         super().__init__(
             service="cadip",
@@ -87,8 +87,8 @@ class MockPgstacCadip(MockPgstac):
         return process_session_search(
             self.request,
             collection.get("station", "cadip"),
-            odata_params.get("SessionId"),
-            odata_params.get("Satellite"),
+            odata_params.get("SessionId", []),
+            odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
             odata_params.get("top"),
         )
