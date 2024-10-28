@@ -760,7 +760,7 @@ class TestStagingMainExecution:
         # Mock the cluster with the required attributes for Client
         mock_cluster = mocker.Mock()
         mock_cluster.name = "test-cluster"
-        mock_cluster.dashboard_link = "http://mock-dashboard"
+        mock_cluster.dashboard_link = "https://mock-dashboard"
         mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
         mock_cluster.security = mock_security  # Add mocked security attribute
         mock_list_clusters.return_value = [mock_cluster]
