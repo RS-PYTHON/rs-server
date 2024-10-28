@@ -178,9 +178,10 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
     # No validation needed for landing pages.
     if station_type == "cadip" and access_type != "landing_page":
         full_station = "cadip_" + kwargs["station"]
+    elif station_type == "adgs" and access_type != "landing_page":
+        full_station = "adgs_" + kwargs["station"]
     else:
         full_station = station_type
-
     requested_role = f"rs_{full_station}_{access_type}".upper()
     logger.debug(f"Requested role: {requested_role}")
     try:
