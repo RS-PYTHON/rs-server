@@ -116,8 +116,8 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
 
 def create_session_search_params(selected_config: Union[dict[Any, Any], None]) -> dict[Any, Any]:
     """Used to create and map query values with default values."""
-    required_keys: List[str] = ["station", "SessionId", "Satellite", "PublicationDate", "top", "orderby"]
-    default_values: List[Union[str | None]] = ["cadip", None, None, None, None, None, "-datetime"]
+    required_keys: List[str] = ["station", "SessionId", "Satellite", "PublicationDate", "Retransfer", "top", "orderby"]
+    default_values: List[Union[str | None]] = ["cadip", None, None, None, None, None, None, "-datetime"]
     if not selected_config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cannot find a valid configuration")
     return {key: selected_config["query"].get(key, default) for key, default in zip(required_keys, default_values)}
@@ -395,6 +395,7 @@ def search_cadip_with_session_info(request: Request):
         query_params["SessionId"],
         query_params["Satellite"],
         query_params["PublicationDate"],
+        query_params["Retransfer"],
         query_params["top"],
         True,
     )
@@ -513,6 +514,7 @@ def search_cadip_endpoint(request: Request) -> dict:
         query_params["SessionId"],
         query_params["Satellite"],
         query_params["PublicationDate"],
+        query_params["Retransfer"],
         query_params["top"],
         "collection",
     ):
@@ -575,6 +577,7 @@ def get_cadip_collection(
         query_params["SessionId"],
         query_params["Satellite"],
         query_params["PublicationDate"],
+        query_params["Retransfer"],
         query_params["top"],
         "collection",
     ):
@@ -627,6 +630,7 @@ def get_cadip_collection_items(
         query_params["SessionId"],
         query_params["Satellite"],
         query_params["PublicationDate"],
+        query_params["Retransfer"],
         query_params["top"],
         "items",
     )
@@ -690,6 +694,7 @@ def get_cadip_collection_item_details(
             query_params["SessionId"],
             query_params["Satellite"],
             query_params["PublicationDate"],
+            query_params["Retransfer"],
             query_params["top"],
         ),
     )
@@ -709,6 +714,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Union[str, None],
         WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=False)),
     ],
+    retransfer: Union[bool, None],
     limit: Annotated[
         Union[int, None],
         Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
@@ -747,6 +753,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
             platform=platform,
+            retransfer=retransfer,
             sessions_search=True,
             items_per_page=limit,
         )
@@ -877,7 +884,7 @@ def search_session(
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
 
-    return process_session_search(request, station, id, platform, f"{start_date}/{stop_date}", limit)  # type: ignore
+    return process_session_search(request, station, id, platform, f"{start_date}/{stop_date}", None, limit)  # type: ignore
 
 
 def process_files_search(  # pylint: disable=too-many-locals
