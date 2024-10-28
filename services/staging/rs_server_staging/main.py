@@ -111,9 +111,8 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     tinydb_lock = threading.Lock()
     fastapi_app.extra["db_handler"] = tinydb_lock
     db_location = api.config["manager"]["connection"]
-    if not os.path.isfile(db_location):
-        with open(db_location, "w", encoding="utf-8"):
-            pass
+    # the file used by tinydb should be created automatically by
+    # tinydb
     db = TinyDB(db_location)
     fastapi_app.extra["db_table"] = db.table("jobs")
     fastapi_app.extra["dask_cluster"] = cluster

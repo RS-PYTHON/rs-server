@@ -136,14 +136,14 @@ def update_product(product: dict, href: str) -> dict:
     """Update product with renamed keys and default geometry."""
     product = rename_keys(product)
     product.update(DEFAULT_GEOM)
-    product["href"] = re.sub(r"\(.*?\)", f'({product["id"]})', href)
+    product["href"] = re.sub(r"\([^\)]*\)", f'({product["id"]})', href)
     return product
 
 
 def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, href: str) -> Asset:
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
-    href = re.sub(r"\(.*?\)", f'({product.properties["id"]})', href)
+    href = re.sub(r"\([^\)]*\)", f'({product.properties["id"]})', href)
     asset.pop("id")
     return Asset(href=href, roles=["cadu"], title=product.properties["Name"], **asset)
 
