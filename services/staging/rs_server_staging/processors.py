@@ -396,8 +396,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         """
         Method used to check RSPY catalog if a feature from input_collection is already published.
         """
-        # TODO: either use the /catalog/collections/{self.catalog_collection}/search  endpoint
-        # and set the filter with the item ids to be inserted
+        # Set the filter containing the item ids to be inserted
         # Get each feature id and create /catalog/search argument
         ids = [feature.id for feature in self.item_collection.features]
         stry = []
@@ -411,9 +410,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/search"
 
-        # or get all the items and loop with them to match item ids
+        # Another method is to get all the items and loop with them to match item ids
         # search_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items"
-        # end of TODO
 
         try:
             response = requests.get(
@@ -428,7 +426,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             if not item_collection.get("type") or item_collection.get("type") != "FeatureCollection":
                 self.logger.error("Failed to search catalog, no expected response received")
                 return False
-            # TODO: for debugging only
+            # for debugging only
             for item in item_collection.get("features"):
                 self.logger.debug(f"Session {item.get('id')} has {len(item.get('assets'))} assets")
             # end of TODO
@@ -510,7 +508,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             if not asset_content.href or not asset_content.title:
                 self.logger.error("Missing href or title in asset dictionary")
                 return False
-            # TODO: add the user_collection as main directory
+            # Add the user_collection as main directory, as soon as the authentication will be
+            # implemented in this staging process
             s3_obj_path = f"{self.catalog_collection}/{feature.id.rstrip('/')}/{asset_content.title}"
             self.assets_info.append((asset_content.href, s3_obj_path))
             # update the s3 path, this will be checked in the rs-server-catalog in the
@@ -745,7 +744,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # create the client as well
         client = Client(self.cluster)
 
-        # TODO: This is a temporary fix for the dask cluster settings which does not create a scheduler by default
+        # This is a temporary fix for the dask cluster settings which does not create a scheduler by default
         # This code should be removed as soon as this is fixed in the kubernetes cluster
         try:
             workers = client.scheduler_info()["workers"]

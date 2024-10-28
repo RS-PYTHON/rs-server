@@ -34,6 +34,7 @@ os.environ["RSPY_LOCAL_MODE"] = "1"
 geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
 os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
 os.environ["PYGEOAPI_OPENAPI"] = ""
+TEST_DETAIL = "Test detail"
 
 from rs_server_staging.main import app  # pylint: disable=import-error
 
@@ -57,10 +58,10 @@ def config_():
 def dbj_():
     """Fixture used to mock output of tiny db jobs"""
     return [
-        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": "Test detail"},
-        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": "Test detail"},
-        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
-        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
+        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": TEST_DETAIL},
+        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": TEST_DETAIL},
+        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": TEST_DETAIL},
+        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": TEST_DETAIL},
     ]
 
 

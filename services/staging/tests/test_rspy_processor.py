@@ -159,7 +159,7 @@ class TestStreaming:
         # If s3-streaming raise runtime error, we forward value error? to be checked
         with pytest.raises(
             ValueError,
-            match=r"Dask task failed to stream file from " r"https://example.com/product.zip to s3://bucket/file.zip",
+            match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
             streaming_task("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
 
@@ -454,13 +454,13 @@ class TestStagingCatalog:
         mock_log_job_execution = mocker.patch.object(staging_instance, "log_job_execution", return_value=None)
         mocker.patch("requests.get", return_value=mock_response)
         err_msg = "RE test msg"
-        mock_create_streaming_list = mocker.patch.object(
+        mocker.patch.object(
             staging_instance,
             "create_streaming_list",
             side_effect=RuntimeError(err_msg),
         )
         # Call the method under test
-        result = await staging_instance.check_catalog()
+        await staging_instance.check_catalog()
         mock_log_job_execution.assert_called_once_with(
             ProcessorStatus.FAILED,
             0,
@@ -523,9 +523,11 @@ class TestPrepareStreaming:
         # Create a mock catalog response which is malformed
         catalog_response = {"context": {"returned": 1}, "wrong_key": [{"id": 1}]}
 
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(
+            RuntimeError,
+            match="The 'features' field is missing in the response from the catalog service. ",
+        ):
             staging_instance.create_streaming_list(catalog_response)
-            assert "The 'features' field is missing in the response from the catalog service. " in str(exc_info.value)
 
     def test_prepare_streaming_tasks_all_valid(self, mocker, staging_instance):
         """Test prepare_streaming_tasks when all assets are valid."""
@@ -795,9 +797,8 @@ class TestStagingMainExecution:
             },
         )
         staging_instance.cluster = None
-        with pytest.raises(RuntimeError) as exc_info:
+        with pytest.raises(RuntimeError):
             staging_instance.dask_cluster_connect()
-            assert "Failed to find the needed environment variable" in str(exc_info.value)
 
     def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance):
         """Test to mock managing of successul tasks"""
