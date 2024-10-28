@@ -75,11 +75,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     Mock a pgstac database for the services (adgs, cadip, ...) that use stac_fastapi but don't need a database.
     """
 
-    service: Literal["adgs", "cadip"] | None
-
     # Set by stac-fastapi
     request: Request | None = None
     readwrite: Literal["r", "w"] | None = None
+
+    service: Literal["adgs", "cadip"] | None = None
 
     # adgs or cadip function
     all_collections: Callable = lambda: None
@@ -99,7 +99,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     @asynccontextmanager
     async def get_connection(cls, request: Request, readwrite: Literal["r", "w"] = "r") -> AsyncIterator[Self]:
         """Return a class instance"""
-        yield cls(None, request, readwrite)
+        yield cls(request, readwrite)
 
     @dataclass
     class ReadPool:
@@ -111,7 +111,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         @asynccontextmanager
         async def acquire(self) -> AsyncIterator["MockPgstac"]:
             """Return an outer class instance"""
-            yield self.outer_cls(None)
+            yield self.outer_cls()
 
     @classmethod
     def readpool(cls):
@@ -386,7 +386,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
                 # Some OData search params are hardcoded in the collection configuration.
                 collection = self.select_config(collection_id)
-                odata_hardcoded = collection.get("query", {})
+                odata_hardcoded = collection.get("query") or {}
 
                 # The final params to use come from the hardcoded collection (higher priority),
                 # else from the user.

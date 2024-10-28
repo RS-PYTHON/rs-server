@@ -70,9 +70,9 @@ class MockPgstacAdgs(MockPgstac):
     def __init__(self, request: Request | None = None, readwrite: Literal["r", "w"] | None = None):
         """Constructor"""
         super().__init__(
-            service="adgs",
             request=request,
             readwrite=readwrite,
+            service="adgs",
             all_collections=lambda: read_conf()["collections"],
             select_config=select_config,
             stac_to_odata=stac_to_odata,

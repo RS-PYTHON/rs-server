@@ -73,9 +73,9 @@ class MockPgstacCadip(MockPgstac):
     def __init__(self, request: Request | None = None, readwrite: Literal["r", "w"] | None = None):
         """Constructor"""
         super().__init__(
-            service="cadip",
             request=request,
             readwrite=readwrite,
+            service="cadip",
             all_collections=lambda: read_conf()["collections"],
             select_config=select_config,
             stac_to_odata=stac_to_odata,
@@ -332,7 +332,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     platform: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
     time_interval: Annotated[
         Union[str, None],
-        WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=False)),
+        WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=True)),
     ],
     limit: Annotated[
         Union[int, None],

@@ -14,18 +14,39 @@
 
 """Init a root FastAPI application from all the sub-project routers."""
 
+from typing import Literal
+
+import stac_pydantic
+from fastapi import Request
+from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
+from rs_server_cadip.api.cadip_search import MockPgstacCadip
 from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.fastapi_app import init_app as init_app_with_args
+from rs_server_common.stac_api_common import MockPgstac
+
+
+class MockPgstacTest(MockPgstac):
+    """Implementation of MockPgstac that returns an adgs or cadip instance, depending on the request."""
+
+    def __new__(cls, request: Request | None = None, *args, **kwargs):
+        if request.url.path.startswith(("/adgs", "/auxip")):
+            return MockPgstacAdgs(request, *args, **kwargs)
+        if request.url.path.startswith("/cadip"):
+            return MockPgstacCadip(request, *args, **kwargs)
+        raise RuntimeError(f"Invalid endpoint: {request.url.path}")
 
 
 def init_app():
     """Run all routers for the tests."""
     routers = adgs_routers + cadip_routers
-    return init_app_with_args(
+    app = init_app_with_args(
         api_version="test",
         routers=routers,
         init_db=True,
         pause=3,
         timeout=6,
     )
+    app.state.get_connection = MockPgstacTest.get_connection
+    app.state.readpool = MockPgstacTest.readpool()
+    return app

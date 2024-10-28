@@ -21,7 +21,6 @@ import pytest
 import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi import HTTPException
-from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
@@ -256,9 +255,9 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     if test_oauth2:
         await mock_oauth2(mocker, client, "/auth/login", oauth2_user_id, oauth2_username, oauth2_roles)
 
-    # For each api endpoint (except the technical and oauth2 endpoints)
+    # For each adgs or cadip api endpoint
     for route in fastapi_app.router.routes:
-        if (not isinstance(route, APIRoute)) or (route.path in ("/", "/health")) or route.path.startswith("/auth/"):
+        if not route.path.startswith(("/adgs/", "/auxip/", "/cadip/")):
             continue
 
         # For each method (get, post, ...)

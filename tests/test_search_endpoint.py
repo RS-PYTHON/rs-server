@@ -83,10 +83,10 @@ class TestOperatorDefinedCollections:
     @pytest.mark.parametrize(
         "endpoint, code",
         [
-            ("/cadip/collections/cadip_session_incomplete/items", status.HTTP_400_BAD_REQUEST),
+            ("/cadip/collections/cadip_session_incomplete/items", status.HTTP_422_UNPROCESSABLE_ENTITY),
             ("/cadip/collections/cadip_session_incomplete_no_stop/items", status.HTTP_400_BAD_REQUEST),
-            ("/cadip/collections/cadip_session_incomplete_no_start/items", status.HTTP_400_BAD_REQUEST),
-            ("/auxip/collections/adgs_invalid/items", status.HTTP_400_BAD_REQUEST),
+            ("/cadip/collections/cadip_session_incomplete_no_start/items", status.HTTP_422_UNPROCESSABLE_ENTITY),
+            ("/auxip/collections/adgs_invalid/items", status.HTTP_422_UNPROCESSABLE_ENTITY),
             ("/auxip/collections/adgs_invalid_no_start/items", status.HTTP_400_BAD_REQUEST),
             ("/auxip/collections/adgs_invalid_no_stop/items", status.HTTP_400_BAD_REQUEST),
         ],
