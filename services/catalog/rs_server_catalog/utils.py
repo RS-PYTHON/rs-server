@@ -96,7 +96,7 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
     # Validate that the S3 key was successfully retrieved and has the correct format
     if not is_s3_path(s3_filename):
         raise HTTPException(
-            detail=f"Could not load the S3 key from the asset content {asset}",
+            detail=f"Failed to load the S3 key from the asset content {asset}",
             status_code=HTTP_400_BAD_REQUEST,
         )
 
