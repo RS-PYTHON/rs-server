@@ -430,7 +430,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 #     odata[key] = set(values[0]).intersection(values[1])
 
                 # Overwrite the pagination parameters
-                odata["top"] = limit or odata.get("top") or 20  # default = 20 results per page
+                odata["top"] = odata.get("top") or limit or 20  # default = 20 results per page
 
                 # TODO: what to do with the sortby parameter ?
 

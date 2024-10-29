@@ -270,7 +270,7 @@ async def get_adgs_collection_specific_item(
     try:
         return next(item for item in items.get("features", {}) if item.get("id") == item_id)
     except StopIteration as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP {item_id} not found.") from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP item {item_id!r} not found.") from exc
 
 
 def process_product_search(  # pylint: disable=too-many-locals

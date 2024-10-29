@@ -401,8 +401,11 @@ class TestErrorWhileBuildUpCollection:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint",
-        ["/cadip/search?collections=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
+        "fastapi_app, endpoint",
+        [
+            (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
+        ],
+        indirect=["fastapi_app"],
     )
     def test_cadip_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
@@ -411,8 +414,9 @@ class TestErrorWhileBuildUpCollection:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint",
-        ["/auxip/search?collection=adgs_by_platform", "/auxip/collections/adgs_by_platform"],
+        "fastapi_app, endpoint",
+        [(ROUTER_PREFIX_AUXIP, "/auxip/search?collection=adgs_by_platform")],
+        indirect=["fastapi_app"],
     )
     def test_adgs_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
@@ -463,7 +467,7 @@ class TestFeatureOdataStacMapping:
         response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312")
         # Assert that receive odata response is correctly mapped to stac feature.
         assert response.json() != cadip_feature, "Features doesn't match"
-        assert response.json()["detail"] == "Session S1A_20200105072204051312 not found."
+        assert response.json()["detail"] == "Cadip session 'S1A_20200105072204051312' not found."
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.unit
@@ -474,7 +478,7 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
             "&$expand=Attributes",
             json=adgs_response,
             status=200,
@@ -504,7 +508,8 @@ class TestFeatureOdataStacMapping:
         # Assert that receive odata response is correctly mapped to stac feature.
         assert response.json() != adgs_feature, "Features doesn't match"
         assert (
-            response.json()["detail"] == "AUXIP S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF not found."
+            response.json()["detail"]
+            == "AUXIP item 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF' not found."
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -538,13 +543,13 @@ class TestFeatureOdataStacMapping:
                 "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
                 "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
                 "&$expand=Attributes",
-                {"detail": "AUXIP INVALID_ITEM not found."},
+                {"detail": "AUXIP item 'INVALID_ITEM' not found."},
             ),
             (
                 "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
                 "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
                 "$top=20&$expand=Files",
-                {"detail": "Session INVALID_ITEM not found."},
+                {"detail": "Cadip session 'INVALID_ITEM' not found."},
             ),
         ],
     )
@@ -591,7 +596,8 @@ class TestFeatureCollectionOdataStacMapping:
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items").json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == {"type": "FeatureCollection", "features": [cadip_feature]}, "Features doesn't match"
+        assert response["type"] == "FeatureCollection", "Type doesn't match"
+        assert response["features"] == [cadip_feature], "Features don't match"
 
     @pytest.mark.unit
     @responses.activate
@@ -601,14 +607,15 @@ class TestFeatureCollectionOdataStacMapping:
         responses.add(
             responses.GET,
             "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
             "&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
         response = client.get("/auxip/collections/s2_adgs2_AUX_OBMEMC/items").json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == {"type": "FeatureCollection", "features": [adgs_feature]}, "Features doesn't match"
+        assert response["type"] == "FeatureCollection", "Type doesn't match"
+        assert response["features"] == [adgs_feature], "Features don't match"
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -643,26 +650,33 @@ class TestCollection:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize(
-        "endpoint, odata_request, href",
+        "fastapi_app, endpoint, odata_request, href",
         [
             (
+                ROUTER_PREFIX_CADIP,
                 "/cadip/collections/cadip_session_by_id",
                 "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
                 "$top=20&$expand=Files",
-                {"href": "./simple-item.json", "rel": "item", "title": "S1A_20200105072204051312"},
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/cadip/collections/cadip_session_by_id",
+                },
             ),
             (
+                ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC",
                 "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att"
                 "/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&"
                 "$top=1000&$expand=Attributes",
                 {
-                    "href": "./simple-item.json",
-                    "rel": "item",
-                    "title": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC",
                 },
             ),
         ],
+        indirect=["fastapi_app"],
     )
     def test_valid_collection_request(
         self,
@@ -685,13 +699,12 @@ class TestCollection:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize(
-        "endpoint, odata_request, href, self_href",
+        "endpoint, odata_request, self_href",
         [
             (
                 "/cadip/collections/cadip_session_by_id",
                 "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
                 "$expand=Files",
-                {"href": "./simple-item.json", "rel": "item", "title": "S1A_20200105072204051312"},
                 {
                     "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
                     "Sentinel_Data_Terms_and_Conditions.pdf",
@@ -705,11 +718,6 @@ class TestCollection:
                 "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
                 "&$expand=Attributes",
                 {
-                    "href": "./simple-item.json",
-                    "rel": "item",
-                    "title": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
-                },
-                {
                     "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
                     "Sentinel_Data_Terms_and_Conditions.pdf",
                     "rel": "license",
@@ -718,12 +726,11 @@ class TestCollection:
             ),
         ],
     )
-    def test_valid_empty_collection(self, client, mock_token_validation, endpoint, odata_request, href, self_href):
+    def test_valid_empty_collection(self, client, mock_token_validation, endpoint, odata_request, self_href):
         """Test when response from pickup is empty, the result should still be 200 oK,
-        but with no other links than self references"""
+        and contain a link to the license."""
         mock_token_validation()
         responses.add(responses.GET, odata_request, json={"responses": []}, status=200)
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
-        assert href not in response.json()["links"]
-        assert response.json()["links"][0] == self_href
+        assert self_href in response.json()["links"]
