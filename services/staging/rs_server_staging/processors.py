@@ -505,12 +505,12 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         """
 
         for asset_name, asset_content in feature.assets.items():
-            if not asset_content.href or not asset_content.title:
+            if not asset_content.href or not asset_name:
                 self.logger.error("Missing href or title in asset dictionary")
                 return False
             # Add the user_collection as main directory, as soon as the authentication will be
             # implemented in this staging process
-            s3_obj_path = f"{self.catalog_collection}/{feature.id.rstrip('/')}/{asset_content.title}"
+            s3_obj_path = f"{self.catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
             self.assets_info.append((asset_content.href, s3_obj_path))
             # update the s3 path, this will be checked in the rs-server-catalog in the
             # publishing phase

@@ -11,9 +11,6 @@
         "datetime": "PLACEHOLDER",
         "start_datetime": "PLACEHOLDER",
         "end_datetime": "PLACEHOLDER",
-<<<<<<< Updated upstream
-        "created": "PLACEHOLDER"
-=======
         "created": "PLACEHOLDER",
         "published": "PLACEHOLDER",
         "product:type": "PLACEHOLDER",
@@ -21,15 +18,6 @@
         "processing:facility": "PLACEHOLDER",
         "constellation": "PLACEHOLDER",
         "platform": "PLACEHOLDER"
->>>>>>> Stashed changes
-        "created": "PLACEHOLDER",
-        "published": "PLACEHOLDER",
-        "product:type": "PLACEHOLDER",
-        "processing:datetime": "PLACEHOLDER",
-        "processing:facility": "PLACEHOLDER",
-        "constellation": "PLACEHOLDER",
-        "platform": "PLACEHOLDER",
-        "instruments": ["PLACEHOLDER"]
     },
     "links": [],
     "assets": {

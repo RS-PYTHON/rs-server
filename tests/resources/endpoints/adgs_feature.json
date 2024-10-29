@@ -1,9 +1,9 @@
 {
     "bbox": [
-        -180,
-        -90,
-        180,
-        90
+        -180.0,
+        -90.0,
+        180.0,
+        90.0
     ],
     "type": "Feature",
     "geometry": {
@@ -39,9 +39,6 @@
         "start_datetime": "2021-02-21T00:00:00Z",
         "end_datetime": "2021-02-21T00:00:00Z",
         "platform": "A",
-        "instruments": [
-            "PLACEHOLDER"
-        ],
         "constellation": "SENTINEL-1",
         "auxip:id": "0a88d2a2-6e73-41a1-abce-2cdf29dfcf04",
         "published": "2021-02-14T00:00:00.000Z",
@@ -53,7 +50,7 @@
     "stac_version": "1.0.0",
     "assets": {
         "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF": {
-            "href": "http://testserver/adgs/aux?name=S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+            "href": "http://127.0.0.1:5001/Products(0a88d2a2-6e73-41a1-abce-2cdf29dfcf04)/$value",
             "type": "application/octet-stream",
             "file:size": 2100565,
             "file:checksum": "144921A67fc7EdE75e4818121fcf4d6C",
