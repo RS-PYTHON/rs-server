@@ -46,12 +46,6 @@ from rs_server_catalog.landing_page import (
     add_prefix_link_landing_page,
     manage_landing_page,
 )
-from rs_server_catalog.search import (
-    search_endpoint_get,
-    search_endpoint_in_collection_get,
-    search_endpoint_in_collection_post,
-    search_endpoint_post,
-)
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
