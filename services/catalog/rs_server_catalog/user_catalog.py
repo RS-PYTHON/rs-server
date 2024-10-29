@@ -35,7 +35,6 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
-import fastapi
 from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
@@ -745,7 +744,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 if common_settings.CLUSTER_MODE and self.request_ids["owner_id"] != self.request_ids["user_login"]:
                     detail = {
                         "error": f"The '{self.request_ids['user_login']}' user cannot create a \
-collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' field is not permitted also.",
+collection owned by the '{self.request_ids['owner_id']}' user. Additionally, modifying the 'owner' \
+field is not permitted also.",
                     }
                     logger.error(detail["error"])
                     return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
@@ -921,7 +921,7 @@ collection owned by the '{self.request_ids['owner_id']}' user. Additionally, mod
             if self.request_ids["owner_id"]:
                 content["collections"] = filter_collections(content["collections"], self.request_ids["owner_id"])
                 if len(content["collections"]) == 0:
-                    detail = {"error": f"No collections found."}
+                    detail = {"error": "No collections found."}
                     return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
                 content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "collections")
                 content = self.adapt_links(
@@ -1206,7 +1206,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         if not self.request_ids["user_login"]:
             raise HTTPException(
                 status_code=500,
-                detail=f"user_login is not defined !",
+                detail="user_login is not defined !",
             )
 
         # ---------- Body data recovery

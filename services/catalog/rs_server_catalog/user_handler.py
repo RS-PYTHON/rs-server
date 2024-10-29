@@ -15,7 +15,6 @@
 """This library contains all functions needed for the fastAPI middleware."""
 
 import getpass
-import json
 import os
 import re
 from typing import Tuple
@@ -38,7 +37,7 @@ CATALOG_COLLECTION = "/catalog/collections"
 
 # Regexp for search endpoints
 CATALOG_SEARCH = "/catalog/search"
-CATALOG_SEARCH_QUERY_PARAMS = "/catalog/search\?((?P<owner_id>.+):)?(?P<collection_id>.+)"
+CATALOG_SEARCH_QUERY_PARAMS = "/catalog/search\?((?P<owner_id>.+):)?(?P<collection_id>.+)"  # noqa: W605
 
 
 def get_user(endpoint_user: str | None, apikey_user: str | None):
