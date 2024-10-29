@@ -28,7 +28,7 @@ from rs_server_common.stac_api_common import MockPgstac
 class MockPgstacTest(MockPgstac):
     """Implementation of MockPgstac that returns an adgs or cadip instance, depending on the request."""
 
-    def __new__(cls, *args, request: Request | None = None, **kwargs):
+    def __new__(cls, request: Request | None = None, *args, **kwargs):  # pylint: disable=keyword-arg-before-vararg
         """Init a child implementation."""
         router_prefix = os.getenv("router_prefix")
         endpoint = request.url.path if request else ""
