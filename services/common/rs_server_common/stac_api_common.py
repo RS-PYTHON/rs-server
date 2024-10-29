@@ -393,7 +393,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         first_exception = None
 
         # For each collection to search
-        for collection_id in collection_ids:
+        for collection_id in collection_ids:  # pylint: disable=too-many-nested-blocks
             try:
 
                 # Some OData search params are hardcoded in the collection configuration.
@@ -445,7 +445,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         else:
                             for i, value in enumerate((value1, value2)):
                                 s = {v.strip() for v in value.split(",")}
-                                intersection = intersection.intersection(s) if i else s
+                                intersection = intersection.intersection(s) if i else s  # type: ignore
                             if intersection:
                                 intersection = ", ".join(intersection)
                             if not intersection:
