@@ -21,7 +21,6 @@ import pytest
 import responses
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi import HTTPException
-from fastapi.routing import APIRoute
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
@@ -205,7 +204,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
 
     # Dummy endpoint arguments
     endpoint_params = {
-        "collection": "cadip_valid_auth",
+        "collection": "apik_valid_auth",
         "datetime": None,
         "name": None,
     }
@@ -215,6 +214,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     roles = [
         "rs_adgs_read",
         "rs_adgs_download",
+        "rs_adgs_landing_page",
         "rs_cadip_cadip_read",
         "rs_cadip_cadip_download",
         "rs_cadip_landing_page",
@@ -255,19 +255,20 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     if test_oauth2:
         await mock_oauth2(mocker, client, "/auth/login", oauth2_user_id, oauth2_username, oauth2_roles)
 
-    # For each api endpoint (except the technical and oauth2 endpoints)
+    # For each adgs or cadip api endpoint
     for route in fastapi_app.router.routes:
-        if (not isinstance(route, APIRoute)) or (route.path in ("/", "/health")) or route.path.startswith("/auth/"):
+        if not route.path.startswith(("/adgs/", "/auxip/", "/cadip/")):
             continue
 
         # For each method (get, post, ...)
         for method in route.methods:
-            # For new cadip endpoint, mention a valid-defined collection, either as an argument or in endpoint.
+            # For new cadip/auxip endpoint, mention a valid-defined collection, either as an argument or in endpoint.
+            print(route.path)
             endpoint = route.path.replace(
-                "/cadip/collections/{collection_id}",
-                f"/cadip/collections/{endpoint_params['collection']}",
-            ).format(session_id="session_id", station="cadip")
-
+                "{collection_id}",
+                f"{endpoint_params['collection']}",
+            ).format(session_id="session_id", station="cadip", item_id="any")
+            print(endpoint)
             logger.debug(f"Test the {endpoint!r} [{method}] authentication")
 
             # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.
@@ -329,9 +330,6 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
 @pytest.mark.parametrize(
     "fastapi_app, endpoint, method, stations, query_params, expected_role",
     [
-        [CLUSTER_MODE, "/adgs/aux/search", "GET", ADGS_STATIONS, DATE_PARAM, "rs_adgs_read"],
-        [CLUSTER_MODE, "/adgs/aux", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
-        [CLUSTER_MODE, "/adgs/aux/status", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_download"],
         [CLUSTER_MODE, "/cadip", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
         [CLUSTER_MODE, "/cadip/collections", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
         [
@@ -367,12 +365,35 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             NAME_PARAM,
             "rs_cadip_{station}_download",
         ],
+        [CLUSTER_MODE, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_landing_page"],
+        [CLUSTER_MODE, "/auxip/collections", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_landing_page"],
+        [
+            CLUSTER_MODE,
+            "/auxip/collections/{collection_id}",
+            "GET",
+            ADGS_STATIONS,
+            DATE_PARAM,
+            "rs_adgs_read",
+        ],
+        [
+            CLUSTER_MODE,
+            "/auxip/collections/{collection_id}/items",
+            "GET",
+            ADGS_STATIONS,
+            DATE_PARAM,
+            "rs_adgs_read",
+        ],
+        [
+            CLUSTER_MODE,
+            "/auxip/collections/{collection_id}/items/specific_sid",
+            "GET",
+            ADGS_STATIONS,
+            DATE_PARAM,
+            "rs_adgs_read",
+        ],
     ],
     indirect=["fastapi_app"],
     ids=[
-        "/adgs/aux/search",
-        "/adgs/aux",
-        "/adgs/aux/status",
         "/cadip",
         "/cadip/collections",
         "/cadip/collections/{collection_id}",
@@ -380,6 +401,11 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         "/cadip/collections/{collection_id}/items/specific_sid",
         "/cadip/{station}/cadu",
         "/cadip/{station}/cadu/status",
+        "/auxip",
+        "/auxip/collections",
+        "/auxip/collections/{collection_id}",
+        "/auxip/collections/{collection_id}/items",
+        "/auxip/collections/{collection_id}/items/specific_sid",
     ],
 )
 async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-locals

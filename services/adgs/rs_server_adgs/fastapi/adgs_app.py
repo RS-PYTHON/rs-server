@@ -20,8 +20,13 @@
 # flake8: noqa
 import rs_server_adgs.adgs_download_status  # DON'T REMOVE
 from rs_server_adgs import __version__
+from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_common.fastapi_app import init_app
 
 # Init the FastAPI application with the adgs routers.
-app = init_app(__version__, adgs_routers, init_db=True)
+app = init_app(__version__, adgs_routers, init_db=True, router_prefix="/auxip")
+
+# Set properties for the adgs service
+app.state.get_connection = MockPgstacAdgs.get_connection
+app.state.readpool = MockPgstacAdgs.readpool()

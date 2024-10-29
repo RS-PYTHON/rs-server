@@ -20,10 +20,12 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
+import json
 import os
 import os.path as osp
 import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
+from functools import lru_cache
 from pathlib import Path
 
 # We are in local mode (no cluster).
@@ -53,7 +55,9 @@ from tests.app import init_app
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 CADIP_SEARCH = RESOURCES_FOLDER / "endpoints" / "cadip_search.yaml"
+ADGS_SEARCH = RESOURCES_FOLDER / "endpoints" / "adgs_search.yaml"
 os.environ["RSPY_CADIP_SEARCH_CONFIG"] = str(CADIP_SEARCH.absolute())
+os.environ["RSPY_ADGS_SEARCH_CONFIG"] = str(ADGS_SEARCH.absolute())
 
 TOKEN_USERNAME = os.getenv("RSPY_TOKEN_USERNAME", "test")
 TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
@@ -177,6 +181,13 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
     except (AttributeError, KeyError):
         cluster_mode = False
 
+    # Get the router prefix, if any
+    try:
+        router_prefix = request.param.get("router_prefix", "")
+        monkeypatch.setenv("router_prefix", router_prefix)
+    except AttributeError:
+        router_prefix = ""
+
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
@@ -200,7 +211,7 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
 
     # Run all routers for the pytests
     with ExitStack():
-        yield init_app()
+        yield init_app(router_prefix)
 
 
 @pytest.fixture(name="client")
@@ -521,3 +532,39 @@ def validate_token(mocker):
         return service  # If needed, return the value to be used later in the test
 
     return _validate_token
+
+
+@pytest.fixture(name="cadip_feature")
+@lru_cache(maxsize=1)
+def cadip_stac_feature():
+    """Fixture used to verify the output of rs-server translation of cadip_pickup_response fixture."""
+    cadip_feature_json = RESOURCES_FOLDER / "endpoints" / "cadip_feature.json"
+    with open(cadip_feature_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="cadip_response")
+@lru_cache(maxsize=1)
+def cadip_pickup_response():
+    """Fixture used to mock the response from CADIP data pickup-point."""
+    cadip_response_json = RESOURCES_FOLDER / "endpoints" / "cadip_pickup_response.json"
+    with open(cadip_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="adgs_feature")
+@lru_cache(maxsize=1)
+def adgs_stac_feature():
+    """Fixture used to verify the output of rs-server translation of adgs_pickup_response fixture."""
+    adgs_feature_json = RESOURCES_FOLDER / "endpoints" / "adgs_feature.json"
+    with open(adgs_feature_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="adgs_response")
+@lru_cache(maxsize=1)
+def adgs_pickup_response():
+    """Fixture used to mock the response from ADGS data pickup-point."""
+    adgs_response_json = RESOURCES_FOLDER / "endpoints" / "adgs_pickup_response.json"
+    with open(adgs_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())

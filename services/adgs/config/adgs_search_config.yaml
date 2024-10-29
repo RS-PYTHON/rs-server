@@ -13,13 +13,13 @@
 # limitations under the License.
 
 collections:
-  - id: cadip_sessions_id
-    station: cadip
+  - id: s1_adgs_OPER_AUX_ECMWFD_PDMC
+    station: adgs
     query:
-      top: 20
+      productType: OPER_AUX_ECMWFD_PDMC
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: "'cadip' station"
-    description: "'cadip' station"
+    title: "'OPER_AUX_ECMWFD_PDMC' products"
+    description: "'OPER_AUX_ECMWFD_PDMC' products"
     license: other
     extent:
       spatial:
@@ -41,14 +41,13 @@ collections:
           - host
         url: 'https://home.rs-python.eu/'
 
-  - id: cadip_s1A
-    station: cadip
+  - id: s2_adgs2_AUX_OBMEMC
+    station: adgs2
     query:
-      Satellite: S1A, S1B
-      top: 20
+      productType: AUX_OBMEMC
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: "'cadip' station - S1A"
-    description: "'cadip' station - S1A"
+    title: "'AUX_OBMEMC' products"
+    description: "'AUX_OBMEMC' products"
     license: other
     extent:
       spatial:
@@ -70,79 +69,19 @@ collections:
           - host
         url: 'https://home.rs-python.eu/'
 
-  - id: mti_s1A
-    station: mti
-    query:
-      Satellite: S1A
-      top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: "'mti' station - S1A"
-    description: "'mti' station - S1A"
-    license: other
-    extent:
-      spatial:
-        bbox: [ [ -180, -82.85, 180, 82.82 ] ]
-      temporal:
-        interval: [ [ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ] ]
-    links:
-      - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
-        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
-    providers:
-      - name: 'European Union/ESA/Copernicus'
-        roles:
-          - producer
-          - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
-      - name: 'Reference System'
-        roles:
-          - host
-        url: 'https://home.rs-python.eu/'
-
-  - id: sgs_s1A
-    station: sgs
-    query:
-      Satellite: S1A
-      top: 20
-    stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: "'sgs' station - S1A"
-    description: "'sgs' station - S1A"
-    license: other
-    extent:
-      spatial:
-        bbox: [ [ -180, -82.85, 180, 82.82 ] ]
-      temporal:
-        interval: [ [ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ] ]
-    links:
-      - rel: license
-        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
-        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'
-    providers:
-      - name: 'European Union/ESA/Copernicus'
-        roles:
-          - producer
-          - licensor
-        url: 'https://sentiwiki.copernicus.eu/web/s1-mission'
-      - name: 'Reference System'
-        roles:
-          - host
-        url: 'https://home.rs-python.eu/'
-
-  - id: cadip_s1a_interval
-    station: cadip
+  - id: aux_interval
+    station: adgs
     query:
       PublicationDate: "2020-01-01T00:00:00Z/2024-01-01T00:00:00Z"
-      Satellite: S1A
-      top: 20
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: "'cadip' station - S1A 2020/2023"
-    description: "'cadip' station - S1A 2020/2023"
+    title: "Products from 2020/2023"
+    description: "Products from 2020/2023"
     license: other
     extent:
       spatial:
         bbox: [[ -180, -82.85, 180, 82.82 ]]
       temporal:
-        interval: [[ '2020-01-01T00:00:00Z', '2024-01-01T00:00:00Z' ]]
+        interval: [[ '2020-01-01T00:00:00', '2024-01-01T00:00:00Z' ]]
     links:
       - rel: license
         href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'

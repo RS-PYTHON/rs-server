@@ -22,23 +22,39 @@ import json
 import os.path as osp
 import traceback
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import requests
 import sqlalchemy
-from fastapi import APIRouter, HTTPException, Query, Request, status
+import stac_pydantic
+from fastapi import APIRouter, HTTPException
+from fastapi import Path as FPath
+from fastapi import Query, Request, status
+from fastapi.responses import RedirectResponse
 from rs_server_adgs import adgs_tags
 from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
+from rs_server_adgs.adgs_utils import (
+    auxip_map_mission,
+    read_conf,
+    select_config,
+    serialize_adgs_asset,
+    stac_to_odata,
+)
+from rs_server_common.authentication import authentication
 from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
+from rs_server_common.stac_api_common import (
+    MockPgstac,
+    create_stac_collection,
+    handle_exceptions,
+    sort_feature_collection,
+)
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
-    create_stac_collection,
-    sort_feature_collection,
     validate_inputs_format,
     write_search_products_to_db,
 )
@@ -48,7 +64,288 @@ router = APIRouter(tags=adgs_tags)
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
-@router.get("/adgs/aux/search")
+class MockPgstacAdgs(MockPgstac):
+    """Adgs implementation of MockPgstac"""
+
+    def __init__(self, request: Request | None = None, readwrite: Literal["r", "w"] | None = None):
+        """Constructor"""
+        super().__init__(
+            request=request,
+            readwrite=readwrite,
+            service="adgs",
+            all_collections=lambda: read_conf()["collections"],
+            select_config=select_config,
+            stac_to_odata=stac_to_odata,
+            map_mission=auxip_map_mission,
+        )
+
+    @handle_exceptions
+    async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
+        """Do the search for the given collection and OData parameters."""
+        return process_product_search(
+            self.request,
+            odata_params.get("productType"),
+            odata_params.get("PublicationDate"),
+            odata_params.get("top", None),
+            attr_platform_short_name=odata_params.get("platformShortName"),
+            attr_serial_identif=odata_params.get("platformSerialIdentifier"),
+        )
+
+
+def auth_validation(request: Request, collection_id: str, access_type: str):
+    """
+    Check if the user KeyCloak roles contain the right for this specific AUXIP collection and access type.
+
+    Args:
+        collection_id (str): used to find the AUXIP station ("ADGS1, ADGS2")
+        from the RSPY_ADGS_SEARCH_CONFIG config yaml file.
+        access_type (str): The type of access, such as "download" or "read".
+    """
+
+    # Find the collection which id == the input collection_id
+    collection = select_config(collection_id)
+    if not collection:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown AUXIP collection: {collection_id!r}")
+    station = collection["station"]
+
+    # Call the authentication function from the authentication module
+    authentication.auth_validation("adgs", access_type, request=request, station=station)
+
+
+@router.get("/", include_in_schema=False)
+async def home_endpoint():
+    """Redirect to the landing page."""
+    return RedirectResponse("/auxip")
+
+
+@router.get("/auxip")
+async def get_root_catalog(request: Request):
+    """
+    Retrieve the RSPY ADGS Search catalog landing page.
+
+    This endpoint generates a STAC (SpatioTemporal Asset Catalog) Catalog object that serves as the landing
+    page for the RSPY ADGS service. The catalog includes basic metadata about the service and links to
+    available collections.
+
+    The resulting catalog contains:
+    - `id`: A unique identifier for the catalog, generated as a UUID.
+    - `description`: A brief description of the catalog.
+    - `title`: The title of the catalog.
+    - `stac_version`: The version of the STAC specification to which the catalog conforms.
+    - `conformsTo`: A list of STAC and OGC API specifications that the catalog conforms to.
+    - `links`: A link to the `/adgs/collections` endpoint where users can find available collections.
+
+    The `stac_version` is set to "1.0.0", and the `conformsTo` field lists the relevant STAC and OGC API
+    specifications that the catalog adheres to. A link to the collections endpoint is added to the catalog's
+    `links` field, allowing users to discover available collections in the ADGS service.
+
+    Parameters:
+    - request: The HTTP request object which includes details about the incoming request.
+
+    Returns:
+    - dict: A dictionary representation of the STAC catalog, including metadata and links.
+    """
+    logger.info(f"Starting {request.url.path}")
+    authentication.auth_validation("adgs", "landing_page", request=request)
+    return await request.app.state.pgstac_client.landing_page(request=request)
+
+
+@router.get("/auxip/conformance")
+async def get_conformance(request: Request):
+    """Return the STAC/OGC conformance classes implemented by this server."""
+    authentication.auth_validation("adgs", "landing_page", request=request)
+    return await request.app.state.pgstac_client.conformance()
+
+
+@router.get("/auxip/collections")
+@handle_exceptions
+async def get_allowed_adgs_collections(request: Request):
+    """Return the ADGS collections to which the user has access to."""
+    logger.info(f"Starting {request.url.path}")
+    authentication.auth_validation("adgs", "landing_page", request=request)
+    return await request.app.state.pgstac_client.all_collections(request=request)
+
+
+@router.get("/auxip/collections/{collection_id}")
+@handle_exceptions
+async def get_adgs_collection(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
+) -> list[dict] | dict:
+    """Return a specific ADGS collection."""
+    logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
+    return await request.app.state.pgstac_client.get_collection(collection_id, request)
+
+
+@router.get("/auxip/collections/{collection_id}/items")
+@handle_exceptions
+async def get_adgs_collection_items(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
+) -> list[dict] | dict:
+    """
+    Retrieve a list of items from a specified AUXIP collection.
+
+    This endpoint returns a collection of items associated with the given AUXIP
+    collection ID. It utilizes the collection ID to validate access and fetches
+    the items based on defined query parameters.
+
+    Args:
+    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+            (e.g., 'ins_s1'). Maximum length of 100 characters.
+
+    Returns:
+    - list[dict]: A FeatureCollection of items belonging to the specified collection, or an
+                    error message if the collection is not found.
+
+    Raises:
+    - HTTPException: If the authentication fails, or if there are issues with the
+                    collection ID provided.
+    """
+    logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
+    return await request.app.state.pgstac_client.item_collection(collection_id, request)
+
+
+@router.get("/auxip/collections/{collection_id}/items/{item_id}")
+@handle_exceptions
+async def get_adgs_collection_specific_item(
+    request: Request,
+    collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
+    item_id: Annotated[
+        str,
+        FPath(
+            title="AUXIP Id",
+            max_length=100,
+            description="E.G. S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+        ),
+    ],
+) -> list[dict] | dict:
+    """
+    Retrieve a specific item from a specified AUXIP collection.
+
+    This endpoint fetches details of a specific item within the given AUXIP collection
+    by its unique item ID. It utilizes the provided collection ID and item ID to
+    validate access and return item information.
+
+    Args:
+    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+            (e.g., 'ins_s1'). Maximum length of 100 characters.
+    - item_id (str): AUXIP item ID. Must be a valid item identifier
+            (e.g., 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF').
+            Maximum length of 100 characters.
+
+    Returns:
+    - dict: A JSON object containing details of the specified item, or an error
+            message if the item is not found.
+
+    Raises:
+    - HTTPException: If the authentication fails, or if the specified item is
+                    not found in the collection.
+
+    Example:
+    A successful response will return: \n
+        {
+            "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+            "type": "Feature",
+            "properties": {
+                ...  # Detailed properties of the item
+            },
+            "geometry": {
+                ...  # Geometry details of the item
+            },
+            "links": [
+                ...  # Links associated with the item
+            ]
+        }
+
+    """
+    logger.info(f"Starting {request.url.path}")
+    auth_validation(request, collection_id, "read")
+
+    # Search all the collection items then search manually for the right one.
+    # TODO: allow the search function to take the item ID instead.
+    items = await request.app.state.pgstac_client.item_collection(collection_id, request)
+    try:
+        return next(item for item in items.get("features", {}) if item.get("id") == item_id)
+    except StopIteration as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP item {item_id!r} not found.") from exc
+
+
+def process_product_search(  # pylint: disable=too-many-locals
+    request,
+    product_type,
+    publication_date,
+    limit,
+    **kwargs,
+) -> stac_pydantic.ItemCollection:
+    """
+    This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
+    writes the search results to the database, and generates a STAC Feature Collection from the products.
+
+    Args:
+        request (Request): The request object (unused).
+        datetime (str): Time interval in ISO 8601 format.
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+
+    Returns:
+        list[dict] | dict: A list of STAC Feature Collections or an error message.
+                           If no products are found in the specified time range, returns an empty list.
+
+    Raises:
+        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
+        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
+        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
+        HTTPException (fastapi.exceptions): If there is a connection error to the station.
+        HTTPException (fastapi.exceptions): If there is a general failure during the process.
+    """
+    set_eodag_auth_token("adgs", "auxip")
+    limit = limit if limit else 1000
+    (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
+    try:
+        products = init_adgs_provider("adgs").search(
+            TimeRange(start_date, stop_date),
+            attr_ptype=product_type,
+            items_per_page=limit,
+            **kwargs,
+        )
+        feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
+        stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
+        with (
+            open(feature_template_path, encoding="utf-8") as template,
+            open(stac_mapper_path, encoding="utf-8") as stac_map,
+        ):
+            feature_template = json.loads(template.read())
+            stac_mapper = json.loads(stac_map.read())
+            collection = create_stac_collection(products, feature_template, stac_mapper)
+            return serialize_adgs_asset(collection, request)
+    # pylint: disable=duplicate-code
+    except CreateProviderFailed as exception:
+        logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Bad station identifier: {exception}",
+        ) from exception
+    except requests.exceptions.ConnectionError as exception:
+        logger.error("Failed to connect to station!")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Station ADGS connection error: {exception}",
+        ) from exception
+
+    except Exception as exception:  # pylint: disable=broad-exception-caught
+        logger.error(f"General failure! {exception}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"General failure: {exception}",
+        ) from exception
+
+
+######################################
+# DEPRECATED CODE, WILL BE REMOVED !!!
+######################################
+@router.get("/adgs/aux/search", deprecated=True)
 @auth_validator(station="adgs", access_type="read")
 def search_products(  # pylint: disable=too-many-locals
     request: Request,  # pylint: disable=unused-argument

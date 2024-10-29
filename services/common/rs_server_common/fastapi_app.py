@@ -18,7 +18,6 @@ import asyncio
 import typing
 from contextlib import asynccontextmanager
 from os import environ as env
-from typing import Callable
 
 import httpx
 import sqlalchemy
@@ -36,6 +35,19 @@ from rs_server_common.db.database import sessionmanager
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
+from stac_fastapi.api.app import StacApi
+from stac_fastapi.api.models import create_get_request_model, create_post_request_model
+from stac_fastapi.extensions.core import (
+    FieldsExtension,
+    FilterExtension,
+    SortExtension,
+    TokenPaginationExtension,
+)
+from stac_fastapi.pgstac.core import CoreCrudClient
+from stac_fastapi.pgstac.extensions import QueryExtension
+from stac_fastapi.pgstac.extensions.filter import FiltersClient
+from stac_fastapi.pgstac.types.search import PgstacSearch
+from starlette.datastructures import State
 
 # Add technical endpoints specific to the main application
 technical_router = APIRouter(tags=["Technical"])
@@ -53,14 +65,13 @@ async def health() -> HealthSchema:
 
 
 @typing.no_type_check
-def init_app(  # pylint: disable=too-many-locals
+def init_app(  # pylint: disable=too-many-locals, too-many-statements
     api_version: str,
     routers: list[APIRouter],
     init_db: bool = True,
     pause: int = 3,
     timeout: int = None,
-    startup_events: list[Callable] = None,
-    shutdown_events: list[Callable] = None,
+    router_prefix: str = "",
 ):  # pylint: disable=too-many-arguments
     """
     Init the FastAPI application.
@@ -73,8 +84,7 @@ def init_app(  # pylint: disable=too-many-locals
         init_db (bool): should we init the database session ?
         timeout (int): timeout in seconds to wait for the database connection.
         pause (int): pause in seconds to wait for the database connection.
-        startup_events (list[Callable]): list of functions that should be run before the application starts
-        shutdown_events (list[Callable]): list of functions that should be run when the application is shutting down
+        router_prefix (str): used by stac_fastapi
     """
 
     logger = Logging.default(__name__)
@@ -111,19 +121,11 @@ def init_app(  # pylint: disable=too-many-locals
         # Init objects for dependency injection
         settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
-        # Call additional startup events
-        for event in app.state.startup_events:
-            event()
-
         yield
 
         ############
         # SHUTDOWN #
         ############
-
-        # Call additional shutdown events
-        for event in app.state.shutdown_events:
-            event()
 
         # Close objects for dependency injection
         await settings.del_http_client()
@@ -153,8 +155,41 @@ def init_app(  # pylint: disable=too-many-locals
     app.state.init_db = init_db
     app.state.pg_pause = pause
     app.state.pg_timeout = timeout
-    app.state.startup_events = startup_events or []
-    app.state.shutdown_events = shutdown_events or []
+
+    # Init a pgstac client for adgs and cadip.
+    # TODO: remove this when adgs and cadip switch to a stac_fastapi application.
+    # Example taken from: https://github.com/stac-utils/stac-fastapi-pgstac/blob/main/tests/api/test_api.py
+    app.state.router_prefix = router_prefix  # NOTE: maybe we should keep this one
+    extensions = [  # no transactions because we don't update the database
+        # TransactionExtension(client=TransactionsClient(), settings=api_settings),
+        QueryExtension(),
+        SortExtension(),
+        FieldsExtension(),
+        TokenPaginationExtension(),
+        FilterExtension(client=FiltersClient()),
+        # BulkTransactionExtension(client=BulkTransactionsClient()),
+    ]
+    search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
+    app.state.pgstac_client = CoreCrudClient(post_request_model=search_post_request_model)
+
+    # TODO: remove this when adgs and cadip switch to a stac_fastapi application.
+    app.state.pgstac_client.extensions = extensions
+    for ext in extensions:
+        ext.register(app)
+    app.state.pgstac_client.title = app.title
+    app.state.pgstac_client.description = app.description
+    # Implement the /search endpoints by simulating a StacApi object, TODO remove this also
+    app.settings = State()
+    app.settings.enable_response_models = False
+    app.settings.use_api_hydrate = False
+    app.state.settings = app.settings
+    app.client = app.state.pgstac_client
+    app.search_get_request_model = create_get_request_model(extensions)
+    app.search_post_request_model = search_post_request_model
+    app.router.prefix = router_prefix  # TODO should be used by other endpoints ?
+    StacApi.register_get_search(app)
+    StacApi.register_post_search(app)
+    app.router.prefix = ""
 
     dependencies = []
     if settings.CLUSTER_MODE:
