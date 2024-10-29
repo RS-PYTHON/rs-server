@@ -534,8 +534,8 @@ class TestPrepareStreaming:
         feature = mocker.Mock()
         feature.id = "feature_id"
         feature.assets = {
-            "asset1": mocker.Mock(href="https://example.com/asset1", title="asset1_title"),
-            "asset2": mocker.Mock(href="https://example.com/asset2", title="asset2_title"),
+            "asset1": mocker.Mock(href="https://example.com/asset1"),
+            "asset2": mocker.Mock(href="https://example.com/asset2"),
         }
 
         result = staging_instance.prepare_streaming_tasks(feature)
@@ -544,19 +544,19 @@ class TestPrepareStreaming:
         assert result is True
         # Assert that assets_info has been populated correctly
         assert staging_instance.assets_info == [
-            ("https://example.com/asset1", f"{staging_instance.catalog_collection}/{feature.id}/asset1_title"),
-            ("https://example.com/asset2", f"{staging_instance.catalog_collection}/{feature.id}/asset2_title"),
+            ("https://example.com/asset1", f"{staging_instance.catalog_collection}/{feature.id}/asset1"),
+            ("https://example.com/asset2", f"{staging_instance.catalog_collection}/{feature.id}/asset2"),
         ]
         # Assert that asset hrefs are updated correctly
         assert (
             feature.assets["asset1"].href
             == f"s3://rtmpop/{staging_instance.catalog_collection}/{feature.id}/\
-asset1_title"
+asset1"
         )
         assert (
             feature.assets["asset2"].href
             == f"s3://rtmpop/{staging_instance.catalog_collection}/{feature.id}/\
-asset2_title"
+asset2"
         )
 
     def test_prepare_streaming_tasks_one_invalid(self, mocker, staging_instance):
