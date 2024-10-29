@@ -36,6 +36,7 @@ from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
+from stac_fastapi.api.middleware import ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (
     FieldsExtension,
@@ -219,6 +220,9 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     # Add routers to the FastAPI app
     app.include_router(need_auth_router)
     app.include_router(technical_router)
+
+    # This middleware allows to have consistant http/https protocol in stac links
+    app.add_middleware(ProxyHeaderMiddleware)
 
     # Add CORS requests from the STAC browser
     if settings.STAC_BROWSER_URLS:
