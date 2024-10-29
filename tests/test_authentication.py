@@ -212,8 +212,8 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     # The user, authenticated with oauth2, can also use an apikey created by another user.
     # In this case, the apikey authentication has higher priority and should be used.
     roles = [
-        "rs_adgs_read",
-        "rs_adgs_download",
+        "rs_adgs_adgs_read",
+        "rs_adgs_adgs_download",
         "rs_adgs_landing_page",
         "rs_cadip_cadip_read",
         "rs_cadip_cadip_download",
@@ -319,7 +319,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
 
 UNKNOWN_CADIP_STATION = "unknown-cadip-station"
 
-ADGS_STATIONS = ["adgs"]
+ADGS_STATIONS = ["adgs", "adgs2"]
 CADIP_STATIONS = ["ins", "mps", "mti", "nsg", "sgs", "cadip", UNKNOWN_CADIP_STATION]
 
 DATE_PARAM = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
@@ -373,7 +373,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_read",
+            "rs_adgs_{station}_read",
         ],
         [
             CLUSTER_MODE,
@@ -381,7 +381,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_read",
+            "rs_adgs_{station}_read",
         ],
         [
             CLUSTER_MODE,
@@ -389,23 +389,23 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_read",
+            "rs_adgs_{station}_read",
         ],
     ],
     indirect=["fastapi_app"],
     ids=[
         "/cadip",
-        "/cadip/collections",
-        "/cadip/collections/{collection_id}",
-        "/cadip/collections/{collection_id}/items",
-        "/cadip/collections/{collection_id}/items/specific_sid",
+        "cadip_collection",
+        "cadip_sp./ecific_collection",
+        "cadip_items",
+        "cadip_specific_item",
         "/cadip/{station}/cadu",
         "/cadip/{station}/cadu/status",
         "/auxip",
-        "/auxip/collections",
-        "/auxip/collections/{collection_id}",
-        "/auxip/collections/{collection_id}/items",
-        "/auxip/collections/{collection_id}/items/specific_sid",
+        "auxip_collections",
+        "auxip_specific_collection",
+        "auxip_items",
+        "auxip_specific_item",
     ],
 )
 async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-locals
