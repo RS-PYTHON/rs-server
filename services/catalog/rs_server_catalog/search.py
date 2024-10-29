@@ -36,7 +36,7 @@ def search_endpoint_get(query: dict[str, list[str]], request: Request) -> Union[
         Union[str, str, Request]: Returns the owner_id, the collection_id,
         and the updated request.
     """
-    # We have to get the owner_id in the query so we can update de "collections" field.
+    # We have to get the owner_id in the query so we can update the field "collections".
     qs_filter = query["filter"][0]
     filters = parse_ecql(qs_filter)
     owner_id = find_owner_id(filters)

@@ -290,6 +290,9 @@ def a_feature(owner_id: str, id_: str, in_collection: str) -> Feature:
 def feature_toto_s1_l1_0_fixture() -> Feature:  # pylint: disable=missing-function-docstring
     return a_feature("toto", "fe916452-ba6f-4631-9154-c249924a122d", "S1_L1")
 
+@pytest.fixture(scope="session", name="feature_toto_s2_l3_0")
+def feature_toto_s2_l3_0_fixture() -> Feature:  # pylint: disable=missing-function-docstring
+    return a_feature("toto", "fe916452-ba6f-4631-9154-c249924a122d", "S2_L3")
 
 @pytest.fixture(scope="session", name="feature_toto_s1_l1_1")
 def feature_toto_s1_l1_1_fixture() -> Feature:  # pylint: disable=missing-function-docstring
@@ -458,6 +461,7 @@ def setup_database(
     pyteam_s1_l1,
     feature_toto_s1_l1_0,
     feature_toto_s1_l1_1,
+    feature_toto_s2_l3_0,
     feature_titi_s2_l1_0,
     feature_pyteam_s1_l1_0,
 ):  # pylint: disable=missing-function-docstring, too-many-arguments
@@ -482,5 +486,6 @@ def setup_database(
     add_collection(client, pyteam_s1_l1)
     add_feature(client, feature_toto_s1_l1_0)
     add_feature(client, feature_toto_s1_l1_1)
+    add_feature(client, feature_toto_s2_l3_0)
     add_feature(client, feature_titi_s2_l1_0)
     add_feature(client, feature_pyteam_s1_l1_0)

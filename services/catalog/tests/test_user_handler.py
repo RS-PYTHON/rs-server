@@ -15,7 +15,7 @@
 """Unit tests for user_handler module."""
 
 import getpass
-
+from starlette.requests import Request
 import pytest
 from rs_server_catalog.user_handler import (
     add_user_prefix,
@@ -26,7 +26,6 @@ from rs_server_catalog.user_handler import (
     reroute_url,
 )
 
-
 @pytest.fixture(name="collection_toto_1")
 def collection_toto_1_fixture() -> dict:
     """Create a collection for testing."""
@@ -35,6 +34,16 @@ def collection_toto_1_fixture() -> dict:
         "id": "toto_S1_L1",
         "count": "15",
     }
+
+@pytest.fixture(name="request_ids")
+def request_id_example() -> dict:
+    return {
+                "auth_roles": "", 
+                "user_login": "", 
+                "owner_id": "", 
+                "collection_id": [], 
+                "item_id": ""
+            }
 
 
 @pytest.fixture(name="collection_toto_1_output")
@@ -116,73 +125,205 @@ def test_get_user():
 class TestRemovePrefix:  # pylint: disable=missing-function-docstring
     """This Class contains unit tests for the function remove_user_prefix."""
 
-    def test_root_url(self):
-        assert reroute_url("/", "GET")[0] == "/"
+    def test_root_url(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == "/"
 
-    def test_item_id(self):
-        result = reroute_url("/catalog/collections/Toto:joplin/items/fe916452-ba6f-4631-9154-c249924a122d", "GET")
-        assert result[0] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
-        assert result[1] == {
+    def test_item_id(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/collections/Toto:joplin/items/fe916452-ba6f-4631-9154-c249924a122d",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
+        valid_request_ids= {
             "owner_id": "Toto",
-            "collection_id": "joplin",
+            "collection_id": ["joplin"],
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }
+        assert all(request_ids.get(key, None) == val for key, val
+                                in valid_request_ids.items())
 
     # NOTE: The following function is the test for local mode, when there is no apikey and the ownerId
     # is missing from the endpoint. The tests when the apikey exists (thus in cluster mode) are implemented
     # in test_authetication_catalog.py
-    def test_item_id_without_user(self):
-        result = reroute_url("/catalog/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d", "GET")
-        assert result[0] == f"/collections/{getpass.getuser()}_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
-        assert result[1] == {
+    def test_item_id_without_user(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == f"/collections/{getpass.getuser()}_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
+        valid_request_ids = {
             "owner_id": getpass.getuser(),
-            "collection_id": "joplin",
+            "collection_id": ["joplin"],
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }
+        assert all(request_ids.get(key, None) == val for key, val
+                                in valid_request_ids.items())
+        
 
-    def test_fails_if_unknown_endpoint(self):
-        result = reroute_url("/not/found", "GET")
-        assert result == ("", {})
+    def test_fails_if_unknown_endpoint(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/not/found",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )        
+        valid_request_ids = request_ids.copy()
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == ""
+        assert request_ids == valid_request_ids
 
-    def test_work_with_ping_endpoinst(self):
-        assert reroute_url("/_mgmt/ping", "GET")[0] == ("/_mgmt/ping")
+    def test_work_with_ping_endpoinst(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/_mgmt/ping",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == ("/_mgmt/ping")
 
-    def test_reroute_oauth2(self):
-        assert reroute_url("/catalog/docs/oauth2-redirect", "GET")[0] == "/docs/oauth2-redirect"
+    def test_reroute_oauth2(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/docs/oauth2-redirect",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == "/docs/oauth2-redirect"
 
-    def test_reroute_queryables(self):
-        assert reroute_url("/catalog/queryables", "GET")[0] == "/queryables"
+    def test_reroute_queryables(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/queryables",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == "/queryables"
 
-    def test_search_collection(self):
-        res = reroute_url("/catalog/collections/toto:S1_L1/search", "GET")
-        assert res[0] == "/search"
-        assert res[1] == {
+    def test_search_collection(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/collections/toto:S1_L1/search",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == "/collections/toto:S1_L1/search"
+        # Check that the valid dictionary is a subset of the output dictionary
+        valid_request_ids = {
             "owner_id": "toto",
-            "collection_id": "S1_L1",
+            "collection_id": ["toto_S1_L1"],
             "item_id": "",
         }
+        assert all(request_ids.get(key, None) == val for key, val
+                                in valid_request_ids.items())
 
-    def test_search_collection_with_implicit_owner(self):
-        res = reroute_url("/catalog/collections/S1_L1/search", "GET")
-        assert res[0] == "/search"
+    def test_search_collection_with_implicit_owner(self, request_ids):        
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/collections/S1_L1/search",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == "/collections/S1_L1/search"
 
-    def test_reroute_collections_queryables(self):
-        res = reroute_url("/catalog/collections/toto:S1_L1/queryables", "GET")
-        assert res[0] == "/collections/toto_S1_L1/queryables"
-        assert res[1] == {
+    def test_reroute_collections_queryables(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/collections/toto:S1_L1/queryables",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        
+        assert request.scope["path"] == "/collections/toto_S1_L1/queryables"
+        # Check that the valid dictionary is a subset of the output dictionary
+        valid_request_ids = {
             "owner_id": "toto",
-            "collection_id": "S1_L1",
+            "collection_id": ["S1_L1"],
             "item_id": "",
         }
+        assert all(request_ids.get(key, None) == val for key, val
+                                in valid_request_ids.items())
 
-    def test_reroute_bulk_items(self):
-        res = reroute_url("/catalog/collections/toto:S1_L1/bulk_items", "GET")
-        assert res[0] == "/collections/toto_S1_L1/bulk_items"
-        assert res[1] == {
+    def test_reroute_bulk_items(self, request_ids):
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/collections/toto:S1_L1/bulk_items",
+                "query_string": "",
+                "user": "",
+                "headers": {}
+            },
+        )
+        reroute_url(request, request_ids)
+        
+        assert request.scope["path"] == "/collections/toto_S1_L1/bulk_items"
+        # Check that the valid dictionary is a subset of the output dictionary
+        valid_request_ids = {
             "owner_id": "toto",
-            "collection_id": "S1_L1",
+            "collection_id": ["S1_L1"],
             "item_id": "",
         }
+        assert all(request_ids.get(key, None) == val for key, val
+                                in valid_request_ids.items())
 
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring
