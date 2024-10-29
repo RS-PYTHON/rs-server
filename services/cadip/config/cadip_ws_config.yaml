@@ -48,10 +48,10 @@ cadip:
             - '$.Name'
         SessionIds:
           - null
-          - "$.SessionID"
-        SessionID:
+          - "$.SessionId"
+        SessionId:
           - null
-          - "$.SessionID"
+          - "$.SessionId"
         Channel:
             - null
             - '$.Channel'
@@ -93,8 +93,8 @@ cadip:
         wrapper: '{}'
         operations:
             and:
-              - 'SessionID in ({SessionIds})'
-              - 'SessionID eq {SessionID}'
+              - 'SessionId in ({SessionIds})'
+              - 'SessionId eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -147,10 +147,10 @@ ins:
             - '$.Name'
         SessionIds:
           - null
-          - "$.SessionID"
-        SessionID:
+          - "$.SessionId"
+        SessionId:
           - null
-          - "$.SessionID"
+          - "$.SessionId"
         Channel:
             - null
             - '$.Channel'
@@ -192,8 +192,8 @@ ins:
         wrapper: '{}'
         operations:
             and:
-              - 'SessionID in ({SessionIds})'
-              - 'SessionID eq {SessionID}'
+              - 'SessionId in ({SessionIds})'
+              - 'SessionId eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -246,10 +246,10 @@ mps:
             - '$.Name'
         SessionIds:
           - null
-          - "$.SessionID"
-        SessionID:
+          - "$.SessionId"
+        SessionId:
           - null
-          - "$.SessionID"
+          - "$.SessionId"
         Channel:
             - null
             - '$.Channel'
@@ -291,8 +291,8 @@ mps:
         wrapper: '{}'
         operations:
             and:
-              - 'SessionID in ({SessionIds})'
-              - 'SessionID eq {SessionID}'
+              - 'SessionId in ({SessionIds})'
+              - 'SessionId eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -345,10 +345,10 @@ mti:
             - '$.Name'
         SessionIds:
           - null
-          - "$.SessionID"
-        SessionID:
+          - "$.SessionId"
+        SessionId:
           - null
-          - "$.SessionID"
+          - "$.SessionId"
         Channel:
             - null
             - '$.Channel'
@@ -390,8 +390,8 @@ mti:
         wrapper: '{}'
         operations:
             and:
-              - 'SessionID in ({SessionIds})'
-              - 'SessionID eq {SessionID}'
+              - 'SessionId in ({SessionIds})'
+              - 'SessionId eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -444,10 +444,10 @@ nsg:
             - '$.Name'
         SessionIds:
           - null
-          - "$.SessionID"
-        SessionID:
+          - "$.SessionId"
+        SessionId:
           - null
-          - "$.SessionID"
+          - "$.SessionId"
         Channel:
             - null
             - '$.Channel'
@@ -489,8 +489,8 @@ nsg:
         wrapper: '{}'
         operations:
             and:
-              - 'SessionID in ({SessionIds})'
-              - 'SessionID eq {SessionID}'
+              - 'SessionId in ({SessionIds})'
+              - 'SessionId eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
@@ -543,10 +543,10 @@ sgs:
             - '$.Name'
         SessionIds:
           - null
-          - "$.SessionID"
-        SessionID:
+          - "$.SessionId"
+        SessionId:
           - null
-          - "$.SessionID"
+          - "$.SessionId"
         Channel:
             - null
             - '$.Channel'
@@ -588,8 +588,8 @@ sgs:
         wrapper: '{}'
         operations:
             and:
-              - 'SessionID in ({SessionIds})'
-              - 'SessionID eq {SessionID}'
+              - 'SessionId in ({SessionIds})'
+              - 'SessionId eq {SessionId}'
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
