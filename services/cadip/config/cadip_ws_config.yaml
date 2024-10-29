@@ -80,6 +80,9 @@ cadip:
         completionTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
+        href:
+          - null
+          - 'http://127.0.0.1:5000/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5000/Files({id})/$value'
         title: '$.Name'
@@ -176,6 +179,9 @@ ins:
         completionTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
+        href:
+          - null
+          - 'http://127.0.0.1:5100/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5100/Files({id})/$value'
         title: '$.Name'
@@ -272,6 +278,9 @@ mps:
         completionTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
+        href:
+          - null
+          - 'http://127.0.0.1:5101/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5101/Files({id})/$value'
         title: '$.Name'
@@ -368,6 +377,9 @@ mti:
         completionTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
+        href:
+          - null
+          - 'http://127.0.0.1:5102/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5102/Files({id})/$value'
         title: '$.Name'
@@ -464,6 +476,9 @@ nsg:
         completionTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
+        href:
+          - null
+          - 'http://127.0.0.1:5103/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5103/Files({id})/$value'
         title: '$.Name'
@@ -560,6 +575,9 @@ sgs:
         completionTimeFromAscendingNode:
             - null
             - '$.PublicationDate'
+        href:
+          - null
+          - 'http://127.0.0.1:5104/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5104/Files({id})/$value'
         title: '$.Name'
@@ -692,6 +710,9 @@ cadip_session:
       completionTimeFromAscendingNode:
         - null
         - "$.PublicationDate"
+      href:
+        - null
+        - "http://127.0.0.1:5000/Files({id})/$value"
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 
@@ -824,6 +845,9 @@ ins_session:
       completionTimeFromAscendingNode:
         - null
         - "$.PublicationDate"
+      href:
+        - null
+        - 'http://127.0.0.1:5100/Files({id})/$value'
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 
@@ -956,6 +980,9 @@ mps_session:
       completionTimeFromAscendingNode:
         - null
         - "$.PublicationDate"
+      href:
+        - null
+        - 'http://127.0.0.1:5101/Files({id})/$value'
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 
@@ -1088,6 +1115,9 @@ mti_session:
       completionTimeFromAscendingNode:
         - null
         - "$.PublicationDate"
+      href:
+        - null
+        - 'http://127.0.0.1:5102/Files({id})/$value'
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 
@@ -1220,6 +1250,9 @@ nsg_session:
       completionTimeFromAscendingNode:
         - null
         - "$.PublicationDate"
+      href:
+        - null
+        - 'http://127.0.0.1:5103/Files({id})/$value'
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 
@@ -1352,6 +1385,9 @@ sgs_session:
       completionTimeFromAscendingNode:
         - null
         - "$.PublicationDate"
+      href:
+        - null
+        - 'http://127.0.0.1:5104g/Files({id})/$value'
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 

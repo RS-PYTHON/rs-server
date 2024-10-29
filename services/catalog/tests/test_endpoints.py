@@ -1028,7 +1028,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         ] = "incorrect_s3_url/S1SIWOCN_20220412T054447_0024_S139_T902.nc"
         response = client.post("/catalog/collections/darius:S1_L2/items", json=item_test)
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
-        assert "Could not load the S3 key from the asset content" in json.loads(response.content)
+        assert "Failed to load the S3 key from the asset content" in json.loads(response.content)
         clear_aws_credentials()
 
     @pytest.mark.unit
@@ -1138,7 +1138,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
             assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
             assert (
                 response.content
-                == b"\"Could not find asset named 'UNKNWON' \
+                == b"\"Failed to find asset named 'UNKNWON' \
 from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
             )
             # test with a non-existing item id
@@ -1158,7 +1158,7 @@ from item 'fe916452-ba6f-4631-9154-c249924a122d'\""
             "may24C355000e4102500n.tif",
         )
         assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
-        assert response.content == b'"Could not find s3 credentials"'
+        assert response.content == b'"Failed to find s3 credentials"'
 
     @pytest.mark.unit
     def test_failure_while_moving_files_between_buckets(self, client, mocker, a_correct_feature):

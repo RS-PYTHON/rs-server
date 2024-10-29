@@ -25,9 +25,12 @@ from datetime import datetime, timedelta
 
 import pytest
 import requests
+import responses
 from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
+from requests.auth import HTTPBasicAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3_RETRY_TIMEOUT,
     SLEEP_TIME,
     GetKeysFromS3Config,
     PutFilesToS3Config,
@@ -46,6 +49,7 @@ FULL_FOLDER = RESOURCES_FOLDER / "s3" / "full_s3_storage_handler_test"
 SHORT_FOLDER = RESOURCES_FOLDER / "s3" / "short_s3_storage_handler_test"
 
 
+# pylint: disable=too-many-lines
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "endpoint",
@@ -276,7 +280,6 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
     finally:
         server.stop()
 
-    logger.debug("len(s3_files)  = %s", len(s3_files))
     assert len(s3_files) == nb_of_files
 
 
@@ -952,10 +955,31 @@ def test_transfer_from_s3_to_s3(
 
 
 @pytest.mark.unit
-def test_delete_file_from_s3():
-    """Test handling of s3 client exceptions while deleting a file from a bucket"""
+def test_delete_file_from_s3(mocker):
+    """Test the deletion of a file from an S3 bucket.
 
+    This unit test verifies the functionality of deleting a file from an S3 bucket using the `delete_file_from_s3`
+    method in the `S3StorageHandler` class. It ensures proper handling of errors and retries during deletion.
+
+    Test flow:
+        1. Initializes a mock S3 server using `ThreadedMotoServer`.
+        2. Creates a bucket and uploads a test file to it.
+        3. Deletes the file and verifies that no exceptions are raised.
+        4. Re-uploads the file and tests the retry mechanism when an S3 exception is thrown.
+        5. Verifies that the retry logic is triggered and succeeds in deleting the file.
+
+    Args:
+        mocker: Pytest fixture used to mock certain behaviors, such as sleep delays and boto3 exceptions.
+
+    Raises:
+        AssertionError: If any part of the file deletion process fails or raises an unexpected exception.
+    """
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # create the test bucket
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
     s3_handler = S3StorageHandler(
         secrets["accesskey"],
         secrets["secretkey"],
@@ -963,12 +987,229 @@ def test_delete_file_from_s3():
         secrets["region"],
     )
 
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.delete_file_from_s3("some_s3_2", None)
-    assert str(exc.value) == "Input error for deleting the file"
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    file_to_be_deleted = "file_to_be_deleted.txt"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_deleted, Body="testing\n")
+    try:
+        s3_handler.delete_file_from_s3(bucket, file_to_be_deleted)
+    except RuntimeError:
+        server.stop()
+        assert False, "s3_handler.delete_file_from_s3 raised exception !"
+    assert not s3_handler.list_s3_files_obj(bucket, "")
+    # copy again the file to be deleted
+    s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_deleted, Body="testing\n")
+    assert len(s3_handler.list_s3_files_obj(bucket, "")) == 1
+    # test when the retrying succeeds after all
+    res = mocker.patch("time.sleep", side_effect=None)
+    # mock the current client
+    with Stubber(s3_handler.s3_client) as boto_mocker:
+        # Mock the s3 head_object and delete_object functions.
+        # The delete_object should throw an exception on the first call, triggering a retry.
+        # On the second retry, a different client will be used.
+        # The retry mechanism is handled at the application level (different than ).
+        boto_mocker.add_response(
+            "head_object",
+            {
+                "ResponseMetadata": {
+                    "HTTPStatusCode": 200,
+                },
+            },
+            {"Bucket": "some_s3", "Key": "file_to_be_deleted.txt"},
+        )
+        boto_mocker.add_client_error("delete_object", service_error_code="botocore.exceptions.BotoCoreError")
+        try:
+            s3_handler.delete_file_from_s3(bucket, file_to_be_deleted)
+        except RuntimeError:
+            server.stop()
+            assert False, "s3_handler.delete_file_from_s3 raised exception !"
+        assert res.call_count == int(S3_RETRY_TIMEOUT / SLEEP_TIME)
+        assert not s3_handler.list_s3_files_obj(bucket, "")
+    server.stop()
 
+
+@pytest.mark.unit
+def test_check_s3_key_on_bucket_success(mocker):
+    """Test case for successful key check in S3 bucket."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    # create the test bucket
+    # Test with a running s3 server
+    server = ThreadedMotoServer()
+    server.start()
+    requests.post("http://localhost:5000/moto-api/reset", timeout=5)
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+
+    # prepare a bucket for tests
+    bucket = "some_s3"
+    file_to_be_checked = "test/key.txt"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_handler.s3_client.put_object(Bucket=bucket, Key=file_to_be_checked, Body="testing\n")
+
+    mock_logger = mocker.patch.object(s3_handler, "logger")
+
+    # Call the function
+    result = s3_handler.check_s3_key_on_bucket(bucket, file_to_be_checked)
+
+    # Assertions
+    mock_logger.debug.assert_called_once_with(
+        f"Checking for the presence of the s3 key s3://{bucket}/{file_to_be_checked}",
+    )
+
+    assert result
+    server.stop()
+
+
+@pytest.mark.unit
+@responses.activate
+def test_s3_streaming_upload(mocker):
+    """Unit test for testing the streaming of a file from an HTTP URL to an
+    S3 bucket using byte-streaming.
+
+    This test checks the functionality of the `s3_streaming_upload` method in the `S3StorageHandler`
+    class. It verifies that the method can successfully stream a file from a URL and upload it to
+    an S3 bucket, handling retries and edge cases like S3 client errors. It uses the `moto` server to
+    simulate an S3 endpoint and `responses` library to mock HTTP requests for file streaming.
+
+    Steps:
+    1. **Environment Setup**:
+        - The test sets up S3-related environment variables (e.g., endpoint, credentials) for testing.
+        - It starts a `ThreadedMotoServer` to simulate an S3-compatible server.
+        - It adds an HTTP GET response for the stream URL(cadip/auxip/etc) to simulate downloading
+        the file to be uploaded.
+
+    2. **S3 Bucket and File Creation**:
+        - A test bucket (`s3-bucket-streaming`) is created on the simulated S3 server.
+        - The `s3_streaming_upload` function is called to upload a file (via HTTP streaming) to the S3 bucket.
+
+    3. **Assertions**:
+        - The function asserts that the file was successfully uploaded by checking the list of files in the S3 bucket.
+        - It also checks that the downloaded file from S3 matches the content that was streamed (using
+        temporary local storage).
+
+    4. **Retry Handling**:
+        - It patches the `time.sleep` method to speed up the retry process for testing purposes.
+        - It uses `Stubber` to simulate S3 client errors during the upload process and asserts that the
+        retry mechanism works as expected.
+
+    5. **Clean-up**:
+        - The test removes the streamed file from the S3 bucket and performs necessary cleanup of temporary
+        local directories.
+
+    Args:
+        mocker: Pytest mocker fixture used for patching and stubbing during tests.
+
+    Raises:
+        AssertionError: If any part of the test fails.
+    """
+    secrets, stream_url, auth, body = streaming_setup_test_env()
+    # Start the moto server and create S3 handler
+    server, s3_handler, bucket, s3_key = streaming_setup_s3_handler_and_bucket(secrets)
+
+    try:
+        s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
+    except RuntimeError:
+        server.stop()
+        assert False, "s3_handler.s3_streaming_upload raised exception !"
+
+    # Check that the file was uploaded successfully
+    streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
+
+    # Test retry behavior with stubbed S3 client errors
+    streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body)
+
+    server.stop()
+
+
+def streaming_setup_test_env():
+    """Set up test environment variables, stream URL, and mock HTTP response."""
+    secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
+    stream_url = "http://127.0.0.1:6000/file"
+    auth = HTTPBasicAuth("user", "pass")
+    body = "some byte-array data to test the streaming of a file from http to a s3 bucket\n"
+
+    # Add a mock HTTP GET response for the stream URL
+    responses.add(responses.GET, stream_url, body=body, status=200)
+
+    return secrets, stream_url, auth, body
+
+
+def streaming_setup_s3_handler_and_bucket(secrets):
+    """Set up S3 handler, start the moto server, and create the test bucket."""
+    server = ThreadedMotoServer()
+    server.start()
+
+    s3_handler = S3StorageHandler(
+        secrets["accesskey"],
+        secrets["secretkey"],
+        secrets["s3endpoint"],
+        secrets["region"],
+    )
+    bucket = "s3-bucket-streaming"
+    s3_handler.s3_client.create_bucket(Bucket=bucket)
+    s3_key = "test_key.tst"
+
+    return server, s3_handler, bucket, s3_key
+
+
+def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
+    """Verify that the uploaded file exists in S3 and its contents match."""
+    try:
+        s3_files = s3_handler.list_s3_files_obj(bucket, "")
+    except RuntimeError:
+        assert False, "s3_handler.list_s3_files_obj raised exception!"
+
+    assert len(s3_files) == 1 and s3_key == s3_files[0]
+
+    # Download the file from S3 and verify its content
+    try:
+        local_path = tempfile.mkdtemp()
+
+        config = GetKeysFromS3Config([s3_key], bucket, local_path, False, 1)
+        failed = s3_handler.get_keys_from_s3(config)
+    except RuntimeError:
+        assert False, "s3_handler.get_keys_from_s3 raised exception!"
+
+    assert not failed
+    with open(os.path.join(local_path, s3_key), "r", encoding="utf-8") as f:
+        assert body == f.read()
+
+    shutil.rmtree(local_path)
+
+    # Clean up: Delete the uploaded file from S3
+    try:
+        s3_handler.delete_file_from_s3(bucket, s3_key)
+    except RuntimeError:
+        assert False, "s3_handler.delete_file_from_s3 raised exception!"
+
+
+def streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body):
+    """Test S3 retry behavior using Stubber to simulate errors."""
+    # Patch time.sleep to speed up retries
+    res = mocker.patch("time.sleep", side_effect=None)
+
+    # Stub S3 client errors to test retry logic
     boto_mocker = Stubber(s3_handler.s3_client)
-    boto_mocker.add_client_error("delete_object", 500)
-    with pytest.raises(RuntimeError) as exc:
-        s3_handler.delete_file_from_s3("some_s3_1", "some_file_1")
-    assert str(exc.value) == "Failed to delete key s3://some_s3_1/some_file_1"
+    boto_mocker.add_client_error("upload_fileobj", service_error_code="botocore.exceptions.BotoCoreError")
+    boto_mocker.activate()
+
+    try:
+        s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
+    except RuntimeError:
+        assert False, "s3_handler.s3_streaming_upload raised exception!"
+
+    # Check if retries were attempted
+    assert res.call_count == int(S3_RETRY_TIMEOUT / SLEEP_TIME)
+
+    # Verify file after retry logic
+    streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
+
+    boto_mocker.deactivate()
+
+
+# end of the helper functions
