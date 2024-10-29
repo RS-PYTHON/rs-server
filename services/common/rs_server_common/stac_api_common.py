@@ -39,6 +39,8 @@ from stac_pydantic.item import Item
 
 logger = Logging.default(__name__)
 
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
 
 class Queryables(BaseModel):
     """
@@ -305,7 +307,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query or CQL property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
-            stac_params[prop] = value
+            stac_params[prop] = value.get("property") if isinstance(value, dict) else value
 
         def read_cql(filt: dict):
             """Use a recursive function to read all CQL filter levels"""
@@ -398,36 +400,64 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 collection = self.select_config(collection_id)
                 odata_hardcoded = collection.get("query") or {}
 
-                # The final params to use come from the hardcoded collection (higher priority),
-                # else from the user.
+                # Merge the user input params with the hardcoded params (which have higher priority)
                 odata = {**odata_params, **odata_hardcoded}
 
-                # # But for some fields of type list, we must calculate the intersection between the two values.
-                # # Note: an empty list means "take everything".
-                # for key in ("Name", "Id", "PublicationDate", "platformSerialIdentifier", "platformShortName",
-                # "SessionId"):
+                empty_selection = False
 
-                #     # Check if the key is defined by the user and hardcoded
-                #     values = (odata_params.get(key), odata_hardcoded.get(key))
+                # Handle conflicts, i.e. for each key that is defined in both params
+                for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
 
-                #     # If it's
+                    # Date intervals
+                    if key in ("PublicationDate"):
 
-                #     if (not values[0]) or (not values[1]):
-                #         continue
+                        # Read both start and stop dates
+                        start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
+                        start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
 
-                #     for i, value in enumerate(values):
+                        # Calculate the intersection
+                        start = max(start1, start2)
+                        stop = min(stop1, stop2)
 
-                #         # Convert the strings to lists, split by comma
-                #         if isinstance(value, str):
-                #             values[i] = value.split(",")
+                        # If no intersection, then the selection is empty, else save the intersection
+                        if start >= stop:
+                            empty_selection = True
+                            break
+                        odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
 
-                #         # Strip all values
-                #         values[i] = [element.strip() for element in values[i]]
+                    # Comma-separated lists
+                    if key in ("Satellite"):
 
-                #     # Check again that the two lists are not empty and keep the intersection
-                #     if (not values[0]) or (not values[1]):
-                #         continue
-                #     odata[key] = set(values[0]).intersection(values[1])
+                        # Read both values
+                        value1 = odata_params[key]
+                        value2 = odata_hardcoded[key]
+                        intersection = None
+
+                        # If one is empty or None, this means "keep everything".
+                        # So keep the intersection = the other list.
+                        if not value1:
+                            intersection = value2
+                        elif not value2:
+                            intersection = value1
+
+                        # Else, split by comma and keep the intersection.
+                        # If no intersection, then the selection is empty.
+                        else:
+                            for i, value in enumerate((value1, value2)):
+                                s = {v.strip() for v in value.split(",")}
+                                intersection = intersection.intersection(s) if i else s
+                            if intersection:
+                                intersection = ", ".join(intersection)
+                            if not intersection:
+                                empty_selection = True
+                                break
+
+                        # Save the intersection
+                        odata[key] = intersection
+
+                # If the selection is empty, we return no items for this collection
+                if empty_selection:
+                    break
 
                 # Overwrite the pagination parameters
                 odata["top"] = odata.get("top") or limit or 20  # default = 20 results per page
