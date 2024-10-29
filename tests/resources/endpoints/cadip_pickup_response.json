@@ -24,7 +24,7 @@
                 {
                     "Id": "e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d",
                     "Name": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw",
-                    "SessionID": "S1A_20200105072204051312",
+                    "SessionId": "S1A_20200105072204051312",
                     "Channel": 1,
                     "BlockNumber": 1,
                     "FinalBlock": false,
@@ -36,7 +36,7 @@
                 {
                     "Id": "cd24aa8b-2719-4a1e-b4a7-f7c9df6de300",
                     "Name": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw",
-                    "SessionID": "S1A_20200105072204051312",
+                    "SessionId": "S1A_20200105072204051312",
                     "Channel": 1,
                     "BlockNumber": 1,
                     "FinalBlock": false,

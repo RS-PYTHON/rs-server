@@ -38,7 +38,7 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     mock_token_validation("cadip")
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id1"&$top=1000',
+        'http://127.0.0.1:5000/Files?$filter="SessionId%20eq%20session_id1"&$top=1000',
         json={"responses": expected_products[0]},
         status=200,
     )
@@ -51,7 +51,7 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     # Test a request with all files from multiple sessions
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter="SessionID%20in%20session_id2,%20session_id3"&$top=1000',
+        'http://127.0.0.1:5000/Files?$filter="SessionId%20in%20session_id2,%20session_id3"&$top=1000',
         json={"responses": expected_products[1:]},
         status=200,
     )
@@ -65,7 +65,7 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     # Nominal case, combined session_id and datetime
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id2%20and%20PublicationDate%20gt%20'
+        'http://127.0.0.1:5000/Files?$filter="SessionId%20eq%20session_id2%20and%20PublicationDate%20gt%20'
         '2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z"&$top=1000',
         json={"responses": expected_products},
         status=200,

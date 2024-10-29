@@ -115,19 +115,16 @@ class EodagProvider(Provider):
 
         session_id = kwargs.pop("id", None)
         if session_id:
-            # If request contains session id, map it to eodag parameter accordingly (SessionID for single, Ids for list)
+            # If request contains session id, map it to eodag parameter accordingly (SessionId for single, Ids for list)
             if isinstance(session_id, list):
                 mapped_search_args["SessionIds"] = ", ".join(f"'{s}'" for s in session_id)
             elif isinstance(session_id, str):
-                mapped_search_args["SessionID"] = "'" + session_id + "'"
+                mapped_search_args["SessionId"] = "'" + session_id + "'"
 
         if sessions_search:
             # If request is for session search, handle platform - if any provided.
             platform = kwargs.pop("platform", None)
 
-            # Very annoying, for files odata is **SessionID**, for sessions is **SessionId**
-            if "SessionID" in mapped_search_args:
-                mapped_search_args["SessionId"] = mapped_search_args.pop("SessionID")
             if platform:
                 if isinstance(platform, list):
                     mapped_search_args["platforms"] = ", ".join(f"'{p}'" for p in platform)

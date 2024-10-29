@@ -5,7 +5,7 @@
     "cadip:final_block": "FinalBlock",
     "cadip:block_number": "BlockNumber",
     "cadip:channel": "Channel",
-    "cadip:session_id": "SessionID",
+    "cadip:session_id": "SessionId",
     "created": "PublicationDate",
     "eviction_datetime": "EvictionDate",
     "file:size": "Size"

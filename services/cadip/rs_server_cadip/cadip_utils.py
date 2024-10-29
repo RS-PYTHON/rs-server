@@ -114,13 +114,13 @@ def from_session_expand_to_assets_serializer(
     for session in feature_collection.features:
         # Iterate over products and map them to assets
         for product in input_session:
-            if product.properties["SessionID"] == session.id:
+            if product.properties["SessionId"] == session.id:
                 # Create Asset
                 asset: Asset = map_dag_file_to_asset(mapper, product, product.properties["href"])
                 # Add Asset to Item.
                 session.assets.update({asset.title or "": asset})
         # Remove processed products from input_session
-        input_session = [product for product in input_session if product.properties["SessionID"] != session.id]
+        input_session = [product for product in input_session if product.properties["SessionId"] != session.id]
 
     return feature_collection
 
