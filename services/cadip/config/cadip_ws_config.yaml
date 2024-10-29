@@ -81,8 +81,8 @@ cadip:
             - null
             - '$.PublicationDate'
         href:
-          - null
-          - 'http://127.0.0.1:5000/Files({id})/$value'
+            - null
+            - 'http://127.0.0.1:5000/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5000/Files({id})/$value'
         title: '$.Name'
@@ -1387,7 +1387,7 @@ sgs_session:
         - "$.PublicationDate"
       href:
         - null
-        - 'http://127.0.0.1:5104g/Files({id})/$value'
+        - 'http://127.0.0.1:5104/Files({id})/$value'
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 
