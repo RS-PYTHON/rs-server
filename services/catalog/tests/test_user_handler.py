@@ -15,7 +15,7 @@
 """Unit tests for user_handler module."""
 
 import getpass
-from starlette.requests import Request
+
 import pytest
 from rs_server_catalog.user_handler import (
     add_user_prefix,
@@ -25,6 +25,8 @@ from rs_server_catalog.user_handler import (
     remove_user_from_feature,
     reroute_url,
 )
+from starlette.requests import Request
+
 
 @pytest.fixture(name="collection_toto_1")
 def collection_toto_1_fixture() -> dict:
@@ -35,15 +37,10 @@ def collection_toto_1_fixture() -> dict:
         "count": "15",
     }
 
+
 @pytest.fixture(name="request_ids")
 def request_id_example() -> dict:
-    return {
-                "auth_roles": "", 
-                "user_login": "", 
-                "owner_id": "", 
-                "collection_id": [], 
-                "item_id": ""
-            }
+    return {"auth_roles": "", "user_login": "", "owner_id": "", "collection_id": [], "item_id": ""}
 
 
 @pytest.fixture(name="collection_toto_1_output")
@@ -127,14 +124,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
 
     def test_root_url(self, request_ids):
         request = Request(
-            scope={
-                "type": "http",
-                "method": "GET",
-                "path": "/",
-                "query_string": "",
-                "user": "",
-                "headers": {}
-            },
+            scope={"type": "http", "method": "GET", "path": "/", "query_string": "", "user": "", "headers": {}},
         )
         reroute_url(request, request_ids)
         assert request.scope["path"] == "/"
@@ -147,18 +137,17 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/catalog/collections/Toto:joplin/items/fe916452-ba6f-4631-9154-c249924a122d",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
         assert request.scope["path"] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
-        valid_request_ids= {
+        valid_request_ids = {
             "owner_id": "Toto",
             "collection_id": ["joplin"],
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }
-        assert all(request_ids.get(key, None) == val for key, val
-                                in valid_request_ids.items())
+        assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
 
     # NOTE: The following function is the test for local mode, when there is no apikey and the ownerId
     # is missing from the endpoint. The tests when the apikey exists (thus in cluster mode) are implemented
@@ -171,19 +160,20 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/catalog/collections/joplin/items/fe916452-ba6f-4631-9154-c249924a122d",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
-        assert request.scope["path"] == f"/collections/{getpass.getuser()}_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
+        assert (
+            request.scope["path"]
+            == f"/collections/{getpass.getuser()}_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
+        )
         valid_request_ids = {
             "owner_id": getpass.getuser(),
             "collection_id": ["joplin"],
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }
-        assert all(request_ids.get(key, None) == val for key, val
-                                in valid_request_ids.items())
-        
+        assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
 
     def test_fails_if_unknown_endpoint(self, request_ids):
         request = Request(
@@ -193,9 +183,9 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/not/found",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
-        )        
+        )
         valid_request_ids = request_ids.copy()
         reroute_url(request, request_ids)
         assert request.scope["path"] == ""
@@ -209,7 +199,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/_mgmt/ping",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
@@ -223,7 +213,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/catalog/docs/oauth2-redirect",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
@@ -237,7 +227,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/catalog/queryables",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
@@ -251,7 +241,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/catalog/collections/toto:S1_L1/search",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
@@ -262,10 +252,9 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
             "collection_id": ["toto_S1_L1"],
             "item_id": "",
         }
-        assert all(request_ids.get(key, None) == val for key, val
-                                in valid_request_ids.items())
+        assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
 
-    def test_search_collection_with_implicit_owner(self, request_ids):        
+    def test_search_collection_with_implicit_owner(self, request_ids):
         request = Request(
             scope={
                 "type": "http",
@@ -273,7 +262,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/catalog/collections/S1_L1/search",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
@@ -287,11 +276,11 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/catalog/collections/toto:S1_L1/queryables",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
-        
+
         assert request.scope["path"] == "/collections/toto_S1_L1/queryables"
         # Check that the valid dictionary is a subset of the output dictionary
         valid_request_ids = {
@@ -299,8 +288,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
             "collection_id": ["S1_L1"],
             "item_id": "",
         }
-        assert all(request_ids.get(key, None) == val for key, val
-                                in valid_request_ids.items())
+        assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
 
     def test_reroute_bulk_items(self, request_ids):
         request = Request(
@@ -310,11 +298,11 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
                 "path": "/catalog/collections/toto:S1_L1/bulk_items",
                 "query_string": "",
                 "user": "",
-                "headers": {}
+                "headers": {},
             },
         )
         reroute_url(request, request_ids)
-        
+
         assert request.scope["path"] == "/collections/toto_S1_L1/bulk_items"
         # Check that the valid dictionary is a subset of the output dictionary
         valid_request_ids = {
@@ -322,8 +310,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
             "collection_id": ["S1_L1"],
             "item_id": "",
         }
-        assert all(request_ids.get(key, None) == val for key, val
-                                in valid_request_ids.items())
+        assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
 
 
 class TestAddUserPrefix:  # pylint: disable=missing-function-docstring

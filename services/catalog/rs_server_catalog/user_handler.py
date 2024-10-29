@@ -15,12 +15,13 @@
 """This library contains all functions needed for the fastAPI middleware."""
 
 import getpass
+import json
 import os
 import re
 from typing import Tuple
-from starlette.requests import Request
+
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
-import json
+from starlette.requests import Request
 
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"/catalog/collections"
@@ -39,6 +40,7 @@ CATALOG_COLLECTION = "/catalog/collections"
 CATALOG_SEARCH = "/catalog/search"
 CATALOG_SEARCH_QUERY_PARAMS = "/catalog/search\?((?P<owner_id>.+):)?(?P<collection_id>.+)"
 
+
 def get_user(endpoint_user: str | None, apikey_user: str | None):
     """Retrieve the user identifier based on provided parameters. Default is the
     current running user (used for local mode in general)
@@ -56,9 +58,10 @@ def get_user(endpoint_user: str | None, apikey_user: str | None):
         return apikey_user
     return os.getenv("RSPY_HOST_USER", default=getpass.getuser())
 
+
 def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
     request: Request,
-    ids_dict: dict[str, str] = None
+    ids_dict: dict[str, str] = None,
 ) -> Tuple[str, dict]:
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
@@ -73,43 +76,43 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     Returns:
         str: Return the URL path with prefix removed.
         dict: Return a dictionary containing owner, collection and item ID.
-    """    
+    """
     path = request.url.path
     method = request.method
     patterns = [r"/_mgmt/ping", r"/api", r"/favicon.ico"]
-    
+
     # Catch one endpoint of the following list
     regexp_list = [
-        "/", 
-        "/catalog/", 
-        "/catalog/search", 
-        "/catalog/queryables", 
-        "catalog/api", 
+        "/",
+        "/catalog/",
+        "/catalog/search",
+        "/catalog/queryables",
+        "catalog/api",
         "/catalog/api.html",
         "/catalog/docs/oauth2-redirect",
         "/catalog/queryables",
-        "/catalog/conformance"
+        "/catalog/conformance",
     ]
     is_in_regexp_list = False
     for pattern in regexp_list:
         if re.fullmatch(pattern, path):
-            path = path.replace("/catalog","") if path != '/' else path
+            path = path.replace("/catalog", "") if path != "/" else path
             is_in_regexp_list = True
             break
     if is_in_regexp_list:
         # Don't validate other conditions if we alredy matched the previous regexps
-        pass 
-    
+        pass
+
     # Catch authentication endpoints (path should be left as it is in this case)
     elif path.startswith(f"{AUTH_PREFIX}/"):
         pass
-    
+
     # Catch health endpoints
     elif "/health" in path:
         path = "/health"
-    
+
     # The endpoint PUT "/catalog/collections" does not exists.
-    elif path == CATALOG_COLLECTION and method != "PUT":  
+    elif path == CATALOG_COLLECTION and method != "PUT":
         path = "/collections"
 
     # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items
@@ -122,18 +125,18 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/queryables
     elif match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
         groups = match.groupdict()
-        ids_dict["owner_id"] = get_user(groups["owner_id"],  ids_dict["user_login"])
+        ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
         ids_dict["collection_id"].append(groups["collection_id"])
         path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/queryables"
 
     # Catch endpoint /catalog/collections/{owner_id}:{collection_id}/search
     elif match := re.fullmatch(COLLECTIONS_SEARCH_REGEX, path):
         groups = match.groupdict()
-        ids_dict["owner_id"] = get_user(groups["owner_id"],  ids_dict["user_login"])
+        ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
         ids_dict["collection_id"].append(f"{ids_dict['owner_id']}_{groups['collection_id']}")
         # This endpoint will be redirected to the "/search" endpoint later in the code
         path = path.replace("/catalog", "")
-    
+
     # Catch all other endpoints.
     elif match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
@@ -144,7 +147,7 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
             if len(owner_collection_id_split) == 1:
                 # the following handles the absence of the ownerId param, for endpoints like:
                 # /catalog/collections/collectionId/items
-                ids_dict["owner_id"] = get_user(None,  ids_dict["user_login"])
+                ids_dict["owner_id"] = get_user(None, ids_dict["user_login"])
                 ids_dict["collection_id"].append(owner_collection_id_split[0])
             else:
                 # the following handles the presence of the ownerId param, for endpoints like:
@@ -170,7 +173,8 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
     elif not any(re.fullmatch(pattern, path) for pattern in patterns):
         path = ""
     # Finally, update the path of the request with the new route
-    request.scope['path'] = path
+    request.scope["path"] = path
+
 
 def add_user_prefix(  # pylint: disable=too-many-return-statements
     path: str,

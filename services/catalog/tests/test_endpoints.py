@@ -79,6 +79,7 @@ def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=miss
     assert response.status_code == fastapi.status.HTTP_200_OK
     print(f"Response vaut: {response}")
 
+
 def test_update_stac_catalog_metadata(client):
     """
     Test the update of the stac catalog metadata when the `/catalog/ endpoint is called
@@ -229,7 +230,7 @@ class TestCatalogSearchEndpoint:
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_search_endpoint_with_specific_filter(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500", "owner":"toto"}
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500", "owner": "toto"}
 
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
@@ -328,9 +329,9 @@ class TestCatalogSearchEndpoint:
         }
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == 200
-    
+
     def test_search_using_several_collections_post(self, client):
-        """ Test a search request involving several collections (POST method)"""
+        """Test a search request involving several collections (POST method)"""
         # Search items on several collections without using implicit naming feature
         test_json = {
             "collections": ["toto_S1_L1", "toto_S2_L3"],
@@ -345,7 +346,7 @@ class TestCatalogSearchEndpoint:
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 3
-        
+
         # Use implicit naming mechanism for some collections of the list + specify owner in the content
         test_json = {
             "collections": ["S1_L1", "S2_L3"],
@@ -361,7 +362,7 @@ class TestCatalogSearchEndpoint:
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 3
-        
+
         # Use implicit naming mechanism for some collections of the list + specify owner in the filter
         test_json = {
             "collections": ["S1_L1", "toto_S2_L3"],
@@ -377,7 +378,7 @@ class TestCatalogSearchEndpoint:
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 3
-        
+
         # Implicit naming mechanism will not produce the right owner_id if we don't specify it in the content
         # or in the filter
         test_json = {
@@ -392,7 +393,7 @@ class TestCatalogSearchEndpoint:
         }
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-        
+
         # Check that we get an error if at least one existing collection doesn't exist
         test_json = {
             "collections": ["S1_L1", "unexisting_collection"],
@@ -407,23 +408,32 @@ class TestCatalogSearchEndpoint:
         }
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-        
+
     def test_search_using_several_collections_get(self, client):
-        """ Test a search request involving several collections (GET method)"""
+        """Test a search request involving several collections (GET method)"""
         # Use implicit naming mechanism for some collections of the list + specify owner in the query parameters
-        test_params = {"collections": "S1_L1,toto_S2_L3", "filter-lang": "cql2-text", "filter": "width=2500", "owner":"toto"}
+        test_params = {
+            "collections": "S1_L1,toto_S2_L3",
+            "filter-lang": "cql2-text",
+            "filter": "width=2500",
+            "owner": "toto",
+        }
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200
         content = json.loads(response.content)
         assert len(content["features"]) == 3
-        
+
         # Use implicit naming mechanism for some collections of the list + specify owner in the filter
-        test_params = {"collections": "S1_L1,toto_S2_L3", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
+        test_params = {
+            "collections": "S1_L1,toto_S2_L3",
+            "filter-lang": "cql2-text",
+            "filter": "width=2500 AND owner='toto'",
+        }
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == 200
         content = json.loads(response.content)
         assert len(content["features"]) == 3
-        
+
         # Implicit naming mechanism will not produce the right owner_id if we don't specify it in the query
         # parameters or in the filter
         test_params = {"collections": "toto_S1_L1,S2_L3", "filter": "width=2500"}
@@ -434,7 +444,6 @@ class TestCatalogSearchEndpoint:
         test_params = {"collections": "toto_S1_L1,unexisting_collection", "filter": "width=2500"}
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
-    
 
     def test_queryables(self, client):  # pylint: disable=missing-function-docstring
         try:
@@ -621,7 +630,7 @@ class TestCatalogPublishCollectionEndpoint:
         # Delete the collection
         delete_response = client.delete("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection")
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
-        
+
         # Check that collection is correctly deleted
         second_check_response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
         assert second_check_response.status_code == fastapi.status.HTTP_404_NOT_FOUND

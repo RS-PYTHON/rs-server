@@ -32,8 +32,7 @@ import json
 import os
 import re
 from typing import Any, Optional
-from urllib.parse import parse_qs, urlparse
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
 import fastapi
@@ -56,10 +55,10 @@ from rs_server_catalog.search import (
 from rs_server_catalog.user_handler import (
     add_user_prefix,
     filter_collections,
+    get_user,
     remove_user_from_collection,
     remove_user_from_feature,
     reroute_url,
-    get_user
 )
 from rs_server_catalog.utils import (
     get_s3_filename_from_asset,
@@ -521,7 +520,6 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             logger.error("Collection %s not found: %s", collection_id, e)
             return False
 
-
     async def manage_search_request(  # pylint: disable=too-many-branches
         self,
         request: Request,
@@ -534,36 +532,36 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
 
         Returns:
             Request: the new request with the collection name updated.
-        """    
+        """
         # ---------- POST requests
-        if request.method == "POST":  
+        if request.method == "POST":
             content = await request.json()
             # Add filter-lang option to the content if it doesn't already exist
             if "filter" in content:
-                filter_lang = {"filter-lang": "cql2-json"} if "filter-lang" not in content \
-                else {"filter-lang": content["filter-lang"]}
+                filter_lang = (
+                    {"filter-lang": "cql2-json"}
+                    if "filter-lang" not in content
+                    else {"filter-lang": content["filter-lang"]}
+                )
                 stac_filter = content.pop("filter")
                 content = {
                     **content,
                     **filter_lang,
                     "filter": stac_filter,
                 }  # The "filter_lang" field has to be placed BEFORE the filter.
-            
+
             # ----- Call /catalog/collections/{owner_id}:{collection_id}/search endpoint.
             if request.scope["path"] != "/search":
-                 # Reroute url to /search and update the request body
+                # Reroute url to /search and update the request body
                 content = await request.json()
-                content = {
-                    "collections": self.request_ids["collection_id"],
-                    **content
-                }
+                content = {"collections": self.request_ids["collection_id"], **content}
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-acces
                 request.scope["path"] = "/search"
-            
+
             # ----- Call /catalog/search with POST method endpoint
-            if all(x in content for x in ["filter", "collections"]):                
+            if all(x in content for x in ["filter", "collections"]):
                 # Get owner_id from the content if specified else the default user
-                
+
                 # Management of priority for the assignation of the owner_id
                 filters = parse_cql2_json(content["filter"])
                 owner_id_filter = self.find_owner_id(filters)
@@ -573,24 +571,27 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     owner_id = content["owner"]
                 else:
                     owner_id = get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
-                self.request_ids["owner_id"] = owner_id             
+                self.request_ids["owner_id"] = owner_id
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
-                for i, collection in enumerate(content['collections']):
+                for i, collection in enumerate(content["collections"]):
                     if not await self.collection_exists(request, collection):
-                        content["collections"][i] = f"{self.request_ids['owner_id']}_{collection}" 
-                
+                        content["collections"][i] = f"{self.request_ids['owner_id']}_{collection}"
+
                 self.request_ids["collection_id"] = content["collections"]
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
 
         # ---------- GET requests
-        elif request.method == "GET":  
+        elif request.method == "GET":
             # Get dictionary of query parameters
             query_params_dict = dict(request.query_params)
-            
+
             # Update owner_id if it is not already defined from path parameters
             if not self.request_ids["owner_id"]:
-                owner_id_filter = self.find_owner_id(parse_ecql(query_params_dict['filter'])) \
-                    if "filter" in query_params_dict else None
+                owner_id_filter = (
+                    self.find_owner_id(parse_ecql(query_params_dict["filter"]))
+                    if "filter" in query_params_dict
+                    else None
+                )
                 if owner_id_filter:
                     owner_id = owner_id_filter
                 elif "owner" in query_params_dict:
@@ -598,7 +599,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 else:
                     owner_id = get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 self.request_ids["owner_id"] = owner_id
-            
+
             # ----- Catch endpoint /catalog/collections/{owner_id}:{collection_id}/search
             # This endpoint doesn't exist in stac-fastapi so we convert it to a /search endpoint
             # and we transform path parameters into query parameters
@@ -608,43 +609,45 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                         status_code=500,
                         detail="No collection have been specified",
                     )
-                collections = ','.join([x for x in self.request_ids['collection_id']]) \
-                if len(self.request_ids["collection_id"]) > 1 else self.request_ids['collection_id'][0]
+                collections = (
+                    ",".join([x for x in self.request_ids["collection_id"]])
+                    if len(self.request_ids["collection_id"]) > 1
+                    else self.request_ids["collection_id"][0]
+                )
                 new_query = {
                     "collections": collections,
                     "filter-lang": "cql2-text",
                 }
                 query_params_dict.update(new_query)
-                request.scope["query_string"] = urlencode(query_params_dict, doseq=True).encode('utf-8')
+                request.scope["query_string"] = urlencode(query_params_dict, doseq=True).encode("utf-8")
                 request.scope["path"] = "/search"
-            
+
             # ----- Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
-                coll_list = query_params_dict["collections"].split(',')
-                
+                coll_list = query_params_dict["collections"].split(",")
+
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
                 for i, collection in enumerate(coll_list):
                     if not await self.collection_exists(request, collection):
-                        coll_list[i] = f"{self.request_ids['owner_id']}_{collection}" 
-               
+                        coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
+
                 self.request_ids["collection_id"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
-                request.scope['query_string'] = urlencode(query_params_dict, doseq=True).encode('utf-8')
-           
+                request.scope["query_string"] = urlencode(query_params_dict, doseq=True).encode("utf-8")
+
         # Check authorisation in cluster mode
-        if common_settings.CLUSTER_MODE and not \
-        get_authorisation(
-                self.request_ids["collection_id"],
-                self.request_ids["auth_roles"],
-                "read",
-                self.request_ids["owner_id"],
-                self.request_ids["user_login"],
-            ):
+        if common_settings.CLUSTER_MODE and not get_authorisation(
+            self.request_ids["collection_id"],
+            self.request_ids["auth_roles"],
+            "read",
+            self.request_ids["owner_id"],
+            self.request_ids["user_login"],
+        ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-        
+
         # Check that the collection from the request exists
-        for collection in self.request_ids['collection_id']:
+        for collection in self.request_ids["collection_id"]:
             if not await self.collection_exists(request, collection):
                 detail = {"error": f"Collection {collection} not found."}
                 return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
@@ -674,18 +677,18 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             if "filter" in query:
                 qs_filter_json = query["filter"]
                 filters = parse_cql2_json(qs_filter_json)
-        
+
         owner_id = self.find_owner_id(filters)
         if owner_id:
             self.request_ids["owner_id"] = owner_id
-        
+
         # Remove owner_id from the collection name
         if "collections" in query:
             # Extract owner_id from the name of the first collection in the list
             self.request_ids["owner_id"] = self.request_ids["collection_id"][0].split("_")[0]
             self.request_ids["collection_id"] = [
-                coll.removeprefix(f"{self.request_ids['owner_id']}_") 
-                for i, coll in enumerate(query["collections"][0].split(','))
+                coll.removeprefix(f"{self.request_ids['owner_id']}_")
+                for i, coll in enumerate(query["collections"][0].split(","))
             ]
         body = [chunk async for chunk in response.body_iterator]
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
@@ -727,18 +730,19 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 detail = {"error": "Unauthorized access."}
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
-            if len(self.request_ids['collection_id']) > 1:
+            if len(self.request_ids["collection_id"]) > 1:
                 detail = {"error": "Cannot create or update more than one collections !"}
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
-            
-            if len(self.request_ids['collection_id']) == 0:
+
+            if len(self.request_ids["collection_id"]) == 0:
                 detail = {"error": "Cannot create or update -> no collection specified !"}
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
-            
-            collection = self.request_ids['collection_id'][0]
+
+            collection = self.request_ids["collection_id"][0]
             if (
                 request.scope["path"] == "/collections"  # POST collection
-                or request.scope["path"] == f"/collections/{self.request_ids['owner_id']}_{collection}"  # PUT collection
+                or request.scope["path"]
+                == f"/collections/{self.request_ids['owner_id']}_{collection}"  # PUT collection
             ):
                 # Manage a collection creation. The apikey user should be the same as the owner
                 # field in the body request. In other words, an apikey user cannot create a
@@ -756,7 +760,7 @@ collection owned by the '{self.request_ids['owner_id']}' user. Additionally, mod
                     content["owner"] = self.request_ids["owner_id"]
                 logger.debug(f"Handling for collection {content['id']}")
                 # TODO update the links also?
-            
+
             # The following section handles the request to create/update an item
             elif "items" in request.scope["path"]:
                 # try to get the item if it is already part from the collection
@@ -888,7 +892,7 @@ collection owned by the '{self.request_ids['owner_id']}' user. Additionally, mod
             response (Response | StreamingResponse): The response from the rs-catalog.
         Returns:
             Response: The response updated.
-        """        
+        """
         # Load content of the response as a dictionary
         body = [chunk async for chunk in response.body_iterator]
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
@@ -900,7 +904,7 @@ collection owned by the '{self.request_ids['owner_id']}' user. Additionally, mod
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
-        
+
         # Manage local landing page of the catalog
         if request.scope["path"] == "/":
             if common_settings.CLUSTER_MODE:  # /catalog
@@ -918,7 +922,7 @@ collection owned by the '{self.request_ids['owner_id']}' user. Additionally, mod
             url = request.url._url  # pylint: disable=protected-access
             url = url[: len(url) - len(request.url.path)]
             content = add_prefix_link_landing_page(content, url)
-        
+
         elif request.scope["path"] == "/collections":  # /catalog/owner_id/collections
             if self.request_ids["owner_id"]:
                 content["collections"] = filter_collections(content["collections"], self.request_ids["owner_id"])
@@ -963,7 +967,7 @@ collection owned by the '{self.request_ids['owner_id']}' user. Additionally, mod
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-        
+
         elif (
             "/collections" in request.scope["path"] and "items" not in request.scope["path"]
         ):  # /catalog/collections/owner_id:collection_id
@@ -1158,17 +1162,17 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
     async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
         """
         Redirect the user catalog specific endpoint and adapt the response content.
-        
-        Args: 
+
+        Args:
             request (Request): Initial request
             call_next: next call to apply
-        
+
         Returns:
             response (Response): Response to the current request
         """
         request_body = None if request.method not in ["POST", "PUT"] else await request.json()
         auth_roles = user_login = owner_id = None
-        
+
         # ---------- Management of  authentification (retrieve user_login + default owner_id)
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             try:
@@ -1182,35 +1186,35 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             # user_login has to be checked instead
             except (NameError, AttributeError):
                 auth_roles = []
-                user_login = get_user(None, None) # Get default local or cluster user
+                user_login = get_user(None, None)  # Get default local or cluster user
         elif common_settings.LOCAL_MODE:
             user_login = get_user(None, None)
-        owner_id = "" # Default owner_id is empty
+        owner_id = ""  # Default owner_id is empty
         logger.debug(
             f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
         )
-        
+
         # ---------- Request rerouting
         # Dictionary to easily access main data from the request
-        self.request_ids =  {
-            "auth_roles": auth_roles, 
-            "user_login": user_login, 
-            "owner_id": owner_id, 
-            "collection_id": [], 
-            "item_id": ""
+        self.request_ids = {
+            "auth_roles": auth_roles,
+            "user_login": user_login,
+            "owner_id": owner_id,
+            "collection_id": [],
+            "item_id": "",
         }
         reroute_url(request, self.request_ids)
         if not request.scope["path"]:  # Invalid endpoint
             return JSONResponse(content="Invalid endpoint.", status_code=HTTP_400_BAD_REQUEST)
         logger.debug(f"reroute_url formating: path = {request.scope['path']} | requests_ids = {self.request_ids}")
-        
+
         # Ensure that user_login is not null after rerouting
-        if not self.request_ids['user_login']:
+        if not self.request_ids["user_login"]:
             raise HTTPException(
                 status_code=500,
                 detail=f"user_login is not defined !",
             )
-            
+
         # ---------- Body data recovery
         # Recover user and collection id with the ones provided in the request body
         # (if the corresponding parameters have not been recovered from the url)
@@ -1225,15 +1229,14 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                 collections = request_body.get("collections") or request_body.get("id")
                 if collections:
                     self.request_ids["collection_id"] = collections if isinstance(collections, list) else [collections]
-                        
+
             if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
                 self.request_ids["item_id"] = request_body.get("id", None)
 
         if "/health" in request.scope["path"]:
             # return true if up and running
             return JSONResponse(content="Healthy", status_code=HTTP_200_OK)
-        
-        
+
         # ---------- Apply specific changes for each endpoint
 
         if request.method in {"POST", "PUT"} and "/search" not in request.scope["path"]:
@@ -1244,24 +1247,24 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                 return request
         # elif request.method in ["POST", "PUT"] and not self.request_ids["owner_id"]:
         #     return JSONResponse(content="Invalid body.", status_code=HTTP_400_BAD_REQUEST)
-        
+
         elif request.method == "DELETE":
             if not self.manage_delete_request(request):
                 return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
-        
+
         elif "/search" in request.scope["path"]:
             # URL: GET: '/catalog/search'
             request = await self.manage_search_request(request)
             if hasattr(request, "status_code"):  # Unauthorized
-                return request            
+                return request
 
-        if request.method == 'GET' and request.scope["path"] == "/collections":
-            
+        if request.method == "GET" and request.scope["path"] == "/collections":
+
             query_params_dict = dict(request.query_params)
             self.request_ids["owner_id"] = query_params_dict["owner"] if "owner" in query_params_dict else ""
-      
+
         response = await call_next(request)
-        
+
         # Don't forward responses that fail.
         # NOTE: the 30x (redirect responses) are used by the oauth2 authentication.
         if response.status_code not in (HTTP_200_OK, HTTP_201_CREATED, HTTP_302_FOUND, HTTP_307_TEMPORARY_REDIRECT):
@@ -1275,7 +1278,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
             # Return a regular JSON response instead of StreamingResponse because the body cannot be read again.
             return JSONResponse(status_code=response.status_code, content=response_content)
-        
+
         # Handle responses
         if request.scope["path"] == "/search":
             # GET: '/catalog/search'
@@ -1283,9 +1286,10 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         elif request.method == "GET" and "download" in request.url.path:
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}/items/{FEATURE_ID}/download/{ASSET_TYPE}
             response = await self.manage_download_response(request, response)
-        
-        elif request.method == "GET" and \
-        (self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections", "/queryables"]):
+
+        elif request.method == "GET" and (
+            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections", "/queryables"]
+        ):
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             # URL: GET: '/catalog/'
             # URL: GET: '/catalog/collections

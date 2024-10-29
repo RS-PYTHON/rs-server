@@ -290,9 +290,11 @@ def a_feature(owner_id: str, id_: str, in_collection: str) -> Feature:
 def feature_toto_s1_l1_0_fixture() -> Feature:  # pylint: disable=missing-function-docstring
     return a_feature("toto", "fe916452-ba6f-4631-9154-c249924a122d", "S1_L1")
 
+
 @pytest.fixture(scope="session", name="feature_toto_s2_l3_0")
 def feature_toto_s2_l3_0_fixture() -> Feature:  # pylint: disable=missing-function-docstring
     return a_feature("toto", "fe916452-ba6f-4631-9154-c249924a122d", "S2_L3")
+
 
 @pytest.fixture(scope="session", name="feature_toto_s1_l1_1")
 def feature_toto_s1_l1_1_fixture() -> Feature:  # pylint: disable=missing-function-docstring
