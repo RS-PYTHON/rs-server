@@ -134,6 +134,11 @@ class EodagProvider(Provider):
                 elif isinstance(platform, str):
                     mapped_search_args["platform"] = "'" + platform + "'"
 
+            # TODO: check if it is the right way of doing this, looks very cumbersome to do it for every field
+            retransfer = kwargs.pop("retransfer", None)
+            if retransfer is not None:
+                mapped_search_args["Retransfer"] = str(retransfer).lower()
+
         if between:
             # Since now both for files and sessions, time interval is optional, map it if provided.
             mapped_search_args.update(
