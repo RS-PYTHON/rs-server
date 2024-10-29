@@ -91,6 +91,7 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("SessionId", []),
             odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
+            odata_params.get("Retransfer"),
             odata_params.get("top"),
         )
 
@@ -340,6 +341,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Union[str, None],
         WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=True)),
     ],
+    retransfer: Union[bool, None],
     limit: Annotated[
         Union[int, None],
         Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
@@ -374,6 +376,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
             platform=platform,
+            retransfer=retransfer,
             sessions_search=True,
             items_per_page=limit,
         )

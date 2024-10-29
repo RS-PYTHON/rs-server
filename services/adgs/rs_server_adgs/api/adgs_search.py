@@ -86,6 +86,7 @@ class MockPgstacAdgs(MockPgstac):
             self.request,
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
+            odata_params.get("Retransfer"),
             odata_params.get("top", None),
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),
