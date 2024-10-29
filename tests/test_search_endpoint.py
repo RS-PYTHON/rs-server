@@ -450,7 +450,7 @@ class TestFeatureOdataStacMapping:
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312").json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == cadip_feature, "Features doesn't match"
+        assert response == cadip_feature, "Features don't match"
 
     @pytest.mark.unit
     @responses.activate
