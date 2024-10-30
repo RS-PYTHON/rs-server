@@ -513,7 +513,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             logger.error("Collection %s not found: %s", collection_id, e)
             return False
 
-    async def manage_search_request(  # pylint: disable=too-many-branches
+    async def manage_search_request(  # pylint: disable=too-many-statements,too-many-branches
         self,
         request: Request,
     ) -> Request | JSONResponse:
@@ -548,7 +548,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 # Reroute url to /search and update the request body
                 content = await request.json()
                 content = {"collections": self.request_ids["collection_id"], **content}
-                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-acces
+                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
                 request.scope["path"] = "/search"
 
             # ----- Call /catalog/search with POST method endpoint
@@ -600,11 +600,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                         status_code=500,
                         detail="No collection have been specified",
                     )
-                collections = (
-                    ",".join([x for x in self.request_ids["collection_id"]])
-                    if len(self.request_ids["collection_id"]) > 1
-                    else self.request_ids["collection_id"][0]
-                )
+                collections = ",".join(self.request_ids["collection_id"])
                 new_query = {
                     "collections": collections,
                     "filter-lang": "cql2-text",
@@ -693,7 +689,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
 
         return GeoJSONResponse(content, status_code=response.status_code)
 
-    async def manage_put_post_request(  # pylint: disable=too-many-branches
+    async def manage_put_post_request(  # pylint: disable=too-many-statements,too-many-return-statements,too-many-branches
         self,
         request: Request,
     ) -> Request | JSONResponse:
@@ -1151,7 +1147,11 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         except Exception:  # pylint: disable=broad-exception-caught
             return ("", "")
 
-    async def dispatch(self, request, call_next):  # pylint: disable=too-many-branches, too-many-return-statements
+    async def dispatch(
+        self,
+        request,
+        call_next,
+    ):  # pylint: disable=too-many-branches,too-many-return-statements, too-many-statements
         """
         Redirect the user catalog specific endpoint and adapt the response content.
 

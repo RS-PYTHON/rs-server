@@ -17,7 +17,7 @@
 import getpass
 import os
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from starlette.requests import Request
@@ -37,7 +37,7 @@ CATALOG_COLLECTION = "/catalog/collections"
 
 # Regexp for search endpoints
 CATALOG_SEARCH = "/catalog/search"
-CATALOG_SEARCH_QUERY_PARAMS = "/catalog/search\?((?P<owner_id>.+):)?(?P<collection_id>.+)"  # noqa: W605
+CATALOG_SEARCH_QUERY_PARAMS = r"/catalog/search\?((?P<owner_id>.+):)?(?P<collection_id>.+)"  # noqa: W605
 
 
 def get_user(endpoint_user: str | None, apikey_user: str | None):
@@ -58,7 +58,7 @@ def get_user(endpoint_user: str | None, apikey_user: str | None):
     return os.getenv("RSPY_HOST_USER", default=getpass.getuser())
 
 
-def reroute_url(  # type: ignore
+def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-statements
     request: Request,
     ids_dict: Dict[str, Any],
 ):

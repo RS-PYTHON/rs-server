@@ -28,6 +28,12 @@ from rs_server_catalog.user_handler import (
 from starlette.requests import Request
 
 
+@pytest.fixture(name="request_ids")
+def request_id_example() -> dict:
+    """Create a request_ids disctionary to test the reroute url function calls"""
+    return {"auth_roles": "", "user_login": "", "owner_id": "", "collection_id": [], "item_id": ""}
+
+
 @pytest.fixture(name="collection_toto_1")
 def collection_toto_1_fixture() -> dict:
     """Create a collection for testing."""
@@ -36,11 +42,6 @@ def collection_toto_1_fixture() -> dict:
         "id": "toto_S1_L1",
         "count": "15",
     }
-
-
-@pytest.fixture(name="request_ids")
-def request_id_example() -> dict:
-    return {"auth_roles": "", "user_login": "", "owner_id": "", "collection_id": [], "item_id": ""}
 
 
 @pytest.fixture(name="collection_toto_1_output")
