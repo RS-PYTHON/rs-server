@@ -60,7 +60,10 @@ def serialize_adgs_asset(feature_collection, products):
     for feature in feature_collection.features:
         auxip_id = feature.properties.dict()["auxip:id"]
         # Find matching product by id and update feature href
-        matched_product = next((p for p in products if p.properties["id"] == auxip_id), None)
+        try:
+            matched_product = next((p for p in products if p.properties["id"] == auxip_id), None)
+        except StopIteration as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unable to map {feature.id}") from exc
         if matched_product:
             feature.assets["file"].href = re.sub(r"\([^\)]*\)", f"({auxip_id})", matched_product.properties["href"])
         # Rename "file" asset to feature.id
