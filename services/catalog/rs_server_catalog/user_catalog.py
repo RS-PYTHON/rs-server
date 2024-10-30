@@ -689,7 +689,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
 
         return GeoJSONResponse(content, status_code=response.status_code)
 
-    async def manage_put_post_request(  # pylint: disable=too-many-statements,too-many-return-statements,too-many-branches
+    async def manage_put_post_request(  # pylint: disable=too-many-statements,too-many-return-statements,too-many-branches  # noqa: E501
         self,
         request: Request,
     ) -> Request | JSONResponse:
