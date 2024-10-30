@@ -191,6 +191,11 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     StacApi.register_get_search(app)
     StacApi.register_post_search(app)
     app.router.prefix = ""
+    # TODO: title and description must be set using the env vars
+    # CATALOG_METADATA_TITLE and CATALOG_METADATA_DESCRIPTION
+    service = router_prefix.strip("/").title()
+    app.state.pgstac_client.title = f"RS-PYTHON {service} collections"
+    app.state.pgstac_client.description = f"{service} collections of Copernicus Reference System Python"
 
     dependencies = []
     if settings.CLUSTER_MODE:
