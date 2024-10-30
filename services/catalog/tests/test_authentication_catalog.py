@@ -19,7 +19,7 @@ import os
 
 import pytest
 import requests
-import yaml
+import yaml  # type: ignore
 from authlib.integrations.starlette_client.apps import StarletteOAuth2App
 from fastapi.testclient import TestClient
 from moto.server import ThreadedMotoServer

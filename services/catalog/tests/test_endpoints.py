@@ -30,7 +30,7 @@ from datetime import datetime, timedelta
 import fastapi
 import pytest
 import requests
-import yaml
+import yaml  # type: ignore
 from moto.server import ThreadedMotoServer
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 

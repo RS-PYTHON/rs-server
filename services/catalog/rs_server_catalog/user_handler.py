@@ -17,7 +17,7 @@
 import getpass
 import os
 import re
-from typing import Tuple
+from typing import Any, Dict, List
 
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from starlette.requests import Request
@@ -58,10 +58,10 @@ def get_user(endpoint_user: str | None, apikey_user: str | None):
     return os.getenv("RSPY_HOST_USER", default=getpass.getuser())
 
 
-def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
+def reroute_url(  # type: ignore
     request: Request,
-    ids_dict: dict[str, str] = None,
-) -> Tuple[str, dict]:
+    ids_dict: Dict[str, Any],
+):
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 

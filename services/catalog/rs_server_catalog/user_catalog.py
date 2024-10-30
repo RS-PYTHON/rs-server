@@ -581,9 +581,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             # Update owner_id if it is not already defined from path parameters
             if not self.request_ids["owner_id"]:
                 owner_id_filter = (
-                    self.find_owner_id(parse_ecql(query_params_dict["filter"]))
-                    if "filter" in query_params_dict
-                    else None
+                    self.find_owner_id(parse_ecql(query_params_dict["filter"])) if "filter" in query_params_dict else ""
                 )
                 if owner_id_filter:
                     owner_id = owner_id_filter
