@@ -170,23 +170,19 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
-    try:
-        if processor_name in processors:
-            processor = processors[processor_name]
-            status = await processor(
-                req,
-                data.inputs.items,
-                data.inputs.collection.id,
-                data.outputs["result"].id,
-                data.inputs.provider,
-                app.extra["db_table"],
-                app.extra["dask_cluster"],
-                app.extra["db_handler"],
-            ).execute()
-            return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
-    except RuntimeError as e:
-        logger.exception(f"Exception: {e}")
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"{e}") from e
+    if processor_name in processors:
+        processor = processors[processor_name]
+        status = await processor(
+            req,
+            data.inputs.items,
+            data.inputs.collection.id,
+            data.outputs["result"].id,
+            data.inputs.provider,
+            app.extra["db_table"],
+            app.extra["dask_cluster"],
+            app.extra["db_handler"],
+        ).execute()
+        return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 

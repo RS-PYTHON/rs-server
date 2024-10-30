@@ -39,13 +39,6 @@ from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
 
-DASK_TASK_ERROR = "error"
-
-ADGS_STATIONS = ["adgs"]
-AUXIP_SERVICE = "auxip"
-CADIP_STATIONS = ["ins", "mps", "mti", "nsg", "sgs", "cadip"]
-CADIP_SERVICE = "cadip"
-
 
 class ProcessorStatus(Enum):
     """
@@ -265,12 +258,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.catalog_collection: str = collection
         self.catalog_item_name: str = item
         self.provider: str = provider
-        if self.provider in ADGS_STATIONS:
-            self.service = AUXIP_SERVICE
-        elif self.provider in CADIP_STATIONS:
-            self.service = CADIP_SERVICE
-        else:
-            raise RuntimeError(f"No valid provider (station) received: {self.provider}")
         self.assets_info: list = []
         self.tasks: list = []
         # Lock to protect access to percentage
@@ -836,16 +823,17 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # retrieve the token
         try:
             token = get_station_token(
-                load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
+                load_external_auth_config_by_station_service(self.provider.lower()),
             )
         except HTTPException as http_exception:
             self.logger.error(
-                f"Failed to retrieve the token required to connect to the external station: {http_exception}",
+                f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
             )
             self.log_job_execution(
                 ProcessorStatus.FAILED,
                 0,
-                detail=f"Failed to retrieve the token required to connect to the external station: {http_exception}",
+                detail="Failed to retrieve the token needed to connect to the external "
+                f"station {self.provider.lower()}",
             )
             return
 
