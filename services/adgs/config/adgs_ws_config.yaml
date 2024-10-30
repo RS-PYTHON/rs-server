@@ -43,8 +43,8 @@ adgs:
     results_entry: responses | $
     metadata_mapping:
         id:
-            - null
-            - '$.Id'
+          - null
+          - '$.Id'
         Name:
           - null
           - '$.Name'
@@ -67,32 +67,32 @@ adgs:
           - null
           - '$.ContentDate.End'
         startTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
+          - null
+          - '$.PublicationDate'
         completionTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
+          - null
+          - '$.PublicationDate'
         ChecksumValue:
           - null
           - '$.Checksum[0].Value'
         attr_ptype:
-            - null
-            - '$.attr_ptype'
+          - null
+          - '$.attr_ptype'
         attr_serial_identif:
-            - null
-            - '$.attr_serial_identif'
+          - null
+          - '$.attr_serial_identif'
         attr_platform_short_name:
-            - null
-            - '$.attr_platform_short_name'
+          - null
+          - '$.attr_platform_short_name'
         attr_processing_date:
-            - null
-            - '$.attr_processing_date'
+          - null
+          - '$.attr_processing_date'
         attrs:
-            - null
-            - '$.Attributes'
+          - null
+          - '$.Attributes'
         href:
-            - null
-            - 'http://127.0.0.1:5000/Products({id})/$value'
+          - null
+          - 'http://127.0.0.1:5000/Products({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5000/Products({id})/$value'
         title: '$.Name'
@@ -123,7 +123,6 @@ adgs:
         downloadLink: 'http://127.0.0.1:5000/Products({uid})/$value'
 
 
-
 adgs2:
   auth:
     type: TokenAuth
@@ -142,6 +141,12 @@ adgs2:
       password: test
     headers:
       Content-Type: application/x-www-form-urlencoded
+  products:
+    GENERIC_PRODUCT_TYPE:
+      productType: '{productType}'
+    CAMS_GRF_AUX:
+      productType: cams-ads-grf-aux
+
   search:
     type: ODataV4Search
     api_endpoint: 'http://127.0.0.1:5001/Products'
@@ -149,8 +154,8 @@ adgs2:
     results_entry: responses | $
     metadata_mapping:
         id:
-            - null
-            - '$.Id'
+          - null
+          - '$.Id'
         Name:
           - null
           - '$.Name'
@@ -173,32 +178,32 @@ adgs2:
           - null
           - '$.ContentDate.End'
         startTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
+          - null
+          - '$.PublicationDate'
         completionTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
+          - null
+          - '$.PublicationDate'
         ChecksumValue:
           - null
           - '$.Checksum[0].Value'
         attr_ptype:
-            - null
-            - '$.attr_ptype'
+          - null
+          - '$.attr_ptype'
         attr_serial_identif:
-            - null
-            - '$.attr_serial_identif'
+          - null
+          - '$.attr_serial_identif'
         attr_platform_short_name:
-            - null
-            - '$.attr_platform_short_name'
+          - null
+          - '$.attr_platform_short_name'
         attr_processing_date:
-            - null
-            - '$.attr_processing_date'
+          - null
+          - '$.attr_processing_date'
         attrs:
-            - null
-            - '$.Attributes'
+          - null
+          - '$.Attributes'
         href:
-            - null
-            - 'http://127.0.0.1:5001/Products({id})/$value'
+          - null
+          - 'http://127.0.0.1:5001/Products({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5001/Products({id})/$value'
         title: '$.Name'
