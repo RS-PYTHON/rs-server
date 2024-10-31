@@ -494,7 +494,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             raise first_exception
 
         # Return results as a dict
-        return stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection")
+        return stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
 
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
