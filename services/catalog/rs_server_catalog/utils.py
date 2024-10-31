@@ -19,7 +19,10 @@ import re
 
 from fastapi import HTTPException
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_409_CONFLICT
+
+logger = Logging.default(__name__)
 
 # Regular expression pattern to match 's3://path/to/file'
 S3_KEY_PATTERN = r"^s3:\/\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.\/]+$"
@@ -103,6 +106,36 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
         )
 
     return s3_filename, alternate_field
+
+
+def delete_s3_files(s3_files_to_be_deleted):
+    """Used to clear specific files from temporary bucket or from catalog bucket."""
+    if not s3_files_to_be_deleted:
+        logger.info("No files to be deleted from bucket")
+        return True
+    s3_handler = get_s3_handler()
+    if not s3_handler:
+        logger.error("Failed to create the s3 handler when trying to delete the s3 files")
+        return False
+
+    # delete any temp file file or a file from the catalog for which the asset has been removed
+    for s3_key in s3_files_to_be_deleted:
+        try:
+            if not is_s3_path(s3_key):
+                logger.error(
+                    f"The s3 key {s3_key} does not match with a correct s3"
+                    "path pattern (s3://bucket_name/path/to/obj). Skipping it",
+                )
+                continue
+            key_array = s3_key.split("/")
+            s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
+        except RuntimeError as rte:
+            logger.exception(
+                f"Failed to delete key {'/'.join(key_array)} from s3 bucket."
+                f"Reason: {rte}. However, the process will still continue !",
+            )
+            continue
+    return True
 
 
 def is_s3_path(s3_key):
