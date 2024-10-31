@@ -249,27 +249,35 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         #
         # Step 1: read input params
 
+        stac_params = {}
+
         def format_dict(field: dict):
             """Used for error handling."""
             return json.dumps(field, indent=0).replace("\n", "").replace('"', "'")
 
-        # Read input params in the OData format
-        odata_params = {}
+        # Collections to search
+        collection_ids = [collection.strip() for collection in params.pop("collections", [])]
 
-        # Cadip session IDs to search, set in parameter or in the request state
+        # IDs to search
+        ids = params.pop("ids", None)
+
+        # The cadip session ids are set in parameter or in the request state
         # by the /collections/{collection_id}/items/{session_id} endpoint
         if self.cadip:
-            session_ids = params.pop("ids", None)
-            if not session_ids and self.request:
+            if not ids and self.request:
                 try:
-                    session_ids = self.request.state.session_id
+                    ids = self.request.state.session_id
                 except AttributeError:
                     pass
-            if session_ids:
-                odata_params["SessionId"] = session_ids
+
+        # Save the auxip product names or cadip session ids
+        if ids:
+            stac_params["id"] = [id.strip() for id in ids]
 
         # Number of results per page
         limit = params.pop("limit", None)
+        if limit:
+            limit = int(limit)
 
         # Sort results
         sortby = "-datetime"  # default value
@@ -284,15 +292,15 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             sortby = "+" if sortby_dict["direction"] == "asc" else "-"
             sortby += sortby_dict["field"]
 
-        # Collections to search
-        collection_ids = params.pop("collections", [])
-
         # datetime interval = PublicationDate
         datetime = params.pop("datetime", None)
         if datetime:
             try:
                 validate_inputs_format(datetime, raise_errors=True)
-                odata_params["PublicationDate"] = datetime
+                if self.adgs:
+                    stac_params["created"] = datetime
+                elif self.cadip:
+                    stac_params["published"] = datetime
             except HTTPException as exception:
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -302,9 +310,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         #
         # Read query and/or CQL filter
-
-        # They keys are stac compliant fields
-        stac_params = {}
 
         # Only the queryable properties are allowed
         allowed_properties = sorted(self.get_queryables().keys())
@@ -317,7 +322,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query or CQL property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
-            stac_params[prop] = value.get("property") if isinstance(value, dict) else value
+            if isinstance(value, dict):
+                value = value.get("property")
+            if isinstance(value, str):
+                value = value.strip()
+            stac_params[prop] = value
 
         def read_cql(filt: dict):
             """Use a recursive function to read all CQL filter levels"""
@@ -387,7 +396,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # Step 2: do the search
 
         # Convert search params from STAC keys to OData keys
-        odata_params.update(self.stac_to_odata(stac_params))
+        odata_params = self.stac_to_odata(stac_params)
 
         # Only keep the authorized collections
         allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
@@ -433,11 +442,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         # If no intersection, then the selection is empty, else save the intersection
                         if start >= stop:
                             empty_selection = True
-                            break
+                            break  # try next collection
                         odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
 
                     # Comma-separated lists
-                    if key in ("Satellite"):
+                    if key in ("platformSerialIdentifier", "platformShortName", "Satellite"):
 
                         # Read both values
                         value1 = odata_params[key]
@@ -461,14 +470,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                                 intersection = ", ".join(intersection)
                             if not intersection:
                                 empty_selection = True
-                                break
+                                break  # try next collection
 
                         # Save the intersection
                         odata[key] = intersection
 
                 # If the selection is empty, we return no items for this collection
                 if empty_selection:
-                    break
+                    continue  # try next collection
 
                 # Overwrite the pagination parameters
                 odata["top"] = odata.get("top") or limit or 20  # default = 20 results per page

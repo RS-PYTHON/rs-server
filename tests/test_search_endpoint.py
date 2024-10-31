@@ -14,16 +14,19 @@
 
 """Unittests for rs-server search endpoints."""
 import os
+from copy import deepcopy
 
 import pytest
 import responses
 import yaml
 from fastapi import HTTPException, status
 from pydantic import ValidationError
+from rs_server_adgs import adgs_utils
 from rs_server_adgs.adgs_utils import auxip_map_mission
+from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 
-# pylint: disable=too-few-public-methods, too-many-arguments
+# pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals, too-many-branches
 
 ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
 ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
@@ -169,16 +172,6 @@ class TestConstellationMapping:
         """Pytest using only invalid inputs, output is not verified, function should raise exception."""
         with pytest.raises(HTTPException):
             cadip_map_mission(platform, constellation)
-
-
-class TestSearchEndpoints:
-    """Class used to group search endpoints tests."""
-
-    def test_cadip_search(self):
-        """CADIP search tests to be implemented here"""
-
-    def test_adgs_search(self):
-        """ADGS search tests to be implemented here"""
 
 
 class TestLandingPagesEndpoints:
@@ -487,7 +480,7 @@ class TestFeatureOdataStacMapping:
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
         ).json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == adgs_feature, "Features doesn't match"
+        assert response == adgs_feature, "Features don't match"
 
     @pytest.mark.unit
     @responses.activate
@@ -734,3 +727,230 @@ class TestCollection:
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
         assert self_href in response.json()["links"]
+
+
+@pytest.mark.parametrize("filter_type", ("cql", "query"))
+@pytest.mark.parametrize("method", ("GET", "POST"))
+@pytest.mark.parametrize(
+    "fastapi_app, service",
+    ((ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_CADIP, "cadip")),
+    indirect=["fastapi_app"],
+)
+def test_search_parameters(mocker, mock_token_validation, client, filter_type, method, service):
+    """Test all search parameters"""
+
+    adgs = service == "adgs"
+    cadip = service == "cadip"
+
+    mock_token_validation(service)
+
+    # Read the first adgs or cadip collection, keep everything except the id and hardcoded query
+    if adgs:
+        service_utils = adgs_utils
+    elif cadip:
+        service_utils = cadip_utils
+    else:
+        raise NotImplementedError
+    collection = service_utils.read_conf()["collections"][0]
+    collection.pop("id")
+    collection.pop("query")
+
+    #
+    # Mock a collection with no hardcoded params, another with single values, another with multiple values
+
+    if adgs:
+        query2 = {
+            "productType": "type1",
+            "platformShortName": "sentinel-1",
+        }
+        query3 = {
+            "productType": "type1, type2",
+            "platformShortName": "sentinel-1, sentinel-2",
+        }
+    elif cadip:
+        query2 = {
+            "Satellite": "S1A",
+        }
+        query3 = {
+            "Satellite": "S1A, S2A",
+        }
+    else:
+        raise NotImplementedError
+    hardcoded_date = "2020-01-01T00:00:00Z/2022-01-01T00:00:00Z"
+    hardcoded_limit = 10
+    mocked_collections = [
+        {"id": "col1", **collection},
+        {
+            "id": "col2",
+            "query": {
+                "PublicationDate": hardcoded_date,
+                "top": hardcoded_limit,
+                **query2,
+            },
+            **collection,
+        },
+        {
+            "id": "col3",
+            "query": {
+                "PublicationDate": hardcoded_date,
+                "top": hardcoded_limit,
+                **query3,
+            },
+            **collection,
+        },
+    ]
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: mocked_collections,
+    )
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": mocked_collections})
+
+    #
+    # User given parameters
+
+    # Static values
+    user_datetime = "2021-01-01T00:00:00Z/2023-01-01T00:00:00Z"
+    user_limit = 15
+    user_params = {
+        "limit": user_limit,
+        "datetime": user_datetime,
+    }
+
+    # cql or query filter, for get or post requests
+    if adgs:
+        get_cql = " AND product:type='type2'"
+        get_query = ""","product:type": {"eq": "type2"}"""
+        post_cql = [{"args": [{"property": "product:type"}, "type2"], "op": "="}]
+        post_query = {"product:type": {"eq": "type2"}}
+    else:
+        get_cql = ""
+        get_query = ""
+        post_cql = []
+        post_query = {}
+
+    # GET parameters
+    if method == "GET":
+        user_params.update(
+            {
+                "ids": "id1, id2",
+                "sortby": "-datetime",
+            },
+        )
+        if filter_type == "cql":
+            user_params.update({"filter": f"platform='sentinel-2a' AND constellation='sentinel-2'{get_cql}"})
+        if filter_type == "query":
+            user_params.update(
+                {
+                    "query": """{"platform": {"eq": "sentinel-2a"},"constellation": {"eq": "sentinel-2"}"""
+                    f"{get_query}}}",
+                },
+            )
+
+    # POST parameters
+    if method == "POST":
+        user_params.update(
+            {
+                "ids": ["id1", "id2"],
+                "sortby": [{"direction": "desc", "field": "datetime"}],
+            },
+        )
+        if filter_type == "cql":
+            user_params.update(
+                {
+                    "filter": {
+                        "args": [
+                            {"args": [{"property": "platform"}, "sentinel-2a"], "op": "="},
+                            {"args": [{"property": "constellation"}, "sentinel-2"], "op": "="},
+                            *post_cql,
+                        ],
+                        "op": "and",
+                    },
+                },
+            )
+        if filter_type == "query":
+            user_params.update(
+                {
+                    "query": {
+                        "platform": {"eq": "sentinel-2a"},
+                        "constellation": {"eq": "sentinel-2"},
+                        **post_query,
+                    },
+                },
+            )
+
+    # Call the /search endpoint for each collection
+    for collection_id in [collection["id"] for collection in mocked_collections]:
+
+        # Copy and modify user params
+        collection_params = deepcopy(user_params)
+        if method == "GET":
+            collection_params["collections"] = collection_id
+        elif method == "POST":
+            collection_params["collections"] = [collection_id]
+
+        odata_request_template = """/Products?$filter="PublicationDate gt 2021-01-01T00:00:00.000Z and PublicationDate lt 2023-01-01T00:00:00.000Z and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'type2') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'sentinel-2')"&$top=20&$expand=Attributes"""
+
+        # The first collection has no hardcoded params, so we should use the user params
+        if collection_id == "col1":
+            """/Products?$filter="PublicationDate gt 2021-01-01T00:00:00.000Z and PublicationDate lt 2023-01-01T00:00:00.000Z and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq 'type2') and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'sentinel-2')"&$top=20&$expand=Attributes"""
+
+        # with responses.RequestsMock() as rsps:
+        #     rsps.add(
+        #         responses.GET,
+        #         "http://twitter.com/api/1/foobar",
+        #         body="{}",
+        #         status=200,
+        #         content_type="application/json",
+        #     )
+
+        # Call the endpoint
+        url = f"{os.getenv('router_prefix')}/search"
+        if method == "GET":
+            response = client.get(url, params=collection_params)
+        elif method == "POST":
+            response = client.post(url, json=collection_params)
+        else:
+            raise NotImplementedError
+
+    bp = 0
+
+    # # Test with no parameters
+    # assert client.get("/cadip/cadip/cadu/search").status_code == status.HTTP_400_BAD_REQUEST
+    # mock_token_validation("cadip")
+    # responses.add(
+    #     responses.GET,
+    #     'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id1"&$top=1000',
+    #     json={"responses": expected_products[0]},
+    #     status=200,
+    # )
+    # # Test a request with only all files from session_id1
+    # response = client.get("/cadip/cadip/cadu/search?session_id=session_id1")
+    # assert response.status_code == status.HTTP_200_OK
+    # # test that session_id1 is correctly mapped
+    # assert response.json()["features"][0]["properties"]["cadip:session_id"] == "session_id1"
+
+    # # Test a request with all files from multiple sessions
+    # responses.add(
+    #     responses.GET,
+    #     'http://127.0.0.1:5000/Files?$filter="SessionID%20in%20session_id2,%20session_id3"&$top=1000',
+    #     json={"responses": expected_products[1:]},
+    #     status=200,
+    # )
+    # response = client.get("/cadip/cadip/cadu/search?session_id=session_id2,session_id3")
+    # assert response.status_code == status.HTTP_200_OK
+
+    # # test that returned products are from session_id2 and session_id3
+    # assert response.json()["features"][0]["properties"]["cadip:session_id"] == "session_id2"
+    # assert response.json()["features"][1]["properties"]["cadip:session_id"] == "session_id3"
+
+    # # Nominal case, combined session_id and datetime
+    # responses.add(
+    #     responses.GET,
+    #     'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id2%20and%20PublicationDate%20gt%20'
+    #     '2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z"&$top=1000',
+    #     json={"responses": expected_products},
+    #     status=200,
+    # )
+    # endpoint = "/cadip/CADIP/cadu/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z&session_id=session_id2"
+    # assert client.get(endpoint).status_code == status.HTTP_200_OK
