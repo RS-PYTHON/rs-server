@@ -1413,7 +1413,7 @@ class TestAuthenticationDownload:
             **header,
         )
         assert response.status_code == HTTP_400_BAD_REQUEST
-        assert response.content == b'"Could not find s3 credentials"'
+        assert response.content == b'"Failed to find s3 credentials"'
 
     @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):

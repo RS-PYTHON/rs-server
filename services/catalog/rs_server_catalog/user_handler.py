@@ -244,7 +244,7 @@ def remove_user_from_collection(collection: dict, user: str) -> dict:
     Returns:
         dict: The collection without the user ID in the id section.
     """
-    if user in collection["id"]:
+    if user in collection.get("id", ""):
         collection["id"] = collection["id"].removeprefix(f"{user}_")
     return collection
 

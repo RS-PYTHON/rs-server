@@ -1,6 +1,38 @@
 {
+    "bbox": [
+        -180,
+        -90,
+        180,
+        90
+    ],
     "type": "Feature",
-    "geometry": null,
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [
+                    -180,
+                    -90
+                ],
+                [
+                    180,
+                    -90
+                ],
+                [
+                    180,
+                    90
+                ],
+                [
+                    -180,
+                    90
+                ],
+                [
+                    -180,
+                    -90
+                ]
+            ]
+        ]
+    },
     "properties": {
         "datetime": "2020-01-05T07:22:04.051000+00:00",
         "start_datetime": "2020-01-05T07:22:04.051000+00:00",
@@ -26,9 +58,11 @@
     "stac_version": "1.0.0",
     "assets": {
         "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw": {
-            "href": "http://testserver/cadip/cadu?name=DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw",
+            "href": "http://127.0.0.1:5000/Files(e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d)/$value",
             "title": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00000.raw",
-            "roles": ["cadu"],
+            "roles": [
+                "cadu"
+            ],
             "cadip:id": "e4d17d2f-29eb-4c18-bc1f-bf2769a3a16d",
             "cadip:retransfer": false,
             "cadip:final_block": false,
@@ -40,9 +74,11 @@
             "file:size": "42"
         },
         "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw": {
-            "href": "http://testserver/cadip/cadu?name=DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw",
+            "href": "http://127.0.0.1:5000/Files(cd24aa8b-2719-4a1e-b4a7-f7c9df6de300)/$value",
             "title": "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw",
-            "roles": ["cadu"],
+            "roles": [
+                "cadu"
+            ],
             "cadip:id": "cd24aa8b-2719-4a1e-b4a7-f7c9df6de300",
             "cadip:retransfer": false,
             "cadip:final_block": false,
@@ -54,6 +90,30 @@
             "file:size": "51"
         }
     },
-    "links": [],
-    "stac_extensions": ["https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"]
+    "links": [
+        {
+            "rel": "collection",
+            "type": "application/json",
+            "href": "http://testserver/collections/cadip_session_by_id"
+        },
+        {
+            "rel": "parent",
+            "type": "application/json",
+            "href": "http://testserver/collections/cadip_session_by_id"
+        },
+        {
+            "rel": "root",
+            "type": "application/json",
+            "href": "http://testserver/"
+        },
+        {
+            "rel": "self",
+            "type": "application/geo+json",
+            "href": "http://testserver/collections/cadip_session_by_id/items/S1A_20200105072204051312"
+        }
+    ],
+    "stac_extensions": [
+        "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
+    ],
+    "collection": "cadip_session_by_id"
 }

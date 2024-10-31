@@ -60,6 +60,7 @@ from rs_server_catalog.user_handler import (
 )
 from rs_server_catalog.utils import (
     get_s3_filename_from_asset,
+    get_s3_handler,
     get_temp_bucket_name,
     is_s3_path,
     verify_existing_item_from_catalog,
@@ -106,11 +107,14 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
 
     def __init__(self, client: CoreCrudClient):
         """Constructor, called from the middleware"""
-
+        # TODO: the s3_handler member should not exist anymore
+        # it should be retrieved with uitls.get_s3_handler when needed
+        # To be checked later for a complete removal
         self.s3_handler: S3StorageHandler = None
+        # end of TODO
         self.request_ids: dict[Any, Any] = {}
         self.client = client
-        self.s3_keys_to_be_deleted: list[str] = []
+        self.s3_files_to_be_deleted: list[str] = []
 
     def remove_user_from_objects(self, content: dict, user: str, object_name: str) -> dict:
         """Remove the user id from the object.
@@ -134,12 +138,16 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                 objects[i] = remove_user_from_feature(objects[i], user)
         return content
 
-    def clear_unnecessary_s3_files(self):
+    def delete_s3_files(self):
         """Used to clear specific files from temporary bucket and from catalog bucket if needed."""
-        if not self.s3_handler:
+        s3_handler = get_s3_handler()
+        if not s3_handler:
+            logger.error("Failed to delete the s3 files")
+            self.s3_files_to_be_deleted.clear()
             return
+
         # delete any temp file file or a file from the catalog for which the asset has been removed
-        for s3_key in self.s3_keys_to_be_deleted:
+        for s3_key in self.s3_files_to_be_deleted:
             try:
                 if not is_s3_path(s3_key):
                     raise HTTPException(
@@ -148,13 +156,14 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
                         status_code=HTTP_400_BAD_REQUEST,
                     )
                 key_array = s3_key.split("/")
-                self.s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
+                s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
             except RuntimeError as rte:
                 logger.exception(
                     f"Failed to delete key {'/'.join(key_array)} from s3 bucket."
-                    f"Reason: {rte}. The process will continue though !",
+                    f"Reason: {rte}. However, the process will still continue !",
                 )
-        self.s3_keys_to_be_deleted.clear()
+                continue
+        self.s3_files_to_be_deleted.clear()
 
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
@@ -176,7 +185,7 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         Returns:
             dict: The collection passed in parameter with adapted links
         """
-        links = my_object["links"]
+        links = my_object.get("links", [])
         for j, link in enumerate(links):
             link_parser = urlparse(link["href"])
             if "properties" in my_object:  # If my_object is an item
@@ -264,7 +273,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
             item_s3_path = existing_asset["alternate"]["s3"]["href"]
         except KeyError as exc:
             raise HTTPException(
-                detail=f"Could not get the s3 path for the asset {asset_name}",
+                detail=f"Failed to get the s3 path for the asset {asset_name}",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
         if item_s3_path != s3_key:
@@ -306,6 +315,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
             HTTPException: If there are errors during the S3 transfer or deletion process.
         """
         if not self.s3_handler or not files_s3_key:
+            logger.debug(f"s3_bucket_handling: nothing to do: {self.s3_handler} | {files_s3_key}")
             return
 
         try:
@@ -337,10 +347,10 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
             # If a PATCH request is received (not yet implemented) do not delete anything
             if item and request.method == "PUT":
                 for asset in item["assets"]:
-                    self.s3_keys_to_be_deleted.append(item["assets"][asset]["alternate"]["s3"]["href"])
+                    self.s3_files_to_be_deleted.append(item["assets"][asset]["alternate"]["s3"]["href"])
         except KeyError as kerr:
             raise HTTPException(
-                detail=f"{err_message} Could not find S3 credentials.",
+                detail=f"{err_message} Failed to find S3 credentials.",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from kerr
         except RuntimeError as rte:
@@ -378,7 +388,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
         user = self.request_ids.get("owner_id", None)
         if not collection_id or not user:
             raise HTTPException(
-                detail="Could not get the user or the name of the collection!",
+                detail="Failed to get the user or the name of the collection!",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
         verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
@@ -397,8 +407,8 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
             else:
                 # when alternate_key does not exist, it means the request is coming from the staging process,
                 # and the s3_filename is on the temp bucket. this should be deleted later on after the catalog
-                # insertion process is completed (see the use of clear_unnecessary_s3_files function)
-                self.s3_keys_to_be_deleted.append(s3_filename)
+                # insertion process is completed (see the use of delete_s3_files function)
+                self.s3_files_to_be_deleted.append(s3_filename)
             logger.debug(f"HTTP request add/update asset: {s3_filename!r}")
             fid = s3_filename.rsplit("/", maxsplit=1)[-1]
             if fid != asset:
@@ -415,6 +425,8 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id']} 
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 # Check if the S3 key exists
+                # TBD: The catalog should have nothing to do anymore with the
+                # s3 level. This part has to be removed
                 if not self.check_s3_key(item, asset, s3_key):
                     # update the 'href' key with the download link
                     new_href = f"https://{request.url.netloc}/catalog/\
@@ -423,14 +435,20 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     # Update the S3 path to use the catalog bucket and create the alternate field
                     new_s3_href = {"s3": {"href": s3_key}}
                     content["assets"][asset].update({"alternate": new_s3_href})
-                    # copy the key only if it isn't already on the final bucket
-                    files_s3_key.append(s3_filename)
+                    # copy the key only if it isn't already in the final bucket
+                    if not int(
+                        os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0),
+                    ) and not self.s3_handler.check_s3_key_on_bucket(CATALOG_BUCKET, "/".join(old_bucket_arr[3:])):
+                        files_s3_key.append(s3_filename)
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
                     # be deleted from the s3 bucket later on
                     item["assets"].pop(asset)
-            except (IndexError, AttributeError, KeyError) as exc:
-                raise HTTPException(detail="Invalid obs bucket!", status_code=HTTP_400_BAD_REQUEST) from exc
+            except (IndexError, AttributeError, KeyError, RuntimeError) as exc:
+                raise HTTPException(
+                    detail=f"Failed to handle the s3 level. Reason: {exc}",
+                    status_code=HTTP_400_BAD_REQUEST,
+                ) from exc
 
         # 3 - include new stac extension if not present
         new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
@@ -462,7 +480,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 .lstrip("/")
             )
         except KeyError:
-            return f"Could not find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
+            return f"Failed to find asset named '{asset_id}' from item '{item_id}'", HTTP_404_NOT_FOUND
         try:
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
@@ -476,9 +494,9 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 ExpiresIn=PRESIGNED_URL_EXPIRATION_TIME,
             )
         except KeyError:
-            return "Could not find s3 credentials", HTTP_400_BAD_REQUEST
+            return "Failed to find s3 credentials", HTTP_400_BAD_REQUEST
         except botocore.exceptions.ClientError:
-            return "Could not generate presigned url", HTTP_400_BAD_REQUEST
+            return "Failed to generate presigned url", HTTP_400_BAD_REQUEST
         return response, HTTP_302_FOUND
 
     def find_owner_id(self, ecql_ast: Node) -> str:
@@ -622,7 +640,10 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             if "filter" in query:
                 qs_filter_json = query["filter"]
                 filters = parse_cql2_json(qs_filter_json)
-        owner_id = self.find_owner_id(filters)
+        try:
+            owner_id = self.find_owner_id(filters)
+        except AttributeError:
+            owner_id = self.request_ids["owner_id"]
         if "collections" in query:
             collection_id = query["collections"][0].removeprefix(owner_id)
 
@@ -695,7 +716,10 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             elif "items" in request.scope["path"]:
                 # try to get the item if it is already part from the collection
                 item = await self.get_item_from_collection(request)
+                # !!!
+                # Removed since RSPY 326, no need for bucket movement
                 content = self.update_stac_item_publication(content, request, item)
+                # !!!
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
@@ -992,7 +1016,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
             ):
                 response_content = remove_user_from_feature(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
-            self.clear_unnecessary_s3_files()
+            self.delete_s3_files()
         except RuntimeError as exc:
             return JSONResponse(content=f"Failed to clean temporary bucket: {exc}", status_code=HTTP_400_BAD_REQUEST)
         except Exception as exc:  # pylint: disable=broad-except
@@ -1015,9 +1039,51 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         response_content = json.loads(b"".join(body).decode())  # type:ignore
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
+        # delete the s3 files as well
+        self.delete_s3_files()
         return JSONResponse(response_content)
 
-    def manage_delete_request(self, request: Request):
+    async def build_filelist_to_be_deleted(self, request):
+        """Build the list of the s3 files that will be deleted if the request is successfull"""
+
+        collection_id = f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"
+        try:
+            if "/items" not in request.scope["path"]:
+                # this is the case for delete endpoint /collections/<collection_name>
+                items_collection = await self.client.item_collection(request=request, collection_id=collection_id)
+            else:
+                # this is the case for delete endpoint /collections/<collection_name>/items/<item_name>
+                item = await self.client.get_item(
+                    item_id=self.request_ids["item_id"],
+                    collection_id=collection_id,
+                    request=request,
+                )
+                items_collection = {
+                    "type": "FeatureCollection",
+                    "context": {"limit": 10, "returned": 1},
+                    "features": [item],
+                }
+        except NotFoundError:
+            logger.error("Failed to find the requested object to be deleted.")
+            return
+        logger.debug(f"response_get_collection = {items_collection}")
+        try:
+            features = items_collection.get("features", [])
+            for feature in features:
+                assets = feature.get("assets", {})
+                for _, asset_info in assets.items():
+                    s3_href = asset_info.get("alternate", {}).get("s3", {}).get("href")
+                    if s3_href:
+                        self.s3_files_to_be_deleted.append(s3_href)
+        except KeyError as e:
+            logger.error(f"Unable to build the list of items to delete due to missing key: {e}")
+            return
+        logger.info(
+            "Succeded in building the list with the s3 files to be deleted. "
+            f"There are {len(self.s3_files_to_be_deleted)} files to be deleted",
+        )
+
+    async def manage_delete_request(self, request: Request):
         """Check if the deletion is allowed.
 
         Args:
@@ -1058,6 +1124,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
 collection or an item from a collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
+        await self.build_filelist_to_be_deleted(request)
         return True
 
     async def retrieve_timestamp(self, request: Request) -> tuple[str, str]:
@@ -1130,7 +1197,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         elif request.method in ["POST", "PUT"] and not self.request_ids["owner_id"]:
             return JSONResponse(content="Invalid body.", status_code=HTTP_400_BAD_REQUEST)
         elif request.method == "DELETE":
-            if not self.manage_delete_request(request):
+            if not await self.manage_delete_request(request):
                 return JSONResponse(content="Deletion not allowed.", status_code=HTTP_401_UNAUTHORIZED)
 
         response = await call_next(request)

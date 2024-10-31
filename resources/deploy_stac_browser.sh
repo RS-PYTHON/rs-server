@@ -43,7 +43,7 @@ fi
 # We add a sed command to the .sh script that will modify the .js file to add
 # the oauth2 configuration based on environment variables: OIDC_ENDPOINT, OIDC_REALM, PUBLIC_CLIENT_ID
 #
-# Note: we substitude env vars in ThisIsUsedBySed, not in "ThisGoesToEntrypointSh"
+# Note: we substitute env vars in ThisIsUsedBySed, not in "ThisGoesToEntrypointSh"
 cat <<- "ThisGoesToEntrypointSh" >> docker/docker-entrypoint.sh
 
 # This was added by https://github.com/RS-PYTHON/rs-server/tree/develop/resources/deploy_stac_browser.sh

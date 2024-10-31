@@ -90,6 +90,9 @@ adgs:
         attrs:
             - null
             - '$.Attributes'
+        href:
+            - null
+            - 'http://127.0.0.1:5000/Products({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5000/Products({id})/$value'
         title: '$.Name'

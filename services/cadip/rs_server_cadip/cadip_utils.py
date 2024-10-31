@@ -21,20 +21,15 @@ It includes an API endpoint, utility functions, and initialization for accessing
 import json
 import os
 import os.path as osp
-from functools import lru_cache
+import re
 from pathlib import Path
 from typing import List, Union
 
 import eodag
 import stac_pydantic
-import starlette.requests
 import yaml
 from fastapi import HTTPException, status
-from rs_server_common.stac_api_common import (
-    RSPYQueryableField,
-    generate_queryables,
-    map_stac_platform,
-)
+from rs_server_common.stac_api_common import map_stac_platform
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
@@ -42,37 +37,6 @@ CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 
 
-def generate_cadip_queryables(collection_id: str) -> dict[str, RSPYQueryableField]:
-    """Function used to get available queryables based on a given collection."""
-    config = select_config(collection_id)
-    return generate_queryables(config, get_cadip_queryables)
-
-
-def get_cadip_queryables() -> dict[str, RSPYQueryableField]:
-    """Function to list all available queryables for CADIP session search."""
-    return {
-        "PublicationDate": RSPYQueryableField(
-            title="PublicationDate",
-            type="Interval",
-            description="Session Publication Date",
-            format="1940-03-10T12:00:00Z/2024-01-01T12:00:00Z",
-        ),
-        "Satellite": RSPYQueryableField(
-            title="Satellite",
-            type="[string, array]",
-            description="Session satellite acquisition target",
-            format="S1A or S1A, S2B",
-        ),
-        "SessionId": RSPYQueryableField(
-            title="SessionId",
-            type="[string, array]",
-            description="Session ID descriptor",
-            format="S1A_20231120061537234567",
-        ),
-    }
-
-
-@lru_cache(maxsize=1)
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
     cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
@@ -89,23 +53,12 @@ def select_config(configuration_id: str) -> dict | None:
     )
 
 
-def prepare_cadip_search(collection, queryables):
-    """Function used to prepare cadip /search endpoint.
-    Map queryables from stac to odata format, read and update existing configuration.
-    """
-
-    selected_config = select_config(collection)
-
+def stac_to_odata(stac_params: dict) -> dict:
+    """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
     stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
     with open(stac_mapper_path, encoding="utf-8") as stac_map:
         stac_mapper = json.loads(stac_map.read())
-        query_params = {stac_mapper.get(k, k): v for k, v in queryables.items()}
-
-    if selected_config:
-        # Update selected_config query values with the ones coming in request.query_params
-        for query_config_key in query_params:
-            selected_config["query"][query_config_key] = query_params[query_config_key]
-    return selected_config, query_params
+        return {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
 
 
 def rename_keys(product: dict) -> dict:
@@ -117,17 +70,19 @@ def rename_keys(product: dict) -> dict:
     return product
 
 
-def update_product(product: dict) -> dict:
+def update_product(product: dict, href: str) -> dict:
     """Update product with renamed keys and default geometry."""
     product = rename_keys(product)
     product.update(DEFAULT_GEOM)
+    product["href"] = re.sub(r"\([^\)]*\)", f'({product["id"]})', href)
     return product
 
 
-def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, request: starlette.requests.Request) -> Asset:
+def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, href: str) -> Asset:
     """This function is used to map extended files from odata to stac format."""
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
-    href = f'{request.url.scheme}://{request.url.netloc}/cadip/cadu?name={asset.pop("id")}'
+    href = re.sub(r"\([^\)]*\)", f'({product.properties["id"]})', href)
+    asset.pop("id")
     return Asset(href=href, roles=["cadu"], title=product.properties["Name"], **asset)
 
 
@@ -136,7 +91,10 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
     Convert a list of sessions containing expanded files metadata into a list of files for serialization into the DB.
     """
     return [
-        eodag.EOProduct(provider="internal_session_product_file_from_cadip", properties=update_product(product))
+        eodag.EOProduct(
+            provider="internal_session_product_file_from_cadip",
+            properties=update_product(product, session.properties["href"]),
+        )
         for session in input_sessions
         for product in session.properties.get("Files", [])
     ]
@@ -146,7 +104,6 @@ def from_session_expand_to_assets_serializer(
     feature_collection: stac_pydantic.ItemCollection,
     input_session: eodag.EOProduct,
     mapper: dict,
-    request: starlette.requests.Request,
 ) -> stac_pydantic.ItemCollection:
     """
     Associate all expanded files with session from feature_collection and create a stac_pydantic.Asset for each file.
@@ -156,9 +113,9 @@ def from_session_expand_to_assets_serializer(
         for product in input_session:
             if product.properties["SessionID"] == session.id:
                 # Create Asset
-                asset: Asset = map_dag_file_to_asset(mapper, product, request)
+                asset: Asset = map_dag_file_to_asset(mapper, product, product.properties["href"])
                 # Add Asset to Item.
-                session.assets.update({asset.title: asset.model_dump()})  # type: ignore
+                session.assets.update({asset.title or "": asset})
         # Remove processed products from input_session
         input_session = [product for product in input_session if product.properties["SessionID"] != session.id]
 
@@ -179,9 +136,7 @@ def validate_products(products: eodag.EOProduct):
 
 def cadip_map_mission(platform: str, constellation: str):
     """
-    Custom function for CADIP, to read constellation mapper and return propper
-    values for platform and serial.
-    Eodag maps this values to Satellite
+    Map STAC platform and constellation into OData Satellite.
 
     Input: platform = sentinel-1a       Output: A
     Input: constellation = sentinel-1   Output: A, B, C

@@ -47,7 +47,7 @@ DWN_THREAD_START_TIMEOUT = 5
 
 
 def is_valid_date_format(date: str) -> bool:
-    """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS.sssZ".
+    """Check if a string adheres to the expected date format "YYYY-MM-DDTHH:MM:SS[.sss]Z".
 
     Args:
         date (str): The string to be validated for the specified date format.
@@ -57,10 +57,15 @@ def is_valid_date_format(date: str) -> bool:
 
     """
     try:
-        datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+        datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")  # test without milliseconds
         return True
     except ValueError:
-        return False
+        try:
+            datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%fZ")  # test with milliseconds
+            return True
+        except ValueError:
+            pass
+    return False
 
 
 def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> Union[List, str]:
@@ -390,13 +395,13 @@ def eodag_download(
             )
             s3_handler.put_files_to_s3(s3_config)
         except (RuntimeError, KeyError) as e:
-            logger.exception(f"Could not connect to the s3 storage: {e}")
+            logger.exception(f"Failed to connect to the s3 storage: {e}")
             # Try n times to update the status to FAILED in the database
             update_db(
                 db,
                 db_product,
                 EDownloadStatus.FAILED,
-                "Could not connect to the s3 storage",
+                "Failed to connect to the s3 storage",
             )
             return
         except Exception as e:  # pylint: disable=broad-except

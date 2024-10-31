@@ -20,10 +20,10 @@ import os
 from functools import wraps
 from typing import Annotated
 
+import jwt
 from asyncache import cached
 from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
-from jose import jwt
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
@@ -87,7 +87,13 @@ async def authenticate(
                 token = token[7:]  # remove the "Bearer " header
 
             # Decode the token
-            userinfo = jwt.decode(token, key=key, issuer=issuer, audience=os.environ["OIDC_CLIENT_ID"])
+            userinfo = jwt.decode(
+                token,
+                key=key,
+                issuer=issuer,
+                audience=os.environ["OIDC_CLIENT_ID"],
+                algorithms=["RS256"],
+            )
 
             # The result contains the auth roles we need, but still get them from keycloak
             # so we are sure to have the same behaviour than with the apikey and oauth2
@@ -105,15 +111,10 @@ async def authenticate(
             auth_info = AuthInfo(user_login=user_login, iam_roles=kc_info.roles, apikey_config={})
 
         else:
-            # Else, the best would be to force the browser to authenticate, but for now it doesn't work, see:
-            # https://github.com/radiantearth/stac-browser/issues/479
-            # raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You must login")
-
-            # In the meantime, use a fake user auth info that has no rights, so no collections will show.
-            auth_info = AuthInfo(
-                "stac-browser",
-                ["rs_adgs_landing_page", "rs_cadip_landing_page", "rs_catalog_landing_page"],
-                {},
+            # Else, return an "unauthorized" error to force the browser to authenticate
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication needed from the STAC browser",
             )
 
     # Not from the stac browser

@@ -25,6 +25,9 @@ from rs_server_cadip.cadip_utils import cadip_map_mission
 
 # pylint: disable=too-few-public-methods, too-many-arguments
 
+ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
+ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
+
 
 @pytest.mark.unit
 @responses.activate
@@ -83,10 +86,9 @@ class TestOperatorDefinedCollections:
     @pytest.mark.parametrize(
         "endpoint, code",
         [
-            ("/cadip/collections/cadip_session_incomplete/items", status.HTTP_400_BAD_REQUEST),
+            ("/cadip/collections/cadip_session_incomplete/items", status.HTTP_422_UNPROCESSABLE_ENTITY),
             ("/cadip/collections/cadip_session_incomplete_no_stop/items", status.HTTP_400_BAD_REQUEST),
             ("/cadip/collections/cadip_session_incomplete_no_start/items", status.HTTP_400_BAD_REQUEST),
-            ("/auxip/collections/adgs_invalid/items", status.HTTP_400_BAD_REQUEST),
             ("/auxip/collections/adgs_invalid_no_start/items", status.HTTP_400_BAD_REQUEST),
             ("/auxip/collections/adgs_invalid_no_stop/items", status.HTTP_400_BAD_REQUEST),
         ],
@@ -184,8 +186,9 @@ class TestLandingPagesEndpoints:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, collection_link",
-        [("/cadip", "/cadip/collections"), ("/auxip", "/auxip/collections")],
+        "fastapi_app, endpoint, collection_link",
+        [(ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"), (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections")],
+        indirect=["fastapi_app"],
     )
     def test_local_landing_pages(self, client, endpoint, collection_link):
         """
@@ -290,9 +293,9 @@ class TestLandingPagesEndpoints:
         mock_empty_roles.auth_roles = roles
         mocker.patch(request_path, new_callable=mocker.PropertyMock, return_value=mock_empty_roles)
 
-        # The result should be 2 empty lists.
+        # No collection should be returned
         empty_response = client.get(endpoint).json()
-        assert {"type": "Object", "links": [], "collections": []} == empty_response
+        assert empty_response["collections"] == []
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -325,32 +328,33 @@ class TestQueryablesEndpoints:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, title, expected_queryables",
+        "fastapi_app, endpoint, expected_queryables",
         [
-            ("/cadip/queryables", "Queryables for CADIP Search API", ["Satellite", "PublicationDate"]),
-            ("/auxip/queryables", "Queryables for ADGS Search API", ["platformShortName", "PublicationDate"]),
+            (ROUTER_PREFIX_CADIP, "/cadip/queryables", ["platform", "constellation"]),
+            (ROUTER_PREFIX_AUXIP, "/auxip/queryables", ["product:type", "platform", "constellation"]),
         ],
+        indirect=["fastapi_app"],
     )
-    def test_general_queryables(self, client, endpoint, title, expected_queryables):
+    def test_general_queryables(self, client, endpoint, expected_queryables):
         """Endpoint to test all queryables."""
         resp = client.get(endpoint).json()
-        assert resp["title"] == title
-        for queryable in expected_queryables:
-            assert queryable in resp["properties"].keys()
+        assert resp["title"] == "STAC Queryables."
+        assert list(resp["properties"].keys()) == expected_queryables
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, expected_queryables",
+        "fastapi_app, endpoint, expected_queryables",
         [
-            ("/cadip/collections/cadip_session_by_id_list/queryables", ["Satellite", "PublicationDate"]),
-            ("/auxip/collections/adgs_by_platform/queryables", ["PublicationDate", "platformSerialIdentifier"]),
+            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_satellite/queryables", []),
+            (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/queryables", ["product:type"]),
+            (ROUTER_PREFIX_AUXIP, "/auxip/collections/s2_adgs2_AUX_OBMEMC/queryables", ["platform", "constellation"]),
         ],
+        indirect=["fastapi_app"],
     )
     def test_collection_queryables(self, client, endpoint, expected_queryables):
         """Endpoint to test specific collection queryables."""
         resp = client.get(endpoint).json()
-        for queryable in expected_queryables:
-            assert queryable in resp["properties"].keys()
+        assert list(resp["properties"].keys()) == expected_queryables
 
 
 class TestModelValidationError:
@@ -358,14 +362,13 @@ class TestModelValidationError:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint",
+        "fastapi_app, endpoint",
         [
-            "/cadip/search?collection=cadip_session_by_id_list",
-            "/cadip/search/items?collection=cadip_session_by_id_list",
-            "/cadip/collections/cadip_session_by_id_list",
-            "/cadip/collections/cadip_session_by_id_list/items",
-            "/cadip/collections/cadip_session_by_id_list/items/sessionId",
+            (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
+            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items"),
+            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items/sessionId"),
         ],
+        indirect=["fastapi_app"],
     )
     def test_cadip_validation_errors(self, client, mocker, endpoint):
         """Test used to mock a validation error on pydantic model, should return HTTP 422."""
@@ -377,12 +380,12 @@ class TestModelValidationError:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint",
+        "fastapi_app, endpoint",
         [
-            "/auxip/collections/adgs_by_platform",
-            "/auxip/collections/adgs_by_platform/items",
-            "/auxip/collections/adgs_by_platform/items/sessionId",
+            (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/items"),
+            (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/items/sessionId"),
         ],
+        indirect=["fastapi_app"],
     )
     def test_adgs_validation_errors(self, client, mocker, endpoint):
         """Test used to mock a validation error on pydantic model, should return HTTP 422."""
@@ -398,8 +401,11 @@ class TestErrorWhileBuildUpCollection:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint",
-        ["/cadip/search?collection=cadip_session_by_id_list", "/cadip/collections/cadip_session_by_id_list"],
+        "fastapi_app, endpoint",
+        [
+            (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
+        ],
+        indirect=["fastapi_app"],
     )
     def test_cadip_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
@@ -408,8 +414,9 @@ class TestErrorWhileBuildUpCollection:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint",
-        ["/auxip/search?collection=adgs_by_platform", "/auxip/collections/adgs_by_platform"],
+        "fastapi_app, endpoint",
+        [(ROUTER_PREFIX_AUXIP, "/auxip/search?collection=adgs_by_platform")],
+        indirect=["fastapi_app"],
     )
     def test_adgs_collection_creation_failure(self, client, mocker, endpoint):
         """Test used to generate a KeyError while Collection is created, should return HTTP 422."""
@@ -443,7 +450,7 @@ class TestFeatureOdataStacMapping:
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312").json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == cadip_feature, "Features doesn't match"
+        assert response == cadip_feature, "Features don't match"
 
     @pytest.mark.unit
     @responses.activate
@@ -460,7 +467,7 @@ class TestFeatureOdataStacMapping:
         response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312")
         # Assert that receive odata response is correctly mapped to stac feature.
         assert response.json() != cadip_feature, "Features doesn't match"
-        assert response.json()["detail"] == "Session S1A_20200105072204051312 not found."
+        assert response.json()["detail"] == "Cadip session 'S1A_20200105072204051312' not found."
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.unit
@@ -471,7 +478,7 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
             "&$expand=Attributes",
             json=adgs_response,
             status=200,
@@ -501,7 +508,8 @@ class TestFeatureOdataStacMapping:
         # Assert that receive odata response is correctly mapped to stac feature.
         assert response.json() != adgs_feature, "Features doesn't match"
         assert (
-            response.json()["detail"] == "AUXIP S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF not found."
+            response.json()["detail"]
+            == "AUXIP item 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF' not found."
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -535,13 +543,13 @@ class TestFeatureOdataStacMapping:
                 "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
                 "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
                 "&$expand=Attributes",
-                {"detail": "AUXIP INVALID_ITEM not found."},
+                {"detail": "AUXIP item 'INVALID_ITEM' not found."},
             ),
             (
                 "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
                 "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
                 "$top=20&$expand=Files",
-                {"detail": "Session INVALID_ITEM not found."},
+                {"detail": "Cadip session 'INVALID_ITEM' not found."},
             ),
         ],
     )
@@ -588,7 +596,8 @@ class TestFeatureCollectionOdataStacMapping:
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items").json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == {"type": "FeatureCollection", "features": [cadip_feature]}, "Features doesn't match"
+        assert response["type"] == "FeatureCollection", "Type doesn't match"
+        assert response["features"] == [cadip_feature], "Features don't match"
 
     @pytest.mark.unit
     @responses.activate
@@ -598,14 +607,15 @@ class TestFeatureCollectionOdataStacMapping:
         responses.add(
             responses.GET,
             "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
             "&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
         response = client.get("/auxip/collections/s2_adgs2_AUX_OBMEMC/items").json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == {"type": "FeatureCollection", "features": [adgs_feature]}, "Features doesn't match"
+        assert response["type"] == "FeatureCollection", "Type doesn't match"
+        assert response["features"] == [adgs_feature], "Features don't match"
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -640,26 +650,33 @@ class TestCollection:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize(
-        "endpoint, odata_request, href",
+        "fastapi_app, endpoint, odata_request, href",
         [
             (
+                ROUTER_PREFIX_CADIP,
                 "/cadip/collections/cadip_session_by_id",
                 "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
                 "$top=20&$expand=Files",
-                {"href": "./simple-item.json", "rel": "item", "title": "S1A_20200105072204051312"},
+                {
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/cadip/collections/cadip_session_by_id",
+                },
             ),
             (
+                ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC",
                 "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att"
                 "/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&"
                 "$top=1000&$expand=Attributes",
                 {
-                    "href": "./simple-item.json",
-                    "rel": "item",
-                    "title": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+                    "rel": "self",
+                    "type": "application/json",
+                    "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC",
                 },
             ),
         ],
+        indirect=["fastapi_app"],
     )
     def test_valid_collection_request(
         self,
@@ -682,13 +699,12 @@ class TestCollection:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize(
-        "endpoint, odata_request, href, self_href",
+        "endpoint, odata_request, self_href",
         [
             (
                 "/cadip/collections/cadip_session_by_id",
                 "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
                 "$expand=Files",
-                {"href": "./simple-item.json", "rel": "item", "title": "S1A_20200105072204051312"},
                 {
                     "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
                     "Sentinel_Data_Terms_and_Conditions.pdf",
@@ -702,11 +718,6 @@ class TestCollection:
                 "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
                 "&$expand=Attributes",
                 {
-                    "href": "./simple-item.json",
-                    "rel": "item",
-                    "title": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
-                },
-                {
                     "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
                     "Sentinel_Data_Terms_and_Conditions.pdf",
                     "rel": "license",
@@ -715,12 +726,11 @@ class TestCollection:
             ),
         ],
     )
-    def test_valid_empty_collection(self, client, mock_token_validation, endpoint, odata_request, href, self_href):
+    def test_valid_empty_collection(self, client, mock_token_validation, endpoint, odata_request, self_href):
         """Test when response from pickup is empty, the result should still be 200 oK,
-        but with no other links than self references"""
+        and contain a link to the license."""
         mock_token_validation()
         responses.add(responses.GET, odata_request, json={"responses": []}, status=200)
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
-        assert href not in response.json()["links"]
-        assert response.json()["links"][0] == self_href
+        assert self_href in response.json()["links"]

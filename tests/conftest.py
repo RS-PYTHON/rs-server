@@ -181,6 +181,13 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
     except (AttributeError, KeyError):
         cluster_mode = False
 
+    # Get the router prefix, if any
+    try:
+        router_prefix = request.param.get("router_prefix", "")
+        monkeypatch.setenv("router_prefix", router_prefix)
+    except AttributeError:
+        router_prefix = ""
+
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
@@ -204,7 +211,7 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
 
     # Run all routers for the pytests
     with ExitStack():
-        yield init_app()
+        yield init_app(router_prefix)
 
 
 @pytest.fixture(name="client")

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Map STAC platform and constellation into OData Satellite
+
 satellites:
     - sentinel-1a:
         constellation: sentinel-1

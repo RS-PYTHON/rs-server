@@ -18,8 +18,8 @@ collections:
     query:
       productType: OPER_AUX_ECMWFD_PDMC
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Sentinel-1 Inuvik CADIP sessions'
-    description: 'Sentinel-1 Inuvik CADIP sessions'
+    title: "'OPER_AUX_ECMWFD_PDMC' products"
+    description: "'OPER_AUX_ECMWFD_PDMC' products"
     license: other
     extent:
       spatial:
@@ -46,8 +46,8 @@ collections:
     query:
       productType: AUX_OBMEMC
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Sentinel-1 Inuvik CADIP sessions'
-    description: 'Sentinel-1 Inuvik CADIP sessions'
+    title: "'AUX_OBMEMC' products"
+    description: "'AUX_OBMEMC' products"
     license: other
     extent:
       spatial:
@@ -72,16 +72,16 @@ collections:
   - id: aux_interval
     station: adgs
     query:
-      PublicationDate: 2023-01-01T12:00:00Z/2024-01-01T12:00:00Z
+      PublicationDate: "2020-01-01T00:00:00Z/2024-01-01T00:00:00Z"
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
-    title: 'Sentinel-1 Inuvik CADIP sessions'
-    description: 'Sentinel-1 Inuvik CADIP sessions'
+    title: "Products from 2020/2023"
+    description: "Products from 2020/2023"
     license: other
     extent:
       spatial:
         bbox: [[ -180, -82.85, 180, 82.82 ]]
       temporal:
-        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+        interval: [[ '2020-01-01T00:00:00', '2024-01-01T00:00:00Z' ]]
     links:
       - rel: license
         href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
