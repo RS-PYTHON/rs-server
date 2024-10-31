@@ -20,10 +20,10 @@ import os
 from functools import wraps
 from typing import Annotated
 
+import jwt
 from asyncache import cached
 from cachetools import TTLCache
 from fastapi import HTTPException, Request, Security, status
-from jose import jwt
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
@@ -87,7 +87,13 @@ async def authenticate(
                 token = token[7:]  # remove the "Bearer " header
 
             # Decode the token
-            userinfo = jwt.decode(token, key=key, issuer=issuer, audience=os.environ["OIDC_CLIENT_ID"])
+            userinfo = jwt.decode(
+                token,
+                key=key,
+                issuer=issuer,
+                audience=os.environ["OIDC_CLIENT_ID"],
+                algorithms=["RS256"],
+            )
 
             # The result contains the auth roles we need, but still get them from keycloak
             # so we are sure to have the same behaviour than with the apikey and oauth2

@@ -23,7 +23,7 @@ from typing import List, Union
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
-from eodag.utils.exceptions import RequestError
+from eodag.utils.exceptions import AuthenticationError, RequestError
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
@@ -161,6 +161,8 @@ class EodagProvider(Provider):
             #     ) from e
             # Empty list if something goes wrong in eodag
             return []
+        except AuthenticationError as exc:
+            raise ValueError("EoDAG could not authenticate") from exc
 
         return products
 

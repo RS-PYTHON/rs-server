@@ -1,0 +1,61 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Map STAC platform and constellation into OData Satellite
+
+satellites:
+    - sentinel-1a:
+        constellation: sentinel-1
+        code: S1A
+        serialid: A
+        active: true
+    - sentinel-1b:
+        constellation: sentinel-1
+        code: S1B
+        serialid: B
+        active: false
+    - sentinel-1c:
+        constellation: sentinel-1
+        code: S1C
+        serialid: C
+        active: false
+    - sentinel-2a:
+        constellation: sentinel-2
+        code: S2A
+        serialid: A
+        active: true
+    - sentinel-2b:
+        constellation: sentinel-2
+        code: S2B
+        serialid: B
+        active: true
+    - sentinel-2c:
+        constellation: sentinel-2
+        code: S2C
+        serialid: C
+        active: true
+    - sentinel-3a:
+        constellation: sentinel-3
+        code: S3A
+        serialid: A
+        active: true
+    - sentinel-3b:
+        constellation: sentinel-3
+        code: S3B
+        serialid: B
+        active: true
+    - sentinel-5p:
+        constellation: sentinel-5P
+        code: S5P
+        active: true

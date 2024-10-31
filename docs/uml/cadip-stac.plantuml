@@ -16,13 +16,17 @@ newpage
 
 John -> RS_Server_CADIP: GET /cadip/collections/s1_nsg/items
 RS_Server_CADIP -> CADIP_nsg ++ : GET /Sessions\n?$filter=Satellite in ('S1A', 'S1C')\n&$orderby=PublicationDate desc
-CADIP_nsg --> RS_Server_CADIP : <OData response/>
+CADIP_nsg --> RS_Server_CADIP : <OData sessions response/>
+RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+CADIP_nsg --> RS_Server_CADIP : <OData files response/>
 RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
 RS_Server_CADIP --> John : {STAC response}
 
 John -> RS_Server_CADIP: GET /cadip/collections/s2_sgs/items
 RS_Server_CADIP -> CADIP_sgs ++ : GET /Sessions\n?$filter=Satellite in ('S2A', 'S2B', 'S2C')\n&$orderby=PublicationDate desc
-CADIP_sgs --> RS_Server_CADIP : <OData response/>
+CADIP_sgs --> RS_Server_CADIP : <OData sessions response/>
+RS_Server_CADIP -> CADIP_sgs  : GET /Files\n?$filter=SessionId in ('S2A_XXX1' ... 'S2C_XXXN')\n&$orderby=PublicationDate desc
+CADIP_sgs --> RS_Server_CADIP : <OData files response/>
 RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
 RS_Server_CADIP --> John : {STAC response}
 
@@ -30,7 +34,13 @@ newpage
 
 John -> RS_Server_CADIP: POST /cadip/search?platform=sentinel-1a
 RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc
+CADIP_nsg --> RS_Server_CADIP : <OData sessions response/>
+RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+CADIP_nsg --> RS_Server_CADIP : <OData files response/>
 RS_Server_CADIP -> CADIP_sgs : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc
+CADIP_sgs --> RS_Server_CADIP : <OData sessions response/>
+RS_Server_CADIP -> CADIP_sgs  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+CADIP_sgs --> RS_Server_CADIP : <OData files response/>
 RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
 RS_Server_CADIP --> John : {STAC response}
 
@@ -39,8 +49,11 @@ newpage
 John -> RS_Server_CADIP: GET /cadip/queryables
 RS_Server_CADIP --> John: {platform}
 
-John -> RS_Server_CADIP: POST /cadip/search?collection=s1_nsg&platform=sentinel-1a
+John -> RS_Server_CADIP: POST /cadip/search?collections=s1_nsg&platform=sentinel-1a
 RS_Server_CADIP -> CADIP_nsg : GET /Sessions\n?$filter=Satellite = 'S1A'\n&$orderby=PublicationDate desc
+CADIP_nsg --> RS_Server_CADIP : <OData sessions response/>
+RS_Server_CADIP -> CADIP_nsg  : GET /Files\n?$filter=SessionId in ('S1A_XXX1' ... 'S1C_XXXN')\n&$orderby=PublicationDate desc
+CADIP_nsg --> RS_Server_CADIP : <OData files response/>
 RS_Server_CADIP -> RS_Server_CADIP : OData > STAC mapping
 RS_Server_CADIP --> John : {STAC response}
 

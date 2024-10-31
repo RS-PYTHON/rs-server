@@ -7,17 +7,27 @@
     "id": "PLACEHOLDER",
     "geometry": null,
     "properties": {
-        "adgs:id": "PLACEHOLDER",
+        "auxip:id": "PLACEHOLDER",
         "datetime": "PLACEHOLDER",
         "start_datetime": "PLACEHOLDER",
         "end_datetime": "PLACEHOLDER",
-        "created": "PLACEHOLDER"
+        "created": "PLACEHOLDER",
+        "published": "PLACEHOLDER",
+        "product:type": "PLACEHOLDER",
+        "processing:datetime": "PLACEHOLDER",
+        "processing:facility": "PLACEHOLDER",
+        "constellation": "PLACEHOLDER",
+        "platform": "PLACEHOLDER",
+        "instruments": ["PLACEHOLDER"]
     },
     "links": [],
     "assets": {
         "file": {
+            "href": "PLACEHOLDER",
+            "type": "PLACEHOLDER",
             "file:size": "PLACEHOLDER",
-            "href": "not_set"
+            "file:checksum": "PLACEHOLDER",
+            "eviction_datetime": "PLACEHOLDER"
         }
     }
 }
