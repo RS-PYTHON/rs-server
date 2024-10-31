@@ -21,7 +21,17 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import Any, AsyncIterator, Callable, List, Literal, Optional, Self, Type
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Self,
+    Type,
+)
 
 import stac_pydantic
 import stac_pydantic.links
@@ -387,8 +397,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         else:
             collection_ids = allowed_ids.intersection(collection_ids)
 
-        # Items for all collections
-        all_items: List[Item] = []
+        # Item features for all collections.
+        # Use a dict ordered by ID so we only keep unique items, based on their ID.
+        all_features: Dict[str, List[Item]] = {}
 
         first_exception = None
 
@@ -465,25 +476,25 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # TODO: what to do with the sortby parameter ?
 
                 # Do the search for this collection
-                items: stac_pydantic.ItemCollection = await self.process_search(collection, odata)
+                features: stac_pydantic.ItemCollection = (await self.process_search(collection, odata)).features
 
                 # Add the collection information
-                for item in items.features:
+                for item in features:
                     item.collection = collection_id
 
-                # Concatenate items for all collections
-                all_items.extend(items.features)
+                # Concatenate features for all collections, ordered by their ID
+                all_features.update({item.id: item for item in features})
 
             except Exception as exception:  # pylint: disable=broad-exception-caught
                 logger.error(traceback.format_exc())
                 first_exception = first_exception or exception
 
         # If there are no results and we had at least one exception, raise the first one
-        if not all_items and first_exception:
+        if not all_features and first_exception:
             raise first_exception
 
         # Return results as a dict
-        return stac_pydantic.ItemCollection(features=all_items, type="FeatureCollection").model_dump()
+        return stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection")
 
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
