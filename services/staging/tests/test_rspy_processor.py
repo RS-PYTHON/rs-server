@@ -952,12 +952,12 @@ class TestStagingMainExecution:
 
         # Verify logger and log_job_execution are called with the error details
         mock_logger.error.assert_called_once_with(
-            "Failed to retrieve the token required to connect to the external station: 404: Token error",
+            "Failed to retrieve the token needed to connect to the external station: 404: Token error",
         )
         mock_log_job.assert_called_once_with(
             ProcessorStatus.FAILED,
             0,
-            detail="Failed to retrieve the token required to connect to the external station: 404: Token error",
+            detail="Failed to retrieve the token needed to connect to the external station cadip",
         )
 
         # Verify the function returns early without proceeding to Dask cluster connection
