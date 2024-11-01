@@ -123,8 +123,8 @@ def delete_s3_files(s3_files_to_be_deleted):
         try:
             if not is_s3_path(s3_key):
                 logger.error(
-                    f"The s3 key {s3_key} does not match with a correct s3"
-                    "path pattern (s3://bucket_name/path/to/obj). Skipping it",
+                    f"The requested s3 key {s3_key} for deletion does not match the "
+                    "correct S3 path pattern (s3://bucket_name/path/to/obj). Skipping",
                 )
                 continue
             key_array = s3_key.split("/")
@@ -165,19 +165,14 @@ def get_temp_bucket_name(files_s3_key: list[str]) -> str | None:
 
     for s3_key in files_s3_key:
         if not is_s3_path(s3_key):
-            raise HTTPException(
-                detail=f"The S3 key '{s3_key}' does not match the correct S3 path pattern "
-                "(s3://bucket_name/path/to/obj)",
-                status_code=HTTP_400_BAD_REQUEST,
+            raise RuntimeError(
+                f"The S3 key '{s3_key}' does not match the correct S3 path pattern " "(s3://bucket_name/path/to/obj)",
             )
         # Extract and add the bucket name to the set
         bucket_names.add(s3_key.split("/")[2])
 
     if len(bucket_names) != 1:
-        raise HTTPException(
-            detail=f"A single temporary S3 bucket should be used in the assets: {bucket_names!r}",
-            status_code=HTTP_400_BAD_REQUEST,
-        )
+        raise RuntimeError(f"A single temporary S3 bucket should be used in the assets: {bucket_names!r}")
 
     return bucket_names.pop()
 
