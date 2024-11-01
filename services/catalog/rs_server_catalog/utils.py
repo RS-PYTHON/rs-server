@@ -48,16 +48,15 @@ def verify_existing_item_from_catalog(method: str, item: dict, content_id_str: s
     # item with a name that already exists in the database.
     if method == "POST" and item:
         raise HTTPException(
-            detail=f"Conflict error! The item {item['id']} \
-already exists in the {user_collection_str} collection",
+            detail=f"Conflict error! The item {item['id']} " f"already exists in the {user_collection_str} collection",
             status_code=HTTP_409_CONFLICT,
         )
     # Protection for cases where a PUT or PATCH request is made for an item
     # that does not exist in the database.
     if method in {"PUT", "PATCH"} and not item:
         raise HTTPException(
-            detail=f"The item {content_id_str} \
-does not exist in the {user_collection_str} collection for an update (PUT / PATCH request received)",
+            detail=f"The item {content_id_str} "
+            f"does not exist in the {user_collection_str} collection for an update (PUT / PATCH request received)",
             status_code=HTTP_400_BAD_REQUEST,
         )
 

@@ -14,8 +14,135 @@
 
 """Unit tests for utils module."""
 
+import os
+
 import pytest
-from rs_server_catalog.utils import delete_s3_files, get_temp_bucket_name, is_s3_path
+from fastapi import HTTPException
+from rs_server_catalog.utils import (
+    delete_s3_files,
+    get_s3_filename_from_asset,
+    get_s3_handler,
+    get_temp_bucket_name,
+    is_s3_path,
+    verify_existing_item_from_catalog,
+)
+
+
+class TestVerifyExistingItemFromCatalog:
+    """Class to group the test cases for verify_existing_item_from_catalog function"""
+
+    def test_post_existing_item_raises_conflict(self):
+        """Test that a POST request with an existing item raises an HTTP 409 Conflict."""
+        with pytest.raises(HTTPException) as excinfo:
+            verify_existing_item_from_catalog(
+                method="POST",
+                item={"id": "existing_item"},
+                content_id_str="existing_item",
+                user_collection_str="user_collection",
+            )
+        assert excinfo.value.status_code == 409
+        assert "Conflict error! The item existing_item already exists" in str(excinfo.value.detail)
+
+    def test_post_nonexistent_item_no_error(self):
+        """Test that a POST request with a non-existent item does not raise an error."""
+        try:
+            verify_existing_item_from_catalog(
+                method="POST",
+                item=None,
+                content_id_str="new_item",
+                user_collection_str="user_collection",
+            )
+        except HTTPException:
+            pytest.fail("HTTPException should not have been raised for non-existent item with POST.")
+
+    def test_put_nonexistent_item_raises_bad_request(self):
+        """Test that a PUT request with a non-existent item raises an HTTP 400 Bad Request."""
+        with pytest.raises(HTTPException) as excinfo:
+            verify_existing_item_from_catalog(
+                method="PUT",
+                item=None,
+                content_id_str="missing_item",
+                user_collection_str="user_collection",
+            )
+        assert excinfo.value.status_code == 400
+        assert "The item missing_item does not exist" in str(excinfo.value.detail)
+
+    def test_patch_nonexistent_item_raises_bad_request(self):
+        """Test that a PATCH request with a non-existent item raises an HTTP 400 Bad Request."""
+        with pytest.raises(HTTPException) as excinfo:
+            verify_existing_item_from_catalog(
+                method="PATCH",
+                item=None,
+                content_id_str="missing_item",
+                user_collection_str="user_collection",
+            )
+        assert excinfo.value.status_code == 400
+        assert "The item missing_item does not exist" in str(excinfo.value.detail)
+
+    def test_put_existing_item_no_error(self):
+        """Test that a PUT request with an existing item does not raise an error."""
+        try:
+            verify_existing_item_from_catalog(
+                method="PUT",
+                item={"id": "existing_item"},
+                content_id_str="existing_item",
+                user_collection_str="user_collection",
+            )
+        except HTTPException:
+            pytest.fail("HTTPException should not have been raised for existing item with PUT.")
+
+    def test_patch_existing_item_no_error(self):
+        """Test that a PATCH request with an existing item does not raise an error."""
+        try:
+            verify_existing_item_from_catalog(
+                method="PATCH",
+                item={"id": "existing_item"},
+                content_id_str="existing_item",
+                user_collection_str="user_collection",
+            )
+        except HTTPException:
+            pytest.fail("HTTPException should not have been raised for existing item with PATCH.")
+
+
+class TestGetS3FilenameFromAsset:
+    """Class to group the test cases for verify_existing_item_from_catalog function"""
+
+    def test_retrieve_s3_key_from_alternate_field(self):
+        """Test retrieving the S3 key from the 'alternate.s3.href' field."""
+        asset = {"alternate": {"s3": {"href": "s3://test_catalog_bucket/path/to/filename"}}}
+        s3_filename, alternate_field = get_s3_filename_from_asset(asset)
+        assert s3_filename == "s3://test_catalog_bucket/path/to/filename"
+        assert alternate_field is True
+
+    def test_retrieve_s3_key_from_href_field(self):
+        """Test retrieving the S3 key from the 'href' field when 'alternate' is missing."""
+        asset = {"href": "s3://temp_catalog/path/to/filename"}
+        s3_filename, alternate_field = get_s3_filename_from_asset(asset)
+        assert s3_filename == "s3://temp_catalog/path/to/filename"
+        assert alternate_field is False
+
+    def test_missing_s3_key_raises_exception(self):
+        """Test that missing 'href' and 'alternate' fields raise an HTTP 400 error."""
+        with pytest.raises(HTTPException) as excinfo:
+            get_s3_filename_from_asset({})
+        assert excinfo.value.status_code == 400
+        assert "Failed to load the S3 key from the asset content" in str(excinfo.value.detail)
+
+    def test_invalid_s3_key_format_raises_exception(self):
+        """Test that an invalid S3 key format in 'href' raises an HTTP 400 error."""
+        asset = {"href": "invalid_s3_path"}
+        with pytest.raises(HTTPException) as excinfo:
+            get_s3_filename_from_asset(asset)
+        assert excinfo.value.status_code == 400
+        assert "Failed to load the S3 key from the asset content" in str(excinfo.value.detail)
+
+    def test_empty_s3_key_in_href_field_raises_exception(self):
+        """Test that an empty 'href' field raises an HTTP 400 error."""
+        asset = {"href": ""}
+        with pytest.raises(HTTPException) as excinfo:
+            get_s3_filename_from_asset(asset)
+        assert excinfo.value.status_code == 400
+        assert "Failed to load the S3 key from the asset content" in str(excinfo.value.detail)
 
 
 class TestDeleteS3Files:
@@ -151,3 +278,69 @@ class TestGetTempBucketName:
     def test_get_temp_bucket_name_empty_list(self):
         """Test with an empty list, expecting None."""
         assert get_temp_bucket_name([]) is None
+
+
+class TestGetS3Handler:
+    """Class to group the test cases for get_s3_handler function"""
+
+    def test_s3_handler_successful_creation(self, mocker):
+        """Test successful creation of the s3_handler with valid environment variables."""
+        # Mock S3StorageHandler and its delete_file_from_s3 method
+        mocker.patch.dict(
+            os.environ,
+            {
+                "S3_ACCESSKEY": "fake_access_key",
+                "S3_SECRETKEY": "fake_secret_key",
+                "S3_ENDPOINT": "http://fake_endpoint",
+                "S3_REGION": "fake_region",
+            },
+        )
+
+        mock_s3_handler = mocker.patch("rs_server_catalog.utils.S3StorageHandler")
+        s3_handler = get_s3_handler()
+
+        # Assertions
+        assert s3_handler is not None
+        mock_s3_handler.assert_called_once_with(
+            "fake_access_key",
+            "fake_secret_key",
+            "http://fake_endpoint",
+            "fake_region",
+        )
+
+    def test_s3_handler_missing_env_variables(self, mocker, capsys):
+        """Test that missing environment variables return None and print an error."""
+        # Clear environment variables
+        mocker.patch.dict(os.environ, {}, clear=True)
+        # Call the function and capture output
+        s3_handler = get_s3_handler()
+        captured = capsys.readouterr()
+
+        # Assertions
+        assert s3_handler is None
+        assert "Failed to find s3 credentials when trying to create the s3 handler" in captured.out
+
+    def test_s3_handler_creation_runtime_error(self, mocker, capsys):
+        """Test that a RuntimeError during s3_handler creation returns None and prints an error."""
+        # Mock environment variables
+        mocker.patch.dict(
+            os.environ,
+            {
+                "S3_ACCESSKEY": "fake_access_key",
+                "S3_SECRETKEY": "fake_secret_key",
+                "S3_ENDPOINT": "http://fake_endpoint",
+                "S3_REGION": "fake_region",
+            },
+        )
+
+        # Mock S3StorageHandler to raise RuntimeError
+        mock_s3_handler = mocker.patch("rs_server_catalog.utils.S3StorageHandler", side_effect=RuntimeError)
+
+        # Call the function and capture output
+        s3_handler = get_s3_handler()
+        captured = capsys.readouterr()
+
+        # Assertions
+        assert s3_handler is None
+        assert "Failed to create the s3 handler" in captured.out
+        mock_s3_handler.assert_called_once()
