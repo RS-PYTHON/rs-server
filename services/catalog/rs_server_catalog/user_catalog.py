@@ -1022,10 +1022,29 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         """Build the list of the s3 files that will be deleted if the request is successfull"""
 
         collection_id = f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"
+        items = []
         try:
             if "/items" not in request.scope["path"]:
                 # this is the case for delete endpoint /collections/<collection_name>
-                items_collection = await self.client.item_collection(request=request, collection_id=collection_id)
+                # use pagination, otherwise a maximum of the default limit (10) items is returned
+                # NOTE: Unable to use the pagination from pgstac client. Temporary, use a limit of 100
+                token = None
+                while True:
+                    items_collection = await self.client.item_collection(
+                        request=request,
+                        collection_id=collection_id,
+                        limit=100,
+                        token=token,
+                    )
+                    items.extend(items_collection.get("features", []))
+                    # Check if there's a next token for pagination
+                    token = None
+                    for link in items_collection.get("links", []):
+                        if link.get("rel") == "next":
+                            token = link.get("href", None)
+                    if not token:
+                        # No more pages left, break the loop
+                        break
             else:
                 # this is the case for delete endpoint /collections/<collection_name>/items/<item_name>
                 item = await self.client.get_item(
@@ -1033,19 +1052,17 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
                     collection_id=collection_id,
                     request=request,
                 )
-                items_collection = {
-                    "type": "FeatureCollection",
-                    "context": {"limit": 10, "returned": 1},
-                    "features": [item],
-                }
+                items = [item]
         except NotFoundError:
             logger.error("Failed to find the requested object to be deleted.")
             return
-        logger.debug(f"response_get_collection = {items_collection}")
+        except KeyError as e:
+            logger.error(f"Unable to build the list of items to delete due to missing key: {e}")
+            return
+        logger.debug(f"Found {len(items)} items: {items}")
         try:
-            features = items_collection.get("features", [])
-            for feature in features:
-                assets = feature.get("assets", {})
+            for item in items:
+                assets = item.get("assets", {})
                 for _, asset_info in assets.items():
                     s3_href = asset_info.get("alternate", {}).get("s3", {}).get("href")
                     if s3_href:

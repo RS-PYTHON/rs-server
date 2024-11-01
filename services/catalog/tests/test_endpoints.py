@@ -620,7 +620,12 @@ class TestCatalogDeleteEndpoints:
 
         # Assert
         assert catalog.s3_files_to_be_deleted == ["s3://bucket/file1", "s3://bucket/file2"]
-        mock_client.item_collection.assert_called_once_with(request=mock_request, collection_id="user_collection_id")
+        mock_client.item_collection.assert_called_once_with(
+            request=mock_request,
+            collection_id="user_collection_id",
+            limit=100,
+            token=None,
+        )
 
     @pytest.mark.asyncio
     async def test_build_filelist_to_be_deleted_item(self, mocker):
