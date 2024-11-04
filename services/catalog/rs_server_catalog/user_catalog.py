@@ -549,11 +549,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             content = await request.json()
             # Add filter-lang option to the content if it doesn't already exist
             if "filter" in content:
-                filter_lang = (
-                    {"filter-lang": "cql2-json"}
-                    if "filter-lang" not in content
-                    else {"filter-lang": content["filter-lang"]}
-                )
+                filter_lang = {"filter-lang": content.get("filter-lang", "cql2-json")}
                 stac_filter = content.pop("filter")
                 content = {
                     **content,
