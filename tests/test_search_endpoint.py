@@ -26,10 +26,9 @@ from rs_server_adgs.adgs_utils import auxip_map_mission
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 
-# pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals, too-many-branches
+from tests.conftest import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
-ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
-ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
+# pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals, too-many-branches
 
 
 @pytest.mark.unit
