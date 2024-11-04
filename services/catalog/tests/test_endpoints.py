@@ -26,6 +26,7 @@ import pathlib
 # pylint: disable=unused-argument
 import time
 from datetime import datetime, timedelta
+from typing import Any, Dict
 
 import fastapi
 import pytest
@@ -337,6 +338,9 @@ class TestCatalogSearchEndpoint:
     def test_search_using_several_collections(self, client, method):
         """Test a search request involving several collections (with both POST and GET method)"""
         # Search items on several collections without using implicit naming feature
+        test_json: Dict[str, Any] = {}
+        test_params = {}
+
         if method == "POST":
             test_json = {
                 "collections": ["toto_S1_L1", "toto_S2_L3"],
