@@ -291,7 +291,7 @@ class TestGetS3Handler:
             {
                 "S3_ACCESSKEY": "fake_access_key",
                 "S3_SECRETKEY": "fake_secret_key",
-                "S3_ENDPOINT": "http://fake_endpoint",
+                "S3_ENDPOINT": "https://fake_endpoint",
                 "S3_REGION": "fake_region",
             },
         )
@@ -304,7 +304,7 @@ class TestGetS3Handler:
         mock_s3_handler.assert_called_once_with(
             "fake_access_key",
             "fake_secret_key",
-            "http://fake_endpoint",
+            "https://fake_endpoint",
             "fake_region",
         )
 
@@ -328,7 +328,7 @@ class TestGetS3Handler:
             {
                 "S3_ACCESSKEY": "fake_access_key",
                 "S3_SECRETKEY": "fake_secret_key",
-                "S3_ENDPOINT": "http://fake_endpoint",
+                "S3_ENDPOINT": "https://fake_endpoint",
                 "S3_REGION": "fake_region",
             },
         )
