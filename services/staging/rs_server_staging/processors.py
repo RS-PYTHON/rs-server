@@ -39,8 +39,6 @@ from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
 
-DASK_TASK_ERROR = "error"
-
 
 class ProcessorStatus(Enum):
     """
@@ -825,16 +823,17 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # retrieve the token
         try:
             token = get_station_token(
-                load_external_auth_config_by_station_service(self.provider.lower(), self.provider),
+                load_external_auth_config_by_station_service(self.provider.lower()),
             )
         except HTTPException as http_exception:
             self.logger.error(
-                f"Failed to retrieve the token required to connect to the external station: {http_exception}",
+                f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
             )
             self.log_job_execution(
                 ProcessorStatus.FAILED,
                 0,
-                detail=f"Failed to retrieve the token required to connect to the external station: {http_exception}",
+                detail="Failed to retrieve the token needed to connect to the external "
+                f"station {self.provider.lower()}",
             )
             return
 

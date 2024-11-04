@@ -170,7 +170,6 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
-
     if processor_name in processors:
         processor = processors[processor_name]
         status = await processor(
