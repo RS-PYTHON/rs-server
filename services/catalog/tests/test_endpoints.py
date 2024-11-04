@@ -346,7 +346,7 @@ class TestCatalogSearchEndpoint:
                 "collections": ["toto_S1_L1", "toto_S2_L3"],
             }
             response = client.post("/catalog/search", json=test_json)
-        elif method == "GET":
+        else:
             test_params = {
                 "collections": "toto_S1_L1,toto_S2_L3",
                 "filter-lang": "cql2-text",
@@ -362,7 +362,7 @@ class TestCatalogSearchEndpoint:
                 "owner": "toto",
             }
             response = client.post("/catalog/search", json=test_json)
-        elif method == "GET":
+        else:
             test_params = {
                 "collections": "S1_L1,toto_S2_L3",
                 "filter-lang": "cql2-text",
@@ -384,7 +384,7 @@ class TestCatalogSearchEndpoint:
                 },
             }
             response = client.post("/catalog/search", json=test_json)
-        elif method == "GET":
+        else:
             test_params = {
                 "collections": "S1_L1,toto_S2_L3",
                 "filter-lang": "cql2-text",
@@ -402,7 +402,7 @@ class TestCatalogSearchEndpoint:
                 "collections": ["S1_L1", "toto_S2_L3"],
             }
             response = client.post("/catalog/search", json=test_json)
-        elif method == "GET":
+        else:
             test_params = {"collections": "toto_S1_L1,S2_L3", "filter": "width=2500"}
             response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
@@ -419,7 +419,7 @@ class TestCatalogSearchEndpoint:
                 },
             }
             response = client.post("/catalog/search", json=test_json)
-        elif method == "GET":
+        else:
             test_params = {"collections": "toto_S1_L1,unexisting_collection", "filter": "width=2500"}
             response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
