@@ -547,6 +547,18 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         # ---------- POST requests
         if request.method == "POST":
             content = await request.json()
+
+            # Management of priority for the assignation of the owner_id
+            if not self.request_ids["owner_id"]:
+                filters = parse_cql2_json(content["filter"]) if "filter" in content else None
+                self.request_ids["owner_id"] = (
+                    self.find_owner_id(filters)
+                    if filters
+                    else None
+                    or content.get("owner")
+                    or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
+                )
+
             # Add filter-lang option to the content if it doesn't already exist
             if "filter" in content:
                 filter_lang = {"filter-lang": content.get("filter-lang", "cql2-json")}
@@ -566,19 +578,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 request.scope["path"] = "/search"
 
             # ----- Call /catalog/search with POST method endpoint
-            if all(x in content for x in ["filter", "collections"]):
-                # Get owner_id from the content if specified else the default user
-
-                # Management of priority for the assignation of the owner_id
-                filters = parse_cql2_json(content["filter"])
-                owner_id_filter = self.find_owner_id(filters)
-                if owner_id_filter:
-                    owner_id = owner_id_filter
-                elif "owner" in content:
-                    owner_id = content["owner"]
-                else:
-                    owner_id = get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
-                self.request_ids["owner_id"] = owner_id
+            if "collections" in content:
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
                 for i, collection in enumerate(content["collections"]):
                     if not await self.collection_exists(request, collection):
@@ -594,16 +594,15 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
 
             # Update owner_id if it is not already defined from path parameters
             if not self.request_ids["owner_id"]:
-                owner_id_filter = (
-                    self.find_owner_id(parse_ecql(query_params_dict["filter"])) if "filter" in query_params_dict else ""
+                self.request_ids["owner_id"] = (
+                    (
+                        self.find_owner_id(parse_ecql(query_params_dict["filter"]))
+                        if "filter" in query_params_dict
+                        else ""
+                    )
+                    or query_params_dict.get("owner")
+                    or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
-                if owner_id_filter:
-                    owner_id = owner_id_filter
-                elif "owner" in query_params_dict:
-                    owner_id = query_params_dict["owner"]
-                else:
-                    owner_id = get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
-                self.request_ids["owner_id"] = owner_id
 
             # ----- Catch endpoint /catalog/collections/{owner_id}:{collection_id}/search
             # This endpoint doesn't exist in stac-fastapi so we convert it to a /search endpoint
@@ -735,7 +734,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
             if len(self.request_ids["collection_id"]) > 1:
-                detail = {"error": "Cannot create or update more than one collections !"}
+                detail = {"error": "Cannot create or update more than one collection !"}
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
 
             if len(self.request_ids["collection_id"]) == 0:
@@ -1294,7 +1293,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
 
         # ---------- Apply specific changes for each endpoint
 
-        if request.method in {"POST", "PUT"} and "/search" not in request.scope["path"]:
+        if request.method in ("POST", "PUT") and "/search" not in request.scope["path"]:
             # URL: POST / PUT: '/catalog/collections/{USER}:{COLLECTION}'
             # or '/catalog/collections/{USER}:{COLLECTION}/items'
             request = await self.manage_put_post_request(request)

@@ -121,14 +121,14 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         test_params = {"filter": "width=2500"}
 
         response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 2
 
         test_params = {"filter": "width=300"}
 
         response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 0
 
@@ -155,9 +155,9 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         # Test for GET /catalog/collections/{owner_id}:{collection_id}/search
         test_params = {"filter": "width=2500"}
         response = client.get("/catalog/collections/tata:S1_L1/search", params=test_params)
-        assert response.status_code == 404  # Checking with unexisting owner_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting owner_id
         response = client.get("/catalog/collections/toto:notfound/Search", params=test_params)
-        assert response.status_code == 404  # Checking with unexisting collection_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting collection_id
 
         # Test for POST /catalog/collections/{owner_id}:{collection_id}/search
         cql2_json_query = {
@@ -172,9 +172,9 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         }
 
         response = client.post("/catalog/collections/tata:S1_L1/search", json=cql2_json_query)
-        assert response.status_code == 404  # Checking with unexisting owner_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting owner_id
         response = client.post("/catalog/collections/toto:notfound/search", json=cql2_json_query)
-        assert response.status_code == 404  # Checking with unexisting collection_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting collection_id
 
 
 class TestCatalogSearchEndpoint:
@@ -184,7 +184,7 @@ class TestCatalogSearchEndpoint:
         test_params = {"ids": "fe916452-ba6f-4631-9154-c249924a122d", "collections": "toto_S1_L1"}
 
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 1
 
@@ -268,7 +268,7 @@ class TestCatalogSearchEndpoint:
             },
         }
         response = client.post("/catalog/search", json=test_json)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
 
     def test_search_in_unexisting_collection(self, client):
         """Test that if the collection does not exist, an HTTP 404 error is returned."""
@@ -313,7 +313,7 @@ class TestCatalogSearchEndpoint:
     def test_search_with_collections_and_filter(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": ["toto_S1_L1"], "filter": "width=2500"}
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 2
 
@@ -328,7 +328,7 @@ class TestCatalogSearchEndpoint:
             },
         }
         response = client.post("/catalog/search", json=test_json)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
 
     @pytest.mark.parametrize(
         "method",
@@ -337,18 +337,17 @@ class TestCatalogSearchEndpoint:
     def test_search_using_several_collections(self, client, method):
         """Test a search request involving several collections (with both POST and GET method)"""
         # Search items on several collections without using implicit naming feature
-        test_json = {
-            "collections": ["toto_S1_L1", "toto_S2_L3"],
-            "filter": {
-                "op": "and",
-                "args": [
-                    {"op": "=", "args": [{"property": "width"}, 2500]},
-                    {"op": "=", "args": [{"property": "height"}, 2500]},
-                ],
-            },
-        }
-        response = client.post("/catalog/search", json=test_json)
-
+        if method == "POST":
+            test_json = {
+                "collections": ["toto_S1_L1", "toto_S2_L3"],
+            }
+            response = client.post("/catalog/search", json=test_json)
+        elif method == "GET":
+            test_params = {
+                "collections": "toto_S1_L1,toto_S2_L3",
+                "filter-lang": "cql2-text",
+            }
+            response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 3
 
@@ -357,20 +356,12 @@ class TestCatalogSearchEndpoint:
             test_json = {
                 "collections": ["S1_L1", "S2_L3"],
                 "owner": "toto",
-                "filter": {
-                    "op": "and",
-                    "args": [
-                        {"op": "=", "args": [{"property": "width"}, 2500]},
-                        {"op": "=", "args": [{"property": "height"}, 2500]},
-                    ],
-                },
             }
             response = client.post("/catalog/search", json=test_json)
         elif method == "GET":
             test_params = {
                 "collections": "S1_L1,toto_S2_L3",
                 "filter-lang": "cql2-text",
-                "filter": "width=2500",
                 "owner": "toto",
             }
             response = client.get("/catalog/search", params=test_params)
@@ -385,8 +376,6 @@ class TestCatalogSearchEndpoint:
                     "op": "and",
                     "args": [
                         {"op": "=", "args": [{"property": "owner"}, "toto"]},
-                        {"op": "=", "args": [{"property": "width"}, 2500]},
-                        {"op": "=", "args": [{"property": "height"}, 2500]},
                     ],
                 },
             }
@@ -398,7 +387,7 @@ class TestCatalogSearchEndpoint:
                 "filter": "width=2500 AND owner='toto'",
             }
             response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 3
 
@@ -407,13 +396,6 @@ class TestCatalogSearchEndpoint:
         if method == "POST":
             test_json = {
                 "collections": ["S1_L1", "toto_S2_L3"],
-                "filter": {
-                    "op": "and",
-                    "args": [
-                        {"op": "=", "args": [{"property": "width"}, 2500]},
-                        {"op": "=", "args": [{"property": "height"}, 2500]},
-                    ],
-                },
             }
             response = client.post("/catalog/search", json=test_json)
         elif method == "GET":
@@ -429,8 +411,6 @@ class TestCatalogSearchEndpoint:
                     "op": "and",
                     "args": [
                         {"op": "=", "args": [{"property": "owner"}, "toto"]},
-                        {"op": "=", "args": [{"property": "width"}, 2500]},
-                        {"op": "=", "args": [{"property": "height"}, 2500]},
                     ],
                 },
             }
