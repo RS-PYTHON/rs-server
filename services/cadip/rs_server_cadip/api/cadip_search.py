@@ -37,8 +37,7 @@ from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
     cadip_map_mission,
-    from_session_expand_to_assets_serializer,
-    from_session_expand_to_dag_serializer,
+    link_assets_to_session,
     read_conf,
     select_config,
     stac_to_odata,
@@ -85,7 +84,7 @@ class MockPgstacCadip(MockPgstac):
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        return process_session_search(
+        session_data = process_session_search(
             self.request,
             collection.get("station", "cadip"),
             odata_params.get("SessionId", []),
@@ -93,6 +92,21 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("PublicationDate"),
             odata_params.get("top"),
         )
+        if not session_data.features:
+            # If there are no sessions, don't proceed to assets allocation
+            return session_data
+
+        # To be updated with proper ('')
+        features_ids = ", ".join(feature.id for feature in session_data.features)
+        assets = process_files_search(
+            collection.get("station", "cadip"),
+            features_ids,
+            deprecated=True,
+            map_to_session=True,
+        )
+
+        with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
+            return link_assets_to_session(session_data, assets, json.loads(mapper.read()))
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -378,7 +392,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             items_per_page=limit,
         )
         products = validate_products(products)
-        sessions_products = from_session_expand_to_dag_serializer(products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
         expanded_session_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
@@ -390,12 +403,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
-            cadip_sessions_collection = create_stac_collection(products, feature_template, stac_mapper)
-            return from_session_expand_to_assets_serializer(
-                cadip_sessions_collection,
-                sessions_products,
-                expanded_session_mapper,
-            )
+            return create_stac_collection(products, feature_template, stac_mapper)
 
     except json.JSONDecodeError as exception:
         raise HTTPException(
@@ -442,15 +450,15 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    return process_files_search(datetime, station, session_id, limit, sortby, deprecated=True)
+    return process_files_search(station, session_id, datetime, limit, sortby, deprecated=True)
 
 
 def process_files_search(  # pylint: disable=too-many-locals
-    datetime: str,
     station: str,
     session_id: str,
-    limit=None,
-    sortby=None,
+    datetime: Union[str, None] = None,
+    limit: Union[int, None] = 20,
+    sortby: Union[str, None] = None,
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
@@ -481,7 +489,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         if session_id
         else None
     )
-    if limit < 1:
+    if limit < 1:  # type: ignore
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
@@ -503,6 +511,8 @@ def process_files_search(  # pylint: disable=too-many-locals
             stac_mapper = json.loads(stac_map.read())
             cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from CADIP station")
+        if kwargs.get("map_to_session", False):
+            return [product.properties for product in products]
         return sort_feature_collection(cadip_item_collection.model_dump(), sortby)
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:

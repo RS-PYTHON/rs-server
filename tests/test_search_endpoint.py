@@ -435,7 +435,14 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
-    def test_cadip_feature_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
+    def test_cadip_feature_mapping(
+        self,
+        client,
+        mock_token_validation,
+        cadip_feature,
+        cadip_session_response,
+        cadip_file_response,
+    ):
         """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
         Visit conftest to view content of cadip_feature and cadip_response.
         """
@@ -443,9 +450,14 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
-            "$expand=Files",
-            json=cadip_response,
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
+            json=cadip_session_response,
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+            json=cadip_file_response,
             status=200,
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312").json()
@@ -459,8 +471,7 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
-            "$expand=Files",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&",
             json={"responses": []},
             status=200,
         )
@@ -547,8 +558,7 @@ class TestFeatureOdataStacMapping:
             ),
             (
                 "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
-                "$top=20&$expand=Files",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
                 {"detail": "Cadip session 'INVALID_ITEM' not found."},
             ),
         ],
@@ -557,7 +567,7 @@ class TestFeatureOdataStacMapping:
         self,
         client,
         mock_token_validation,
-        cadip_response,
+        cadip_session_response,
         adgs_response,
         endpoint,
         odata_url,
@@ -568,7 +578,7 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             odata_url,
-            json=self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_response, adgs_response),
+            json=self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_session_response, adgs_response),
             status=200,
         )
         response = client.get(endpoint)
@@ -581,7 +591,14 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
-    def test_cadip_feature_collection_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
+    def test_cadip_feature_collection_mapping(
+        self,
+        client,
+        mock_token_validation,
+        cadip_feature,
+        cadip_file_response,
+        cadip_session_response,
+    ):
         """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
         Visit conftest to view content of cadip_feature and cadip_response.
         """
@@ -589,9 +606,14 @@ class TestFeatureCollectionOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
-            "$expand=Files",
-            json=cadip_response,
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&",
+            json=cadip_session_response,
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+            json=cadip_file_response,
             status=200,
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items").json()
@@ -655,8 +677,7 @@ class TestCollection:
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/collections/cadip_session_by_id",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
-                "$top=20&$expand=Files",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
                 {
                     "rel": "self",
                     "type": "application/json",
@@ -685,12 +706,16 @@ class TestCollection:
         endpoint,
         odata_request,
         href,
-        cadip_response,
+        cadip_session_response,
         adgs_response,
     ):
         """Test a valid call to /collections endpoint, check that found collection is converted to a item link."""
         mock_token_validation()
-        selected_response = self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_response, adgs_response)
+        selected_response = self.setup(
+            "adgs" if "auxip" in endpoint else "cadip",
+            cadip_session_response,
+            adgs_response,
+        )
         responses.add(responses.GET, odata_request, json=selected_response, status=200)
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
@@ -703,8 +728,7 @@ class TestCollection:
         [
             (
                 "/cadip/collections/cadip_session_by_id",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
-                "$expand=Files",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
                 {
                     "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
                     "Sentinel_Data_Terms_and_Conditions.pdf",

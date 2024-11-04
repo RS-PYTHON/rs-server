@@ -70,11 +70,11 @@ def rename_keys(product: dict) -> dict:
     return product
 
 
-def update_product(product: dict, href: str) -> dict:
+def update_product(product: dict) -> dict:
     """Update product with renamed keys and default geometry."""
     product = rename_keys(product)
     product.update(DEFAULT_GEOM)
-    product["href"] = re.sub(r"\([^\)]*\)", f'({product["id"]})', href)
+    product["href"] = re.sub(r"\([^\)]*\)", f'({product["id"]})', product["href"])
     return product
 
 
@@ -93,10 +93,9 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
     return [
         eodag.EOProduct(
             provider="internal_session_product_file_from_cadip",
-            properties=update_product(product, session.properties["href"]),
+            properties=update_product(session.properties),
         )
         for session in input_sessions
-        for product in session.properties.get("Files", [])
     ]
 
 
@@ -168,3 +167,17 @@ def cadip_map_mission(platform: str, constellation: str):
             detail="Cannot map platform/constellation",
         ) from exc
     return satellite
+
+
+def link_assets_to_session(session_data, assets_dict, mapper):
+    """Function used to allocate assets to propper session item based on session id property."""
+    # Validity check to be later added.
+    for feature in session_data.features:
+        matching_assets = [asset_item for asset_item in assets_dict if feature.id == asset_item["SessionID"]]
+        for asset_item in matching_assets:
+            asset_dict = {
+                map_key: asset_item[map_value] for map_key, map_value in mapper.items() if map_value in asset_item
+            }
+            asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
+            feature.assets.update({asset.title: asset})
+    return session_data
