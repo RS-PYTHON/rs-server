@@ -446,7 +446,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
 
                     # Comma-separated lists
-                    if key in ("platformSerialIdentifier", "platformShortName", "Satellite"):
+                    if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
 
                         # Read both values
                         value1 = odata_params[key]
