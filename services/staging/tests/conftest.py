@@ -74,7 +74,7 @@ def staging(mocker):
     mock_input_collection = mocker.Mock()
     mock_collection = "test_collection"
     mock_item = "test_item"
-    mock_provider = "test_provider"
+    mock_provider = "cadip"
     mock_db = mocker.Mock()  # Mock for tinydb.table.Table
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
     mock_tinydb_lock = mocker.Mock()

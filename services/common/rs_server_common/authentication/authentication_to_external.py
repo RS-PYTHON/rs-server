@@ -20,7 +20,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import requests
 import yaml
@@ -315,7 +315,7 @@ def read_config_file():
 
 def load_external_auth_config_by_station_service(
     station_id: str,
-    service: str,
+    service: Union[str, None] = None,
 ) -> Optional[ExternalAuthenticationConfig]:
     """
     Load the external authentication configuration for a given station and service from a YAML file.
@@ -335,8 +335,12 @@ def load_external_auth_config_by_station_service(
     service_dict = station_dict.get("service", {})
 
     # Validate that the service name matches
-    if service_dict.get("name") != service:
-        logger.warning(f"No matching service found for station_id: {station_id} and service: {service}")
+    try:
+        if service and service_dict.get("name") != service:
+            logger.warning(f"No matching service found for station_id: {station_id} and service: {service}")
+            return None
+    except KeyError:
+        logger.exception("Failed to check the service name in the rs-server.yaml file")
         return None
 
     # Create and return the ExternalAuthenticationConfig object
@@ -469,9 +473,9 @@ def set_eodag_auth_token(
         os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] = get_station_token(
             ext_auth_config,
         )
-        logger.debug("Token has been set to eodag")
+        logger.info("Token has been set to eodag")
     else:
         # use eodag to get the token
         # NOTE: the cadip_ws_config should be also configured
-        logger.debug("Let eodag to fetch the token")
+        logger.info("Let eodag to fetch the token")
         set_eodag_auth_env(ext_auth_config)
