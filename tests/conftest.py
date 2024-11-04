@@ -64,9 +64,6 @@ TOKEN_PASSWORD = os.getenv("RSPY_TOKEN_PASSWORD", "test")
 TOKEN_CLIENT_SECRET = os.getenv("RSPY_CLIENT_SECRET", "client_secret")
 TOKEN_URL = os.getenv("RSPY_TOKEN_URL", "http://127.0.0.1:5000/oauth2/token")
 
-ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
-ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
-
 ##################
 # INITIALISATION #
 ##################

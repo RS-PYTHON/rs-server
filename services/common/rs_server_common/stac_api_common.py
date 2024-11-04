@@ -402,13 +402,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
         allowed_ids = set(collection["id"] for collection in allowed)
         if not collection_ids:
-            collection_ids = allowed_ids
+            collection_ids = list(allowed_ids)
         else:
-            collection_ids = allowed_ids.intersection(collection_ids)
+            collection_ids = list(allowed_ids.intersection(collection_ids))
 
         # Item features for all collections.
         # Use a dict ordered by ID so we only keep unique items, based on their ID.
-        all_features: Dict[str, List[Item]] = {}
+        all_features: Dict[str, Item] = {}
 
         first_exception = None
 
@@ -485,7 +485,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # TODO: what to do with the sortby parameter ?
 
                 # Do the search for this collection
-                features: stac_pydantic.ItemCollection = (await self.process_search(collection, odata)).features
+                features = (await self.process_search(collection, odata)).features
 
                 # Add the collection information
                 for item in features:

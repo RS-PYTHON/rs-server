@@ -32,7 +32,7 @@ from rs_server_common.utils.utils2 import AuthInfo
 from starlette import status
 from starlette.datastructures import State
 
-from tests.conftest import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
+from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"

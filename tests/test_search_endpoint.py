@@ -27,9 +27,10 @@ from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
 from rs_server_common.data_retrieval.provider import Provider
 
-from tests.conftest import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
+from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
-# pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals, too-many-branches
+# pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals,
+# pylint: disable=too-many-branches, too-many-lines, too-many-statements
 
 
 @pytest.mark.unit
@@ -954,7 +955,7 @@ def test_search_parameters(mocker, mock_token_validation, client, filter_type, m
             # Or, if missing, we query on everything.
             if collection_id == "col1":
                 odata = odata_query if user_query else odata_no_query
-                date_min = user_datetime.split("/")[0]
+                date_min = user_datetime.split("/", maxsplit=1)[0]
                 date_max = user_datetime.split("/")[1]
                 product_type = user_product_type
                 constellation = user_constellation
@@ -965,7 +966,7 @@ def test_search_parameters(mocker, mock_token_validation, client, filter_type, m
             # So either it returns no results. Or, if the user query is missing, we use the collection query.
             elif collection_id == "col2":
                 odata = "" if user_query else odata_query
-                date_min = user_datetime.split("/")[0]  # intersection between user and hardcoded datetimes
+                date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
                 date_max = hardcoded_date.split("/")[1]
                 product_type = collection["query"].get("productType")
                 constellation = collection["query"].get("platformShortName")
@@ -975,7 +976,7 @@ def test_search_parameters(mocker, mock_token_validation, client, filter_type, m
             # The third collection has a query with multiple values, that intersects only one user value.
             elif collection_id == "col3":
                 odata = odata_query
-                date_min = user_datetime.split("/")[0]  # intersection between user and hardcoded datetimes
+                date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
                 date_max = hardcoded_date.split("/")[1]
                 limit = hardcoded_limit
                 if user_query:
@@ -989,6 +990,8 @@ def test_search_parameters(mocker, mock_token_validation, client, filter_type, m
                     product_type = collection["query"].get("productType")
                     constellation = collection["query"].get("platformShortName")
                     satellite = collection["query"].get("Satellite", "")
+            else:
+                raise NotImplementedError
 
             # Format the odata request with all possible parameters
             odata = odata.format(
