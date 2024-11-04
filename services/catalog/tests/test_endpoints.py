@@ -330,7 +330,11 @@ class TestCatalogSearchEndpoint:
         response = client.post("/catalog/search", json=test_json)
         assert response.status_code == 200
 
-    def test_search_using_several_collections_post(self, client):
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "GET"],
+    )
+    def test_search_using_several_collections_post(self, client, method):
         """Test a search request involving several collections (POST method)"""
         # Search items on several collections without using implicit naming feature
         test_json = {
@@ -344,69 +348,96 @@ class TestCatalogSearchEndpoint:
             },
         }
         response = client.post("/catalog/search", json=test_json)
+
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 3
 
-        # Use implicit naming mechanism for some collections of the list + specify owner in the content
-        test_json = {
-            "collections": ["S1_L1", "S2_L3"],
-            "owner": "toto",
-            "filter": {
-                "op": "and",
-                "args": [
-                    {"op": "=", "args": [{"property": "width"}, 2500]},
-                    {"op": "=", "args": [{"property": "height"}, 2500]},
-                ],
-            },
-        }
-        response = client.post("/catalog/search", json=test_json)
+        # Use implicit naming mechanism for some collections of the list + specify owner in the content/query parameters
+        if method == "POST":
+            test_json = {
+                "collections": ["S1_L1", "S2_L3"],
+                "owner": "toto",
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "width"}, 2500]},
+                        {"op": "=", "args": [{"property": "height"}, 2500]},
+                    ],
+                },
+            }
+            response = client.post("/catalog/search", json=test_json)
+        elif method == "GET":
+            test_params = {
+                "collections": "S1_L1,toto_S2_L3",
+                "filter-lang": "cql2-text",
+                "filter": "width=2500",
+                "owner": "toto",
+            }
+            response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 3
 
         # Use implicit naming mechanism for some collections of the list + specify owner in the filter
-        test_json = {
-            "collections": ["S1_L1", "toto_S2_L3"],
-            "filter": {
-                "op": "and",
-                "args": [
-                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
-                    {"op": "=", "args": [{"property": "width"}, 2500]},
-                    {"op": "=", "args": [{"property": "height"}, 2500]},
-                ],
-            },
-        }
-        response = client.post("/catalog/search", json=test_json)
+        if method == "POST":
+            test_json = {
+                "collections": ["S1_L1", "toto_S2_L3"],
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                        {"op": "=", "args": [{"property": "width"}, 2500]},
+                        {"op": "=", "args": [{"property": "height"}, 2500]},
+                    ],
+                },
+            }
+            response = client.post("/catalog/search", json=test_json)
+        elif method == "GET":
+            test_params = {
+                "collections": "S1_L1,toto_S2_L3",
+                "filter-lang": "cql2-text",
+                "filter": "width=2500 AND owner='toto'",
+            }
+            response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == 200
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert len(json.loads(response.content)["features"]) == 3
 
-        # Implicit naming mechanism will not produce the right owner_id if we don't specify it in the content
-        # or in the filter
-        test_json = {
-            "collections": ["S1_L1", "toto_S2_L3"],
-            "filter": {
-                "op": "and",
-                "args": [
-                    {"op": "=", "args": [{"property": "width"}, 2500]},
-                    {"op": "=", "args": [{"property": "height"}, 2500]},
-                ],
-            },
-        }
-        response = client.post("/catalog/search", json=test_json)
+        # Implicit naming mechanism will not produce the right owner_id if we don't specify it in the
+        # content/query parameters or in the filter
+        if method == "POST":
+            test_json = {
+                "collections": ["S1_L1", "toto_S2_L3"],
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "width"}, 2500]},
+                        {"op": "=", "args": [{"property": "height"}, 2500]},
+                    ],
+                },
+            }
+            response = client.post("/catalog/search", json=test_json)
+        elif method == "GET":
+            test_params = {"collections": "toto_S1_L1,S2_L3", "filter": "width=2500"}
+            response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
         # Check that we get an error if at least one existing collection doesn't exist
-        test_json = {
-            "collections": ["S1_L1", "unexisting_collection"],
-            "filter": {
-                "op": "and",
-                "args": [
-                    {"op": "=", "args": [{"property": "owner"}, "toto"]},
-                    {"op": "=", "args": [{"property": "width"}, 2500]},
-                    {"op": "=", "args": [{"property": "height"}, 2500]},
-                ],
-            },
-        }
-        response = client.post("/catalog/search", json=test_json)
+        if method == "POST":
+            test_json = {
+                "collections": ["S1_L1", "unexisting_collection"],
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                        {"op": "=", "args": [{"property": "width"}, 2500]},
+                        {"op": "=", "args": [{"property": "height"}, 2500]},
+                    ],
+                },
+            }
+            response = client.post("/catalog/search", json=test_json)
+        elif method == "GET":
+            test_params = {"collections": "toto_S1_L1,unexisting_collection", "filter": "width=2500"}
+            response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_search_using_several_collections_get(self, client):
