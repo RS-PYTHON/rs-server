@@ -83,7 +83,7 @@ class MockPgstacAdgs(MockPgstac):
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
         return process_product_search(
-            self.request,
+            collection.get("station", "adgs"),
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
             odata_params.get("top", None),
@@ -274,7 +274,7 @@ async def get_adgs_collection_specific_item(
 
 
 def process_product_search(  # pylint: disable=too-many-locals
-    request,
+    station,
     product_type,
     publication_date,
     limit,
@@ -285,7 +285,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     writes the search results to the database, and generates a STAC Feature Collection from the products.
 
     Args:
-        request (Request): The request object (unused).
+        station (str): Auxip station identifier.
         datetime (str): Time interval in ISO 8601 format.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
 
@@ -300,11 +300,11 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    set_eodag_auth_token("adgs", "auxip")
+    set_eodag_auth_token(station, "auxip")
     limit = limit if limit else 1000
     (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
-        products = init_adgs_provider("adgs").search(
+        products = init_adgs_provider(station).search(
             TimeRange(start_date, stop_date),
             attr_ptype=product_type,
             items_per_page=limit,
@@ -319,7 +319,7 @@ def process_product_search(  # pylint: disable=too-many-locals
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             collection = create_stac_collection(products, feature_template, stac_mapper)
-            return serialize_adgs_asset(collection, request)
+            return serialize_adgs_asset(collection, products)
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
