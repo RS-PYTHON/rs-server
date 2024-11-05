@@ -738,7 +738,16 @@ class TestCollection:
     ids=["adgs", "cadip"],
     indirect=["fastapi_app"],
 )
-def test_search_parameters(mocker, mock_token_validation, client, filter_type, method, service, expected_products):
+def test_search_parameters(
+    mocker,
+    mock_token_validation,
+    client,
+    filter_type,
+    method,
+    service,
+    adgs_response,
+    cadip_response,
+):
     """Test all search parameters"""
 
     adgs = service == "adgs"
@@ -747,13 +756,16 @@ def test_search_parameters(mocker, mock_token_validation, client, filter_type, m
     mock_token_validation(service)
     spy_search = mocker.spy(Provider, "search")
 
-    # Read the first adgs or cadip collection, keep everything except the id and hardcoded query
     if adgs:
         service_utils = adgs_utils
+        expected_response = adgs_response
     elif cadip:
         service_utils = cadip_utils
+        expected_response = cadip_response
     else:
         raise NotImplementedError
+
+    # Read the first adgs or cadip collection, keep everything except the id and hardcoded query
     collection = service_utils.read_conf()["collections"][0]
     collection.pop("id")
     collection.pop("query")
@@ -1010,7 +1022,7 @@ def test_search_parameters(mocker, mock_token_validation, client, filter_type, m
                         responses.GET,
                         odata,
                         status=status.HTTP_200_OK,
-                        json={"responses": expected_products},
+                        json={"responses": expected_response},
                     )
                     expect_result = True
                 else:
@@ -1028,7 +1040,7 @@ def test_search_parameters(mocker, mock_token_validation, client, filter_type, m
                 # Check that the search function was called and returned the expected result
                 if expect_result:
                     assert spy_search.call_count == 1
-                    assert len(spy_search.spy_return) == 3  # len(expected_products)
+                    assert len(spy_search.spy_return) == 1  # expected_response
                 else:
                     assert spy_search.call_count == 0
                 spy_search.reset_mock()
