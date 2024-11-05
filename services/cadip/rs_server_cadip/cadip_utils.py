@@ -142,12 +142,13 @@ def cadip_map_mission(platform: str, constellation: str):
     """
     data: dict = map_stac_platform()
     satellite: Union[None, str] = None
+    satellites: Union[None, str] = None
     try:
         if platform:
             config = next(sat[platform] for sat in data["satellites"] if platform in sat)
             satellite = config.get("code", None)
         if constellation:
-            satellites: str = ", ".join(
+            satellites = ", ".join(
                 [
                     satellite_info["code"]
                     for satellite in data["satellites"]
