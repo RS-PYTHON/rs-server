@@ -147,7 +147,7 @@ def cadip_map_mission(platform: str, constellation: str):
             config = next(sat[platform] for sat in data["satellites"] if platform in sat)
             satellite = config.get("code", None)
         if constellation:
-            const_sat: str = ", ".join(
+            satellites: str = ", ".join(
                 [
                     satellite_info["code"]
                     for satellite in data["satellites"]
@@ -155,18 +155,17 @@ def cadip_map_mission(platform: str, constellation: str):
                     if satellite_info.get("constellation") == constellation
                 ],
             )
-            if satellite and satellite not in const_sat:
+            if satellite and satellite not in satellites:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail="Invalid combination of platform-constellation",
                 )
-            satellite = const_sat
     except (KeyError, IndexError, StopIteration) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Cannot map platform/constellation",
         ) from exc
-    return satellite
+    return satellite or satellites
 
 
 def link_assets_to_session(session_data, assets_dict, mapper):

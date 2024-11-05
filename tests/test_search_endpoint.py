@@ -144,8 +144,9 @@ class TestConstellationMapping:
             ("sentinel-1a", None, "S1A"),
             ("sentinel-2b", None, "S2B"),
             ("sentinel-5p", None, "S5P"),
-            # if both plaftorm and const are defined, priority is to get constellation since it contanis more results
-            ("sentinel-1a", "sentinel-1", "S1A, S1B, S1C"),
+            # if both plaftorm and const are defined, priority is to get platform since it is more precise
+            ("sentinel-2b", "sentinel-2", "S2B"),
+            ("sentinel-1a", "sentinel-1", "S1A"),
             ("sentinel-5p", "sentinel-5P", "S5P"),
             (None, "sentinel-1", "S1A, S1B, S1C"),
             (None, "sentinel-2", "S2A, S2B, S2C"),
@@ -163,6 +164,7 @@ class TestConstellationMapping:
             ("sentinel-invalid", None),  # invalid platform
             ("sentinel-1a", "sentinel-invalid"),  # valid platform, invalid constellation
             ("sentinel-1a", "sentinel-5p"),  # invalid relation between platform and const
+            ("sentinel-2a", "sentinel-1"),
         ],
     )
     def test_invalid_cadip_mapping(self, platform, constellation):
