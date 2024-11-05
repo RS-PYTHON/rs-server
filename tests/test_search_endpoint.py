@@ -746,7 +746,9 @@ def test_search_parameters(
     method,
     service,
     adgs_response,
+    adgs_feature,
     cadip_response,
+    cadip_feature,
 ):
     """Test all search parameters"""
 
@@ -759,9 +761,11 @@ def test_search_parameters(
     if adgs:
         service_utils = adgs_utils
         expected_response = adgs_response
+        expected_feature = adgs_feature
     elif cadip:
         service_utils = cadip_utils
         expected_response = cadip_response
+        expected_feature = cadip_feature
     else:
         raise NotImplementedError
 
@@ -1022,7 +1026,7 @@ def test_search_parameters(
                         responses.GET,
                         odata,
                         status=status.HTTP_200_OK,
-                        json={"responses": expected_response},
+                        json=expected_response,
                     )
                     expect_result = True
                 else:
@@ -1031,16 +1035,20 @@ def test_search_parameters(
                 # Call the endpoint
                 url = f"{os.getenv('router_prefix')}/search"
                 if method == "GET":
-                    client.get(url, params=collection_params)
+                    response = client.get(url, params=collection_params)
                 elif method == "POST":
-                    client.post(url, json=collection_params)
+                    response = client.post(url, json=collection_params)
                 else:
                     raise NotImplementedError
 
                 # Check that the search function was called and returned the expected result
+                assert response.is_success
+                features = response.json()["features"]
                 if expect_result:
                     assert spy_search.call_count == 1
-                    assert len(spy_search.spy_return) == 1  # expected_response
+                    assert len(spy_search.spy_return) == len(features) == 1  # expected_response
+                    # assert features == expected_feature
                 else:
                     assert spy_search.call_count == 0
+                    assert len(features) == 0
                 spy_search.reset_mock()
