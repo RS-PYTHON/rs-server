@@ -61,22 +61,22 @@
         {
             "rel": "collection",
             "type": "application/json",
-            "href": "http://testserver/collections/s2_adgs2_AUX_OBMEMC"
+            "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC"
         },
         {
             "rel": "parent",
             "type": "application/json",
-            "href": "http://testserver/collections/s2_adgs2_AUX_OBMEMC"
+            "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC"
         },
         {
             "rel": "root",
             "type": "application/json",
-            "href": "http://testserver/"
+            "href": "http://testserver/auxip/"
         },
         {
             "rel": "self",
             "type": "application/geo+json",
-            "href": "http://testserver/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF"
+            "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF"
         }
     ],
     "stac_extensions": [

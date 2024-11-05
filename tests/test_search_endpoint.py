@@ -429,6 +429,7 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
     def test_cadip_feature_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
         """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
         Visit conftest to view content of cadip_feature and cadip_response.
@@ -448,6 +449,7 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
     def test_cadip_empty_feature_mapping(self, client, mock_token_validation, cadip_feature):
         """Test to verify the output of rs-server when pick-up point response is empty."""
         mock_token_validation()
@@ -466,6 +468,7 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
     def test_adgs_feature_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
         """Test mapping of an adgs reponse with expanded attributes"""
         mock_token_validation()
@@ -485,6 +488,7 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
     def test_adgs_empty_feature_mapping(self, client, mock_token_validation, adgs_feature):
         """Test to verify the output of rs-server when pick-up point response is empty."""
         mock_token_validation()
@@ -575,6 +579,7 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
     def test_cadip_feature_collection_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
         """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
         Visit conftest to view content of cadip_feature and cadip_response.
@@ -595,6 +600,7 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
     def test_adgs_feature_collection_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
         """Test mapping of an adgs reponse with expanded attributes"""
         mock_token_validation()
@@ -746,9 +752,7 @@ def test_search_parameters(
     method,
     service,
     adgs_response,
-    adgs_feature,
     cadip_response,
-    cadip_feature,
 ):
     """Test all search parameters"""
 
@@ -761,11 +765,9 @@ def test_search_parameters(
     if adgs:
         service_utils = adgs_utils
         expected_response = adgs_response
-        expected_feature = adgs_feature
     elif cadip:
         service_utils = cadip_utils
         expected_response = cadip_response
-        expected_feature = cadip_feature
     else:
         raise NotImplementedError
 
@@ -1047,7 +1049,6 @@ def test_search_parameters(
                 if expect_result:
                     assert spy_search.call_count == 1
                     assert len(spy_search.spy_return) == len(features) == 1  # expected_response
-                    # assert features == expected_feature
                 else:
                     assert spy_search.call_count == 0
                     assert len(features) == 0
