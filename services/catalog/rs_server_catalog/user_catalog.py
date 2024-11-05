@@ -1018,7 +1018,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
         self.s3_files_to_be_deleted.clear()
         return JSONResponse(response_content)
 
-    async def build_fileslist_to_be_deleted(self, request):
+    async def build_filelist_to_be_deleted(self, request):
         """Build the list of the s3 files that will be deleted if the request is successfull"""
 
         collection_id = f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"
@@ -1116,7 +1116,7 @@ collection owned by the '{user}' user. Additionally, modifying the 'owner' field
 collection or an item from a collection owned by the '{self.request_ids['owner_id']}' user",
             )
             return False
-        await self.build_fileslist_to_be_deleted(request)
+        await self.build_filelist_to_be_deleted(request)
         return True
 
     async def retrieve_timestamp(self, request: Request) -> tuple[str, str]:

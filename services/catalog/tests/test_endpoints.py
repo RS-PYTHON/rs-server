@@ -585,9 +585,9 @@ class TestCatalogDeleteEndpoints:
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     @pytest.mark.asyncio
-    async def test_build_fileslist_to_be_deleted_collection(self, mocker):
+    async def test_build_filelist_to_be_deleted_collection(self, mocker):
         """
-        Test build_fileslist_to_be_deleted for collection deletion.
+        Test build_filelist_to_be_deleted for collection deletion.
 
         This test checks if the function correctly builds a list of S3 file paths to be deleted
         when deleting an entire collection. Mocks the item_collection response to simulate a
@@ -616,7 +616,7 @@ class TestCatalogDeleteEndpoints:
         catalog.request_ids = {"owner_id": "user", "collection_id": "collection_id"}
 
         # Call the function
-        await catalog.build_fileslist_to_be_deleted(mock_request)
+        await catalog.build_filelist_to_be_deleted(mock_request)
 
         # Assert
         assert catalog.s3_files_to_be_deleted == ["s3://bucket/file1", "s3://bucket/file2"]
@@ -628,9 +628,9 @@ class TestCatalogDeleteEndpoints:
         )
 
     @pytest.mark.asyncio
-    async def test_build_fileslist_to_be_deleted_item(self, mocker):
+    async def test_build_filelist_to_be_deleted_item(self, mocker):
         """
-        Test build_fileslist_to_be_deleted for individual item deletion.
+        Test build_filelist_to_be_deleted for individual item deletion.
 
         This test verifies that when deleting a single item, the function correctly identifies
         the item's specific assets to be deleted. Mocks the get_item response to return an item
@@ -649,7 +649,7 @@ class TestCatalogDeleteEndpoints:
         catalog.request_ids = {"owner_id": "user", "collection_id": "collection_id", "item_id": "item_id"}
 
         # Act
-        await catalog.build_fileslist_to_be_deleted(mock_request)
+        await catalog.build_filelist_to_be_deleted(mock_request)
 
         # Assert
         assert catalog.s3_files_to_be_deleted == ["s3://bucket/file1"]
@@ -660,9 +660,9 @@ class TestCatalogDeleteEndpoints:
         )
 
     @pytest.mark.asyncio
-    async def test_build_fileslist_to_be_deleted_not_found(self, mocker):
+    async def test_build_filelist_to_be_deleted_not_found(self, mocker):
         """
-        Test build_fileslist_to_be_deleted when item is not found.
+        Test build_filelist_to_be_deleted when item is not found.
 
         This test checks that when an item does not exist, the function handles the
         NotFoundError gracefully. It ensures no S3 paths are added to s3_files_to_be_deleted.
@@ -680,7 +680,7 @@ class TestCatalogDeleteEndpoints:
         catalog.request_ids = {"owner_id": "user", "collection_id": "collection_id", "item_id": "nonexistent_item"}
 
         # Act
-        await catalog.build_fileslist_to_be_deleted(mock_request)
+        await catalog.build_filelist_to_be_deleted(mock_request)
 
         # Assert
         assert not catalog.s3_files_to_be_deleted
