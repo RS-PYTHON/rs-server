@@ -24,12 +24,15 @@ from typing import List, Union
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.utils.exceptions import AuthenticationError, RequestError
+from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, TimeRange
 
 # TODO: See TODO invalid token. Import 'from .provider SearchProductFailed' if needed
 
 # from fastapi import HTTPException
+
+logger = Logging.default(__name__)
 
 
 class EodagProvider(Provider):
@@ -150,7 +153,7 @@ class EodagProvider(Provider):
                 productType="S1_SAR_RAW" if "adgs" not in self.provider.lower() else "CAMS_GRF_AUX",
                 **kwargs,
             )
-        except RequestError:
+        except RequestError as e:
             # except RequestError as e:
             # TODO invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
             # Should we handle this specifically by raising an exception, or follow the current approach
@@ -160,6 +163,7 @@ class EodagProvider(Provider):
             #         f"Can't search provider {self.provider} " "because the used token is not valid",
             #     ) from e
             # Empty list if something goes wrong in eodag
+            logger.debug(e)
             return []
         except AuthenticationError as exc:
             raise ValueError("EoDAG could not authenticate") from exc

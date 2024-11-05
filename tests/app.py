@@ -24,6 +24,9 @@ from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.fastapi_app import init_app as init_app_with_args
 from rs_server_common.stac_api_common import MockPgstac
 
+ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
+ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
+
 
 class MockPgstacTest(MockPgstac):
     """Implementation of MockPgstac that returns an adgs or cadip instance, depending on the request."""
