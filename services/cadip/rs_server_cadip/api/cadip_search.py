@@ -101,7 +101,6 @@ class MockPgstacCadip(MockPgstac):
         assets = process_files_search(
             collection.get("station", "cadip"),
             features_ids,
-            deprecated=True,
             map_to_session=True,
         )
 
