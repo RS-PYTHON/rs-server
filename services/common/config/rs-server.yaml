@@ -56,7 +56,7 @@ external_data_sources:
     authentication:
       auth_type: oauth2
       #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
-      token_url: http://127.0.0.1:5002/oauth2/token
+      token_url: http://127.0.0.1:5000/oauth2/token
       grant_type: password
       scope: sss
       username: test
