@@ -177,8 +177,8 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
 
     # Read the full cadip station passed in parameter: ins, mps, mti, nsg, sgs, or cadip
     # No validation needed for landing pages.
-    if station_type == "cadip" and access_type != "landing_page":
-        full_station = "cadip_" + kwargs["station"]
+    if access_type != "landing_page":
+        full_station = f'{"cadip" if station_type == "cadip" else "adgs"}_{kwargs["station"]}'
     else:
         full_station = station_type
 

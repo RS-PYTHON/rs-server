@@ -54,10 +54,9 @@ from rs_server_catalog.user_handler import (
     reroute_url,
 )
 from rs_server_catalog.utils import (
+    delete_s3_files,
     get_s3_filename_from_asset,
-    get_s3_handler,
     get_temp_bucket_name,
-    is_s3_path,
     verify_existing_item_from_catalog,
 )
 from rs_server_common import settings as common_settings
@@ -132,33 +131,6 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
             else:
                 objects[i] = remove_user_from_feature(objects[i], user)
         return content
-
-    def delete_s3_files(self):
-        """Used to clear specific files from temporary bucket and from catalog bucket if needed."""
-        s3_handler = get_s3_handler()
-        if not s3_handler:
-            logger.error("Failed to delete the s3 files")
-            self.s3_files_to_be_deleted.clear()
-            return
-
-        # delete any temp file file or a file from the catalog for which the asset has been removed
-        for s3_key in self.s3_files_to_be_deleted:
-            try:
-                if not is_s3_path(s3_key):
-                    raise HTTPException(
-                        detail=f"The s3 key {s3_key} does not match with a correct s3"
-                        "path pattern (s3://bucket_name/path/to/obj)",
-                        status_code=HTTP_400_BAD_REQUEST,
-                    )
-                key_array = s3_key.split("/")
-                s3_handler.delete_file_from_s3(key_array[2], "/".join(key_array[3:]))
-            except RuntimeError as rte:
-                logger.exception(
-                    f"Failed to delete key {'/'.join(key_array)} from s3 bucket."
-                    f"Reason: {rte}. However, the process will still continue !",
-                )
-                continue
-        self.s3_files_to_be_deleted.clear()
 
     def clear_catalog_bucket(self, content: dict):
         """Used to clear specific files from catalog bucket."""
@@ -318,6 +290,8 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id'][0
             temp_bucket_name = get_temp_bucket_name(files_s3_key)
             # now remove the s3://temp_bucket_name for each s3_key
             for idx, s3_key in enumerate(files_s3_key):
+                # build the list with files to be deleted from the temporary bucket
+                self.s3_files_to_be_deleted.append(s3_key)
                 files_s3_key[idx] = s3_key.replace(f"s3://{temp_bucket_name}", "")
 
             err_message = f"Failed to transfer file(s) from '{temp_bucket_name}' bucket to \
@@ -333,6 +307,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id'][0
             failed_files = self.s3_handler.transfer_from_s3_to_s3(config)
 
             if failed_files:
+                self.s3_files_to_be_deleted.clear()
                 raise HTTPException(
                     detail=f"{err_message} {failed_files}",
                     status_code=HTTP_400_BAD_REQUEST,
@@ -345,6 +320,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id'][0
                 for asset in item["assets"]:
                     self.s3_files_to_be_deleted.append(item["assets"][asset]["alternate"]["s3"]["href"])
         except KeyError as kerr:
+            self.s3_files_to_be_deleted.clear()
             raise HTTPException(
                 detail=f"{err_message} Failed to find S3 credentials.",
                 status_code=HTTP_400_BAD_REQUEST,
@@ -400,11 +376,11 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id'][0
                         detail=(f"The item that contains asset '{asset}' does not exist in the catalog "),
                         status_code=HTTP_400_BAD_REQUEST,
                     )
-            else:
-                # when alternate_key does not exist, it means the request is coming from the staging process,
-                # and the s3_filename is on the temp bucket. this should be deleted later on after the catalog
-                # insertion process is completed (see the use of delete_s3_files function)
-                self.s3_files_to_be_deleted.append(s3_filename)
+            # else:
+            # when alternate_key does not exist, it means the request is coming from the staging process
+            # the file should not be deleted from the temp bucket, because in fact it does not exist. THe file
+            # is already in the final catalog bucket, from the staging process. Nothing to do
+
             logger.debug(f"HTTP request add/update asset: {s3_filename!r}")
             fid = s3_filename.rsplit("/", maxsplit=1)[-1]
             if fid != asset:
@@ -421,8 +397,6 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id'][0
                 old_bucket_arr[2] = CATALOG_BUCKET
                 s3_key = "/".join(old_bucket_arr)
                 # Check if the S3 key exists
-                # TBD: The catalog should have nothing to do anymore with the
-                # s3 level. This part has to be removed
                 if not self.check_s3_key(item, asset, s3_key):
                     # update the 'href' key with the download link
                     new_href = f"https://{request.url.netloc}/catalog/\
@@ -431,14 +405,14 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     # Update the S3 path to use the catalog bucket and create the alternate field
                     new_s3_href = {"s3": {"href": s3_key}}
                     content["assets"][asset].update({"alternate": new_s3_href})
-                    # copy the key only if it isn't already in the final bucket
+                    # copy the key only if it isn't already in the final catalog bucket
                     if not int(
                         os.environ.get("RSPY_LOCAL_CATALOG_MODE", 0),
                     ) and not self.s3_handler.check_s3_key_on_bucket(CATALOG_BUCKET, "/".join(old_bucket_arr[3:])):
                         files_s3_key.append(s3_filename)
                 elif request.method == "PUT":
                     # remove the asset from the item, all assets that remain shall
-                    # be deleted from the s3 bucket later on
+                    # be deleted from the catalog s3 bucket later on
                     item["assets"].pop(asset)
             except (IndexError, AttributeError, KeyError, RuntimeError) as exc:
                 raise HTTPException(
@@ -769,10 +743,9 @@ field is not permitted also.",
             elif "items" in request.scope["path"]:
                 # try to get the item if it is already part from the collection
                 item = await self.get_item_from_collection(request)
-                # !!!
-                # Removed since RSPY 326, no need for bucket movement
+
                 content = self.update_stac_item_publication(content, request, item)
-                # !!!
+
                 if content:
                     if request.method == "POST":
                         content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
@@ -1077,7 +1050,8 @@ field is not permitted also.",
             ):
                 response_content = remove_user_from_feature(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
-            self.delete_s3_files()
+            delete_s3_files(self.s3_files_to_be_deleted)
+            self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
             return JSONResponse(content=f"Failed to clean temporary bucket: {exc}", status_code=HTTP_400_BAD_REQUEST)
         except Exception as exc:  # pylint: disable=broad-except
@@ -1101,17 +1075,37 @@ field is not permitted also.",
         if "deleted collection" in response_content:
             response_content["deleted collection"] = response_content["deleted collection"].removeprefix(f"{user}_")
         # delete the s3 files as well
-        self.delete_s3_files()
+        delete_s3_files(self.s3_files_to_be_deleted)
+        self.s3_files_to_be_deleted.clear()
         return JSONResponse(response_content)
 
     async def build_filelist_to_be_deleted(self, request):
         """Build the list of the s3 files that will be deleted if the request is successfull"""
 
         collection_id = f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"
+        items = []
         try:
             if "/items" not in request.scope["path"]:
                 # this is the case for delete endpoint /collections/<collection_name>
-                items_collection = await self.client.item_collection(request=request, collection_id=collection_id)
+                # use pagination, otherwise a maximum of the default limit (10) items is returned
+                # NOTE: Unable to use the pagination from pgstac client. Temporary, use a limit of 100
+                token = None
+                while True:
+                    items_collection = await self.client.item_collection(
+                        request=request,
+                        collection_id=collection_id,
+                        limit=100,
+                        token=token,
+                    )
+                    items.extend(items_collection.get("features", []))
+                    # Check if there's a next token for pagination
+                    token = None
+                    for link in items_collection.get("links", []):
+                        if link.get("rel") == "next":
+                            token = link.get("href", None)
+                    if not token:
+                        # No more pages left, break the loop
+                        break
             else:
                 # this is the case for delete endpoint /collections/<collection_name>/items/<item_name>
                 item = await self.client.get_item(
@@ -1119,19 +1113,17 @@ field is not permitted also.",
                     collection_id=collection_id,
                     request=request,
                 )
-                items_collection = {
-                    "type": "FeatureCollection",
-                    "context": {"limit": 10, "returned": 1},
-                    "features": [item],
-                }
+                items = [item]
         except NotFoundError:
             logger.error("Failed to find the requested object to be deleted.")
             return
-        logger.debug(f"response_get_collection = {items_collection}")
+        except KeyError as e:
+            logger.error(f"Unable to build the list of items to delete due to missing key: {e}")
+            return
+        logger.debug(f"Found {len(items)} items: {items}")
         try:
-            features = items_collection.get("features", [])
-            for feature in features:
-                assets = feature.get("assets", {})
+            for item in items:
+                assets = item.get("assets", {})
                 for _, asset_info in assets.items():
                     s3_href = asset_info.get("alternate", {}).get("s3", {}).get("href")
                     if s3_href:
