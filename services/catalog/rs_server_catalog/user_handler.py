@@ -17,9 +17,10 @@
 import getpass
 import os
 import re
-from typing import Tuple
+from typing import Any, Dict
 
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
+from starlette.requests import Request
 
 CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"/catalog/collections"
@@ -28,11 +29,15 @@ CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX = (
     r"(?P<item_id>/.+?(?=/|$))?)?"
 )
 
+# Regexp for catalog endpoints
 COLLECTIONS_QUERYABLES_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/queryables"
 COLLECTIONS_SEARCH_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/search"
 BULK_ITEMS_REGEX = r"/catalog/collections/((?P<owner_id>.+):)?(?P<collection_id>.+)/bulk_items"
 CATALOG_COLLECTION = "/catalog/collections"
+
+# Regexp for search endpoints
 CATALOG_SEARCH = "/catalog/search"
+CATALOG_SEARCH_QUERY_PARAMS = r"/catalog/search\?((?P<owner_id>.+):)?(?P<collection_id>.+)"  # noqa: W605
 
 
 def get_user(endpoint_user: str | None, apikey_user: str | None):
@@ -53,17 +58,16 @@ def get_user(endpoint_user: str | None, apikey_user: str | None):
     return os.getenv("RSPY_HOST_USER", default=getpass.getuser())
 
 
-def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statements
-    path: str,
-    method: str,
-    user_login: str | None = None,
-) -> Tuple[str, dict]:
+def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-statements
+    request: Request,
+    ids_dict: Dict[str, Any],
+):
     """Remove the prefix from the RS Server Frontend endpoints to get the
     RS Server backend catalog endpoints.
 
     Args:
-        path (str): RS Server Frontend endpoints.
-        method (str): RS Server Fronted request method type.
+        request (Request): The client request
+        ids_dict (str): Dictionary to easily access important data of our request
 
     Raises:
         ValueError: If the path is not valid.
@@ -72,67 +76,68 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
         str: Return the URL path with prefix removed.
         dict: Return a dictionary containing owner, collection and item ID.
     """
-
+    path = request.url.path
+    method = request.method
     patterns = [r"/_mgmt/ping", r"/api", r"/favicon.ico"]
 
-    # if path == "/":
-    #     raise ValueError(f"URL ({path}) is invalid.")
+    # Catch one endpoint of the following list
+    regexp_list = [
+        "/",
+        "/catalog/",
+        "/catalog/search",
+        "/catalog/queryables",
+        "catalog/api",
+        "/catalog/api.html",
+        "/catalog/docs/oauth2-redirect",
+        "/catalog/queryables",
+        "/catalog/conformance",
+    ]
+    is_in_regexp_list = False
+    for pattern in regexp_list:
+        if re.fullmatch(pattern, path):
+            path = path.replace("/catalog", "") if path != "/" else path
+            is_in_regexp_list = True
+            break
+    if is_in_regexp_list:
+        # Don't validate other conditions if we alredy matched the previous regexps
+        pass
 
-    ids_dict = {"owner_id": "", "collection_id": "", "item_id": ""}
+    # Catch authentication endpoints (path should be left as it is in this case)
+    elif path.startswith(f"{AUTH_PREFIX}/"):
+        pass
 
-    if "/health" in path:
-        return "/health", ids_dict
+    # Catch health endpoints
+    elif "/health" in path:
+        path = "/health"
 
-    # Authentication endpoints
-    if path.startswith(f"{AUTH_PREFIX}/"):
-        return path, ids_dict
+    # The endpoint PUT "/catalog/collections" does not exists.
+    elif path == CATALOG_COLLECTION and method != "PUT":
+        path = "/collections"
 
-    match path:
-        case "/catalog/":
-            return "/", ids_dict
-        case "/":
-            return "/", ids_dict
-        case "/catalog/search":
-            return "/search", ids_dict
-        case "/catalog/queryables":
-            return "/queryables", ids_dict
-        case "/catalog/api":
-            return "/api", ids_dict
-        case "/catalog/api.html":
-            return "/api.html", ids_dict
-        case "/catalog/docs/oauth2-redirect":
-            return "/docs/oauth2-redirect", ids_dict
-        case "/catalog/queryables":
-            return "/queryables", ids_dict
-        case "/catalog/conformance":
-            return "/conformance", ids_dict
-
-    if path == CATALOG_COLLECTION and method != "PUT":  # The endpoint PUT "/catalog/collections" does not exists.
-        return "/collections", ids_dict
-
-    # To catch the endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items
-    if match := re.fullmatch(BULK_ITEMS_REGEX, path):
+    # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items
+    elif match := re.fullmatch(BULK_ITEMS_REGEX, path):
         groups = match.groupdict()
-        ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
-        ids_dict["collection_id"] = groups["collection_id"]
-        return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/bulk_items", ids_dict
+        ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
+        ids_dict["collection_id"].append(groups["collection_id"])
+        path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/bulk_items"
 
-    # To catch the endpoint /catalog/collections/[{owner_id}:]{collection_id}/queryables
-    if match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
+    # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/queryables
+    elif match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
         groups = match.groupdict()
-        ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
-        ids_dict["collection_id"] = groups["collection_id"]
-        return f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/queryables", ids_dict
+        ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
+        ids_dict["collection_id"].append(groups["collection_id"])
+        path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/queryables"
 
-    # To catch the endpoint /catalog/collections/{owner_id}:{collection_id}/search
-    if match := re.fullmatch(COLLECTIONS_SEARCH_REGEX, path):
+    # Catch endpoint /catalog/collections/{owner_id}:{collection_id}/search
+    elif match := re.fullmatch(COLLECTIONS_SEARCH_REGEX, path):
         groups = match.groupdict()
-        ids_dict["owner_id"] = get_user(groups["owner_id"], user_login)
-        ids_dict["collection_id"] = groups["collection_id"]
-        return "/search", ids_dict
+        ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
+        ids_dict["collection_id"].append(f"{ids_dict['owner_id']}_{groups['collection_id']}")
+        # This endpoint will be redirected to the "/search" endpoint later in the code
+        path = path.replace("/catalog", "")
 
-    # To catch all the other endpoints.
-    if match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
+    # Catch all other endpoints.
+    elif match := re.match(CATALOG_OWNER_ID_STAC_ENDPOINT_REGEX, path):
         groups = match.groupdict()
         if groups["owner_collection_id"]:
             # protection for more than one : (example-> /catalog/collections/ownerId:collection:Id/items)
@@ -141,32 +146,33 @@ def reroute_url(  # pylint: disable=too-many-branches, too-many-return-statement
             if len(owner_collection_id_split) == 1:
                 # the following handles the absence of the ownerId param, for endpoints like:
                 # /catalog/collections/collectionId/items
-                ids_dict["owner_id"] = get_user(None, user_login)
-                ids_dict["collection_id"] = owner_collection_id_split[0]
+                ids_dict["owner_id"] = get_user(None, ids_dict["user_login"])
+                ids_dict["collection_id"].append(owner_collection_id_split[0])
             else:
                 # the following handles the presence of the ownerId param, for endpoints like:
                 # /catalog/collections/ownerId:collectionId/items
                 ids_dict["owner_id"] = owner_collection_id_split[0]
-                ids_dict["collection_id"] = owner_collection_id_split[1]
+                ids_dict["collection_id"].append(owner_collection_id_split[1])
 
         # /catalog/collections/{owner_id}:{collection_id}
         # case is the same for PUT / POST / DELETE, but needs different paths
         if groups["items"] is None and method != "DELETE":
-            path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}"
+            path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}"
         else:
             ids_dict["item_id"] = groups["item_id"]
             if ids_dict["item_id"] is None:
                 if "items" in path:
-                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items"
+                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/items"
                 else:
-                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}"
+                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}"
             else:
                 ids_dict["item_id"] = ids_dict["item_id"][1:]
-                path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id']}/items/{ids_dict['item_id']}"
+                path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/items/{ids_dict['item_id']}"
 
     elif not any(re.fullmatch(pattern, path) for pattern in patterns):
-        return "", {}
-    return path, ids_dict
+        path = ""
+    # Finally, update the path of the request with the new route
+    request.scope["path"] = path
 
 
 def add_user_prefix(  # pylint: disable=too-many-return-statements
@@ -244,7 +250,7 @@ def remove_user_from_collection(collection: dict, user: str) -> dict:
     Returns:
         dict: The collection without the user ID in the id section.
     """
-    if user in collection.get("id", ""):
+    if user in collection["id"]:
         collection["id"] = collection["id"].removeprefix(f"{user}_")
     return collection
 
