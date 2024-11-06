@@ -1081,60 +1081,63 @@ field is not permitted also.",
 
     async def build_filelist_to_be_deleted(self, request):
         """Build the list of the s3 files that will be deleted if the request is successfull"""
-
-        collection_id = f"{self.request_ids['owner_id']}_{self.request_ids['collection_id']}"
-        items = []
-        try:
-            if "/items" not in request.scope["path"]:
-                # this is the case for delete endpoint /collections/<collection_name>
-                # use pagination, otherwise a maximum of the default limit (10) items is returned
-                # NOTE: Unable to use the pagination from pgstac client. Temporary, use a limit of 100
-                token = None
-                while True:
-                    items_collection = await self.client.item_collection(
-                        request=request,
-                        collection_id=collection_id,
-                        limit=100,
-                        token=token,
-                    )
-                    items.extend(items_collection.get("features", []))
-                    # Check if there's a next token for pagination
+        for ci in self.request_ids["collection_id"]:
+            collection_id = f"{self.request_ids['owner_id']}_{ci}"
+            items = []
+            try:
+                await self.client.get_collection(collection_id, request)
+                if "/items" not in request.scope["path"]:
+                    # this is the case for delete endpoint /collections/<collection_name>
+                    # use pagination, otherwise a maximum of the default limit (10) items is returned
+                    # NOTE: Unable to use the pagination from pgstac client. Temporary, use a limit of 100
                     token = None
-                    for link in items_collection.get("links", []):
-                        if link.get("rel") == "next":
-                            token = link.get("href", None)
-                    if not token:
-                        # No more pages left, break the loop
-                        break
-            else:
-                # this is the case for delete endpoint /collections/<collection_name>/items/<item_name>
-                item = await self.client.get_item(
-                    item_id=self.request_ids["item_id"],
-                    collection_id=collection_id,
-                    request=request,
+                    while True:
+                        items_collection = await self.client.item_collection(
+                            request=request,
+                            collection_id=collection_id,
+                            limit=100,
+                            token=token,
+                        )
+                        items.extend(items_collection.get("features", []))
+                        # Check if there's a next token for pagination
+                        token = None
+                        for link in items_collection.get("links", []):
+                            if link.get("rel") == "next":
+                                token = link.get("href", None)
+                        if not token:
+                            # No more pages left, break the loop
+                            break
+                else:
+                    # this is the case for delete endpoint /collections/<collection_name>/items/<item_name>
+                    item = await self.client.get_item(
+                        item_id=self.request_ids["item_id"],
+                        collection_id=collection_id,
+                        request=request,
+                    )
+                    items = [item]
+            except NotFoundError as nfe:
+                logger.error(f"Failed to find the requested object to be deleted. {nfe}")
+                return
+            except KeyError as e:
+                logger.error(f"Unable to build the list of items to delete due to missing key: {e}")
+                return
+            logger.debug(f"Found {len(items)} items: {items}")
+            try:
+                for item in items:
+                    assets = item.get("assets", {})
+                    for _, asset_info in assets.items():
+                        s3_href = asset_info.get("alternate", {}).get("s3", {}).get("href")
+                        if s3_href:
+                            self.s3_files_to_be_deleted.append(s3_href)
+            except KeyError as e:
+                logger.error(
+                    "Unable to build the list of S3 files to be " f"deleted due to missing key in dictionary: {e}",
                 )
-                items = [item]
-        except NotFoundError:
-            logger.error("Failed to find the requested object to be deleted.")
-            return
-        except KeyError as e:
-            logger.error(f"Unable to build the list of items to delete due to missing key: {e}")
-            return
-        logger.debug(f"Found {len(items)} items: {items}")
-        try:
-            for item in items:
-                assets = item.get("assets", {})
-                for _, asset_info in assets.items():
-                    s3_href = asset_info.get("alternate", {}).get("s3", {}).get("href")
-                    if s3_href:
-                        self.s3_files_to_be_deleted.append(s3_href)
-        except KeyError as e:
-            logger.error(f"Unable to build the list of items to delete due to missing key: {e}")
-            return
-        logger.info(
-            "Succeded in building the list with the s3 files to be deleted. "
-            f"There are {len(self.s3_files_to_be_deleted)} files to be deleted",
-        )
+                return
+            logger.info(
+                "Successfully built the list of S3 files to be deleted. "
+                f"There are {len(self.s3_files_to_be_deleted)} files to be deleted",
+            )
 
     async def manage_delete_request(self, request: Request):
         """Check if the deletion is allowed.
