@@ -1085,7 +1085,6 @@ field is not permitted also.",
             collection_id = f"{self.request_ids['owner_id']}_{ci}"
             items = []
             try:
-                await self.client.get_collection(collection_id, request)
                 if "/items" not in request.scope["path"]:
                     # this is the case for delete endpoint /collections/<collection_name>
                     # use pagination, otherwise a maximum of the default limit (10) items is returned
