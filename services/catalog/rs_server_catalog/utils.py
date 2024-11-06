@@ -16,6 +16,7 @@
 
 import os
 import re
+from typing import Any
 
 from fastapi import HTTPException
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
@@ -193,3 +194,12 @@ def get_s3_handler():
         return None
 
     return s3_handler
+
+
+def get_token_for_pagination(items_dic: dict[Any, Any]):
+    """Used to get the token to be used when calling functions from the stac-fastapi-pgstac object."""
+    token = None
+    for link in items_dic.get("links", []):
+        if link.get("rel") == "next":
+            token = link.get("href", None)
+    return token
