@@ -38,6 +38,7 @@ from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
     cadip_map_mission,
     link_assets_to_session,
+    prepare_collection,
     read_conf,
     select_config,
     stac_to_odata,
@@ -402,7 +403,8 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             expanded_session_mapper = json.loads(expanded_session_mapper.read())
-            return create_stac_collection(products, feature_template, stac_mapper)
+            collection = create_stac_collection(products, feature_template, stac_mapper)
+            return prepare_collection(collection)
 
     except json.JSONDecodeError as exception:
         raise HTTPException(

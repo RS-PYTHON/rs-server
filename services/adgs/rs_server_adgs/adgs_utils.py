@@ -20,8 +20,9 @@ import json
 import os
 import os.path as osp
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
 
+import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import QueryableField, map_stac_platform
@@ -137,3 +138,31 @@ def auxip_map_mission(platform: str, constellation: str):
             detail="Cannot map platform/constellation",
         ) from exc
     return platform_short_name, platform_serial_identifier
+
+
+def adgs_reverse_map_mission(
+    platform: Union[str, None],
+    constellation: Union[str, None],
+) -> Tuple[Union[str, None], Union[str, None]]:
+    """Function used to re-map platform and constellation based on satellite value."""
+    if not (constellation or platform):
+        return None, None
+
+    constellation = constellation.lower()  # type: ignore
+
+    for satellite in map_stac_platform()["satellites"]:
+        for key, info in satellite.items():
+            # Check for matching serialid and constellation
+            if info.get("serialid") == platform and info.get("constellation").lower() == constellation:
+                return key, info.get("constellation")
+    return None, None
+
+
+def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
+    """Used to create a more complex mapping on platform/constallation from odata to stac."""
+    for feature in collection.features:
+        feature.properties.platform, feature.properties.constellation = adgs_reverse_map_mission(
+            feature.properties.platform,
+            feature.properties.constellation,
+        )
+    return collection

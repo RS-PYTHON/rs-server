@@ -23,7 +23,7 @@ import os
 import os.path as osp
 import re
 from pathlib import Path
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import eodag
 import stac_pydantic
@@ -169,6 +169,17 @@ def cadip_map_mission(platform: str, constellation: str):
     return satellite or satellites
 
 
+def cadip_reverse_map_mission(platform: Union[str, None]) -> Tuple[Union[str, None], Union[str, None]]:
+    """Function used to re-map platform and constellation based on satellite value."""
+    if not platform:
+        return None, None
+    for satellite in map_stac_platform()["satellites"]:
+        for key, info in satellite.items():
+            if info.get("code") == platform:
+                return key, info.get("constellation")
+    return None, None
+
+
 def link_assets_to_session(session_data, assets_dict, mapper):
     """Function used to allocate assets to propper session item based on session id property."""
     # Validity check to be later added.
@@ -181,3 +192,12 @@ def link_assets_to_session(session_data, assets_dict, mapper):
             asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
             feature.assets.update({asset.title: asset})
     return session_data
+
+
+def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
+    """Used to create a more complex mapping on platform/constallation from odata to stac."""
+    for feature in collection.features:
+        feature.properties.platform, feature.properties.constellation = cadip_reverse_map_mission(
+            feature.properties.platform,
+        )
+    return collection
