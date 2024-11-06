@@ -609,6 +609,12 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 query_params_dict["collections"] = ",".join(coll_list)
                 request.scope["query_string"] = urlencode(query_params_dict, doseq=True).encode("utf-8")
 
+        # Check that the collection from the request exists
+        for collection in self.request_ids["collection_id"]:
+            if not await self.collection_exists(request, collection):
+                detail = {"error": f"Collection {collection} not found."}
+                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
+
         # Check authorisation in cluster mode
         if common_settings.CLUSTER_MODE and not get_authorisation(
             self.request_ids["collection_id"],
@@ -619,12 +625,6 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-
-        # Check that the collection from the request exists
-        for collection in self.request_ids["collection_id"]:
-            if not await self.collection_exists(request, collection):
-                detail = {"error": f"Collection {collection} not found."}
-                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
