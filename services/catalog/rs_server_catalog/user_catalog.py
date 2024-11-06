@@ -57,6 +57,7 @@ from rs_server_catalog.utils import (
     delete_s3_files,
     get_s3_filename_from_asset,
     get_temp_bucket_name,
+    get_token_for_pagination,
     verify_existing_item_from_catalog,
 )
 from rs_server_common import settings as common_settings
@@ -1099,10 +1100,8 @@ field is not permitted also.",
                         )
                         items.extend(items_collection.get("features", []))
                         # Check if there's a next token for pagination
-                        token = None
-                        for link in items_collection.get("links", []):
-                            if link.get("rel") == "next":
-                                token = link.get("href", None)
+                        token = get_token_for_pagination(items_collection)
+
                         if not token:
                             # No more pages left, break the loop
                             break
@@ -1118,7 +1117,7 @@ field is not permitted also.",
                 logger.error(f"Failed to find the requested object to be deleted. {nfe}")
                 return
             except KeyError as e:
-                logger.error(f"Unable to build the list of items to delete due to missing key: {e}")
+                logger.error(f"Failed to build the list of items to be deleted due to missing key: {e}")
                 return
             logger.debug(f"Found {len(items)} items: {items}")
             try:
@@ -1130,7 +1129,7 @@ field is not permitted also.",
                             self.s3_files_to_be_deleted.append(s3_href)
             except KeyError as e:
                 logger.error(
-                    "Unable to build the list of S3 files to be " f"deleted due to missing key in dictionary: {e}",
+                    f"Failed to build the list of S3 files to be deleted due to missing key in dictionary: {e}",
                 )
                 return
             logger.info(
