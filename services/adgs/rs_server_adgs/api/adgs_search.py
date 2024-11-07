@@ -264,6 +264,7 @@ async def get_adgs_collection_specific_item(
     """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
+
     # Search all the collection items then search manually for the right one.
     # TODO: allow the search function to take the item ID instead.
     items = await request.app.state.pgstac_client.item_collection(collection_id, request)
