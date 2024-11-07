@@ -196,21 +196,21 @@ class UserCatalog:  # pylint: disable=too-many-public-methods
         try:
             item = await self.client.get_item(
                 item_id=self.request_ids["item_id"],
-                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_id'][0]}",
+                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}",
                 request=request,
             )
             return item
         except NotFoundError:
             logger.info(
                 f"The element {self.request_ids['item_id']} does not \
-exist in collection {self.request_ids['owner_id']}_{self.request_ids['collection_id'][0]}",
+exist in collection {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}",
             )
             return None
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception(f"Exception: {e}")
             raise HTTPException(
                 detail=f"Exception when trying to get the item {item['id']} \
-from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id'][0]} collection",
+from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]} collection",
                 status_code=HTTP_400_BAD_REQUEST,
             ) from e
 
@@ -357,7 +357,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_id'][0
                 os.environ["S3_REGION"],
             )
 
-        collection_id = self.request_ids.get("collection_id", None)[0]
+        collection_id = self.request_ids.get("collection_ids", None)[0]
         user = self.request_ids.get("owner_id", None)
         if not collection_id or not user:
             raise HTTPException(
@@ -548,7 +548,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             if request.scope["path"] != "/search":
                 # Reroute url to /search and update the request body
                 content = await request.json()
-                content = {"collections": self.request_ids["collection_id"], **content}
+                content = {"collections": self.request_ids["collection_ids"], **content}
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
                 request.scope["path"] = "/search"
 
@@ -559,7 +559,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     if not await self.collection_exists(request, collection):
                         content["collections"][i] = f"{self.request_ids['owner_id']}_{collection}"
 
-                self.request_ids["collection_id"] = content["collections"]
+                self.request_ids["collection_ids"] = content["collections"]
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
 
         # ---------- GET requests
@@ -583,12 +583,12 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             # This endpoint doesn't exist in stac-fastapi so we convert it to a /search endpoint
             # and we transform path parameters into query parameters
             if request.scope["path"] != "/search":
-                if len(self.request_ids["collection_id"]) == 0:
+                if len(self.request_ids["collection_ids"]) == 0:
                     raise HTTPException(
                         status_code=500,
                         detail="No collection have been specified",
                     )
-                collections = ",".join(self.request_ids["collection_id"])
+                collections = ",".join(self.request_ids["collection_ids"])
                 new_query = {
                     "collections": collections,
                     "filter-lang": "cql2-text",
@@ -606,13 +606,19 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                     if not await self.collection_exists(request, collection):
                         coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
 
-                self.request_ids["collection_id"] = coll_list
+                self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
                 request.scope["query_string"] = urlencode(query_params_dict, doseq=True).encode("utf-8")
 
+        # Check that the collection from the request exists
+        for collection in self.request_ids["collection_ids"]:
+            if not await self.collection_exists(request, collection):
+                detail = {"error": f"Collection {collection} not found."}
+                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
+
         # Check authorisation in cluster mode
         if common_settings.CLUSTER_MODE and not get_authorisation(
-            self.request_ids["collection_id"],
+            self.request_ids["collection_ids"],
             self.request_ids["auth_roles"],
             "read",
             self.request_ids["owner_id"],
@@ -620,18 +626,12 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
-
-        # Check that the collection from the request exists
-        for collection in self.request_ids["collection_id"]:
-            if not await self.collection_exists(request, collection):
-                detail = {"error": f"Collection {collection} not found."}
-                return JSONResponse(content=detail, status_code=HTTP_404_NOT_FOUND)
         return request
 
     async def manage_search_response(self, request: Request, response: StreamingResponse) -> Response:
-        """The '/catalog/search' endpoint doesn't give the information of the owner_id and collection_id.
+        """The '/catalog/search' endpoint doesn't give the information of the owner_id and collection_ids.
         to get these values, this function try to search them into the search query. If successful,
-        updates the response content by removing the owner_id from the collection_id and adapt all links.
+        updates the response content by removing the owner_id from the collection_ids and adapt all links.
         If not successful, does nothing and return the response.
 
         Args:
@@ -663,8 +663,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         # Remove owner_id from the collection name
         if "collections" in query:
             # Extract owner_id from the name of the first collection in the list
-            self.request_ids["owner_id"] = self.request_ids["collection_id"][0].split("_")[0]
-            self.request_ids["collection_id"] = [
+            self.request_ids["owner_id"] = self.request_ids["collection_ids"][0].split("_")[0]
+            self.request_ids["collection_ids"] = [
                 coll.removeprefix(f"{self.request_ids['owner_id']}_")
                 for i, coll in enumerate(query["collections"][0].split(","))
             ]
@@ -672,7 +672,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         dec_content = b"".join(map(lambda x: x if isinstance(x, bytes) else x.encode(), body)).decode()  # type: ignore
         content = json.loads(dec_content)
         content = self.remove_user_from_objects(content, self.request_ids["owner_id"], "features")
-        for collection_id in self.request_ids["collection_id"]:
+        for collection_id in self.request_ids["collection_ids"]:
             content = self.adapt_links(content, self.request_ids["owner_id"], collection_id, "features")
 
         # Add the stac authentication extension
@@ -698,7 +698,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 # to put/post returns a HTTP_401_UNAUTHORIZED status.
                 common_settings.CLUSTER_MODE
                 and not get_authorisation(
-                    self.request_ids["collection_id"],
+                    self.request_ids["collection_ids"],
                     self.request_ids["auth_roles"],
                     "write",
                     self.request_ids["owner_id"],
@@ -708,15 +708,15 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 detail = {"error": "Unauthorized access."}
                 return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
 
-            if len(self.request_ids["collection_id"]) > 1:
+            if len(self.request_ids["collection_ids"]) > 1:
                 detail = {"error": "Cannot create or update more than one collection !"}
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
 
-            if len(self.request_ids["collection_id"]) == 0:
+            if len(self.request_ids["collection_ids"]) == 0:
                 detail = {"error": "Cannot create or update -> no collection specified !"}
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
 
-            collection = self.request_ids["collection_id"][0]
+            collection = self.request_ids["collection_ids"][0]
             if (
                 request.scope["path"] == "/collections"  # POST collection
                 or request.scope["path"]
@@ -914,7 +914,7 @@ field is not permitted also.",
                 content = self.adapt_links(
                     content,
                     self.request_ids["owner_id"],
-                    self.request_ids["collection_id"],
+                    self.request_ids["collection_ids"],
                     "collections",
                 )
             else:
@@ -933,10 +933,10 @@ field is not permitted also.",
         # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
         elif (
             common_settings.CLUSTER_MODE
-            and self.request_ids["collection_id"]
+            and self.request_ids["collection_ids"]
             and self.request_ids["owner_id"]
             and not get_authorisation(
-                self.request_ids["collection_id"],
+                self.request_ids["collection_ids"],
                 auth_roles,
                 "read",
                 self.request_ids["owner_id"],
@@ -961,7 +961,7 @@ field is not permitted also.",
             content = self.adapt_links(
                 content,
                 self.request_ids["owner_id"],
-                self.request_ids["collection_id"],
+                self.request_ids["collection_ids"],
                 "features",
             )
         elif request.scope["path"] == "/search":
@@ -997,10 +997,10 @@ field is not permitted also.",
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
-            and self.request_ids["collection_id"]
+            and self.request_ids["collection_ids"]
             and self.request_ids["owner_id"]
             and not get_authorisation(
-                self.request_ids["collection_id"],
+                self.request_ids["collection_ids"],
                 auth_roles,
                 "download",
                 self.request_ids["owner_id"],
@@ -1047,7 +1047,7 @@ field is not permitted also.",
                 response_content = self.adapt_object_links(response_content, user)
             elif (
                 request.scope["path"]
-                == f"/collections/{user}_{self.request_ids['collection_id'][0]}/items/{self.request_ids['item_id']}"
+                == f"/collections/{user}_{self.request_ids['collection_ids'][0]}/items/{self.request_ids['item_id']}"
             ):
                 response_content = remove_user_from_feature(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
@@ -1082,7 +1082,7 @@ field is not permitted also.",
 
     async def build_filelist_to_be_deleted(self, request):
         """Build the list of the s3 files that will be deleted if the request is successfull"""
-        for ci in self.request_ids["collection_id"]:
+        for ci in self.request_ids["collection_ids"]:
             collection_id = f"{self.request_ids['owner_id']}_{ci}"
             items = []
             try:
@@ -1157,10 +1157,10 @@ field is not permitted also.",
         if (  # If we are in cluster mode and the user_login is not authorized
             # to this endpoint returns a HTTP_401_UNAUTHORIZED status.
             common_settings.CLUSTER_MODE
-            and self.request_ids["collection_id"]
+            and self.request_ids["collection_ids"]
             and self.request_ids["owner_id"]
             and not get_authorisation(
-                self.request_ids["collection_id"],
+                self.request_ids["collection_ids"],
                 auth_roles,
                 "write",
                 self.request_ids["owner_id"],
@@ -1195,7 +1195,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         try:
             item = await self.client.get_item(
                 item_id=self.request_ids["item_id"],
-                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_id'][0]}",
+                collection_id=f"{self.request_ids['owner_id']}_{self.request_ids['collection_ids'][0]}",
                 request=request,
             )
             return (item["properties"]["published"], item["properties"]["expires"])
@@ -1247,7 +1247,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             "auth_roles": auth_roles,
             "user_login": user_login,
             "owner_id": owner_id,
-            "collection_id": [],
+            "collection_ids": [],
             "item_id": "",
         }
         reroute_url(request, self.request_ids)
@@ -1272,10 +1272,10 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                 self.request_ids["owner_id"] = request_body.get("owner")
             # received a POST/PUT/PATCH for a STAC item or
             # a STAC collection is created
-            if len(self.request_ids["collection_id"]) == 0:
+            if len(self.request_ids["collection_ids"]) == 0:
                 collections = request_body.get("collections") or request_body.get("id")
                 if collections:
-                    self.request_ids["collection_id"] = collections if isinstance(collections, list) else [collections]
+                    self.request_ids["collection_ids"] = collections if isinstance(collections, list) else [collections]
 
             if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
                 self.request_ids["item_id"] = request_body.get("id", None)

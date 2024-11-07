@@ -705,7 +705,7 @@ class TestCatalogDeleteEndpoints:
 
         # Instantiate UserCatalog and set request_ids for the test
         catalog = UserCatalog(mock_client)
-        catalog.request_ids = {"owner_id": "user", "collection_id": ["collection_id"]}
+        catalog.request_ids = {"owner_id": "user", "collection_ids": ["collection_id"]}
 
         # Call the function
         await catalog.build_filelist_to_be_deleted(mock_request)
@@ -738,7 +738,7 @@ class TestCatalogDeleteEndpoints:
 
         # Instantiate UserCatalog and set request_ids for the test
         catalog = UserCatalog(mock_client)
-        catalog.request_ids = {"owner_id": "user", "collection_id": ["collection_id"], "item_id": "item_id"}
+        catalog.request_ids = {"owner_id": "user", "collection_ids": ["collection_id"], "item_id": "item_id"}
 
         # Act
         await catalog.build_filelist_to_be_deleted(mock_request)
@@ -769,7 +769,7 @@ class TestCatalogDeleteEndpoints:
 
         # Instantiate UserCatalog and set request_ids for the test
         catalog = UserCatalog(mock_client)
-        catalog.request_ids = {"owner_id": "user", "collection_id": ["collection_id"], "item_id": "nonexistent_item"}
+        catalog.request_ids = {"owner_id": "user", "collection_ids": ["collection_id"], "item_id": "nonexistent_item"}
 
         # Act
         await catalog.build_filelist_to_be_deleted(mock_request)

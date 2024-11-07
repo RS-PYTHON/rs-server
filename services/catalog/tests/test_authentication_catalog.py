@@ -1139,9 +1139,27 @@ class TestAuthenticationPutOneCollection:
 class TestAuthenticationSearch:
     """Contains authentication tests when a user wants to do a search request."""
 
+    # Search request using one collection
     search_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500 AND owner='toto'"}
     test_json = {
         "collections": ["S1_L1"],
+        "filter-lang": "cql2-json",
+        "filter": {
+            "op": "and",
+            "args": [
+                {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                {"op": "=", "args": [{"property": "width"}, 2500]},
+            ],
+        },
+    }
+    # Search request using several collections
+    search_params_several_coll = {
+        "collections": "S1_L1,S2_L3",
+        "filter-lang": "cql2-text",
+        "filter": "width=2500 AND owner='toto'",
+    }
+    test_json_several_coll = {
+        "collections": ["S1_L1", "S2_L3"],
         "filter-lang": "cql2-json",
         "filter": {
             "op": "and",
@@ -1182,22 +1200,63 @@ class TestAuthenticationSearch:
         assert response.status_code == HTTP_200_OK
 
     @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
-    async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):
-        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
-        when he does a good request without the right permissions."""
-
-        iam_roles = ["rs_catalog_toto:S1_L2_read"]
+    async def test_several_collections_http200_with_good_authentication(
+        self,
+        mocker,
+        httpx_mock: HTTPXMock,
+        client,
+        test_apikey,
+        test_oauth2,
+    ):
+        """Test that the user gets a HTTP_200_OK status code response
+        when he does good requests (GET and POST method) with right permissions for several collections"""
+        iam_roles = [
+            "rs_catalog_toto:S1_L1_read",
+            "rs_catalog_toto:S1_L1_write",
+            "rs_catalog_toto:S2_L3_read",
+            "rs_catalog_toto:S2_L3_write",
+        ]
         await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
         header = VALID_APIKEY_HEADER if test_apikey else {}
 
         response = client.request(
             "GET",
             "/catalog/search",
-            params=self.search_params,
+            params=self.search_params_several_coll,
+            **header,
+        )
+        assert response.status_code == HTTP_200_OK
+        response = client.request("POST", "/catalog/search", json=self.test_json_several_coll, **header)
+        assert response.status_code == HTTP_200_OK
+
+    @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
+    async def test_several_collections_fails_without_good_perms(
+        self,
+        mocker,
+        httpx_mock: HTTPXMock,
+        client,
+        test_apikey,
+        test_oauth2,
+    ):
+        """Test that the user gets a HTTP_401_UNAUTHORIZED status code response
+        when he does good requests (GET and POST method) with missing permission for
+        at least one collection"""
+
+        iam_roles = [
+            "rs_catalog_toto:S1_L1_read",
+            "rs_catalog_toto:S1_L1_write",
+        ]
+        await init_test(mocker, httpx_mock, client, test_apikey, test_oauth2, iam_roles)
+        header = VALID_APIKEY_HEADER if test_apikey else {}
+
+        response = client.request(
+            "GET",
+            "/catalog/search",
+            params=self.search_params_several_coll,
             **header,
         )
         assert response.status_code == HTTP_401_UNAUTHORIZED
-        response = client.request("POST", "/catalog/search", json=self.test_json, **header)
+        response = client.request("POST", "/catalog/search", json=self.test_json_several_coll, **header)
         assert response.status_code == HTTP_401_UNAUTHORIZED
 
 

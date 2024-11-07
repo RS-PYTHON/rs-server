@@ -118,21 +118,21 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
     elif match := re.fullmatch(BULK_ITEMS_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
-        ids_dict["collection_id"].append(groups["collection_id"])
-        path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/bulk_items"
+        ids_dict["collection_ids"].append(groups["collection_id"])
+        path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_ids'][0]}/bulk_items"
 
     # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/queryables
     elif match := re.fullmatch(COLLECTIONS_QUERYABLES_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
-        ids_dict["collection_id"].append(groups["collection_id"])
-        path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/queryables"
+        ids_dict["collection_ids"].append(groups["collection_id"])
+        path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_ids'][0]}/queryables"
 
     # Catch endpoint /catalog/collections/{owner_id}:{collection_id}/search
     elif match := re.fullmatch(COLLECTIONS_SEARCH_REGEX, path):
         groups = match.groupdict()
         ids_dict["owner_id"] = get_user(groups["owner_id"], ids_dict["user_login"])
-        ids_dict["collection_id"].append(f"{ids_dict['owner_id']}_{groups['collection_id']}")
+        ids_dict["collection_ids"].append(f"{ids_dict['owner_id']}_{groups['collection_id']}")
         # This endpoint will be redirected to the "/search" endpoint later in the code
         path = path.replace("/catalog", "")
 
@@ -147,27 +147,29 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
                 # the following handles the absence of the ownerId param, for endpoints like:
                 # /catalog/collections/collectionId/items
                 ids_dict["owner_id"] = get_user(None, ids_dict["user_login"])
-                ids_dict["collection_id"].append(owner_collection_id_split[0])
+                ids_dict["collection_ids"].append(owner_collection_id_split[0])
             else:
                 # the following handles the presence of the ownerId param, for endpoints like:
                 # /catalog/collections/ownerId:collectionId/items
                 ids_dict["owner_id"] = owner_collection_id_split[0]
-                ids_dict["collection_id"].append(owner_collection_id_split[1])
+                ids_dict["collection_ids"].append(owner_collection_id_split[1])
 
         # /catalog/collections/{owner_id}:{collection_id}
         # case is the same for PUT / POST / DELETE, but needs different paths
         if groups["items"] is None and method != "DELETE":
-            path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}"
+            path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_ids'][0]}"
         else:
             ids_dict["item_id"] = groups["item_id"]
             if ids_dict["item_id"] is None:
                 if "items" in path:
-                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/items"
+                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_ids'][0]}/items"
                 else:
-                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}"
+                    path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_ids'][0]}"
             else:
                 ids_dict["item_id"] = ids_dict["item_id"][1:]
-                path = f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_id'][0]}/items/{ids_dict['item_id']}"
+                path = (
+                    f"/collections/{ids_dict['owner_id']}_{ids_dict['collection_ids'][0]}/items/{ids_dict['item_id']}"
+                )
 
     elif not any(re.fullmatch(pattern, path) for pattern in patterns):
         path = ""

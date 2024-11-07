@@ -38,14 +38,18 @@ def get_authorisation(collection_id: str, auth_roles: list, type_of_right: str, 
     )
     if user_login == owner_id:
         return True
+
+    # Check for each requested collection that we have are allowed to access according to the requested type of right
+    auth_roles_list = []
     for role in auth_roles:
         if match := re.match(catalog_read_right_pattern, role):
-            groups = match.groupdict()
-            if (
-                (collection_id == groups["collection_id"] or groups["collection_id"] == "*")
-                and owner_id == groups["owner_id"]
-                and type_of_right == groups["type_of_right"]
-            ):
-                return True
-
-    return False
+            auth_roles_list.append(match.groupdict())
+    for collection in collection_id:
+        if not any(
+            (collection == f"{groups['owner_id']}_{groups['collection_id']}" or groups["collection_id"] == "*")
+            and owner_id == groups["owner_id"]
+            and type_of_right == groups["type_of_right"]
+            for groups in auth_roles_list
+        ):
+            return False
+    return True
