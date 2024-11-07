@@ -336,7 +336,16 @@ async def get_cadip_collection_item_details(
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     request.state.session_id = session_id  # save for later
-    return await request.app.state.pgstac_client.get_item(session_id, collection_id, request)
+    try:
+        item = await request.app.state.pgstac_client.get_item(session_id, collection_id, request)
+    except HTTPException as http_exc:  # validation error, just forward it
+        raise http_exc
+    except Exception as exc:  # stac_fastapi.types.errors.NotFoundError
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cadip session {session_id!r} not found.",
+        ) from exc
+    return item
 
 
 @validate_call(config={"arbitrary_types_allowed": True})

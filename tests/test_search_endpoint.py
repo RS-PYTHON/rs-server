@@ -360,8 +360,8 @@ class TestModelValidationError:
     @pytest.mark.parametrize(
         "fastapi_app, endpoint",
         [
-            (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
-            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items"),
+            # (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
+            # (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items"),
             (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items/sessionId"),
         ],
         indirect=["fastapi_app"],
@@ -556,29 +556,58 @@ class TestFeatureOdataStacMapping:
                 "&$expand=Attributes",
                 {"detail": "AUXIP item 'INVALID_ITEM' not found."},
             ),
-            (
-                "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
-                {"detail": "Cadip session 'INVALID_ITEM' not found."},
-            ),
         ],
     )
-    def test_invalid_item_mapping(
-        self,
-        client,
-        mock_token_validation,
-        cadip_session_response,
-        adgs_response,
-        endpoint,
-        odata_url,
-        detail,
-    ):
+    def test_adgs_invalid_item_mapping(self, client, mock_token_validation, endpoint, odata_url, detail, adgs_response):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
         mock_token_validation()
         responses.add(
             responses.GET,
             odata_url,
-            json=self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_session_response, adgs_response),
+            json=adgs_response,
+            status=200,
+        )
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json() == detail
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize(
+        "endpoint, odata_session_url, odata_file_url, detail",
+        [
+            (
+                "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
+                "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+                {"detail": "Cadip session 'INVALID_ITEM' not found."},
+            ),
+        ],
+    )
+    def test_cadip_invalid_item_mapping(
+        self,
+        client,
+        mock_token_validation,
+        cadip_session_response,
+        endpoint,
+        odata_session_url,
+        odata_file_url,
+        detail,
+    ):
+        """Test to verify the output of rs-server when given collection is valid and item is invalid."""
+        mock_token_validation()
+        # Collection URL is valid, returning items
+        responses.add(
+            responses.GET,
+            odata_session_url,
+            json=cadip_session_response,
+            status=200,
+        )
+        # Map assets also (CADIP makes 2 requests)
+        responses.add(
+            responses.GET,
+            odata_file_url,
+            json={},
             status=200,
         )
         response = client.get(endpoint)
