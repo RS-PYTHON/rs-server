@@ -523,6 +523,7 @@ cadip_session:
       collection: Sentinel1
   search:
     type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5000/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -601,11 +602,11 @@ cadip_session:
       completionTimeFromAscendingNode:
       - null
       - $.PublicationDate
-      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      title: $.Name
       href:
       - null
       - http://127.0.0.1:5000/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -622,13 +623,12 @@ cadip_session:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Files'
       total_items_nb_key_path: $.total
-    api_endpoint: http://127.0.0.1:5000/Sessions
   download:
     type: HTTPDownload
+    base_uri: https://127.0.0.1:5000/Sessions
     metadata_mapping:
       uid: $.Id
       downloadLink: http://127.0.0.1:5000/Files({uid})/$value
-    base_uri: https://127.0.0.1:5000/Sessions
 ins_session:
   auth:
     type: HTTPHeaderAuth
@@ -642,6 +642,7 @@ ins_session:
       collection: Sentinel1
   search:
     type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5100/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -720,11 +721,11 @@ ins_session:
       completionTimeFromAscendingNode:
       - null
       - $.PublicationDate
-      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      title: $.Name
       href:
       - null
       - http://127.0.0.1:5100/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -741,13 +742,12 @@ ins_session:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Files'
       total_items_nb_key_path: $.total
-    api_endpoint: http://127.0.0.1:5100/Sessions
   download:
     type: HTTPDownload
+    base_uri: https://127.0.0.1:5100/Sessions
     metadata_mapping:
       uid: $.Id
       downloadLink: http://127.0.0.1:5100/Files({uid})/$value
-    base_uri: https://127.0.0.1:5100/Sessions
 mps_session:
   auth:
     type: HTTPHeaderAuth
@@ -761,6 +761,7 @@ mps_session:
       collection: Sentinel1
   search:
     type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5101/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -839,11 +840,11 @@ mps_session:
       completionTimeFromAscendingNode:
       - null
       - $.PublicationDate
-      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      title: $.Name
       href:
       - null
       - http://127.0.0.1:5101/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -860,13 +861,12 @@ mps_session:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Files'
       total_items_nb_key_path: $.total
-    api_endpoint: http://127.0.0.1:5101/Sessions
   download:
     type: HTTPDownload
+    base_uri: https://127.0.0.1:5101/Sessions
     metadata_mapping:
       uid: $.Id
       downloadLink: http://127.0.0.1:5101/Files({uid})/$value
-    base_uri: https://127.0.0.1:5101/Sessions
 mti_session:
   auth:
     type: HTTPHeaderAuth
@@ -880,6 +880,7 @@ mti_session:
       collection: Sentinel1
   search:
     type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5102/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -958,11 +959,11 @@ mti_session:
       completionTimeFromAscendingNode:
       - null
       - $.PublicationDate
-      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      title: $.Name
       href:
       - null
       - http://127.0.0.1:5102/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -979,13 +980,12 @@ mti_session:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Files'
       total_items_nb_key_path: $.total
-    api_endpoint: http://127.0.0.1:5102/Sessions
   download:
     type: HTTPDownload
+    base_uri: https://127.0.0.1:5102/Sessions
     metadata_mapping:
       uid: $.Id
       downloadLink: http://127.0.0.1:5102/Files({uid})/$value
-    base_uri: https://127.0.0.1:5102/Sessions
 nsg_session:
   auth:
     type: HTTPHeaderAuth
@@ -999,6 +999,7 @@ nsg_session:
       collection: Sentinel1
   search:
     type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5103/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -1077,11 +1078,11 @@ nsg_session:
       completionTimeFromAscendingNode:
       - null
       - $.PublicationDate
-      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      title: $.Name
       href:
       - null
       - http://127.0.0.1:5103/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -1098,13 +1099,12 @@ nsg_session:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Files'
       total_items_nb_key_path: $.total
-    api_endpoint: http://127.0.0.1:5103/Sessions
   download:
     type: HTTPDownload
+    base_uri: https://127.0.0.1:5103/Sessions
     metadata_mapping:
       uid: $.Id
       downloadLink: http://127.0.0.1:5103/Files({uid})/$value
-    base_uri: https://127.0.0.1:5103/Sessions
 sgs_session:
   auth:
     type: HTTPHeaderAuth
@@ -1118,6 +1118,7 @@ sgs_session:
       collection: Sentinel1
   search:
     type: ODataV4Search
+    api_endpoint: http://127.0.0.1:5104/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -1196,11 +1197,11 @@ sgs_session:
       completionTimeFromAscendingNode:
       - null
       - $.PublicationDate
-      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
-      title: $.Name
       href:
       - null
       - http://127.0.0.1:5104/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -1217,10 +1218,9 @@ sgs_session:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Files'
       total_items_nb_key_path: $.total
-    api_endpoint: http://127.0.0.1:5104/Sessions
   download:
     type: HTTPDownload
+    base_uri: https://127.0.0.1:5104/Sessions
     metadata_mapping:
       uid: $.Id
       downloadLink: http://127.0.0.1:5104/Files({uid})/$value
-    base_uri: https://127.0.0.1:5104/Sessions

@@ -25,6 +25,7 @@ template:
       collection: Sentinel1
   search:
     type: ODataV4Search
+    api_endpoint:
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -104,6 +105,7 @@ template:
       completionTimeFromAscendingNode:
         - null
         - "$.PublicationDate"
+      href:
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 
@@ -127,8 +129,10 @@ template:
 
   download:
     type: HTTPDownload
+    base_uri:
     metadata_mapping:
       uid: "$.Id"
+      downloadLink:
 
 cadip_session:
   search:

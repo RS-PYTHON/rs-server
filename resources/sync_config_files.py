@@ -21,6 +21,8 @@ import collections.abc
 import copy
 import json
 import os
+import re
+import shutil
 from pathlib import Path
 
 import yaml
@@ -53,15 +55,18 @@ with open(__file__, "r") as this_script:
         else:
             break
 
+# Save the header for each config file
+file_headers: dict[Path:str] = {}
 
-def recursive_update(d, u):
+
+def recursive_update(old, new):
     """Recursive dict update, taken from: https://stackoverflow.com/a/3233356"""
-    for k, v in u.items():
-        if isinstance(v, collections.abc.Mapping):
-            d[k] = recursive_update(d.get(k) or {}, v)
+    for key, value in new.items():
+        if isinstance(value, collections.abc.Mapping):
+            old[key] = recursive_update(old.get(key) or {}, value)
         else:
-            d[k] = v
-    return d
+            old[key] = value
+    return old
 
 
 def create_from_template(template_paths: list[str]):
@@ -77,8 +82,8 @@ def create_from_template(template_paths: list[str]):
         header + f"\n# THIS FILE WAS AUTOMATICALLY CREATED FROM:{header_paths}\n# DON'T MODIFY IT DIRECTLY !\n\n"
     )
 
-    all_files = {}
-    output_paths = set()
+    all_files: dict = {}
+    output_paths: set[Path] = set()
     for template_path in template_paths:
         template_path = rs_server_dir / template_path
 
@@ -135,7 +140,8 @@ def create_from_template(template_paths: list[str]):
 
     # Write back the templated file
     assert len(output_paths) == 1  # we should have a single output file
-    output_path = output_paths.pop()
+    output_path: Path = output_paths.pop()
+    file_headers[output_path] = this_header
     with open(output_path, "w") as output_file:
         logger.info(f"Update: '{output_path!s}'")
         output_file.write(this_header)
@@ -143,6 +149,70 @@ def create_from_template(template_paths: list[str]):
             json.dump(all_files, output_file, indent=2, sort_keys=False)
         else:
             yaml.dump(all_files, output_file, default_flow_style=False, sort_keys=False)
+
+
+def copy_to_rsdemo(input_path_relative: str):
+    """
+    Copy a configuration file from rs-server to rs-demo.
+    Path is given from the rs-server root dir.
+    """
+    if not rs_demo_dir.is_dir():
+        return
+
+    # Copy the file, keep the same name
+    input_path = rs_server_dir / input_path_relative
+    config_path = rs_demo_dir / "local-mode/config" / input_path.name
+    shutil.copyfile(input_path, config_path)
+
+    # Open the output file.
+    # There are only yaml files for now
+    assert config_path.suffix.lower() in (".yml", ".yaml")
+    with open(config_path, encoding="utf-8") as input_file:
+        file = yaml.safe_load(input_file)
+
+    regex = re.compile(r"(https?://)(127.0.0.1|localhost):5\d+")
+
+    def update_urls(parent_key: str, config: dict, adgs: bool = False, cadip: bool = False):
+        """
+        Update urls from the config file e.g. http://127.0.0.1:5000 becomes http://adgs-station:5000
+        or http://cadip-station:5000 depending on wether this is an adgs or cadip station.
+        """
+        nonlocal regex
+        assert isinstance(config, dict)
+
+        if any(parent_key.startswith(s) for s in ("adgs", "auxip")):
+            adgs = True
+        elif any(parent_key.startswith(s) for s in ("cadip", "ins", "mps", "mti", "nsg", "sgs")):
+            cadip = True
+
+        def update_value(value: str) -> str:
+            """Return a single updated url value."""
+            assert isinstance(value, str)
+            if adgs:
+                return re.sub(regex, r"\g<1>adgs-station:5000", value)
+            elif cadip:
+                return re.sub(regex, r"\g<1>cadip-station:5000", value)
+
+        # Apply regex recursively
+        for key, value in config.items():
+            if isinstance(value, collections.abc.Mapping):
+                update_urls(key, value, adgs, cadip)
+            elif isinstance(value, str):
+                config[key] = update_value(value)
+            elif isinstance(value, collections.abc.Iterable):
+                for i, subvalue in enumerate(value):
+                    if isinstance(subvalue, collections.abc.Mapping):
+                        update_urls(key, subvalue, adgs, cadip)  # not tested
+                    elif isinstance(subvalue, str):
+                        value[i] = update_value(subvalue)
+
+    update_urls("", file)
+
+    # Write the modified output file
+    with open(config_path, "w") as output_file:
+        logger.info(f"Update: '{config_path!s}'")
+        output_file.write(file_headers[input_path])
+        yaml.dump(file, output_file, default_flow_style=False, sort_keys=False)
 
 
 # Create configuration files from templates. Paths are given from the rs-server root dir.
@@ -162,3 +232,12 @@ for templates in (
     ],
 ):
     create_from_template(templates)
+
+
+# Copy resulting files to rs-demo
+for config_path in (
+    "services/common/config/rs-server.yaml",
+    "services/adgs/config/adgs_ws_config_token_module.yaml",
+    "services/cadip/config/cadip_ws_config_token_module.yaml",
+):
+    copy_to_rsdemo(config_path)
