@@ -264,14 +264,7 @@ async def get_adgs_collection_specific_item(
     """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
-
-    # Search all the collection items then search manually for the right one.
-    # TODO: allow the search function to take the item ID instead.
-    items = await request.app.state.pgstac_client.item_collection(collection_id, request)
-    try:
-        return next(item for item in items.get("features", {}) if item.get("id") == item_id)
-    except StopIteration as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP item {item_id!r} not found.") from exc
+    return await request.app.state.pgstac_client.get_item(item_id, collection_id, request)
 
 
 def process_product_search(  # pylint: disable=too-many-locals
