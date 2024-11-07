@@ -20,6 +20,7 @@ Copy them to rs-demo and rs-helm repositories.
 import collections.abc
 import copy
 import json
+import os
 from pathlib import Path
 
 import yaml
@@ -57,7 +58,7 @@ def recursive_update(d, u):
     """Recursive dict update, taken from: https://stackoverflow.com/a/3233356"""
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
-            d[k] = recursive_update(d.get(k, {}), v)
+            d[k] = recursive_update(d.get(k) or {}, v)
         else:
             d[k] = v
     return d
@@ -67,11 +68,13 @@ def create_from_template(template_paths: list[str]):
     """Create a configuration file from one or several templates."""
 
     # Add a warning message to the header
+    sep = "\n#  - rs-server/"
+    header_paths = sep + sep.join(template_paths + [os.path.relpath(__file__, rs_server_dir)])
     this_header = (
-        header + f"\n# THIS FILE WAS AUTOMATICALLY CREATED FROM {template_path.name!r}. DON'T MODIFY IT DIRECTLY !\n\n"
+        header + f"\n# THIS FILE WAS AUTOMATICALLY CREATED FROM:{header_paths}\n# DON'T MODIFY IT DIRECTLY !\n\n"
     )
 
-    results = {}
+    all_files = {}
     output_paths = set()
     for template_path in template_paths:
         template_path = rs_server_dir / template_path
@@ -107,44 +110,49 @@ def create_from_template(template_paths: list[str]):
             else:
                 file = yaml.safe_load(input_file)
 
-        # If a template is defined at the top of the file
-        # and should be applied to each file element
-        if template := file.pop("template", None):
+        # A template should defined at the top of the file
+        # and be applied to each file element
+        template = file.pop("template")
 
-            # The config file contains a list of elements under a single root element.
-            # Apply the template on each element. The element values have higher priority.
-            if (len(file) == 1) and (isinstance(elements := next(iter(file.values())), list)):
-                for i, element in enumerate(elements):
-                    elements[i] = recursive_update(copy.deepcopy(template), element)
+        # The config file contains a list of elements under a single root element.
+        # Apply the template on each element. The element values have higher priority.
+        if (len(file) == 1) and (isinstance(elements := next(iter(file.values())), list)):
+            for i, element in enumerate(elements):
+                elements[i] = recursive_update(copy.deepcopy(template), element)
 
-            # The config file contains a dict of elements.
-            elif isinstance(file, dict):
-                for key, element in file.items():
-                    file[key] = recursive_update(copy.deepcopy(template), element)
-
-            else:
-                raise RuntimeError(f"Unrecognized data structure for: '{template_path.absolute()!s}'")
+        # The config file contains a dict of elements.
+        elif isinstance(file, dict):
+            for key, element in file.items():
+                file[key] = recursive_update(copy.deepcopy(template), element)
+        else:
+            raise RuntimeError(f"Unrecognized data structure for: '{template_path.absolute()!s}'")
+        all_files.update(file)
 
     # Write back the templated file
+    assert len(output_paths) == 1  # we should have a single output file
+    output_path = output_paths.pop()
     with open(output_path, "w") as output_file:
         logger.info(f"Update: '{output_path!s}'")
         output_file.write(this_header)
         if is_json:
-            json.dump(file, output_file, indent=2, sort_keys=False)
+            json.dump(all_files, output_file, indent=2, sort_keys=False)
         else:
-            yaml.dump(file, output_file, default_flow_style=False, sort_keys=False)
+            yaml.dump(all_files, output_file, default_flow_style=False, sort_keys=False)
 
 
 # Create configuration files from templates
 for templates in (
-    # ["services/adgs/config/adgs_search_config.template.yaml"],
-    # ["services/adgs/config/adgs_ws_config_token_module.template.yaml"],
-    # ["services/adgs/config/adgs_ws_config.template.yaml"],
-    # ["services/cadip/config/cadip_search_config.template.yaml"],
+    ["services/adgs/config/adgs_search_config.template.yaml"],
+    ["services/adgs/config/adgs_ws_config_token_module.template.yaml"],
+    ["services/adgs/config/adgs_ws_config.template.yaml"],
+    ["services/cadip/config/cadip_search_config.template.yaml"],
     [
         "services/cadip/config/cadip_ws_config_token_module.template.yaml",
         "services/cadip/config/cadip_ws_config_token_module.template_session.yaml",
     ],
-    # ["services/cadip/config/cadip_ws_config.template.yaml"],
+    [
+        "services/cadip/config/cadip_ws_config.template.yaml",
+        "services/cadip/config/cadip_ws_config.template_session.yaml",
+    ],
 ):
     create_from_template(templates)

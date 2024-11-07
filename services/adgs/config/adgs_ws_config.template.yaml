@@ -15,6 +15,7 @@
 template:
   auth:
     type: TokenAuth
+    auth_uri:
     token_type: json
     token_key: access_token
     request_method: POST
@@ -37,6 +38,7 @@ template:
 
   search:
     type: ODataV4Search
+    api_endpoint:
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -88,7 +90,9 @@ template:
       attrs:
         - null
         - "$.Attributes"
+      href:
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
+      downloadLink:
       title: "$.Name"
 
     free_text_search_operations:
@@ -111,8 +115,10 @@ template:
 
   download:
     type: HTTPDownload
+    base_uri:
     metadata_mapping:
       uid: "$.Id"
+      downloadLink:
 
 adgs:
   auth:

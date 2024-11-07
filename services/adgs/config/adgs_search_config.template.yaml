@@ -13,12 +13,17 @@
 # limitations under the License.
 
 template:
+  id:
+  station:
+  query:
   stac_extensions:
     [
       "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
       "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
       "https://stac-extensions.github.io/view/v1.0.0/schema.json",
     ]
+  title:
+  description:
   license: other
   extent:
     spatial:
