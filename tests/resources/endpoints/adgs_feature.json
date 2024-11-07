@@ -39,9 +39,6 @@
         "start_datetime": "2021-02-21T00:00:00Z",
         "end_datetime": "2021-02-21T00:00:00Z",
         "platform": "sentinel-1a",
-        "instruments": [
-            "PLACEHOLDER"
-        ],
         "constellation": "sentinel-1",
         "auxip:id": "0a88d2a2-6e73-41a1-abce-2cdf29dfcf04",
         "published": "2021-02-14T00:00:00.000Z",

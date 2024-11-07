@@ -431,6 +431,7 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
     def test_cadip_feature_mapping(
         self,
         client,
@@ -590,6 +591,7 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
     def test_cadip_feature_collection_mapping(
         self,
         client,
@@ -776,7 +778,8 @@ def test_search_parameters(
     method,
     service,
     adgs_response,
-    cadip_response,
+    cadip_file_response,
+    cadip_session_response,
 ):
     """Test all search parameters"""
 
@@ -791,7 +794,7 @@ def test_search_parameters(
         expected_response = adgs_response
     elif cadip:
         service_utils = cadip_utils
-        expected_response = cadip_response
+        expected_response = cadip_session_response
     else:
         raise NotImplementedError
 
@@ -980,7 +983,7 @@ def test_search_parameters(
                     'http://127.0.0.1:5000/Sessions?$filter="'
                     f"SessionId in {user_ids} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}&$expand=Files'
+                    '"&$top={limit}'
                 )
 
                 odata_query = (
@@ -988,7 +991,7 @@ def test_search_parameters(
                     f"SessionId in {user_ids} "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}&$expand=Files'
+                    '"&$top={limit}'
                 )
             else:
                 raise NotImplementedError
@@ -1024,10 +1027,7 @@ def test_search_parameters(
                 if user_query:
                     product_type = user_product_type
                     constellation = user_constellation
-                    # TEMP ! because cadip_map_mission returns S2A, S2B, S2C instead of S2A
-                    # for user_platform="sentinel-2a" AND user_constellation="sentinel-2"
-                    satellite = user_satellite  # we should use this
-                    satellite = "S2A"  # use this workaround in the meantime
+                    satellite = user_satellite
                 else:
                     product_type = collection["query"].get("productType")
                     constellation = collection["query"].get("platformShortName")
@@ -1054,6 +1054,17 @@ def test_search_parameters(
                         status=status.HTTP_200_OK,
                         json=expected_response,
                     )
+                    if cadip:
+                        odata_query_files = (
+                            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%"
+                            "20S1A_20200105072204051312%22&$top=20"
+                        )
+                        rsps.add(
+                            responses.GET,
+                            odata_query_files,
+                            status=status.HTTP_200_OK,
+                            json=cadip_file_response,
+                        )
                     expect_result = True
                 else:
                     expect_result = False
@@ -1070,9 +1081,14 @@ def test_search_parameters(
                 # Check that the search function was called and returned the expected result
                 assert response.is_success
                 features = response.json()["features"]
-                if expect_result:
+                if expect_result and adgs:
+                    # 2 calls, one for sessions, one for files
                     assert spy_search.call_count == 1
                     assert len(spy_search.spy_return) == len(features) == 1  # expected_response
+                elif expect_result and cadip:
+                    # 2 calls, one for sessions, one for files
+                    assert spy_search.call_count == 2
+                # assert len(spy_search.spy_return) == len(features) == 2  # expected_response
                 else:
                     assert spy_search.call_count == 0
                     assert len(features) == 0
