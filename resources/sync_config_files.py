@@ -65,7 +65,10 @@ def recursive_update(d, u):
 
 
 def create_from_template(template_paths: list[str]):
-    """Create a configuration file from one or several templates."""
+    """
+    Create a configuration file from one or several template paths.
+    Paths are given from the rs-server root dir.
+    """
 
     # Add a warning message to the header
     sep = "\n#  - rs-server/"
@@ -110,22 +113,24 @@ def create_from_template(template_paths: list[str]):
             else:
                 file = yaml.safe_load(input_file)
 
-        # A template should defined at the top of the file
-        # and be applied to each file element
+        # A template should defined at the top of the file and be applied to each file node
         template = file.pop("template")
 
-        # The config file contains a list of elements under a single root element.
-        # Apply the template on each element. The element values have higher priority.
-        if (len(file) == 1) and (isinstance(elements := next(iter(file.values())), list)):
-            for i, element in enumerate(elements):
-                elements[i] = recursive_update(copy.deepcopy(template), element)
+        # If the file contains a single node, we guess that it is a root title.
+        # We apply the template to its children.
+        nodes = file
+        if len(file) == 1:
+            nodes = next(iter(file.values()))
 
-        # The config file contains a dict of elements.
-        elif isinstance(file, dict):
-            for key, element in file.items():
-                file[key] = recursive_update(copy.deepcopy(template), element)
+        if isinstance(nodes, list):
+            for i, node in enumerate(nodes):
+                nodes[i] = recursive_update(copy.deepcopy(template), node)
+        elif isinstance(nodes, dict):
+            for key, node in nodes.items():
+                nodes[key] = recursive_update(copy.deepcopy(template), node)
         else:
             raise RuntimeError(f"Unrecognized data structure for: '{template_path.absolute()!s}'")
+
         all_files.update(file)
 
     # Write back the templated file
@@ -140,8 +145,9 @@ def create_from_template(template_paths: list[str]):
             yaml.dump(all_files, output_file, default_flow_style=False, sort_keys=False)
 
 
-# Create configuration files from templates
+# Create configuration files from templates. Paths are given from the rs-server root dir.
 for templates in (
+    ["services/common/config/rs-server.template.yaml"],
     ["services/adgs/config/adgs_search_config.template.yaml"],
     ["services/adgs/config/adgs_ws_config_token_module.template.yaml"],
     ["services/adgs/config/adgs_ws_config.template.yaml"],
