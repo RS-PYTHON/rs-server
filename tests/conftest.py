@@ -543,11 +543,20 @@ def cadip_stac_feature():
         return json.loads(file.read())
 
 
-@pytest.fixture(name="cadip_response")
+@pytest.fixture(name="cadip_session_response")
 @lru_cache(maxsize=1)
-def cadip_pickup_response():
+def cadip_session_pickup_response():
     """Fixture used to mock the response from CADIP data pickup-point."""
-    cadip_response_json = RESOURCES_FOLDER / "endpoints" / "cadip_pickup_response.json"
+    cadip_response_json = RESOURCES_FOLDER / "endpoints" / "cadip_session_pickup_response.json"
+    with open(cadip_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="cadip_file_response")
+@lru_cache(maxsize=1)
+def cadip_file_pickup_response():
+    """Fixture used to mock the response from CADIP data pickup-point."""
+    cadip_response_json = RESOURCES_FOLDER / "endpoints" / "cadip_file_pickup_response.json"
     with open(cadip_response_json, encoding="utf-8") as file:
         return json.loads(file.read())
 

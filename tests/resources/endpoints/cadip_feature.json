@@ -1,9 +1,9 @@
 {
     "bbox": [
-        -180,
-        -90,
-        180,
-        90
+        -180.0,
+        -90.0,
+        180.0,
+        90.0
     ],
     "type": "Feature",
     "geometry": {
@@ -37,7 +37,8 @@
         "datetime": "2020-01-05T07:22:04.051000+00:00",
         "start_datetime": "2020-01-05T07:22:04.051000+00:00",
         "end_datetime": "2020-01-05T07:42:04.051000+00:00",
-        "platform": "S1A",
+        "platform": "sentinel-1a",
+        "constellation": "sentinel-1",
         "published": "2020-01-05T18:52:26.165Z",
         "cadip:id": "a5e9d3b8-7c4f-4a92-b76a-fa09e1e1b59c",
         "cadip:num_channels": 2,
@@ -71,7 +72,7 @@
             "cadip:session_id": "S1A_20200105072204051312",
             "created": "2020-01-05T18:52:29.165Z",
             "eviction_datetime": "2020-01-05T18:52:29.165Z",
-            "file:size": "42"
+            "file:size": 42
         },
         "DCS_01_S1A_20200105072204051312_ch1_DSDB_00001.raw": {
             "href": "http://127.0.0.1:5000/Files(cd24aa8b-2719-4a1e-b4a7-f7c9df6de300)/$value",
@@ -87,7 +88,7 @@
             "cadip:session_id": "S1A_20200105072204051312",
             "created": "2020-01-05T18:52:32.165Z",
             "eviction_datetime": "2020-01-05T18:52:32.165Z",
-            "file:size": "51"
+            "file:size": 51
         }
     },
     "links": [
