@@ -360,8 +360,8 @@ class TestModelValidationError:
     @pytest.mark.parametrize(
         "fastapi_app, endpoint",
         [
-            # (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
-            # (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items"),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip_session_by_id_list"),
+            (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items"),
             (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_id_list/items/sessionId"),
         ],
         indirect=["fastapi_app"],
