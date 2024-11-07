@@ -19,6 +19,7 @@ Module for interacting with ADGS system through a FastAPI APIRouter.
 import json
 import os
 import os.path as osp
+import re
 from pathlib import Path
 from typing import Tuple, Union
 
@@ -55,11 +56,20 @@ def stac_to_odata(stac_params: dict) -> dict:
         return {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
 
 
-def serialize_adgs_asset(feature_collection, request):
+def serialize_adgs_asset(feature_collection, products):
     """Used to update adgs asset with propper href and format {asset_name: asset_body}."""
     for feature in feature_collection.features:
-        feature.assets["file"].href = f"{request.url.scheme}://{request.url.netloc}/adgs/aux?name={feature.id}"
+        auxip_id = feature.properties.dict()["auxip:id"]
+        # Find matching product by id and update feature href
+        try:
+            matched_product = next((p for p in products if p.properties["id"] == auxip_id), None)
+        except StopIteration as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unable to map {feature.id}") from exc
+        if matched_product:
+            feature.assets["file"].href = re.sub(r"\([^\)]*\)", f"({auxip_id})", matched_product.properties["href"])
+        # Rename "file" asset to feature.id
         feature.assets[feature.id] = feature.assets.pop("file")
+
     return feature_collection
 
 

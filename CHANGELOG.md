@@ -24,6 +24,30 @@ Changed
 
 None
 
+[0.2a6] - Sprint 16 - 2024-10-30
+================================
+
+## Added
+
+- RSPY-323: Implement STAC view of AUXIP auxiliary data (1/2: base STAC endpoints)
+- RSPY-326: Implement basic staging process (without download UAC)
+- RSPY-361: Add egress to a set of nodes
+- RSPY-362: Implement mapping of constellation/satellite in search parameters and attributes
+- RSPY-455: Sprint 16 corrections of issues
+- RSPY-459: Debug RS-Server code from POD
+
+## Fixed
+
+- RSPY-403: STAC Queryables (Catalog database part)
+- RSPY-429: Endpoint /catalog/collections/S1A_aux/queryables still provide "KeyError('id')" output
+- RSPY-462: Adding the same STAC item returns error 400 instead of 409
+- RSPY-463: Implicit collection owner does not work in local mode / docker compose
+- RSPY-465: STAC validation: Pagination error
+- RSPY-466: STAC validation: invalid content-type header
+- RSPY-469: CI broken due to Docker Hub pull quota exceeding
+- RSPY-475: Delete assets from the object storage when deleting a STAC item.
+- RSPY-484: CADIP STAC validation: wrong search parameter for collections
+
 [0.2a5] - Sprint 15 - 2024-10-09
 ================================
 

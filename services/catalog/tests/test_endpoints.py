@@ -26,13 +26,17 @@ import pathlib
 # pylint: disable=unused-argument
 import time
 from datetime import datetime, timedelta
+from typing import Any, Dict
+from unittest.mock import AsyncMock
 
 import fastapi
 import pytest
 import requests
-import yaml
+import yaml  # type: ignore
 from moto.server import ThreadedMotoServer
+from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from stac_fastapi.types.errors import NotFoundError
 
 from .conftest import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
 
@@ -77,6 +81,7 @@ def clear_aws_credentials():
 def test_status_code_200_docs_if_good_endpoints(client):  # pylint: disable=missing-function-docstring
     response = client.get("/catalog/api.html")
     assert response.status_code == fastapi.status.HTTP_200_OK
+    print(f"Response vaut: {response}")
 
 
 def test_update_stac_catalog_metadata(client):
@@ -120,14 +125,14 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         test_params = {"filter": "width=2500"}
 
         response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 2
 
         test_params = {"filter": "width=300"}
 
         response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 0
 
@@ -154,9 +159,9 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         # Test for GET /catalog/collections/{owner_id}:{collection_id}/search
         test_params = {"filter": "width=2500"}
         response = client.get("/catalog/collections/tata:S1_L1/search", params=test_params)
-        assert response.status_code == 404  # Checking with unexisting owner_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting owner_id
         response = client.get("/catalog/collections/toto:notfound/Search", params=test_params)
-        assert response.status_code == 404  # Checking with unexisting collection_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting collection_id
 
         # Test for POST /catalog/collections/{owner_id}:{collection_id}/search
         cql2_json_query = {
@@ -171,9 +176,9 @@ class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-met
         }
 
         response = client.post("/catalog/collections/tata:S1_L1/search", json=cql2_json_query)
-        assert response.status_code == 404  # Checking with unexisting owner_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting owner_id
         response = client.post("/catalog/collections/toto:notfound/search", json=cql2_json_query)
-        assert response.status_code == 404  # Checking with unexisting collection_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting collection_id
 
 
 class TestCatalogSearchEndpoint:
@@ -183,7 +188,7 @@ class TestCatalogSearchEndpoint:
         test_params = {"ids": "fe916452-ba6f-4631-9154-c249924a122d", "collections": "toto_S1_L1"}
 
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 1
 
@@ -216,28 +221,25 @@ class TestCatalogSearchEndpoint:
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
-        assert len(content["features"]) == 2
+        assert len(content["features"]) == 3
 
     def test_search_endpoint_without_filter(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"collections": "S1_L1", "limit": "5"}
+        test_params = {"collections": "toto_S1_L1", "limit": "5"}
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
 
-    def test_searh_endpoint_without_owner_id(self, client):  # pylint: disable=missing-function-docstring
+    def test_search_endpoint_without_owner_id(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
-
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == fastapi.status.HTTP_200_OK
-        content = json.loads(response.content)
-        assert len(content["features"]) == 0  # behavior to be determined
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_search_endpoint_with_specific_filter(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500"}
+        test_params = {"collections": "S1_L1", "filter-lang": "cql2-text", "filter": "width=2500", "owner": "toto"}
 
         response = client.get("/catalog/search", params=test_params)
         assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
-        assert len(content["features"]) == 0  # behavior to be determined
+        assert len(content["features"]) == 2  # behavior to be determined
 
     def test_post_search_endpoint(self, client):  # pylint: disable=missing-function-docstring
         test_json = {
@@ -269,9 +271,8 @@ class TestCatalogSearchEndpoint:
                 ],
             },
         }
-
         response = client.post("/catalog/search", json=test_json)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
 
     def test_search_in_unexisting_collection(self, client):
         """Test that if the collection does not exist, an HTTP 404 error is returned."""
@@ -279,10 +280,10 @@ class TestCatalogSearchEndpoint:
         # Test for GET /catalog/search
         test_params = {"collections": ["S1_L1"], "filter": "owner='tata'"}
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 404  # Checking with unexisting owner_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting owner_id
         test_params = {"collections": ["notfound"], "filter": "owner='toto'"}
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 404  # Checking with unexisting collection_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting collection_id
 
         # Test for POST /catalog/search
         test_json = {
@@ -297,7 +298,7 @@ class TestCatalogSearchEndpoint:
         }
 
         response = client.post("/catalog/search", json=test_json)
-        assert response.status_code == 404  # Checking with unexisting owner_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting owner_id
 
         test_json = {
             "collections": ["notfound"],
@@ -311,12 +312,12 @@ class TestCatalogSearchEndpoint:
         }
 
         response = client.post("/catalog/search", json=test_json)
-        assert response.status_code == 404  # Checking with unexisting collection_id
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting collection_id
 
     def test_search_with_collections_and_filter(self, client):  # pylint: disable=missing-function-docstring
         test_params = {"collections": ["toto_S1_L1"], "filter": "width=2500"}
         response = client.get("/catalog/search", params=test_params)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
         content = json.loads(response.content)
         assert len(content["features"]) == 2
 
@@ -331,7 +332,100 @@ class TestCatalogSearchEndpoint:
             },
         }
         response = client.post("/catalog/search", json=test_json)
-        assert response.status_code == 200
+        assert response.status_code == fastapi.status.HTTP_200_OK
+
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "GET"],
+    )
+    def test_search_using_several_collections(self, client, method):
+        """Test a search request involving several collections (with both POST and GET method)"""
+        # Search items on several collections without using implicit naming feature
+        test_json: Dict[str, Any] = {}
+        test_params = {}
+
+        if method == "POST":
+            test_json = {
+                "collections": ["toto_S1_L1", "toto_S2_L3"],
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {
+                "collections": "toto_S1_L1,toto_S2_L3",
+                "filter-lang": "cql2-text",
+            }
+            response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert len(json.loads(response.content)["features"]) == 3
+
+        # Use implicit naming mechanism for some collections of the list + specify owner in the content/query parameters
+        if method == "POST":
+            test_json = {
+                "collections": ["S1_L1", "S2_L3"],
+                "owner": "toto",
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {
+                "collections": "S1_L1,toto_S2_L3",
+                "filter-lang": "cql2-text",
+                "owner": "toto",
+            }
+            response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert len(json.loads(response.content)["features"]) == 3
+
+        # Use implicit naming mechanism for some collections of the list + specify owner in the filter
+        if method == "POST":
+            test_json = {
+                "collections": ["S1_L1", "toto_S2_L3"],
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                    ],
+                },
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {
+                "collections": "S1_L1,toto_S2_L3",
+                "filter-lang": "cql2-text",
+                "filter": "width=2500 AND owner='toto'",
+            }
+            response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert len(json.loads(response.content)["features"]) == 3
+
+        # Implicit naming mechanism will not produce the right owner_id if we don't specify it in the
+        # content/query parameters or in the filter
+        if method == "POST":
+            test_json = {
+                "collections": ["S1_L1", "toto_S2_L3"],
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {"collections": "toto_S1_L1,S2_L3", "filter": "width=2500"}
+            response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+
+        # Check that we get an error if at least one existing collection doesn't exist
+        if method == "POST":
+            test_json = {
+                "collections": ["S1_L1", "unexisting_collection"],
+                "filter": {
+                    "op": "and",
+                    "args": [
+                        {"op": "=", "args": [{"property": "owner"}, "toto"]},
+                    ],
+                },
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {"collections": "toto_S1_L1,unexisting_collection", "filter": "width=2500"}
+            response = client.get("/catalog/search", params=test_params)
+        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_queryables(self, client):  # pylint: disable=missing-function-docstring
         try:
@@ -489,6 +583,10 @@ class TestCatalogPublishCollectionEndpoint:
         # cleanup
         client.delete("/catalog/collections/second_test_owner:second_test_collection")
 
+
+class TestCatalogDeleteEndpoints:
+    """This class is used to group all tests for deleting a collection or an item"""
+
     def test_delete_a_created_collection(self, client):
         """
         Test that a created collection can be deleted
@@ -518,8 +616,9 @@ class TestCatalogPublishCollectionEndpoint:
         # Delete the collection
         delete_response = client.delete("/catalog/collections/will_be_deleted_owner:will_be_deleted_collection")
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
+
         # Check that collection is correctly deleted
-        second_check_response = client.get("/catalog/collections/", params={"owner": "will_be_deleted_owner"})
+        second_check_response = client.get("/catalog/collections", params={"owner": "will_be_deleted_owner"})
         assert second_check_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_delete_a_non_existent_collection(self, client):
@@ -576,6 +675,112 @@ class TestCatalogPublishCollectionEndpoint:
         # Test that the collection is removed, the request raises a 404 exception
         response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.asyncio
+    async def test_build_filelist_to_be_deleted_collection(self, mocker):
+        """
+        Test build_filelist_to_be_deleted for collection deletion.
+
+        This test checks if the function correctly builds a list of S3 file paths to be deleted
+        when deleting an entire collection. Mocks the item_collection response to simulate a
+        collection with multiple assets, and verifies that s3_files_to_be_deleted is populated
+        with the expected S3 paths.
+        """
+        # Mock the client and request for a collection deletion
+        mock_client = AsyncMock()
+        mock_request = mocker.Mock()
+        mock_request.scope = {"path": "/catalog/collections/user_collection_id"}
+
+        # Mock response from client.item_collection for collection deletion
+        mock_client.item_collection.return_value = {
+            "features": [
+                {
+                    "assets": {
+                        "asset1": {"alternate": {"s3": {"href": "s3://bucket/file1"}}},
+                        "asset2": {"alternate": {"s3": {"href": "s3://bucket/file2"}}},
+                    },
+                },
+            ],
+        }
+
+        # Instantiate UserCatalog and set request_ids for the test
+        catalog = UserCatalog(mock_client)
+        catalog.request_ids = {"owner_id": "user", "collection_id": ["collection_id"]}
+
+        # Call the function
+        await catalog.build_filelist_to_be_deleted(mock_request)
+
+        # Assert
+        assert catalog.s3_files_to_be_deleted == ["s3://bucket/file1", "s3://bucket/file2"]
+        mock_client.item_collection.assert_called_once_with(
+            request=mock_request,
+            collection_id="user_collection_id",
+            limit=100,
+            token=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_build_filelist_to_be_deleted_item(self, mocker):
+        """
+        Test build_filelist_to_be_deleted for individual item deletion.
+
+        This test verifies that when deleting a single item, the function correctly identifies
+        the item's specific assets to be deleted. Mocks the get_item response to return an item
+        with one asset, and confirms s3_files_to_be_deleted contains the correct S3 path.
+        """
+        # Mock the client and request for an item deletion
+        mock_client = AsyncMock()
+        mock_request = mocker.Mock()
+        mock_request.scope = {"path": "/catalog/collections/user_collection_id/items/item_id"}
+
+        # Mock response from client.get_item for item deletion
+        mock_client.get_item.return_value = {"assets": {"asset1": {"alternate": {"s3": {"href": "s3://bucket/file1"}}}}}
+
+        # Instantiate UserCatalog and set request_ids for the test
+        catalog = UserCatalog(mock_client)
+        catalog.request_ids = {"owner_id": "user", "collection_id": ["collection_id"], "item_id": "item_id"}
+
+        # Act
+        await catalog.build_filelist_to_be_deleted(mock_request)
+
+        # Assert
+        assert catalog.s3_files_to_be_deleted == ["s3://bucket/file1"]
+        mock_client.get_item.assert_called_once_with(
+            item_id="item_id",
+            collection_id="user_collection_id",
+            request=mock_request,
+        )
+
+    @pytest.mark.asyncio
+    async def test_build_filelist_to_be_deleted_not_found(self, mocker):
+        """
+        Test build_filelist_to_be_deleted when item is not found.
+
+        This test checks that when an item does not exist, the function handles the
+        NotFoundError gracefully. It ensures no S3 paths are added to s3_files_to_be_deleted.
+        """
+        # Mock the client and request for a non-existing item
+        mock_client = AsyncMock()
+        mock_request = mocker.Mock()
+        mock_request.scope = {"path": "/catalog/collections/user_collection_id/items/nonexistent_item"}
+
+        # Mock the NotFoundError raised by client.get_item
+        mock_client.get_item.side_effect = NotFoundError("Item not found")
+
+        # Instantiate UserCatalog and set request_ids for the test
+        catalog = UserCatalog(mock_client)
+        catalog.request_ids = {"owner_id": "user", "collection_id": ["collection_id"], "item_id": "nonexistent_item"}
+
+        # Act
+        await catalog.build_filelist_to_be_deleted(mock_request)
+
+        # Assert
+        assert not catalog.s3_files_to_be_deleted
+        mock_client.get_item.assert_called_once_with(
+            item_id="nonexistent_item",
+            collection_id="user_collection_id",
+            request=mock_request,
+        )
 
 
 class TestCatalogPublishFeatureWithBucketTransferEndpoint:

@@ -17,8 +17,7 @@
         "processing:datetime": "PLACEHOLDER",
         "processing:facility": "PLACEHOLDER",
         "constellation": "PLACEHOLDER",
-        "platform": "PLACEHOLDER",
-        "instruments": ["PLACEHOLDER"]
+        "platform": "PLACEHOLDER"
     },
     "links": [],
     "assets": {

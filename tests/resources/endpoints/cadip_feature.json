@@ -95,22 +95,22 @@
         {
             "rel": "collection",
             "type": "application/json",
-            "href": "http://testserver/collections/cadip_session_by_id"
+            "href": "http://testserver/cadip/collections/cadip_session_by_id"
         },
         {
             "rel": "parent",
             "type": "application/json",
-            "href": "http://testserver/collections/cadip_session_by_id"
+            "href": "http://testserver/cadip/collections/cadip_session_by_id"
         },
         {
             "rel": "root",
             "type": "application/json",
-            "href": "http://testserver/"
+            "href": "http://testserver/cadip/"
         },
         {
             "rel": "self",
             "type": "application/geo+json",
-            "href": "http://testserver/collections/cadip_session_by_id/items/S1A_20200105072204051312"
+            "href": "http://testserver/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312"
         }
     ],
     "stac_extensions": [

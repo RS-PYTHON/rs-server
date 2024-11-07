@@ -14,19 +14,23 @@
 
 """Unittests for rs-server search endpoints."""
 import os
+from copy import deepcopy
 
 import pytest
 import responses
 import yaml
 from fastapi import HTTPException, status
 from pydantic import ValidationError
+from rs_server_adgs import adgs_utils
 from rs_server_adgs.adgs_utils import auxip_map_mission
+from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
+from rs_server_common.data_retrieval.provider import Provider
 
-# pylint: disable=too-few-public-methods, too-many-arguments
+from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
-ROUTER_PREFIX_AUXIP = {"router_prefix": "/auxip"}
-ROUTER_PREFIX_CADIP = {"router_prefix": "/cadip"}
+# pylint: disable=too-few-public-methods, too-many-arguments, too-many-locals,
+# pylint: disable=too-many-branches, too-many-lines, too-many-statements
 
 
 @pytest.mark.unit
@@ -171,16 +175,6 @@ class TestConstellationMapping:
         """Pytest using only invalid inputs, output is not verified, function should raise exception."""
         with pytest.raises(HTTPException):
             cadip_map_mission(platform, constellation)
-
-
-class TestSearchEndpoints:
-    """Class used to group search endpoints tests."""
-
-    def test_cadip_search(self):
-        """CADIP search tests to be implemented here"""
-
-    def test_adgs_search(self):
-        """ADGS search tests to be implemented here"""
 
 
 class TestLandingPagesEndpoints:
@@ -468,6 +462,7 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
     def test_cadip_empty_feature_mapping(self, client, mock_token_validation, cadip_feature):
         """Test to verify the output of rs-server when pick-up point response is empty."""
         mock_token_validation()
@@ -485,12 +480,13 @@ class TestFeatureOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
     def test_adgs_feature_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
         """Test mapping of an adgs reponse with expanded attributes"""
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+            "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
             "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
             "&$expand=Attributes",
             json=adgs_response,
@@ -500,10 +496,11 @@ class TestFeatureOdataStacMapping:
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
         ).json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == adgs_feature, "Features doesn't match"
+        assert response == adgs_feature, "Features don't match"
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
     def test_adgs_empty_feature_mapping(self, client, mock_token_validation, adgs_feature):
         """Test to verify the output of rs-server when pick-up point response is empty."""
         mock_token_validation()
@@ -625,12 +622,13 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @responses.activate
+    @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
     def test_adgs_feature_collection_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
         """Test mapping of an adgs reponse with expanded attributes"""
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+            "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
             "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
             "&$expand=Attributes",
             json=adgs_response,
@@ -760,3 +758,322 @@ class TestCollection:
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
         assert self_href in response.json()["links"]
+
+
+@pytest.mark.parametrize("filter_type", ("cql", "query"))
+@pytest.mark.parametrize("method", ("GET", "POST"))
+@pytest.mark.parametrize(
+    "fastapi_app, service",
+    ((ROUTER_PREFIX_AUXIP, "adgs"), (ROUTER_PREFIX_CADIP, "cadip")),
+    ids=["adgs", "cadip"],
+    indirect=["fastapi_app"],
+)
+def test_search_parameters(
+    mocker,
+    mock_token_validation,
+    client,
+    filter_type,
+    method,
+    service,
+    adgs_response,
+    cadip_response,
+):
+    """Test all search parameters"""
+
+    adgs = service == "adgs"
+    cadip = service == "cadip"
+
+    mock_token_validation(service)
+    spy_search = mocker.spy(Provider, "search")
+
+    if adgs:
+        service_utils = adgs_utils
+        expected_response = adgs_response
+    elif cadip:
+        service_utils = cadip_utils
+        expected_response = cadip_response
+    else:
+        raise NotImplementedError
+
+    # Read the first adgs or cadip collection, keep everything except the id and hardcoded query
+    collection = service_utils.read_conf()["collections"][0]
+    collection.pop("id")
+    collection.pop("query")
+
+    #
+    # Mock a collection with no hardcoded query, another with single values, another with multiple values
+
+    if adgs:
+        query2 = {
+            "productType": "type1",
+            "platformShortName": "sentinel-1",
+        }
+        query3 = {
+            "productType": "type1, type2",
+            "platformShortName": "sentinel-1, sentinel-2",
+        }
+    elif cadip:
+        query2 = {
+            "Satellite": "S1A",
+        }
+        query3 = {
+            "Satellite": "S1A, S2A",
+        }
+    else:
+        raise NotImplementedError
+    hardcoded_date = "2020-01-01T00:00:00.000Z/2022-01-01T00:00:00.000Z"
+    hardcoded_limit = 10
+    mocked_collections = [
+        {"id": "col1", **collection},
+        {
+            "id": "col2",
+            "query": {
+                "PublicationDate": hardcoded_date,
+                "top": hardcoded_limit,
+                **query2,
+            },
+            **collection,
+        },
+        {
+            "id": "col3",
+            "query": {
+                "PublicationDate": hardcoded_date,
+                "top": hardcoded_limit,
+                **query3,
+            },
+            **collection,
+        },
+    ]
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: mocked_collections,
+    )
+    mocker.patch(f"{service_utils.__name__}.read_conf", return_value={"collections": mocked_collections})
+
+    #
+    # User given parameters
+
+    # Static values
+    user_ids = "id1, id2"
+    user_datetime = "2021-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
+    user_limit = 15
+    user_params = {
+        "limit": user_limit,
+        "datetime": user_datetime,
+    }
+    user_product_type = "type2"
+    user_platform = "sentinel-2a"
+    user_constellation = "sentinel-2"
+    user_satellite = cadip_utils.cadip_map_mission(user_platform, user_constellation)
+
+    # cql or query filter, for get or post requests
+    if adgs:
+        get_cql = f" AND product:type='{user_product_type}'"
+        get_query = f""","product:type": {{"eq": "{user_product_type}"}}"""
+        post_cql = [{"args": [{"property": "product:type"}, user_product_type], "op": "="}]
+        post_query = {"product:type": {"eq": user_product_type}}
+    else:
+        get_cql = ""
+        get_query = ""
+        post_cql = []
+        post_query = {}
+
+    # GET parameters
+    if method == "GET":
+        user_params.update(
+            {
+                "ids": user_ids,
+                "sortby": "-datetime",
+            },
+        )
+        if filter_type == "cql":
+            user_params.update(
+                {"filter": f"platform='{user_platform}' AND constellation='{user_constellation}'{get_cql}"},
+            )
+        if filter_type == "query":
+            user_params.update(
+                {
+                    "query": (
+                        f"""{{"platform": {{"eq": "{user_platform}"}},"""
+                        f"""\"constellation": {{"eq": "{user_constellation}"}}"""
+                        f"{get_query}}}"
+                    ),
+                },
+            )
+
+    # POST parameters
+    if method == "POST":
+        user_params.update(
+            {
+                "ids": [id.strip() for id in user_ids.split(",")],
+                "sortby": [{"direction": "desc", "field": "datetime"}],
+            },
+        )
+        if filter_type == "cql":
+            user_params.update(
+                {
+                    "filter": {
+                        "args": [
+                            {"args": [{"property": "platform"}, "sentinel-2a"], "op": "="},
+                            {"args": [{"property": "constellation"}, "sentinel-2"], "op": "="},
+                            *post_cql,
+                        ],
+                        "op": "and",
+                    },
+                },
+            )
+        if filter_type == "query":
+            user_params.update(
+                {
+                    "query": {
+                        "platform": {"eq": "sentinel-2a"},
+                        "constellation": {"eq": "sentinel-2"},
+                        **post_query,
+                    },
+                },
+            )
+
+    # Call the /search endpoint for each collection
+    for collection in mocked_collections:
+        collection_id = collection["id"]
+
+        # Copy and modify user params
+        collection_params = deepcopy(user_params)
+        if method == "GET":
+            collection_params["collections"] = collection_id
+        elif method == "POST":
+            collection_params["collections"] = [collection_id]
+
+        # Do a first call with the user query/filter, and a second call without
+        for user_query in (True, False):
+
+            # Remove the user query, but keep the datetime and others...
+            if not user_query:
+                collection_params.pop("query", None)
+                collection_params.pop("filter", None)
+
+            # NOTE: the OData queries are logged in eodag_provider.py when calling self.client.search
+            # if the reponse is not mocked.
+            # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
+            # TODO after fixing rs-server, these parameters should appear in the OData request:
+            #  - adgs ids (linked to https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-494 ?)
+            #  - sortBy (https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-131)
+            if adgs:
+                odata_no_query = (
+                    'http://127.0.0.1:5000/Products?$filter="'
+                    "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
+                    '"&$top={limit}&$expand=Attributes'
+                )
+
+                odata_query = (
+                    'http://127.0.0.1:5000/Products?$filter="'
+                    "PublicationDate gt {date_min} and PublicationDate lt {date_max} "
+                    "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
+                    "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
+                    "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
+                    "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
+                    '"&$top={limit}&$expand=Attributes'
+                )
+            elif cadip:
+                odata_no_query = (
+                    'http://127.0.0.1:5000/Sessions?$filter="'
+                    f"SessionId in {user_ids} "
+                    "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
+                    '"&$top={limit}&$expand=Files'
+                )
+
+                odata_query = (
+                    'http://127.0.0.1:5000/Sessions?$filter="'
+                    f"SessionId in {user_ids} "
+                    "and Satellite {satellite_op} {satellite} "
+                    "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
+                    '"&$top={limit}&$expand=Files'
+                )
+            else:
+                raise NotImplementedError
+
+            # The first collection has no hardcoded query. So either we use the user query.
+            # Or, if missing, we query on everything.
+            if collection_id == "col1":
+                odata = odata_query if user_query else odata_no_query
+                date_min = user_datetime.split("/", maxsplit=1)[0]
+                date_max = user_datetime.split("/")[1]
+                product_type = user_product_type
+                constellation = user_constellation
+                satellite = user_satellite
+                limit = user_limit
+
+            # The second collection has a query that does not intersect the user query.
+            # So either it returns no results. Or, if the user query is missing, we use the collection query.
+            elif collection_id == "col2":
+                odata = "" if user_query else odata_query
+                date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
+                date_max = hardcoded_date.split("/")[1]
+                product_type = collection["query"].get("productType")
+                constellation = collection["query"].get("platformShortName")
+                satellite = collection["query"].get("Satellite", "")
+                limit = hardcoded_limit
+
+            # The third collection has a query with multiple values, that intersects only one user value.
+            elif collection_id == "col3":
+                odata = odata_query
+                date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
+                date_max = hardcoded_date.split("/")[1]
+                limit = hardcoded_limit
+                if user_query:
+                    product_type = user_product_type
+                    constellation = user_constellation
+                    # TEMP ! because cadip_map_mission returns S2A, S2B, S2C instead of S2A
+                    # for user_platform="sentinel-2a" AND user_constellation="sentinel-2"
+                    satellite = user_satellite  # we should use this
+                    satellite = "S2A"  # use this workaround in the meantime
+                else:
+                    product_type = collection["query"].get("productType")
+                    constellation = collection["query"].get("platformShortName")
+                    satellite = collection["query"].get("Satellite", "")
+            else:
+                raise NotImplementedError
+
+            # Format the odata request with all possible parameters
+            odata = odata.format(
+                date_min=date_min,
+                date_max=date_max,
+                product_type=product_type,
+                constellation=constellation,
+                satellite=satellite,
+                satellite_op="in" if "," in satellite else "eq",
+                limit=limit,
+            )
+
+            with responses.RequestsMock() as rsps:
+                if odata:  # if the query should return results
+                    rsps.add(
+                        responses.GET,
+                        odata,
+                        status=status.HTTP_200_OK,
+                        json=expected_response,
+                    )
+                    expect_result = True
+                else:
+                    expect_result = False
+
+                # Call the endpoint
+                url = f"{os.getenv('router_prefix')}/search"
+                if method == "GET":
+                    response = client.get(url, params=collection_params)
+                elif method == "POST":
+                    response = client.post(url, json=collection_params)
+                else:
+                    raise NotImplementedError
+
+                # Check that the search function was called and returned the expected result
+                assert response.is_success
+                features = response.json()["features"]
+                if expect_result:
+                    assert spy_search.call_count == 1
+                    assert len(spy_search.spy_return) == len(features) == 1  # expected_response
+                else:
+                    assert spy_search.call_count == 0
+                    assert len(features) == 0
+                spy_search.reset_mock()

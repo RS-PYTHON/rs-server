@@ -183,7 +183,7 @@ collections:
         url: 'https://home.rs-python.eu/'
 
   - id: apik_valid_auth
-    station: cadip
+    station: adgs
     query:
       top: 1
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
@@ -213,5 +213,10 @@ collections:
   ###
   - id: adgs
     station: adgs
+    query:
+      limit: 100
+
+  - id: adgs2
+    station: adgs2
     query:
       limit: 100

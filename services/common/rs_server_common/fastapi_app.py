@@ -23,6 +23,7 @@ import httpx
 import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
@@ -38,6 +39,7 @@ from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
+from stac_fastapi.api.routes import add_route_dependencies
 from stac_fastapi.extensions.core import (
     FieldsExtension,
     FilterExtension,
@@ -191,6 +193,19 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     StacApi.register_get_search(app)
     StacApi.register_post_search(app)
     app.router.prefix = ""
+    if settings.CLUSTER_MODE:
+        scopes = []  # One scope for each Router path and method
+        for route in app.router.routes:
+            if not isinstance(route, APIRoute):
+                continue
+            for method_ in route.methods:
+                scopes.append({"path": route.path, "method": method_})
+        add_route_dependencies(app.router.routes, scopes=scopes, dependencies=[Depends(authenticate)])
+    # TODO: title and description must be set using the env vars
+    # CATALOG_METADATA_TITLE and CATALOG_METADATA_DESCRIPTION
+    service = router_prefix.strip("/").title()
+    app.state.pgstac_client.title = f"RS-PYTHON {service} collections"
+    app.state.pgstac_client.description = f"{service} collections of Copernicus Reference System Python"
 
     dependencies = []
     if settings.CLUSTER_MODE:

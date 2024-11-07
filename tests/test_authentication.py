@@ -32,6 +32,8 @@ from rs_server_common.utils.utils2 import AuthInfo
 from starlette import status
 from starlette.datastructures import State
 
+from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
+
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
 
@@ -112,7 +114,7 @@ async def test_cached_apikey_security(monkeypatch, httpx_mock: HTTPXMock):
 
 @responses.activate
 @pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
-async def test_oauth2_security(fastapi_app, mocker, client):  # pylint: disable=unused-argument
+async def test_oauth2_security(mocker, client):
     """Test all the OAuth2 authentication endpoints."""
 
     user_id = "user_id"
@@ -179,7 +181,12 @@ async def test_oauth2_security(fastapi_app, mocker, client):  # pylint: disable=
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
 @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
-@pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
+@pytest.mark.parametrize(
+    "fastapi_app",
+    [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP}],
+    indirect=["fastapi_app"],
+    ids=["auxip", "cadip"],
+)
 async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-many-locals
     fastapi_app,
     client,
@@ -212,8 +219,8 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
     # The user, authenticated with oauth2, can also use an apikey created by another user.
     # In this case, the apikey authentication has higher priority and should be used.
     roles = [
-        "rs_adgs_read",
-        "rs_adgs_download",
+        "rs_adgs_adgs_read",
+        "rs_adgs_adgs_download",
         "rs_adgs_landing_page",
         "rs_cadip_cadip_read",
         "rs_cadip_cadip_download",
@@ -319,7 +326,7 @@ async def test_endpoints_security(  # pylint: disable=too-many-arguments, too-ma
 
 UNKNOWN_CADIP_STATION = "unknown-cadip-station"
 
-ADGS_STATIONS = ["adgs"]
+ADGS_STATIONS = ["adgs", "adgs2"]
 CADIP_STATIONS = ["ins", "mps", "mti", "nsg", "sgs", "cadip", UNKNOWN_CADIP_STATION]
 
 DATE_PARAM = {"datetime": "2014-01-01T12:00:00Z/2023-02-02T23:59:59Z"}
@@ -330,10 +337,17 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
 @pytest.mark.parametrize(
     "fastapi_app, endpoint, method, stations, query_params, expected_role",
     [
-        [CLUSTER_MODE, "/cadip", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
-        [CLUSTER_MODE, "/cadip/collections", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
+        [{**CLUSTER_MODE, **ROUTER_PREFIX_CADIP}, "/cadip", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_landing_page"],
         [
-            CLUSTER_MODE,
+            {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
+            "/cadip/collections",
+            "GET",
+            CADIP_STATIONS,
+            NAME_PARAM,
+            "rs_cadip_landing_page",
+        ],
+        [
+            {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
             "/cadip/collections/{collection_id}",
             "GET",
             CADIP_STATIONS,
@@ -341,7 +355,7 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "rs_cadip_{station}_read",
         ],
         [
-            CLUSTER_MODE,
+            {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
             "/cadip/collections/{collection_id}/items",
             "GET",
             CADIP_STATIONS,
@@ -349,67 +363,80 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             "rs_cadip_{station}_read",
         ],
         [
-            CLUSTER_MODE,
+            {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
             "/cadip/collections/{collection_id}/items/specific_sid",
             "GET",
             CADIP_STATIONS,
             DATE_PARAM,
             "rs_cadip_{station}_read",
         ],
-        [CLUSTER_MODE, "/cadip/{station}/cadu", "GET", CADIP_STATIONS, NAME_PARAM, "rs_cadip_{station}_download"],
         [
-            CLUSTER_MODE,
+            {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
+            "/cadip/{station}/cadu",
+            "GET",
+            CADIP_STATIONS,
+            NAME_PARAM,
+            "rs_cadip_{station}_download",
+        ],
+        [
+            {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
             "/cadip/{station}/cadu/status",
             "GET",
             CADIP_STATIONS,
             NAME_PARAM,
             "rs_cadip_{station}_download",
         ],
-        [CLUSTER_MODE, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_landing_page"],
-        [CLUSTER_MODE, "/auxip/collections", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_landing_page"],
+        [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_landing_page"],
         [
-            CLUSTER_MODE,
+            {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
+            "/auxip/collections",
+            "GET",
+            ADGS_STATIONS,
+            NAME_PARAM,
+            "rs_adgs_landing_page",
+        ],
+        [
+            {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
             "/auxip/collections/{collection_id}",
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_read",
+            "rs_adgs_{station}_read",
         ],
         [
-            CLUSTER_MODE,
+            {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
             "/auxip/collections/{collection_id}/items",
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_read",
+            "rs_adgs_{station}_read",
         ],
         [
-            CLUSTER_MODE,
+            {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
             "/auxip/collections/{collection_id}/items/specific_sid",
             "GET",
             ADGS_STATIONS,
             DATE_PARAM,
-            "rs_adgs_read",
+            "rs_adgs_{station}_read",
         ],
     ],
     indirect=["fastapi_app"],
     ids=[
         "/cadip",
-        "/cadip/collections",
-        "/cadip/collections/{collection_id}",
-        "/cadip/collections/{collection_id}/items",
-        "/cadip/collections/{collection_id}/items/specific_sid",
+        "cadip_collection",
+        "cadip_sp./ecific_collection",
+        "cadip_items",
+        "cadip_specific_item",
         "/cadip/{station}/cadu",
         "/cadip/{station}/cadu/status",
         "/auxip",
-        "/auxip/collections",
-        "/auxip/collections/{collection_id}",
-        "/auxip/collections/{collection_id}/items",
-        "/auxip/collections/{collection_id}/items/specific_sid",
+        "auxip_collections",
+        "auxip_specific_collection",
+        "auxip_items",
+        "auxip_specific_item",
     ],
 )
 async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-locals
-    fastapi_app,  # pylint: disable=unused-argument
     client,
     mocker,
     monkeypatch,
@@ -520,7 +547,6 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
 @responses.activate
 @pytest.mark.parametrize("fastapi_app", [CLUSTER_MODE], indirect=["fastapi_app"], ids=["cluster_mode"])
 async def test_stac_browser_authent(
-    fastapi_app,  # pylint: disable=unused-argument
     mocker,
     httpx_mock: HTTPXMock,
 ):
