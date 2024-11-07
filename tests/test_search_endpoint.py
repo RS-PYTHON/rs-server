@@ -1088,7 +1088,7 @@ def test_search_parameters(
                 elif expect_result and cadip:
                     # 2 calls, one for sessions, one for files
                     assert spy_search.call_count == 2
-                # assert len(spy_search.spy_return) == len(features) == 2  # expected_response
+                    assert len(spy_search.spy_return) == 2*len(features)  # expected_response
                 else:
                     assert spy_search.call_count == 0
                     assert len(features) == 0
