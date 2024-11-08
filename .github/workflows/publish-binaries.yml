@@ -90,71 +90,51 @@ jobs:
           echo "debug_mode=$debug_mode" >> $GITHUB_OUTPUT
         shell: bash
 
-  ##################
-  # Publish wheels #
-  ##################
+  ################
+  # Build wheels #
+  ################
 
   complete-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "complete wheel"
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-    outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+#    outputs:
+#      version_name: ${{ steps.build-wheel.outputs.version_name }}
+#      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: true # TODO see how to publish a "complete wheel", this currently doesn't work
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
-        with:
-          package_directory: .
-      - id: publish-pypi
-        uses: ./.github/actions/publish-pypi
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        with:
-          package_directory: .
-          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+#      - id: build-wheel
+#        uses: ./.github/actions/build-wheel
+#        with:
+#          package_directory: .
 
   services-common-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/common' wheel"
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+      version_name: ${{ steps.build-wheel.outputs.version_name }}
+      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
+      - id: build-wheel
+        uses: ./.github/actions/build-wheel
         with:
           package_directory: services/common
-      - id: publish-pypi
-        uses: ./.github/actions/publish-pypi
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        with:
-          package_directory: services/common
-          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-adgs-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/adgs' wheel"
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+      version_name: ${{ steps.build-wheel.outputs.version_name }}
+      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4
@@ -170,27 +150,18 @@ jobs:
           done
         shell: bash
 
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
+      - id: build-wheel
+        uses: ./.github/actions/build-wheel
         with:
           package_directory: services/adgs
-      - id: publish-pypi
-        uses: ./.github/actions/publish-pypi
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        with:
-          package_directory: services/adgs
-          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-cadip-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/cadip' wheel"
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+      version_name: ${{ steps.build-wheel.outputs.version_name }}
+      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4
@@ -206,27 +177,18 @@ jobs:
           done
         shell: bash
 
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
+      - id: build-wheel
+        uses: ./.github/actions/build-wheel
         with:
           package_directory: services/cadip
-      - id: publish-pypi
-        uses: ./.github/actions/publish-pypi
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        with:
-          package_directory: services/cadip
-          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-staging-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/staging' wheel"
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+      version_name: ${{ steps.build-wheel.outputs.version_name }}
+      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4
@@ -253,27 +215,18 @@ jobs:
       #     done
       #   shell: bash
 
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
+      - id: build-wheel
+        uses: ./.github/actions/build-wheel
         with:
           package_directory: services/staging
-      - id: publish-pypi
-        uses: ./.github/actions/publish-pypi
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        with:
-          package_directory: services/staging
-          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-catalog-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/catalog' wheel"
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+      version_name: ${{ steps.build-wheel.outputs.version_name }}
+      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4
@@ -289,27 +242,18 @@ jobs:
           done
         shell: bash
 
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
+      - id: build-wheel
+        uses: ./.github/actions/build-wheel
         with:
           package_directory: services/catalog
-      - id: publish-pypi
-        uses: ./.github/actions/publish-pypi
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        with:
-          package_directory: services/catalog
-          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   services-frontend-whl:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     name: "'services/frontend' wheel"
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     outputs:
-      version_name: ${{ steps.publish-wheel.outputs.version_name }}
-      package_name: ${{ steps.publish-wheel.outputs.package_name }}
+      version_name: ${{ steps.build-wheel.outputs.version_name }}
+      package_name: ${{ steps.build-wheel.outputs.package_name }}
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4
@@ -333,17 +277,35 @@ jobs:
           ./services/frontend/resources/build_aggregated_openapi.sh --run-services --set-version
         shell: bash
 
-      - id: publish-wheel
-        uses: ./.github/actions/publish-wheel
+      - id: build-wheel
+        uses: ./.github/actions/build-wheel
         with:
           package_directory: services/frontend
-      - id: publish-pypi
-        uses: ./.github/actions/publish-pypi
+
+  ###################
+  # Publish to PyPI #
+  ###################
+
+  publish-pypi:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "Publish wheels and sdists"
+    needs: [services-common-whl, services-adgs-whl, services-cadip-whl, services-staging-whl, services-catalog-whl, services-frontend-whl]
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - name: Download dist dependencies
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: ./dist
+      - name: Publish wheel and sdist packages
+        uses: pypa/gh-action-pypi-publish@release/v1
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         with:
-          package_directory: services/frontend
-          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
-          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+          skip-existing: true
+          packages-dir: ./dist
+          verbose: true
 
   #########################
   # Publish Docker images #
