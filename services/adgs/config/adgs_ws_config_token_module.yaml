@@ -92,6 +92,7 @@ adgs:
         wrapper: '"{}"'
         operations:
             and:
+              - "contains(Name, '{Name}')"
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
               - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')"

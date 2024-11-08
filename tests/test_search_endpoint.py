@@ -488,7 +488,7 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1"
             "&$expand=Attributes",
             json=adgs_response,
             status=200,
@@ -588,7 +588,6 @@ class TestFeatureOdataStacMapping:
         self,
         client,
         mock_token_validation,
-        cadip_session_response,
         endpoint,
         odata_session_url,
         odata_file_url,
@@ -600,7 +599,7 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             odata_session_url,
-            json=cadip_session_response,
+            json={},
             status=200,
         )
         # Map assets also (CADIP makes 2 requests)
@@ -608,7 +607,7 @@ class TestFeatureOdataStacMapping:
             responses.GET,
             odata_file_url,
             json={},
-            status=200,
+            status=404,
         )
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -989,17 +988,18 @@ def test_search_parameters(
             # if the reponse is not mocked.
             # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
             # TODO after fixing rs-server, these parameters should appear in the OData request:
-            #  - adgs ids (linked to https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-494 ?)
             #  - sortBy (https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-131)
             if adgs:
+                uid = user_ids.split(",", maxsplit=1)[0]
                 odata_no_query = (
                     'http://127.0.0.1:5000/Products?$filter="'
+                    f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
                     '"&$top={limit}&$expand=Attributes'
                 )
-
                 odata_query = (
                     'http://127.0.0.1:5000/Products?$filter="'
+                    f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max} "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "

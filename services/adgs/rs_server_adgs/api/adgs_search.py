@@ -88,6 +88,7 @@ class MockPgstacAdgs(MockPgstac):
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
             odata_params.get("top", None),
+            Name=odata_params.get("Name", [None])[0],
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),
         )
@@ -267,11 +268,16 @@ async def get_adgs_collection_specific_item(
 
     # Search all the collection items then search manually for the right one.
     # TODO: allow the search function to take the item ID instead.
-    items = await request.app.state.pgstac_client.item_collection(collection_id, request)
     try:
-        return next(item for item in items.get("features", {}) if item.get("id") == item_id)
-    except StopIteration as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AUXIP item {item_id!r} not found.") from exc
+        item = await request.app.state.pgstac_client.get_item(item_id, collection_id, request)
+    except HTTPException as http_exc:  # validation error, just forward it
+        raise http_exc
+    except Exception as exc:  # stac_fastapi.types.errors.NotFoundError
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"AUXIP item {item_id!r} not found.",
+        ) from exc
+    return item
 
 
 def process_product_search(  # pylint: disable=too-many-locals
