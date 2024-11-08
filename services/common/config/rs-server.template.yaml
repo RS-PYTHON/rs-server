@@ -30,7 +30,7 @@ template:
 
 external_data_sources:
   adgs:
-    domain: mockup-auxip-adgs-svc.processing.svc.cluster.local
+    domain: mockup-station-adgs-svc.processing.svc.cluster.local
     service:
       name: auxip
       url: http://127.0.0.1:5000
@@ -39,7 +39,7 @@ external_data_sources:
       authorization: Basic test
 
   adgs2:
-    domain: mockup-auxip-adgs-svc.processing.svc.cluster.local
+    domain: mockup-station-adgs2-svc.processing.svc.cluster.local
     service:
       name: auxip
       url: http://127.0.0.1:5001
@@ -50,7 +50,7 @@ external_data_sources:
   # CADIP stations. MPS has Authorization but no scope. MTI has scope but no Authorization
   # the following one is for tests onlys
   cadip:
-    domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-cadip-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5000
