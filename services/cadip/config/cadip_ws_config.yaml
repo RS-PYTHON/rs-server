@@ -98,10 +98,21 @@ cadip:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
-      total_items_nb_key_path: '$.total'
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
+      total_items_nb_key_path: "$.total"
 
   download:
     type: HTTPDownload
@@ -197,10 +208,21 @@ ins:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
-      total_items_nb_key_path: '$.total'
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
+      total_items_nb_key_path: "$.total"
 
   download:
     type: HTTPDownload
@@ -279,8 +301,8 @@ mps:
             - null
             - '$.PublicationDate'
         href:
-          - null
-          - 'http://127.0.0.1:5101/Files({id})/$value'
+            - null
+            - 'http://127.0.0.1:5101/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5101/Files({id})/$value'
         title: '$.Name'
@@ -296,10 +318,21 @@ mps:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
-      total_items_nb_key_path: '$.total'
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
+      total_items_nb_key_path: "$.total"
 
   download:
     type: HTTPDownload
@@ -378,8 +411,8 @@ mti:
             - null
             - '$.PublicationDate'
         href:
-          - null
-          - 'http://127.0.0.1:5102/Files({id})/$value'
+            - null
+            - 'http://127.0.0.1:5102/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5102/Files({id})/$value'
         title: '$.Name'
@@ -395,10 +428,21 @@ mti:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
-      total_items_nb_key_path: '$.total'
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
+      total_items_nb_key_path: "$.total"
 
   download:
     type: HTTPDownload
@@ -477,8 +521,8 @@ nsg:
             - null
             - '$.PublicationDate'
         href:
-          - null
-          - 'http://127.0.0.1:5103/Files({id})/$value'
+            - null
+            - 'http://127.0.0.1:5103/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5103/Files({id})/$value'
         title: '$.Name'
@@ -494,10 +538,21 @@ nsg:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
-      total_items_nb_key_path: '$.total'
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
+      total_items_nb_key_path: "$.total"
 
   download:
     type: HTTPDownload
@@ -576,8 +631,8 @@ sgs:
             - null
             - '$.PublicationDate'
         href:
-          - null
-          - 'http://127.0.0.1:5104/Files({id})/$value'
+            - null
+            - 'http://127.0.0.1:5104/Files({id})/$value'
         geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
         downloadLink: 'http://127.0.0.1:5104/Files({id})/$value'
         title: '$.Name'
@@ -593,10 +648,21 @@ sgs:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
               - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
-      total_items_nb_key_path: '$.total'
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
+      total_items_nb_key_path: "$.total"
 
   download:
     type: HTTPDownload
@@ -711,8 +777,8 @@ cadip_session:
         - null
         - "$.PublicationDate"
       href:
-        - null
-        - "http://127.0.0.1:5000/Files({id})/$value"
+          - null
+          - "http://127.0.0.1:5000/Files({id})/$value"
       geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
       title: "$.Name"
 
@@ -729,9 +795,20 @@ cadip_session:
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
       total_items_nb_key_path: "$.total"
 
   download:
@@ -864,9 +941,20 @@ ins_session:
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
       total_items_nb_key_path: "$.total"
 
   download:
@@ -999,9 +1087,20 @@ mps_session:
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
       total_items_nb_key_path: "$.total"
 
   download:
@@ -1134,9 +1233,20 @@ mti_session:
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
       total_items_nb_key_path: "$.total"
 
   download:
@@ -1269,9 +1379,20 @@ nsg_session:
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
       total_items_nb_key_path: "$.total"
 
   download:
@@ -1404,9 +1525,20 @@ sgs_session:
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: PublicationDate
+        uid: id
+        storageStatus: offline
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
       total_items_nb_key_path: "$.total"
 
   download:

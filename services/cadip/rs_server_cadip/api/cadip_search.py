@@ -21,7 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-from typing import Annotated, List, Literal, Union
+from typing import Annotated, Any, List, Literal, Union
 
 import requests
 import sqlalchemy
@@ -54,11 +54,11 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     create_stac_collection,
     handle_exceptions,
-    sort_feature_collection,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     validate_inputs_format,
+    validate_sort_input,
     validate_str_list,
     write_search_products_to_db,
 )
@@ -358,6 +358,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Union[int, None],
         Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
     ],
+    sortby: str = "-datetime",
 ) -> stac_pydantic.ItemCollection:
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
@@ -371,7 +372,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         time_interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
         limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
-
+        sortby (str): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
     Returns:
         dict (dict): A STAC Feature Collection of the sessions.
 
@@ -381,6 +382,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
     limit = limit if limit else 1000
+    sortby = validate_sort_input(sortby)
 
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
@@ -390,6 +392,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             platform=platform,
             sessions_search=True,
             items_per_page=limit,
+            sort_by=sortby,
         )
         products = validate_products(products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
@@ -430,7 +433,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
-) -> list[dict] | dict:
+) -> list[dict] | tuple[Any, str]:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
@@ -459,9 +462,9 @@ def process_files_search(  # pylint: disable=too-many-locals
     session_id: str,
     datetime: Union[str, None] = None,
     limit: Union[int, None] = 20,
-    sortby: Union[str, None] = None,
+    sortby: str = "-datetime",
     **kwargs,
-) -> list[dict] | dict:
+) -> list[dict] | tuple[Any, str]:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
@@ -485,6 +488,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     if not (datetime or session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
     start_date, stop_date = validate_inputs_format(datetime)
+    sortby = validate_sort_input(sortby)
     session: Union[List[str], str, None] = (
         ([sid.strip() for sid in session_id.split(",")] if session_id and "," in session_id else session_id)
         if session_id
@@ -499,6 +503,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             TimeRange(start_date, stop_date),
             id=session,
             items_per_page=limit,
+            sort_by=sortby,
         )
         if kwargs.get("deprecated", False):
             write_search_products_to_db(CadipDownloadStatus, products)
@@ -514,7 +519,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         logger.info("Succesfully listed and processed products from CADIP station")
         if kwargs.get("map_to_session", False):
             return [product.properties for product in products]
-        return sort_feature_collection(cadip_item_collection.model_dump(), sortby)
+        return cadip_item_collection.model_dump(), sortby
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")

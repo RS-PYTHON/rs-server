@@ -146,6 +146,7 @@ class EodagProvider(Provider):
 
         try:
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
+            # search_method = self.client.search if "session" not in self.provider else self.client.search_iter_page
             products = self.client.search(
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
