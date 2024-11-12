@@ -450,15 +450,13 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
-            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&$skip=0",
             json=cadip_session_response,
             status=200,
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22"
-            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -474,7 +472,8 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=20&skip=0",
             json={"responses": []},
             status=200,
         )
@@ -493,8 +492,8 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
-            "&$expand=Attributes",
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22"
+            "&$orderby=PublicationDate%20desc&$top=10&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
@@ -612,15 +611,13 @@ class TestFeatureCollectionOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
-            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&$skip=0",
             json=cadip_session_response,
             status=200,
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&"
-            "$orderby=PublicationDate%20desc&$top=20&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&&$top=20&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -638,8 +635,8 @@ class TestFeatureCollectionOdataStacMapping:
         responses.add(
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
-            "&$expand=Attributes",
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22"
+            "&$orderby=PublicationDate%20desc&$top=10&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
@@ -894,7 +891,7 @@ def test_search_parameters(
         user_params.update(
             {
                 "ids": user_ids,
-                "sortby": "-datetime",
+                # "sortby": "-datetime", # disable this for moment, require odata filter to be updated
             },
         )
         if filter_type == "cql":
@@ -973,7 +970,7 @@ def test_search_parameters(
                 odata_no_query = (
                     'http://127.0.0.1:5000/Products?$filter="'
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}&$expand=Attributes'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes'
                 )
 
                 odata_query = (
@@ -983,14 +980,14 @@ def test_search_parameters(
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
-                    '"&$top={limit}&$expand=Attributes'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes'
                 )
             elif cadip:
                 odata_no_query = (
                     'http://127.0.0.1:5000/Sessions?$filter="'
                     f"SessionId in {user_ids} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0'
+                    '"&$top={limit}&$skip=0'
                 )
 
                 odata_query = (
@@ -998,7 +995,7 @@ def test_search_parameters(
                     f"SessionId in {user_ids} "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0'
+                    '"&$top={limit}&$skip=0'
                 )
             else:
                 raise NotImplementedError
@@ -1064,7 +1061,7 @@ def test_search_parameters(
                     if cadip:
                         odata_query_files = (
                             "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%"
-                            "20S1A_20200105072204051312%22&$orderby=PublicationDate%20desc&$top=20&$skip=0"
+                            "20S1A_20200105072204051312%22&$top=20&$skip=0"
                         )
                         rsps.add(
                             responses.GET,

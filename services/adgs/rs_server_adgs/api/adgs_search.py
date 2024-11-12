@@ -57,6 +57,7 @@ from rs_server_common.stac_api_common import (
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     validate_inputs_format,
+    validate_sort_input,
     write_search_products_to_db,
 )
 
@@ -88,6 +89,7 @@ class MockPgstacAdgs(MockPgstac):
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
             odata_params.get("top", None),
+            self.request.query_params.get("sortby", "-datetime"),
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),
         )
@@ -279,6 +281,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     product_type,
     publication_date,
     limit,
+    sortby: str = "-datetime",
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
     """
@@ -309,6 +312,7 @@ def process_product_search(  # pylint: disable=too-many-locals
             TimeRange(start_date, stop_date),
             attr_ptype=product_type,
             items_per_page=limit,
+            sort_by=validate_sort_input(sortby),
             **kwargs,
         )
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"

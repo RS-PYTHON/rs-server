@@ -25,7 +25,7 @@ from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_common.fastapi_app import init_app
 
 # Init the FastAPI application with the adgs routers.
-app = init_app(__version__, adgs_routers, init_db=True, router_prefix="/auxip")
+app = init_app(__version__, adgs_routers, init_db=False, router_prefix="/auxip")
 
 # Set properties for the adgs service
 app.state.get_connection = MockPgstacAdgs.get_connection

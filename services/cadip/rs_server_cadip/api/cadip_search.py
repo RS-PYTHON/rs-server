@@ -85,6 +85,7 @@ class MockPgstacCadip(MockPgstac):
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
+        sortby = self.request.query_params.get("sortby", None)
         session_data = process_session_search(
             self.request,
             collection.get("station", "cadip"),
@@ -92,6 +93,7 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
             odata_params.get("top"),
+            sortby,
         )
         if not session_data.features:
             # If there are no sessions, don't proceed to assets allocation
@@ -102,6 +104,7 @@ class MockPgstacCadip(MockPgstac):
         assets = process_files_search(
             collection.get("station", "cadip"),
             features_ids,
+            sortby=sortby,
             map_to_session=True,
         )
 
@@ -358,7 +361,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Union[int, None],
         Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
     ],
-    sortby: str = "-datetime",
+    sortby: Union[str, None] = "-datetime",
 ) -> stac_pydantic.ItemCollection:
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
@@ -382,7 +385,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
     limit = limit if limit else 1000
-
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
         products = init_cadip_provider(f"{station}_session").search(
@@ -391,7 +393,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             platform=platform,
             sessions_search=True,
             items_per_page=limit,
-            sort_by=validate_sort_input(sortby),
+            sort_by=validate_sort_input(sortby) if sortby else None,
         )
         products = validate_products(products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
@@ -453,7 +455,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    return process_files_search(station, session_id, datetime, limit, sortby, deprecated=True)
+    return process_files_search(station, session_id, datetime, limit, sortby=sortby, deprecated=True)
 
 
 def process_files_search(  # pylint: disable=too-many-locals
@@ -461,7 +463,6 @@ def process_files_search(  # pylint: disable=too-many-locals
     session_id: str,
     datetime: Union[str, None] = None,
     limit: Union[int, None] = 20,
-    sortby: str = "-datetime",
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
@@ -501,7 +502,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             TimeRange(start_date, stop_date),
             id=session,
             items_per_page=limit,
-            sort_by=validate_sort_input(sortby),
+            sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
         )
         if kwargs.get("deprecated", False):
             write_search_products_to_db(CadipDownloadStatus, products)
