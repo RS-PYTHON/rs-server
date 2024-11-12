@@ -14,7 +14,7 @@
 
 """
 Create rs-server configuration files from templates.
-Copy them to rs-demo and rs-helm repositories.
+Copy them to rs-demo, rs-helm and rs-infrastructure repositories.
 """
 
 import collections.abc
@@ -580,18 +580,24 @@ def copy_to_helm_or_infra_single_doc(
 
             # Recursive calls on lists...
             elif isinstance(output_value, collections.abc.Iterable):
-                assert isinstance(input_value, collections.abc.Iterable)
-                assert len(input_value) == len(output_value)
-                for i, output_subvalue in enumerate(output_value):
-                    input_subvalue = input_value[i]
 
-                    # ... on list dicts
-                    if isinstance(output_subvalue, collections.abc.Mapping):
-                        update_all_values(key, input_subvalue, output_subvalue, station)
+                # If the input value is not a list or does not have the same length,
+                # I don't really know what to do, so just copy the input value.
+                if (not isinstance(input_value, collections.abc.Iterable)) or (len(input_value) != len(output_value)):
+                    output_config[key] = input_value
 
-                    # ... or on list string values
-                    elif isinstance(output_subvalue, str):
-                        output_value[i] = update_single_value(input_subvalue, output_subvalue)
+                # Else, do a recursive call on each lists element ...
+                else:
+                    for i, output_subvalue in enumerate(output_value):
+                        input_subvalue = input_value[i]
+
+                        # ... on list dicts
+                        if isinstance(output_subvalue, collections.abc.Mapping):
+                            update_all_values(key, input_subvalue, output_subvalue, station)
+
+                        # ... or on list string values
+                        elif isinstance(output_subvalue, str):
+                            output_value[i] = update_single_value(input_subvalue, output_subvalue)
 
     update_all_values("", input_config, output_config)
 
