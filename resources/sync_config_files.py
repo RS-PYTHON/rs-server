@@ -23,7 +23,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -37,15 +36,8 @@ yaml.Dumper.ignore_aliases = lambda *_: True
 
 logger = Logging.default(Path(__file__).name)
 
-
-# Save the header for each config file. It is different between rs-demo, and rs-helm/infra
-@dataclass
-class Header:
-    demo: str
-    helm_infra: str
-
-
-FILE_HEADERS: dict[Path, Header] = {}
+#
+# Class definition
 
 
 class Stations:
@@ -73,6 +65,28 @@ class Stations:
             self.value = station
 
 
+@dataclass
+class HelmOrInfraParams:
+    """
+    Parameters to copy a single configuration file to rs-helm or rs-infrastructure.
+
+    Attributes:
+        input_path_relative: input configuration file path, relative to the rs-server root dir
+        input_root_tags: root yaml tags from where the input values must be read
+        output_root_tags: root yaml tags from where the output values must be written
+        output_doc_index: output document index (start at 0) to write (only for yaml files with multiple documents)
+    """
+
+    input_path_relative: str
+    input_root_tags: list[str]
+    output_root_tags: list[str]
+    output_doc_index: int
+
+
+#
+# Utility functions
+
+
 def recursive_update(old, new):
     """Recursive dict update, taken from: https://stackoverflow.com/a/3233356"""
     for key, value in new.items():
@@ -98,12 +112,20 @@ def change_yaml_style(style, representer):
     return new_representer
 
 
+#
+# Init global variables
+
+
 represent_literal_str = change_yaml_style("|", SafeRepresenter.represent_str)
 yaml.add_representer(literal_str, represent_literal_str)
 
 
-# Used to replace local urls like http(s)://(127.0.0.1|localhost):5xxx
+# Replace local urls like http(s)://(127.0.0.1|localhost):5xxx
 REGEX_URL = re.compile(r"(https?://)(127.0.0.1|localhost):5\d+")
+
+# Replace k8s values
+REGEX_RANGE_START = r"({{-?\s*range\s.*-?}})"
+REGEX_RANGE_END = r"({{-?\s*end\s.*-?}})"
 
 DCB_OPEN = "DOUBLE_CURLY_BRACES_OPEN"
 DCB_CLOSE = "DOUBLE_CURLY_BRACES_CLOSE"
@@ -121,35 +143,58 @@ if not rs_helm_dir.is_dir():
 if not rs_infra_dir.is_dir():
     logger.warning(f"No 'rs-infrastructure' repository found under: '{rs_infra_dir!s}'")
 
-# Extract the header from this current file. It will be added to yaml files modified from a template.
-header = ""
+# Extract the copyright header from this current file. It will be added to yaml files modified from a template.
+COPYRIGHT_HEADER = ""
 with open(__file__, "r") as this_script:
     for line in this_script:
         line = line.strip()
         if not line:
             continue
         if line.startswith("#"):
-            header += line + "\n"
+            COPYRIGHT_HEADER += line + "\n"
         else:
             break
+
+# Save the template file paths that were used to create each final configuration file.
+# Key=final file, values=template files.
+TEMPLATE_PATHS: dict[str, list[str]] = {}
+
+#
+# Implement main features
+
+
+def get_header(template_paths: list[str] | None = None, final_paths: list[str] | None = None):
+    """
+    Return header for configuration file created from template files.
+
+    Args:
+        template_paths: template file paths, relative to the rs-server root dir.
+        final_paths: final configuration file absolute paths
+    """
+    if template_paths is None:
+        template_paths = []
+    if final_paths is None:
+        final_paths = []
+
+    # Get the template files used to create the final files
+    for path in final_paths:
+        template_paths += TEMPLATE_PATHS.get(path)  # the file should be present in this dict
+
+    sep = "\n#  - rs-server/"
+    header_paths = sep + sep.join(template_paths + [os.path.relpath(__file__, rs_server_dir)])
+    return (
+        COPYRIGHT_HEADER
+        + f"\n# THIS FILE WAS AUTOMATICALLY CREATED FROM:{header_paths}\n# DON'T MODIFY IT DIRECTLY !\n\n"
+    )
 
 
 def create_from_template(template_paths: list[str]):
     """
     Create a configuration file from one or several template paths.
-    Paths are given from the rs-server root dir.
+
+    Args:
+        template_paths: template file paths, relative to the rs-server root dir.
     """
-
-    # Add a warning message to the header
-    sep = "\n#  - rs-server/"
-    header_paths = sep + sep.join(template_paths + [os.path.relpath(__file__, rs_server_dir)])
-    this_header = (
-        header + f"\n# THIS FILE WAS AUTOMATICALLY CREATED FROM:{header_paths}\n# DON'T MODIFY IT DIRECTLY !\n\n"
-    )
-
-    # Header for rs-helm and rs-infrastructure
-    helm_infra_header = header + f"\n# NOTE: THIS FILE WAS PARTLY CREATED FROM:{header_paths}\n\n"
-
     all_files: dict = {}
     output_paths: set[Path] = set()
     for template_path in template_paths:
@@ -206,23 +251,33 @@ def create_from_template(template_paths: list[str]):
 
         all_files.update(file)
 
-    # Write back the templated file
-    assert len(output_paths) == 1  # we should have a single output file
+    # We should have a single output file
+    assert len(output_paths) == 1
     output_path: Path = output_paths.pop()
-    FILE_HEADERS[output_path] = Header(this_header, helm_infra_header)
+
+    # Save the template file paths that were used to create each final configuration file.
+    TEMPLATE_PATHS[output_path] = template_paths
+
+    # Write back the templated file
     with open(output_path, "w") as opened:
         logger.info(f"Update: '{output_path!s}'")
-        opened.write(this_header)
+        opened.write(get_header(template_paths))
         if is_json:
             json.dump(all_files, opened, indent=2, sort_keys=False)
         else:
             yaml.dump(all_files, opened, default_flow_style=False, sort_keys=False)
 
 
+#
+# rs-demo
+
+
 def copy_to_demo(input_path_relative: str):
     """
-    Copy a configuration file from rs-server to rs-demo.
-    Path is given from the rs-server root dir.
+    Copy and update a configuration file from rs-server to rs-demo.
+
+    Args:
+        input_path_relative: input configuration file path, relative to the rs-server root dir
     """
     if not rs_demo_dir.is_dir():
         return
@@ -238,26 +293,31 @@ def copy_to_demo(input_path_relative: str):
     with open(config_path, encoding="utf-8") as opened:
         file = yaml.safe_load(opened)
 
-    def update_all_values(parent_key: str, config: dict, stations: Stations = Stations()):
+    def update_all_values(parent_key: str, config: dict, station: Stations = Stations()):
         """
         Recursive function to update values from the config file.
+
+        Args:
+            parent_key: parent yaml tag name
+            config: current yaml block
+            station: is the current yaml block implementing an adgs station, or cadip station, or ...
         """
         assert isinstance(config, dict)
 
         # Check station name from parent key
-        stations = copy.deepcopy(stations)  # save the instance so the previous recursive calls are not impacted
-        stations.update(parent_key)
+        station = copy.deepcopy(station)  # save the instance so the previous recursive calls are not impacted
+        station.update(parent_key)
 
         def update_single_value(value: str) -> str:
             """Return a single updated url value."""
             assert isinstance(value, str)
-            if stations.adgs:
+            if station.adgs:
                 return re.sub(REGEX_URL, r"\g<1>adgs-station:5000", value)
-            elif stations.cadip:
+            elif station.cadip:
                 return re.sub(REGEX_URL, r"\g<1>cadip-station:5000", value)
-            elif stations.lta:
+            elif station.lta:
                 return re.sub(REGEX_URL, r"\g<1>lta-station:5000", value)
-            elif stations.prip:
+            elif station.prip:
                 return re.sub(REGEX_URL, r"\g<1>prip-station:5000", value)
             else:
                 return value
@@ -267,7 +327,7 @@ def copy_to_demo(input_path_relative: str):
 
             # Recursive calls on dicts
             if isinstance(value, collections.abc.Mapping):
-                update_all_values(key, value, stations)
+                update_all_values(key, value, station)
 
             # Update string value
             elif isinstance(value, str):
@@ -279,7 +339,7 @@ def copy_to_demo(input_path_relative: str):
 
                     # ... on list dicts
                     if isinstance(subvalue, collections.abc.Mapping):
-                        update_all_values(key, subvalue, stations)
+                        update_all_values(key, subvalue, station)
 
                     # ... or on list string values
                     elif isinstance(subvalue, str):
@@ -290,109 +350,181 @@ def copy_to_demo(input_path_relative: str):
     # Write the modified output file
     with open(config_path, "w") as opened:
         logger.info(f"Update: '{config_path!s}'")
-        opened.write(FILE_HEADERS[input_path].demo)
+        opened.write(get_header(final_paths=[input_path]))
         yaml.dump(file, opened, default_flow_style=False, sort_keys=False)
 
 
-def copy_to_helm_infra(
-    input_path_relative: str,
-    input_roots: list[str],
+#
+# rs-helm and rs-infrastructure
+
+
+def copy_to_helm_or_infra(
+    all_params: list[HelmOrInfraParams],
     output_path: Path,
-    output_roots: list[str],
-    output_doc_index: int = 0,  # indexes start at 0
 ):
     """
-    Copy and update a configuration file that contains multiple yaml documents
-    from rs-server to rs-helm or rs-infrastructure.
-    Input path is given from the rs-server root dir.
+    Copy and update a configuration file from rs-server to rs-helm or rs-infrastructure.
+
+    Args:
+        all_params: parameters to copy each configuration file
+        output_path: output configuration absolute path
     """
+
+    # The k8s configmap files contain strings that contain yaml contents.
+    yaml_as_string = output_path.name == "configmap.yaml"
+
+    # Open the output file if it exists.
+    if output_path.is_file():
+        with open(output_path, encoding="utf-8") as opened:
+            output_configs = read_helm_or_infra(opened.read(), yaml_as_string)
+
+    # Else just start from empty dicts
+    if not output_configs:
+        output_configs = [{}] * len(all_params)
+
+    # For each input configuration file
+    for params in all_params:
+
+        # Check that the document exists in the output file
+        if params.output_doc_index > len(output_configs):
+            raise RuntimeError(f"Document index #{params.output_doc_index} not found in: {output_path!r}")
+
+        # Call the sub-function on a single doc
+        copy_to_helm_or_infra_single_doc(params, output_configs[params.output_doc_index])
+
+    # Get the file header from the list of input configuration files
+    input_paths = [rs_server_dir / param.input_path_relative for param in all_params]
+    header = get_header(final_paths=input_paths)
+
+    # Write the modified output file into a string
+    yaml_contents = write_helm_or_infra(output_configs, yaml_as_string)
+    with open(output_path, "w") as opened:
+        logger.info(f"Update: '{output_path!s}'")
+        opened.write(header)
+        opened.write(yaml_contents)
+
+
+def read_helm_or_infra(yaml_contents: str, yaml_as_string: bool) -> list[dict]:
+    """
+    Read Kubernetes configuration files that contain not yaml-compliant values and need special care.
+
+    Args:
+        yaml_contents: yaml contents as a string
+        yaml_as_string: should configmap.yaml string values be converted to yaml dict ?
+
+    Returns:
+        list of yaml dicts = one per document
+    """
+    assert isinstance(yaml_contents, str)
+
+    # Python yaml cannot open the {{- range ... }}' and '{{- end }}' tags
+    # that do not contain a : at the end, so we add the : here
+    yaml_contents = re.sub(re.compile(REGEX_RANGE_START), rf"\g<1>:", yaml_contents)
+    yaml_contents = re.sub(re.compile(REGEX_RANGE_END), rf"\g<1>:", yaml_contents)
+
+    # Python yaml cannot open files with k8s values like {{ some.thing }}
+    # so we replace them with any other strings.
+    yaml_contents = yaml_contents.replace("{{", DCB_OPEN)
+    yaml_contents = yaml_contents.replace("}}", DCB_CLOSE)
+
+    # Read the configuration file as a multidoc file (with docs separated by '---')
+    output_configs = list(yaml.safe_load_all(yaml_contents)) or []
+
+    # Parse strings that contain yaml values
+    if yaml_as_string:
+        for output_config in output_configs:
+            data = output_config.get("data", {})
+            for key, value in data.items():
+                if isinstance(value, str):
+                    data[key] = yaml.safe_load(value)
+
+    return output_configs
+
+
+def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str:
+    """
+    Write Kubernetes configuration files that contain not yaml-compliant values and need special care.
+
+    Args:
+        output_configs: list of yaml dicts = one per document
+        yaml_as_string: should configmap.yaml string values be converted from yaml dict ?
+
+    Returns:
+        String contents.
+    """
+    assert isinstance(output_configs, list)
+
+    # Use a large width so we don't split long lines
+    witdh = 1000
+
+    # Unparse yaml contents into literal strings (indented with |)
+    if yaml_as_string:
+        for output_config in output_configs:
+            data = output_config.get("data", {})
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    data[key] = literal_str(yaml.dump(value, default_flow_style=False, sort_keys=False, width=witdh))
+
+    # Write the configuration file as a multidoc file (with docs separated by '---')
+    yaml_contents = yaml.dump_all(output_configs, default_flow_style=False, sort_keys=False, width=witdh)
+
+    # Restore the double curly braces
+    yaml_contents = yaml_contents.replace(DCB_OPEN, "{{")
+    yaml_contents = yaml_contents.replace(DCB_CLOSE, "}}")
+
+    # Remove the added : after the k8s values
+    suffix = r":(\s*null)?"  # yaml parsing added ': null' after the tag
+    yaml_contents = re.sub(re.compile(REGEX_RANGE_START + suffix), rf"\g<1>", yaml_contents)
+    yaml_contents = re.sub(re.compile(REGEX_RANGE_END + suffix), rf"\g<1>", yaml_contents)
+
+    return yaml_contents
+
+
+def copy_to_helm_or_infra_single_doc(
+    params: HelmOrInfraParams,
+    output_config: Path,
+):
+    """
+    Copy and update a single yaml document from rs-server to rs-helm or rs-infrastructure.
+
+    Args:
+        params parameters to copy a single configuration file
+        output_config: current output yaml block
+    """
+
     # There are only yaml files for now
-    input_path = rs_server_dir / input_path_relative
+    input_path = rs_server_dir / params.input_path_relative
     assert input_path.suffix.lower() in (".yml", ".yaml")
 
     # Open the input file
     with open(input_path, encoding="utf-8") as opened:
         input_config = yaml.safe_load(opened)
 
-    # Open the output file if it exists.
-    # Python yaml cannot open files with k8s values like {{ some.thing }}
-    # so we need to hack the file first to replace these values with sed.
-    if output_path.is_file():
-        with open(output_path, encoding="utf-8") as opened:
-            plain_file = opened.read()
-            plain_file = plain_file.replace("{{", DCB_OPEN)
-            plain_file = plain_file.replace("}}", DCB_CLOSE)
-            output_configs = list(yaml.safe_load_all(plain_file)) or [{}]
-
-    # Else just start from an empty dict
-    else:
-        output_configs = [{}]
-
-    # Check that the document exists in the output file
-    if output_doc_index > len(output_configs):
-        raise RuntimeError(f"Document index #{output_doc_index} not found in: {output_path!r}")
-
-    # Call the sub-function on a single doc
-    copy_to_helm_infra_single_doc(input_config, input_roots, output_configs[output_doc_index], output_roots)
-
-    # Some k8s files have yaml dicts encoded as strings. We want to dump them using literal blocks.
-    for output_config in output_configs:
-        data = output_config.get("data", {})
-        for key, value in data.items():
-            if isinstance(value, str):
-                data[key] = literal_str(value)
-
-    # Write the modified output file. Restore the double curly braces.
-    # Use width=... so we don't split long lines.
-    with open(output_path, "w") as opened:
-        logger.info(f"Update: '{output_path!s}'")
-        opened.write(FILE_HEADERS[input_path].helm_infra)
-        yaml_contents = yaml.dump_all(output_configs, default_flow_style=False, sort_keys=False, width=1000)
-        yaml_contents = yaml_contents.replace(DCB_OPEN, "{{")
-        yaml_contents = yaml_contents.replace(DCB_CLOSE, "}}")
-        opened.write(yaml_contents)
-
-    # Remove the quotes we added above around k8s values like {{ some.thing }}
-    subprocess.run(["sed", "-i", r"s|'\({{.*}}\)'|\1|g", output_path])
-
-
-def copy_to_helm_infra_single_doc(
-    input_config: dict,
-    input_roots: list[str],
-    output_config: Path,
-    output_roots: list[str],
-):
-    """
-    Copy and update a single yaml document from rs-server to rs-helm or rs-infrastructure.
-    """
-
     # Start from the input and output root tag(s)
-    for tag in input_roots:
+    for tag in params.input_root_tags:
         input_config = input_config[tag]  # input tags must exist
-    last_output_parent = None
-    for tag in output_roots:
+    for tag in params.output_root_tags:
         if tag not in output_config:  # output tags are optional
             output_config[tag] = {}
             logger.warning(f"Tag does not exist in output file: {tag!r}")
-        last_output_parent = output_config
         output_config = output_config[tag]
 
-    # If the output config is a string from a k8s file, load it as a yaml
-    as_string = False
-    if isinstance(output_config, str):
-        output_config = yaml.safe_load(output_config)
-        as_string = True
-
-    def update_all_values(parent_key: str, input_config: dict, output_config: dict, stations: Stations = Stations()):
+    def update_all_values(parent_key: str, input_config: dict, output_config: dict, station: Stations = Stations()):
         """
-        Recursive function to copy and adapt values from input into output config.
+        Recursive function to update values from the config file.
+
+        Args:
+            parent_key: parent yaml tag name
+            input_config: current input yaml block
+            output_config: current output yaml block
+            station: is the current yaml block implementing an adgs station, or cadip station, or ...
         """
         assert isinstance(input_config, dict)
         assert isinstance(output_config, dict)
 
         # Check station name from parent key
-        stations = copy.deepcopy(stations)  # save the instance so the previous recursive calls are not impacted
-        stations.update(parent_key)
+        station = copy.deepcopy(station)  # save the instance so the previous recursive calls are not impacted
+        station.update(parent_key)
 
         def update_single_value(input_value: Any, output_value: str) -> str:
             """Return a single updated value."""
@@ -403,28 +535,28 @@ def copy_to_helm_infra_single_doc(
                 return output_value
 
             # Else try to update url in the input value
-            if stations.adgs:
+            if station.adgs:
                 return re.sub(
                     REGEX_URL,
-                    rf"\g<1>mockup-station-{stations.value}-svc.processing.svc.cluster.local:8080",
+                    rf"\g<1>mockup-station-{station.value}-svc.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            elif stations.cadip:
+            elif station.cadip:
                 return re.sub(
                     REGEX_URL,
-                    rf"\g<1>mockup-station-cadip-{stations.value}-svc.processing.svc.cluster.local:8080",
+                    rf"\g<1>mockup-station-cadip-{station.value}-svc.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            elif stations.lta:
+            elif station.lta:
                 return re.sub(
                     REGEX_URL,
-                    rf"\g<1>mockup-lta-{stations.value}-svc.processing.svc.cluster.local:8080",
+                    rf"\g<1>mockup-lta-{station.value}-svc.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            elif stations.prip:
+            elif station.prip:
                 return re.sub(
                     REGEX_URL,
-                    rf"\g<1>mockup-prip-{stations.value}-svc.processing.svc.cluster.local:8080",
+                    rf"\g<1>mockup-prip-{station.value}-svc.processing.svc.cluster.local:8080",
                     input_value,
                 )
             else:
@@ -439,7 +571,7 @@ def copy_to_helm_infra_single_doc(
             # Recursive calls on dicts
             output_value = output_config[key]
             if isinstance(output_value, collections.abc.Mapping):
-                update_all_values(key, input_value, output_value, stations)
+                update_all_values(key, input_value, output_value, station)
 
             # Update string value
             elif isinstance(output_value, str):
@@ -455,7 +587,7 @@ def copy_to_helm_infra_single_doc(
 
                     # ... on list dicts
                     if isinstance(output_subvalue, collections.abc.Mapping):
-                        update_all_values(key, input_subvalue, output_subvalue, stations)
+                        update_all_values(key, input_subvalue, output_subvalue, station)
 
                     # ... or on list string values
                     elif isinstance(output_subvalue, str):
@@ -463,71 +595,111 @@ def copy_to_helm_infra_single_doc(
 
     update_all_values("", input_config, output_config)
 
-    # Convert back the yaml dict into a string and update the last parent dict.
-    # We don't handle the case of a string at the root of the document
-    if as_string:
-        assert last_output_parent
-        last_output_parent[output_roots[-1]] = yaml.dump(
-            output_config,
-            default_flow_style=False,
-            sort_keys=False,
-            width=1000,
-        )
 
+if __name__ == "__main__":
 
-# Create configuration files from templates. Paths are given from the rs-server root dir.
-for templates in (
-    ["services/common/config/rs-server.template.yaml"],
-    ["services/adgs/config/adgs_search_config.template.yaml"],
-    ["services/adgs/config/adgs_ws_config_token_module.template.yaml"],
-    ["services/adgs/config/adgs_ws_config.template.yaml"],
-    ["services/cadip/config/cadip_search_config.template.yaml"],
-    [
-        "services/cadip/config/cadip_ws_config_token_module.template.yaml",
-        "services/cadip/config/cadip_ws_config_token_module.template_session.yaml",
-    ],
-    [
-        "services/cadip/config/cadip_ws_config.template.yaml",
-        "services/cadip/config/cadip_ws_config.template_session.yaml",
-    ],
-):
-    create_from_template(templates)
+    # Create configuration files from templates. Paths are given from the rs-server root dir.
+    for templates in (
+        ["services/common/config/rs-server.template.yaml"],
+        ["services/adgs/config/adgs_search_config.template.yaml"],
+        ["services/adgs/config/adgs_ws_config_token_module.template.yaml"],
+        ["services/adgs/config/adgs_ws_config.template.yaml"],
+        ["services/cadip/config/cadip_search_config.template.yaml"],
+        [
+            "services/cadip/config/cadip_ws_config_token_module.template.yaml",
+            "services/cadip/config/cadip_ws_config_token_module.template_session.yaml",
+        ],
+        [
+            "services/cadip/config/cadip_ws_config.template.yaml",
+            "services/cadip/config/cadip_ws_config.template_session.yaml",
+        ],
+    ):
+        create_from_template(templates)
 
+    # Copy resulting files to rs-demo
+    for config_path in (
+        "services/common/config/rs-server.yaml",
+        "services/adgs/config/adgs_ws_config_token_module.yaml",
+        "services/cadip/config/cadip_ws_config_token_module.yaml",
+    ):
+        copy_to_demo(config_path)
 
-# # Copy resulting files to rs-demo
-# for config_path in (
-#     "services/common/config/rs-server.yaml",
-#     "services/adgs/config/adgs_ws_config_token_module.yaml",
-#     "services/cadip/config/cadip_ws_config_token_module.yaml",
-# ):
-#     copy_to_demo(config_path)
+    #
+    # Copy resulting files to rs-helm and rs-infrastructure
 
-# #
-# # Copy resulting files to rs-helm and rs-infrastructure
+    station_secrets = HelmOrInfraParams(
+        "services/common/config/rs-server.yaml",
+        ["external_data_sources"],
+        ["app", "stations"],
+        0,
+    )
+    copy_to_helm_or_infra([station_secrets], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
+    copy_to_helm_or_infra([station_secrets], rs_infra_dir / "rs-server/rs-server-station-secrets/values.yaml")
 
-# input = ["services/common/config/rs-server.yaml", ["external_data_sources"]]
-# copy_to_helm_infra(*input, rs_helm_dir / "charts/rs-server-station-secrets/values.yaml", ["app", "stations"])
-# copy_to_helm_infra(*input, rs_infra_dir / "rs-server/rs-server-station-secrets/values.yaml", ["app", "stations"])
+    copy_to_helm_or_infra(
+        [
+            HelmOrInfraParams(
+                "services/adgs/config/adgs_ws_config.yaml",
+                ["adgs"],  # use the first input station values for all other stations
+                [  # where to write in the output file
+                    "data",
+                    f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
+                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
+                    f"{DCB_OPEN} $k {DCB_CLOSE}",
+                ],
+                0,  # output doc index
+            ),
+            HelmOrInfraParams(
+                "services/adgs/config/adgs_ws_config_token_module.yaml",
+                ["adgs"],  # use the first input station values for all other stations
+                [  # where to write in the output file
+                    "data",
+                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
+                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
+                    f"{DCB_OPEN} $k {DCB_CLOSE}",
+                ],
+                1,
+            ),
+            HelmOrInfraParams(
+                "services/adgs/config/adgs_search_config.yaml",
+                [],
+                ["data", f"{DCB_OPEN} .Values.app.adgsSearchConfigFile {DCB_CLOSE}"],
+                2,
+            ),
+        ],
+        rs_helm_dir / "charts/rs-server-adgs/templates/configmap.yaml",
+    )
 
-# Use the first station values for all other stations
-copy_to_helm_infra(
-    "services/adgs/config/adgs_ws_config.yaml",
-    ["adgs"],
-    rs_helm_dir / "charts/rs-server-adgs/templates/configmap.yaml",
-    [
-        "data",
-        f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
-        f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
-        f"{DCB_OPEN} $k {DCB_CLOSE}",
-    ],
-    0,
-)
-
-copy_to_helm_infra(
-    "services/adgs/config/adgs_search_config.yaml",
-    [],
-    rs_helm_dir / "charts/rs-server-adgs/templates/configmap.yaml",
-    ["data", f"{DCB_OPEN} .Values.app.adgsSearchConfigFile {DCB_CLOSE}"],
-    2,
-)
-# copy_to_helm_infra(*input, rs_infra_dir / "rs-server/rs-server-station-secrets/values.yaml", ["app", "stations"])
+    copy_to_helm_or_infra(
+        [
+            HelmOrInfraParams(
+                "services/cadip/config/cadip_ws_config.yaml",
+                ["cadip"],  # use the first input station values for all other stations
+                [  # where to write in the output file
+                    "data",
+                    f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
+                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
+                    f"{DCB_OPEN} $k {DCB_CLOSE}",
+                ],
+                0,  # output doc index
+            ),
+            HelmOrInfraParams(
+                "services/cadip/config/cadip_ws_config_token_module.yaml",
+                ["cadip"],  # use the first input station values for all other stations
+                [  # where to write in the output file
+                    "data",
+                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
+                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
+                    f"{DCB_OPEN} $k {DCB_CLOSE}",
+                ],
+                1,
+            ),
+            HelmOrInfraParams(
+                "services/cadip/config/cadip_search_config.yaml",
+                [],
+                ["data", f"{DCB_OPEN} .Values.app.cadipSearchConfigFile {DCB_CLOSE}"],
+                2,
+            ),
+        ],
+        rs_helm_dir / "charts/rs-server-cadip/templates/configmap.yaml",
+    )
