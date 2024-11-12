@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: publish-wheel
-description: Publish wheel on GitHub
+name: build-wheel
+description: Build wheel and sdist
 
 inputs:
   package_directory:
@@ -28,6 +28,9 @@ outputs:
   package_name:
     description: .whl package name
     value: ${{ steps.package_name.outputs.package_name }}
+  sdist_name:
+    description: .tar.gz sdist name
+    value: ${{ steps.sdist_name.outputs.sdist_name }}
 
 runs:
   using: "composite"
@@ -54,8 +57,20 @@ runs:
       run: echo package_name=$(basename ${{ inputs.package_directory }}/dist/*.whl) >> "$GITHUB_OUTPUT"
       shell: bash
 
+    # Note: the sdist file is built in package_directory/dist
+    - name: Find sdist filename
+      id: sdist_name
+      run: echo sdist_name=$(basename ${{ inputs.package_directory }}/dist/*.tar.gz) >> "$GITHUB_OUTPUT"
+      shell: bash
+
     - name: Save wheel package as artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.package_name.outputs.package_name }}
         path: ${{ inputs.package_directory }}/dist/${{ steps.package_name.outputs.package_name }}
+
+    - name: Save sdist as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.sdist_name.outputs.sdist_name }}
+        path: ${{ inputs.package_directory }}/dist/${{ steps.sdist_name.outputs.sdist_name }}

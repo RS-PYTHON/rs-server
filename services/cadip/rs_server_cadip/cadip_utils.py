@@ -23,7 +23,7 @@ import os
 import os.path as osp
 import re
 from pathlib import Path
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import eodag
 import stac_pydantic
@@ -70,11 +70,11 @@ def rename_keys(product: dict) -> dict:
     return product
 
 
-def update_product(product: dict, href: str) -> dict:
+def update_product(product: dict) -> dict:
     """Update product with renamed keys and default geometry."""
     product = rename_keys(product)
     product.update(DEFAULT_GEOM)
-    product["href"] = re.sub(r"\([^\)]*\)", f'({product["id"]})', href)
+    product["href"] = re.sub(r"\([^\)]*\)", f'({product["id"]})', product["href"])
     return product
 
 
@@ -93,10 +93,9 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
     return [
         eodag.EOProduct(
             provider="internal_session_product_file_from_cadip",
-            properties=update_product(product, session.properties["href"]),
+            properties=update_product(session.properties),
         )
         for session in input_sessions
-        for product in session.properties.get("Files", [])
     ]
 
 
@@ -143,12 +142,13 @@ def cadip_map_mission(platform: str, constellation: str):
     """
     data: dict = map_stac_platform()
     satellite: Union[None, str] = None
+    satellites: Union[None, str] = None
     try:
         if platform:
             config = next(sat[platform] for sat in data["satellites"] if platform in sat)
             satellite = config.get("code", None)
         if constellation:
-            const_sat: str = ", ".join(
+            satellites = ", ".join(
                 [
                     satellite_info["code"]
                     for satellite in data["satellites"]
@@ -156,15 +156,48 @@ def cadip_map_mission(platform: str, constellation: str):
                     if satellite_info.get("constellation") == constellation
                 ],
             )
-            if satellite and satellite not in const_sat:
+            if satellite and satellite not in satellites:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail="Invalid combination of platform-constellation",
                 )
-            satellite = const_sat
     except (KeyError, IndexError, StopIteration) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Cannot map platform/constellation",
         ) from exc
-    return satellite
+    return satellite or satellites
+
+
+def cadip_reverse_map_mission(platform: Union[str, None]) -> Tuple[Union[str, None], Union[str, None]]:
+    """Function used to re-map platform and constellation based on satellite value."""
+    if not platform:
+        return None, None
+    for satellite in map_stac_platform()["satellites"]:
+        for key, info in satellite.items():
+            if info.get("code") == platform:
+                return key, info.get("constellation")
+    return None, None
+
+
+def link_assets_to_session(session_data, assets_dict, mapper):
+    """Function used to allocate assets to propper session item based on session id property."""
+    # Validity check to be later added.
+    for feature in session_data.features:
+        matching_assets = [asset_item for asset_item in assets_dict if feature.id == asset_item["SessionID"]]
+        for asset_item in matching_assets:
+            asset_dict = {
+                map_key: asset_item[map_value] for map_key, map_value in mapper.items() if map_value in asset_item
+            }
+            asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
+            feature.assets.update({asset.title: asset})
+    return session_data
+
+
+def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
+    """Used to create a more complex mapping on platform/constallation from odata to stac."""
+    for feature in collection.features:
+        feature.properties.platform, feature.properties.constellation = cadip_reverse_map_mission(
+            feature.properties.platform,
+        )
+    return collection

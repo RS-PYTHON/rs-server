@@ -148,8 +148,9 @@ class TestConstellationMapping:
             ("sentinel-1a", None, "S1A"),
             ("sentinel-2b", None, "S2B"),
             ("sentinel-5p", None, "S5P"),
-            # if both plaftorm and const are defined, priority is to get constellation since it contanis more results
-            ("sentinel-1a", "sentinel-1", "S1A, S1B, S1C"),
+            # if both plaftorm and const are defined, priority is to get platform since it is more precise
+            ("sentinel-2b", "sentinel-2", "S2B"),
+            ("sentinel-1a", "sentinel-1", "S1A"),
             ("sentinel-5p", "sentinel-5P", "S5P"),
             (None, "sentinel-1", "S1A, S1B, S1C"),
             (None, "sentinel-2", "S2A, S2B, S2C"),
@@ -167,6 +168,7 @@ class TestConstellationMapping:
             ("sentinel-invalid", None),  # invalid platform
             ("sentinel-1a", "sentinel-invalid"),  # valid platform, invalid constellation
             ("sentinel-1a", "sentinel-5p"),  # invalid relation between platform and const
+            ("sentinel-2a", "sentinel-1"),
         ],
     )
     def test_invalid_cadip_mapping(self, platform, constellation):
@@ -430,7 +432,14 @@ class TestFeatureOdataStacMapping:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
-    def test_cadip_feature_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
+    def test_cadip_feature_mapping(
+        self,
+        client,
+        mock_token_validation,
+        cadip_feature,
+        cadip_session_response,
+        cadip_file_response,
+    ):
         """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
         Visit conftest to view content of cadip_feature and cadip_response.
         """
@@ -438,9 +447,14 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
-            "$expand=Files",
-            json=cadip_response,
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
+            json=cadip_session_response,
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+            json=cadip_file_response,
             status=200,
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312").json()
@@ -455,8 +469,7 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
-            "$expand=Files",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&",
             json={"responses": []},
             status=200,
         )
@@ -545,8 +558,7 @@ class TestFeatureOdataStacMapping:
             ),
             (
                 "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
-                "$top=20&$expand=Files",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
                 {"detail": "Cadip session 'INVALID_ITEM' not found."},
             ),
         ],
@@ -555,7 +567,7 @@ class TestFeatureOdataStacMapping:
         self,
         client,
         mock_token_validation,
-        cadip_response,
+        cadip_session_response,
         adgs_response,
         endpoint,
         odata_url,
@@ -566,7 +578,7 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             odata_url,
-            json=self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_response, adgs_response),
+            json=self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_session_response, adgs_response),
             status=200,
         )
         response = client.get(endpoint)
@@ -580,7 +592,14 @@ class TestFeatureCollectionOdataStacMapping:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
-    def test_cadip_feature_collection_mapping(self, client, mock_token_validation, cadip_feature, cadip_response):
+    def test_cadip_feature_collection_mapping(
+        self,
+        client,
+        mock_token_validation,
+        cadip_feature,
+        cadip_file_response,
+        cadip_session_response,
+    ):
         """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
         Visit conftest to view content of cadip_feature and cadip_response.
         """
@@ -588,9 +607,14 @@ class TestFeatureCollectionOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
-            "$expand=Files",
-            json=cadip_response,
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&",
+            json=cadip_session_response,
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+            json=cadip_file_response,
             status=200,
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items").json()
@@ -655,8 +679,7 @@ class TestCollection:
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/collections/cadip_session_by_id",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&"
-                "$top=20&$expand=Files",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
                 {
                     "rel": "self",
                     "type": "application/json",
@@ -685,12 +708,16 @@ class TestCollection:
         endpoint,
         odata_request,
         href,
-        cadip_response,
+        cadip_session_response,
         adgs_response,
     ):
         """Test a valid call to /collections endpoint, check that found collection is converted to a item link."""
         mock_token_validation()
-        selected_response = self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_response, adgs_response)
+        selected_response = self.setup(
+            "adgs" if "auxip" in endpoint else "cadip",
+            cadip_session_response,
+            adgs_response,
+        )
         responses.add(responses.GET, odata_request, json=selected_response, status=200)
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
@@ -703,8 +730,7 @@ class TestCollection:
         [
             (
                 "/cadip/collections/cadip_session_by_id",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&"
-                "$expand=Files",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
                 {
                     "href": "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/"
                     "Sentinel_Data_Terms_and_Conditions.pdf",
@@ -752,7 +778,8 @@ def test_search_parameters(
     method,
     service,
     adgs_response,
-    cadip_response,
+    cadip_file_response,
+    cadip_session_response,
 ):
     """Test all search parameters"""
 
@@ -767,7 +794,7 @@ def test_search_parameters(
         expected_response = adgs_response
     elif cadip:
         service_utils = cadip_utils
-        expected_response = cadip_response
+        expected_response = cadip_session_response
     else:
         raise NotImplementedError
 
@@ -956,7 +983,7 @@ def test_search_parameters(
                     'http://127.0.0.1:5000/Sessions?$filter="'
                     f"SessionId in {user_ids} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}&$expand=Files'
+                    '"&$top={limit}'
                 )
 
                 odata_query = (
@@ -964,7 +991,7 @@ def test_search_parameters(
                     f"SessionId in {user_ids} "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}&$expand=Files'
+                    '"&$top={limit}'
                 )
             else:
                 raise NotImplementedError
@@ -1000,10 +1027,7 @@ def test_search_parameters(
                 if user_query:
                     product_type = user_product_type
                     constellation = user_constellation
-                    # TEMP ! because cadip_map_mission returns S2A, S2B, S2C instead of S2A
-                    # for user_platform="sentinel-2a" AND user_constellation="sentinel-2"
-                    satellite = user_satellite  # we should use this
-                    satellite = "S2A"  # use this workaround in the meantime
+                    satellite = user_satellite
                 else:
                     product_type = collection["query"].get("productType")
                     constellation = collection["query"].get("platformShortName")
@@ -1030,6 +1054,17 @@ def test_search_parameters(
                         status=status.HTTP_200_OK,
                         json=expected_response,
                     )
+                    if cadip:
+                        odata_query_files = (
+                            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%"
+                            "20S1A_20200105072204051312%22&$top=20"
+                        )
+                        rsps.add(
+                            responses.GET,
+                            odata_query_files,
+                            status=status.HTTP_200_OK,
+                            json=cadip_file_response,
+                        )
                     expect_result = True
                 else:
                     expect_result = False
@@ -1046,9 +1081,14 @@ def test_search_parameters(
                 # Check that the search function was called and returned the expected result
                 assert response.is_success
                 features = response.json()["features"]
-                if expect_result:
+                if expect_result and adgs:
+                    # 2 calls, one for sessions, one for files
                     assert spy_search.call_count == 1
                     assert len(spy_search.spy_return) == len(features) == 1  # expected_response
+                elif expect_result and cadip:
+                    # 2 calls, one for sessions, one for files
+                    assert spy_search.call_count == 2
+                    assert len(spy_search.spy_return) == 2 * len(features)  # expected_response
                 else:
                     assert spy_search.call_count == 0
                     assert len(features) == 0

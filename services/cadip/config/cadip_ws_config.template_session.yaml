@@ -135,7 +135,7 @@ template:
 
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Files"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
       total_items_nb_key_path: "$.total"
 
   download:

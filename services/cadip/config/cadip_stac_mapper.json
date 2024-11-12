@@ -8,5 +8,6 @@
     "cadip:session_id": "SessionID",
     "created": "PublicationDate",
     "eviction_datetime": "EvictionDate",
-    "file:size": "Size"
+    "file:size": "Size",
+    "href": "href"
 }

@@ -31,7 +31,7 @@ from starlette.requests import Request
 @pytest.fixture(name="request_ids")
 def request_id_example() -> dict:
     """Create a request_ids disctionary to test the reroute url function calls"""
-    return {"auth_roles": "", "user_login": "", "owner_id": "", "collection_id": [], "item_id": ""}
+    return {"auth_roles": "", "user_login": "", "owner_id": "", "collection_ids": [], "item_id": ""}
 
 
 @pytest.fixture(name="collection_toto_1")
@@ -145,7 +145,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         assert request.scope["path"] == "/collections/Toto_joplin/items/fe916452-ba6f-4631-9154-c249924a122d"
         valid_request_ids = {
             "owner_id": "Toto",
-            "collection_id": ["joplin"],
+            "collection_ids": ["joplin"],
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }
         assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
@@ -171,7 +171,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         )
         valid_request_ids = {
             "owner_id": getpass.getuser(),
-            "collection_id": ["joplin"],
+            "collection_ids": ["joplin"],
             "item_id": "fe916452-ba6f-4631-9154-c249924a122d",
         }
         assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
@@ -250,7 +250,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         # Check that the valid dictionary is a subset of the output dictionary
         valid_request_ids = {
             "owner_id": "toto",
-            "collection_id": ["toto_S1_L1"],
+            "collection_ids": ["toto_S1_L1"],
             "item_id": "",
         }
         assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
@@ -286,7 +286,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         # Check that the valid dictionary is a subset of the output dictionary
         valid_request_ids = {
             "owner_id": "toto",
-            "collection_id": ["S1_L1"],
+            "collection_ids": ["S1_L1"],
             "item_id": "",
         }
         assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
@@ -308,7 +308,7 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         # Check that the valid dictionary is a subset of the output dictionary
         valid_request_ids = {
             "owner_id": "toto",
-            "collection_id": ["S1_L1"],
+            "collection_ids": ["S1_L1"],
             "item_id": "",
         }
         assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())

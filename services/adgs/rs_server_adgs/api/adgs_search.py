@@ -36,6 +36,7 @@ from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
 from rs_server_adgs.adgs_utils import (
     auxip_map_mission,
+    prepare_collection,
     read_conf,
     select_config,
     serialize_adgs_asset,
@@ -319,7 +320,7 @@ def process_product_search(  # pylint: disable=too-many-locals
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
             collection = create_stac_collection(products, feature_template, stac_mapper)
-            return serialize_adgs_asset(collection, products)
+            return prepare_collection(serialize_adgs_asset(collection, products))
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
