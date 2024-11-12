@@ -21,7 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-from typing import Annotated, Any, List, Literal, Union
+from typing import Annotated, List, Literal, Union
 
 import requests
 import sqlalchemy
@@ -382,7 +382,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
     limit = limit if limit else 1000
-    sortby = validate_sort_input(sortby)
 
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
@@ -392,7 +391,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             platform=platform,
             sessions_search=True,
             items_per_page=limit,
-            sort_by=sortby,
+            sort_by=validate_sort_input(sortby),
         )
         products = validate_products(products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
@@ -433,7 +432,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
-) -> list[dict] | tuple[Any, str]:
+) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
@@ -464,7 +463,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     limit: Union[int, None] = 20,
     sortby: str = "-datetime",
     **kwargs,
-) -> list[dict] | tuple[Any, str]:
+) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
@@ -488,7 +487,6 @@ def process_files_search(  # pylint: disable=too-many-locals
     if not (datetime or session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
     start_date, stop_date = validate_inputs_format(datetime)
-    sortby = validate_sort_input(sortby)
     session: Union[List[str], str, None] = (
         ([sid.strip() for sid in session_id.split(",")] if session_id and "," in session_id else session_id)
         if session_id
@@ -503,7 +501,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             TimeRange(start_date, stop_date),
             id=session,
             items_per_page=limit,
-            sort_by=sortby,
+            sort_by=validate_sort_input(sortby),
         )
         if kwargs.get("deprecated", False):
             write_search_products_to_db(CadipDownloadStatus, products)
@@ -519,7 +517,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         logger.info("Succesfully listed and processed products from CADIP station")
         if kwargs.get("map_to_session", False):
             return [product.properties for product in products]
-        return cadip_item_collection.model_dump(), sortby
+        return cadip_item_collection.model_dump()
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")

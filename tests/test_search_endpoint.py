@@ -42,7 +42,8 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     mock_token_validation("cadip")
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id1"&$top=1000',
+        'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id1"'
+        "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
         json={"responses": expected_products[0]},
         status=200,
     )
@@ -55,7 +56,8 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     # Test a request with all files from multiple sessions
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter="SessionID%20in%20session_id2,%20session_id3"&$top=1000',
+        'http://127.0.0.1:5000/Files?$filter="SessionID%20in%20session_id2,%20session_id3"'
+        "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
         json={"responses": expected_products[1:]},
         status=200,
     )
@@ -70,7 +72,8 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id2%20and%20PublicationDate%20gt%20'
-        '2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z"&$top=1000',
+        '2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z"'
+        "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
         json={"responses": expected_products},
         status=200,
     )
@@ -447,13 +450,15 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
             json=cadip_session_response,
             status=200,
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -607,13 +612,15 @@ class TestFeatureCollectionOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
             json=cadip_session_response,
             status=200,
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&"
+            "$orderby=PublicationDate%20desc&$top=20&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -983,7 +990,7 @@ def test_search_parameters(
                     'http://127.0.0.1:5000/Sessions?$filter="'
                     f"SessionId in {user_ids} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0'
                 )
 
                 odata_query = (
@@ -991,7 +998,7 @@ def test_search_parameters(
                     f"SessionId in {user_ids} "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0'
                 )
             else:
                 raise NotImplementedError
@@ -1057,7 +1064,7 @@ def test_search_parameters(
                     if cadip:
                         odata_query_files = (
                             "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%"
-                            "20S1A_20200105072204051312%22&$top=20"
+                            "20S1A_20200105072204051312%22&$orderby=PublicationDate%20desc&$top=20&$skip=0"
                         )
                         rsps.add(
                             responses.GET,
