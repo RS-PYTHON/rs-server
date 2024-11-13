@@ -102,9 +102,22 @@ adgs:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        id: Name
+        auxip:id: Id
+        created: PublicationDate
+        #datetime: Start # How to access ContentDate['Start']?
+        #start_datetime: Start
+        end_datetime: End
+        file:size: ContentLength
+        type: ContentType
+        eviction_datetime: EvictionDate
+        #product:type: productType
+        #processing:datetime: processingDate
+        published: PublicationDate
+        #file:checksum: ChecksumValue
+        #platform: platformSerialIdentifier
+        #constellation: platformShortName
+        #processing:facility: processingCenter
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -214,9 +227,22 @@ adgs2:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        id: Name
+        auxip:id: Id
+        created: PublicationDate
+        #datetime: Start # How to access ContentDate['Start']?
+        #start_datetime: Start
+        end_datetime: End
+        file:size: ContentLength
+        type: ContentType
+        eviction_datetime: EvictionDate
+        #product:type: productType
+        #processing:datetime: processingDate
+        published: PublicationDate
+        #file:checksum: ChecksumValue
+        #platform: platformSerialIdentifier
+        #constellation: platformShortName
+        #processing:facility: processingCenter
       sort_order_mapping:
         ascending: asc
         descending: desc

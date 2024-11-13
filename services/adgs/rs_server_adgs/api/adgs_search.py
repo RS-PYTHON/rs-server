@@ -283,7 +283,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     product_type,
     publication_date,
     limit,
-    sortby: str = "-datetime",
+    sortby: str = "-created",
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
     """
@@ -294,6 +294,7 @@ def process_product_search(  # pylint: disable=too-many-locals
         station (str): Auxip station identifier.
         datetime (str): Time interval in ISO 8601 format.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        sortby (str: optional): Sorting field, default to created, descending.
 
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.

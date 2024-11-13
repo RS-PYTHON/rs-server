@@ -420,9 +420,12 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exception),
         ) from exception
-    except HTTPException:
-        logger.error("Invalid sortable")
-        raise
+    except Exception as exception:  # pylint: disable=broad-exception-caught
+        logger.error(f"General failure! {exception}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"General failure: {exception}",
+        ) from exception
 
 
 ######################################
