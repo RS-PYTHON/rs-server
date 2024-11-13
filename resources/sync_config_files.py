@@ -32,7 +32,7 @@ from rs_server_common.utils.logging import Logging
 from yaml.representer import SafeRepresenter
 
 # Avoid yaml references, see: https://stackoverflow.com/a/30682604
-yaml.Dumper.ignore_aliases = lambda *_: True
+yaml.Dumper.ignore_aliases = lambda *_: True  # type: ignore
 
 logger = Logging.default(Path(__file__).name)
 
@@ -40,7 +40,7 @@ logger = Logging.default(Path(__file__).name)
 # Class definition
 
 
-class Stations:
+class Stations:  # pylint: disable=too-few-public-methods
     """Check a station name"""
 
     def __init__(self):
@@ -51,6 +51,7 @@ class Stations:
         self.prip: bool = False
 
     def update(self, station: str):
+        """Update the station name from a string."""
         if any(station.startswith(s) for s in ("adgs", "auxip")):
             self.adgs = True
             self.value = station
@@ -97,13 +98,16 @@ def recursive_update(old, new):
     return old
 
 
-# To print literal yaml strings with |
-# See: https://stackoverflow.com/a/20863889
-class literal_str(str):
-    pass
+class LiteralStr(str):
+    """
+    To print literal yaml strings with |
+    See: https://stackoverflow.com/a/20863889
+    """
 
 
 def change_yaml_style(style, representer):
+    """Goes with LiteralStr above"""
+
     def new_representer(dumper, data):
         scalar = representer(dumper, data)
         scalar.style = style
@@ -117,7 +121,7 @@ def change_yaml_style(style, representer):
 
 
 represent_literal_str = change_yaml_style("|", SafeRepresenter.represent_str)
-yaml.add_representer(literal_str, represent_literal_str)
+yaml.add_representer(LiteralStr, represent_literal_str)
 
 
 # Replace local urls like http(s)://(127.0.0.1|localhost):5xxx
@@ -145,7 +149,7 @@ if not rs_infra_dir.is_dir():
 
 # Extract the copyright header from this current file. It will be added to yaml files modified from a template.
 COPYRIGHT_HEADER = ""
-with open(__file__, "r") as this_script:
+with open(__file__, "r", encoding="utf-8") as this_script:
     for line in this_script:
         line = line.strip()
         if not line:
@@ -157,13 +161,13 @@ with open(__file__, "r") as this_script:
 
 # Save the template file paths that were used to create each final configuration file.
 # Key=final file, values=template files.
-TEMPLATE_PATHS: dict[str, list[str]] = {}
+TEMPLATE_PATHS: dict[Path, list[str]] = {}
 
 #
 # Implement main features
 
 
-def get_header(template_paths: list[str] | None = None, final_paths: list[str] | None = None):
+def get_header(template_paths: list[str] | None = None, final_paths: list[Path] | None = None):
     """
     Return header for configuration file created from template files.
 
@@ -178,7 +182,7 @@ def get_header(template_paths: list[str] | None = None, final_paths: list[str] |
 
     # Get the template files used to create the final files
     for path in final_paths:
-        template_paths += TEMPLATE_PATHS.get(path)  # the file should be present in this dict
+        template_paths += TEMPLATE_PATHS[path]  # the file should be present in this dict
 
     sep = "\n#  - rs-server/"
     header_paths = sep + sep.join(template_paths + [os.path.relpath(__file__, rs_server_dir)])
@@ -188,7 +192,7 @@ def get_header(template_paths: list[str] | None = None, final_paths: list[str] |
     )
 
 
-def create_from_template(template_paths: list[str]):
+def create_from_template(template_paths: list[str]):  # pylint: disable=too-many-locals,too-many-branches
     """
     Create a configuration file from one or several template paths.
 
@@ -197,8 +201,8 @@ def create_from_template(template_paths: list[str]):
     """
     all_files: dict = {}
     output_paths: set[Path] = set()
-    for template_path in template_paths:
-        template_path = rs_server_dir / template_path
+    for relative_path in template_paths:
+        template_path: Path = rs_server_dir / relative_path
 
         is_json = template_path.suffix.lower() == ".json"
         is_yaml = template_path.suffix.lower() in (".yml", ".yaml")
@@ -259,7 +263,7 @@ def create_from_template(template_paths: list[str]):
     TEMPLATE_PATHS[output_path] = template_paths
 
     # Write back the templated file
-    with open(output_path, "w") as opened:
+    with open(output_path, "w", encoding="utf-8") as opened:
         logger.info(f"Update: '{output_path!s}'")
         opened.write(get_header(template_paths))
         if is_json:
@@ -313,20 +317,20 @@ def copy_to_demo(input_path_relative: str):
             assert isinstance(value, str)
             if station.adgs:
                 return re.sub(REGEX_URL, r"\g<1>adgs-station:5000", value)
-            elif station.cadip:
+            if station.cadip:
                 return re.sub(REGEX_URL, r"\g<1>cadip-station:5000", value)
-            elif station.lta:
+            if station.lta:
                 return re.sub(REGEX_URL, r"\g<1>lta-station:5000", value)
-            elif station.prip:
+            if station.prip:
                 return re.sub(REGEX_URL, r"\g<1>prip-station:5000", value)
-            else:
-                return value
+            # No modification
+            return value
 
         # Apply regex recursively
         for key, value in config.items():
 
             # Recursive calls on dicts
-            if isinstance(value, collections.abc.Mapping):
+            if isinstance(value, dict):
                 update_all_values(key, value, station)
 
             # Update string value
@@ -334,11 +338,11 @@ def copy_to_demo(input_path_relative: str):
                 config[key] = update_single_value(value)
 
             # Recursive calls on lists...
-            elif isinstance(value, collections.abc.Iterable):
+            elif isinstance(value, list):
                 for i, subvalue in enumerate(value):
 
                     # ... on list dicts
-                    if isinstance(subvalue, collections.abc.Mapping):
+                    if isinstance(subvalue, dict):
                         update_all_values(key, subvalue, station)
 
                     # ... or on list string values
@@ -348,7 +352,7 @@ def copy_to_demo(input_path_relative: str):
     update_all_values("", file)
 
     # Write the modified output file
-    with open(config_path, "w") as opened:
+    with open(config_path, "w", encoding="utf-8") as opened:
         logger.info(f"Update: '{config_path!s}'")
         opened.write(get_header(final_paths=[input_path]))
         yaml.dump(file, opened, default_flow_style=False, sort_keys=False)
@@ -398,7 +402,7 @@ def copy_to_helm_or_infra(
 
     # Write the modified output file into a string
     yaml_contents = write_helm_or_infra(output_configs, yaml_as_string)
-    with open(output_path, "w") as opened:
+    with open(output_path, "w", encoding="utf-8") as opened:
         logger.info(f"Update: '{output_path!s}'")
         opened.write(header)
         opened.write(yaml_contents)
@@ -419,8 +423,8 @@ def read_helm_or_infra(yaml_contents: str, yaml_as_string: bool) -> list[dict]:
 
     # Python yaml cannot open the {{- range ... }}' and '{{- end }}' tags
     # that do not contain a : at the end, so we add the : here
-    yaml_contents = re.sub(re.compile(REGEX_RANGE_START), rf"\g<1>:", yaml_contents)
-    yaml_contents = re.sub(re.compile(REGEX_RANGE_END), rf"\g<1>:", yaml_contents)
+    yaml_contents = re.sub(re.compile(REGEX_RANGE_START), r"\g<1>:", yaml_contents)
+    yaml_contents = re.sub(re.compile(REGEX_RANGE_END), r"\g<1>:", yaml_contents)
 
     # Python yaml cannot open files with k8s values like {{ some.thing }}
     # so we replace them with any other strings.
@@ -463,7 +467,7 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
             data = output_config.get("data", {})
             for key, value in data.items():
                 if isinstance(value, dict):
-                    data[key] = literal_str(yaml.dump(value, default_flow_style=False, sort_keys=False, width=witdh))
+                    data[key] = LiteralStr(yaml.dump(value, default_flow_style=False, sort_keys=False, width=witdh))
 
     # Write the configuration file as a multidoc file (with docs separated by '---')
     yaml_contents = yaml.dump_all(output_configs, default_flow_style=False, sort_keys=False, width=witdh)
@@ -474,15 +478,15 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
 
     # Remove the added : after the k8s values
     suffix = r":(\s*null)?"  # yaml parsing added ': null' after the tag
-    yaml_contents = re.sub(re.compile(REGEX_RANGE_START + suffix), rf"\g<1>", yaml_contents)
-    yaml_contents = re.sub(re.compile(REGEX_RANGE_END + suffix), rf"\g<1>", yaml_contents)
+    yaml_contents = re.sub(re.compile(REGEX_RANGE_START + suffix), r"\g<1>", yaml_contents)
+    yaml_contents = re.sub(re.compile(REGEX_RANGE_END + suffix), r"\g<1>", yaml_contents)
 
     return yaml_contents
 
 
 def copy_to_helm_or_infra_single_doc(
     params: HelmOrInfraParams,
-    output_config: Path,
+    output_config: dict,
 ):
     """
     Copy and update a single yaml document from rs-server to rs-helm or rs-infrastructure.
@@ -541,26 +545,26 @@ def copy_to_helm_or_infra_single_doc(
                     rf"\g<1>mockup-station-{station.value}-svc.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            elif station.cadip:
+            if station.cadip:
                 return re.sub(
                     REGEX_URL,
                     rf"\g<1>mockup-station-cadip-{station.value}-svc.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            elif station.lta:
+            if station.lta:
                 return re.sub(
                     REGEX_URL,
                     rf"\g<1>mockup-lta-{station.value}-svc.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            elif station.prip:
+            if station.prip:
                 return re.sub(
                     REGEX_URL,
                     rf"\g<1>mockup-prip-{station.value}-svc.processing.svc.cluster.local:8080",
                     input_value,
                 )
-            else:
-                return input_value
+            # No modification
+            return input_value
 
         # Copy values recursively from input to output
         for key, input_value in input_config.items():
@@ -570,7 +574,7 @@ def copy_to_helm_or_infra_single_doc(
 
             # Recursive calls on dicts
             output_value = output_config[key]
-            if isinstance(output_value, collections.abc.Mapping):
+            if isinstance(output_value, dict):
                 update_all_values(key, input_value, output_value, station)
 
             # Update string value
@@ -579,11 +583,11 @@ def copy_to_helm_or_infra_single_doc(
                 output_config[key] = update_single_value(input_value, output_value)
 
             # Recursive calls on lists...
-            elif isinstance(output_value, collections.abc.Iterable):
+            elif isinstance(output_value, list):
 
                 # If the input value is not a list or does not have the same length,
                 # I don't really know what to do, so just copy the input value.
-                if (not isinstance(input_value, collections.abc.Iterable)) or (len(input_value) != len(output_value)):
+                if (not isinstance(input_value, list)) or (len(input_value) != len(output_value)):
                     output_config[key] = input_value
 
                 # Else, do a recursive call on each lists element ...
@@ -592,7 +596,7 @@ def copy_to_helm_or_infra_single_doc(
                         input_subvalue = input_value[i]
 
                         # ... on list dicts
-                        if isinstance(output_subvalue, collections.abc.Mapping):
+                        if isinstance(output_subvalue, dict):
                             update_all_values(key, input_subvalue, output_subvalue, station)
 
                         # ... or on list string values
@@ -623,12 +627,12 @@ if __name__ == "__main__":
         create_from_template(templates)
 
     # Copy resulting files to rs-demo
-    for config_path in (
+    for config_path_relative in (
         "services/common/config/rs-server.yaml",
         "services/adgs/config/adgs_ws_config_token_module.yaml",
         "services/cadip/config/cadip_ws_config_token_module.yaml",
     ):
-        copy_to_demo(config_path)
+        copy_to_demo(config_path_relative)
 
     #
     # Copy resulting files to rs-helm and rs-infrastructure
