@@ -86,13 +86,14 @@ class MockPgstacCadip(MockPgstac):
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
         sortby = self.request.query_params.get("sortby", None)
+        user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 10)))
         session_data = process_session_search(
             self.request,
             collection.get("station", "cadip"),
             odata_params.get("SessionId", []),
             odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
-            odata_params.get("top"),
+            user_limit,
             sortby,
         )
         if not session_data.features:
@@ -462,7 +463,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     station: str,
     session_id: str,
     datetime: Union[str, None] = None,
-    limit: Union[int, None] = 20,
+    limit: Union[int, None] = 1000,
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
