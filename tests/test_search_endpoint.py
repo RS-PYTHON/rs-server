@@ -891,6 +891,7 @@ def test_search_parameters(
         user_params.update(
             {
                 "ids": user_ids,
+                "limit": user_limit,
                 # "sortby": "-datetime", # disable this for moment, require odata filter to be updated
             },
         )
@@ -1020,14 +1021,14 @@ def test_search_parameters(
                 product_type = collection["query"].get("productType")
                 constellation = collection["query"].get("platformShortName")
                 satellite = collection["query"].get("Satellite", "")
-                limit = hardcoded_limit
+                limit = user_limit
 
             # The third collection has a query with multiple values, that intersects only one user value.
             elif collection_id == "col3":
                 odata = odata_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
                 date_max = hardcoded_date.split("/")[1]
-                limit = hardcoded_limit
+                limit = user_limit
                 if user_query:
                     product_type = user_product_type
                     constellation = user_constellation
@@ -1061,7 +1062,7 @@ def test_search_parameters(
                     if cadip:
                         odata_query_files = (
                             "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%"
-                            "20S1A_20200105072204051312%22&$top=20&$skip=0"
+                            "20S1A_20200105072204051312%22&$top=1000&$skip=0"
                         )
                         rsps.add(
                             responses.GET,

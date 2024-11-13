@@ -308,7 +308,7 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
     set_eodag_auth_token(station, "auxip")
-    limit = limit if limit else 1000 # needed?
+    limit = limit if limit else 1000  # needed?
     (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
         products = init_adgs_provider(station).search(
