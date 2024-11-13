@@ -25,7 +25,7 @@ import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import yaml
 from rs_server_common.utils.logging import Logging
@@ -167,7 +167,7 @@ TEMPLATE_PATHS: dict[Path, list[str]] = {}
 # Implement main features
 
 
-def get_header(template_paths: list[str] | None = None, final_paths: list[Path] | None = None):
+def get_header(template_paths: list[str] | None = None, final_paths: Iterable[Path] | None = None):
     """
     Return header for configuration file created from template files.
 
@@ -397,7 +397,7 @@ def copy_to_helm_or_infra(
         copy_to_helm_or_infra_single_doc(params, output_configs[params.output_doc_index])
 
     # Get the file header from the list of input configuration files
-    input_paths = [rs_server_dir / param.input_path_relative for param in all_params]
+    input_paths = {rs_server_dir / param.input_path_relative for param in all_params}
     header = get_header(final_paths=input_paths)
 
     # Write the modified output file into a string
@@ -693,14 +693,36 @@ if __name__ == "__main__":
                 ],
                 0,  # output doc index
             ),
-            HelmOrInfraParams(
+            HelmOrInfraParams(  # same for _session stations
+                "services/cadip/config/cadip_ws_config.yaml",
+                ["cadip_session"],
+                [
+                    "data",
+                    f"{DCB_OPEN} .Values.app.eodagConfigFile {DCB_CLOSE}",
+                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
+                    f"{DCB_OPEN} $k {DCB_CLOSE}_session",
+                ],
+                0,  # output doc index
+            ),
+            HelmOrInfraParams(  # same for _token_module
                 "services/cadip/config/cadip_ws_config_token_module.yaml",
-                ["cadip"],  # use the first input station values for all other stations
+                ["cadip"],
                 [  # where to write in the output file
                     "data",
                     f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
                     f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
                     f"{DCB_OPEN} $k {DCB_CLOSE}",
+                ],
+                1,
+            ),
+            HelmOrInfraParams(  # same for _token_module and _session stations
+                "services/cadip/config/cadip_ws_config_token_module.yaml",
+                ["cadip_session"],
+                [  # where to write in the output file
+                    "data",
+                    f"{DCB_OPEN} .Values.app.eodagConfigFileTokenModule {DCB_CLOSE}",
+                    f"{DCB_OPEN}- range $k, $v := .Values.app.station {DCB_CLOSE}",
+                    f"{DCB_OPEN} $k {DCB_CLOSE}_session",
                 ],
                 1,
             ),
