@@ -455,4 +455,5 @@ def validate_sort_input(sortby: str):
     """Used to transform stac sort parameter to odata type.
     -datetime = startTimeFromAscendingNode DESC.
     """
-    return [("startTimeFromAscendingNode", "DESC" if sortby[0] == "-" else "ASC")]
+    sortby = sortby.strip("'\"").lower()
+    return [(sortby[1:], "DESC" if sortby[0] == "-" else "ASC")]

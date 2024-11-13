@@ -798,9 +798,26 @@ cadip_session:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -944,9 +961,26 @@ ins_session:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -1090,9 +1124,26 @@ mps_session:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -1236,9 +1287,26 @@ mti_session:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -1382,9 +1450,26 @@ nsg_session:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -1528,9 +1613,26 @@ sgs_session:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
       sort_order_mapping:
         ascending: asc
         descending: desc

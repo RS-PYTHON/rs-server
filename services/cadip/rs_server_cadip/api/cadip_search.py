@@ -105,7 +105,6 @@ class MockPgstacCadip(MockPgstac):
         assets = process_files_search(
             collection.get("station", "cadip"),
             features_ids,
-            sortby=sortby,
             map_to_session=True,
         )
 
@@ -421,6 +420,9 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exception),
         ) from exception
+    except HTTPException:
+        logger.error("Invalid sortable")
+        raise
 
 
 ######################################

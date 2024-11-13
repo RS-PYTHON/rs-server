@@ -23,7 +23,8 @@ from typing import List, Union
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
-from eodag.utils.exceptions import AuthenticationError, RequestError
+from eodag.utils.exceptions import AuthenticationError, RequestError, ValidationError
+from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, TimeRange
@@ -168,6 +169,8 @@ class EodagProvider(Provider):
             return []
         except AuthenticationError as exc:
             raise ValueError("EoDAG could not authenticate") from exc
+        except ValidationError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
 
         return products
 
