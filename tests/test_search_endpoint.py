@@ -456,7 +456,7 @@ class TestFeatureOdataStacMapping:
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=1000&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -617,7 +617,7 @@ class TestFeatureCollectionOdataStacMapping:
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&&$top=20&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&&$top=1000&$skip=0",
             json=cadip_file_response,
             status=200,
         )

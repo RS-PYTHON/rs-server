@@ -84,14 +84,14 @@ class MockPgstacAdgs(MockPgstac):
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        # Priority, stac endpoint limit -> odata collection top -> 10 by default
-        user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 10)))
+        # Priority, stac endpoint limit -> odata collection top -> 1000 by default
+        user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 1000)))
         return process_product_search(
             collection.get("station", "adgs"),
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
             user_limit,
-            self.request.query_params.get("sortby", "-datetime"),
+            self.request.query_params.get("sortby", "-created"),
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),
         )
@@ -308,7 +308,7 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
     set_eodag_auth_token(station, "auxip")
-    limit = limit if limit else 1000
+    limit = limit if limit else 1000 # needed?
     (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
         products = init_adgs_provider(station).search(
