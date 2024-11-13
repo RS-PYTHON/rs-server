@@ -29,7 +29,7 @@ adgs:
     type: ODataV4Search
     api_endpoint: 'http://127.0.0.1:5000/Products'
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
         id:
           - null
@@ -89,7 +89,7 @@ adgs:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
             and:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -103,6 +103,17 @@ adgs:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Attributes'
       total_items_nb_key_path: '$.total'
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: ContentDate.Start
+        completionTimeFromAscendingNode: ContentDate.Stop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
@@ -129,7 +140,7 @@ adgs2:
     type: ODataV4Search
     api_endpoint: 'http://127.0.0.1:5001/Products'
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
         id:
           - null
@@ -189,7 +200,7 @@ adgs2:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
             and:
               - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
@@ -203,6 +214,17 @@ adgs2:
       max_items_per_page: 1000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$expand=Attributes'
       total_items_nb_key_path: '$.total'
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        startTimeFromAscendingNode: ContentDate.Start
+        completionTimeFromAscendingNode: ContentDate.Stop
+        publicationDate: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
 
   download:
     type: HTTPDownload
