@@ -271,8 +271,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     pass
 
         # Save the auxip product names or cadip session ids
-        if ids:
+        if isinstance(ids, list):
             stac_params["id"] = [id.strip() for id in ids]
+        elif isinstance(ids, str):
+            stac_params["id"] = ids.strip()
 
         # Number of results per page
         limit = params.pop("limit", None)
