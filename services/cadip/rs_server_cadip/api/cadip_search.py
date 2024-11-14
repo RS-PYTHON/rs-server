@@ -52,7 +52,6 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.stac_api_common import (
     MockPgstac,
-    create_pagination_links,
     create_stac_collection,
     handle_exceptions,
 )
@@ -88,19 +87,16 @@ class MockPgstacCadip(MockPgstac):
         """Do the search for the given collection and OData parameters."""
         sortby = self.request.query_params.get("sortby", None)
         user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 10)))
-        page = self.request.query_params.get("page")
-        try:
-            # Attempt to parse `page` as an integer and validate it's >= 1
-            page = int(page)
-            if page < 1:
-                raise ValueError("Page number invalid")
+        if page := self.request.query_params.get("page"):
+            try:
+                # Attempt to parse `page` as an integer and validate it's >= 1
+                page = int(page)
+                if page < 1:
+                    raise ValueError("Page number invalid")
 
-            # Create pagination links if the page is valid
-            links = create_pagination_links(self.request.url)
-
-        except (ValueError, TypeError) as exc:
-            # Handle cases where `page` is not an integer or is invalid
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Page number invalid") from exc
+            except (ValueError, TypeError) as exc:
+                # Handle cases where `page` is not an integer or is invalid
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Page number invalid") from exc
         session_data = process_session_search(
             self.request,
             collection.get("station", "cadip"),
@@ -114,7 +110,7 @@ class MockPgstacCadip(MockPgstac):
         if not session_data.features:
             # If there are no sessions, don't proceed to assets allocation
             return session_data
-        session_data.links = links
+
         # To be updated with proper ('')
         features_ids = ", ".join(feature.id for feature in session_data.features)
         assets = process_files_search(
@@ -402,6 +398,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
     limit = limit if limit else 1000
+    page = page if page else 1
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
         products = init_cadip_provider(f"{station}_session").search(
