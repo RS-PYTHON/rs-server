@@ -32,6 +32,7 @@ from typing import (
     Self,
     Type,
 )
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import stac_pydantic
 import stac_pydantic.links
@@ -46,6 +47,7 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
 )
 from stac_pydantic.item import Item
+from stac_pydantic.shared import MimeTypes
 
 logger = Logging.default(__name__)
 
@@ -684,3 +686,34 @@ def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
                 reverse=order == "-",
             )
     return feature_collection
+
+
+def create_pagination_links(request_url: str):
+    """."""
+    links = []
+    parsed_url = urlparse(str(request_url))
+    query_params = parse_qs(parsed_url.query)
+    current_page = int(query_params.get("page", [1])[0])
+    query_params["page"] = [str(current_page + 1)]
+    new_query_plus = urlencode(query_params, doseq=True)
+
+    links.append(
+        stac_pydantic.links.Link(
+            rel="next",
+            type=MimeTypes.json,
+            href=urlunparse(parsed_url._replace(query=new_query_plus)),
+        ),
+    )
+    if current_page > 1:
+        query_params["page"] = [str(current_page - 1)]
+        new_query_minus = urlencode(query_params, doseq=True)
+
+        links.append(
+            stac_pydantic.links.Link(
+                rel="prev",
+                type=MimeTypes.json,
+                href=urlunparse(parsed_url._replace(query=new_query_minus)),
+            ),
+        )
+
+    return links

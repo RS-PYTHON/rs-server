@@ -1050,7 +1050,7 @@ def test_search_parameters(
                 satellite_op="in" if "," in satellite else "eq",
                 limit=limit,
             )
-
+            collection_params["limit"] = limit
             with responses.RequestsMock() as rsps:
                 if odata:  # if the query should return results
                     rsps.add(
