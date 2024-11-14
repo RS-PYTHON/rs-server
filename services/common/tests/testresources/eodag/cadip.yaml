@@ -19,6 +19,9 @@ cadip:
     credentials:
         username: test
         password: test
+  products:
+    GENERIC_PRODUCT_TYPE:
+      productType: '{productType}'
 
   search:
     type: ODataV4Search
