@@ -379,6 +379,7 @@ def copy_to_helm_or_infra(
     yaml_as_string = output_path.name == "configmap.yaml"
 
     # Open the output file if it exists.
+    output_configs = None
     if output_path.is_file():
         with open(output_path, encoding="utf-8") as opened:
             output_configs = read_helm_or_infra(opened.read(), yaml_as_string)
