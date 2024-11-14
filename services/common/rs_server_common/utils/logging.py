@@ -91,7 +91,7 @@ class CustomFormatter(logging.Formatter):
     _YELLOW = "\x1b[33m"
     _PURPLE = "\x1b[35m"
     _RESET = "\x1b[0m"
-    
+
     _FORMAT = (
         f"[{{color}}%(levelname)s{_RESET}] [%(name)s] "
         f"[%(filename)s:%(lineno)d] "
