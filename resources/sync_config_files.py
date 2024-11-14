@@ -185,7 +185,7 @@ def get_header(template_paths: list[str] | None = None, final_paths: Iterable[Pa
         template_paths += TEMPLATE_PATHS[path]  # the file should be present in this dict
 
     sep = "\n#  - rs-server/"
-    header_paths = sep + sep.join(template_paths + [os.path.relpath(__file__, rs_server_dir)])
+    header_paths = sep + sep.join(sorted(template_paths) + [os.path.relpath(__file__, rs_server_dir)])
     return (
         COPYRIGHT_HEADER
         + f"\n# THIS FILE WAS AUTOMATICALLY CREATED FROM:{header_paths}\n# DON'T MODIFY IT DIRECTLY !\n\n"
