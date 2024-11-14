@@ -25,7 +25,7 @@ import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import yaml
 from rs_server_common.utils.logging import Logging
@@ -74,14 +74,16 @@ class HelmOrInfraParams:
     Attributes:
         input_path_relative: input configuration file path, relative to the rs-server root dir
         input_root_tags: root yaml tags from where the input values must be read
-        output_root_tags: root yaml tags from where the output values must be written
+        output_root_tags: root yaml tags where the output values must be written
         output_doc_index: output document index (start at 0) to write (only for yaml files with multiple documents)
+        post_processing: function to execute on the output configuration under output_root_tags
     """
 
     input_path_relative: str
     input_root_tags: list[str]
     output_root_tags: list[str]
     output_doc_index: int
+    post_processing: Callable[[dict], None] = None
 
 
 #
@@ -615,6 +617,10 @@ def copy_to_helm_or_infra_single_doc(
 
     update_all_values([], input_config, output_config)
 
+    # Call post-processing on output configuration
+    if params.post_processing:
+        params.post_processing(output_config)
+
 
 if __name__ == "__main__":
 
@@ -647,14 +653,21 @@ if __name__ == "__main__":
     #
     # Copy resulting files to rs-helm and rs-infrastructure
 
-    station_secrets = HelmOrInfraParams(
+    # For this file, don't copy the cadip "_session" stations
+    def remove_session_stations(output_config: dict):
+        for station in list(output_config.keys()):
+            if station.endswith("_session"):
+                output_config.pop(station)
+
+    station_params = HelmOrInfraParams(
         "services/common/config/rs-server.yaml",
         ["external_data_sources"],
         ["app", "stations"],
         0,
+        remove_session_stations,
     )
-    copy_to_helm_or_infra([station_secrets], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
-    copy_to_helm_or_infra([station_secrets], rs_infra_dir / "rs-server/rs-server-station-secrets/values.yaml")
+    copy_to_helm_or_infra([station_params], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
+    copy_to_helm_or_infra([station_params], rs_infra_dir / "rs-server/rs-server-station-secrets/values.yaml")
 
     copy_to_helm_or_infra(
         [
