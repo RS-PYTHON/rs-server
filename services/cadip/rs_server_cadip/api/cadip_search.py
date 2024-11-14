@@ -338,8 +338,8 @@ async def get_cadip_collection_item_details(
     request.state.session_id = session_id  # save for later
     try:
         item = await request.app.state.pgstac_client.get_item(session_id, collection_id, request)
-    except HTTPException as http_exc:  # validation error, just forward it
-        raise http_exc
+    except HTTPException:  # validation error, just forward it
+        raise
     except Exception as exc:  # stac_fastapi.types.errors.NotFoundError
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
