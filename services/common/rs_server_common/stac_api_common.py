@@ -503,9 +503,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # If there are no results and we had at least one exception, raise the first one
         if not all_features and first_exception:
             raise first_exception
-
+        # Handle pagination links.
+        links = create_pagination_links(self.request.url)  # type: ignore
         # Return results as a dict
-        return stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
+        data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
+        for link in links:
+            data.update({link.rel: link.href})  # type: ignore
+        return data
 
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
@@ -689,7 +693,7 @@ def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
 
 
 def create_pagination_links(request_url: str):
-    """."""
+    """Generate pagination links for 'next' and 'prev' pages based on the current page in the URL."""
     links = []
     parsed_url = urlparse(str(request_url))
     query_params = parse_qs(parsed_url.query)
