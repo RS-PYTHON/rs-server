@@ -18,7 +18,7 @@ import os
 from contextlib import asynccontextmanager
 
 from dask.distributed import LocalCluster
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path
+from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
 from pygeoapi.config import get_config
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
@@ -31,7 +31,6 @@ from rs_server_common.utils.logging import Logging
 from rs_server_staging.processors import processors
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
@@ -60,7 +59,7 @@ api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAP
 
 def init_db():
     """
-    Initializes the PostgreSQL database connection and sets up required table and ENUM type.
+    Initialize the PostgreSQL database connection and sets up required table and ENUM type.
 
     This function constructs the database URL using environment variables for PostgreSQL
     credentials, host, port, and database name. It then creates an SQLAlchemy engine and
@@ -236,15 +235,6 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
-
-
-def get_db():
-    """Dependency to provide SQLAlchemy session"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Endpoint to get the status of a job by job_id
