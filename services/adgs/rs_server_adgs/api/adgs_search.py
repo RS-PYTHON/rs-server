@@ -86,12 +86,23 @@ class MockPgstacAdgs(MockPgstac):
         """Do the search for the given collection and OData parameters."""
         # Priority, stac endpoint limit -> odata collection top -> 1000 by default
         user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 1000)))
+        if page := self.request.query_params.get("page"):
+            try:
+                # Attempt to parse `page` as an integer and validate it's >= 1
+                page = int(page)
+                if page < 1:
+                    raise ValueError("Page number invalid")
+
+            except (ValueError, TypeError) as exc:
+                # Handle cases where `page` is not an integer or is invalid
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Page number invalid") from exc
         return process_product_search(
             collection.get("station", "adgs"),
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
             user_limit,
             self.request.query_params.get("sortby", "-created"),
+            page,
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),
         )
@@ -284,6 +295,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     publication_date,
     limit,
     sortby: str = "-created",
+    page: int = 1,
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
     """
@@ -309,6 +321,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     """
     set_eodag_auth_token(station, "auxip")
     limit = limit if limit else 1000  # needed?
+    page = page if page else 1
     (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
         products = init_adgs_provider(station).search(
@@ -316,6 +329,7 @@ def process_product_search(  # pylint: disable=too-many-locals
             attr_ptype=product_type,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
+            page=page,
             **kwargs,
         )
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
