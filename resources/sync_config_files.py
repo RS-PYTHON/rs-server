@@ -83,7 +83,7 @@ class HelmOrInfraParams:
     input_root_tags: list[str]
     output_root_tags: list[str]
     output_doc_index: int
-    post_processing: Callable[[dict], None] = None
+    post_processing: Callable[[dict], None] | None = None
 
 
 #
@@ -653,8 +653,8 @@ if __name__ == "__main__":
     #
     # Copy resulting files to rs-helm and rs-infrastructure
 
-    # For this file, don't copy the cadip "_session" stations
     def remove_session_stations(output_config: dict):
+        """For this file, don't copy the cadip "_session" stations."""
         for station in list(output_config.keys()):
             if station.endswith("_session"):
                 output_config.pop(station)
