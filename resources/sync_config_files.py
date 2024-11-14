@@ -258,13 +258,13 @@ def create_from_template(template_paths: list[str]):  # pylint: disable=too-many
     # We should have a single output file
     assert len(output_paths) == 1
     output_path: Path = output_paths.pop()
+    logger.info(f"Update: '{output_path!s}'")
 
     # Save the template file paths that were used to create each final configuration file.
     TEMPLATE_PATHS[output_path] = template_paths
 
     # Write back the templated file
     with open(output_path, "w", encoding="utf-8") as opened:
-        logger.info(f"Update: '{output_path!s}'")
         opened.write(get_header(template_paths))
         if is_json:
             json.dump(all_files, opened, indent=2, sort_keys=False)
@@ -289,6 +289,7 @@ def copy_to_demo(input_path_relative: str):
     # Copy the file, keep the same name
     input_path = rs_server_dir / input_path_relative
     config_path = rs_demo_dir / "local-mode/config" / input_path.name
+    logger.info(f"Update: '{config_path!s}'")
     shutil.copyfile(input_path, config_path)
 
     # Open the output file.
@@ -353,7 +354,6 @@ def copy_to_demo(input_path_relative: str):
 
     # Write the modified output file
     with open(config_path, "w", encoding="utf-8") as opened:
-        logger.info(f"Update: '{config_path!s}'")
         opened.write(get_header(final_paths=[input_path]))
         yaml.dump(file, opened, default_flow_style=False, sort_keys=False)
 
@@ -373,6 +373,7 @@ def copy_to_helm_or_infra(
         all_params: parameters to copy each configuration file
         output_path: output configuration absolute path
     """
+    logger.info(f"Update: '{output_path!s}'")
 
     # The k8s configmap files contain strings that contain yaml contents.
     yaml_as_string = output_path.name == "configmap.yaml"
@@ -403,7 +404,6 @@ def copy_to_helm_or_infra(
     # Write the modified output file into a string
     yaml_contents = write_helm_or_infra(output_configs, yaml_as_string)
     with open(output_path, "w", encoding="utf-8") as opened:
-        logger.info(f"Update: '{output_path!s}'")
         opened.write(header)
         opened.write(yaml_contents)
 
@@ -513,12 +513,17 @@ def copy_to_helm_or_infra_single_doc(
             logger.warning(f"Tag does not exist in output file: {tag!r}")
         output_config = output_config[tag]
 
-    def update_all_values(parent_key: str, input_config: dict, output_config: dict, station: Stations = Stations()):
+    def update_all_values(
+        parent_keys: list[str],
+        input_config: dict,
+        output_config: dict,
+        station: Stations = Stations(),
+    ):
         """
         Recursive function to update values from the config file.
 
         Args:
-            parent_key: parent yaml tag name
+            parent_keys: parent yaml tag names
             input_config: current input yaml block
             output_config: current output yaml block
             station: is the current yaml block implementing an adgs station, or cadip station, or ...
@@ -528,7 +533,7 @@ def copy_to_helm_or_infra_single_doc(
 
         # Check station name from parent key
         station = copy.deepcopy(station)  # save the instance so the previous recursive calls are not impacted
-        station.update(parent_key)
+        station.update(parent_keys[-1] if parent_keys else "")
 
         def update_single_value(input_value: Any, output_value: str) -> str:
             """Return a single updated value."""
@@ -566,6 +571,10 @@ def copy_to_helm_or_infra_single_doc(
             # No modification
             return input_value
 
+        for key in output_config.keys():
+            if key not in input_config.keys():
+                logger.warning(f"Missing from rs-server: {'.'.join(parent_keys + [key])!r}")
+
         # Copy values recursively from input to output
         for key, input_value in input_config.items():
 
@@ -575,7 +584,7 @@ def copy_to_helm_or_infra_single_doc(
             # Recursive calls on dicts
             output_value = output_config[key]
             if isinstance(output_value, dict):
-                update_all_values(key, input_value, output_value, station)
+                update_all_values(parent_keys + [key], input_value, output_value, station)
 
             # Update string value
             elif isinstance(output_value, str):
@@ -597,13 +606,13 @@ def copy_to_helm_or_infra_single_doc(
 
                         # ... on list dicts
                         if isinstance(output_subvalue, dict):
-                            update_all_values(key, input_subvalue, output_subvalue, station)
+                            update_all_values(parent_keys + [key], input_subvalue, output_subvalue, station)
 
                         # ... or on list string values
                         elif isinstance(output_subvalue, str):
                             output_value[i] = update_single_value(input_subvalue, output_subvalue)
 
-    update_all_values("", input_config, output_config)
+    update_all_values([], input_config, output_config)
 
 
 if __name__ == "__main__":

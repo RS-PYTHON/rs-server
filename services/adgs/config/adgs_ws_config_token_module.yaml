@@ -25,8 +25,6 @@ adgs:
     credentials:
       token: token_value
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
     CAMS_GRF_AUX:
       productType: cams-ads-grf-aux
   search:
@@ -124,8 +122,6 @@ adgs2:
     credentials:
       token: token_value
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
     CAMS_GRF_AUX:
       productType: cams-ads-grf-aux
   search:

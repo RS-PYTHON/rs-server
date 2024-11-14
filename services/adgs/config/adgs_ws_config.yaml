@@ -25,19 +25,17 @@ adgs:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
     CAMS_GRF_AUX:
       productType: cams-ads-grf-aux
   search:
@@ -135,19 +133,17 @@ adgs2:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
-    GENERIC_PRODUCT_TYPE:
-      productType: '{productType}'
     CAMS_GRF_AUX:
       productType: cams-ads-grf-aux
   search:

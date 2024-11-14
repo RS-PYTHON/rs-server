@@ -26,14 +26,16 @@ cadip:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client_id
-      client_secret: client_secret
-      grant_type: password
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -117,14 +119,16 @@ ins:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client_id
-      client_secret: client_secret
-      grant_type: password
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -208,14 +212,16 @@ mps:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client_id
-      client_secret: client_secret
-      grant_type: password
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -299,14 +305,16 @@ mti:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client_id
-      client_secret: client_secret
-      grant_type: password
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -390,14 +398,16 @@ nsg:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client_id
-      client_secret: client_secret
-      grant_type: password
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -481,14 +491,16 @@ sgs:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client_id
-      client_secret: client_secret
-      grant_type: password
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -572,16 +584,16 @@ cadip_session:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -702,16 +714,16 @@ ins_session:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -832,16 +844,16 @@ mps_session:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -962,16 +974,16 @@ mti_session:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -1092,16 +1104,16 @@ nsg_session:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -1222,16 +1234,16 @@ sgs_session:
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
