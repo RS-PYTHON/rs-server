@@ -487,9 +487,10 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1"
-            "&$expand=Attributes",
+            "http://127.0.0.1:5001/Products?$filter=%22"
+            "contains(Name,%20'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF')%20and%20"
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
+            "att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
