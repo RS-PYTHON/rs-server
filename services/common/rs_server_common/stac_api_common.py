@@ -249,6 +249,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """
         Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
         """
+        if self.request is None:
+            raise AssertionError("Request should be defined")
 
         #
         # Step 1: read input params
@@ -270,12 +272,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Remove the prev: or next: prefix
             token = token.removeprefix("prev:").removeprefix("next:")
 
-            # Merge parameters into input params. Convert lists with one element into this single value.
+            # Merge token parameters (should be only 'page') into input params.
+            # Convert lists with one element into this single value.
             pagination = urllib.parse.parse_qs(token)
-            for key, value in pagination.items():
-                if isinstance(value, list) and (len(value) == 1):
-                    value = value[0]
-                params[key] = value
+            for key, values in pagination.items():
+                if isinstance(values, list) and (len(values) == 1):
+                    params[key] = values[0]
+                else:
+                    params[key] = values
 
         # Collections to search
         collection_ids = [collection.strip() for collection in params.pop("collections", [])]
