@@ -448,7 +448,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
+    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-published",
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
@@ -459,7 +459,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
         session_id (str): Session from which file belong.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
-        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
+        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-published".
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.
                            If no products are found in the specified time range, returns an empty list.
