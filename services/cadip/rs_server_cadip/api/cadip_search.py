@@ -337,12 +337,16 @@ async def get_cadip_collection_item_details(
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
     request.state.session_id = session_id  # save for later
-    features = (await request.app.state.pgstac_client.item_collection(collection_id, request)).get("features", [])
-    # NOTE: normally the returned id should always be the one given as input since it is used
-    # in the request to the station.
-    if features and (features[0]["id"] == session_id):
-        return features[0]
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Cadip session {session_id!r} not found.")
+    try:
+        item = await request.app.state.pgstac_client.get_item(session_id, collection_id, request)
+    except HTTPException:  # validation error, just forward it
+        raise
+    except Exception as exc:  # stac_fastapi.types.errors.NotFoundError
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cadip session {session_id!r} not found.",
+        ) from exc
+    return item
 
 
 @validate_call(config={"arbitrary_types_allowed": True})

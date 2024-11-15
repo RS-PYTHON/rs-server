@@ -12,10 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# THIS FILE WAS AUTOMATICALLY CREATED FROM:
-#  - rs-server/services/common/config/rs-server.template.yaml
-#  - rs-server/resources/sync_config_files.py
-# DON'T MODIFY IT DIRECTLY !
+template:
+  domain:
+  service:
+    name:
+    url:
+  authentication:
+    auth_type: oauth2
+    token_url:
+    grant_type: password
+    scope:
+    username: test
+    password: test
+    client_id: client_id
+    client_secret: client_secret
+    authorization:
 
 external_data_sources:
   adgs:
@@ -24,74 +35,45 @@ external_data_sources:
       name: auxip
       url: http://127.0.0.1:5000
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5000/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
       authorization: Basic test
+
   adgs2:
     domain: mockup-station-adgs2-svc.processing.svc.cluster.local
     service:
       name: auxip
       url: http://127.0.0.1:5001
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5001/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
       authorization: Basic test
+
+  # CADIP stations. MPS has Authorization but no scope. MTI has scope but no Authorization
+  # the following one is for tests onlys
   cadip:
     domain: mockup-station-cadip-cadip-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5000
     authentication:
-      auth_type: oauth2
+      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
       token_url: http://127.0.0.1:5000/oauth2/token
-      grant_type: password
       scope: sss
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
   ins:
     domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5002
     authentication:
-      auth_type: oauth2
+      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
       token_url: http://127.0.0.1:5002/oauth2/token
-      grant_type: password
       scope: sss
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
   mps:
     domain: mockup-station-cadip-mps-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5003
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5004/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
       authorization: Basic test
   mti:
     domain: mockup-station-cadip-mti-svc.processing.svc.cluster.local
@@ -99,89 +81,51 @@ external_data_sources:
       name: cadip
       url: http://127.0.0.1:5004
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5004/oauth2/token
-      grant_type: password
       scope: openid
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
   nsg:
     domain: mockup-station-cadip-nsg-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5005
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5005/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
   sgs:
     domain: mockup-station-cadip-sgs-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5006
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5006/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
+
+  # CADIP stations for sessions. MPS has Authorization but no scope. MTI has scope but no Authorization
+  # the following one is for tests onlys
   cadip_session:
     domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5000
     authentication:
-      auth_type: oauth2
+      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
       token_url: http://127.0.0.1:5000/oauth2/token
-      grant_type: password
       scope: sss
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
+
   ins_session:
     domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5001
     authentication:
-      auth_type: oauth2
+      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
       token_url: http://127.0.0.1:5001/oauth2/token
-      grant_type: password
       scope: sss
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
   mps_session:
     domain: mockup-station-cadip-mps-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5002
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5002/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
       authorization: Basic test
   mti_session:
     domain: mockup-station-cadip-mti-svc.processing.svc.cluster.local
@@ -189,74 +133,41 @@ external_data_sources:
       name: cadip
       url: http://127.0.0.1:5003
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5003/oauth2/token
-      grant_type: password
       scope: openid
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
   nsg_session:
     domain: mockup-station-cadip-nsg-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5004
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5004/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
   sgs_session:
     domain: mockup-station-cadip-sgs-svc.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5005
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5005/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
-      authorization: null
+
+  # LTA
   lta:
     domain: mockup-lta-lta-svc.processing.svc.cluster.local
     service:
       name: lta
       url: http://127.0.0.1:5006
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5006/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
       authorization: Basic test
+
+  # PRIP (Production Services)
   s1a:
     domain: mockup-prip-s1a-svc.processing.svc.cluster.local
     service:
       name: prip
       url: http://127.0.0.1:5007
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5007/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
       authorization: Basic test
   s2a:
     domain: mockup-prip-s2a-svc.processing.svc.cluster.local
@@ -264,12 +175,5 @@ external_data_sources:
       name: prip
       url: http://127.0.0.1:5008
     authentication:
-      auth_type: oauth2
       token_url: http://127.0.0.1:5008/oauth2/token
-      grant_type: password
-      scope: null
-      username: test
-      password: test
-      client_id: client_id
-      client_secret: client_secret
       authorization: Basic test
