@@ -96,12 +96,11 @@ cadip:
         union: ' OR '
         wrapper: '"{}"'
         operations:
-            and:
-              - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionID}'
-              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
-              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
-
+          and:
+          - SessionID in {SessionIds}
+          - SessionID eq {SessionID}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -110,12 +109,10 @@ cadip:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: http://127.0.0.1:5000/Files
@@ -200,12 +197,11 @@ ins:
         union: ' OR '
         wrapper: '"{}"'
         operations:
-            and:
-              - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionID}'
-              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
-              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
-
+          and:
+          - SessionID in {SessionIds}
+          - SessionID eq {SessionID}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -214,12 +210,10 @@ ins:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: http://127.0.0.1:5100/Files
@@ -254,64 +248,61 @@ mps:
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
-        id:
-            - null
-            - '$.Id'
-        Name:
-            - null
-            - '$.Name'
-        SessionIds:
-          - null
-          - "$.SessionID"
-        SessionID:
-          - null
-          - "$.SessionID"
-        Channel:
-            - null
-            - '$.Channel'
-        BlockNumber:
-            - null
-            - '$.BlockNumber'
-        FinalBlock:
-            - null
-            - '$.FinalBlock'
-        PublicationDate:
-            - null
-            - '$.PublicationDate'
-        EvictionDate:
-            - null
-            - '$.EvictionDate'
-        Size:
-            - null
-            - '$.Size'
-        Retransfer:
-            - null
-            - '$.Retransfer'
-        # Eodag Specific map
-        startTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        completionTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        href:
-            - null
-            - 'http://127.0.0.1:5101/Files({id})/$value'
-        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
-        downloadLink: 'http://127.0.0.1:5101/Files({id})/$value'
-        title: '$.Name'
-
+      id:
+      - null
+      - $.Id
+      Name:
+      - null
+      - $.Name
+      SessionIds:
+      - null
+      - $.SessionID
+      SessionID:
+      - null
+      - $.SessionID
+      Channel:
+      - null
+      - $.Channel
+      BlockNumber:
+      - null
+      - $.BlockNumber
+      FinalBlock:
+      - null
+      - $.FinalBlock
+      PublicationDate:
+      - null
+      - $.PublicationDate
+      EvictionDate:
+      - null
+      - $.EvictionDate
+      Size:
+      - null
+      - $.Size
+      Retransfer:
+      - null
+      - $.Retransfer
+      startTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      completionTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      href:
+      - null
+      - http://127.0.0.1:5101/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      downloadLink: http://127.0.0.1:5101/Files({id})/$value
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
         wrapper: '"{}"'
         operations:
-            and:
-              - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionID}'
-              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
-              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
-
+          and:
+          - SessionID in {SessionIds}
+          - SessionID eq {SessionID}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -320,12 +311,10 @@ mps:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: http://127.0.0.1:5101/Files
@@ -360,64 +349,61 @@ mti:
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
-        id:
-            - null
-            - '$.Id'
-        Name:
-            - null
-            - '$.Name'
-        SessionIds:
-          - null
-          - "$.SessionID"
-        SessionID:
-          - null
-          - "$.SessionID"
-        Channel:
-            - null
-            - '$.Channel'
-        BlockNumber:
-            - null
-            - '$.BlockNumber'
-        FinalBlock:
-            - null
-            - '$.FinalBlock'
-        PublicationDate:
-            - null
-            - '$.PublicationDate'
-        EvictionDate:
-            - null
-            - '$.EvictionDate'
-        Size:
-            - null
-            - '$.Size'
-        Retransfer:
-            - null
-            - '$.Retransfer'
-        # Eodag Specific map
-        startTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        completionTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        href:
-            - null
-            - 'http://127.0.0.1:5102/Files({id})/$value'
-        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
-        downloadLink: 'http://127.0.0.1:5102/Files({id})/$value'
-        title: '$.Name'
-
+      id:
+      - null
+      - $.Id
+      Name:
+      - null
+      - $.Name
+      SessionIds:
+      - null
+      - $.SessionID
+      SessionID:
+      - null
+      - $.SessionID
+      Channel:
+      - null
+      - $.Channel
+      BlockNumber:
+      - null
+      - $.BlockNumber
+      FinalBlock:
+      - null
+      - $.FinalBlock
+      PublicationDate:
+      - null
+      - $.PublicationDate
+      EvictionDate:
+      - null
+      - $.EvictionDate
+      Size:
+      - null
+      - $.Size
+      Retransfer:
+      - null
+      - $.Retransfer
+      startTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      completionTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      href:
+      - null
+      - http://127.0.0.1:5102/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      downloadLink: http://127.0.0.1:5102/Files({id})/$value
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
         wrapper: '"{}"'
         operations:
-            and:
-              - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionID}'
-              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
-              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
-
+          and:
+          - SessionID in {SessionIds}
+          - SessionID eq {SessionID}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -426,12 +412,10 @@ mti:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: http://127.0.0.1:5102/Files
@@ -466,64 +450,61 @@ nsg:
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
-        id:
-            - null
-            - '$.Id'
-        Name:
-            - null
-            - '$.Name'
-        SessionIds:
-          - null
-          - "$.SessionID"
-        SessionID:
-          - null
-          - "$.SessionID"
-        Channel:
-            - null
-            - '$.Channel'
-        BlockNumber:
-            - null
-            - '$.BlockNumber'
-        FinalBlock:
-            - null
-            - '$.FinalBlock'
-        PublicationDate:
-            - null
-            - '$.PublicationDate'
-        EvictionDate:
-            - null
-            - '$.EvictionDate'
-        Size:
-            - null
-            - '$.Size'
-        Retransfer:
-            - null
-            - '$.Retransfer'
-        # Eodag Specific map
-        startTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        completionTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        href:
-            - null
-            - 'http://127.0.0.1:5103/Files({id})/$value'
-        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
-        downloadLink: 'http://127.0.0.1:5103/Files({id})/$value'
-        title: '$.Name'
-
+      id:
+      - null
+      - $.Id
+      Name:
+      - null
+      - $.Name
+      SessionIds:
+      - null
+      - $.SessionID
+      SessionID:
+      - null
+      - $.SessionID
+      Channel:
+      - null
+      - $.Channel
+      BlockNumber:
+      - null
+      - $.BlockNumber
+      FinalBlock:
+      - null
+      - $.FinalBlock
+      PublicationDate:
+      - null
+      - $.PublicationDate
+      EvictionDate:
+      - null
+      - $.EvictionDate
+      Size:
+      - null
+      - $.Size
+      Retransfer:
+      - null
+      - $.Retransfer
+      startTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      completionTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      href:
+      - null
+      - http://127.0.0.1:5103/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      downloadLink: http://127.0.0.1:5103/Files({id})/$value
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
         wrapper: '"{}"'
         operations:
-            and:
-              - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionID}'
-              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
-              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
-
+          and:
+          - SessionID in {SessionIds}
+          - SessionID eq {SessionID}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -532,12 +513,10 @@ nsg:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: http://127.0.0.1:5103/Files
@@ -572,64 +551,61 @@ sgs:
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
-        id:
-            - null
-            - '$.Id'
-        Name:
-            - null
-            - '$.Name'
-        SessionIds:
-          - null
-          - "$.SessionID"
-        SessionID:
-          - null
-          - "$.SessionID"
-        Channel:
-            - null
-            - '$.Channel'
-        BlockNumber:
-            - null
-            - '$.BlockNumber'
-        FinalBlock:
-            - null
-            - '$.FinalBlock'
-        PublicationDate:
-            - null
-            - '$.PublicationDate'
-        EvictionDate:
-            - null
-            - '$.EvictionDate'
-        Size:
-            - null
-            - '$.Size'
-        Retransfer:
-            - null
-            - '$.Retransfer'
-        # Eodag Specific map
-        startTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        completionTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        href:
-            - null
-            - 'http://127.0.0.1:5104/Files({id})/$value'
-        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
-        downloadLink: 'http://127.0.0.1:5104/Files({id})/$value'
-        title: '$.Name'
-
+      id:
+      - null
+      - $.Id
+      Name:
+      - null
+      - $.Name
+      SessionIds:
+      - null
+      - $.SessionID
+      SessionID:
+      - null
+      - $.SessionID
+      Channel:
+      - null
+      - $.Channel
+      BlockNumber:
+      - null
+      - $.BlockNumber
+      FinalBlock:
+      - null
+      - $.FinalBlock
+      PublicationDate:
+      - null
+      - $.PublicationDate
+      EvictionDate:
+      - null
+      - $.EvictionDate
+      Size:
+      - null
+      - $.Size
+      Retransfer:
+      - null
+      - $.Retransfer
+      startTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      completionTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      href:
+      - null
+      - http://127.0.0.1:5104/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      downloadLink: http://127.0.0.1:5104/Files({id})/$value
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
         wrapper: '"{}"'
         operations:
-            and:
-              - 'SessionID in {SessionIds}'
-              - 'SessionID eq {SessionID}'
-              - 'PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}'
-              - 'PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}'
-
+          and:
+          - SessionID in {SessionIds}
+          - SessionID eq {SessionID}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -638,12 +614,10 @@ sgs:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: http://127.0.0.1:5104/Files
@@ -754,24 +728,22 @@ cadip_session:
       - null
       - $.PublicationDate
       href:
-          - null
-          - "http://127.0.0.1:5000/Files({id})/$value"
-      geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
-      title: "$.Name"
-
+      - null
+      - http://127.0.0.1:5000/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
         wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
-            - "SessionId eq {SessionId}"
-            - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
-
+          - SessionId in {SessionIds}
+          - SessionId eq {SessionId}
+          - Satellite eq {platform}
+          - Satellite in {platforms}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -799,12 +771,10 @@ cadip_session:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: https://127.0.0.1:5000/Sessions
@@ -925,13 +895,12 @@ ins_session:
         wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
-            - "SessionId eq {SessionId}"
-            - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
-
+          - SessionId in {SessionIds}
+          - SessionId eq {SessionId}
+          - Satellite eq {platform}
+          - Satellite in {platforms}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -959,12 +928,10 @@ ins_session:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: https://127.0.0.1:5100/Sessions
@@ -1085,13 +1052,12 @@ mps_session:
         wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
-            - "SessionId eq {SessionId}"
-            - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
-
+          - SessionId in {SessionIds}
+          - SessionId eq {SessionId}
+          - Satellite eq {platform}
+          - Satellite in {platforms}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1119,12 +1085,10 @@ mps_session:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: https://127.0.0.1:5101/Sessions
@@ -1245,13 +1209,12 @@ mti_session:
         wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
-            - "SessionId eq {SessionId}"
-            - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
-
+          - SessionId in {SessionIds}
+          - SessionId eq {SessionId}
+          - Satellite eq {platform}
+          - Satellite in {platforms}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1279,12 +1242,10 @@ mti_session:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: https://127.0.0.1:5102/Sessions
@@ -1405,13 +1366,12 @@ nsg_session:
         wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
-            - "SessionId eq {SessionId}"
-            - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
-
+          - SessionId in {SessionIds}
+          - SessionId eq {SessionId}
+          - Satellite eq {platform}
+          - Satellite in {platforms}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1439,12 +1399,10 @@ nsg_session:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: https://127.0.0.1:5103/Sessions
@@ -1565,13 +1523,12 @@ sgs_session:
         wrapper: '"{}"'
         operations:
           and:
-            - "SessionId in {SessionIds}"
-            - "SessionId eq {SessionId}"
-            - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
-
+          - SessionId in {SessionIds}
+          - SessionId eq {SessionId}
+          - Satellite eq {platform}
+          - Satellite in {platforms}
+          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1599,12 +1556,10 @@ sgs_session:
         ascending: asc
         descending: desc
       max_sort_params: 1
-
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
-      total_items_nb_key_path: "$.total"
-
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
+      total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
     base_uri: https://127.0.0.1:5104/Sessions
