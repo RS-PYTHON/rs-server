@@ -448,10 +448,11 @@ class TestFeatureOdataStacMapping:
         """
         # Mock pickup response and token validation
         mock_token_validation()
+        # Note: for /items/{item-id} top is always set to 1.
         responses.add(
             responses.GET,
             "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
-            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
+            "&$orderby=PublicationDate%20desc&$top=1&$skip=0",
             json=cadip_session_response,
             status=200,
         )
@@ -640,10 +641,11 @@ class TestFeatureCollectionOdataStacMapping:
         """
         # Mock pickup response and token validation
         mock_token_validation()
+        # Note, for /items, top value is the one defined in collection.
         responses.add(
             responses.GET,
             "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
-            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
+            "&$orderby=PublicationDate%20desc&$top=10&$skip=0",
             json=cadip_session_response,
             status=200,
         )
