@@ -896,7 +896,7 @@ def test_search_parameters(
     # Static values
     user_ids = "id1, id2"
     user_datetime = "2021-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
-    user_limit = 15
+    user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
     user_params = {
         "limit": user_limit,
         "datetime": user_datetime,
@@ -947,6 +947,7 @@ def test_search_parameters(
         user_params.update(
             {
                 "ids": [id.strip() for id in user_ids.split(",")],
+                "limit": user_limit,
                 "sortby": [{"direction": "desc", "field": "datetime"}],
             },
         )

@@ -481,8 +481,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if empty_selection:
                     continue  # try next collection
 
-                # Overwrite the pagination parameters
-                odata["top"] = odata.get("top") or limit or 20  # default = 20 results per page
+                # Overwrite the pagination parameters.
+                # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
+                if limit:
+                    odata["top"] = limit
 
                 # TODO: what to do with the sortby parameter ?
 

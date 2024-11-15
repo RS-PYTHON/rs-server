@@ -86,7 +86,7 @@ class MockPgstacCadip(MockPgstac):
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        # Priority, stac endpoint limit -> odata collection top -> 1000 by default
+        # Priority: GET 'limit' parameter -> odata 'top' parameter -> 1000 by default
         user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 1000)))
         page = manage_page(self.request)
         session_data = process_session_search(
