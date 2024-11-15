@@ -85,9 +85,9 @@ class MockPgstacCadip(MockPgstac):
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        sortby = self.request.query_params.get("sortby", None)
-        user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 10)))
-        if page := self.request.query_params.get("page"):
+        # Priority, stac endpoint limit -> odata collection top -> 1000 by default
+        user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 1000)))
+        if page := self.request.query_params.get("page", 1):
             try:
                 # Attempt to parse `page` as an integer and validate it's >= 1
                 page = int(page)
@@ -103,8 +103,8 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("SessionId", []),
             odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
+            self.request.query_params.get("sortby", "-published"),
             user_limit,
-            sortby,
             page,
         )
         if not session_data.features:
@@ -372,11 +372,11 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Union[str, None],
         WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=True)),
     ],
+    sortby: str,
     limit: Annotated[
         Union[int, None],
         Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
     ],
-    sortby: Union[str, None] = "-datetime",
     page: Union[int, None] = 1,
 ) -> stac_pydantic.ItemCollection:
     """Function to process and to retrieve a list of sessions from any CADIP station.
@@ -401,8 +401,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-    limit = limit if limit else 1000
-    page = page if page else 1
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
         products = init_cadip_provider(f"{station}_session").search(

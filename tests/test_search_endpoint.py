@@ -450,7 +450,8 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&$skip=0",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
             json=cadip_session_response,
             status=200,
         )
@@ -641,7 +642,8 @@ class TestFeatureCollectionOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&$skip=0",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=20&$skip=0",
             json=cadip_session_response,
             status=200,
         )
@@ -1019,7 +1021,7 @@ def test_search_parameters(
                     'http://127.0.0.1:5000/Sessions?$filter="'
                     f"SessionId in {user_ids} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}&$skip=0'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0'
                 )
 
                 odata_query = (
@@ -1027,7 +1029,7 @@ def test_search_parameters(
                     f"SessionId in {user_ids} "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}&$skip=0'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0'
                 )
             else:
                 raise NotImplementedError
