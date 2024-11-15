@@ -1,0 +1,87 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+template:
+  id:
+  station:
+  query:
+  stac_extensions:
+    [
+      "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+      "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+      "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+    ]
+  title:
+  description:
+  license: other
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [["2024-06-12T02:57:21.459000Z", "2024-08-22T11:30:12.767000Z"]]
+  links:
+    - rel: license
+      href: "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf"
+      title: "Legal notice on the use of Copernicus Sentinel Data and Service Information"
+  providers:
+    - name: "European Union/ESA/Copernicus"
+      roles:
+        - producer
+        - licensor
+      url: "https://sentiwiki.copernicus.eu/web/s1-mission"
+    - name: "Reference System"
+      roles:
+        - host
+      url: "https://home.rs-python.eu/"
+
+collections:
+  - id: cadip_sessions_id
+    station: cadip
+    query:
+      top: 20
+    title: "'cadip' station"
+    description: "'cadip' station"
+
+  - id: cadip_s1A
+    station: cadip
+    query:
+      Satellite: S1A, S1B
+      top: 20
+    title: "'cadip' station - S1A"
+    description: "'cadip' station - S1A"
+
+  - id: mti_s1A
+    station: mti
+    query:
+      Satellite: S1A
+      top: 20
+    title: "'mti' station - S1A"
+    description: "'mti' station - S1A"
+
+  - id: sgs_s1A
+    station: sgs
+    query:
+      Satellite: S1A
+      top: 20
+    title: "'sgs' station - S1A"
+    description: "'sgs' station - S1A"
+
+  - id: cadip_s1a_interval
+    station: cadip
+    query:
+      PublicationDate: "2020-01-01T00:00:00Z/2024-01-01T00:00:00Z"
+      Satellite: S1A
+      top: 20
+    title: "'cadip' station - S1A 2020/2023"
+    description: "'cadip' station - S1A 2020/2023"

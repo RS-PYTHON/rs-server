@@ -491,9 +491,11 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22"
-            "&$orderby=PublicationDate%20desc&$top=10&$skip=0&$expand=Attributes",
+            "http://127.0.0.1:5001/Products?$filter=%22"
+            "contains(Name,%20'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF')%20and%20"
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
+            "att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22"
+            "&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
@@ -560,30 +562,58 @@ class TestFeatureOdataStacMapping:
                 "&$expand=Attributes",
                 {"detail": "AUXIP item 'INVALID_ITEM' not found."},
             ),
-            (
-                "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
-                {"detail": "Cadip session 'INVALID_ITEM' not found."},
-            ),
         ],
     )
-    def test_invalid_item_mapping(
-        self,
-        client,
-        mock_token_validation,
-        cadip_session_response,
-        adgs_response,
-        endpoint,
-        odata_url,
-        detail,
-    ):
+    def test_adgs_invalid_item_mapping(self, client, mock_token_validation, endpoint, odata_url, detail, adgs_response):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
         mock_token_validation()
         responses.add(
             responses.GET,
             odata_url,
-            json=self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_session_response, adgs_response),
+            json=adgs_response,
             status=200,
+        )
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json() == detail
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize(
+        "endpoint, odata_session_url, odata_file_url, detail",
+        [
+            (
+                "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
+                "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+                {"detail": "Cadip session 'INVALID_ITEM' not found."},
+            ),
+        ],
+    )
+    def test_cadip_invalid_item_mapping(
+        self,
+        client,
+        mock_token_validation,
+        endpoint,
+        odata_session_url,
+        odata_file_url,
+        detail,
+    ):
+        """Test to verify the output of rs-server when given collection is valid and item is invalid."""
+        mock_token_validation()
+        # Collection URL is valid, returning items
+        responses.add(
+            responses.GET,
+            odata_session_url,
+            json={},
+            status=200,
+        )
+        # Map assets also (CADIP makes 2 requests)
+        responses.add(
+            responses.GET,
+            odata_file_url,
+            json={},
+            status=404,
         )
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -965,17 +995,18 @@ def test_search_parameters(
             # if the reponse is not mocked.
             # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
             # TODO after fixing rs-server, these parameters should appear in the OData request:
-            #  - adgs ids (linked to https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-494 ?)
             #  - sortBy (https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-131)
             if adgs:
+                uid = user_ids.split(",", maxsplit=1)[0]
                 odata_no_query = (
                     'http://127.0.0.1:5000/Products?$filter="'
+                    f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
                     '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes'
                 )
-
                 odata_query = (
                     'http://127.0.0.1:5000/Products?$filter="'
+                    f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max} "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "

@@ -12,81 +12,85 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# THIS FILE WAS AUTOMATICALLY CREATED FROM:
+#  - rs-server/services/cadip/config/cadip_ws_config.template.yaml
+#  - rs-server/services/cadip/config/cadip_ws_config.template_session.yaml
+#  - rs-server/resources/sync_config_files.py
+# DON'T MODIFY IT DIRECTLY !
+
 cadip:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5000/oauth2/token'
+    auth_uri: http://127.0.0.1:5000/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client_id
-      client_secret: client_secret
-      grant_type: password
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
-
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
-
   search:
     type: ODataV4Search
-    api_endpoint: 'http://127.0.0.1:5000/Files'
+    api_endpoint: http://127.0.0.1:5000/Files
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
-        id:
-            - null
-            - '$.Id'
-        Name:
-            - null
-            - '$.Name'
-        SessionIds:
-          - null
-          - "$.SessionID"
-        SessionID:
-          - null
-          - "$.SessionID"
-        Channel:
-            - null
-            - '$.Channel'
-        BlockNumber:
-            - null
-            - '$.BlockNumber'
-        FinalBlock:
-            - null
-            - '$.FinalBlock'
-        PublicationDate:
-            - null
-            - '$.PublicationDate'
-        EvictionDate:
-            - null
-            - '$.EvictionDate'
-        Size:
-            - null
-            - '$.Size'
-        Retransfer:
-            - null
-            - '$.Retransfer'
-        # Eodag Specific map
-        startTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        completionTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        href:
-            - null
-            - 'http://127.0.0.1:5000/Files({id})/$value'
-        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
-        downloadLink: 'http://127.0.0.1:5000/Files({id})/$value'
-        title: '$.Name'
-
+      id:
+      - null
+      - $.Id
+      Name:
+      - null
+      - $.Name
+      SessionIds:
+      - null
+      - $.SessionID
+      SessionID:
+      - null
+      - $.SessionID
+      Channel:
+      - null
+      - $.Channel
+      BlockNumber:
+      - null
+      - $.BlockNumber
+      FinalBlock:
+      - null
+      - $.FinalBlock
+      PublicationDate:
+      - null
+      - $.PublicationDate
+      EvictionDate:
+      - null
+      - $.EvictionDate
+      Size:
+      - null
+      - $.Size
+      Retransfer:
+      - null
+      - $.Retransfer
+      startTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      completionTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      href:
+      - null
+      - http://127.0.0.1:5000/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      downloadLink: http://127.0.0.1:5000/Files({id})/$value
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -114,87 +118,83 @@ cadip:
 
   download:
     type: HTTPDownload
-    base_uri: 'http://127.0.0.1:5000/Files'
+    base_uri: http://127.0.0.1:5000/Files
     metadata_mapping:
-        uid: '$.Id'
-        downloadLink: 'http://127.0.0.1:5000/Files({uid})/$value'
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5000/Files({uid})/$value
 ins:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
+    auth_uri: http://127.0.0.1:5100/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
-
   search:
     type: ODataV4Search
-    api_endpoint: 'http://127.0.0.1:5100/Files'
+    api_endpoint: http://127.0.0.1:5100/Files
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
-        id:
-            - null
-            - '$.Id'
-        Name:
-            - null
-            - '$.Name'
-        SessionIds:
-          - null
-          - "$.SessionID"
-        SessionID:
-          - null
-          - "$.SessionID"
-        Channel:
-            - null
-            - '$.Channel'
-        BlockNumber:
-            - null
-            - '$.BlockNumber'
-        FinalBlock:
-            - null
-            - '$.FinalBlock'
-        PublicationDate:
-            - null
-            - '$.PublicationDate'
-        EvictionDate:
-            - null
-            - '$.EvictionDate'
-        Size:
-            - null
-            - '$.Size'
-        Retransfer:
-            - null
-            - '$.Retransfer'
-        # Eodag Specific map
-        startTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        completionTimeFromAscendingNode:
-            - null
-            - '$.PublicationDate'
-        href:
-          - null
-          - 'http://127.0.0.1:5100/Files({id})/$value'
-        geometry: 'POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))'
-        downloadLink: 'http://127.0.0.1:5100/Files({id})/$value'
-        title: '$.Name'
-
+      id:
+      - null
+      - $.Id
+      Name:
+      - null
+      - $.Name
+      SessionIds:
+      - null
+      - $.SessionID
+      SessionID:
+      - null
+      - $.SessionID
+      Channel:
+      - null
+      - $.Channel
+      BlockNumber:
+      - null
+      - $.BlockNumber
+      FinalBlock:
+      - null
+      - $.FinalBlock
+      PublicationDate:
+      - null
+      - $.PublicationDate
+      EvictionDate:
+      - null
+      - $.EvictionDate
+      Size:
+      - null
+      - $.Size
+      Retransfer:
+      - null
+      - $.Retransfer
+      startTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      completionTimeFromAscendingNode:
+      - null
+      - $.PublicationDate
+      href:
+      - null
+      - http://127.0.0.1:5100/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      downloadLink: http://127.0.0.1:5100/Files({id})/$value
+      title: $.Name
     free_text_search_operations:
       $filter:
         union: ' OR '
@@ -222,37 +222,35 @@ ins:
 
   download:
     type: HTTPDownload
-    base_uri: 'http://127.0.0.1:5100/Files'
+    base_uri: http://127.0.0.1:5100/Files
     metadata_mapping:
-        uid: '$.Id'
-        downloadLink: 'http://127.0.0.1:5100/Files({uid})/$value'
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5100/Files({uid})/$value
 mps:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
+    auth_uri: http://127.0.0.1:5101/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
-
   search:
     type: ODataV4Search
-    api_endpoint: 'http://127.0.0.1:5101/Files'
+    api_endpoint: http://127.0.0.1:5101/Files
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -330,37 +328,35 @@ mps:
 
   download:
     type: HTTPDownload
-    base_uri: 'http://127.0.0.1:5101/Files'
+    base_uri: http://127.0.0.1:5101/Files
     metadata_mapping:
-        uid: '$.Id'
-        downloadLink: 'http://127.0.0.1:5101/Files({uid})/$value'
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5101/Files({uid})/$value
 mti:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
+    auth_uri: http://127.0.0.1:5102/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
-
   search:
     type: ODataV4Search
-    api_endpoint: 'http://127.0.0.1:5102/Files'
+    api_endpoint: http://127.0.0.1:5102/Files
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -438,37 +434,35 @@ mti:
 
   download:
     type: HTTPDownload
-    base_uri: 'http://127.0.0.1:5102/Files'
+    base_uri: http://127.0.0.1:5102/Files
     metadata_mapping:
-        uid: '$.Id'
-        downloadLink: 'http://127.0.0.1:5102/Files({uid})/$value'
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5102/Files({uid})/$value
 nsg:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
+    auth_uri: http://127.0.0.1:5103/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
-
   search:
     type: ODataV4Search
-    api_endpoint: 'http://127.0.0.1:5103/Files'
+    api_endpoint: http://127.0.0.1:5103/Files
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -546,37 +540,35 @@ nsg:
 
   download:
     type: HTTPDownload
-    base_uri: 'http://127.0.0.1:5103/Files'
+    base_uri: http://127.0.0.1:5103/Files
     metadata_mapping:
-        uid: '$.Id'
-        downloadLink: 'http://127.0.0.1:5103/Files({uid})/$value'
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5103/Files({uid})/$value
 sgs:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:0/oauth2/token'
+    auth_uri: http://127.0.0.1:5104/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
-
   search:
     type: ODataV4Search
-    api_endpoint: 'http://127.0.0.1:5104/Files'
+    api_endpoint: http://127.0.0.1:5104/Files
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
@@ -654,116 +646,113 @@ sgs:
 
   download:
     type: HTTPDownload
-    base_uri: 'http://127.0.0.1:5104/Files'
+    base_uri: http://127.0.0.1:5104/Files
     metadata_mapping:
-        uid: '$.Id'
-        downloadLink: 'http://127.0.0.1:5104/Files({uid})/$value'
-
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5104/Files({uid})/$value
 cadip_session:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5000/oauth2/token'
+    auth_uri: http://127.0.0.1:5000/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
   search:
     type: ODataV4Search
-    api_endpoint: "http://127.0.0.1:5000/Sessions"
+    api_endpoint: http://127.0.0.1:5000/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
       id:
-        - null
-        - "$.Id"
+      - null
+      - $.Id
       SessionIds:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       SessionId:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       NumChannels:
-        - null
-        - "$.NumChannels"
+      - null
+      - $.NumChannels
       PublicationDate:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       Satellite:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platform:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platforms:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       StationUnitId:
-        - null
-        - "$.StationUnitId"
+      - null
+      - $.StationUnitId
       DownlinkOrbit:
-        - null
-        - "$.DownlinkOrbit"
+      - null
+      - $.DownlinkOrbit
       AcquisitionId:
-        - null
-        - "$.AcquisitionId"
+      - null
+      - $.AcquisitionId
       AntennaId:
-        - null
-        - "$.AntennaId"
+      - null
+      - $.AntennaId
       FrontEndId:
-        - null
-        - "$.FrontEndId"
+      - null
+      - $.FrontEndId
       Retransfer:
-        - null
-        - "$.Retransfer"
+      - null
+      - $.Retransfer
       AntennaStatusOK:
-        - null
-        - "$.AntennaStatusOK"
+      - null
+      - $.AntennaStatusOK
       FrontEndStatusOK:
-        - null
-        - "$.FrontEndStatusOK"
+      - null
+      - $.FrontEndStatusOK
       PlannedDataStart:
-        - null
-        - "$.PlannedDataStart"
+      - null
+      - $.PlannedDataStart
       PlannedDataStop:
-        - null
-        - "$.PlannedDataStop"
+      - null
+      - $.PlannedDataStop
       DownlinkStart:
-        - null
-        - "$.DownlinkStart"
+      - null
+      - $.DownlinkStart
       DownlinkStop:
-        - null
-        - "$.DownlinkStop"
+      - null
+      - $.DownlinkStop
       DownlinkStatusOK:
-        - null
-        - "$.DownlinkStatusOK"
+      - null
+      - $.DownlinkStatusOK
       DeliveryPushOK:
-        - null
-        - "$.DeliveryPushOK"
+      - null
+      - $.DeliveryPushOK
       Files:
-        - null
-        - "$.Files"
-      # Eodag Specific map
+      - null
+      - $.Files
       startTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       completionTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       href:
           - null
           - "http://127.0.0.1:5000/Files({id})/$value"
@@ -772,7 +761,7 @@ cadip_session:
 
     free_text_search_operations:
       $filter:
-        union: " OR "
+        union: ' OR '
         wrapper: '"{}"'
         operations:
           and:
@@ -818,124 +807,121 @@ cadip_session:
 
   download:
     type: HTTPDownload
-    base_uri: "https://127.0.0.1:5000/Sessions"
+    base_uri: https://127.0.0.1:5000/Sessions
     metadata_mapping:
-      uid: "$.Id"
-      downloadLink: "http://127.0.0.1:5000/Files({uid})/$value"
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5000/Files({uid})/$value
 ins_session:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5100/oauth2/token'
+    auth_uri: http://127.0.0.1:5100/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
   search:
     type: ODataV4Search
-    api_endpoint: "http://127.0.0.1:5000/Sessions"
+    api_endpoint: http://127.0.0.1:5100/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
       id:
-        - null
-        - "$.Id"
+      - null
+      - $.Id
       SessionIds:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       SessionId:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       NumChannels:
-        - null
-        - "$.NumChannels"
+      - null
+      - $.NumChannels
       PublicationDate:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       Satellite:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platform:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platforms:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       StationUnitId:
-        - null
-        - "$.StationUnitId"
+      - null
+      - $.StationUnitId
       DownlinkOrbit:
-        - null
-        - "$.DownlinkOrbit"
+      - null
+      - $.DownlinkOrbit
       AcquisitionId:
-        - null
-        - "$.AcquisitionId"
+      - null
+      - $.AcquisitionId
       AntennaId:
-        - null
-        - "$.AntennaId"
+      - null
+      - $.AntennaId
       FrontEndId:
-        - null
-        - "$.FrontEndId"
+      - null
+      - $.FrontEndId
       Retransfer:
-        - null
-        - "$.Retransfer"
+      - null
+      - $.Retransfer
       AntennaStatusOK:
-        - null
-        - "$.AntennaStatusOK"
+      - null
+      - $.AntennaStatusOK
       FrontEndStatusOK:
-        - null
-        - "$.FrontEndStatusOK"
+      - null
+      - $.FrontEndStatusOK
       PlannedDataStart:
-        - null
-        - "$.PlannedDataStart"
+      - null
+      - $.PlannedDataStart
       PlannedDataStop:
-        - null
-        - "$.PlannedDataStop"
+      - null
+      - $.PlannedDataStop
       DownlinkStart:
-        - null
-        - "$.DownlinkStart"
+      - null
+      - $.DownlinkStart
       DownlinkStop:
-        - null
-        - "$.DownlinkStop"
+      - null
+      - $.DownlinkStop
       DownlinkStatusOK:
-        - null
-        - "$.DownlinkStatusOK"
+      - null
+      - $.DownlinkStatusOK
       DeliveryPushOK:
-        - null
-        - "$.DeliveryPushOK"
+      - null
+      - $.DeliveryPushOK
       Files:
-        - null
-        - "$.Files"
-      # Eodag Specific map
+      - null
+      - $.Files
       startTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       completionTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       href:
-        - null
-        - 'http://127.0.0.1:5100/Files({id})/$value'
-      geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
-      title: "$.Name"
-
+      - null
+      - http://127.0.0.1:5100/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
-        union: " OR "
+        union: ' OR '
         wrapper: '"{}"'
         operations:
           and:
@@ -981,124 +967,121 @@ ins_session:
 
   download:
     type: HTTPDownload
-    base_uri: "https://127.0.0.1:5100/Sessions"
+    base_uri: https://127.0.0.1:5100/Sessions
     metadata_mapping:
-      uid: "$.Id"
-      downloadLink: "http://127.0.0.1:5100/Files({uid})/$value"
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5100/Files({uid})/$value
 mps_session:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5101/oauth2/token'
+    auth_uri: http://127.0.0.1:5101/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
   search:
     type: ODataV4Search
-    api_endpoint: "http://127.0.0.1:5101/Sessions"
+    api_endpoint: http://127.0.0.1:5101/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
       id:
-        - null
-        - "$.Id"
+      - null
+      - $.Id
       SessionIds:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       SessionId:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       NumChannels:
-        - null
-        - "$.NumChannels"
+      - null
+      - $.NumChannels
       PublicationDate:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       Satellite:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platform:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platforms:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       StationUnitId:
-        - null
-        - "$.StationUnitId"
+      - null
+      - $.StationUnitId
       DownlinkOrbit:
-        - null
-        - "$.DownlinkOrbit"
+      - null
+      - $.DownlinkOrbit
       AcquisitionId:
-        - null
-        - "$.AcquisitionId"
+      - null
+      - $.AcquisitionId
       AntennaId:
-        - null
-        - "$.AntennaId"
+      - null
+      - $.AntennaId
       FrontEndId:
-        - null
-        - "$.FrontEndId"
+      - null
+      - $.FrontEndId
       Retransfer:
-        - null
-        - "$.Retransfer"
+      - null
+      - $.Retransfer
       AntennaStatusOK:
-        - null
-        - "$.AntennaStatusOK"
+      - null
+      - $.AntennaStatusOK
       FrontEndStatusOK:
-        - null
-        - "$.FrontEndStatusOK"
+      - null
+      - $.FrontEndStatusOK
       PlannedDataStart:
-        - null
-        - "$.PlannedDataStart"
+      - null
+      - $.PlannedDataStart
       PlannedDataStop:
-        - null
-        - "$.PlannedDataStop"
+      - null
+      - $.PlannedDataStop
       DownlinkStart:
-        - null
-        - "$.DownlinkStart"
+      - null
+      - $.DownlinkStart
       DownlinkStop:
-        - null
-        - "$.DownlinkStop"
+      - null
+      - $.DownlinkStop
       DownlinkStatusOK:
-        - null
-        - "$.DownlinkStatusOK"
+      - null
+      - $.DownlinkStatusOK
       DeliveryPushOK:
-        - null
-        - "$.DeliveryPushOK"
+      - null
+      - $.DeliveryPushOK
       Files:
-        - null
-        - "$.Files"
-      # Eodag Specific map
+      - null
+      - $.Files
       startTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       completionTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       href:
-        - null
-        - 'http://127.0.0.1:5101/Files({id})/$value'
-      geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
-      title: "$.Name"
-
+      - null
+      - http://127.0.0.1:5101/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
-        union: " OR "
+        union: ' OR '
         wrapper: '"{}"'
         operations:
           and:
@@ -1144,124 +1127,121 @@ mps_session:
 
   download:
     type: HTTPDownload
-    base_uri: "https://127.0.0.1:5101/Sessions"
+    base_uri: https://127.0.0.1:5101/Sessions
     metadata_mapping:
-      uid: "$.Id"
-      downloadLink: "http://127.0.0.1:5101/Files({uid})/$value"
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5101/Files({uid})/$value
 mti_session:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5102/oauth2/token'
+    auth_uri: http://127.0.0.1:5102/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
   search:
     type: ODataV4Search
-    api_endpoint: "http://127.0.0.1:5102/Sessions"
+    api_endpoint: http://127.0.0.1:5102/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
       id:
-        - null
-        - "$.Id"
+      - null
+      - $.Id
       SessionIds:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       SessionId:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       NumChannels:
-        - null
-        - "$.NumChannels"
+      - null
+      - $.NumChannels
       PublicationDate:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       Satellite:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platform:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platforms:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       StationUnitId:
-        - null
-        - "$.StationUnitId"
+      - null
+      - $.StationUnitId
       DownlinkOrbit:
-        - null
-        - "$.DownlinkOrbit"
+      - null
+      - $.DownlinkOrbit
       AcquisitionId:
-        - null
-        - "$.AcquisitionId"
+      - null
+      - $.AcquisitionId
       AntennaId:
-        - null
-        - "$.AntennaId"
+      - null
+      - $.AntennaId
       FrontEndId:
-        - null
-        - "$.FrontEndId"
+      - null
+      - $.FrontEndId
       Retransfer:
-        - null
-        - "$.Retransfer"
+      - null
+      - $.Retransfer
       AntennaStatusOK:
-        - null
-        - "$.AntennaStatusOK"
+      - null
+      - $.AntennaStatusOK
       FrontEndStatusOK:
-        - null
-        - "$.FrontEndStatusOK"
+      - null
+      - $.FrontEndStatusOK
       PlannedDataStart:
-        - null
-        - "$.PlannedDataStart"
+      - null
+      - $.PlannedDataStart
       PlannedDataStop:
-        - null
-        - "$.PlannedDataStop"
+      - null
+      - $.PlannedDataStop
       DownlinkStart:
-        - null
-        - "$.DownlinkStart"
+      - null
+      - $.DownlinkStart
       DownlinkStop:
-        - null
-        - "$.DownlinkStop"
+      - null
+      - $.DownlinkStop
       DownlinkStatusOK:
-        - null
-        - "$.DownlinkStatusOK"
+      - null
+      - $.DownlinkStatusOK
       DeliveryPushOK:
-        - null
-        - "$.DeliveryPushOK"
+      - null
+      - $.DeliveryPushOK
       Files:
-        - null
-        - "$.Files"
-      # Eodag Specific map
+      - null
+      - $.Files
       startTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       completionTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       href:
-        - null
-        - 'http://127.0.0.1:5102/Files({id})/$value'
-      geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
-      title: "$.Name"
-
+      - null
+      - http://127.0.0.1:5102/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
-        union: " OR "
+        union: ' OR '
         wrapper: '"{}"'
         operations:
           and:
@@ -1307,124 +1287,121 @@ mti_session:
 
   download:
     type: HTTPDownload
-    base_uri: "https://127.0.0.1:5102/Sessions"
+    base_uri: https://127.0.0.1:5102/Sessions
     metadata_mapping:
-      uid: "$.Id"
-      downloadLink: "http://127.0.0.1:5102/Files({uid})/$value"
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5102/Files({uid})/$value
 nsg_session:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5103/oauth2/token'
+    auth_uri: http://127.0.0.1:5103/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
   search:
     type: ODataV4Search
-    api_endpoint: "http://127.0.0.1:5103/Sessions"
+    api_endpoint: http://127.0.0.1:5103/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
       id:
-        - null
-        - "$.Id"
+      - null
+      - $.Id
       SessionIds:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       SessionId:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       NumChannels:
-        - null
-        - "$.NumChannels"
+      - null
+      - $.NumChannels
       PublicationDate:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       Satellite:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platform:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platforms:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       StationUnitId:
-        - null
-        - "$.StationUnitId"
+      - null
+      - $.StationUnitId
       DownlinkOrbit:
-        - null
-        - "$.DownlinkOrbit"
+      - null
+      - $.DownlinkOrbit
       AcquisitionId:
-        - null
-        - "$.AcquisitionId"
+      - null
+      - $.AcquisitionId
       AntennaId:
-        - null
-        - "$.AntennaId"
+      - null
+      - $.AntennaId
       FrontEndId:
-        - null
-        - "$.FrontEndId"
+      - null
+      - $.FrontEndId
       Retransfer:
-        - null
-        - "$.Retransfer"
+      - null
+      - $.Retransfer
       AntennaStatusOK:
-        - null
-        - "$.AntennaStatusOK"
+      - null
+      - $.AntennaStatusOK
       FrontEndStatusOK:
-        - null
-        - "$.FrontEndStatusOK"
+      - null
+      - $.FrontEndStatusOK
       PlannedDataStart:
-        - null
-        - "$.PlannedDataStart"
+      - null
+      - $.PlannedDataStart
       PlannedDataStop:
-        - null
-        - "$.PlannedDataStop"
+      - null
+      - $.PlannedDataStop
       DownlinkStart:
-        - null
-        - "$.DownlinkStart"
+      - null
+      - $.DownlinkStart
       DownlinkStop:
-        - null
-        - "$.DownlinkStop"
+      - null
+      - $.DownlinkStop
       DownlinkStatusOK:
-        - null
-        - "$.DownlinkStatusOK"
+      - null
+      - $.DownlinkStatusOK
       DeliveryPushOK:
-        - null
-        - "$.DeliveryPushOK"
+      - null
+      - $.DeliveryPushOK
       Files:
-        - null
-        - "$.Files"
-      # Eodag Specific map
+      - null
+      - $.Files
       startTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       completionTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       href:
-        - null
-        - 'http://127.0.0.1:5103/Files({id})/$value'
-      geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
-      title: "$.Name"
-
+      - null
+      - http://127.0.0.1:5103/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
-        union: " OR "
+        union: ' OR '
         wrapper: '"{}"'
         operations:
           and:
@@ -1470,124 +1447,121 @@ nsg_session:
 
   download:
     type: HTTPDownload
-    base_uri: "https://127.0.0.1:5103/Sessions"
+    base_uri: https://127.0.0.1:5103/Sessions
     metadata_mapping:
-      uid: "$.Id"
-      downloadLink: "http://127.0.0.1:5103/Files({uid})/$value"
-
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5103/Files({uid})/$value
 sgs_session:
   auth:
     type: TokenAuth
-    auth_uri: 'http://127.0.0.1:5104/oauth2/token'
+    auth_uri: http://127.0.0.1:5104/oauth2/token
     token_type: json
     token_key: access_token
     request_method: POST
     req_data:
-      client_id: client
-      client_secret: client_sec
-      grant_type: password
-      username: test2
-      password: test2
+      client_id: PLACEHOLDER
+      client_secret: PLACEHOLDER
+      grant_type: PLACEHOLDER
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     credentials:
-      username: test
-      password: test
+      username: PLACEHOLDER
+      password: PLACEHOLDER
     headers:
-      Content-Type: application/x-www-form-urlencoded
+      Content-Type: PLACEHOLDER
   products:
     S1_SAR_RAW:
       productType: RAW
       collection: Sentinel1
   search:
     type: ODataV4Search
-    api_endpoint: "http://127.0.0.1:5104/Sessions"
+    api_endpoint: http://127.0.0.1:5104/Sessions
     need_auth: true
     results_entry: responses | $
     metadata_mapping:
       id:
-        - null
-        - "$.Id"
+      - null
+      - $.Id
       SessionIds:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       SessionId:
-        - null
-        - "$.SessionId"
+      - null
+      - $.SessionId
       NumChannels:
-        - null
-        - "$.NumChannels"
+      - null
+      - $.NumChannels
       PublicationDate:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       Satellite:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platform:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       platforms:
-        - null
-        - "$.Satellite"
+      - null
+      - $.Satellite
       StationUnitId:
-        - null
-        - "$.StationUnitId"
+      - null
+      - $.StationUnitId
       DownlinkOrbit:
-        - null
-        - "$.DownlinkOrbit"
+      - null
+      - $.DownlinkOrbit
       AcquisitionId:
-        - null
-        - "$.AcquisitionId"
+      - null
+      - $.AcquisitionId
       AntennaId:
-        - null
-        - "$.AntennaId"
+      - null
+      - $.AntennaId
       FrontEndId:
-        - null
-        - "$.FrontEndId"
+      - null
+      - $.FrontEndId
       Retransfer:
-        - null
-        - "$.Retransfer"
+      - null
+      - $.Retransfer
       AntennaStatusOK:
-        - null
-        - "$.AntennaStatusOK"
+      - null
+      - $.AntennaStatusOK
       FrontEndStatusOK:
-        - null
-        - "$.FrontEndStatusOK"
+      - null
+      - $.FrontEndStatusOK
       PlannedDataStart:
-        - null
-        - "$.PlannedDataStart"
+      - null
+      - $.PlannedDataStart
       PlannedDataStop:
-        - null
-        - "$.PlannedDataStop"
+      - null
+      - $.PlannedDataStop
       DownlinkStart:
-        - null
-        - "$.DownlinkStart"
+      - null
+      - $.DownlinkStart
       DownlinkStop:
-        - null
-        - "$.DownlinkStop"
+      - null
+      - $.DownlinkStop
       DownlinkStatusOK:
-        - null
-        - "$.DownlinkStatusOK"
+      - null
+      - $.DownlinkStatusOK
       DeliveryPushOK:
-        - null
-        - "$.DeliveryPushOK"
+      - null
+      - $.DeliveryPushOK
       Files:
-        - null
-        - "$.Files"
-      # Eodag Specific map
+      - null
+      - $.Files
       startTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       completionTimeFromAscendingNode:
-        - null
-        - "$.PublicationDate"
+      - null
+      - $.PublicationDate
       href:
-        - null
-        - 'http://127.0.0.1:5104/Files({id})/$value'
-      geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
-      title: "$.Name"
-
+      - null
+      - http://127.0.0.1:5104/Files({id})/$value
+      geometry: POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))
+      title: $.Name
     free_text_search_operations:
       $filter:
-        union: " OR "
+        union: ' OR '
         wrapper: '"{}"'
         operations:
           and:
@@ -1633,7 +1607,7 @@ sgs_session:
 
   download:
     type: HTTPDownload
-    base_uri: "https://127.0.0.1:5104/Sessions"
+    base_uri: https://127.0.0.1:5104/Sessions
     metadata_mapping:
-      uid: "$.Id"
-      downloadLink: "http://127.0.0.1:5104/Files({uid})/$value"
+      uid: $.Id
+      downloadLink: http://127.0.0.1:5104/Files({uid})/$value

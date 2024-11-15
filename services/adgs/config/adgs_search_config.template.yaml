@@ -1,0 +1,68 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+template:
+  id:
+  station:
+  query:
+  stac_extensions:
+    [
+      "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+      "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+      "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+    ]
+  title:
+  description:
+  license: other
+  extent:
+    spatial:
+      bbox: [[-180, -82.85, 180, 82.82]]
+    temporal:
+      interval: [["2024-06-12T02:57:21.459000Z", "2024-08-22T11:30:12.767000Z"]]
+  links:
+    - rel: license
+      href: "https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf"
+      title: "Legal notice on the use of Copernicus Sentinel Data and Service Information"
+  providers:
+    - name: "European Union/ESA/Copernicus"
+      roles:
+        - producer
+        - licensor
+      url: "https://sentiwiki.copernicus.eu/web/s1-mission"
+    - name: "Reference System"
+      roles:
+        - host
+      url: "https://home.rs-python.eu/"
+
+collections:
+  - id: s1_adgs_OPER_AUX_ECMWFD_PDMC
+    station: adgs
+    query:
+      productType: OPER_AUX_ECMWFD_PDMC
+    title: "'OPER_AUX_ECMWFD_PDMC' products"
+    description: "'OPER_AUX_ECMWFD_PDMC' products"
+
+  - id: s2_adgs2_AUX_OBMEMC
+    station: adgs2
+    query:
+      productType: AUX_OBMEMC
+    title: "'AUX_OBMEMC' products"
+    description: "'AUX_OBMEMC' products"
+
+  - id: aux_interval
+    station: adgs
+    query:
+      PublicationDate: "2020-01-01T00:00:00Z/2024-01-01T00:00:00Z"
+    title: "Products from 2020/2023"
+    description: "Products from 2020/2023"
