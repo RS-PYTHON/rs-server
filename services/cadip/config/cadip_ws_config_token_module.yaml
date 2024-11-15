@@ -83,7 +83,7 @@ cadip:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -173,7 +173,7 @@ ins:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -263,7 +263,7 @@ mps:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -353,7 +353,7 @@ mti:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -443,7 +443,7 @@ nsg:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -533,7 +533,7 @@ sgs:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -658,7 +658,7 @@ cadip_session:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -808,7 +808,7 @@ ins_session:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -958,7 +958,7 @@ mps_session:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -1108,7 +1108,7 @@ mti_session:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -1258,7 +1258,7 @@ nsg_session:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})
@@ -1408,7 +1408,7 @@ sgs_session:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - SessionId in ({SessionIds})

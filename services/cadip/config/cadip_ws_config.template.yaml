@@ -89,7 +89,7 @@ template:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
             - "SessionId in ({SessionIds})"

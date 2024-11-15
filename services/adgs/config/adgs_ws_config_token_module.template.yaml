@@ -85,7 +85,7 @@ template:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
             - "contains(Name, '{Name}')"
@@ -115,8 +115,8 @@ template:
         #platform: platformSerialIdentifier
         #constellation: platformShortName
         #processing:facility: processingCenter
-        startTimeFromAscendingNode: ContentDate.Start
-        completionTimeFromAscendingNode: ContentDate.Stop
+        startTimeFromAscendingNode: ContentDate/Start
+        completionTimeFromAscendingNode: ContentDate/Stop
         publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc

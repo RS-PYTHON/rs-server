@@ -101,7 +101,7 @@ adgs:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - contains(Name, '{Name}')
@@ -126,8 +126,8 @@ adgs:
         type: ContentType
         eviction_datetime: EvictionDate
         published: PublicationDate
-        startTimeFromAscendingNode: ContentDate.Start
-        completionTimeFromAscendingNode: ContentDate.Stop
+        startTimeFromAscendingNode: ContentDate/Start
+        completionTimeFromAscendingNode: ContentDate/Stop
         publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
@@ -227,7 +227,7 @@ adgs2:
     free_text_search_operations:
       $filter:
         union: ' OR '
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
           - contains(Name, '{Name}')
@@ -252,8 +252,8 @@ adgs2:
         type: ContentType
         eviction_datetime: EvictionDate
         published: PublicationDate
-        startTimeFromAscendingNode: ContentDate.Start
-        completionTimeFromAscendingNode: ContentDate.Stop
+        startTimeFromAscendingNode: ContentDate/Start
+        completionTimeFromAscendingNode: ContentDate/Stop
         publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
