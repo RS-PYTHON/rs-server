@@ -54,7 +54,6 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     create_stac_collection,
     handle_exceptions,
-    manage_page,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -88,7 +87,6 @@ class MockPgstacCadip(MockPgstac):
         """Do the search for the given collection and OData parameters."""
         # Priority: GET 'limit' parameter -> odata 'top' parameter -> 1000 by default
         user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 1000)))
-        page = manage_page(self.request)
         session_data = process_session_search(
             self.request,
             collection.get("station", "cadip"),
@@ -97,7 +95,7 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("PublicationDate"),
             self.request.query_params.get("sortby", "-published"),
             user_limit,
-            page,
+            self.page,
         )
         if not session_data.features:
             # If there are no sessions, don't proceed to assets allocation

@@ -16,6 +16,7 @@
 import copy
 import json
 import traceback
+import urllib.parse
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -32,7 +33,6 @@ from typing import (
     Self,
     Type,
 )
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import stac_pydantic
 import stac_pydantic.links
@@ -47,7 +47,6 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
 )
 from stac_pydantic.item import Item
-from stac_pydantic.shared import MimeTypes
 
 logger = Logging.default(__name__)
 
@@ -104,6 +103,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     # Is the service adgs or cadip ?
     adgs: bool = False
     cadip: bool = False
+
+    # Current page
+    page: int = 1
 
     def __post_init__(self):
         self.adgs = self.service in ("adgs", "auxip")
@@ -257,6 +259,24 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Used for error handling."""
             return json.dumps(field, indent=0).replace("\n", "").replace('"', "'")
 
+        # Read the pagination token from the GET or POST request
+        token = self.request.query_params.get("token")
+        if not token:
+            try:
+                token = (await self.request.json()).get("token")
+            except json.JSONDecodeError:
+                pass
+        if token:
+            # Remove the prev: or next: prefix
+            token = token.removeprefix("prev:").removeprefix("next:")
+
+            # Merge parameters into input params. Convert lists with one element into this single value.
+            pagination = urllib.parse.parse_qs(token)
+            for key, value in pagination.items():
+                if isinstance(value, list) and (len(value) == 1):
+                    value = value[0]
+                params[key] = value
+
         # Collections to search
         collection_ids = [collection.strip() for collection in params.pop("collections", [])]
 
@@ -266,7 +286,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # The cadip session ids are set in parameter or in the request state
         # by the /collections/{collection_id}/items/{session_id} endpoint
         if self.cadip:
-            if not ids and self.request:
+            if not ids:
                 try:
                     ids = self.request.state.session_id
                 except AttributeError:
@@ -276,10 +296,21 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if ids:
             stac_params["id"] = [id.strip() for id in ids]
 
+        # Page number
+        page = params.pop("page", None)
+        if page:
+            try:
+                self.page = int(page)
+            except ValueError:
+                logger.warning(f"'page' is not an integer: {page!r}")
+
         # Number of results per page
         limit = params.pop("limit", None)
         if limit:
-            limit = int(limit)
+            try:
+                limit = int(limit)
+            except ValueError:
+                logger.warning(f"'limit' is not an integer: {limit!r}")
 
         # Sort results
         sortby = "-datetime"  # default value
@@ -505,12 +536,15 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # If there are no results and we had at least one exception, raise the first one
         if not all_features and first_exception:
             raise first_exception
-        # Handle pagination links.
-        links = create_pagination_links(self.request.url)  # type: ignore
+
         # Return results as a dict
         data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
-        for link in links:
-            data.update({link.rel: link.href})  # type: ignore
+
+        # Handle pagination links.
+        data["next"] = f"page={self.page + 1}"
+        if self.page > 1:
+            data["prev"] = f"page={self.page - 1}"
+
         return data
 
     @abstractmethod
@@ -692,49 +726,3 @@ def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
                 reverse=order == "-",
             )
     return feature_collection
-
-
-def create_pagination_links(request_url: str):
-    """Generate pagination links for 'next' and 'prev' pages based on the current page in the URL."""
-    links = []
-    parsed_url = urlparse(str(request_url))
-    query_params = parse_qs(parsed_url.query)
-    current_page = int(query_params.get("page", [1])[0])
-    query_params["page"] = [str(current_page + 1)]
-    new_query_plus = urlencode(query_params, doseq=True)
-
-    links.append(
-        stac_pydantic.links.Link(
-            rel="next",
-            type=MimeTypes.json,
-            href=urlunparse(parsed_url._replace(query=new_query_plus)),
-        ),
-    )
-    if current_page > 1:
-        query_params["page"] = [str(current_page - 1)]
-        new_query_minus = urlencode(query_params, doseq=True)
-
-        links.append(
-            stac_pydantic.links.Link(
-                rel="prev",
-                type=MimeTypes.json,
-                href=urlunparse(parsed_url._replace(query=new_query_minus)),
-            ),
-        )
-
-    return links
-
-
-def manage_page(request: Request):
-    """Used to extract and validate page number from a given request"""
-    if page := request.query_params.get("page", 1):
-        try:
-            # Attempt to parse `page` as an integer and validate it's >= 1
-            page = int(page)
-            if page < 1:
-                raise ValueError("Page number invalid")
-
-        except (ValueError, TypeError) as exc:
-            # Handle cases where `page` is not an integer or is invalid
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Page number invalid") from exc
-    return page
