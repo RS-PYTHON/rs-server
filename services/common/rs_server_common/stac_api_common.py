@@ -721,3 +721,18 @@ def create_pagination_links(request_url: str):
         )
 
     return links
+
+
+def manage_page(request: Request):
+    """Used to extract and validate page number from a given request"""
+    if page := request.query_params.get("page", 1):
+        try:
+            # Attempt to parse `page` as an integer and validate it's >= 1
+            page = int(page)
+            if page < 1:
+                raise ValueError("Page number invalid")
+
+        except (ValueError, TypeError) as exc:
+            # Handle cases where `page` is not an integer or is invalid
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Page number invalid") from exc
+    return page

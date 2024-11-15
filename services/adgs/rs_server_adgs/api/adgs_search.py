@@ -52,6 +52,7 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     create_stac_collection,
     handle_exceptions,
+    manage_page,
     sort_feature_collection,
 )
 from rs_server_common.utils.logging import Logging
@@ -86,16 +87,7 @@ class MockPgstacAdgs(MockPgstac):
         """Do the search for the given collection and OData parameters."""
         # Priority, stac endpoint limit -> odata collection top -> 1000 by default
         user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 1000)))
-        if page := self.request.query_params.get("page", 1):
-            try:
-                # Attempt to parse `page` as an integer and validate it's >= 1
-                page = int(page)
-                if page < 1:
-                    raise ValueError("Page number invalid")
-
-            except (ValueError, TypeError) as exc:
-                # Handle cases where `page` is not an integer or is invalid
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Page number invalid") from exc
+        page = manage_page(self.request)
         return process_product_search(
             collection.get("station", "adgs"),
             odata_params.get("productType"),
