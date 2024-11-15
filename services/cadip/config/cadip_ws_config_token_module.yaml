@@ -93,9 +93,7 @@ cadip:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        datetime: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -185,9 +183,7 @@ ins:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        datetime: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -277,9 +273,7 @@ mps:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        datetime: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -369,9 +363,7 @@ mti:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        datetime: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -461,9 +453,7 @@ nsg:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        datetime: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -553,9 +543,7 @@ sgs:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
-        startTimeFromAscendingNode: PublicationDate
-        uid: id
-        storageStatus: offline
+        datetime: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
