@@ -400,7 +400,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             platform=platform,
             sessions_search=True,
             items_per_page=limit,
-            sort_by=validate_sort_input(sortby) if sortby else None,
+            sort_by=validate_sort_input(sortby),
             page=page,
         )
         products = validate_products(products)

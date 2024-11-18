@@ -735,6 +735,21 @@ class TestFeatureCollectionOdataStacMapping:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         assert response.json() == {"detail": "Invalid page value"}
 
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=1&sortby='invalid'",
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page=1&sortby='invalid'"
+        ],
+    )
+    @responses.activate
+    def test_invalid_sortby_values(self, client, endpoint):
+        """Test endpoint call with invalid pages (str, negative, 0)"""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert "parameter is not sortable" in response.json()['detail']
+
 
 class TestCollection:
     """Class used to group tests for */collections/{collection_id}"""
