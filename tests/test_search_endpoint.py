@@ -814,7 +814,7 @@ class TestFeatureCollectionOdataStacMapping:
             "href": f"http://testserver{endpoint}{str(int(page) + 1)}",
         } in response.json()["links"]
         if int(page) > 1:
-            prev_url = f"http://testserver{endpoint.split('token')[0]}token=prev:page={str(int(page) - 1)}"
+            prev_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=prev:page={str(int(page) - 1)}"
             assert {
                 "rel": "previous",
                 "type": "application/geo+json",
