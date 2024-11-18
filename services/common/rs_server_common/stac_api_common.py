@@ -319,16 +319,26 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if page:
             try:
                 self.page = int(page)
-            except ValueError:
-                logger.warning(f"'page' is not an integer: {page!r}")
+                if self.page < 1:
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid page value: {page!r}",
+                ) from exc
 
         # Number of results per page
         limit = params.pop("limit", None)
         if limit:
             try:
                 self.limit = int(limit)
-            except ValueError:
-                logger.warning(f"'limit' is not an integer: {limit!r}")
+                if self.limit < 1:
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid limit value: {limit!r}",
+                ) from exc
 
         # Sort results
         sortby = "-datetime"  # default value
