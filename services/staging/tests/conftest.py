@@ -22,27 +22,45 @@
 import asyncio
 import os
 import os.path as osp
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 import yaml
 from fastapi.testclient import TestClient
-from rs_server_staging.processors import Staging
 
 os.environ["RSPY_LOCAL_MODE"] = "1"
+from rs_server_staging.processors import Staging  # pylint: disable=import-error
+
 # set pygeoapi env variables
 geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
 os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
 os.environ["PYGEOAPI_OPENAPI"] = ""
+
 TEST_DETAIL = "Test detail"
 
 from rs_server_staging.main import app  # pylint: disable=import-error
 
 
 @pytest.fixture(name="staging_client")
-def client_():
+def client_(mocker):
     """init fastapi client app."""
     # Test the FastAPI application, opens the database session
+    mocker.patch("rs_server_staging.main.init_db", return_value=None)
+    mocker.patch(
+        "rs_server_staging.main.get_manager_def",
+        return_value={
+            "name": "test_pgmanager",
+            "connection": {
+                "host": os.environ["POSTGRES_HOST"],
+                "port": os.environ["POSTGRES_PORT"],
+                "database": os.environ["POSTGRES_DB"],
+                "user": os.environ["POSTGRES_USER"],
+                "password": os.environ["POSTGRES_PASSWORD"],
+            },
+        },
+    )
+    mocker.patch("rs_server_staging.main.PostgreSQLManager", return_value=mocker.Mock())
     with TestClient(app) as client:
         yield client
 
@@ -58,11 +76,67 @@ def config_():
 def dbj_():
     """Fixture used to mock output of tiny db jobs"""
     return [
-        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": TEST_DETAIL},
-        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": TEST_DETAIL},
-        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": TEST_DETAIL},
-        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": TEST_DETAIL},
+        {
+            "identifier": "job_1",
+            "status": "started",
+            "progress": 0.0,
+            "detail": TEST_DETAIL,
+            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_2",
+            "status": "in_progress",
+            "progress": 55.0,
+            "detail": TEST_DETAIL,
+            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_3",
+            "status": "paused",
+            "progress": 15.0,
+            "detail": TEST_DETAIL,
+            "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_4",
+            "status": "finished",
+            "progress": 100.0,
+            "detail": TEST_DETAIL,
+            "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
+        },
     ]
+
+
+@pytest.fixture(name="set_db_env_var")
+def set_db_env_var_fixture(monkeypatch):
+    """Fixture to set environment variables for simulating the mounting of
+    the external station token secrets in kubernetes.
+
+    This fixture sets a variety of environment variables related to token-based
+    authentication for different services, allowing tests to be executed with
+    the correct configurations in place.
+    The enviornment variables set are managing 3 stations:
+    - adgs (service auxip)
+    - ins (service cadip)
+    - mps (service cadip)
+
+    Args:
+        monkeypatch: Pytest utility for temporarily modifying environment variables.
+    """
+    envvars = {
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "password",
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5500",
+        "POSTGRES_DB": "rspy_pytest",
+    }
+    for key, val in envvars.items():
+        monkeypatch.setenv(key, val)
+    yield  # restore the environment
 
 
 @pytest.fixture(name="staging_instance")
@@ -75,9 +149,9 @@ def staging(mocker):
     mock_collection = "test_collection"
     mock_item = "test_item"
     mock_provider = "cadip"
-    mock_db = mocker.Mock()  # Mock for tinydb.table.Table
+    mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
-    mock_tinydb_lock = mocker.Mock()
+
     mocker.patch.dict(
         os.environ,
         {
@@ -92,9 +166,8 @@ def staging(mocker):
         collection=mock_collection,
         item=mock_item,
         provider=mock_provider,
-        db=mock_db,
+        db_process_manager=mock_db,
         cluster=mock_cluster,
-        tinydb_lock=mock_tinydb_lock,
     )
     yield staging_instance
 

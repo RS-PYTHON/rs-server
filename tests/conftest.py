@@ -77,7 +77,7 @@ def before_and_after(session_mocker):
     # Before all tests #
     ####################
 
-    # Use this default value for the configuration file for authentication to extenal stations.
+    # Use this default value for the configuration file for authentication to external stations.
     session_mocker.patch(
         "rs_server_common.authentication.authentication_to_external.CONFIG_PATH_AUTH_TO_EXTERNAL",
         new=str((Path(__file__).parent.parent / "services/common/config/rs-server.yaml").resolve()),

@@ -15,8 +15,8 @@
 """Test module for Staging processor."""
 import asyncio
 import os
-import threading
 from concurrent.futures import CancelledError
+from datetime import datetime
 from typing import Dict
 from unittest.mock import call
 
@@ -24,51 +24,29 @@ import pytest
 import requests
 from dask_gateway import Gateway
 from fastapi import HTTPException
-from rs_server_staging.processors import EStagingStatus, TokenAuth, streaming_task
+from rs_server_staging.processors import TokenAuth, streaming_task
+from rs_server_staging.staging_job_status import EStagingStatus
 
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
 # pylint: disable=too-many-lines
 
 
-class TestProcessorStatus:
-    """."""
+class TestProcessorStatus:  # pylint: disable=too-few-public-methods
+    """Class for tests of EStagingStatus enum"""
 
     def test_str_method(self):
         """Test the __str__ method of EStagingStatus."""
         assert str(EStagingStatus.QUEUED) == "queued"
         assert str(EStagingStatus.FINISHED) == "finished"
         assert str(EStagingStatus.FAILED) == "failed"
-
-    def test_to_json_valid(self):
-        """Test the to_json method for valid EStagingStatus instances."""
-        assert EStagingStatus.to_json(EStagingStatus.QUEUED) == "queued"
-        assert EStagingStatus.to_json(EStagingStatus.FINISHED) == "finished"
-        assert EStagingStatus.to_json(EStagingStatus.STARTED) == "started"
-
-    def test_to_json_invalid(self):
-        """Test the to_json method for invalid values (non-EStagingStatus)."""
-        with pytest.raises(ValueError):
-            EStagingStatus.to_json("invalid_status")  # Should raise a ValueError
-        with pytest.raises(ValueError):
-            EStagingStatus.to_json(123)  # Should raise a ValueError
-        with pytest.raises(ValueError):
-            EStagingStatus.to_json(None)  # Should raise a ValueError
-
-    def test_from_json_valid(self):
-        """Test the from_json method for valid status strings."""
-        assert EStagingStatus.from_json("queued") == EStagingStatus.QUEUED
-        assert EStagingStatus.from_json("finished") == EStagingStatus.FINISHED
-        assert EStagingStatus.from_json("started") == EStagingStatus.STARTED
-
-    def test_from_json_invalid(self):
-        """Test the from_json method for invalid status strings."""
-        with pytest.raises(ValueError):
-            EStagingStatus.from_json("invalid_status")  # Should raise a ValueError
-        with pytest.raises(ValueError):
-            EStagingStatus.from_json("not_a_status")  # Should raise a ValueError
-        with pytest.raises(ValueError):
-            EStagingStatus.from_json(None)  # Should raise a ValueError
+        assert str(EStagingStatus.CREATED) == "created"
+        assert str(EStagingStatus.STARTED) == "started"
+        assert str(EStagingStatus.IN_PROGRESS) == "in_progress"
+        assert str(EStagingStatus.STOPPED) == "stopped"
+        assert str(EStagingStatus.PAUSED) == "paused"
+        assert str(EStagingStatus.RESUMED) == "resumed"
+        assert str(EStagingStatus.CANCELLED) == "cancelled"
 
 
 class TestTokenAuth:
@@ -251,16 +229,16 @@ class TestStaging:
         """Test the create_job_execution method of the Staging class.
 
         This test verifies that the create_job_execution method correctly inserts a new job execution
-        entry into the tracker with the current job's attributes.
+        entry into the db_process_manager with the current job's attributes.
 
         Args:
             staging_instance (Staging): An instance of the Staging class, pre-initialized for testing.
             mocker (pytest_mock.MockerFixture): The mocker fixture to patch methods and objects during tests.
 
         """
-        # create mock object of self.tracker and overwrite staging instance from conftest
-        mock_tracker = mocker.Mock()
-        staging_instance.tracker = mock_tracker
+        # create mock object of self.db_process_manager and overwrite staging instance from conftest
+        mock_db_process_manager = mocker.Mock()
+        staging_instance.db_process_manager = mock_db_process_manager
 
         # Set job attributes needed for create_job_execution
         staging_instance.job_id = "12345"
@@ -272,10 +250,10 @@ class TestStaging:
         staging_instance.create_job_execution()
 
         # Assert that the insert method was called once with the expected arguments
-        mock_tracker.insert.assert_called_once_with(
+        mock_db_process_manager.add_job.assert_called_once_with(
             {
-                "job_id": "12345",
-                "status": EStagingStatus.to_json(EStagingStatus.QUEUED),
+                "identifier": "12345",
+                "status": EStagingStatus.QUEUED.value.upper(),
                 "progress": 0,
                 "detail": "Job is starting.",
             },
@@ -285,36 +263,47 @@ class TestStaging:
         """Test the log_job_execution method of the Staging class.
 
         This test verifies that the log_job_execution method correctly updates the job's status,
-        progress, and detail in the tracker database, both for default and custom attributes.
+        progress, and detail in the db_process_manager database, both for default and custom attributes.
 
         Args:
             staging_instance (Staging): An instance of the Staging class, pre-initialized for testing.
             mocker (pytest_mock.MockerFixture): The mocker fixture to patch methods and objects during tests.
 
         """
-        # Mock self.tracker and self.lock attrs
-        mock_tracker = mocker.Mock()
-        staging_instance.lock = threading.Lock()
+        # Mock self.db_process_manager and self.lock attrs
+        mock_db_process_manager = mocker.Mock()
 
-        staging_instance.tracker = mock_tracker
+        staging_instance.db_process_manager = mock_db_process_manager
         staging_instance.job_id = "12345"
         staging_instance.status = EStagingStatus.QUEUED
         staging_instance.progress = 0
         staging_instance.detail = "Job is starting."
 
-        # Mock the update method of the tracker
-        mock_update_default = mocker.patch.object(staging_instance.tracker, "update", return_value=None)
+        # Mock the update method of the db_process_manager
+        mock_update_job = mocker.patch.object(staging_instance.db_process_manager, "update_job", return_value=None)
+
+        # Mock datetime
+        fake_now = datetime(2024, 1, 1, 12, 0, 0)
+        mock_datetime = mocker.patch("rs_server_staging.processors.datetime")
+        mock_datetime.now.return_value = fake_now
 
         # Call log_job_execution to test status update with default attrs
         staging_instance.log_job_execution()
 
         # Assert that the update method was called with the correct parameters
-        mock_update_default.assert_called_once_with(
-            {"status": EStagingStatus.to_json(EStagingStatus.QUEUED), "progress": 0, "detail": "Job is starting."},
-            mocker.ANY,
+        mock_update_job.assert_called_once_with(
+            staging_instance.job_id,
+            {
+                "status": EStagingStatus.QUEUED.value.upper(),
+                "progress": 0,
+                "detail": "Job is starting.",
+                "updated_at": fake_now,
+            },
         )
-        mock_update_custom = mocker.patch.object(staging_instance.tracker, "update", return_value=None)
-        mock_query = mocker.patch("tinydb.Query", return_value=mocker.Mock())
+
+        # reset the mock called counter
+        mock_update_job.reset_mock()
+
         # Call log_job_execution to test status update with custom attrs
         staging_instance.log_job_execution(
             status=EStagingStatus.IN_PROGRESS,
@@ -323,15 +312,15 @@ class TestStaging:
         )
 
         # Assert that the update method was called with the custom parameters
-        mock_update_custom.assert_called_once_with(
+        mock_update_job.assert_called_once_with(
+            staging_instance.job_id,
             {
-                "status": EStagingStatus.to_json(EStagingStatus.IN_PROGRESS),
+                "status": EStagingStatus.IN_PROGRESS.value.upper(),
                 "progress": 50.0,
                 "detail": "Job is halfway done.",
+                "updated_at": fake_now,
             },
-            mocker.ANY,  # We can match the query condition later
         )
-        assert mock_query.called_once()
 
 
 class TestStagingCatalog:

@@ -14,21 +14,150 @@
 
 """Test staging module."""
 import os
-import threading
+from datetime import datetime
 
 import pytest
 from fastapi import FastAPI
-from rs_server_staging.main import app_lifespan
+from rs_server_staging.main import app_lifespan, get_manager_def, init_db
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
 
+class TestInitDb:
+    """Class to group tests for the init_db function"""
+
+    def test_init_db_success(self, mocker):
+        """Test that the database initialization completes successfully."""
+        # Mock environment variables
+        mocker.patch.dict(
+            "os.environ",
+            {
+                "POSTGRES_USER": "test_user",
+                "POSTGRES_PASSWORD": "test_password",
+                "POSTGRES_HOST": "localhost",
+                "POSTGRES_PORT": "5432",
+                "POSTGRES_DB": "test_db",
+            },
+        )
+
+        # Mock SQLAlchemy create_engine and Base.metadata.create_all
+        mock_engine = mocker.Mock()
+        mock_create_engine = mocker.patch("rs_server_staging.main.create_engine", return_value=mock_engine)
+        mock_metadata = mocker.patch("rs_server_staging.main.Base.metadata.create_all")
+
+        # Act: Call the function
+        init_db()
+
+        # Assert: Check that create_engine and create_all were called correctly
+        mock_create_engine.assert_called_once_with(
+            "postgresql+psycopg2://test_user:test_password@localhost:5432/test_db",
+        )
+        mock_metadata.assert_called_once_with(bind=mock_engine)
+
+    def test_init_db_missing_env_variable(self, mocker):
+        """Test that the function raises an error when environment variables are missing."""
+        # Mock environment variables to be incomplete
+        mocker.patch.dict("os.environ", {}, clear=True)
+
+        # Act & Assert: Check that a RuntimeError is raised
+        with pytest.raises(RuntimeError, match="Error when trying to read the environment variable:"):
+            init_db()
+
+    def test_init_db_sqlalchemy_error(self, mocker):
+        """Test that the function raises an error when SQLAlchemy fails."""
+        # Mock environment variables
+        mocker.patch.dict(
+            "os.environ",
+            {
+                "POSTGRES_USER": "test_user",
+                "POSTGRES_PASSWORD": "test_password",
+                "POSTGRES_HOST": "localhost",
+                "POSTGRES_PORT": "5432",
+                "POSTGRES_DB": "test_db",
+            },
+        )
+
+        # Mock SQLAlchemy create_engine to raise an error
+        mocker.patch("rs_server_staging.main.create_engine", side_effect=SQLAlchemyError("Database error"))
+
+        # Act & Assert: Check that a RuntimeError is raised
+        with pytest.raises(RuntimeError, match="Error creating table or ENUM type in PostgreSQL:"):
+            init_db()
+
+
+class TestGetManagerDef:
+    """Class to group tests for the get_manager_def function"""
+
+    def test_get_manager_def_success(self, set_db_env_var, mocker):  # pylint: disable=unused-argument
+        """Test that the manager definition is correctly retrieved and placeholders are replaced."""
+        # Mock the api.config.get method
+        mock_api_config = mocker.patch("rs_server_staging.main.api.config", autospec=True)
+        mock_api_config.get.return_value = {
+            "connection": {
+                "host": "${POSTGRES_HOST}",
+                "port": "${POSTGRES_PORT}",
+                "database": "${POSTGRES_DB}",
+                "user": "${POSTGRES_USER}",
+                "password": "${POSTGRES_PASSWORD}",
+            },
+        }
+
+        # Act: Call the function
+        result = get_manager_def()
+
+        # Assert: Validate the updated connection dictionary
+        assert result == {
+            "connection": {
+                "host": os.environ["POSTGRES_HOST"],
+                "port": os.environ["POSTGRES_PORT"],
+                "database": os.environ["POSTGRES_DB"],
+                "user": os.environ["POSTGRES_USER"],
+                "password": os.environ["POSTGRES_PASSWORD"],
+            },
+        }
+        mock_api_config.get.assert_called_once_with("manager", {})
+
+    def test_get_manager_def_invalid_definition(self, mocker):
+        """Test that the function raises an error when the manager definition is invalid."""
+        # Mock the api.config.get method to return an invalid configuration
+        mock_api_config = mocker.patch("rs_server_staging.main.api.config", autospec=True)
+        mock_api_config.get.return_value = {"connection": None}
+
+        # Act & Assert: Check that a RuntimeError is raised
+        with pytest.raises(RuntimeError, match="Error reading the manager definition for pygeoapi PostgreSQL Manager"):
+            get_manager_def()
+
+    def test_get_manager_def_missing_env_variable(self, mocker):
+        """Test that the function raises an error when an environment variable is missing."""
+        # Mock the api.config.get method
+        mock_api_config = mocker.patch("rs_server_staging.main.api.config", autospec=True)
+        mock_api_config.get.return_value = {
+            "connection": {
+                "host": "${POSTGRES_HOST}",
+                "user": "${POSTGRES_USER}",
+            },
+        }
+
+        # Mock environment variables with a missing one
+        mocker.patch.dict(
+            "os.environ",
+            {
+                "POSTGRES_HOST": "localhost",
+            },
+        )
+
+        # Act & Assert: Check that a RuntimeError is raised for missing environment variable
+        with pytest.raises(RuntimeError, match="Error when trying to read the environment variable: 'POSTGRES_USER'"):
+            get_manager_def()
+
+
 @pytest.mark.asyncio
-async def test_get_jobs(mocker, staging_client):
+async def test_get_jobs(mocker, set_db_env_var, staging_client):  # pylint: disable=unused-argument
     """
     Test the GET /jobs endpoint for retrieving job listings.
 
     This test verifies the behavior of the /jobs endpoint when jobs are present
-    in the TinyDB table. It checks that the API correctly returns the list of
+    in the postggres jobs table. It checks that the API correctly returns the list of
     jobs when available, as well as the handling of cases where no jobs exist.
 
     Args:
@@ -41,29 +170,43 @@ async def test_get_jobs(mocker, staging_client):
         - Asserts that the response status code is 404 when no jobs are available
           in the database.
     """
-    # Simulate mock data in the TinyDB table
+    # Simulate mock data in the postgres table
+
     mock_jobs = [
-        {"job_id": "job_1", "status": "completed", "progress": 100.0, "detail": "Test detail"},
-        {"job_id": "job_2", "status": "in-progress", "progress": 100.0, "detail": "Test detail"},
+        {
+            "identifier": "job_1",
+            "status": "completed",
+            "progress": 100.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_2",
+            "status": "in-progress",
+            "progress": 90.25,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+        },
     ]
 
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    mock_db_table.all.return_value = mock_jobs  # Simulate TinyDB returning jobs
+    mock_db_table.get_jobs.return_value = mock_jobs  # Simulate postgres returning jobs
 
     # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
     response = staging_client.get("/jobs")
-
     # Assert the correct response is returned
     assert response.status_code == HTTP_200_OK
     assert response.json() == mock_jobs  # Check if the returned data matches the mocked jobs
 
     # Mock with an empty db, should return 404 since there are no jobs.
-    mock_db_table.all.return_value = []
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
+    mock_db_table.get_jobs.return_value = []
+
     response = staging_client.get("/jobs")
 
     assert response.status_code == HTTP_404_NOT_FOUND
@@ -73,14 +216,55 @@ async def test_get_jobs(mocker, staging_client):
 @pytest.mark.parametrize(
     "expected_job",
     [
-        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": "Test detail"},
-        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": "Test detail"},
-        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
-        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
-        {"job_id": "non_existing", "status": "finished", "progress": 100.0, "detail": "Test detail"},
+        {
+            "identifier": "job_1",
+            "status": "started",
+            "progress": 0.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_2",
+            "status": "in_progress",
+            "progress": 55.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_3",
+            "status": "paused",
+            "progress": 15.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_4",
+            "status": "finished",
+            "progress": 100.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
+        },
+        {
+            "identifier": "non_existing",
+            "status": "finished",
+            "progress": 100.0,
+            "detail": "Test detail",
+            "created_at": "unknown",
+            "updated_at": "unknown",
+        },
     ],
 )
-async def test_get_job(mocker, staging_client, mock_jobs, expected_job):
+async def test_get_job(
+    mocker,
+    set_db_env_var,  # pylint: disable=unused-argument
+    staging_client,
+    mock_jobs,
+    expected_job,  # pylint: disable=unused-argument
+):
     """
     Test the GET /jobs/{job_id} endpoint for retrieving job details.
 
@@ -102,16 +286,16 @@ async def test_get_job(mocker, staging_client, mock_jobs, expected_job):
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
     try:
-        job_index = next(i for i, job in enumerate(mock_jobs) if job["job_id"] == expected_job["job_id"])
-        mock_db_table.get.return_value = mock_jobs[job_index]
+        job_index = next(i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"])
+        mock_db_table.get_job.return_value = mock_jobs[job_index]
     except StopIteration:
-        mock_db_table.get.return_value = []
+        mock_db_table.get_job.return_value = []
 
     # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    response = staging_client.get(f"/jobs/{expected_job['job_id']}")
+    response = staging_client.get(f"/jobs/{expected_job['identifier']}")
     # assert response is OK and job info match, or not found for last case
     assert (
         response.status_code == HTTP_200_OK and response.json() == expected_job
@@ -122,14 +306,55 @@ async def test_get_job(mocker, staging_client, mock_jobs, expected_job):
 @pytest.mark.parametrize(
     "expected_job",
     [
-        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": "Test detail"},
-        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": "Test detail"},
-        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
-        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
-        {"job_id": "non_existing", "status": "finished", "progress": 100.0, "detail": "Test detail"},
+        {
+            "identifier": "job_1",
+            "status": "started",
+            "progress": 0.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_2",
+            "status": "in_progress",
+            "progress": 55.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_3",
+            "status": "paused",
+            "progress": 15.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_4",
+            "status": "finished",
+            "progress": 100.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
+        },
+        {
+            "identifier": "non_existing",
+            "status": "finished",
+            "progress": 100.0,
+            "detail": "Test detail",
+            "created_at": "unknown",
+            "updated_at": "unknown",
+        },
     ],
 )
-async def test_get_job_result(mocker, staging_client, mock_jobs, expected_job):
+async def test_get_job_result(
+    mocker,
+    set_db_env_var,  # pylint: disable=unused-argument
+    staging_client,
+    mock_jobs,
+    expected_job,  # pylint: disable=unused-argument
+):
     """
     Test the GET /jobs/{job_id}/results endpoint for retrieving job results.
 
@@ -151,16 +376,15 @@ async def test_get_job_result(mocker, staging_client, mock_jobs, expected_job):
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
     try:
-        job_index = next(i for i, job in enumerate(mock_jobs) if job["job_id"] == expected_job["job_id"])
-        mock_db_table.get.return_value = mock_jobs[job_index]
+        job_index = next(i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"])
+        mock_db_table.get_job.return_value = mock_jobs[job_index]
     except StopIteration:
-        mock_db_table.get.return_value = []
-
+        mock_db_table.get_job.return_value = []
     # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    response = staging_client.get(f"/jobs/{expected_job['job_id']}/results")
+    response = staging_client.get(f"/jobs/{expected_job['identifier']}/results")
     # assert response is OK and job info match, or not found for last case
     assert (
         response.status_code == HTTP_200_OK and response.json() == expected_job["status"]
@@ -171,14 +395,55 @@ async def test_get_job_result(mocker, staging_client, mock_jobs, expected_job):
 @pytest.mark.parametrize(
     "expected_job",
     [
-        {"job_id": "job_1", "status": "started", "progress": 0.0, "detail": "Test detail"},
-        {"job_id": "job_2", "status": "in_progress", "progress": 55.0, "detail": "Test detail"},
-        {"job_id": "job_3", "status": "paused", "progress": 15.0, "detail": "Test detail"},
-        {"job_id": "job_4", "status": "finished", "progress": 100.0, "detail": "Test detail"},
-        {"job_id": "non_existing", "status": "finished", "progress": 100.0, "detail": "Test detail"},
+        {
+            "identifier": "job_1",
+            "status": "started",
+            "progress": 0.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_2",
+            "status": "in_progress",
+            "progress": 55.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_3",
+            "status": "paused",
+            "progress": 15.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
+        },
+        {
+            "identifier": "job_4",
+            "status": "finished",
+            "progress": 100.0,
+            "detail": "Test detail",
+            "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
+            "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
+        },
+        {
+            "identifier": "non_existing",
+            "status": "finished",
+            "progress": 100.0,
+            "detail": "Test detail",
+            "created_at": "unknown",
+            "updated_at": "unknown",
+        },
     ],
 )
-async def test_delete_job(mocker, staging_client, mock_jobs, expected_job):
+async def test_delete_job(
+    mocker,
+    set_db_env_var,  # pylint: disable=unused-argument
+    staging_client,
+    mock_jobs,
+    expected_job,  # pylint: disable=unused-argument
+):
     """
     Test the DELETE /jobs/{job_id} endpoint for deleting a specific job.
 
@@ -199,22 +464,21 @@ async def test_delete_job(mocker, staging_client, mock_jobs, expected_job):
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
     try:
-        job_index = next(i for i, job in enumerate(mock_jobs) if job["job_id"] == expected_job["job_id"])
-        mock_db_table.get.return_value = mock_jobs[job_index]
+        job_index = next(i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"])
+        mock_db_table.get_job.return_value = mock_jobs[job_index]
     except StopIteration:
-        mock_db_table.get.return_value = []
-
+        mock_db_table.get_job.return_value = []
     # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"db_table": mock_db_table, "db_handler": threading.Lock()})
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    response = staging_client.delete(f"/jobs/{expected_job['job_id']}")
+    response = staging_client.delete(f"/jobs/{expected_job['identifier']}")
     # assert response is OK, or not found for last case
     assert response.status_code in [HTTP_200_OK, HTTP_404_NOT_FOUND]
 
 
 @pytest.mark.asyncio
-async def test_processes(staging_client, predefined_config):
+async def test_processes(set_db_env_var, staging_client, predefined_config):  # pylint: disable=unused-argument
     """
     Test the /processes endpoint for retrieving a list of available processors.
 
@@ -251,7 +515,12 @@ async def test_processes(staging_client, predefined_config):
         ("non_existing_resource", "non_existing_processor"),
     ],
 )
-async def test_specific_process(staging_client, resource_name, processor_name):
+async def test_specific_process(
+    set_db_env_var,  # pylint: disable=unused-argument
+    staging_client,
+    resource_name,
+    processor_name,  # pylint: disable=unused-argument
+):
     """
     Test the /processes/{resource_name} endpoint for retrieving specific resource information.
 
@@ -279,7 +548,11 @@ async def test_specific_process(staging_client, resource_name, processor_name):
 
 
 @pytest.mark.asyncio
-async def test_app_lifespan_local_mode(mocker):
+async def test_app_lifespan_local_mode(
+    mocker,
+    set_db_env_var,  # pylint: disable=unused-argument
+    staging_client,  # pylint: disable=unused-argument
+):
     """Test app_lifespan when running in local mode (no Dask Gateway connection)."""
 
     # Mock environment to simulate local mode
@@ -295,7 +568,11 @@ async def test_app_lifespan_local_mode(mocker):
 
 
 @pytest.mark.asyncio
-async def test_app_lifespan_gateway_error(mocker):
+async def test_app_lifespan_gateway_error(
+    mocker,
+    set_db_env_var,  # pylint: disable=unused-argument
+    staging_client,  # pylint: disable=unused-argument
+):
     """Test app_lifespan when there is an error in connecting to the Dask Gateway."""
 
     # Mock environment variables to simulate gateway mode

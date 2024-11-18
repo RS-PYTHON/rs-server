@@ -58,8 +58,7 @@ api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAP
 
 
 def init_db():
-    """
-    Initialize the PostgreSQL database connection and sets up required table and ENUM type.
+    """Initialize the PostgreSQL database connection and sets up required table and ENUM type.
 
     This function constructs the database URL using environment variables for PostgreSQL
     credentials, host, port, and database name. It then creates an SQLAlchemy engine and
@@ -86,7 +85,7 @@ def init_db():
     """
     try:
         # pylint: disable=consider-using-f-string
-        database_url = "postgresql://{user}:{password}@{host}:{port}/{dbname}".format(
+        database_url = "postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}".format(
             user=os.environ["POSTGRES_USER"],
             password=os.environ["POSTGRES_PASSWORD"],
             host=os.environ["POSTGRES_HOST"],
@@ -106,6 +105,53 @@ def init_db():
         raise RuntimeError(f"Error creating table or ENUM type in PostgreSQL: {e}") from e
 
 
+def get_manager_def():
+    """Loads and configures the PostgreSQL Manager definition for pygeoapi.
+
+    This function retrieves the manager definition from the pygeoapi configuration,
+    validates its structure, and dynamically replaces placeholder values in the
+    `connection` dictionary with environment variable values.
+
+    Behavior:
+        1. **Retrieve Manager Configuration**:
+           - Reads the `manager` configuration from the `api.config` object.
+
+        2. **Validate Configuration**:
+           - Ensures the manager definition and its `connection` key are properly structured
+             as dictionaries.
+
+        3. **Replace Placeholders with Environment Variables**:
+           - Iterates through the `connection` dictionary to replace any placeholders
+             (formatted as `${ENV_VAR}`) with corresponding values from environment variables.
+
+    Raises:
+        RuntimeError: If the manager definition is invalid, or if any required environment variable
+                      for a placeholder is missing.
+
+    Returns:
+        dict: The validated and updated manager definition with all placeholders resolved.
+
+    Dependencies:
+        - Requires access to `api.config` for retrieving the initial configuration.
+        - Reads environment variables dynamically using `os.environ`.
+
+    Notes:
+        - The placeholders in the `connection` dictionary must follow the format `${ENV_VAR}`.
+    """
+    manager_def = api.config.get("manager", {})
+    if not manager_def or not isinstance(manager_def, dict) or not isinstance(manager_def["connection"], dict):
+        logger.error("Error reading the manager definition for pygeoapi PostgreSQL Manager")
+        raise RuntimeError("Error reading the manager definition for pygeoapi PostgreSQL Manager")
+    try:
+        for k, v in manager_def["connection"].items():
+            if v.startswith("${") and v.endswith("}"):
+                manager_def["connection"][k] = os.environ[f"{v[2:-1]}"]
+    except KeyError as e:
+        logger.error(f"Error when trying to read the environment variable: {e}")
+        raise RuntimeError(f"Error when trying to read the environment variable: {e}") from e
+    return manager_def
+
+
 # Exception handlers
 @app.exception_handler(StarletteHTTPException)
 async def custom_http_exception_handler(
@@ -119,8 +165,7 @@ async def custom_http_exception_handler(
 # Create Dask LocalCluster when the application starts
 @asynccontextmanager
 async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statements
-    """
-    Asynchronous context manager to handle the lifecycle of the FastAPI application,
+    """Asynchronous context manager to handle the lifecycle of the FastAPI application,
     managing the creation and shutdown of a Dask cluster.
 
     This function is responsible for setting up a Dask cluster when the FastAPI application starts,
@@ -162,7 +207,9 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
         logger.info("Local Dask cluster created at startup.")
 
     # Extract PostgreSQL connection details for the manager
-    manager_def = api.config.get("manager", {})
+    manager_def = get_manager_def()
+    # Overwrite the postgres connection details
+
     # Initialize PostgreSQLManager with the manager configuration
     process_manager = PostgreSQLManager(manager_def)
     fastapi_app.extra["process_manager"] = process_manager
@@ -274,12 +321,7 @@ async def get_specific_job_result(job_id: str = Path(..., title="The ID of the j
     # Query the database to find the job by job_id
     job = app.extra["process_manager"].get_job(job_id)
     if job:
-        return {
-            "job_id": job["identifier"],
-            "status": job["status"],
-            "progress": job["progress"],
-            "detail": job["detail"],
-        }
+        return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
 
     raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
 

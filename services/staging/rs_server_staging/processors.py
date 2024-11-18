@@ -18,7 +18,7 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Union
 
 import requests
@@ -34,7 +34,6 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
-from sqlalchemy.orm import Session
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
@@ -149,7 +148,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         collection: str,
         item: str,
         provider: str,
-        # db: tinydb.table.Table,
         db_process_manager: PostgreSQLManager,
         cluster: LocalCluster,
     ):  # pylint: disable=super-init-not-called
@@ -163,7 +161,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             collection (str): The name of the collection from the catalog to use.
             item (str): The specific item to process within the collection.
             provider (str): The name of the provider offering the data for processing.
-            db (tinydb.table.Table): The database table used to track job execution status and metadata.
+            db_process_manager (PostgreSQLManager): The pygeoapi Postgresql Manager used to track job execution
+                status and metadata.
             cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
 
         Attributes:
@@ -174,7 +173,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             job_id (str): A unique identifier for the processing job, generated using UUID.
             detail (str): Status message describing the current state of the processing unit.
             progress (int): Integer tracking the progress of the current job.
-            tracker (tinydb): A tinydb instance used to store job execution details.
             item_collection (FeatureCollectionModel): Holds the input collection of features.
             catalog_collection (str): Name of the catalog collection.
             catalog_item_name (str): Name of the specific item in the catalog being processed.
@@ -204,7 +202,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.detail: str = "Processing Unit was created"
         self.progress: float = 0.0
         self.db_process_manager = db_process_manager
-        self.status = EStagingStatus.CREATED
+        self.status = EStagingStatus.QUEUED
         self.create_job_execution()
         #################
         # Inputs section
@@ -663,8 +661,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         Returns:
             None
         """
-        # if the self.cluster is created already, means we are in local mode,
-        # and the cluster has been created at the start of the app
+        # If self.cluster is already created, it indicates that we are in local
+        # mode, and the cluster was initialized at the application's start.
         if not self.cluster:
             # in kubernetes cluster mode, we have to connect to the gateway and get the list of the clusters
             try:

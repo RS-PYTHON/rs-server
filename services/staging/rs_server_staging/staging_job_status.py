@@ -47,7 +47,7 @@ class EStagingStatus(str, enum.Enum):
         return self.value
 
 
-class StagingJobStatus(Base):
+class StagingJobStatus(Base):  # pylint: disable=too-few-public-methods
     """Abstract implementation of SQLAlchemy Base"""
 
     __tablename__ = "jobs"
@@ -55,11 +55,17 @@ class StagingJobStatus(Base):
     identifier = Column(String, primary_key=True, unique=True, index=True)
     status = Column(Enum(EStagingStatus), nullable=False)
     progress = Column(Float, server_default="0.0")
-    created_at = Column(DateTime, server_default=func.now())
+    # Pylint issue with func.now, check this: https://github.com/sqlalchemy/sqlalchemy/issues/9189
+    created_at = Column(DateTime, server_default=func.now())  # pylint: disable=not-callable
     # onupdate=func.now(), server_onupdate=func.now() is not working, did not figure why
     # instead, force the PostgresqlManager from pygeoapi to update the updated_at column specifically with
     # update_job function (check processors.py log_job_execution function)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), server_onupdate=func.now())
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),  # pylint: disable=not-callable
+        onupdate=func.now(),  # pylint: disable=not-callable
+        server_onupdate=func.now(),  # pylint: disable=not-callable
+    )
     detail = Column(String)
 
     def __init__(self, *args, **kwargs):

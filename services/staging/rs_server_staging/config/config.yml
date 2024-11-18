@@ -33,18 +33,14 @@ metadata:
       - api
       - processes
 
-# manager:
-#   name: TinyDB
-#   connection: /tmp/pygeoapi-process-manager.db
-#   output_dir: /tmp/
 manager:
   name: PostgreSQL
   connection:
-    host: localhost
-    port: 5432
-    database: rspy-demo
-    user: postgres
-    password: postgres
+    host: ${POSTGRES_HOST}
+    port: ${POSTGRES_PORT}
+    database: ${POSTGRES_DB}
+    user: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
   # Alternative accepted connection definition:
   # connection: postgresql://postgres:postgres@localhost:5432/test
   output_dir: /tmp
