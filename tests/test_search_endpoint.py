@@ -17,6 +17,7 @@ import os
 from copy import deepcopy
 
 import pytest
+import requests
 import responses
 import yaml
 from fastapi import HTTPException, status
@@ -25,7 +26,7 @@ from rs_server_adgs import adgs_utils
 from rs_server_adgs.adgs_utils import auxip_map_mission
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
-from rs_server_common.data_retrieval.provider import Provider
+from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
@@ -79,6 +80,28 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     )
     endpoint = "/cadip/CADIP/cadu/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z&session_id=session_id2"
     assert client.get(endpoint).status_code == status.HTTP_200_OK
+
+
+# Deprecated tests, to be removed.
+@pytest.mark.unit
+@responses.activate
+def test_adgs_search_aux(client, mock_token_validation, mocker):
+    """Tests for /adgs/aux/search"""
+    response = client.get("/adgs/aux/search")
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    mock_token_validation("adgs")
+    endpoint = "/adgs/aux/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z"
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_200_OK
+    mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=CreateProviderFailed)
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=requests.exceptions.ConnectionError)
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=Exception)
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 #########################
@@ -393,6 +416,25 @@ class TestModelValidationError:
             side_effect=ValidationError.from_exception_data("Invalid data", line_errors=[]),
         )
         assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @pytest.mark.unit
+    def test_adgs_search_error(self, client, mocker):
+        """Test ADGS process_product_search throwing errors"""
+        mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=CreateProviderFailed)
+        response = client.get("/auxip/collections/adgs_by_platform/items")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == {"detail": "Bad station identifier: "}
+        mocker.patch(
+            "rs_server_adgs.api.adgs_search.init_adgs_provider",
+            side_effect=requests.exceptions.ConnectionError,
+        )
+        response = client.get("/auxip/collections/adgs_by_platform/items")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json() == {"detail": "Station ADGS connection error: "}
+        mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=Exception)
+        response = client.get("/auxip/collections/adgs_by_platform/items")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json() == {"detail": "General failure: "}
 
 
 class TestErrorWhileBuildUpCollection:
@@ -749,6 +791,36 @@ class TestFeatureCollectionOdataStacMapping:
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert "parameter is not sortable" in response.json()["detail"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint, page",
+        [
+            ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "3"),
+            ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "1"),
+            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "3"),
+            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "1"),
+        ],
+    )
+    @responses.activate
+    def test_token_in_url(self, client, endpoint, page):
+        """Used to test if application correctly builds next/previous token."""
+        response = client.get(endpoint + page)
+        assert response.status_code == status.HTTP_200_OK
+        assert {
+            "rel": "next",
+            "type": "application/geo+json",
+            "method": "GET",
+            "href": f"http://testserver{endpoint}{str(int(page) + 1)}",
+        } in response.json()["links"]
+        if int(page) > 1:
+            prev_url = f"http://testserver{endpoint.split('token')[0]}token=prev:page={str(int(page) - 1)}"
+            assert {
+                "rel": "previous",
+                "type": "application/geo+json",
+                "method": "GET",
+                "href": prev_url,
+            } in response.json()["links"]
 
 
 class TestCollection:
