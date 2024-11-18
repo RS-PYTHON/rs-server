@@ -740,7 +740,7 @@ class TestFeatureCollectionOdataStacMapping:
         "endpoint",
         [
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=1&sortby='invalid'",
-            "/cadip/collections/cadip_session_by_id/items?limit=1&page=1&sortby='invalid'"
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page=1&sortby='invalid'",
         ],
     )
     @responses.activate
@@ -748,7 +748,7 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid pages (str, negative, 0)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
-        assert "parameter is not sortable" in response.json()['detail']
+        assert "parameter is not sortable" in response.json()["detail"]
 
 
 class TestCollection:
