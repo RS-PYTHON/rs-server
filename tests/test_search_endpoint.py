@@ -807,11 +807,12 @@ class TestFeatureCollectionOdataStacMapping:
         """Used to test if application correctly builds next/previous token."""
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
+        next_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=next:page={str(int(page) + 1)}"
         assert {
             "rel": "next",
             "type": "application/geo+json",
             "method": "GET",
-            "href": f"http://testserver{endpoint}{str(int(page) + 1)}",
+            "href": next_url,
         } in response.json()["links"]
         if int(page) > 1:
             prev_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=prev:page={str(int(page) - 1)}"
