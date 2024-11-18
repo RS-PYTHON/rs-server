@@ -45,11 +45,14 @@ FROM python:3.11-slim-bookworm
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
 RUN \
     apt update && \
-    apt install -y libpq-dev && \
+    apt install -y libpq-dev libexpat1 && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
 # Copy the whole /usr/local dir (that contains the python installation) from the build stage
 COPY --from=builder /usr/local /usr/local
+
+# Install opentelemetry instrumentation packages for dependencies
+RUN opentelemetry-bootstrap -a install
 
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
