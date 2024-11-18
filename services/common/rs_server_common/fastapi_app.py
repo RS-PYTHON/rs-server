@@ -43,8 +43,8 @@ from stac_fastapi.api.routes import add_route_dependencies
 from stac_fastapi.extensions.core import (
     FieldsExtension,
     FilterExtension,
+    PaginationExtension,
     SortExtension,
-    TokenPaginationExtension,
 )
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.pgstac.extensions import QueryExtension
@@ -168,8 +168,8 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         QueryExtension(),
         SortExtension(),
         FieldsExtension(),
-        TokenPaginationExtension(),
         FilterExtension(client=FiltersClient()),
+        PaginationExtension(),
         # BulkTransactionExtension(client=BulkTransactionsClient()),
     ]
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)

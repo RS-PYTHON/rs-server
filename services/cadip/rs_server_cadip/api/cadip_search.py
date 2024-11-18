@@ -54,11 +54,11 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     create_stac_collection,
     handle_exceptions,
-    sort_feature_collection,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     validate_inputs_format,
+    validate_sort_input,
     validate_str_list,
     write_search_products_to_db,
 )
@@ -91,7 +91,9 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("SessionId", []),
             odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
-            odata_params.get("top"),
+            self.request.query_params.get("sortby", "-published"),
+            self.limit,
+            self.page,
         )
         if not session_data.features:
             # If there are no sessions, don't proceed to assets allocation
@@ -358,10 +360,12 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Union[str, None],
         WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=True)),
     ],
+    sortby: str,
     limit: Annotated[
         Union[int, None],
         Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
     ],
+    page: Union[int, None] = 1,
 ) -> stac_pydantic.ItemCollection:
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
@@ -375,7 +379,8 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         time_interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
         limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
-
+        sortby (str): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
+        page (int): Page number to be displayed, defaults to first one.
     Returns:
         dict (dict): A STAC Feature Collection of the sessions.
 
@@ -384,8 +389,6 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         HTTPException (fastapi.exceptions): If there is a JSON mapping error.
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
-    limit = limit if limit else 1000
-
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
         products = init_cadip_provider(f"{station}_session").search(
@@ -394,6 +397,8 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             platform=platform,
             sessions_search=True,
             items_per_page=limit,
+            sort_by=validate_sort_input(sortby),
+            page=page,
         )
         products = validate_products(products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
@@ -420,6 +425,12 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exception),
         ) from exception
+    except Exception as exception:  # pylint: disable=broad-exception-caught
+        logger.error(f"General failure! {exception}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"General failure: {exception}",
+        ) from exception
 
 
 ######################################
@@ -433,7 +444,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
+    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
@@ -455,15 +466,14 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    return process_files_search(station, session_id, datetime, limit, sortby, deprecated=True)
+    return process_files_search(station, session_id, datetime, limit, sortby=sortby, deprecated=True)
 
 
 def process_files_search(  # pylint: disable=too-many-locals
     station: str,
     session_id: str,
     datetime: Union[str, None] = None,
-    limit: Union[int, None] = 20,
-    sortby: Union[str, None] = None,
+    limit: Union[int, None] = 1000,
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
@@ -503,6 +513,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             TimeRange(start_date, stop_date),
             id=session,
             items_per_page=limit,
+            sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
         )
         if kwargs.get("deprecated", False):
             write_search_products_to_db(CadipDownloadStatus, products)
@@ -518,7 +529,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         logger.info("Succesfully listed and processed products from CADIP station")
         if kwargs.get("map_to_session", False):
             return [product.properties for product in products]
-        return sort_feature_collection(cadip_item_collection.model_dump(), sortby)
+        return cadip_item_collection.model_dump()
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")

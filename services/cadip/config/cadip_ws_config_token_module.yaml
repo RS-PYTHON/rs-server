@@ -90,9 +90,17 @@ cadip:
           - SessionID eq {SessionID}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        datetime: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -172,9 +180,17 @@ ins:
           - SessionID eq {SessionID}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        datetime: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -254,9 +270,17 @@ mps:
           - SessionID eq {SessionID}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        datetime: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -336,9 +360,17 @@ mti:
           - SessionID eq {SessionID}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        datetime: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -418,9 +450,17 @@ nsg:
           - SessionID eq {SessionID}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        datetime: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -500,9 +540,17 @@ sgs:
           - SessionID eq {SessionID}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        datetime: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -619,9 +667,36 @@ cadip_session:
           - Satellite in {platforms}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -738,9 +813,36 @@ ins_session:
           - Satellite in {platforms}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -857,9 +959,36 @@ mps_session:
           - Satellite in {platforms}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -976,9 +1105,36 @@ mti_session:
           - Satellite in {platforms}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -1095,9 +1251,36 @@ nsg_session:
           - Satellite in {platforms}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload
@@ -1214,9 +1397,36 @@ sgs_session:
           - Satellite in {platforms}
           - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
           - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: SessionId
+        start_datetime: DownlinkStart
+        datetime: DownlinkStart
+        end_datetime: DownlinkStop
+        published: PublicationDate
+        platform: Satellite
+        cadip:id: Id
+        cadip:num_channels: NumChannels
+        cadip:station_unit_id: StationUnitId
+        sat:absolute_orbit: DownlinkOrbit
+        cadip:acquisition_id: AcquisitionId
+        cadip:antenna_id: AntennaId
+        cadip:front_end_id: FrontEndId
+        cadip:retransfer: Retransfer
+        cadip:antenna_status_ok: AntennaStatusOK
+        cadip:front_end_status_ok: FrontEndStatusOK
+        cadip:planned_data_start: PlannedDataStart
+        cadip:planned_data_stop: PlannedDataStop
+        cadip:downlink_status_ok: DownlinkStatusOK
+        cadip:delivery_push_ok: DeliveryPushOK
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: '{url}?{search}&$top={items_per_page}'
+      next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
     type: HTTPDownload

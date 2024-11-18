@@ -57,6 +57,7 @@ from rs_server_common.stac_api_common import (
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     validate_inputs_format,
+    validate_sort_input,
     write_search_products_to_db,
 )
 
@@ -83,11 +84,14 @@ class MockPgstacAdgs(MockPgstac):
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
+
         return process_product_search(
             collection.get("station", "adgs"),
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
-            odata_params.get("top", None),
+            self.limit,
+            self.request.query_params.get("sortby", "-created"),
+            self.page,
             Name=odata_params.get("Name", [None])[0],
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),
@@ -285,6 +289,8 @@ def process_product_search(  # pylint: disable=too-many-locals
     product_type,
     publication_date,
     limit,
+    sortby,
+    page: int = 1,
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
     """
@@ -295,6 +301,7 @@ def process_product_search(  # pylint: disable=too-many-locals
         station (str): Auxip station identifier.
         datetime (str): Time interval in ISO 8601 format.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        sortby (str: optional): Sorting field, default to created, descending.
 
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.
@@ -308,13 +315,14 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
     set_eodag_auth_token(station, "auxip")
-    limit = limit if limit else 1000
     (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
         products = init_adgs_provider(station).search(
             TimeRange(start_date, stop_date),
             attr_ptype=product_type,
             items_per_page=limit,
+            sort_by=validate_sort_input(sortby),
+            page=page,
             **kwargs,
         )
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"

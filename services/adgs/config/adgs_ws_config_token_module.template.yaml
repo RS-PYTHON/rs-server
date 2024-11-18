@@ -96,9 +96,33 @@ template:
             - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq '{attr_platform_short_name}')"
             - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{attr_processing_date#to_iso_utc_datetime}')"
 
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        id: Name
+        auxip:id: Id
+        created: PublicationDate
+        #datetime: Start # How to access ContentDate['Start']?
+        #start_datetime: Start
+        end_datetime: End
+        file:size: ContentLength
+        type: ContentType
+        eviction_datetime: EvictionDate
+        #product:type: productType
+        #processing:datetime: processingDate
+        published: PublicationDate
+        #file:checksum: ChecksumValue
+        #platform: platformSerialIdentifier
+        #constellation: platformShortName
+        #processing:facility: processingCenter
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
     pagination:
       max_items_per_page: 1000
-      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$expand=Attributes"
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes"
       total_items_nb_key_path: "$.total"
 
   download:
