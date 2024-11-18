@@ -47,7 +47,8 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
 )
 from stac_pydantic.item import Item
-#pylint: disable=attribute-defined-outside-init
+
+# pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"

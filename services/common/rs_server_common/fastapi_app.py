@@ -40,7 +40,12 @@ from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.api.routes import add_route_dependencies
-from stac_fastapi.extensions.core import FieldsExtension, FilterExtension, SortExtension
+from stac_fastapi.extensions.core import (
+    FieldsExtension,
+    FilterExtension,
+    PaginationExtension,
+    SortExtension,
+)
 from stac_fastapi.pgstac.core import CoreCrudClient
 from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
@@ -164,7 +169,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         SortExtension(),
         FieldsExtension(),
         FilterExtension(client=FiltersClient()),
-        # PaginationExtension(),
+        PaginationExtension(),
         # BulkTransactionExtension(client=BulkTransactionsClient()),
     ]
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
