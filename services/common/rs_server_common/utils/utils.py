@@ -449,3 +449,11 @@ def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
         {item.get("Name", None): item.get("Value", None) for item in eo_product.properties.get("attrs", [])},
     )
     return {key: value for key, value in eo_product.properties.items() if key in mapper.values()}
+
+
+def validate_sort_input(sortby: str):
+    """Used to transform stac sort parameter to odata type.
+    -datetime = startTimeFromAscendingNode DESC.
+    """
+    sortby = sortby.strip("'\"").lower()
+    return [(sortby[1:], "DESC" if sortby[0] == "-" else "ASC")]

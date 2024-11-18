@@ -23,7 +23,13 @@ from typing import List, Union
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
-from eodag.utils.exceptions import AuthenticationError, RequestError
+from eodag.utils.exceptions import (
+    AuthenticationError,
+    MisconfiguredError,
+    RequestError,
+    ValidationError,
+)
+from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
@@ -144,13 +150,13 @@ class EodagProvider(Provider):
                     "completionTimeFromAscendingNode": str(between.end),
                 },
             )
-
         # TODO: sort by publicationDate by default, but allow user to override it
         mapped_search_args["sort_by"] = [("publicationDate", "DESC")]
 
         try:
             logger.info(f"Searching from {self.provider} with parameters {mapped_search_args}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
+            # search_method = self.client.search if "session" not in self.provider else self.client.search_iter_page
             products = self.client.search(
                 **mapped_search_args,  # type: ignore
                 provider=self.provider,
@@ -158,7 +164,8 @@ class EodagProvider(Provider):
                 productType="S1_SAR_RAW" if "adgs" not in self.provider.lower() else "CAMS_GRF_AUX",
                 **kwargs,
             )
-        except RequestError as e:
+            repr(products)  # trigger eodag validation.
+        except (RequestError, MisconfiguredError) as e:
             # invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
             if e.args and "FORBIDDEN" in e.args[0]:
                 raise SearchProductFailed(
@@ -168,13 +175,14 @@ class EodagProvider(Provider):
             raise SearchProductFailed(e)
         except AuthenticationError as exc:
             raise ValueError("EoDAG could not authenticate") from exc
+        except ValidationError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
 
         if products.number_matched:
             logger.info(f"Returned {products.number_matched} session from {self.provider}")
 
         if products.errors:
             logger.error(f"Errors from {self.provider}: {products.errors}")
-
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:
