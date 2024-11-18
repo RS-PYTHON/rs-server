@@ -52,7 +52,6 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     create_stac_collection,
     handle_exceptions,
-    manage_page,
     sort_feature_collection,
 )
 from rs_server_common.utils.logging import Logging
@@ -87,14 +86,13 @@ class MockPgstacAdgs(MockPgstac):
         """Do the search for the given collection and OData parameters."""
         # Priority: GET 'limit' parameter -> odata 'top' parameter -> 1000 by default
         user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 1000)))
-        page = manage_page(self.request)
         return process_product_search(
             collection.get("station", "adgs"),
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
             user_limit,
             self.request.query_params.get("sortby", "-created"),
-            page,
+            self.page,
             Name=odata_params.get("Name", [None])[0],
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),
