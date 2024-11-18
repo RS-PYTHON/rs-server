@@ -41,8 +41,6 @@ manager:
     database: ${POSTGRES_DB}
     user: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
-  # Alternative accepted connection definition:
-  # connection: postgresql://postgres:postgres@localhost:5432/test
   output_dir: /tmp
 
 resources:
