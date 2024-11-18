@@ -754,6 +754,9 @@ cadip_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_unit_id: StationUnitId
@@ -912,6 +915,9 @@ ins_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_unit_id: StationUnitId
@@ -1070,6 +1076,9 @@ mps_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_unit_id: StationUnitId
@@ -1228,6 +1237,9 @@ mti_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_unit_id: StationUnitId
@@ -1386,6 +1398,9 @@ nsg_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_unit_id: StationUnitId
@@ -1544,6 +1559,9 @@ sgs_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_unit_id: StationUnitId
