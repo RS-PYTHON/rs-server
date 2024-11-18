@@ -47,7 +47,7 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
 )
 from stac_pydantic.item import Item
-
+#pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -458,7 +458,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 odata_hardcoded = collection.get("query") or {}
 
                 # Merge the user input params with the hardcoded params (which have higher priority)
-                odata = {**odata_params, **odata_hardcoded}
+                self.odata = {**odata_params, **odata_hardcoded}
 
                 empty_selection = False
 
@@ -480,7 +480,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         if start >= stop:
                             empty_selection = True
                             break  # try next collection
-                        odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
+                        self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
 
                     # Comma-separated lists
                     if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
@@ -510,7 +510,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                                 break  # try next collection
 
                         # Save the intersection
-                        odata[key] = intersection
+                        self.odata[key] = intersection
 
                 # If the selection is empty, we return no items for this collection
                 if empty_selection:
@@ -519,12 +519,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # Overwrite the pagination parameters.
                 # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
                 if limit:
-                    odata["top"] = limit
+                    self.odata["top"] = limit
 
                 # TODO: what to do with the sortby parameter ?
 
                 # Do the search for this collection
-                features = (await self.process_search(collection, odata)).features
+                features = (await self.process_search(collection, self.odata)).features
 
                 # Add the collection information
                 for item in features:
@@ -554,6 +554,27 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
+
+    def get_page(self) -> int:
+        """Get page value (integer) according to given priority"""
+        try:
+            user_page = int(self.request.query_params.get("page", self.odata.get("page", 1)))  # type: ignore
+            if user_page < 1:
+                raise ValueError
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid page value") from exc
+        return user_page
+
+    def get_limit(self) -> int:
+        """Get limit value (integer) according to given priority"""
+        # Priority: GET 'limit' parameter -> odata 'top' parameter -> 1000 by default
+        try:
+            user_limit = int(self.request.query_params.get("limit", self.odata.get("top", 1000)))  # type: ignore
+            if user_limit < 1:
+                raise ValueError
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid limit value") from exc
+        return user_limit
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:

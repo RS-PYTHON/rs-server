@@ -699,6 +699,42 @@ class TestFeatureCollectionOdataStacMapping:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json() == detail
 
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='invalid_value'",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='-5'",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=0",
+            "/cadip/collections/cadip_session_by_id/items?limit='invalid_value'",
+            "/cadip/collections/cadip_session_by_id/items?limit='-5'",
+            "/cadip/collections/cadip_session_by_id/items?limit=0",
+        ],
+    )
+    def test_invalid_limit_values(self, client, endpoint):
+        """Test endpoint call with invalid limits (str, negative, 0)"""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.json() == {"detail": "Invalid limit value"}
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page='invalid'",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=-5",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page='0'",
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page='invalid'",
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page=-5",
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page='0'",
+        ],
+    )
+    def test_invalid_page_values(self, client, endpoint):
+        """Test endpoint call with invalid pages (str, negative, 0)"""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.json() == {"detail": "Invalid page value"}
+
 
 class TestCollection:
     """Class used to group tests for */collections/{collection_id}"""

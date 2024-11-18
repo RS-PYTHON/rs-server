@@ -85,8 +85,9 @@ class MockPgstacCadip(MockPgstac):
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        # Priority: GET 'limit' parameter -> odata 'top' parameter -> 1000 by default
-        user_limit = int(self.request.query_params.get("limit", odata_params.get("top", 1000)))
+        user_limit = self.get_limit()
+        user_page = self.get_page()
+
         session_data = process_session_search(
             self.request,
             collection.get("station", "cadip"),
@@ -95,7 +96,7 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("PublicationDate"),
             self.request.query_params.get("sortby", "-published"),
             user_limit,
-            self.page,
+            user_page,
         )
         if not session_data.features:
             # If there are no sessions, don't proceed to assets allocation
