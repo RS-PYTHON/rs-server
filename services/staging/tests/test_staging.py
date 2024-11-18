@@ -22,23 +22,55 @@ from rs_server_staging.main import app_lifespan, get_manager_def, init_db
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
+expected_jobs_test = [
+    {
+        "identifier": "job_1",
+        "status": "started",
+        "progress": 0.0,
+        "detail": "Test detail",
+        "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
+        "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+    },
+    {
+        "identifier": "job_2",
+        "status": "in_progress",
+        "progress": 55.0,
+        "detail": "Test detail",
+        "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
+        "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+    },
+    {
+        "identifier": "job_3",
+        "status": "paused",
+        "progress": 15.0,
+        "detail": "Test detail",
+        "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
+        "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
+    },
+    {
+        "identifier": "job_4",
+        "status": "finished",
+        "progress": 100.0,
+        "detail": "Test detail",
+        "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
+        "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
+    },
+    {
+        "identifier": "non_existing",
+        "status": "finished",
+        "progress": 100.0,
+        "detail": "Test detail",
+        "created_at": "unknown",
+        "updated_at": "unknown",
+    },
+]
+
 
 class TestInitDb:
     """Class to group tests for the init_db function"""
 
-    def test_init_db_success(self, mocker):
+    def test_init_db_success(self, set_db_env_var, mocker):  # pylint: disable=unused-argument
         """Test that the database initialization completes successfully."""
-        # Mock environment variables
-        mocker.patch.dict(
-            "os.environ",
-            {
-                "POSTGRES_USER": "test_user",
-                "POSTGRES_PASSWORD": "test_password",
-                "POSTGRES_HOST": "localhost",
-                "POSTGRES_PORT": "5432",
-                "POSTGRES_DB": "test_db",
-            },
-        )
 
         # Mock SQLAlchemy create_engine and Base.metadata.create_all
         mock_engine = mocker.Mock()
@@ -50,7 +82,7 @@ class TestInitDb:
 
         # Assert: Check that create_engine and create_all were called correctly
         mock_create_engine.assert_called_once_with(
-            "postgresql+psycopg2://test_user:test_password@localhost:5432/test_db",
+            "postgresql+psycopg2://postgres:password@localhost:5500/rspy_pytest",
         )
         mock_metadata.assert_called_once_with(bind=mock_engine)
 
@@ -63,19 +95,8 @@ class TestInitDb:
         with pytest.raises(RuntimeError, match="Error when trying to read the environment variable:"):
             init_db()
 
-    def test_init_db_sqlalchemy_error(self, mocker):
+    def test_init_db_sqlalchemy_error(self, set_db_env_var, mocker):  # pylint: disable=unused-argument
         """Test that the function raises an error when SQLAlchemy fails."""
-        # Mock environment variables
-        mocker.patch.dict(
-            "os.environ",
-            {
-                "POSTGRES_USER": "test_user",
-                "POSTGRES_PASSWORD": "test_password",
-                "POSTGRES_HOST": "localhost",
-                "POSTGRES_PORT": "5432",
-                "POSTGRES_DB": "test_db",
-            },
-        )
 
         # Mock SQLAlchemy create_engine to raise an error
         mocker.patch("rs_server_staging.main.create_engine", side_effect=SQLAlchemyError("Database error"))
@@ -215,48 +236,7 @@ async def test_get_jobs(mocker, set_db_env_var, staging_client):  # pylint: disa
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_job",
-    [
-        {
-            "identifier": "job_1",
-            "status": "started",
-            "progress": 0.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_2",
-            "status": "in_progress",
-            "progress": 55.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_3",
-            "status": "paused",
-            "progress": 15.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_4",
-            "status": "finished",
-            "progress": 100.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
-        },
-        {
-            "identifier": "non_existing",
-            "status": "finished",
-            "progress": 100.0,
-            "detail": "Test detail",
-            "created_at": "unknown",
-            "updated_at": "unknown",
-        },
-    ],
+    expected_jobs_test,
 )
 async def test_get_job(
     mocker,
@@ -305,48 +285,7 @@ async def test_get_job(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_job",
-    [
-        {
-            "identifier": "job_1",
-            "status": "started",
-            "progress": 0.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_2",
-            "status": "in_progress",
-            "progress": 55.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_3",
-            "status": "paused",
-            "progress": 15.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_4",
-            "status": "finished",
-            "progress": 100.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
-        },
-        {
-            "identifier": "non_existing",
-            "status": "finished",
-            "progress": 100.0,
-            "detail": "Test detail",
-            "created_at": "unknown",
-            "updated_at": "unknown",
-        },
-    ],
+    expected_jobs_test,
 )
 async def test_get_job_result(
     mocker,
@@ -394,48 +333,7 @@ async def test_get_job_result(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_job",
-    [
-        {
-            "identifier": "job_1",
-            "status": "started",
-            "progress": 0.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_2",
-            "status": "in_progress",
-            "progress": 55.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_3",
-            "status": "paused",
-            "progress": 15.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_4",
-            "status": "finished",
-            "progress": 100.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
-        },
-        {
-            "identifier": "non_existing",
-            "status": "finished",
-            "progress": 100.0,
-            "detail": "Test detail",
-            "created_at": "unknown",
-            "updated_at": "unknown",
-        },
-    ],
+    expected_jobs_test,
 )
 async def test_delete_job(
     mocker,
