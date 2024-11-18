@@ -38,6 +38,7 @@ import stac_pydantic
 import stac_pydantic.links
 import yaml
 from fastapi import HTTPException, Request, status
+from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
@@ -269,7 +270,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # They can be set either as standard parameters or as "token" parameters.
         # The token values have higher priority.
         for as_token in [False, True]:
-            query_params = self.request.query_params
+            query_params: dict | QueryParams = self.request.query_params
             if as_token:
                 token = query_params.get("token")  # for GET
                 if not token:
@@ -287,7 +288,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Merge pagination parameters into input params.
             # Convert lists with one element into this single value.
             for key, values in query_params.items():
-                if not key in ("limit", "page", "sort"):
+                if key not in ("limit", "page", "sort"):
                     continue
                 if isinstance(values, list) and (len(values) == 1):
                     params[key] = values[0]
