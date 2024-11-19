@@ -151,8 +151,6 @@ class EodagProvider(Provider):
                 },
             )
         # TODO: sort by publicationDate by default, but allow user to override it
-        mapped_search_args["sort_by"] = [("publicationDate", "DESC")]
-
         try:
             logger.info(f"Searching from {self.provider} with parameters {mapped_search_args}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
@@ -165,6 +163,8 @@ class EodagProvider(Provider):
                 **kwargs,
             )
             repr(products)  # trigger eodag validation.
+        except Exception as e:
+            bp = 0
         except (RequestError, MisconfiguredError) as e:
             # invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
             if e.args and "FORBIDDEN" in e.args[0]:
