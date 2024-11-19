@@ -33,7 +33,7 @@ cadip:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5000/Files
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
       - null
@@ -94,6 +94,7 @@ cadip:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
+        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -123,7 +124,7 @@ ins:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5100/Files
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
       - null
@@ -184,6 +185,7 @@ ins:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
+        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -213,7 +215,7 @@ mps:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5101/Files
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
       - null
@@ -274,6 +276,7 @@ mps:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
+        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -303,7 +306,7 @@ mti:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5102/Files
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
       - null
@@ -364,6 +367,7 @@ mti:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
+        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -393,7 +397,7 @@ nsg:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5103/Files
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
       - null
@@ -454,6 +458,7 @@ nsg:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
+        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -483,7 +488,7 @@ sgs:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5104/Files
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value
     metadata_mapping:
       id:
       - null
@@ -544,6 +549,7 @@ sgs:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
+        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
