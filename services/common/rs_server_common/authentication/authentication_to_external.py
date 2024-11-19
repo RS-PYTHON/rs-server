@@ -206,7 +206,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
 
     token = response.json()
     # Is it worth validating it?
-    # validate_token_format(token.get("access_token", ""))
+    # validate_token_format(token.get(ACCESS_TK_KEY_IN_RESPONSE, ""))
     if ACCESS_TK_KEY_IN_RESPONSE not in token:
         logger.error(
             f"The token field was not found in the response from the station {external_auth_config.station_id}. ",
@@ -216,7 +216,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
             detail=f"The token field was not found in the response from the station {external_auth_config.station_id}.",
         )
     logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
-    return token.get("access_token")
+    return token.get(ACCESS_TK_KEY_IN_RESPONSE)
 
 
 def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> Dict[str, str]:
