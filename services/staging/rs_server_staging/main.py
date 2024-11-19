@@ -27,6 +27,7 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.db import Base
 from rs_server_common.settings import env_bool
+from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_staging.processors import processors
 from sqlalchemy import create_engine
@@ -325,6 +326,9 @@ async def get_specific_job_result(job_id: str = Path(..., title="The ID of the j
 
     raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
 
+
+# Configure OpenTelemetry
+opentelemetry.init_traces(app, "rs.server.staging")
 
 app.include_router(router)
 app.router.lifespan_context = app_lifespan

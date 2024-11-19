@@ -16,6 +16,7 @@
 import copy
 import json
 import traceback
+import urllib.parse
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -37,6 +38,7 @@ import stac_pydantic
 import stac_pydantic.links
 import yaml
 from fastapi import HTTPException, Request, status
+from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
@@ -47,6 +49,7 @@ from rs_server_common.utils.utils import (
 )
 from stac_pydantic.item import Item
 
+# pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -102,6 +105,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     # Is the service adgs or cadip ?
     adgs: bool = False
     cadip: bool = False
+
+    # Current page
+    page: int = 1
+
+    # Number of results per page
+    limit: int | None = None
 
     def __post_init__(self):
         self.adgs = self.service in ("adgs", "auxip")
@@ -245,6 +254,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """
         Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
         """
+        if self.request is None:
+            raise AssertionError("Request should be defined")
 
         #
         # Step 1: read input params
@@ -255,6 +266,35 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Used for error handling."""
             return json.dumps(field, indent=0).replace("\n", "").replace('"', "'")
 
+        # Read the pagination query parameters from the GET or POST request URL.
+        # They can be set either as standard parameters or as "token" parameters.
+        # The token values have higher priority.
+        for as_token in [False, True]:
+            query_params: dict | QueryParams = self.request.query_params
+            if as_token:
+                token = query_params.get("token")  # for GET
+                if not token:
+                    try:
+                        token = (await self.request.json()).get("token")  # for POST
+                    except json.JSONDecodeError:
+                        pass
+                if not token:
+                    continue
+
+                # Remove the prev: or next: prefix and parse the string
+                token = token.removeprefix("prev:").removeprefix("next:")
+                query_params = urllib.parse.parse_qs(token)
+
+            # Merge pagination parameters into input params.
+            # Convert lists with one element into this single value.
+            for key, values in query_params.items():
+                if key not in ("limit", "page", "sort"):
+                    continue
+                if isinstance(values, list) and (len(values) == 1):
+                    params[key] = values[0]
+                else:
+                    params[key] = values
+
         # Collections to search
         collection_ids = [collection.strip() for collection in params.pop("collections", [])]
 
@@ -264,7 +304,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # The cadip session ids are set in parameter or in the request state
         # by the /collections/{collection_id}/items/{session_id} endpoint
         if self.cadip:
-            if not ids and self.request:
+            if not ids:
                 try:
                     ids = self.request.state.session_id
                 except AttributeError:
@@ -274,10 +314,31 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if ids:
             stac_params["id"] = [id.strip() for id in ids]
 
+        # Page number
+        page = params.pop("page", None)
+        if page:
+            try:
+                self.page = int(page)
+                if self.page < 1:
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid page value: {page!r}",
+                ) from exc
+
         # Number of results per page
         limit = params.pop("limit", None)
         if limit:
-            limit = int(limit)
+            try:
+                self.limit = int(limit)
+                if self.limit < 1:
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid limit value: {limit!r}",
+                ) from exc
 
         # Sort results
         sortby = "-datetime"  # default value
@@ -421,7 +482,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 odata_hardcoded = collection.get("query") or {}
 
                 # Merge the user input params with the hardcoded params (which have higher priority)
-                odata = {**odata_params, **odata_hardcoded}
+                self.odata = {**odata_params, **odata_hardcoded}
 
                 empty_selection = False
 
@@ -443,7 +504,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         if start >= stop:
                             empty_selection = True
                             break  # try next collection
-                        odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
+                        self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
 
                     # Comma-separated lists
                     if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
@@ -473,19 +534,21 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                                 break  # try next collection
 
                         # Save the intersection
-                        odata[key] = intersection
+                        self.odata[key] = intersection
 
                 # If the selection is empty, we return no items for this collection
                 if empty_selection:
                     continue  # try next collection
 
-                # Overwrite the pagination parameters
-                odata["top"] = odata.get("top") or limit or 20  # default = 20 results per page
+                # Overwrite the pagination parameters.
+                # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
+                if not self.limit:
+                    self.limit = self.odata.get("top", 1000)
 
                 # TODO: what to do with the sortby parameter ?
 
                 # Do the search for this collection
-                features = (await self.process_search(collection, odata)).features
+                features = (await self.process_search(collection, self.odata)).features
 
                 # Add the collection information
                 for item in features:
@@ -503,7 +566,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             raise first_exception
 
         # Return results as a dict
-        return stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
+        data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
+
+        # Handle pagination links.
+        data["next"] = f"page={self.page + 1}"
+        if self.page > 1:
+            data["prev"] = f"page={self.page - 1}"
+
+        return data
 
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:

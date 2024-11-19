@@ -17,6 +17,7 @@ import os
 from copy import deepcopy
 
 import pytest
+import requests
 import responses
 import yaml
 from fastapi import HTTPException, status
@@ -25,7 +26,7 @@ from rs_server_adgs import adgs_utils
 from rs_server_adgs.adgs_utils import auxip_map_mission
 from rs_server_cadip import cadip_utils
 from rs_server_cadip.cadip_utils import cadip_map_mission
-from rs_server_common.data_retrieval.provider import Provider
+from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 
 from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
@@ -42,7 +43,8 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     mock_token_validation("cadip")
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id1"&$top=1000',
+        'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id1"'
+        "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
         json={"responses": expected_products[0]},
         status=200,
     )
@@ -55,7 +57,8 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     # Test a request with all files from multiple sessions
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter="SessionID%20in%20session_id2,%20session_id3"&$top=1000',
+        'http://127.0.0.1:5000/Files?$filter="SessionID%20in%20session_id2,%20session_id3"'
+        "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
         json={"responses": expected_products[1:]},
         status=200,
     )
@@ -70,12 +73,35 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     responses.add(
         responses.GET,
         'http://127.0.0.1:5000/Files?$filter="SessionID%20eq%20session_id2%20and%20PublicationDate%20gt%20'
-        '2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z"&$top=1000',
+        '2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z"'
+        "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
         json={"responses": expected_products},
         status=200,
     )
     endpoint = "/cadip/CADIP/cadu/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z&session_id=session_id2"
     assert client.get(endpoint).status_code == status.HTTP_200_OK
+
+
+# Deprecated tests, to be removed.
+@pytest.mark.unit
+@responses.activate
+def test_adgs_search_aux(client, mock_token_validation, mocker):
+    """Tests for /adgs/aux/search"""
+    response = client.get("/adgs/aux/search")
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    mock_token_validation("adgs")
+    endpoint = "/adgs/aux/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z"
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_200_OK
+    mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=CreateProviderFailed)
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=requests.exceptions.ConnectionError)
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=Exception)
+    response = client.get(endpoint)
+    assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 #########################
@@ -391,6 +417,25 @@ class TestModelValidationError:
         )
         assert client.get(endpoint).status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+    @pytest.mark.unit
+    def test_adgs_search_error(self, client, mocker):
+        """Test ADGS process_product_search throwing errors"""
+        mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=CreateProviderFailed)
+        response = client.get("/auxip/collections/adgs_by_platform/items")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json() == {"detail": "Bad station identifier: "}
+        mocker.patch(
+            "rs_server_adgs.api.adgs_search.init_adgs_provider",
+            side_effect=requests.exceptions.ConnectionError,
+        )
+        response = client.get("/auxip/collections/adgs_by_platform/items")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json() == {"detail": "Station ADGS connection error: "}
+        mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=Exception)
+        response = client.get("/auxip/collections/adgs_by_platform/items")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.json() == {"detail": "General failure: "}
+
 
 class TestErrorWhileBuildUpCollection:
     """Class used to group tests for error when processing."""
@@ -445,15 +490,17 @@ class TestFeatureOdataStacMapping:
         """
         # Mock pickup response and token validation
         mock_token_validation()
+        # Note: for /items/{item-id} top is always set to 1.
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=1&$skip=0",
             json=cadip_session_response,
             status=200,
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=1000&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -469,7 +516,8 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=20&skip=0",
             json={"responses": []},
             status=200,
         )
@@ -487,9 +535,11 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
-            "&$expand=Attributes",
+            "http://127.0.0.1:5001/Products?$filter=%22"
+            "contains(Name,%20'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF')%20and%20"
+            "Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
+            "att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22"
+            "&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
@@ -556,30 +606,58 @@ class TestFeatureOdataStacMapping:
                 "&$expand=Attributes",
                 {"detail": "AUXIP item 'INVALID_ITEM' not found."},
             ),
-            (
-                "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
-                {"detail": "Cadip session 'INVALID_ITEM' not found."},
-            ),
         ],
     )
-    def test_invalid_item_mapping(
-        self,
-        client,
-        mock_token_validation,
-        cadip_session_response,
-        adgs_response,
-        endpoint,
-        odata_url,
-        detail,
-    ):
+    def test_adgs_invalid_item_mapping(self, client, mock_token_validation, endpoint, odata_url, detail, adgs_response):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
         mock_token_validation()
         responses.add(
             responses.GET,
             odata_url,
-            json=self.setup("adgs" if "auxip" in endpoint else "cadip", cadip_session_response, adgs_response),
+            json=adgs_response,
             status=200,
+        )
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.json() == detail
+
+    @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize(
+        "endpoint, odata_session_url, odata_file_url, detail",
+        [
+            (
+                "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
+                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
+                "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+                {"detail": "Cadip session 'INVALID_ITEM' not found."},
+            ),
+        ],
+    )
+    def test_cadip_invalid_item_mapping(
+        self,
+        client,
+        mock_token_validation,
+        endpoint,
+        odata_session_url,
+        odata_file_url,
+        detail,
+    ):
+        """Test to verify the output of rs-server when given collection is valid and item is invalid."""
+        mock_token_validation()
+        # Collection URL is valid, returning items
+        responses.add(
+            responses.GET,
+            odata_session_url,
+            json={},
+            status=200,
+        )
+        # Map assets also (CADIP makes 2 requests)
+        responses.add(
+            responses.GET,
+            odata_file_url,
+            json={},
+            status=404,
         )
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -605,15 +683,17 @@ class TestFeatureCollectionOdataStacMapping:
         """
         # Mock pickup response and token validation
         mock_token_validation()
+        # Note, for /items, top value is the one defined in collection.
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20&",
+            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "&$orderby=PublicationDate%20desc&$top=10&$skip=0",
             json=cadip_session_response,
             status=200,
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
+            "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&&$top=1000&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -631,8 +711,8 @@ class TestFeatureCollectionOdataStacMapping:
         responses.add(
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=10"
-            "&$expand=Attributes",
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22"
+            "&$orderby=PublicationDate%20desc&$top=10&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
@@ -660,6 +740,89 @@ class TestFeatureCollectionOdataStacMapping:
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json() == detail
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='invalid_value'",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='-5'",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=0",
+            "/cadip/collections/cadip_session_by_id/items?limit='invalid_value'",
+            "/cadip/collections/cadip_session_by_id/items?limit='-5'",
+            "/cadip/collections/cadip_session_by_id/items?limit=0",
+        ],
+    )
+    def test_invalid_limit_values(self, client, endpoint):
+        """Test endpoint call with invalid limits (str, negative, 0)"""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "Invalid limit value" in response.json()["detail"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page='invalid'",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=-5",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page='0'",
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page='invalid'",
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page=-5",
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page='0'",
+        ],
+    )
+    def test_invalid_page_values(self, client, endpoint):
+        """Test endpoint call with invalid pages (str, negative, 0)"""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "Invalid page value" in response.json()["detail"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit=1&page=1&sortby='invalid'",
+            "/cadip/collections/cadip_session_by_id/items?limit=1&page=1&sortby='invalid'",
+        ],
+    )
+    @responses.activate
+    def test_invalid_sortby_values(self, client, endpoint):
+        """Test endpoint call with invalid pages (str, negative, 0)"""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert "parameter is not sortable" in response.json()["detail"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint, page",
+        [
+            ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "3"),
+            ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "1"),
+            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "3"),
+            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "1"),
+        ],
+    )
+    @responses.activate
+    def test_token_in_url(self, client, endpoint, page):
+        """Used to test if application correctly builds next/previous token."""
+
+        response = client.get(endpoint + page)
+        assert response.status_code == status.HTTP_200_OK
+        next_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=next:page={str(int(page) + 1)}"
+        assert {
+            "rel": "next",
+            "type": "application/geo+json",
+            "method": "GET",
+            "href": next_url,
+        } in response.json()["links"]
+        if int(page) > 1:
+            prev_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=prev:page={str(int(page) - 1)}"
+            assert {
+                "rel": "previous",
+                "type": "application/geo+json",
+                "method": "GET",
+                "href": prev_url,
+            } in response.json()["links"]
 
 
 class TestCollection:
@@ -860,7 +1023,7 @@ def test_search_parameters(
     # Static values
     user_ids = "id1, id2"
     user_datetime = "2021-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
-    user_limit = 15
+    user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
     user_params = {
         "limit": user_limit,
         "datetime": user_datetime,
@@ -887,7 +1050,8 @@ def test_search_parameters(
         user_params.update(
             {
                 "ids": user_ids,
-                "sortby": "-datetime",
+                "limit": user_limit,
+                # "sortby": "-datetime", # disable this for moment, require odata filter to be updated
             },
         )
         if filter_type == "cql":
@@ -910,6 +1074,7 @@ def test_search_parameters(
         user_params.update(
             {
                 "ids": [id.strip() for id in user_ids.split(",")],
+                "limit": user_limit,
                 "sortby": [{"direction": "desc", "field": "datetime"}],
             },
         )
@@ -960,30 +1125,31 @@ def test_search_parameters(
             # if the reponse is not mocked.
             # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
             # TODO after fixing rs-server, these parameters should appear in the OData request:
-            #  - adgs ids (linked to https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-494 ?)
             #  - sortBy (https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-131)
             if adgs:
+                uid = user_ids.split(",", maxsplit=1)[0]
                 odata_no_query = (
                     'http://127.0.0.1:5000/Products?$filter="'
+                    f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}&$expand=Attributes'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes'
                 )
-
                 odata_query = (
                     'http://127.0.0.1:5000/Products?$filter="'
+                    f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max} "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
-                    '"&$top={limit}&$expand=Attributes'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes'
                 )
             elif cadip:
                 odata_no_query = (
                     'http://127.0.0.1:5000/Sessions?$filter="'
                     f"SessionId in {user_ids} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0'
                 )
 
                 odata_query = (
@@ -991,7 +1157,7 @@ def test_search_parameters(
                     f"SessionId in {user_ids} "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '"&$top={limit}'
+                    '"&$orderby=PublicationDate%20desc&$top={limit}&$skip=0'
                 )
             else:
                 raise NotImplementedError
@@ -1016,14 +1182,14 @@ def test_search_parameters(
                 product_type = collection["query"].get("productType")
                 constellation = collection["query"].get("platformShortName")
                 satellite = collection["query"].get("Satellite", "")
-                limit = hardcoded_limit
+                limit = user_limit
 
             # The third collection has a query with multiple values, that intersects only one user value.
             elif collection_id == "col3":
                 odata = odata_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
                 date_max = hardcoded_date.split("/")[1]
-                limit = hardcoded_limit
+                limit = user_limit
                 if user_query:
                     product_type = user_product_type
                     constellation = user_constellation
@@ -1045,7 +1211,7 @@ def test_search_parameters(
                 satellite_op="in" if "," in satellite else "eq",
                 limit=limit,
             )
-
+            collection_params["limit"] = limit
             with responses.RequestsMock() as rsps:
                 if odata:  # if the query should return results
                     rsps.add(
@@ -1057,7 +1223,7 @@ def test_search_parameters(
                     if cadip:
                         odata_query_files = (
                             "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%"
-                            "20S1A_20200105072204051312%22&$top=20"
+                            "20S1A_20200105072204051312%22&$top=1000&$skip=0"
                         )
                         rsps.add(
                             responses.GET,

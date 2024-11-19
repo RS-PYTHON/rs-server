@@ -93,7 +93,7 @@ def test_valid_endpoint_request_download(
     # Add adgs mock server response to eodag download request
     responses.add(
         responses.GET,
-        "http://127.0.0.1:5001/Products(id_1)/$value",
+        "http://127.0.0.1:5000/Products(id_1)/$value",
         body="some byte-array data\n",
         status=200,
     )
@@ -575,7 +575,7 @@ def test_upload_to_s3(
     # Add adgs mock server response to eodag download request
     responses.add(
         responses.GET,
-        "http://127.0.0.1:5001/Products(id_1)/$value",
+        "http://127.0.0.1:5000/Products(id_1)/$value",
         body="some byte-array data\n",
         status=200,
     )
@@ -691,7 +691,7 @@ def test_valid_parallel_download(
         # Mock ADGS station responses for each id
         responses.add(
             responses.GET,
-            f"http://127.0.0.1:5001/Products({mock_resp_id})/$value",
+            f"http://127.0.0.1:5000/Products({mock_resp_id})/$value",
             body=file_content,
             status=200,
         )

@@ -1,0 +1,186 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+template:
+  auth:
+    type: HTTPHeaderAuth
+    headers:
+      Authorization: "Bearer {token}"
+    credentials:
+      token: token_value
+  products:
+    S1_SAR_RAW:
+      productType: RAW
+      collection: Sentinel1
+
+  search:
+    type: ODataV4Search
+    api_endpoint:
+    need_auth: true
+    results_entry: responses | $
+    metadata_mapping:
+      id:
+        - null
+        - "$.Id"
+      Name:
+        - null
+        - "$.Name"
+      SessionIds:
+        - null
+        - "$.SessionID"
+      SessionID:
+        - null
+        - "$.SessionID"
+      Channel:
+        - null
+        - "$.Channel"
+      BlockNumber:
+        - null
+        - "$.BlockNumber"
+      FinalBlock:
+        - null
+        - "$.FinalBlock"
+      PublicationDate:
+        - null
+        - "$.PublicationDate"
+      EvictionDate:
+        - null
+        - "$.EvictionDate"
+      Size:
+        - null
+        - "$.Size"
+      Retransfer:
+        - null
+        - "$.Retransfer"
+      # Eodag Specific map
+      startTimeFromAscendingNode:
+        - null
+        - "$.PublicationDate"
+      completionTimeFromAscendingNode:
+        - null
+        - "$.PublicationDate"
+      href:
+      geometry: "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"
+      downloadLink:
+      title: "$.Name"
+
+    free_text_search_operations:
+      $filter:
+        union: " OR "
+        wrapper: '"{}"'
+        operations:
+          and:
+            - "SessionID in {SessionIds}"
+            - "SessionID eq {SessionID}"
+            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
+            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
+
+    sort:
+      sort_by_tpl: '&$orderby={sort_param} {sort_order}'
+      sort_param_mapping:
+        datetime: PublicationDate
+      sort_order_mapping:
+        ascending: asc
+        descending: desc
+      max_sort_params: 1
+
+    pagination:
+      max_items_per_page: 1000
+      next_page_url_tpl: "{url}?{search}&$top={items_per_page}&$skip={skip}"
+      total_items_nb_key_path: "$.total"
+
+  download:
+    type: HTTPDownload
+    base_uri:
+    metadata_mapping:
+      uid: "$.Id"
+      downloadLink:
+
+cadip:
+  search:
+    api_endpoint: "http://127.0.0.1:5000/Files"
+    metadata_mapping:
+      href:
+        - null
+        - "http://127.0.0.1:5000/Files({id})/$value"
+      downloadLink: "http://127.0.0.1:5000/Files({id})/$value"
+  download:
+    base_uri: "http://127.0.0.1:5000/Files"
+    metadata_mapping:
+      downloadLink: "http://127.0.0.1:5000/Files({uid})/$value"
+
+ins:
+  search:
+    api_endpoint: "http://127.0.0.1:5100/Files"
+    metadata_mapping:
+      href:
+        - null
+        - "http://127.0.0.1:5100/Files({id})/$value"
+      downloadLink: "http://127.0.0.1:5100/Files({id})/$value"
+  download:
+    base_uri: "http://127.0.0.1:5100/Files"
+    metadata_mapping:
+      downloadLink: "http://127.0.0.1:5100/Files({uid})/$value"
+
+mps:
+  search:
+    api_endpoint: "http://127.0.0.1:5101/Files"
+    metadata_mapping:
+      href:
+        - null
+        - "http://127.0.0.1:5101/Files({id})/$value"
+      downloadLink: "http://127.0.0.1:5101/Files({id})/$value"
+  download:
+    base_uri: "http://127.0.0.1:5101/Files"
+    metadata_mapping:
+      downloadLink: "http://127.0.0.1:5101/Files({uid})/$value"
+
+mti:
+  search:
+    api_endpoint: "http://127.0.0.1:5102/Files"
+    metadata_mapping:
+      href:
+        - null
+        - "http://127.0.0.1:5102/Files({id})/$value"
+      downloadLink: "http://127.0.0.1:5102/Files({id})/$value"
+  download:
+    base_uri: "http://127.0.0.1:5102/Files"
+    metadata_mapping:
+      downloadLink: "http://127.0.0.1:5102/Files({uid})/$value"
+
+nsg:
+  search:
+    api_endpoint: "http://127.0.0.1:5103/Files"
+    metadata_mapping:
+      href:
+        - null
+        - "http://127.0.0.1:5103/Files({id})/$value"
+      downloadLink: "http://127.0.0.1:5103/Files({id})/$value"
+  download:
+    base_uri: "http://127.0.0.1:5103/Files"
+    metadata_mapping:
+      downloadLink: "http://127.0.0.1:5103/Files({uid})/$value"
+
+sgs:
+  search:
+    api_endpoint: "http://127.0.0.1:5104/Files"
+    metadata_mapping:
+      href:
+        - null
+        - "http://127.0.0.1:5104/Files({id})/$value"
+      downloadLink: "http://127.0.0.1:5104/Files({id})/$value"
+  download:
+    base_uri: "http://127.0.0.1:5104/Files"
+    metadata_mapping:
+      downloadLink: "http://127.0.0.1:5104/Files({uid})/$value"
