@@ -173,12 +173,12 @@ class TestGetManagerDef:
 
 
 @pytest.mark.asyncio
-async def test_get_jobs(mocker, set_db_env_var, staging_client):  # pylint: disable=unused-argument
+async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pylint: disable=unused-argument
     """
     Test the GET /jobs endpoint for retrieving job listings.
 
     This test verifies the behavior of the /jobs endpoint when jobs are present
-    in the postggres jobs table. It checks that the API correctly returns the list of
+    in the postgres jobs table. It checks that the API correctly returns the list of
     jobs when available, as well as the handling of cases where no jobs exist.
 
     Args:
@@ -214,7 +214,7 @@ async def test_get_jobs(mocker, set_db_env_var, staging_client):  # pylint: disa
 
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    mock_db_table.get_jobs.return_value = mock_jobs  # Simulate postgres returning jobs
+    mock_db_table.get_jobs_endpoint.return_value = mock_jobs  # Simulate postgres returning jobs
 
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
@@ -226,7 +226,7 @@ async def test_get_jobs(mocker, set_db_env_var, staging_client):  # pylint: disa
     assert response.json() == mock_jobs  # Check if the returned data matches the mocked jobs
 
     # Mock with an empty db, should return 404 since there are no jobs.
-    mock_db_table.get_jobs.return_value = []
+    mock_db_table.get_jobs_endpoint.return_value = []
 
     response = staging_client.get("/jobs")
 
@@ -335,7 +335,7 @@ async def test_get_job_result(
     "expected_job",
     expected_jobs_test,
 )
-async def test_delete_job(
+async def test_delete_job_endpoint(
     mocker,
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,

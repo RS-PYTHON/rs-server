@@ -287,7 +287,7 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
 
 # Endpoint to get the status of a job by job_id
 @router.get("/jobs/{job_id}")
-async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
+async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
     job = app.extra["process_manager"].get_job(job_id)
     if job:
@@ -296,7 +296,7 @@ async def get_job_status(job_id: str = Path(..., title="The ID of the job")):
 
 
 @router.get("/jobs")
-async def get_jobs():
+async def get_jobs_endpoint():
     """Returns the status of all jobs."""
     jobs = app.extra["process_manager"].get_jobs()
 
@@ -308,7 +308,7 @@ async def get_jobs():
 
 
 @router.delete("/jobs/{job_id}")
-async def delete_job(job_id: str = Path(..., title="The ID of the job to delete")):
+async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
     success = app.extra["process_manager"].delete_job(job_id)
     if success:
@@ -317,7 +317,7 @@ async def delete_job(job_id: str = Path(..., title="The ID of the job to delete"
 
 
 @router.get("/jobs/{job_id}/results")
-async def get_specific_job_result(job_id: str = Path(..., title="The ID of the job")):
+async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
     # Query the database to find the job by job_id
     job = app.extra["process_manager"].get_job(job_id)
