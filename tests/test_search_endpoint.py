@@ -95,7 +95,7 @@ def test_adgs_search_aux(client, mock_token_validation, mocker):
         "http://127.0.0.1:5000/Products?$filter=PublicationDate%20gt%202022-01-01T12:00:00.000Z%20"
         "and%20PublicationDate%20"
         "lt%202023-12-30T12:00:00.000Z&$top=1000&$skip=0&$expand=Attributes",
-        json={},
+        json={"value": []},
         status=200,
     )
     endpoint = "/adgs/aux/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z"
@@ -623,7 +623,7 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             odata_url,
-            json={},
+            json={"value": []},
             status=200,
         )
         response = client.get(endpoint)
@@ -659,14 +659,14 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             odata_session_url,
-            json={},
+            json={"value": []},
             status=200,
         )
         # Map assets also (CADIP makes 2 requests)
         responses.add(
             responses.GET,
             odata_file_url,
-            json={},
+            json={"value": []},
             status=404,
         )
         response = client.get(endpoint)
@@ -830,8 +830,8 @@ class TestFeatureCollectionOdataStacMapping:
             f"$top=10&$skip={(int(page) - 1) * 10}&"
             "$expand=Attributes"
         )
-        responses.add(responses.GET, base_cadip_uri, json={}, status=200)
-        responses.add(responses.GET, base_adgs_uri, json={}, status=200)
+        responses.add(responses.GET, base_cadip_uri, json={"value": []}, status=200)
+        responses.add(responses.GET, base_adgs_uri, json={"value": []}, status=200)
 
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
