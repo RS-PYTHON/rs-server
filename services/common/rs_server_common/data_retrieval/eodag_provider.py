@@ -163,8 +163,7 @@ class EodagProvider(Provider):
                 **kwargs,
             )
             repr(products)  # trigger eodag validation.
-        except Exception as e:
-            bp = 0
+
         except (RequestError, MisconfiguredError) as e:
             # invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
             if e.args and "FORBIDDEN" in e.args[0]:
