@@ -314,7 +314,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if isinstance(ids, list):
             stac_params["id"] = [id.strip() for id in ids]
         elif isinstance(ids, str):
-            stac_params["id"] = ids.strip()
+            stac_params["id"] = ids.strip()  # type: ignore
 
         # Page number
         page = params.pop("page", None)

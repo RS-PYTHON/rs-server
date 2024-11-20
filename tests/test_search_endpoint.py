@@ -526,7 +526,7 @@ class TestFeatureOdataStacMapping:
             responses.GET,
             "http://127.0.0.1:5000/Sessions?$filter=SessionId%20eq%20'S1A_20200105072204051312'"
             "&$orderby=PublicationDate%20desc&$top=1&$skip=0",
-            json={"responses": []},
+            json={"value": []},
             status=200,
         )
         response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312")
@@ -565,9 +565,10 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5001/Products?$filter=contains(Name,%20'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF')%20"
-            "and%20Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/"
-            "Value%20eq%20'AUX_OBMEMC')&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
+            "http://127.0.0.1:5001/Products?$filter=contains(Name,%20'S1A_OPER_MPL_ORBPRE_20210214T021411"
+            "_20210221T021411_0001.EOF')%20and%20Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
+            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')"
+            "&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
             json={"value": []},
             status=200,
         )
@@ -609,12 +610,14 @@ class TestFeatureOdataStacMapping:
         [
             (
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/INVALID_ITEM",
-                "http://127.0.0.1:5001/Products?$filter=contains(Name,%20'INVALID_ITEM')%20and%20Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
+                "http://127.0.0.1:5001/Products?$filter=contains(Name,%20'INVALID_ITEM')%20and%20Attributes/OData.CSC."
+                "StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq"
+                "%20'AUX_OBMEMC')&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
                 {"detail": "AUXIP item 'INVALID_ITEM' not found."},
             ),
         ],
     )
-    def test_adgs_invalid_item_mapping(self, client, mock_token_validation, endpoint, odata_url, detail, adgs_response):
+    def test_adgs_invalid_item_mapping(self, client, mock_token_validation, endpoint, odata_url, detail):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
         mock_token_validation()
         responses.add(
@@ -634,7 +637,8 @@ class TestFeatureOdataStacMapping:
         [
             (
                 "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
-                "http://127.0.0.1:5000/Sessions?$filter=SessionId%20eq%20'S1A_20200105072204051312'&$orderby=PublicationDate%20desc&$top=1&$skip=0",
+                "http://127.0.0.1:5000/Sessions?$filter=SessionId%20eq%20'S1A_20200105072204051312'"
+                "&$orderby=PublicationDate%20desc&$top=1&$skip=0",
                 "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
                 {"detail": "Cadip session 'INVALID_ITEM' not found."},
             ),
@@ -811,6 +815,24 @@ class TestFeatureCollectionOdataStacMapping:
     @responses.activate
     def test_token_in_url(self, client, endpoint, page):
         """Used to test if application correctly builds next/previous token."""
+        base_cadip_uri = (
+            "http://127.0.0.1:5000/Sessions?"
+            "$filter=SessionId%20eq%20'S1A_20200105072204051312'&"
+            "$orderby=PublicationDate%20desc&"
+            f"$top=10&$skip={(int(page) - 1) * 10}"
+        )
+
+        base_adgs_uri = (
+            "http://127.0.0.1:5001/Products?"
+            "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
+            "att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')&"
+            "$orderby=PublicationDate%20desc&"
+            f"$top=10&$skip={(int(page) - 1) * 10}&"
+            "$expand=Attributes"
+        )
+        responses.add(responses.GET, base_cadip_uri, json={}, status=200)
+        responses.add(responses.GET, base_adgs_uri, json={}, status=200)
+
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
         next_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=next:page={str(int(page) + 1)}"

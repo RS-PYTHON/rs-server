@@ -132,7 +132,7 @@ def validate_products(products: eodag.EOProduct):
             str(product)
             valid_eo_products.append(product)
         except eodag.utils.exceptions.MisconfiguredError as e:
-            logger.warn(e)
+            logger.warning(e)
             continue
     return valid_eo_products
 

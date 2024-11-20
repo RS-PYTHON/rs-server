@@ -117,29 +117,25 @@ class EodagProvider(Provider):
             Exception: If the search encounters an error or fails, an exception is raised.
         """
         mapped_search_args = {}
-        sessions_search = kwargs.pop("sessions_search", False)
 
-        session_id = kwargs.pop("id", None)
-        if session_id:
-            # If request contains session id, map it to eodag parameter accordingly (SessionId for single, Ids for list)
-            if isinstance(session_id, list):
-                mapped_search_args["SessionIds"] = ", ".join(f"'{s}'" for s in session_id)
-            elif isinstance(session_id, str):
-                mapped_search_args["SessionId"] = "'" + session_id + "'"
+        if session_id := kwargs.pop("id", None):
+            # Map session_id to the appropriate eodag parameter
+            key = "SessionIds" if isinstance(session_id, list) else "SessionId"
+            value = ", ".join(f"'{s}'" for s in session_id) if isinstance(session_id, list) else f"'{session_id}'"
+            mapped_search_args[key] = value
 
-        if sessions_search:
+        if kwargs.pop("sessions_search", False):
             # If request is for session search, handle platform - if any provided.
             platform = kwargs.pop("platform", None)
 
             if platform:
-                if isinstance(platform, list):
-                    mapped_search_args["platforms"] = ", ".join(f"'{p}'" for p in platform)
-                elif isinstance(platform, str):
-                    mapped_search_args["platform"] = "'" + platform + "'"
+                key = "platforms" if isinstance(platform, list) else "platform"
+                value = ", ".join(f"'{p}'" for p in platform) if isinstance(platform, list) else f"'{platform}'"
+                mapped_search_args[key] = value
 
             # TODO: check if it is the right way of doing this, looks very cumbersome to do it for every field
-            retransfer = kwargs.pop("retransfer", None)
-            if retransfer is not None:
+            # Tempfix, will be updated, to dirrectly, to verify kwargs and then forward to search.
+            if retransfer := kwargs.pop("retransfer", None):
                 mapped_search_args["Retransfer"] = str(retransfer).lower()
 
         if between:
@@ -171,7 +167,7 @@ class EodagProvider(Provider):
                     f"Can't search provider {self.provider} " "because the used token is not valid",
                 ) from e
             logger.debug(e)
-            raise SearchProductFailed(e)
+            raise SearchProductFailed(e) from e
         except AuthenticationError as exc:
             raise ValueError("EoDAG could not authenticate") from exc
         except ValidationError as exc:
