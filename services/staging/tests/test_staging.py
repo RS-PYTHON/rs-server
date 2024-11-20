@@ -214,7 +214,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
 
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    mock_db_table.get_jobs_endpoint.return_value = mock_jobs  # Simulate postgres returning jobs
+    mock_db_table.get_jobs.return_value = mock_jobs  # Simulate postgres returning jobs
 
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
@@ -226,7 +226,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     assert response.json() == mock_jobs  # Check if the returned data matches the mocked jobs
 
     # Mock with an empty db, should return 404 since there are no jobs.
-    mock_db_table.get_jobs_endpoint.return_value = []
+    mock_db_table.get_jobs.return_value = []
 
     response = staging_client.get("/jobs")
 
