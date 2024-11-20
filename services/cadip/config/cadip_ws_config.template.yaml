@@ -39,7 +39,7 @@ template:
     type: ODataV4Search
     api_endpoint:
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
         - null

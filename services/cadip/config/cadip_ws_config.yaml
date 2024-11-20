@@ -44,7 +44,7 @@ cadip:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5000/Files
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -146,7 +146,7 @@ ins:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5100/Files
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -248,7 +248,7 @@ mps:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5101/Files
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -350,7 +350,7 @@ mti:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5102/Files
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -452,7 +452,7 @@ nsg:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5103/Files
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -554,7 +554,7 @@ sgs:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5104/Files
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -656,7 +656,7 @@ cadip_session:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5000/Sessions
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -817,7 +817,7 @@ ins_session:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5100/Sessions
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -978,7 +978,7 @@ mps_session:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5101/Sessions
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -1139,7 +1139,7 @@ mti_session:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5102/Sessions
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -1300,7 +1300,7 @@ nsg_session:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5103/Sessions
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
@@ -1461,7 +1461,7 @@ sgs_session:
     type: ODataV4Search
     api_endpoint: http://127.0.0.1:5104/Sessions
     need_auth: true
-    results_entry: $.value
+    results_entry: $.value | $
     metadata_mapping:
       id:
       - null
