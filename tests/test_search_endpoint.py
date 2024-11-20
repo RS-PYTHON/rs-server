@@ -43,13 +43,13 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     mock_token_validation("cadip")
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter=SessionId%20eq%20\'session_id1\''
-        '&$orderby=PublicationDate%20desc&$top=1000&$skip=0',
-        json={"responses": expected_products[0]},
+        "http://127.0.0.1:5000/Files?$filter=SessionId%20eq%20'session_id1'"
+        "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
+        json={"value": expected_products[0]},
         status=200,
     )
     # Test a request with only all files from session_id1
-    response = client.get('/cadip/cadip/cadu/search?session_id=session_id1')
+    response = client.get("/cadip/cadip/cadu/search?session_id=session_id1")
     assert response.status_code == status.HTTP_200_OK
     # test that session_id1 is correctly mapped
     assert response.json()["features"][0]["properties"]["cadip:session_id"] == "session_id1"
@@ -57,9 +57,9 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     # Test a request with all files from multiple sessions
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter=SessionId%20in%20(\'session_id2\',%20\'session_id3\')'
+        "http://127.0.0.1:5000/Files?$filter=SessionId%20in%20('session_id2',%20'session_id3')"
         "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
-        json={"responses": expected_products[1:]},
+        json={"value": expected_products[1:]},
         status=200,
     )
     response = client.get("/cadip/cadip/cadu/search?session_id=session_id2,session_id3")
@@ -72,14 +72,15 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     # Nominal case, combined session_id and datetime
     responses.add(
         responses.GET,
-        'http://127.0.0.1:5000/Files?$filter=SessionId%20eq%20\'session_id2\'%20and%20PublicationDate%20gt%20'
-        '2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z'
+        "http://127.0.0.1:5000/Files?$filter=SessionId%20eq%20'session_id2'%20and%20PublicationDate%20gt%20"
+        "2022-01-01T12:00:00.000Z%20and%20PublicationDate%20lt%202023-12-30T12:00:00.000Z"
         "&$orderby=PublicationDate%20desc&$top=1000&$skip=0",
-        json={"responses": expected_products},
+        json={"value": expected_products},
         status=200,
     )
     endpoint = "/cadip/CADIP/cadu/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z&session_id=session_id2"
     assert client.get(endpoint).status_code == status.HTTP_200_OK
+
 
 # Deprecated tests, to be removed.
 @pytest.mark.unit
@@ -89,6 +90,14 @@ def test_adgs_search_aux(client, mock_token_validation, mocker):
     response = client.get("/adgs/aux/search")
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     mock_token_validation("adgs")
+    responses.add(
+        responses.GET,
+        "http://127.0.0.1:5000/Products?$filter=PublicationDate%20gt%202022-01-01T12:00:00.000Z%20"
+        "and%20PublicationDate%20"
+        "lt%202023-12-30T12:00:00.000Z&$top=1000&$skip=0&$expand=Attributes",
+        json={},
+        status=200,
+    )
     endpoint = "/adgs/aux/search?datetime=2022-01-01T12:00:00Z/2023-12-30T12:00:00Z"
     response = client.get(endpoint)
     assert response.status_code == status.HTTP_200_OK
@@ -492,14 +501,14 @@ class TestFeatureOdataStacMapping:
         # Note: for /items/{item-id} top is always set to 1.
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "http://127.0.0.1:5000/Sessions?$filter=SessionId%20eq%20'S1A_20200105072204051312'"
             "&$orderby=PublicationDate%20desc&$top=1&$skip=0",
             json=cadip_session_response,
             status=200,
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId%20eq%20'S1A_20200105072204051312'&$top=1000&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -515,8 +524,8 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
-            "&$orderby=PublicationDate%20desc&$top=20&skip=0",
+            "http://127.0.0.1:5000/Sessions?$filter=SessionId%20eq%20'S1A_20200105072204051312'"
+            "&$orderby=PublicationDate%20desc&$top=1&$skip=0",
             json={"responses": []},
             status=200,
         )
@@ -534,11 +543,11 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5001/Products?$filter=%22"
-            "contains(Name,%20'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF')%20and%20"
-            "Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
-            "att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22"
-            "&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
+            "http://127.0.0.1:5001/Products?$filter=contains(Name,%20"
+            "'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF')"
+            "%20and%20Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20att/"
+            "OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')&$orderby=PublicationDate%20desc"
+            "&$top=1&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
         )
@@ -556,10 +565,10 @@ class TestFeatureOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
-            "&$expand=Attributes",
-            json={"responses": []},
+            "http://127.0.0.1:5001/Products?$filter=contains(Name,%20'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF')%20"
+            "and%20Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/"
+            "Value%20eq%20'AUX_OBMEMC')&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
+            json={"value": []},
             status=200,
         )
         response = client.get(
@@ -600,9 +609,7 @@ class TestFeatureOdataStacMapping:
         [
             (
                 "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/INVALID_ITEM",
-                "http://127.0.0.1:5000/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-                "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22&$top=1000"
-                "&$expand=Attributes",
+                "http://127.0.0.1:5001/Products?$filter=contains(Name,%20'INVALID_ITEM')%20and%20Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')&$orderby=PublicationDate%20desc&$top=1&$skip=0&$expand=Attributes",
                 {"detail": "AUXIP item 'INVALID_ITEM' not found."},
             ),
         ],
@@ -613,7 +620,7 @@ class TestFeatureOdataStacMapping:
         responses.add(
             responses.GET,
             odata_url,
-            json=adgs_response,
+            json={},
             status=200,
         )
         response = client.get(endpoint)
@@ -627,7 +634,7 @@ class TestFeatureOdataStacMapping:
         [
             (
                 "/cadip/collections/cadip_session_by_id/items/INVALID_ITEM",
-                "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&$top=20",
+                "http://127.0.0.1:5000/Sessions?$filter=SessionId%20eq%20'S1A_20200105072204051312'&$orderby=PublicationDate%20desc&$top=1&$skip=0",
                 "http://127.0.0.1:5000/Files?$filter=%22SessionID%20eq%20S1A_20200105072204051312%22&$top=20",
                 {"detail": "Cadip session 'INVALID_ITEM' not found."},
             ),
@@ -685,14 +692,14 @@ class TestFeatureCollectionOdataStacMapping:
         # Note, for /items, top value is the one defined in collection.
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Sessions?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22"
+            "http://127.0.0.1:5000/Sessions?$filter=SessionId%20eq%20'S1A_20200105072204051312'"
             "&$orderby=PublicationDate%20desc&$top=10&$skip=0",
             json=cadip_session_response,
             status=200,
         )
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5000/Files?$filter=%22SessionId%20eq%20S1A_20200105072204051312%22&&$top=1000&$skip=0",
+            "http://127.0.0.1:5000/Files?$filter=SessionId%20eq%20'S1A_20200105072204051312'&$top=1000&$skip=0",
             json=cadip_file_response,
             status=200,
         )
@@ -709,8 +716,8 @@ class TestFeatureCollectionOdataStacMapping:
         mock_token_validation()
         responses.add(
             responses.GET,
-            "http://127.0.0.1:5001/Products?$filter=%22Attributes/OData.CSC.StringAttribute/any(att:att/Name%20"
-            "eq%20'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')%22"
+            "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20"
+            "'productType'%20and%20att/OData.CSC.StringAttribute/Value%20eq%20'AUX_OBMEMC')"
             "&$orderby=PublicationDate%20desc&$top=10&$skip=0&$expand=Attributes",
             json=adgs_response,
             status=200,
@@ -804,7 +811,6 @@ class TestFeatureCollectionOdataStacMapping:
     @responses.activate
     def test_token_in_url(self, client, endpoint, page):
         """Used to test if application correctly builds next/previous token."""
-
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
         next_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=next:page={str(int(page) + 1)}"
@@ -918,7 +924,7 @@ class TestCollection:
         """Test when response from pickup is empty, the result should still be 200 oK,
         and contain a link to the license."""
         mock_token_validation()
-        responses.add(responses.GET, odata_request, json={"responses": []}, status=200)
+        responses.add(responses.GET, odata_request, json={"value": []}, status=200)
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
         assert self_href in response.json()["links"]
@@ -1127,33 +1133,33 @@ def test_search_parameters(
             if adgs:
                 uid = user_ids.split(",", maxsplit=1)[0]
                 odata_no_query = (
-                    'http://127.0.0.1:5000/Products?$filter='
+                    "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    '&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes'
+                    "&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
-                    'http://127.0.0.1:5000/Products?$filter='
+                    "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max} "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
-                    '&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes'
+                    "&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes"
                 )
             elif cadip:
                 # Add quote to the user_id
-                user_ids_with_quote = ", ".join([f"'{user_id}'" for user_id in  user_ids.split(", ")])
+                user_ids_with_quote = ", ".join([f"'{user_id}'" for user_id in user_ids.split(", ")])
                 odata_no_query = (
-                    'http://127.0.0.1:5000/Sessions?$filter='
+                    "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
                     "&$orderby=PublicationDate%20desc&$top={limit}&$skip=0"
                 )
 
                 odata_query = (
-                    'http://127.0.0.1:5000/Sessions?$filter='
+                    "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
@@ -1222,8 +1228,8 @@ def test_search_parameters(
                     )
                     if cadip:
                         odata_query_files = (
-                            "http://127.0.0.1:5000/Files?$filter=%22SessionId%20eq%"
-                            "20'S1A_20200105072204051312'%22&$top=1000&$skip=0"
+                            "http://127.0.0.1:5000/Files?"
+                            "$filter=SessionId%20eq%20'S1A_20200105072204051312'&$top=1000&$skip=0"
                         )
                         rsps.add(
                             responses.GET,
