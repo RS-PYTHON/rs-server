@@ -146,7 +146,6 @@ class EodagProvider(Provider):
                     "completionTimeFromAscendingNode": str(between.end),
                 },
             )
-        # TODO: sort by publicationDate by default, but allow user to override it
         try:
             logger.info(f"Searching from {self.provider} with parameters {mapped_search_args}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).

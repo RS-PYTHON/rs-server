@@ -1230,12 +1230,17 @@ def test_search_parameters(
                 raise NotImplementedError
 
             # Format the odata request with all possible parameters
+            if "," in satellite:
+                sats = ", ".join([f"'{sat}'" for sat in satellite.split(", ")])
+                satellite = f"({sats})"
+            else:
+                satellite = f"'{satellite}'"
             odata = odata.format(
                 date_min=date_min,
                 date_max=date_max,
                 product_type=product_type,
                 constellation=constellation,
-                satellite=f"'{satellite}'",
+                satellite=satellite,
                 satellite_op="in" if "," in satellite else "eq",
                 limit=limit,
             )
