@@ -66,10 +66,7 @@ class TokenAuth(AuthBase):
         Returns:
             Request: request with modified headers
         """
-        request.headers = {  # type: ignore
-            "Authorization": f"Bearer {self.token}",
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
+        request.headers["Authorization"] = f"Bearer {self.token}"  # type: ignore
         return request
 
     def __repr__(self) -> str:
