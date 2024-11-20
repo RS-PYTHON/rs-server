@@ -258,7 +258,8 @@ def create_from_template(template_paths: list[str]):  # pylint: disable=too-many
         all_files.update(file)
 
     # We should have a single output file
-    assert len(output_paths) == 1
+    if len(output_paths) != 1:
+        raise RuntimeError(f"Not a single output file: {output_paths}")
     output_path: Path = output_paths.pop()
     logger.info(f"Update: '{output_path!s}'")
 
@@ -296,7 +297,8 @@ def copy_to_demo(input_path_relative: str):
 
     # Open the output file.
     # There are only yaml files for now
-    assert config_path.suffix.lower() in (".yml", ".yaml")
+    if config_path.suffix.lower() not in (".yml", ".yaml"):
+        raise RuntimeError(f"File type not supported: {config_path}")
     with open(config_path, encoding="utf-8") as opened:
         file = yaml.safe_load(opened)
 
@@ -309,7 +311,8 @@ def copy_to_demo(input_path_relative: str):
             config: current yaml block
             station: is the current yaml block implementing an adgs station, or cadip station, or ...
         """
-        assert isinstance(config, dict)
+        if not isinstance(config, dict):
+            raise RuntimeError(f"Invalid argument: {config}")
 
         # Check station name from parent key
         station = copy.deepcopy(station)  # save the instance so the previous recursive calls are not impacted
@@ -317,7 +320,8 @@ def copy_to_demo(input_path_relative: str):
 
         def update_single_value(value: str) -> str:
             """Return a single updated url value."""
-            assert isinstance(value, str)
+            if not isinstance(value, str):
+                raise RuntimeError(f"Invalid argument: {value}")
             if station.adgs:
                 return re.sub(REGEX_URL, r"\g<1>adgs-station:5000", value)
             if station.cadip:
@@ -422,7 +426,8 @@ def read_helm_or_infra(yaml_contents: str, yaml_as_string: bool) -> list[dict]:
     Returns:
         list of yaml dicts = one per document
     """
-    assert isinstance(yaml_contents, str)
+    if not isinstance(yaml_contents, str):
+        raise RuntimeError(f"Invalid argument: {yaml_contents}")
 
     # Python yaml cannot open the {{- range ... }}' and '{{- end }}' tags
     # that do not contain a : at the end, so we add the : here
@@ -459,7 +464,8 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
     Returns:
         String contents.
     """
-    assert isinstance(output_configs, list)
+    if not isinstance(output_configs, list):
+        raise RuntimeError(f"Invalid argument: {output_configs}")
 
     # Use a large width so we don't split long lines
     witdh = 1000
@@ -501,7 +507,8 @@ def copy_to_helm_or_infra_single_doc(
 
     # There are only yaml files for now
     input_path = rs_server_dir / params.input_path_relative
-    assert input_path.suffix.lower() in (".yml", ".yaml")
+    if input_path.suffix.lower() not in (".yml", ".yaml"):
+        raise RuntimeError(f"File type not supported: {input_path}")
 
     # Open the input file
     with open(input_path, encoding="utf-8") as opened:
@@ -516,7 +523,7 @@ def copy_to_helm_or_infra_single_doc(
             logger.warning(f"Tag does not exist in output file: {tag!r}")
         output_config = output_config[tag]
 
-    def update_all_values(
+    def update_all_values(  # pylint: disable=too-many-branches
         parent_keys: list[str],
         input_config: dict,
         output_config: dict,
@@ -531,8 +538,8 @@ def copy_to_helm_or_infra_single_doc(
             output_config: current output yaml block
             station: is the current yaml block implementing an adgs station, or cadip station, or ...
         """
-        assert isinstance(input_config, dict)
-        assert isinstance(output_config, dict)
+        if not isinstance(input_config, dict) or not isinstance(output_config, dict):
+            raise RuntimeError(f"Invalid arguments: {input_config} / {output_config}")
 
         # Check station name from parent key
         station = copy.deepcopy(station)  # save the instance so the previous recursive calls are not impacted
@@ -540,7 +547,8 @@ def copy_to_helm_or_infra_single_doc(
 
         def update_single_value(input_value: Any, output_value: str) -> str:
             """Return a single updated value."""
-            assert isinstance(output_value, str)
+            if not isinstance(output_value, str):
+                raise RuntimeError(f"Invalid argument: {output_value}")
 
             # If the output value is like {{ some.thing }}, it's a k8s value, we don't change it.
             if (DCB_OPEN in output_value) and (DCB_CLOSE in output_value):
@@ -591,7 +599,8 @@ def copy_to_helm_or_infra_single_doc(
 
             # Update string value
             elif isinstance(output_value, str):
-                assert isinstance(input_value, str)
+                if not isinstance(input_value, str):
+                    raise RuntimeError(f"Invalid argument: {input_value}")
                 output_config[key] = update_single_value(input_value, output_value)
 
             # Recursive calls on lists...

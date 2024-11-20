@@ -85,16 +85,13 @@ class MockPgstacAdgs(MockPgstac):
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
 
-        user_limit = self.get_limit()
-        user_page = self.get_page()
-
         return process_product_search(
             collection.get("station", "adgs"),
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
-            user_limit,
+            self.limit,
             self.request.query_params.get("sortby", "-created"),
-            user_page,
+            self.page,
             Name=odata_params.get("Name", [None])[0],
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),

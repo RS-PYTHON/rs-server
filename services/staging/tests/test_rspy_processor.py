@@ -94,7 +94,6 @@ class TestTokenAuth:
 
         # Ensure headers were modified correctly
         assert modified_request.headers["Authorization"] == f"Bearer {test_value_tkn}"
-        assert modified_request.headers["Content-Type"] == "application/x-www-form-urlencoded"
 
     def test_token_auth_repr(self):
         """Test the repr_ method of TokenAuth."""

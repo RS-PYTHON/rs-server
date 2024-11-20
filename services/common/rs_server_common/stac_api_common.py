@@ -38,6 +38,7 @@ import stac_pydantic
 import stac_pydantic.links
 import yaml
 from fastapi import HTTPException, Request, status
+from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
 from rs_server_common.utils.logging import Logging
@@ -107,6 +108,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
     # Current page
     page: int = 1
+
+    # Number of results per page
+    limit: int | None = None
 
     def __post_init__(self):
         self.adgs = self.service in ("adgs", "auxip")
@@ -262,21 +266,30 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Used for error handling."""
             return json.dumps(field, indent=0).replace("\n", "").replace('"', "'")
 
-        # Read the pagination token from the GET or POST request
-        token = self.request.query_params.get("token")
-        if not token:
-            try:
-                token = (await self.request.json()).get("token")
-            except json.JSONDecodeError:
-                pass
-        if token:
-            # Remove the prev: or next: prefix
-            token = token.removeprefix("prev:").removeprefix("next:")
+        # Read the pagination query parameters from the GET or POST request URL.
+        # They can be set either as standard parameters or as "token" parameters.
+        # The token values have higher priority.
+        for as_token in [False, True]:
+            query_params: dict | QueryParams = self.request.query_params
+            if as_token:
+                token = query_params.get("token")  # for GET
+                if not token:
+                    try:
+                        token = (await self.request.json()).get("token")  # for POST
+                    except json.JSONDecodeError:
+                        pass
+                if not token:
+                    continue
 
-            # Merge token parameters (should be only 'page') into input params.
+                # Remove the prev: or next: prefix and parse the string
+                token = token.removeprefix("prev:").removeprefix("next:")
+                query_params = urllib.parse.parse_qs(token)
+
+            # Merge pagination parameters into input params.
             # Convert lists with one element into this single value.
-            pagination = urllib.parse.parse_qs(token)
-            for key, values in pagination.items():
+            for key, values in query_params.items():
+                if key not in ("limit", "page", "sort"):
+                    continue
                 if isinstance(values, list) and (len(values) == 1):
                     params[key] = values[0]
                 else:
@@ -308,16 +321,26 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         if page:
             try:
                 self.page = int(page)
-            except ValueError:
-                logger.warning(f"'page' is not an integer: {page!r}")
+                if self.page < 1:
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid page value: {page!r}",
+                ) from exc
 
         # Number of results per page
         limit = params.pop("limit", None)
         if limit:
             try:
-                limit = int(limit)
-            except ValueError:
-                logger.warning(f"'limit' is not an integer: {limit!r}")
+                self.limit = int(limit)
+                if self.limit < 1:
+                    raise ValueError
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid limit value: {limit!r}",
+                ) from exc
 
         # Sort results
         sortby = "-datetime"  # default value
@@ -521,8 +544,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
                 # Overwrite the pagination parameters.
                 # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
-                if limit:
-                    self.odata["top"] = limit
+                if not self.limit:
+                    self.limit = self.odata.get("top", 1000)
 
                 # TODO: what to do with the sortby parameter ?
 
@@ -557,27 +580,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-
-    def get_page(self) -> int:
-        """Get page value (integer) according to given priority"""
-        try:
-            user_page = int(self.request.query_params.get("page", self.odata.get("page", 1)))  # type: ignore
-            if user_page < 1:
-                raise ValueError
-        except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid page value") from exc
-        return user_page
-
-    def get_limit(self) -> int:
-        """Get limit value (integer) according to given priority"""
-        # Priority: GET 'limit' parameter -> odata 'top' parameter -> 1000 by default
-        try:
-            user_limit = int(self.request.query_params.get("limit", self.odata.get("top", 1000)))  # type: ignore
-            if user_limit < 1:
-                raise ValueError
-        except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid limit value") from exc
-        return user_limit
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:

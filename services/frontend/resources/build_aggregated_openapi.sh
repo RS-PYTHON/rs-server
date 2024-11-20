@@ -53,7 +53,7 @@ if [[ " $@ " == *" --run-services "* ]]; then
     envfile="$tmpfile"
 
     # Use the stac-utils/pgstac database for everything, it should be sufficient as we just need the openapi.json.
-    db_image="ghcr.io/stac-utils/pgstac:v0.7.10"
+    db_image="ghcr.io/stac-utils/pgstac:v0.8.6"
     docker pull "$db_image"
     (docker run --rm --network=$network --name=$db_container \
         -p ${POSTGRES_PORT}:5432 --env-file="$envfile" \

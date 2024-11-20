@@ -26,6 +26,7 @@ from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
 from rs_server_common.settings import env_bool
+from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_staging.processors import processors
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -239,6 +240,9 @@ async def get_specific_job_result(job_id):
             # Raise 404 if job not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
+
+# Configure OpenTelemetry
+opentelemetry.init_traces(app, "rs.server.staging")
 
 app.include_router(router)
 app.router.lifespan_context = app_lifespan

@@ -756,7 +756,7 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid limits (str, negative, 0)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert response.json() == {"detail": "Invalid limit value"}
+        assert "Invalid limit value" in response.json()["detail"]
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -774,7 +774,7 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid pages (str, negative, 0)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert response.json() == {"detail": "Invalid page value"}
+        assert "Invalid page value" in response.json()["detail"]
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -804,6 +804,7 @@ class TestFeatureCollectionOdataStacMapping:
     @responses.activate
     def test_token_in_url(self, client, endpoint, page):
         """Used to test if application correctly builds next/previous token."""
+
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
         next_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=next:page={str(int(page) + 1)}"
