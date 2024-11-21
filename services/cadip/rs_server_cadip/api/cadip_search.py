@@ -215,7 +215,7 @@ async def get_allowed_cadip_collections(request: Request):
 async def get_cadip_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
-):
+) -> list[dict] | dict | stac_pydantic.Collection:
     """
     Retrieve a STAC-Compliant Collection for a Specific CADIP Station.
 
@@ -368,7 +368,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
     ],
     page: Union[int, None] = 1,
-):
+) -> stac_pydantic.ItemCollection:
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
     A valid session search request must contain at least a value for either *id*, *platform*, or a time interval
@@ -450,7 +450,7 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
-):
+) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
@@ -480,7 +480,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     datetime: Union[str, None] = None,
     limit: Union[int, None] = 1000,
     **kwargs,
-):
+) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.

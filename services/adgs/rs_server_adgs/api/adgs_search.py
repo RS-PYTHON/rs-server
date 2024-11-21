@@ -176,7 +176,7 @@ async def get_allowed_adgs_collections(request: Request):
 async def get_adgs_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
-):
+) -> list[dict] | dict | stac_pydantic.Collection:
     """Return a specific ADGS collection."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
@@ -188,7 +188,7 @@ async def get_adgs_collection(
 async def get_adgs_collection_items(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
-):
+) -> list[dict] | dict:
     """
     Retrieve a list of items from a specified AUXIP collection.
 
@@ -226,7 +226,7 @@ async def get_adgs_collection_specific_item(
             description="E.G. S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
         ),
     ],
-):
+) -> list[dict] | dict:
     """
     Retrieve a specific item from a specified AUXIP collection.
 
@@ -291,7 +291,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     sortby,
     page: int = 1,
     **kwargs,
-):
+) -> stac_pydantic.ItemCollection:
     """
     This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
@@ -366,7 +366,7 @@ def search_products(  # pylint: disable=too-many-locals
     datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
-):
+) -> list[dict] | stac_pydantic.ItemCollection:
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
 
     This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
