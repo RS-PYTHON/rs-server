@@ -29,7 +29,7 @@ template:
       username: PLACEHOLDER
       password: PLACEHOLDER
     headers:
-      Content-Type: PLACEHOLDER
+      Content-Type: application/x-www-form-urlencoded
   products:
     CAMS_GRF_AUX:
       productType: cams-ads-grf-aux
