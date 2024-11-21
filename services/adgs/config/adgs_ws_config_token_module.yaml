@@ -109,13 +109,12 @@ adgs:
       sort_param_mapping:
         id: Name
         auxip:id: Id
-        created: PublicationDate
-        end_datetime: ContentDate/End
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
         published: PublicationDate
         start_datetime: ContentDate/Start
+        end_datetime: ContentDate/End
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -222,13 +221,12 @@ adgs2:
       sort_param_mapping:
         id: Name
         auxip:id: Id
-        created: PublicationDate
-        end_datetime: ContentDate/End
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
         published: PublicationDate
         start_datetime: ContentDate/Start
+        end_datetime: ContentDate/End
       sort_order_mapping:
         ascending: asc
         descending: desc

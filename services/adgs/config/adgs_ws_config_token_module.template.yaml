@@ -101,18 +101,10 @@ template:
       sort_param_mapping:
         id: Name
         auxip:id: Id
-        created: PublicationDate
-        end_datetime: End
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
-        #product:type: productType
-        #processing:datetime: processingDate
         published: PublicationDate
-        #file:checksum: ChecksumValue
-        #platform: platformSerialIdentifier
-        #constellation: platformShortName
-        #processing:facility: processingCenter
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End
       sort_order_mapping:
