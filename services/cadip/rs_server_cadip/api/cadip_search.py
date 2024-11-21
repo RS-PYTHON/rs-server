@@ -215,7 +215,7 @@ async def get_allowed_cadip_collections(request: Request):
 async def get_cadip_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
-) -> list[dict] | dict:
+) -> list[dict] | dict | stac_pydantic.Collection:
     """
     Retrieve a STAC-Compliant Collection for a Specific CADIP Station.
 

@@ -176,7 +176,7 @@ async def get_allowed_adgs_collections(request: Request):
 async def get_adgs_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
-) -> list[dict] | dict:
+) -> list[dict] | dict | stac_pydantic.Collection:
     """Return a specific ADGS collection."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
