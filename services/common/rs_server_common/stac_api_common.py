@@ -721,5 +721,6 @@ def create_stac_collection(
             "type": "Polygon",
             "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
         }
+        item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
         items.append(item)
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")

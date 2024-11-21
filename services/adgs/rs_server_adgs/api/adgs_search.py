@@ -397,7 +397,9 @@ def search_products(  # pylint: disable=too-many-locals
     try:
         time_range = TimeRange(start_date, stop_date)
         products = init_adgs_provider("adgs").search(
-            time_range, items_per_page=limit, sort_by=validate_sort_input(sortby),
+            time_range,
+            items_per_page=limit,
+            sort_by=validate_sort_input(sortby),
         )
         write_search_products_to_db(AdgsDownloadStatus, products)
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
