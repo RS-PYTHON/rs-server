@@ -185,8 +185,8 @@ def get_router(app: FastAPI) -> APIRouter:  # pylint: disable=too-many-locals
     oidc_client_secret = os.environ["OIDC_CLIENT_SECRET"]
     cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
 
-    # Existing middlewares
-    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]
+    # Existing middlewares. See: starlette/middleware/__init__.py::Middleware.__repr__
+    middleware_names = [getattr(middleware.cls, "__name__", "") for middleware in app.user_middleware]
 
     # If not already there, add the SessionMiddleware, used to save session cookies.
     # Add it at the end (after the CORS middleware, that must be first)
