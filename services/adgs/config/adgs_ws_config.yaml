@@ -118,6 +118,7 @@ adgs:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
+        id: Name
         auxip:id: Id
         file:size: ContentLength
         type: ContentType
@@ -240,6 +241,7 @@ adgs2:
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
+        id: Name
         auxip:id: Id
         file:size: ContentLength
         type: ContentType
