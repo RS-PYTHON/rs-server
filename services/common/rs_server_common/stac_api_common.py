@@ -721,6 +721,8 @@ def create_stac_collection(
             "type": "Polygon",
             "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
         }
+        # AnyUrl not serializable fix
+        item.stac_extensions = str(item.stac_extensions)  # type: ignore
         items.append(item)
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
 
