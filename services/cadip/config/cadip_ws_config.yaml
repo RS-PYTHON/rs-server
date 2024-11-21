@@ -105,7 +105,6 @@ cadip:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -207,7 +206,6 @@ ins:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -309,7 +307,6 @@ mps:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -411,7 +408,6 @@ mti:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -513,7 +509,6 @@ nsg:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -615,7 +610,6 @@ sgs:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc

@@ -110,13 +110,12 @@ adgs:
         id: Name
         auxip:id: Id
         created: PublicationDate
-        end_datetime: End
+        end_datetime: ContentDate/End
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
         published: PublicationDate
-        startTimeFromAscendingNode: ContentDate/Start
-        completionTimeFromAscendingNode: ContentDate/Stop
+        start_datetime: ContentDate/Start
         publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
@@ -225,13 +224,12 @@ adgs2:
         id: Name
         auxip:id: Id
         created: PublicationDate
-        end_datetime: End
+        end_datetime: ContentDate/End
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
         published: PublicationDate
-        startTimeFromAscendingNode: ContentDate/Start
-        completionTimeFromAscendingNode: ContentDate/Stop
+        start_datetime: ContentDate/Start
         publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc

@@ -90,7 +90,6 @@ template:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
         datetime: PublicationDate
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc

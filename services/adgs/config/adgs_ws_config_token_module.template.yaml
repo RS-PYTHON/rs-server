@@ -115,8 +115,8 @@ template:
         #platform: platformSerialIdentifier
         #constellation: platformShortName
         #processing:facility: processingCenter
-        startTimeFromAscendingNode: ContentDate/Start
-        completionTimeFromAscendingNode: ContentDate/Stop
+        start_datetime: ContentDate/Start
+        end_datetime: ContentDate/End
         publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
