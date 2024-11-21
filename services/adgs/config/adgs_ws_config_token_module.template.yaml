@@ -104,7 +104,7 @@ template:
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
-        published: PublicationDate
+        created: PublicationDate
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End
       sort_order_mapping:
