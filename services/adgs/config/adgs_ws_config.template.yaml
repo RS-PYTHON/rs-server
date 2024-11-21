@@ -128,7 +128,6 @@ template:
         #processing:facility: processingCenter
         start_datetime: ContentDate/Start
         end_datetime: ContentDate/End
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc

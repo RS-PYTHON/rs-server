@@ -134,7 +134,6 @@ template:
         platform: Satellite
         startTimeFromAscendingNode: DownlinkStart
         completionTimeFromAscendingNode: DownlinkStop
-        publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_unit_id: StationUnitId

@@ -116,7 +116,6 @@ adgs:
         eviction_datetime: EvictionDate
         published: PublicationDate
         start_datetime: ContentDate/Start
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
@@ -230,7 +229,6 @@ adgs2:
         eviction_datetime: EvictionDate
         published: PublicationDate
         start_datetime: ContentDate/Start
-        publicationDate: PublicationDate
       sort_order_mapping:
         ascending: asc
         descending: desc
