@@ -92,9 +92,9 @@ def test_adgs_search_aux(client, mock_token_validation, mocker):
     mock_token_validation("adgs")
     responses.add(
         responses.GET,
-        "http://127.0.0.1:5000/Products?$filter=PublicationDate%20gt%202022-01-01T12:00:00.000Z%20"
-        "and%20PublicationDate%20"
-        "lt%202023-12-30T12:00:00.000Z&$top=1000&$skip=0&$expand=Attributes",
+        "http://127.0.0.1:5000/Products?$filter=PublicationDate%20gt%202022-01-01T12:00:00.000Z%20and%20"
+        "PublicationDate%20lt%202023-12-30T12:00:00.000Z&$orderby=PublicationDate%20desc&$top=1000"
+        "&$skip=0&$expand=Attributes",
         json={"value": []},
         status=200,
     )
