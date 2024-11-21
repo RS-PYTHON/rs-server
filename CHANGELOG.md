@@ -24,6 +24,39 @@ Changed
 
 None
 
+[0.2a7] - Sprint 17 - 2024-11-20
+================================
+
+## Added
+
+- RSPY-131: External data source: implement search pagination and sorting (needs eodag 3)
+- RSPY-360: Add taint on nodes
+- RSPY-363: Implement systematic two step approach to get data from CADIP
+- RSPY-450: Update pgstac to >=0.8
+- RSPY-479: OVH : start a single isolated node
+- RSPY-480: OVH : deploy IAM for publication service
+- RSPY-497: Sprint 17 corrections of issues
+
+## Fixed
+
+- RSPY-449: Implement and fix the /search endpoints in catalog and cadip
+- RSPY-453: Fix RS-Server to use all the STAC browser functionalities
+- RSPY-478: CADIP STAC validation: /cadip/collection/{collectionId}: replace "item" links by "items" link
+- RSPY-483: POST /cadip/search not implemented
+- RSPY-485: Implicit collection naming doesn't work in search endpoint
+- RSPY-486: GET /cadip/search does not return the expected contents
+- RSPY-494: CADIP: wrong OData request performed on GET /cadip/collections/{collection_id}/items/{session_id}
+- RSPY-503: STAC Browser AUXIP deployment missing
+- RSPY-509: Unable to retrieve traces older than 24 hours
+- RSPY-518: Staging not integrated with Tempo
+- RSPY-521: Bandit CWE-703 warnings on assertions
+- RSPY-491: CADIP: bad requests for Sessions queries with filter parameters
+- RSPY-492: No sessions returned (retransfer CADIP sessions without downlink start/stop dates)
+- RSPY-495: CADIP: STAC mapping error of Files response (SessionID)
+- RSPY-504: OData -> STAC mapping error for CADIP files
+- RSPY-506: Wrong OData queries to ADGS
+- RSPY-507: Wrong OData query to CADIP when requesting a single SessionId
+
 [0.2a6] - Sprint 16 - 2024-10-30
 ================================
 
