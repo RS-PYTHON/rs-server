@@ -29,7 +29,7 @@ template:
       username: PLACEHOLDER
       password: PLACEHOLDER
     headers:
-      Content-Type: PLACEHOLDER
+      Content-Type: application/x-www-form-urlencoded
   products:
     CAMS_GRF_AUX:
       productType: cams-ads-grf-aux
@@ -38,7 +38,7 @@ template:
     type: ODataV4Search
     api_endpoint:
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value | $
     metadata_mapping:
       id:
         - null
@@ -96,7 +96,7 @@ template:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
             - "contains(Name, '{Name}')"
@@ -112,20 +112,12 @@ template:
       sort_param_mapping:
         id: Name
         auxip:id: Id
-        created: PublicationDate
-        #datetime: Start # How to access ContentDate['Start']?
-        #start_datetime: Start
-        end_datetime: End
         file:size: ContentLength
         type: ContentType
         eviction_datetime: EvictionDate
-        #product:type: productType
-        #processing:datetime: processingDate
-        published: PublicationDate
-        #file:checksum: ChecksumValue
-        #platform: platformSerialIdentifier
-        #constellation: platformShortName
-        #processing:facility: processingCenter
+        created: PublicationDate
+        start_datetime: ContentDate/Start
+        end_datetime: ContentDate/End
       sort_order_mapping:
         ascending: asc
         descending: desc

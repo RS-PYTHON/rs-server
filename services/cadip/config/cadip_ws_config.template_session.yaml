@@ -29,7 +29,7 @@ template:
       username: PLACEHOLDER
       password: PLACEHOLDER
     headers:
-      Content-Type: PLACEHOLDER
+      Content-Type: application/x-www-form-urlencoded
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -38,7 +38,7 @@ template:
     type: ODataV4Search
     api_endpoint:
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value | $
     metadata_mapping:
       id:
         - null
@@ -123,15 +123,16 @@ template:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
-            - "SessionId in {SessionIds}"
+            - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
-            - "Satellite in {platforms}"
+            - "Satellite in ({platforms})"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
+            - "Retransfer eq {Retransfer}"
 
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -142,6 +143,9 @@ template:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
+        startTimeFromAscendingNode: DownlinkStart
+        completionTimeFromAscendingNode: DownlinkStop
+        publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
         cadip:station_unit_id: StationUnitId
