@@ -32,11 +32,10 @@ from eodag.utils.exceptions import (
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 
-from .provider import CreateProviderFailed, Provider, TimeRange
-
-# TODO: See TODO invalid token. Import 'from .provider SearchProductFailed' if needed
+from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
 
 # from fastapi import HTTPException
+
 
 logger = Logging.default(__name__)
 
@@ -118,28 +117,26 @@ class EodagProvider(Provider):
             Exception: If the search encounters an error or fails, an exception is raised.
         """
         mapped_search_args = {}
-        sessions_search = kwargs.pop("sessions_search", False)
 
-        session_id = kwargs.pop("id", None)
-        if session_id:
-            # If request contains session id, map it to eodag parameter accordingly (SessionID for single, Ids for list)
-            if isinstance(session_id, list):
-                mapped_search_args["SessionIds"] = ", ".join(session_id)
-            elif isinstance(session_id, str):
-                mapped_search_args["SessionID"] = session_id
+        if session_id := kwargs.pop("id", None):
+            # Map session_id to the appropriate eodag parameter
+            key = "SessionIds" if isinstance(session_id, list) else "SessionId"
+            value = ", ".join(f"'{s}'" for s in session_id) if isinstance(session_id, list) else f"'{session_id}'"
+            mapped_search_args[key] = value
 
-        if sessions_search:
+        if kwargs.pop("sessions_search", False):
             # If request is for session search, handle platform - if any provided.
             platform = kwargs.pop("platform", None)
 
-            # Very annoying, for files odata is **SessionID**, for sessions is **SessionId**
-            if "SessionID" in mapped_search_args:
-                mapped_search_args["SessionId"] = mapped_search_args.pop("SessionID")
             if platform:
-                if isinstance(platform, list):
-                    mapped_search_args["platforms"] = ", ".join(platform)
-                elif isinstance(platform, str):
-                    mapped_search_args["platform"] = platform
+                key = "platforms" if isinstance(platform, list) else "platform"
+                value = ", ".join(f"'{p}'" for p in platform) if isinstance(platform, list) else f"'{platform}'"
+                mapped_search_args[key] = value
+
+            # TODO: check if it is the right way of doing this, looks very cumbersome to do it for every field
+            # Tempfix, will be updated, to dirrectly, to verify kwargs and then forward to search.
+            if retransfer := kwargs.pop("retransfer", None):
+                mapped_search_args["Retransfer"] = str(retransfer).lower()
 
         if between:
             # Since now both for files and sessions, time interval is optional, map it if provided.
@@ -150,6 +147,7 @@ class EodagProvider(Provider):
                 },
             )
         try:
+            logger.info(f"Searching from {self.provider} with parameters {mapped_search_args}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
             # search_method = self.client.search if "session" not in self.provider else self.client.search_iter_page
             products = self.client.search(
@@ -160,22 +158,25 @@ class EodagProvider(Provider):
                 **kwargs,
             )
             repr(products)  # trigger eodag validation.
+
         except (RequestError, MisconfiguredError) as e:
-            # except RequestError as e:
-            # TODO invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
-            # Should we handle this specifically by raising an exception, or follow the current approach
-            # where any error results in returning an empty list?
-            # if e.args and "FORBIDDEN" in e.args[0]:
-            #     raise SearchProductFailed(
-            #         f"Can't search provider {self.provider} " "because the used token is not valid",
-            #     ) from e
-            # Empty list if something goes wrong in eodag
+            # invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
+            if e.args and "FORBIDDEN" in e.args[0]:
+                raise SearchProductFailed(
+                    f"Can't search provider {self.provider} " "because the used token is not valid",
+                ) from e
             logger.debug(e)
-            return []
+            raise SearchProductFailed(e) from e
         except AuthenticationError as exc:
             raise ValueError("EoDAG could not authenticate") from exc
         except ValidationError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+
+        if products.number_matched:
+            logger.info(f"Returned {products.number_matched} session from {self.provider}")
+
+        if products.errors:
+            logger.error(f"Errors from {self.provider}: {products.errors}")
         return products
 
     def download(self, product_id: str, to_file: Path) -> None:

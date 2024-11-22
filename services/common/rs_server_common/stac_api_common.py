@@ -311,8 +311,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     pass
 
         # Save the auxip product names or cadip session ids
-        if ids:
+        if isinstance(ids, list):
             stac_params["id"] = [id.strip() for id in ids]
+        elif isinstance(ids, str):
+            stac_params["id"] = ids.strip()  # type: ignore
 
         # Page number
         page = params.pop("page", None)
@@ -719,38 +721,6 @@ def create_stac_collection(
             "type": "Polygon",
             "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
         }
+        item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
         items.append(item)
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
-
-
-def sort_feature_collection(feature_collection: dict, sortby: str) -> dict:
-    """
-    Sorts a STAC feature collection based on a given criteria.
-
-    Args:
-        feature_collection (dict): The STAC feature collection to be sorted.
-        sortby (str): The sorting criteria. Use "+fieldName" for ascending order
-            or "-fieldName" for descending order. Use "+doNotSort" to skip sorting.
-
-    Returns:
-        dict: The sorted STAC feature collection.
-
-    Note:
-        If sortby is not in the format of "+fieldName" or "-fieldName",
-        the function defaults to ascending order by the "datetime" field.
-    """
-    # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
-    if sortby != "+doNotSort":
-        order = sortby[0]
-        if order not in ["+", "-"]:
-            order = "+"
-
-        if len(feature_collection["features"]) and "properties" in feature_collection["features"][0]:
-            field = sortby[1:]
-            by = "datetime" if field not in feature_collection["features"][0]["properties"].keys() else field
-            feature_collection["features"] = sorted(
-                feature_collection["features"],
-                key=lambda feature: feature["properties"][by],
-                reverse=order == "-",
-            )
-    return feature_collection
