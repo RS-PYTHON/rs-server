@@ -28,7 +28,7 @@ template:
     type: ODataV4Search
     api_endpoint:
     need_auth: true
-    results_entry: responses | $
+    results_entry: $.value | $
     metadata_mapping:
       id:
         - null
@@ -38,10 +38,10 @@ template:
         - "$.Name"
       SessionIds:
         - null
-        - "$.SessionID"
-      SessionID:
+        - "$.SessionId"
+      SessionId:
         - null
-        - "$.SessionID"
+        - "$.SessionId"
       Channel:
         - null
         - "$.Channel"
@@ -78,11 +78,11 @@ template:
     free_text_search_operations:
       $filter:
         union: " OR "
-        wrapper: '"{}"'
+        wrapper: '{}'
         operations:
           and:
-            - "SessionID in {SessionIds}"
-            - "SessionID eq {SessionID}"
+            - "SessionId in ({SessionIds})"
+            - "SessionId eq {SessionId}"
             - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
             - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
 

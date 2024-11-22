@@ -272,7 +272,7 @@ def a_product_fixture():
             "Name": name,
             "PublicationDate": at_date,
             "Size": "size_test_value",
-            "SessionID": session_id,
+            "SessionId": session_id,
             "Retransfer": False,
             "FinalBlock": True,
             "EvictionDate": "eviction_date_test_value",

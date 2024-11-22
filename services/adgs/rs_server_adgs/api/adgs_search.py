@@ -52,7 +52,6 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     create_stac_collection,
     handle_exceptions,
-    sort_feature_collection,
 )
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -177,7 +176,7 @@ async def get_allowed_adgs_collections(request: Request):
 async def get_adgs_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
-) -> list[dict] | dict:
+) -> list[dict] | dict | stac_pydantic.Collection:
     """Return a specific ADGS collection."""
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
@@ -367,7 +366,7 @@ def search_products(  # pylint: disable=too-many-locals
     datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
-) -> list[dict] | dict:
+) -> list[dict] | stac_pydantic.ItemCollection:
     """Endpoint to handle the search for products in the AUX station within a specified time interval.
 
     This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
@@ -397,7 +396,11 @@ def search_products(  # pylint: disable=too-many-locals
     set_eodag_auth_token("adgs", "auxip")
     try:
         time_range = TimeRange(start_date, stop_date)
-        products = init_adgs_provider("adgs").search(time_range, items_per_page=limit)
+        products = init_adgs_provider("adgs").search(
+            time_range,
+            items_per_page=limit,
+            sort_by=validate_sort_input(sortby),
+        )
         write_search_products_to_db(AdgsDownloadStatus, products)
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
@@ -409,7 +412,7 @@ def search_products(  # pylint: disable=too-many-locals
             stac_mapper = json.loads(stac_map.read())
             adgs_item_collection = create_stac_collection(products, feature_template, stac_mapper)
         logger.info("Succesfully listed and processed products from AUX station")
-        return sort_feature_collection(adgs_item_collection.model_dump(), sortby)
+        return prepare_collection(serialize_adgs_asset(adgs_item_collection, products))
 
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:

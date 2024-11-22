@@ -30,11 +30,14 @@ import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import map_stac_platform
+from rs_server_common.utils.logging import Logging
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
+
+logger = Logging.default(__name__)
 
 
 def read_conf():
@@ -110,13 +113,13 @@ def from_session_expand_to_assets_serializer(
     for session in feature_collection.features:
         # Iterate over products and map them to assets
         for product in input_session:
-            if product.properties["SessionID"] == session.id:
+            if product.properties["SessionId"] == session.id:
                 # Create Asset
                 asset: Asset = map_dag_file_to_asset(mapper, product, product.properties["href"])
                 # Add Asset to Item.
                 session.assets.update({asset.title or "": asset})
         # Remove processed products from input_session
-        input_session = [product for product in input_session if product.properties["SessionID"] != session.id]
+        input_session = [product for product in input_session if product.properties["SessionId"] != session.id]
 
     return feature_collection
 
@@ -128,7 +131,8 @@ def validate_products(products: eodag.EOProduct):
         try:
             str(product)
             valid_eo_products.append(product)
-        except eodag.utils.exceptions.MisconfiguredError:
+        except eodag.utils.exceptions.MisconfiguredError as e:
+            logger.warning(e)
             continue
     return valid_eo_products
 
@@ -184,7 +188,7 @@ def link_assets_to_session(session_data, assets_dict, mapper):
     """Function used to allocate assets to propper session item based on session id property."""
     # Validity check to be later added.
     for feature in session_data.features:
-        matching_assets = [asset_item for asset_item in assets_dict if feature.id == asset_item["SessionID"]]
+        matching_assets = [asset_item for asset_item in assets_dict if feature.id == asset_item["SessionId"]]
         for asset_item in matching_assets:
             asset_dict = {
                 map_key: asset_item[map_value] for map_key, map_value in mapper.items() if map_value in asset_item
