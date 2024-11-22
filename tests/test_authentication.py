@@ -573,7 +573,7 @@ async def test_stac_browser_authent(
 
     # Mock a FastAPI Request from the stac browser
     mocked_request = State()
-    mocked_request.headers = {"referer": stac_browser_url}
+    mocked_request.headers = {"origin": stac_browser_url}
     mocked_request.state = State()
 
     # Without authentication, we should have a 401 error
