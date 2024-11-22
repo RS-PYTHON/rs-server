@@ -22,6 +22,7 @@ import json
 import os
 import os.path as osp
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Tuple, Union
 
@@ -32,7 +33,6 @@ from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import map_stac_platform
 from rs_server_common.utils.logging import Logging
 from stac_pydantic.shared import Asset
-from datetime import datetime
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
 CADIP_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
@@ -196,8 +196,11 @@ def link_assets_to_session(session_data, assets_dict, mapper):
             }
             asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
             feature.assets.update({asset.title: asset})
-        end_date = min((datetime.fromisoformat(item['PublicationDate'].replace('Z', '')) for item in matching_assets), default=None)
-        feature.properties.end_datetime = end_date
+        end_date = min(
+            (datetime.fromisoformat(item["PublicationDate"].replace("Z", "")) for item in matching_assets),
+            default=None,
+        )
+        feature.properties.end_datetime = datetime.fromisoformat(str(end_date)).replace(tzinfo=timezone.utc)
     return session_data
 
 
