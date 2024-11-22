@@ -2904,7 +2904,7 @@ name = "rs-server-common"
 version = "0.2a6.post113.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
-python-versions = "==3.11.7"
+python-versions = "^3.11"
 files = []
 develop = true
 
@@ -3626,5 +3626,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "==3.11.7"
+python-versions = "^3.11"
 content-hash = "63963728ba0b0c759d27a668f0ce78770822bcbffc5b4b9ff957d8e8affaf0ec"
