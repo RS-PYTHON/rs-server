@@ -91,6 +91,7 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("SessionId", []),
             odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
+            odata_params.get("Retransfer"),
             self.request.query_params.get("sortby", "-published"),
             self.limit,
             self.page,
@@ -214,7 +215,7 @@ async def get_allowed_cadip_collections(request: Request):
 async def get_cadip_collection(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
-) -> list[dict] | dict:
+) -> list[dict] | dict | stac_pydantic.Collection:
     """
     Retrieve a STAC-Compliant Collection for a Specific CADIP Station.
 
@@ -360,6 +361,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         Union[str, None],
         WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=True)),
     ],
+    retransfer: Union[bool, None],
     sortby: str,
     limit: Annotated[
         Union[int, None],
@@ -395,6 +397,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
             platform=platform,
+            retransfer=retransfer,
             sessions_search=True,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
@@ -416,11 +419,13 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
             return prepare_collection(collection)
 
     except json.JSONDecodeError as exception:
+        logger.error(exception)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"JSON Map Error: {exception}",
         ) from exception
     except ValueError as exception:
+        logger.error(exception)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exception),
