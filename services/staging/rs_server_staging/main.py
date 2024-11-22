@@ -100,14 +100,13 @@ def init_pygeoapi() -> API:
 api = init_pygeoapi()
 
 
-@staticmethod
 def __filelock(func):
     """Avoid concurrent writing to the database using a file locK."""
     return filelock(func, "RSPY_WORKING_DIR")
 
 
 @__filelock
-def init_db(pause: int = 3, timeout: int = None) -> PostgreSQLManager:
+def init_db(pause: int = 3, timeout: int | None = None) -> PostgreSQLManager:
     """Initialize the PostgreSQL database connection and sets up required table and ENUM type.
 
     This function constructs the database URL using environment variables for PostgreSQL
@@ -122,8 +121,8 @@ def init_db(pause: int = 3, timeout: int = None) -> PostgreSQLManager:
         - POSTGRES_DB: Database name.
 
     Args:
-        pause (int): pause in seconds to wait for the database connection.
-        timeout (int): timeout in seconds to wait for the database connection.
+        pause: pause in seconds to wait for the database connection.
+        timeout: timeout in seconds to wait for the database connection.
 
     Returns:
         PostgreSQLManager instance
