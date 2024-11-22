@@ -36,7 +36,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "==3.11.7"
+python = "^3.11"
 pygeofilter = "^0.2.4"
 rs-server-common = {path = "../common", develop = true}
 
