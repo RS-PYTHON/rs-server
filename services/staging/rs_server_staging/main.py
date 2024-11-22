@@ -17,6 +17,7 @@
 import os
 import pathlib
 from contextlib import asynccontextmanager
+from time import sleep
 
 import yaml
 from dask.distributed import LocalCluster
@@ -91,8 +92,12 @@ def get_config_contents() -> dict:
         return yaml.safe_load(contents)
 
 
-# Init pygeoapi
-api = API(get_config_contents(), "")
+def init_pygeoapi() -> API:
+    """Init pygeoapi"""
+    return API(get_config_contents(), "")
+
+
+api = init_pygeoapi()
 
 
 @staticmethod
@@ -102,7 +107,7 @@ def __filelock(func):
 
 
 @__filelock
-def init_db() -> PostgreSQLManager:
+def init_db(pause: int = 3, timeout: int = None) -> PostgreSQLManager:
     """Initialize the PostgreSQL database connection and sets up required table and ENUM type.
 
     This function constructs the database URL using environment variables for PostgreSQL
@@ -116,34 +121,44 @@ def init_db() -> PostgreSQLManager:
         - POSTGRES_PORT: Port number of the PostgreSQL server.
         - POSTGRES_DB: Database name.
 
-    Raises:
-        RuntimeError: If any of the required environment variables are missing or if an SQLAlchemy
-                      error occurs while creating tables or ENUM types.
+    Args:
+        pause (int): pause in seconds to wait for the database connection.
+        timeout (int): timeout in seconds to wait for the database connection.
 
     Returns:
         PostgreSQLManager instance
-
-    Exceptions:
-        - **SQLAlchemyError**: Raised for any database errors encountered while creating tables
-          or ENUM types.
     """
-    try:
-        manager_def = api.config["manager"]
-        connection = manager_def["connection"]
+    manager_def = api.config["manager"]
+    if not manager_def or not isinstance(manager_def, dict) or not isinstance(manager_def["connection"], dict):
+        message = "Error reading the manager definition for pygeoapi PostgreSQL Manager"
+        logger.error(message)
+        raise RuntimeError(message)
+    connection = manager_def["connection"]
 
-        # Create SQL Alchemy engine
-        engine = get_engine(**connection)
+    # Create SQL Alchemy engine
+    engine = get_engine(**connection)
 
-        # This registers the ENUM type and creates the jobs table if they do not exist
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database table and ENUM type created successfully.")
+    while True:
+        try:
+            # This registers the ENUM type and creates the jobs table if they do not exist
+            Base.metadata.create_all(bind=engine)
+            logger.info(f"Reached {engine.url!r}")
+            logger.info("Database table and ENUM type created successfully.")
+            break
 
-    except SQLAlchemyError as e:
-        logger.error(f"Error creating table or ENUM type in PostgreSQL: {e}")
-        raise RuntimeError(f"Error creating table or ENUM type in PostgreSQL: {e}") from e
+        # It fails if the database is unreachable. Wait a few seconds and try again.
+        except SQLAlchemyError:
+            logger.warning(f"Trying to reach {engine.url!r}")
+
+            # Sleep for n seconds and raise exception if timeout is reached.
+            if timeout is not None:
+                timeout -= pause
+                if timeout < 0:
+                    raise
+            sleep(pause)
 
     # Initialize PostgreSQLManager with the manager configuration
-    process_manager = PostgreSQLManager(manager_def)
+    return PostgreSQLManager(manager_def)
 
 
 # Create Dask LocalCluster when the application starts
@@ -182,7 +197,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     # Init the rs-server configuration file for authentication to the external stations
     init_rs_server_config_yaml()
     # Create jobs table
-    init_db()
+    process_manager = init_db()
 
     cluster = None
     if env_bool("RSPY_LOCAL_MODE", False):
@@ -190,14 +205,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
         cluster = LocalCluster()
         logger.info("Local Dask cluster created at startup.")
 
-    # Extract PostgreSQL connection details for the manager
-    manager_def = get_manager_def()
-    # Overwrite the postgres connection details
-
-    # Initialize PostgreSQLManager with the manager configuration
-    process_manager = PostgreSQLManager(manager_def)
     fastapi_app.extra["process_manager"] = process_manager
-
     # fastapi_app.extra["db_table"] = db.table("jobs")
     fastapi_app.extra["dask_cluster"] = cluster
 
