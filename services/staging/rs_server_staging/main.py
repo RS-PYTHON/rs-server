@@ -15,13 +15,15 @@
 """rs server staging main module."""
 # pylint: disable=E0401
 import os
+import pathlib
 from contextlib import asynccontextmanager
 
+import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
-from pygeoapi.config import get_config
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
+from pygeoapi.provider.postgresql import get_engine
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
@@ -29,8 +31,8 @@ from rs_server_common.db import Base
 from rs_server_common.settings import env_bool
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
-from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -55,10 +57,52 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-api = API(get_config(os.environ["PYGEOAPI_CONFIG"]), os.environ["PYGEOAPI_OPENAPI"])
+
+# Exception handlers
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(
+    request: Request,
+    exc: StarletteHTTPException,
+):  # pylint: disable= unused-argument
+    """HTTP handler"""
+    return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
 
 
-def init_db():
+os.environ["PYGEOAPI_OPENAPI"] = ""  # not used
+
+
+def get_config_path() -> pathlib.Path:
+    """Return the pygeoapi configuration path and set the PYGEOAPI_CONFIG env var accordingly."""
+    path = pathlib.Path(__file__).parent.parent / "config" / "staging.yaml"
+    os.environ["PYGEOAPI_CONFIG"] = str(path)
+    return path
+
+
+def get_config_contents() -> dict:
+    """Return the pygeoapi configuration yaml file contents."""
+    # Open the configuration file
+    with open(get_config_path(), encoding="utf8") as opened:
+        contents = opened.read()
+
+        # Replace env vars by their value
+        contents = os.path.expandvars(contents)
+
+        # Parse contents as yaml
+        return yaml.safe_load(contents)
+
+
+# Init pygeoapi
+api = API(get_config_contents(), "")
+
+
+@staticmethod
+def __filelock(func):
+    """Avoid concurrent writing to the database using a file locK."""
+    return filelock(func, "RSPY_WORKING_DIR")
+
+
+@__filelock
+def init_db() -> PostgreSQLManager:
     """Initialize the PostgreSQL database connection and sets up required table and ENUM type.
 
     This function constructs the database URL using environment variables for PostgreSQL
@@ -77,90 +121,29 @@ def init_db():
                       error occurs while creating tables or ENUM types.
 
     Returns:
-        None
+        PostgreSQLManager instance
 
     Exceptions:
-        - **KeyError**: Raised when any of the required environment variables is missing.
         - **SQLAlchemyError**: Raised for any database errors encountered while creating tables
           or ENUM types.
     """
     try:
-        # pylint: disable=consider-using-f-string
-        database_url = "postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}".format(
-            user=os.environ["POSTGRES_USER"],
-            password=os.environ["POSTGRES_PASSWORD"],
-            host=os.environ["POSTGRES_HOST"],
-            port=os.environ["POSTGRES_PORT"],
-            dbname=os.environ["POSTGRES_DB"],
-        )
+        manager_def = api.config["manager"]
+        connection = manager_def["connection"]
 
-        engine = create_engine(database_url)
+        # Create SQL Alchemy engine
+        engine = get_engine(**connection)
+
         # This registers the ENUM type and creates the jobs table if they do not exist
         Base.metadata.create_all(bind=engine)
         logger.info("Database table and ENUM type created successfully.")
-    except KeyError as e:
-        logger.error(f"Error when trying to read the environment variable: {e}")
-        raise RuntimeError(f"Error when trying to read the environment variable: {e}") from e
+
     except SQLAlchemyError as e:
         logger.error(f"Error creating table or ENUM type in PostgreSQL: {e}")
         raise RuntimeError(f"Error creating table or ENUM type in PostgreSQL: {e}") from e
 
-
-def get_manager_def():
-    """Loads and configures the PostgreSQL Manager definition for pygeoapi.
-
-    This function retrieves the manager definition from the pygeoapi configuration,
-    validates its structure, and dynamically replaces placeholder values in the
-    `connection` dictionary with environment variable values.
-
-    Behavior:
-        1. **Retrieve Manager Configuration**:
-           - Reads the `manager` configuration from the `api.config` object.
-
-        2. **Validate Configuration**:
-           - Ensures the manager definition and its `connection` key are properly structured
-             as dictionaries.
-
-        3. **Replace Placeholders with Environment Variables**:
-           - Iterates through the `connection` dictionary to replace any placeholders
-             (formatted as `${ENV_VAR}`) with corresponding values from environment variables.
-
-    Raises:
-        RuntimeError: If the manager definition is invalid, or if any required environment variable
-                      for a placeholder is missing.
-
-    Returns:
-        dict: The validated and updated manager definition with all placeholders resolved.
-
-    Dependencies:
-        - Requires access to `api.config` for retrieving the initial configuration.
-        - Reads environment variables dynamically using `os.environ`.
-
-    Notes:
-        - The placeholders in the `connection` dictionary must follow the format `${ENV_VAR}`.
-    """
-    manager_def = api.config.get("manager", {})
-    if not manager_def or not isinstance(manager_def, dict) or not isinstance(manager_def["connection"], dict):
-        logger.error("Error reading the manager definition for pygeoapi PostgreSQL Manager")
-        raise RuntimeError("Error reading the manager definition for pygeoapi PostgreSQL Manager")
-    try:
-        for k, v in manager_def["connection"].items():
-            if v.startswith("${") and v.endswith("}"):
-                manager_def["connection"][k] = os.environ[f"{v[2:-1]}"]
-    except KeyError as e:
-        logger.error(f"Error when trying to read the environment variable: {e}")
-        raise RuntimeError(f"Error when trying to read the environment variable: {e}") from e
-    return manager_def
-
-
-# Exception handlers
-@app.exception_handler(StarletteHTTPException)
-async def custom_http_exception_handler(
-    request: Request,
-    exc: StarletteHTTPException,
-):  # pylint: disable= unused-argument
-    """HTTP handler"""
-    return JSONResponse(status_code=exc.status_code, content={"message": exc.detail})
+    # Initialize PostgreSQLManager with the manager configuration
+    process_manager = PostgreSQLManager(manager_def)
 
 
 # Create Dask LocalCluster when the application starts

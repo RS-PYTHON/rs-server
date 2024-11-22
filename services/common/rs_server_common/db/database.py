@@ -31,6 +31,7 @@ from fastapi import HTTPException
 from filelock import FileLock
 from rs_server_common.db import Base
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils2 import filelock
 from sqlalchemy import Connection, Engine, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
@@ -140,22 +141,7 @@ class DatabaseSessionManager:
     @staticmethod
     def __filelock(func):
         """Avoid concurrent writing to the database using a file locK."""
-
-        @wraps(func)
-        def with_filelock(*args, **kwargs):
-            """Wrap the the call to 'func' inside the lock."""
-
-            # Let's do this only if the RSPY_WORKING_DIR environment variable is defined.
-            # Write a .lock file inside this directory.
-            try:
-                with FileLock(Path(os.environ["RSPY_WORKING_DIR"]) / f"{__name__}.lock"):
-                    return func(*args, **kwargs)
-
-            # Else just call the function without a lock
-            except KeyError:
-                return func(*args, **kwargs)
-
-        return with_filelock
+        return filelock(func, "RSPY_WORKING_DIR")
 
     @__filelock
     def create_all(self):

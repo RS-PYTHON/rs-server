@@ -34,8 +34,6 @@ from rs_server_staging.processors import Staging  # pylint: disable=import-error
 
 # set pygeoapi env variables
 geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
-os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
-os.environ["PYGEOAPI_OPENAPI"] = ""
 
 TEST_DETAIL = "Test detail"
 

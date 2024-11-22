@@ -31,10 +31,6 @@ ADD ./*.whl /tmp/whl
 
 #COPY ./config /opt/config
 
-# Set environment variables for pygeoapi
-ENV PYGEOAPI_CONFIG=/opt/config/config.yml
-ENV PYGEOAPI_OPENAPI=/opt/config/openapi.json
-
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_staging-*.whl
