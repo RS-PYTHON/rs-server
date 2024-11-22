@@ -104,7 +104,7 @@ class TestStreaming:
             return_value=None,
         )
 
-        assert streaming_task("https://example.com/product.zip", "Bearer token", "bucket", s3_key) == s3_key
+        assert streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", s3_key) == s3_key
 
     def test_streaming_task_incorrect_env(self, mocker):
         """Test a error while creating s3 handler"""
@@ -114,7 +114,7 @@ class TestStreaming:
             {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
         )
         with pytest.raises(ValueError, match=r"Cannot create s3 connector object."):
-            streaming_task("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
+            streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", "file.zip")
 
     def test_streaming_task_runtime_error(self, mocker):
         """Test a runtimeerror while streaming-download."""
@@ -138,7 +138,7 @@ class TestStreaming:
             ValueError,
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
-            streaming_task("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
+            streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", "file.zip")
 
 
 class TestStaging:
