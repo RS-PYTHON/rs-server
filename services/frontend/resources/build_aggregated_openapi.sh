@@ -32,38 +32,52 @@ if [[ " $@ " == *" --run-services "* ]]; then
     docker network create $network
 
     # On exit, kill the containers and network and send the exit signal to subprocesses
-    db_container="postgres"
-    on_exit="docker rm -f $db_container || true; docker network rm $network || true"
+    pg_container="postgres"
+    pgstac_container="pgstac"
+    on_exit="docker rm -f $pg_container $pgstac_container || true; docker network rm $network || true"
     trap 'eval $on_exit' EXIT # use simple quotes so the string is interpreted when we exit
 
     # Use the same configuration as in the cluster deployment.
     #export RSPY_DOCS_URL= # used to define the /docs swagger page (not used)
     export RSPY_LOCAL_MODE=0 # cluster mode with authentication needed
 
-    # Use the env vars defined for the rs-server-catalog pytests.
-    # They contain everything needed for the postgres database and the catalog stac-fastapi-pgstac
-    envfile=$(realpath "${FRONT_DIR}/../catalog/tests/.env")
-    source "$envfile"
+    # Environment variables for postgres and pgstac databases
+    export POSTGRES_DB=rspy_pytest
+    export POSTGRES_USER=postgres
+    export POSTGRES_PASSWORD=password
+    export POSTGRES_HOST=localhost
+    export POSTGRES_PORT=5432
+    export PGSTAC_PORT=5439
 
-    # Copy the env file into a tmp file and remove the "export " strings
-    # since they are not supported by the docker --env-file option
-    tmpfile=$(mktemp)
-    cp "$envfile" "$tmpfile"
-    sed -i "s|\s*export\s\+||g" "$tmpfile"
-    envfile="$tmpfile"
-
-    # Use the stac-utils/pgstac database for everything, it should be sufficient as we just need the openapi.json.
-    db_image="ghcr.io/stac-utils/pgstac:v0.8.6"
+    # Run a postgres database
+    db_image="postgres:15-alpine"
     docker pull "$db_image"
-    (docker run --rm --network=$network --name=$db_container \
-        -p ${POSTGRES_PORT}:5432 --env-file="$envfile" \
+    (docker run --rm --network=$network --name=$pg_container \
+        -e POSTGRES_DB -e POSTGRES_USER -e POSTGRES_PASSWORD \
+        -p $POSTGRES_PORT:5432 \
         --health-cmd="pg_isready -U $POSTGRES_USER" --health-interval=2s --health-timeout=2s --health-retries=10 \
         "$db_image" \
     )&
     i=0
-    while [[ $(docker inspect --format='{{.State.Health.Status}}' $db_container) != healthy ]]; do
+    while [[ $(docker inspect --format='{{.State.Health.Status}}' $pg_container) != healthy ]]; do
         sleep 2
-        i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$db_container'" && exit 1
+        i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$pg_container'" && exit 1
+    done
+
+    # Idem for pgstac database
+    db_image="ghcr.io/stac-utils/pgstac:v0.8.6"
+    docker pull "$db_image"
+    (docker run --rm --network=$network --name=$pgstac_container \
+        -e POSTGRES_DB -e POSTGRES_USER -e POSTGRES_PASSWORD \
+        -e PGDATABASE=$POSTGRES_DB -e PGUSER=$POSTGRES_USER -e PGPASSWORD=$POSTGRES_PASSWORD \
+        -p $PGSTAC_PORT:5432 \
+        --health-cmd="pg_isready -U $POSTGRES_USER" --health-interval=2s --health-timeout=2s --health-retries=10 \
+        "$db_image" \
+    )&
+    i=0
+    while [[ $(docker inspect --format='{{.State.Health.Status}}' $pgstac_container) != healthy ]]; do
+        sleep 2
+        i=$((i+1)); ((i>=10)) && >&2 echo "Error starting '$pgstac_container'" && exit 1
     done
 
     # Run local fastapi services
@@ -98,14 +112,24 @@ if [[ " $@ " == *" --run-services "* ]]; then
         return 0
     }
 
+    #
     # Use the same values as in services.yml
+
+    # Use postgres database
     run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "health"
     run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health"
-    run_local_service "../catalog" "rs_server_catalog.main:app" 8003 "_mgmt/ping"
-    export RSPY_LOCAL_MODE=1
+    RSPY_LOCAL_MODE=1 \
     PYGEOAPI_CONFIG=$(realpath "${FRONT_DIR}/../staging/rs_server_staging/config/config.yml") \
     PYGEOAPI_OPENAPI=$(realpath "${FRONT_DIR}/../staging/rs_server_staging/config/openapi.json") \
-    run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
+        run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
+
+    # Use pgstac database
+    POSTGRES_DBNAME=$POSTGRES_DB \
+    POSTGRES_PASS=$POSTGRES_PASSWORD \
+    POSTGRES_HOST_READER=$POSTGRES_HOST \
+    POSTGRES_HOST_WRITER=$POSTGRES_HOST \
+    POSTGRES_PORT=$PGSTAC_PORT \
+        run_local_service "../catalog" "rs_server_catalog.main:app" 8003 "_mgmt/ping"
 fi
 
 services_file="${SCRIPT_DIR}/services.yml" # input file = describe services
