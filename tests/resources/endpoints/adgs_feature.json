@@ -53,7 +53,7 @@
             "href": "http://127.0.0.1:5001/Products(0a88d2a2-6e73-41a1-abce-2cdf29dfcf04)/$value",
             "type": "application/octet-stream",
             "file:size": 2100565,
-            "file:checksum": "144921A67fc7EdE75e4818121fcf4d6C",
+            "file:checksum": "144921a67fc7ede75e4818121fcf4d6c",
             "eviction_datetime": "2021-02-21T00:00:00.000Z"
         }
     },
