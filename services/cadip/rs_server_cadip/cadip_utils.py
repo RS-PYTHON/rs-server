@@ -196,7 +196,7 @@ def link_assets_to_session(session_data, assets_dict, mapper):
             }
             asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
             feature.assets.update({asset.title: asset})
-        end_date = min(
+        end_date = max(
             (datetime.fromisoformat(item["PublicationDate"].replace("Z", "")) for item in matching_assets),
             default=None,
         )
