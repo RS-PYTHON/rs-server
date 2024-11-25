@@ -19,7 +19,7 @@ FROM python:3.11.7-slim-bookworm AS builder
 # Install dependencies
 RUN apt update && apt install -y libpq-dev gcc
 
-# TODO: remove this after we use an official git version tag
+# TODO: remove this after we use an official git version tag for eodag
 RUN apt install -y git
 
 # Update pip version
