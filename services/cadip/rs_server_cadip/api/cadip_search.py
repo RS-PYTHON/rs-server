@@ -506,7 +506,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     station: str,
     session_id: str,
     datetime: Union[str, None] = None,
-    limit: Union[int, None] = 1000,
+    limit: Union[int, None] = 5000,
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
@@ -517,7 +517,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         datetime (str): Time interval in ISO 8601 format.
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
         session_id (str): Session from which file belong.
-        limit (int, optional): Maximum number of products to return. Defaults to 1000.
+        limit (int, optional): Maximum number of products to return. Defaults to 5000.
         sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.
