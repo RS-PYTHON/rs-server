@@ -911,6 +911,7 @@ retried for %s times. Aborting",
         attempt = 0
         # Prepare the request
         session = CustomSessionRedirect(trusted_domains)
+        stream_url = stream_url.replace("5002", "10000")
         request = requests.Request(
             method="GET",
             url=stream_url,
