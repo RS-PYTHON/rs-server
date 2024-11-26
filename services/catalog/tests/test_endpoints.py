@@ -428,16 +428,17 @@ class TestCatalogSearchEndpoint:
         assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND
 
     def test_queryables(self, client):  # pylint: disable=missing-function-docstring
-        try:
-            response = client.get("/catalog/queryables")
-            content = json.loads(response.content)
-            with open("queryables.json", "w", encoding="utf-8") as f:
-                json.dump(content, f, indent=2)
-            assert response.status_code == fastapi.status.HTTP_200_OK
-        except Exception as e:
-            raise RuntimeError("error") from e
-        finally:
-            pathlib.Path("queryables.json").unlink(missing_ok=True)
+        for path in "/catalog/queryables", "/catalog/collections/toto:S1_L1/queryables":
+            try:
+                response = client.get(path)
+                content = json.loads(response.content)
+                with open("queryables.json", "w", encoding="utf-8") as f:
+                    json.dump(content, f, indent=2)
+                assert response.status_code == fastapi.status.HTTP_200_OK
+            except Exception as e:
+                raise RuntimeError("error") from e
+            finally:
+                pathlib.Path("queryables.json").unlink(missing_ok=True)
 
 
 # REWORKED TESTS
