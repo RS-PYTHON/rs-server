@@ -400,8 +400,12 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 # Check if the S3 key exists
                 if not self.check_s3_key(item, asset, s3_key):
                     # update the 'href' key with the download link
-                    proto = request.headers.get("X-Forwarded-Proto", "https")
-                    host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+                    # proto = request.headers.get("X-Forwarded-Proto", "https")
+                    proto = headers = request.scope["scheme"]
+                    # host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+                    headers = request.scope["headers"]
+                    candidates = [value for key, value in headers if key == "host"]
+                    host = candidates[0] if len(candidates) == 1 else request.url.netloc
                     item_id = self.request_ids["item_id"]
                     new_href = f"{proto}://{host}/catalog/\
 collections/{user}:{collection_id}/items/{item_id}/download/{asset}"
