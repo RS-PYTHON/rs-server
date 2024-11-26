@@ -66,6 +66,8 @@ from rs_server_common.utils.utils import (
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
 
+DEFAULT_FILES_LIMIT = 1000
+
 
 class MockPgstacCadip(MockPgstac):
     """Cadip implementation of MockPgstac"""
@@ -102,11 +104,24 @@ class MockPgstacCadip(MockPgstac):
 
         # To be updated with proper ('')
         features_ids = ", ".join(feature.id for feature in session_data.features)
-        assets = process_files_search(
-            collection.get("station", "cadip"),
-            features_ids,
-            map_to_session=True,
-        )
+
+        assets: list[dict] = []
+        page = 1
+        while True:
+            chunked_assets = process_files_search(
+                collection.get("station", "cadip"),
+                features_ids,
+                map_to_session=True,
+                page=page,
+            )
+            # Gather results into assets list for later allocation
+            assets.extend(chunked_assets)
+
+            if len(chunked_assets) < DEFAULT_FILES_LIMIT:
+                # If assets are less than maximum limit, then session is complete.
+                break
+            # If assets are equal to maximum limit, then send another request for the next page
+            page += 1
 
         with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
             return link_assets_to_session(session_data, assets, json.loads(mapper.read()))
@@ -478,7 +493,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     station: str,
     session_id: str,
     datetime: Union[str, None] = None,
-    limit: Union[int, None] = 5000,
+    limit: Union[int, None] = DEFAULT_FILES_LIMIT,
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
@@ -489,7 +504,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         datetime (str): Time interval in ISO 8601 format.
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
         session_id (str): Session from which file belong.
-        limit (int, optional): Maximum number of products to return. Defaults to 5000.
+        limit (int, optional): Maximum number of products to return. Defaults to 1000.
         sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.
@@ -519,6 +534,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             id=session,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
+            page=kwargs.get("page", 1),
         )
         if kwargs.get("deprecated", False):
             write_search_products_to_db(CadipDownloadStatus, products)
