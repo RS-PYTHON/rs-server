@@ -76,7 +76,7 @@ adgs:
       - $.PublicationDate
       ChecksumValue:
       - null
-      - $.Checksum[0].Value
+      - '{$.Checksum[0].Value#to_lower}'
       attr_ptype:
       - null
       - $.attr_ptype
@@ -199,7 +199,7 @@ adgs2:
       - $.PublicationDate
       ChecksumValue:
       - null
-      - $.Checksum[0].Value
+      - '{$.Checksum[0].Value#to_lower}'
       attr_ptype:
       - null
       - $.attr_ptype
