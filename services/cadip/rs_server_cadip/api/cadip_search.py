@@ -21,7 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-from typing import Annotated, List, Literal, Optional, Union
+from typing import Annotated, List, Literal, Union
 
 import requests
 import sqlalchemy
@@ -51,7 +51,14 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.stac_api_common import (
+    CollectionType,
+    DateTimeType,
+    FilterLangType,
+    FilterType,
+    LimitType,
     MockPgstac,
+    PageType,
+    SortByType,
     create_stac_collection,
     handle_exceptions,
 )
@@ -62,8 +69,6 @@ from rs_server_common.utils.utils import (
     validate_str_list,
     write_search_products_to_db,
 )
-from stac_fastapi.api.models import Limit
-from stac_fastapi.extensions.core.filter.request import FilterLang
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
@@ -265,36 +270,14 @@ async def get_cadip_collection(
 @handle_exceptions
 async def get_cadip_collection_items(
     request: Request,
-    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    collection_id: CollectionType,
     # stac search parameters
-    datetime: Annotated[
-        Optional[str],
-        Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"'),
-    ] = None,
-    filter: Annotated[
-        Optional[str],
-        Query(
-            description="""A CQL filter expression for filtering items.\n
-Supports `CQL-JSON` as defined in https://portal.ogc.org/files/96288\n
-Remember to URL encode the CQL-JSON if using GET""",
-            json_schema_extra={
-                "example": "id='LC08_L1TP_060247_20180905_20180912_01_T1_L1TP' AND collection='landsat8_l1tp'",
-            },
-        ),
-    ] = None,
-    filter_lang: Annotated[
-        Optional[FilterLang],
-        Query(
-            alias="filter-lang",
-            description="The CQL filter encoding that the 'filter' value uses.",
-        ),
-    ] = "cql2-text",
-    sortby: Annotated[Optional[str], Query(description="Sort by +/-fieldName (ascending/descending)")] = None,
-    limit: Optional[Limit] = Query(
-        None,
-        description="Limits the number of results that are included in each page of the response (capped to 10_000).",
-    ),
-    page: Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")] = None,
+    datetime: DateTimeType = None,
+    filter_: FilterType = None,
+    filter_lang: FilterLangType = "cql2-text",
+    sortby: SortByType = None,
+    limit: LimitType = None,
+    page: PageType = None,
 ):
     """
     Retrieve a List of items for a specific collection.
@@ -327,7 +310,7 @@ Remember to URL encode the CQL-JSON if using GET""",
         collection_id,
         request,
         datetime=datetime,
-        filter=filter,
+        filter=filter_,
         filter_lang=filter_lang,
         sortby=sortby,
         limit=limit,

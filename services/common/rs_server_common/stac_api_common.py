@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
 from typing import (
+    Annotated,
     Any,
     AsyncIterator,
     Callable,
@@ -37,7 +38,9 @@ from typing import (
 import stac_pydantic
 import stac_pydantic.links
 import yaml
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException
+from fastapi import Path as FPath
+from fastapi import Query, Request, status
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
@@ -47,12 +50,48 @@ from rs_server_common.utils.utils import (
     odata_to_stac,
     validate_inputs_format,
 )
+from stac_fastapi.api.models import Limit
+from stac_fastapi.extensions.core.filter.request import FilterLang
 from stac_pydantic.item import Item
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+# Type hints
+CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
+DateTimeType = Annotated[
+    Optional[str],
+    Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"'),
+]
+FilterType = Annotated[
+    Optional[str],
+    Query(
+        description="""A CQL filter expression for filtering items.\n
+Supports `CQL-JSON` as defined in https://portal.ogc.org/files/96288\n
+Remember to URL encode the CQL-JSON if using GET""",
+        json_schema_extra={
+            "example": "id='LC08_L1TP_060247_20180905_20180912_01_T1_L1TP' AND collection='landsat8_l1tp'",
+        },
+    ),
+]
+FilterLangType = Annotated[
+    Optional[FilterLang],
+    Query(
+        alias="filter-lang",
+        description="The CQL filter encoding that the 'filter' value uses.",
+    ),
+]
+SortByType = Annotated[Optional[str], Query(description="Sort by +/-fieldName (ascending/descending)")]
+LimitType = Annotated[
+    Optional[Limit],
+    Query(
+        description="Limits the number of results that are included in each page of the response "
+        "(between 1000 and 10_000)",
+    ),
+]
+PageType = Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")]
 
 
 class Queryables(BaseModel):
