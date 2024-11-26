@@ -37,6 +37,8 @@ from typing import (
 import stac_pydantic
 import stac_pydantic.links
 import yaml
+import asyncio
+import aiohttp
 from fastapi import HTTPException, Request, status
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
@@ -458,9 +460,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         #
         # Step 2: do the search
 
-        # Convert search params from STAC keys to OData keys
-        odata_params = self.stac_to_odata(stac_params)
-
         # Only keep the authorized collections
         allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
         allowed_ids = set(collection["id"] for collection in allowed)
@@ -473,100 +472,15 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # Use a dict ordered by ID so we only keep unique items, based on their ID.
         all_features: Dict[str, Item] = {}
 
-        first_exception = None
-
         # For each collection to search
-        for collection_id in collection_ids:  # pylint: disable=too-many-nested-blocks
-            try:
-
-                # Some OData search params are hardcoded in the collection configuration.
-                collection = self.select_config(collection_id)
-                odata_hardcoded = collection.get("query") or {}
-
-                # Merge the user input params with the hardcoded params (which have higher priority)
-                self.odata = {**odata_params, **odata_hardcoded}
-
-                empty_selection = False
-
-                # Handle conflicts, i.e. for each key that is defined in both params
-                for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
-
-                    # Date intervals
-                    if key in ("PublicationDate"):
-
-                        # Read both start and stop dates
-                        start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
-                        start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
-
-                        # Calculate the intersection
-                        start = max(start1, start2)
-                        stop = min(stop1, stop2)
-
-                        # If no intersection, then the selection is empty, else save the intersection
-                        if start >= stop:
-                            empty_selection = True
-                            break  # try next collection
-                        self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
-
-                    # Comma-separated lists
-                    if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
-
-                        # Read both values
-                        value1 = odata_params[key]
-                        value2 = odata_hardcoded[key]
-                        intersection = None
-
-                        # If one is empty or None, this means "keep everything".
-                        # So keep the intersection = the other list.
-                        if not value1:
-                            intersection = value2
-                        elif not value2:
-                            intersection = value1
-
-                        # Else, split by comma and keep the intersection.
-                        # If no intersection, then the selection is empty.
-                        else:
-                            for i, value in enumerate((value1, value2)):
-                                s = {v.strip() for v in value.split(",")}
-                                intersection = intersection.intersection(s) if i else s  # type: ignore
-                            if intersection:
-                                intersection = ", ".join(intersection)
-                            if not intersection:
-                                empty_selection = True
-                                break  # try next collection
-
-                        # Save the intersection
-                        self.odata[key] = intersection
-
-                # If the selection is empty, we return no items for this collection
-                if empty_selection:
-                    continue  # try next collection
-
-                # Overwrite the pagination parameters.
-                # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
-                if not self.limit:
-                    self.limit = self.odata.get("top", 1000)
-
-                # TODO: what to do with the sortby parameter ?
-
-                # Do the search for this collection
-                features = (await self.process_search(collection, self.odata)).features
-
-                # Add the collection information
-                for item in features:
-                    item.collection = collection_id
-
-                # Concatenate features for all collections, ordered by their ID
-                all_features.update({item.id: item for item in features})
-
-            except Exception as exception:  # pylint: disable=broad-exception-caught
-                logger.error(traceback.format_exc())
-                first_exception = first_exception or exception
-
-        # If there are no results and we had at least one exception, raise the first one
-        if not all_features and first_exception:
-            raise first_exception
-
+        tasks = []
+        for collection_id in collection_ids:
+            task = asyncio.create_task(self.process_collection(collection_id, stac_params))
+            tasks.append(task)
+        gathered_features = await asyncio.gather(*tasks, return_exceptions=True)
+        gathered_features = [feature for feature in gathered_features]
+        for feature in gathered_features:
+            all_features.update({item.id: item for item in feature})
         # Return results as a dict
         data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
 
@@ -576,6 +490,100 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             data["prev"] = f"page={self.page - 1}"
 
         return data
+
+    async def process_collection(self, collection_id, stac_params):
+        first_exception = None
+        # Convert search params from STAC keys to OData keys
+        odata_params = self.stac_to_odata(stac_params)
+        try:
+            # Some OData search params are hardcoded in the collection configuration.
+            collection = self.select_config(collection_id)
+            odata_hardcoded = collection.get("query") or {}
+
+            # Merge the user input params with the hardcoded params (which have higher priority)
+            self.odata = {**odata_params, **odata_hardcoded}
+
+            empty_selection = False
+
+            # Handle conflicts, i.e. for each key that is defined in both params
+            for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
+
+            # Date intervals
+                if key in ("PublicationDate"):
+
+                    # Read both start and stop dates
+                    start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
+                    start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
+
+                    # Calculate the intersection
+                    start = max(start1, start2)
+                    stop = min(stop1, stop2)
+
+                    # If no intersection, then the selection is empty, else save the intersection
+                    if start >= stop:
+                        empty_selection = True
+                        break  # try next collection
+                    self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
+
+                # Comma-separated lists
+                if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
+
+                    # Read both values
+                    value1 = odata_params[key]
+                    value2 = odata_hardcoded[key]
+                    intersection = None
+
+                    # If one is empty or None, this means "keep everything".
+                    # So keep the intersection = the other list.
+                    if not value1:
+                        intersection = value2
+                    elif not value2:
+                        intersection = value1
+
+                    # Else, split by comma and keep the intersection.
+                    # If no intersection, then the selection is empty.
+                    else:
+                        for i, value in enumerate((value1, value2)):
+                            s = {v.strip() for v in value.split(",")}
+                            intersection = intersection.intersection(s) if i else s  # type: ignore
+                        if intersection:
+                            intersection = ", ".join(intersection)
+                        if not intersection:
+                            empty_selection = True
+                            break  # try next collection
+
+                    # Save the intersection
+                    self.odata[key] = intersection
+
+            # If the selection is empty, we return no items for this collection
+            #if empty_selection:
+            #    continue  # try next collection
+
+            # Overwrite the pagination parameters.
+            # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
+            if not self.limit:
+                self.limit = self.odata.get("top", 1000)
+
+            # TODO: what to do with the sortby parameter ?
+
+            # Do the search for this collection
+            features = (await self.process_search(collection, self.odata)).features
+
+            # Add the collection information
+            for item in features:
+                item.collection = collection_id
+
+            return features
+            # # Concatenate features for all collections, ordered by their ID
+            # all_features.update({item.id: item for item in features})
+
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            logger.error(traceback.format_exc())
+            first_exception = first_exception or exception
+        # If there are no results and we had at least one exception, raise the first one
+        if not features and first_exception:
+            raise first_exception
+
 
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
