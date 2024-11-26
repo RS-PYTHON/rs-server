@@ -70,6 +70,8 @@ from rs_server_common.utils.utils import (
     write_search_products_to_db,
 )
 
+# pylint: disable=duplicate-code # with adgs_search
+
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
 

@@ -67,6 +67,8 @@ from rs_server_common.utils.utils import (
     write_search_products_to_db,
 )
 
+# pylint: disable=duplicate-code # with cadip_search
+
 logger = Logging.default(__name__)
 router = APIRouter(tags=adgs_tags)
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
