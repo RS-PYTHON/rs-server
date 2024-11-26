@@ -22,7 +22,7 @@ import json
 import os.path as osp
 import traceback
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional
 
 import requests
 import sqlalchemy
@@ -59,6 +59,8 @@ from rs_server_common.utils.utils import (
     validate_sort_input,
     write_search_products_to_db,
 )
+from stac_fastapi.api.models import Limit
+from stac_fastapi.extensions.core.filter.request import FilterLang
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=adgs_tags)
@@ -80,6 +82,9 @@ class MockPgstacAdgs(MockPgstac):
             map_mission=auxip_map_mission,
         )
 
+        # Default sortby value
+        self.sortby = "-created"
+
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
@@ -89,7 +94,7 @@ class MockPgstacAdgs(MockPgstac):
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
             self.limit,
-            self.request.query_params.get("sortby", "-created"),
+            self.sortby,
             self.page,
             Name=odata_params.get("Name", [None])[0],
             attr_platform_short_name=odata_params.get("platformShortName"),
@@ -188,6 +193,35 @@ async def get_adgs_collection(
 async def get_adgs_collection_items(
     request: Request,
     collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
+    # stac search parameters
+    datetime: Annotated[
+        Optional[str],
+        Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"'),
+    ] = None,
+    filter: Annotated[
+        Optional[str],
+        Query(
+            description="""A CQL filter expression for filtering items.\n
+Supports `CQL-JSON` as defined in https://portal.ogc.org/files/96288\n
+Remember to URL encode the CQL-JSON if using GET""",
+            json_schema_extra={
+                "example": "id='LC08_L1TP_060247_20180905_20180912_01_T1_L1TP' AND collection='landsat8_l1tp'",
+            },
+        ),
+    ] = None,
+    filter_lang: Annotated[
+        Optional[FilterLang],
+        Query(
+            alias="filter-lang",
+            description="The CQL filter encoding that the 'filter' value uses.",
+        ),
+    ] = "cql2-text",
+    sortby: Annotated[Optional[str], Query(description="Sort by +/-fieldName (ascending/descending)")] = None,
+    limit: Optional[Limit] = Query(
+        None,
+        description="Limits the number of results that are included in each page of the response (capped to 10_000).",
+    ),
+    page: Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")] = None,
 ) -> list[dict] | dict:
     """
     Retrieve a list of items from a specified AUXIP collection.
@@ -197,20 +231,29 @@ async def get_adgs_collection_items(
     the items based on defined query parameters.
 
     Args:
-    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
-            (e.g., 'ins_s1'). Maximum length of 100 characters.
+        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+                             (e.g., 'ins_s1'). Maximum length of 100 characters.
 
     Returns:
-    - list[dict]: A FeatureCollection of items belonging to the specified collection, or an
+        list[dict]: A FeatureCollection of items belonging to the specified collection, or an
                     error message if the collection is not found.
 
     Raises:
-    - HTTPException: If the authentication fails, or if there are issues with the
-                    collection ID provided.
+        HTTPException: If the authentication fails, or if there are issues with the
+                       collection ID provided.
     """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
-    return await request.app.state.pgstac_client.item_collection(collection_id, request)
+    return await request.app.state.pgstac_client.item_collection(
+        collection_id,
+        request,
+        datetime=datetime,
+        filter=filter,
+        filter_lang=filter_lang,
+        sortby=sortby,
+        limit=limit,
+        page=page,
+    )
 
 
 @router.get("/auxip/collections/{collection_id}/items/{item_id}")
@@ -300,7 +343,7 @@ def process_product_search(  # pylint: disable=too-many-locals
         station (str): Auxip station identifier.
         datetime (str): Time interval in ISO 8601 format.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
-        sortby (str: optional): Sorting field, default to created, descending.
+        sortby (str): Sort by +/-fieldName (ascending/descending).
 
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.

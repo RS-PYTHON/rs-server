@@ -288,7 +288,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Merge pagination parameters into input params.
             # Convert lists with one element into this single value.
             for key, values in query_params.items():
-                if key not in ("limit", "page", "sort"):
+                if key not in ("limit", "page", "sortby"):
                     continue
                 if isinstance(values, list) and (len(values) == 1):
                     params[key] = values[0]
@@ -343,17 +343,19 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 ) from exc
 
         # Sort results
-        sortby = "-datetime"  # default value
-        sortby_list = params.pop("sortby", [])
-        if len(sortby_list) > 1:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Only one 'sortby' search parameter is allowed: {sortby_list!r}",
-            )
-        if sortby_list:
-            sortby_dict = sortby_list[0]
-            sortby = "+" if sortby_dict["direction"] == "asc" else "-"
-            sortby += sortby_dict["field"]
+        sortby_param = params.pop("sortby", None)
+        if isinstance(sortby_param, str):
+            self.sortby = sortby_param
+        elif isinstance(sortby_param, list):
+            if len(sortby_param) > 1:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Only one 'sortby' search parameter is allowed: {sortby_param!r}",
+                )
+            if sortby_param:
+                sortby_dict = sortby_param[0]
+                self.sortby = "+" if sortby_dict["direction"] == "asc" else "-"
+                self.sortby += sortby_dict["field"]
 
         # datetime interval = PublicationDate
         datetime = params.pop("datetime", None)
@@ -546,8 +548,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
                 if not self.limit:
                     self.limit = self.odata.get("top", 1000)
-
-                # TODO: what to do with the sortby parameter ?
 
                 # Do the search for this collection
                 features = (await self.process_search(collection, self.odata)).features

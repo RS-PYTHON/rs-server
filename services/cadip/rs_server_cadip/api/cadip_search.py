@@ -21,7 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-from typing import Annotated, List, Literal, Union
+from typing import Annotated, List, Literal, Optional, Union
 
 import requests
 import sqlalchemy
@@ -62,6 +62,8 @@ from rs_server_common.utils.utils import (
     validate_str_list,
     write_search_products_to_db,
 )
+from stac_fastapi.api.models import Limit
+from stac_fastapi.extensions.core.filter.request import FilterLang
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
@@ -82,6 +84,9 @@ class MockPgstacCadip(MockPgstac):
             map_mission=cadip_map_mission,
         )
 
+        # Default sortby value
+        self.sortby = "-published"
+
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
@@ -92,7 +97,7 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
             odata_params.get("Retransfer"),
-            self.request.query_params.get("sortby", "-published"),
+            self.sortby,
             self.limit,
             self.page,
         )
@@ -261,6 +266,35 @@ async def get_cadip_collection(
 async def get_cadip_collection_items(
     request: Request,
     collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    # stac search parameters
+    datetime: Annotated[
+        Optional[str],
+        Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"'),
+    ] = None,
+    filter: Annotated[
+        Optional[str],
+        Query(
+            description="""A CQL filter expression for filtering items.\n
+Supports `CQL-JSON` as defined in https://portal.ogc.org/files/96288\n
+Remember to URL encode the CQL-JSON if using GET""",
+            json_schema_extra={
+                "example": "id='LC08_L1TP_060247_20180905_20180912_01_T1_L1TP' AND collection='landsat8_l1tp'",
+            },
+        ),
+    ] = None,
+    filter_lang: Annotated[
+        Optional[FilterLang],
+        Query(
+            alias="filter-lang",
+            description="The CQL filter encoding that the 'filter' value uses.",
+        ),
+    ] = "cql2-text",
+    sortby: Annotated[Optional[str], Query(description="Sort by +/-fieldName (ascending/descending)")] = None,
+    limit: Optional[Limit] = Query(
+        None,
+        description="Limits the number of results that are included in each page of the response (capped to 10_000).",
+    ),
+    page: Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")] = None,
 ):
     """
     Retrieve a List of items for a specific collection.
@@ -289,7 +323,16 @@ async def get_cadip_collection_items(
     """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
-    return await request.app.state.pgstac_client.item_collection(collection_id, request)
+    return await request.app.state.pgstac_client.item_collection(
+        collection_id,
+        request,
+        datetime=datetime,
+        filter=filter,
+        filter_lang=filter_lang,
+        sortby=sortby,
+        limit=limit,
+        page=page,
+    )
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
@@ -381,7 +424,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         time_interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
         limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
-        sortby (str): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
+        sortby (str): Sort by +/-fieldName (ascending/descending).
         page (int): Page number to be displayed, defaults to first one.
     Returns:
         dict (dict): A STAC Feature Collection of the sessions.
