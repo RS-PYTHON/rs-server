@@ -196,11 +196,15 @@ def link_assets_to_session(session_data, assets_dict, mapper):
             }
             asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
             feature.assets.update({asset.title: asset})
-        end_date = max(
-            (datetime.fromisoformat(item["PublicationDate"].replace("Z", "")) for item in matching_assets),
-            default=None,
-        )
-        feature.properties.end_datetime = datetime.fromisoformat(str(end_date)).replace(tzinfo=timezone.utc)
+        try:
+            end_date = max(
+                (datetime.fromisoformat(item["PublicationDate"].replace("Z", "")) for item in matching_assets),
+                default=None,
+            )
+            feature.properties.end_datetime = datetime.fromisoformat(str(end_date)).replace(tzinfo=timezone.utc)
+        except ValueError:
+            logger.warning(f"Cannot update end datetime for {feature.id}")
+            continue
     return session_data
 
 
