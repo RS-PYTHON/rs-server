@@ -14,7 +14,6 @@
 
 """Test staging module."""
 import os
-import re
 from datetime import datetime
 
 import pytest
@@ -90,7 +89,7 @@ class TestInitDb:
         init_db()
 
         # Assert: Check that create_engine and create_all were called correctly
-        mock_get_engine.assert_called_once_with(
+        mock_get_engine.assert_called_once_with(  # nosec hardcoded_password_funcarg
             host="localhost",
             port=5500,
             database="rspy_pytest",
