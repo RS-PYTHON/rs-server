@@ -767,7 +767,10 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid limits (str, negative, 0)"""
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "Invalid limit value" in response.json()["detail"]
+        assert response.json()["detail"][0]["msg"] in (
+            "Input should be a valid integer, unable to parse string as an integer",
+            "Input should be greater than 0",
+        )
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -1058,6 +1061,11 @@ def test_search_parameters(
     user_platform = "sentinel-2a"
     user_constellation = "sentinel-2"
     user_satellite = cadip_utils.cadip_map_mission(user_platform, user_constellation)
+    user_sortby = ""
+    if adgs:
+        user_sortby = "created"
+    if cadip:
+        user_sortby = "published"
 
     # cql or query filter, for get or post requests
     if adgs:
@@ -1077,7 +1085,7 @@ def test_search_parameters(
             {
                 "ids": user_ids,
                 "limit": user_limit,
-                # "sortby": "-datetime", # disable this for moment, require odata filter to be updated
+                "sortby": f"+{user_sortby}",
             },
         )
         if filter_type == "cql":
@@ -1101,7 +1109,7 @@ def test_search_parameters(
             {
                 "ids": [id.strip() for id in user_ids.split(",")],
                 "limit": user_limit,
-                "sortby": [{"direction": "desc", "field": "datetime"}],
+                "sortby": [{"direction": "asc", "field": user_sortby}],
             },
         )
         if filter_type == "cql":
@@ -1158,7 +1166,7 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    "&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes"
+                    "&$orderby=PublicationDate%20asc&$top={limit}&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
@@ -1168,7 +1176,7 @@ def test_search_parameters(
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
-                    "&$orderby=PublicationDate%20desc&$top={limit}&$skip=0&$expand=Attributes"
+                    "&$orderby=PublicationDate%20asc&$top={limit}&$skip=0&$expand=Attributes"
                 )
             elif cadip:
                 # Add quote to the user_id
@@ -1177,7 +1185,7 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    "&$orderby=PublicationDate%20desc&$top={limit}&$skip=0"
+                    "&$orderby=PublicationDate%20asc&$top={limit}&$skip=0"
                 )
 
                 odata_query = (
@@ -1185,7 +1193,7 @@ def test_search_parameters(
                     f"SessionId in ({user_ids_with_quote}) "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    "&$orderby=PublicationDate%20desc&$top={limit}&$skip=0"
+                    "&$orderby=PublicationDate%20asc&$top={limit}&$skip=0"
                 )
             else:
                 raise NotImplementedError
