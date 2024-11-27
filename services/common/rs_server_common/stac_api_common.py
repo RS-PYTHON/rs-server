@@ -476,8 +476,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         for collection_id in collection_ids:
             task = asyncio.create_task(self.process_collection(collection_id, stac_params))
             tasks.append(task)
-        gathered_features = await asyncio.gather(*tasks, return_exceptions=True)
-        all_features.update({item.id: item for features in gathered_features if features for item in features})
+        if gathered_features := await asyncio.gather(*tasks):
+            all_features.update({item.id: item for features in gathered_features if features for item in features})
         # Return results as a dict
         data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection")
         data = self.paginate(data)
@@ -501,10 +501,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         ).model_dump()
 
     async def process_collection(
-        self, collection_id, stac_params,
+        self,
+        collection_id,
+        stac_params,
     ):  # pylint: disable=too-many-locals, too-many-branches
         """Method used to process a collection and perform search."""
         first_exception = None
+        features = None
         # Convert search params from STAC keys to OData keys
         odata_params = self.stac_to_odata(stac_params)
         try:
@@ -567,9 +570,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Overwrite the pagination parameters.
             # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
-            if not self.limit and "/search" not in self.request.url.path:
+            if not self.limit:
                 self.limit = self.odata.get("top", 1000)
-            else:
+            if "/search" in self.request.url.path:
                 # Don;t forward limit value for /search endpoints
                 # just use maximum to gather all possible results, page is always 1
                 self.limit = 10000
