@@ -32,14 +32,41 @@ from fastapi.testclient import TestClient
 os.environ["RSPY_LOCAL_MODE"] = "1"
 from rs_server_staging.processors import Staging  # pylint: disable=import-error
 
-# set pygeoapi env variables
-geoapi_cfg = Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
-os.environ["PYGEOAPI_CONFIG"] = str(geoapi_cfg)
-os.environ["PYGEOAPI_OPENAPI"] = ""
-
 TEST_DETAIL = "Test detail"
 
+
+# These env vars are mandatory before importing the staging main module
+for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB":
+    os.environ[envvar] = ""
 from rs_server_staging.main import app  # pylint: disable=import-error
+
+
+@pytest.fixture(name="set_db_env_var")
+def set_db_env_var_fixture(monkeypatch):
+    """Fixture to set environment variables for simulating the mounting of
+    the external station token secrets in kubernetes.
+
+    This fixture sets a variety of environment variables related to token-based
+    authentication for different services, allowing tests to be executed with
+    the correct configurations in place.
+    The enviornment variables set are managing 3 stations:
+    - adgs (service auxip)
+    - ins (service cadip)
+    - mps (service cadip)
+
+    Args:
+        monkeypatch: Pytest utility for temporarily modifying environment variables.
+    """
+    envvars = {
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "password",
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5500",
+        "POSTGRES_DB": "rspy_pytest",
+    }
+    for key, val in envvars.items():
+        monkeypatch.setenv(key, val)
+    yield  # restore the environment
 
 
 @pytest.fixture(name="staging_client")
@@ -47,26 +74,19 @@ def client_(mocker):
     """init fastapi client app."""
     # Test the FastAPI application, opens the database session
     mocker.patch("rs_server_staging.main.init_db", return_value=None)
-    mocker.patch(
-        "rs_server_staging.main.get_manager_def",
-        return_value={
-            "name": "test_pgmanager",
-            "connection": {
-                "host": os.environ["POSTGRES_HOST"],
-                "port": os.environ["POSTGRES_PORT"],
-                "database": os.environ["POSTGRES_DB"],
-                "user": os.environ["POSTGRES_USER"],
-                "password": os.environ["POSTGRES_PASSWORD"],
-            },
-        },
-    )
     mocker.patch("rs_server_staging.main.PostgreSQLManager", return_value=mocker.Mock())
     with TestClient(app) as client:
         yield client
 
 
+@pytest.fixture(name="geoapi_cfg")
+def geoapi_cfg_() -> Path:
+    """Return pygeoapi config file path"""
+    return Path(osp.realpath(osp.dirname(__file__))) / "resources" / "test_config.yml"
+
+
 @pytest.fixture(name="predefined_config")
-def config_():
+def config_(geoapi_cfg):
     """Fixture for pygeoapi yaml config"""
     with open(geoapi_cfg, "r", encoding="utf-8") as yaml_file:
         return yaml.safe_load(yaml_file)
@@ -109,34 +129,6 @@ def dbj_():
             "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
         },
     ]
-
-
-@pytest.fixture(name="set_db_env_var")
-def set_db_env_var_fixture(monkeypatch):
-    """Fixture to set environment variables for simulating the mounting of
-    the external station token secrets in kubernetes.
-
-    This fixture sets a variety of environment variables related to token-based
-    authentication for different services, allowing tests to be executed with
-    the correct configurations in place.
-    The enviornment variables set are managing 3 stations:
-    - adgs (service auxip)
-    - ins (service cadip)
-    - mps (service cadip)
-
-    Args:
-        monkeypatch: Pytest utility for temporarily modifying environment variables.
-    """
-    envvars = {
-        "POSTGRES_USER": "postgres",
-        "POSTGRES_PASSWORD": "password",
-        "POSTGRES_HOST": "localhost",
-        "POSTGRES_PORT": "5500",
-        "POSTGRES_DB": "rspy_pytest",
-    }
-    for key, val in envvars.items():
-        monkeypatch.setenv(key, val)
-    yield  # restore the environment
 
 
 @pytest.fixture(name="staging_instance")

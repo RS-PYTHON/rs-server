@@ -18,7 +18,12 @@ from datetime import datetime
 
 import pytest
 from fastapi import FastAPI
-from rs_server_staging.main import app_lifespan, get_manager_def, init_db
+from rs_server_staging.main import (
+    app_lifespan,
+    get_config_contents,
+    init_db,
+    init_pygeoapi,
+)
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 
@@ -72,17 +77,24 @@ class TestInitDb:
     def test_init_db_success(self, set_db_env_var, mocker):  # pylint: disable=unused-argument
         """Test that the database initialization completes successfully."""
 
-        # Mock SQLAlchemy create_engine and Base.metadata.create_all
+        # Mock pygeoapi functions
         mock_engine = mocker.Mock()
-        mock_create_engine = mocker.patch("rs_server_staging.main.create_engine", return_value=mock_engine)
+        mocker.patch("pygeoapi.process.manager.postgresql.get_table_model", return_value=mocker.Mock())
+        mock_get_engine = mocker.patch("pygeoapi.process.manager.postgresql.get_engine", return_value=mock_engine)
+        mock_get_engine = mocker.patch("rs_server_staging.main.get_engine", return_value=mock_engine)
         mock_metadata = mocker.patch("rs_server_staging.main.Base.metadata.create_all")
+        mocker.patch("rs_server_staging.main.api", init_pygeoapi())
 
         # Act: Call the function
         init_db()
 
         # Assert: Check that create_engine and create_all were called correctly
-        mock_create_engine.assert_called_once_with(
-            "postgresql+psycopg2://postgres:password@localhost:5500/rspy_pytest",
+        mock_get_engine.assert_called_once_with(  # nosec hardcoded_password_funcarg
+            host="localhost",
+            port=5500,
+            database="rspy_pytest",
+            user="postgres",
+            password="password",
         )
         mock_metadata.assert_called_once_with(bind=mock_engine)
 
@@ -91,54 +103,37 @@ class TestInitDb:
         # Mock environment variables to be incomplete
         mocker.patch.dict("os.environ", {}, clear=True)
 
-        # Act & Assert: Check that a RuntimeError is raised
-        with pytest.raises(RuntimeError, match="Error when trying to read the environment variable:"):
-            init_db()
+        # Act & Assert: Check that an exception is raised for missing port environment variable
+        with pytest.raises(KeyError, match="POSTGRES_HOST"):
+            init_pygeoapi()
 
     def test_init_db_sqlalchemy_error(self, set_db_env_var, mocker):  # pylint: disable=unused-argument
         """Test that the function raises an error when SQLAlchemy fails."""
 
         # Mock SQLAlchemy create_engine to raise an error
-        mocker.patch("rs_server_staging.main.create_engine", side_effect=SQLAlchemyError("Database error"))
+        mocker.patch("rs_server_staging.main.api", init_pygeoapi())
+        mocker.patch("pygeoapi.process.manager.postgresql.get_engine", side_effect=SQLAlchemyError("Database error"))
 
         # Act & Assert: Check that a RuntimeError is raised
-        with pytest.raises(RuntimeError, match="Error creating table or ENUM type in PostgreSQL:"):
-            init_db()
+        with pytest.raises(SQLAlchemyError):
+            init_db(timeout=0)
 
-
-class TestGetManagerDef:
-    """Class to group tests for the get_manager_def function"""
-
-    def test_get_manager_def_success(self, set_db_env_var, mocker):  # pylint: disable=unused-argument
+    def test_get_config_contents_success(self, set_db_env_var):  # pylint: disable=unused-argument
         """Test that the manager definition is correctly retrieved and placeholders are replaced."""
-        # Mock the api.config.get method
-        mock_api_config = mocker.patch("rs_server_staging.main.api.config", autospec=True)
-        mock_api_config.get.return_value = {
-            "connection": {
-                "host": "${POSTGRES_HOST}",
-                "port": "${POSTGRES_PORT}",
-                "database": "${POSTGRES_DB}",
-                "user": "${POSTGRES_USER}",
-                "password": "${POSTGRES_PASSWORD}",
-            },
-        }
 
         # Act: Call the function
-        result = get_manager_def()
+        result = get_config_contents()
 
         # Assert: Validate the updated connection dictionary
-        assert result == {
-            "connection": {
-                "host": os.environ["POSTGRES_HOST"],
-                "port": os.environ["POSTGRES_PORT"],
-                "database": os.environ["POSTGRES_DB"],
-                "user": os.environ["POSTGRES_USER"],
-                "password": os.environ["POSTGRES_PASSWORD"],
-            },
+        assert result["manager"]["connection"] == {
+            "host": os.environ["POSTGRES_HOST"],
+            "port": int(os.environ["POSTGRES_PORT"]),
+            "database": os.environ["POSTGRES_DB"],
+            "user": os.environ["POSTGRES_USER"],
+            "password": os.environ["POSTGRES_PASSWORD"],
         }
-        mock_api_config.get.assert_called_once_with("manager", {})
 
-    def test_get_manager_def_invalid_definition(self, mocker):
+    def test_get_config_contents_invalid_definition(self, mocker):
         """Test that the function raises an error when the manager definition is invalid."""
         # Mock the api.config.get method to return an invalid configuration
         mock_api_config = mocker.patch("rs_server_staging.main.api.config", autospec=True)
@@ -146,30 +141,7 @@ class TestGetManagerDef:
 
         # Act & Assert: Check that a RuntimeError is raised
         with pytest.raises(RuntimeError, match="Error reading the manager definition for pygeoapi PostgreSQL Manager"):
-            get_manager_def()
-
-    def test_get_manager_def_missing_env_variable(self, mocker):
-        """Test that the function raises an error when an environment variable is missing."""
-        # Mock the api.config.get method
-        mock_api_config = mocker.patch("rs_server_staging.main.api.config", autospec=True)
-        mock_api_config.get.return_value = {
-            "connection": {
-                "host": "${POSTGRES_HOST}",
-                "user": "${POSTGRES_USER}",
-            },
-        }
-
-        # Mock environment variables with a missing one
-        mocker.patch.dict(
-            "os.environ",
-            {
-                "POSTGRES_HOST": "localhost",
-            },
-        )
-
-        # Act & Assert: Check that a RuntimeError is raised for missing environment variable
-        with pytest.raises(RuntimeError, match="Error when trying to read the environment variable: 'POSTGRES_USER'"):
-            get_manager_def()
+            init_db()
 
 
 @pytest.mark.asyncio
@@ -376,7 +348,13 @@ async def test_delete_job_endpoint(
 
 
 @pytest.mark.asyncio
-async def test_processes(set_db_env_var, staging_client, predefined_config):  # pylint: disable=unused-argument
+async def test_processes(
+    set_db_env_var,
+    staging_client,
+    predefined_config,
+    mocker,
+    geoapi_cfg,
+):  # pylint: disable=unused-argument
     """
     Test the /processes endpoint for retrieving a list of available processors.
 
@@ -393,6 +371,10 @@ async def test_processes(set_db_env_var, staging_client, predefined_config):  # 
         - Asserts that the list of processors returned from the API matches
           the list defined in the predefined configuration.
     """
+
+    mocker.patch("rs_server_staging.main.get_config_path", return_value=geoapi_cfg)
+    mocker.patch("rs_server_staging.main.api", init_pygeoapi())
+
     response = staging_client.get("/processes")
     input_processors = [resource["processor"]["name"] for resource in predefined_config["resources"].values()]
 
