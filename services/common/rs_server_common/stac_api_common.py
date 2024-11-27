@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Module to share common functionalities for validating / creating stac items"""
+import asyncio
 import copy
 import json
 import traceback
@@ -37,8 +38,6 @@ from typing import (
 import stac_pydantic
 import stac_pydantic.links
 import yaml
-import asyncio
-import aiohttp
 from fastapi import HTTPException, Request, status
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
@@ -478,12 +477,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             task = asyncio.create_task(self.process_collection(collection_id, stac_params))
             tasks.append(task)
         gathered_features = await asyncio.gather(*tasks, return_exceptions=True)
-        gathered_features = [feature for feature in gathered_features]
-        for feature in gathered_features:
-            all_features.update({item.id: item for item in feature})
+        all_features.update({item.id: item for features in gathered_features if features for item in features})
         # Return results as a dict
-        data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
-
+        data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection")
+        data = self.paginate(data)
         # Handle pagination links.
         data["next"] = f"page={self.page + 1}"
         if self.page > 1:
@@ -491,7 +488,22 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return data
 
-    async def process_collection(self, collection_id, stac_params):
+    def paginate(self, item_collection: stac_pydantic.ItemCollection):
+        """Method used to apply pagination options after /search result were aggregated."""
+        sortby = self.request.query_params.get("sorbty", "-datetime")
+        item_collection = sort_feature_collection(item_collection, sortby)
+        search_limit = int(self.request.query_params.get("limit", self.odata.get("top", self.limit)))
+        search_page = int(self.request.query_params.get("page", self.odata.get("page", self.page)))
+
+        return stac_pydantic.ItemCollection(
+            features=item_collection.features[search_limit * (search_page - 1) : search_limit * search_page],
+            type=item_collection.type,
+        ).model_dump()
+
+    async def process_collection(
+        self, collection_id, stac_params,
+    ):  # pylint: disable=too-many-locals, too-many-branches
+        """Method used to process a collection and perform search."""
         first_exception = None
         # Convert search params from STAC keys to OData keys
         odata_params = self.stac_to_odata(stac_params)
@@ -503,12 +515,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Merge the user input params with the hardcoded params (which have higher priority)
             self.odata = {**odata_params, **odata_hardcoded}
 
-            empty_selection = False
-
             # Handle conflicts, i.e. for each key that is defined in both params
             for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
 
-            # Date intervals
+                # Date intervals
                 if key in ("PublicationDate"):
 
                     # Read both start and stop dates
@@ -555,17 +565,17 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     # Save the intersection
                     self.odata[key] = intersection
 
-            # If the selection is empty, we return no items for this collection
-            #if empty_selection:
-            #    continue  # try next collection
-
             # Overwrite the pagination parameters.
             # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
-            if not self.limit:
+            if not self.limit and "/search" not in self.request.url.path:
                 self.limit = self.odata.get("top", 1000)
+            else:
+                # Don;t forward limit value for /search endpoints
+                # just use maximum to gather all possible results, page is always 1
+                self.limit = 10000
+                self.page = 1
 
             # TODO: what to do with the sortby parameter ?
-
             # Do the search for this collection
             features = (await self.process_search(collection, self.odata)).features
 
@@ -583,7 +593,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # If there are no results and we had at least one exception, raise the first one
         if not features and first_exception:
             raise first_exception
-
 
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
@@ -732,3 +741,12 @@ def create_stac_collection(
         item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
         items.append(item)
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
+
+
+def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortby: str) -> dict:
+    """
+    Later implement sorting on multiple fields
+    """
+    # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
+    sorted_items = sorted(item_collection.features, key=lambda item: item.properties.datetime)
+    return stac_pydantic.ItemCollection(features=sorted_items, type=item_collection.type)
