@@ -92,7 +92,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     """
 
     # Set by stac-fastapi
-    request: Request | None = None
+    request: Request = Request(scope={"type": "http"})
     readwrite: Literal["r", "w"] | None = None
 
     service: Literal["adgs", "cadip"] | None = None
@@ -480,24 +480,28 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             all_features.update({item.id: item for features in gathered_features if features for item in features})
         # Return results as a dict
         data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection")
-        data = self.paginate(data)
+        dict_data: Dict[str, Any] = self.paginate(data)
         # Handle pagination links.
-        data["next"] = f"page={self.page + 1}"
+        # if len(dict_data["features"]) > 1:
+        #     # Don't create next page if the current one does not have features
+        #     dict_data["next"] = f"page={self.page + 1}"
+        dict_data["next"] = f"page={self.page + 1}"
         if self.page > 1:
-            data["prev"] = f"page={self.page - 1}"
+            dict_data["prev"] = f"page={self.page - 1}"
 
-        return data
+        return dict_data
 
-    def paginate(self, item_collection: stac_pydantic.ItemCollection):
+    def paginate(self, item_collection: stac_pydantic.ItemCollection) -> Dict[str, Any]:
         """Method used to apply pagination options after /search result were aggregated."""
-        sortby = self.request.query_params.get("sorbty", "-datetime")
-        item_collection = sort_feature_collection(item_collection, sortby)
-        search_limit = int(self.request.query_params.get("limit", self.odata.get("top", self.limit)))
-        search_page = int(self.request.query_params.get("page", self.odata.get("page", self.page)))
 
+        sortby: str = self.request.query_params.get("sorbty", "-datetime")
+        search_limit: int = int(self.request.query_params.get("limit", self.odata.get("top", self.limit)))
+        search_page: int = int(self.request.query_params.get("page", self.odata.get("page", self.page)))
+
+        paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection)
         return stac_pydantic.ItemCollection(
-            features=item_collection.features[search_limit * (search_page - 1) : search_limit * search_page],
-            type=item_collection.type,
+            features=paginated_item_collection.features[search_limit * (search_page - 1) : search_limit * search_page],
+            type=paginated_item_collection.type,
         ).model_dump()
 
     async def process_collection(
@@ -534,7 +538,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
                     # If no intersection, then the selection is empty, else save the intersection
                     if start >= stop:
-                        empty_selection = True
                         break  # try next collection
                     self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
 
@@ -562,7 +565,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         if intersection:
                             intersection = ", ".join(intersection)
                         if not intersection:
-                            empty_selection = True
                             break  # try next collection
 
                     # Save the intersection
@@ -572,7 +574,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
             if not self.limit:
                 self.limit = self.odata.get("top", 1000)
-            if "/search" in self.request.url.path:
+            if "/search" in self.request.url.path:  # type: ignore
                 # Don;t forward limit value for /search endpoints
                 # just use maximum to gather all possible results, page is always 1
                 self.limit = 10000
@@ -746,10 +748,10 @@ def create_stac_collection(
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
 
 
-def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortby: str) -> dict:
+def sort_feature_collection(item_collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
     """
     Later implement sorting on multiple fields
     """
     # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
-    sorted_items = sorted(item_collection.features, key=lambda item: item.properties.datetime)
+    sorted_items = sorted(item_collection.features, key=lambda item: item.properties.datetime)  # type: ignore
     return stac_pydantic.ItemCollection(features=sorted_items, type=item_collection.type)
