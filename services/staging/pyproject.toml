@@ -57,7 +57,7 @@ aiohttp = "^3.10.5"
 dask = {extras = ["distributed"], version = "2024.1.0"}
 dask-gateway = "2024.1.0"
 msgpack = "1.0.7"
-toolz = "0.12.0"
+toolz = "1.0.0"
 tornado = "6.4.2"
 
 # TEMP: because of the pydantic conflict
@@ -81,15 +81,15 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 python = "^3.11"
-pre-commit = "^3.7.1"
+pre-commit = ">=3.7.1,<5.0.0"
 bandit = "^1.7.9"
 pylint = "^3.3.0"
 pytest = "^8.3.3"
 pytest-asyncio = "^0.24.0"
-pytest-cov = "^5.0.0"
+pytest-cov = ">=5,<7"
 pytest-docker = "^3.1.0"
 pytest-error-for-skips = "^2.0.2"
-pytest-httpx = "^0.32.0"
+pytest-httpx = ">=0.32,<0.35"
 pytest-mock = "^3.12.0"
 
 [tool.black]
