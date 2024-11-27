@@ -17,6 +17,7 @@
 import os
 import pathlib
 from contextlib import asynccontextmanager
+from string import Template
 from time import sleep
 
 import yaml
@@ -86,7 +87,7 @@ def get_config_contents() -> dict:
         contents = opened.read()
 
         # Replace env vars by their value
-        contents = os.path.expandvars(contents)
+        contents = Template(contents).substitute(os.environ)
 
         # Parse contents as yaml
         return yaml.safe_load(contents)

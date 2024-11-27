@@ -105,15 +105,8 @@ class TestInitDb:
         mocker.patch.dict("os.environ", {}, clear=True)
 
         # Act & Assert: Check that an exception is raised for missing port environment variable
-        with pytest.raises(ValueError, match=re.escape("invalid literal for int() with base 10: '${POSTGRES_PORT}'")):
-            init_db()
-
-        mocker.patch.dict("os.environ", {"POSTGRES_PORT": "1234"})
-        mocker.patch("rs_server_staging.main.api", init_pygeoapi())
-
-        # Act & Assert: Check that a RuntimeError is raised for other missing environment variables
-        with pytest.raises(SQLAlchemyError):
-            init_db(timeout=0)
+        with pytest.raises(KeyError, match="POSTGRES_HOST"):
+            init_pygeoapi()
 
     def test_init_db_sqlalchemy_error(self, set_db_env_var, mocker):  # pylint: disable=unused-argument
         """Test that the function raises an error when SQLAlchemy fails."""

@@ -34,6 +34,10 @@ from rs_server_staging.processors import Staging  # pylint: disable=import-error
 
 TEST_DETAIL = "Test detail"
 
+
+# These env vars are mandatory before importing the staging main module
+for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB":
+    os.environ[envvar] = ""
 from rs_server_staging.main import app  # pylint: disable=import-error
 
 
