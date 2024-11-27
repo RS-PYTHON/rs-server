@@ -912,7 +912,6 @@ retried for %s times. Aborting",
         # Prepare the request
         session = CustomSessionRedirect(trusted_domains)
         self.logger.debug(f"trusted_domains = {trusted_domains}")
-        stream_url = stream_url.replace("5002", "10000")
         request = requests.Request(
             method="GET",
             url=stream_url,
