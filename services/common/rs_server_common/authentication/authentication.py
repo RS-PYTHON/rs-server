@@ -91,7 +91,6 @@ async def authenticate(
                 token,
                 key=key,
                 issuer=issuer,
-                options={"verify_exp": False},  # Workaround for RSPY-514 to avoid 'signature has expired' errors
                 audience=os.environ["OIDC_CLIENT_ID"],
                 algorithms=["RS256"],
             )
