@@ -120,12 +120,14 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     """
 
     # Find the collection which id == the input collection_id
+    logger.debug(f"select_config({collection_id})")
     collection = select_config(collection_id)
     if not collection:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown AUXIP collection: {collection_id!r}")
     station = collection["station"]
 
     # Call the authentication function from the authentication module
+    logger.debug("authentication.auth_validation")
     authentication.auth_validation("adgs", access_type, request=request, station=station)
 
 
@@ -300,6 +302,7 @@ async def get_adgs_collection_specific_item(
     # Search all the collection items then search manually for the right one.
     # TODO: allow the search function to take the item ID instead.
     try:
+        logger.debug("Calling pgstac_client.get_item")
         item = await request.app.state.pgstac_client.get_item(item_id, collection_id, request)
     except HTTPException:  # validation error, just forward it
         raise
@@ -342,9 +345,13 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
     set_eodag_auth_token(station, "auxip")
+    logger.debug("Validating inputs")
     (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
-        products = init_adgs_provider(station).search(
+        logger.debug("Initializing ADGS eodag provider")
+        adgs = init_adgs_provider(station)
+        logger.debug("Searching")
+        products = adgs.search(
             TimeRange(start_date, stop_date),
             attr_ptype=product_type,
             items_per_page=limit,
@@ -354,14 +361,19 @@ def process_product_search(  # pylint: disable=too-many-locals
         )
         feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
         stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
+        logger.debug("Loading JSON mapping config files")
         with (
             open(feature_template_path, encoding="utf-8") as template,
             open(stac_mapper_path, encoding="utf-8") as stac_map,
         ):
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
+            logger.debug("create_stac_collection")
             collection = create_stac_collection(products, feature_template, stac_mapper)
-            return prepare_collection(serialize_adgs_asset(collection, products))
+            logger.debug("serialize_adgs_asset")
+            xxx = serialize_adgs_asset(collection, products)
+            logger.debug("prepare_collection")
+            return prepare_collection(xxx)
     # pylint: disable=duplicate-code
     except CreateProviderFailed as exception:
         logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
@@ -375,7 +387,6 @@ def process_product_search(  # pylint: disable=too-many-locals
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Station ADGS connection error: {exception}",
         ) from exception
-
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(f"General failure! {exception}")
         raise HTTPException(

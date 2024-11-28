@@ -27,37 +27,49 @@ import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import QueryableField, map_stac_platform
+from rs_server_common.utils.logging import Logging
 
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"
 
+logger = Logging.default(__name__)
+
 
 def read_conf():
     """Used each time to read RSPY_ADGS_SEARCH_CONFIG config yaml."""
+    logger.debug("start adgs_utils.read_conf")
     adgs_search_config = os.environ.get("RSPY_ADGS_SEARCH_CONFIG", str(search_yaml.absolute()))
     with open(adgs_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
+    logger.debug("end adgs_utils.read_conf")
     return config
 
 
 def select_config(configuration_id: str) -> dict | None:
     """Used to select a specific configuration from yaml file, returns None if not found."""
-    return next(
+    logger.debug("start adgs_utils.select_config")
+    res = next(
         (item for item in read_conf()["collections"] if item["id"] == configuration_id),
         None,
     )
+    logger.debug("end adgs_utils.select_config")
+    return res
 
 
 def stac_to_odata(stac_params: dict) -> dict:
     """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
+    logger.debug("start adgs_utils.stac_to_odata")
     stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
     with open(stac_mapper_path, encoding="utf-8") as stac_map:
         stac_mapper = json.loads(stac_map.read())
-        return {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
+        res = {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
+        logger.debug("end adgs_utils.stac_to_odata")
+        return res
 
 
 def serialize_adgs_asset(feature_collection, products):
     """Used to update adgs asset with propper href and format {asset_name: asset_body}."""
+    logger.debug("start adgs_utils.serialize_adgs_asset")
     for feature in feature_collection.features:
         auxip_id = feature.properties.dict()["auxip:id"]
         # Find matching product by id and update feature href
@@ -70,6 +82,7 @@ def serialize_adgs_asset(feature_collection, products):
         # Rename "file" asset to feature.id
         feature.assets[feature.id] = feature.assets.pop("file")
 
+    logger.debug("end adgs_utils.serialize_adgs_asset")
     return feature_collection
 
 
@@ -119,6 +132,7 @@ def auxip_map_mission(platform: str, constellation: str):
     Input: platform = sentinel-5P       Output: sentinel-5p, None
     Input: constellation = sentinel-1   Output: sentinel-1, None
     """
+    logger.debug("start adgs_utils.auxip_map_mission")
     data = map_stac_platform()
     platform_short_name: Union[str, None] = None
     platform_serial_identifier: Union[str, None] = None
@@ -147,6 +161,7 @@ def auxip_map_mission(platform: str, constellation: str):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Cannot map platform/constellation",
         ) from exc
+    logger.debug("end adgs_utils.auxip_map_mission")
     return platform_short_name, platform_serial_identifier
 
 
@@ -155,7 +170,9 @@ def adgs_reverse_map_mission(
     constellation: Union[str, None],
 ) -> Tuple[Union[str, None], Union[str, None]]:
     """Function used to re-map platform and constellation based on satellite value."""
+    logger.debug("start adgs_utils.adgs_reverse_map_mission")
     if not (constellation or platform):
+        logger.debug("end adgs_utils.adgs_reverse_map_mission 1")
         return None, None
 
     constellation = constellation.lower()  # type: ignore
@@ -164,15 +181,19 @@ def adgs_reverse_map_mission(
         for key, info in satellite.items():
             # Check for matching serialid and constellation
             if info.get("serialid") == platform and info.get("constellation").lower() == constellation:
+                logger.debug("end adgs_utils.adgs_reverse_map_mission 2")
                 return key, info.get("constellation")
+    logger.debug("end adgs_utils.adgs_reverse_map_mission 3")
     return None, None
 
 
 def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
     """Used to create a more complex mapping on platform/constallation from odata to stac."""
+    logger.debug("start adgs_utils.prepare_collection")
     for feature in collection.features:
         feature.properties.platform, feature.properties.constellation = adgs_reverse_map_mission(
             feature.properties.platform,
             feature.properties.constellation,
         )
+    logger.debug("end adgs_utils.prepare_collection")
     return collection
