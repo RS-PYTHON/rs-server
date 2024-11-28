@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
 from typing import (
+    Annotated,
     Any,
     AsyncIterator,
     Callable,
@@ -37,22 +38,67 @@ from typing import (
 import stac_pydantic
 import stac_pydantic.links
 import yaml
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException
+from fastapi import Path as FPath
+from fastapi import Query, Request, status
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
+from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     extract_eo_product,
     odata_to_stac,
     validate_inputs_format,
 )
+from stac_fastapi.api.models import Limit
+from stac_fastapi.extensions.core.filter.request import FilterLang
 from stac_pydantic.item import Item
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
 
+
+def log_http_exception(*args, **kwargs) -> HTTPException:
+    """Log error and return an HTTP execption to be raised by the caller"""
+    return utils2.log_http_exception(logger, *args, **kwargs)
+
+
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
+# Type hints
+CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
+DateTimeType = Annotated[
+    Optional[str],
+    Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"'),
+]
+FilterType = Annotated[
+    Optional[str],
+    Query(
+        description="""A CQL filter expression for filtering items.\n
+Supports `CQL-JSON` as defined in https://portal.ogc.org/files/96288\n
+Remember to URL encode the CQL-JSON if using GET""",
+        json_schema_extra={
+            "example": "id='LC08_L1TP_060247_20180905_20180912_01_T1_L1TP' AND collection='landsat8_l1tp'",
+        },
+    ),
+]
+FilterLangType = Annotated[
+    Optional[FilterLang],
+    Query(
+        alias="filter-lang",
+        description="The CQL filter encoding that the 'filter' value uses.",
+    ),
+]
+SortByType = Annotated[Optional[str], Query(description="Sort by +/-fieldName (ascending/descending)")]
+LimitType = Annotated[
+    Optional[Limit],
+    Query(
+        description="Limits the number of results that are included in each page of the response "
+        "(between 1000 and 10_000)",
+    ),
+]
+PageType = Annotated[Optional[str], Query(description="Page number to be displayed, defaults to first one.")]
 
 
 class Queryables(BaseModel):
@@ -227,7 +273,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             collection_id = args[0]
             collection = self.select_config(collection_id)
             if not collection:
-                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown {self.service} collection: {collection_id!r}")
+                raise log_http_exception(
+                    status.HTTP_404_NOT_FOUND,
+                    f"Unknown {self.service} collection: {collection_id!r}",
+                )
 
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", "1.0.0")
@@ -245,7 +294,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             params = json.loads(args[0]) if args else {}
             return await self.search(params)
 
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
+        raise log_http_exception(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
     async def search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
         self,
@@ -288,7 +337,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Merge pagination parameters into input params.
             # Convert lists with one element into this single value.
             for key, values in query_params.items():
-                if key not in ("limit", "page", "sort"):
+                if key not in ("limit", "page", "sortby"):
                     continue
                 if isinstance(values, list) and (len(values) == 1):
                     params[key] = values[0]
@@ -324,7 +373,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.page < 1:
                     raise ValueError
             except ValueError as exc:
-                raise HTTPException(
+                raise log_http_exception(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"Invalid page value: {page!r}",
                 ) from exc
@@ -337,23 +386,25 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.limit < 1:
                     raise ValueError
             except ValueError as exc:
-                raise HTTPException(
+                raise log_http_exception(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"Invalid limit value: {limit!r}",
                 ) from exc
 
         # Sort results
-        sortby = "-datetime"  # default value
-        sortby_list = params.pop("sortby", [])
-        if len(sortby_list) > 1:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                f"Only one 'sortby' search parameter is allowed: {sortby_list!r}",
-            )
-        if sortby_list:
-            sortby_dict = sortby_list[0]
-            sortby = "+" if sortby_dict["direction"] == "asc" else "-"
-            sortby += sortby_dict["field"]
+        sortby_param = params.pop("sortby", None)
+        if isinstance(sortby_param, str):
+            self.sortby = sortby_param
+        elif isinstance(sortby_param, list):
+            if len(sortby_param) > 1:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Only one 'sortby' search parameter is allowed: {sortby_param!r}",
+                )
+            if sortby_param:
+                sortby_dict = sortby_param[0]
+                self.sortby = "+" if sortby_dict["direction"] == "asc" else "-"
+                self.sortby += sortby_dict["field"]
 
         # datetime interval = PublicationDate
         datetime = params.pop("datetime", None)
@@ -365,7 +416,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 elif self.cadip:
                     stac_params["published"] = datetime
             except HTTPException as exception:
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid datetime interval: {datetime!r}. "
                     "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
@@ -381,7 +432,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Read a query or CQL filter property"""
             nonlocal stac_params
             if prop not in allowed_properties:
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query or CQL property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
@@ -401,7 +452,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Read a single property
             if op == "=":
                 if (len(args) != 2) or not (prop := args[0].get("property")):
-                    raise HTTPException(
+                    raise log_http_exception(
                         status.HTTP_422_UNPROCESSABLE_ENTITY,
                         f"Invalid CQL2 filter: {format_dict(filt)}",
                     )
@@ -411,7 +462,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Else we are reading several properties
             if op != "and":
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filt)}",
                 )
@@ -424,7 +475,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         query = params.pop("query", {})
         for prop, operator in query.items():
             if (len(operator) != 1) or not (value := operator.get("eq")):
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query: {{{prop!r}: {format_dict(operator)}}}"
                     ", only {'<property>': {'eq': <value>}} is allowed",
@@ -450,7 +501,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # If search parameters remain, they are not implemented
         if params:
-            raise HTTPException(
+            raise log_http_exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 f"Unimplemented search parameters: {format_dict(params)}",
             )
@@ -547,8 +598,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if not self.limit:
                     self.limit = self.odata.get("top", 1000)
 
-                # TODO: what to do with the sortby parameter ?
-
                 # Do the search for this collection
                 features = (await self.process_search(collection, self.odata)).features
 
@@ -588,7 +637,7 @@ def create_collection(collection: dict) -> stac_pydantic.Collection:
         stac_collection = stac_pydantic.Collection(type="Collection", **collection)
         return stac_collection
     except ValidationError as exc:
-        raise HTTPException(
+        raise log_http_exception(
             detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         ) from exc
@@ -604,13 +653,13 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
             return await func(*args, **kwargs)
         except KeyError as exc:
             logger.error(f"KeyError caught in {func.__name__}")
-            raise HTTPException(
+            raise log_http_exception(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Cannot create STAC Collection -> Missing {exc}",
             ) from exc
         except ValidationError as exc:
             logger.error(f"ValidationError caught in {func.__name__}")
-            raise HTTPException(
+            raise log_http_exception(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Parameters validation error: {exc}",
             ) from exc

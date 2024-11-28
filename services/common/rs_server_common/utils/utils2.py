@@ -17,7 +17,15 @@ This module is used to share common functions between apis endpoints.
 Split it from utils.py because of dependency conflicts between rs-server-catalog and rs-server-common.
 """
 
+import os
 from dataclasses import dataclass
+from functools import wraps
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from fastapi import HTTPException
+from filelock import FileLock
+from typing_extensions import Annotated, Doc
 
 
 @dataclass
@@ -34,6 +42,39 @@ class AuthInfo:
     apikey_config: dict
 
 
+def log_http_exception(
+    logger,
+    status_code: Annotated[
+        int,
+        Doc(
+            """
+                HTTP status code to send to the client.
+                """,
+        ),
+    ],
+    detail: Annotated[
+        Any,
+        Doc(
+            """
+                Any data to be sent to the client in the `detail` key of the JSON
+                response.
+                """,
+        ),
+    ] = None,
+    headers: Annotated[
+        Optional[Dict[str, str]],
+        Doc(
+            """
+                Any headers to send to the client in the response.
+                """,
+        ),
+    ] = None,
+) -> HTTPException:
+    """Log error and return an HTTP execption to be raised by the caller"""
+    logger.error(detail)
+    return HTTPException(status_code, detail, headers)
+
+
 def read_response_error(response):
     """Read and return an HTTP response error detail."""
 
@@ -47,3 +88,28 @@ def read_response_error(response):
         detail = response.content.decode("utf-8", errors="ignore")
 
     return detail
+
+
+def filelock(func, env_var: str):
+    """
+    Avoid concurrent writing to the database using a file lock.
+
+    Args:
+        env_var: environment variable that defines the folder where to save the lock file.
+    """
+
+    @wraps(func)
+    def with_filelock(*args, **kwargs):
+        """Wrap the the call to 'func' inside the lock."""
+
+        # Let's do this only if the RSPY_WORKING_DIR environment variable is defined.
+        # Write a .lock file inside this directory.
+        try:
+            with FileLock(Path(os.environ[env_var]) / f"{env_var}.lock"):
+                return func(*args, **kwargs)
+
+        # Else just call the function without a lock
+        except KeyError:
+            return func(*args, **kwargs)
+
+    return with_filelock

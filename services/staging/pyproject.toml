@@ -56,15 +56,15 @@ aiohttp = "^3.10.5"
 dask = {extras = ["distributed"], version = "2024.1.0"}
 dask-gateway = "2024.1.0"
 msgpack = "1.0.7"
-toolz = "0.12.0"
-tornado = "6.4.1"
+toolz = "1.0.0"
+tornado = "6.4.2"
 geoalchemy2 = "^0.16.0"
 
 # TEMP: because of the pydantic conflict
 # we also need the rs-server-common dependencies. We duplicate them here
 # except duplicates and dependencies on which we have version conflicts.
-boto3 = "==1.28.85"
-botocore = "==1.31.85"
+boto3 = ">=1.35.40"
+botocore = ">=1.35.40"
 markdown = "^3.6"
 python-dotenv = "^1.0.0"
 psycopg2 = "^2.9.9"
@@ -81,15 +81,14 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 python = "^3.11"
-pre-commit = "^3.7.1"
-bandit = "^1.7.9"
+pre-commit = ">=3.7.1,<5.0.0"
 pylint = "^3.3.0"
 pytest = "^8.3.3"
 pytest-asyncio = "^0.24.0"
-pytest-cov = "^5.0.0"
+pytest-cov = ">=5,<7"
 pytest-docker = "^3.1.0"
 pytest-error-for-skips = "^2.0.2"
-pytest-httpx = "^0.32.0"
+pytest-httpx = ">=0.32,<0.35"
 pytest-mock = "^3.12.0"
 
 [tool.black]

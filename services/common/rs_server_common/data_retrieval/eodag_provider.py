@@ -120,6 +120,7 @@ class EodagProvider(Provider):
 
         if session_id := kwargs.pop("id", None):
             # Map session_id to the appropriate eodag parameter
+            session_id = session_id[0] if len(session_id) == 1 else session_id
             key = "SessionIds" if isinstance(session_id, list) else "SessionId"
             value = ", ".join(f"'{s}'" for s in session_id) if isinstance(session_id, list) else f"'{session_id}'"
             mapped_search_args[key] = value

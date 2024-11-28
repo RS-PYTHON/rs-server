@@ -49,7 +49,14 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.stac_api_common import (
+    CollectionType,
+    DateTimeType,
+    FilterLangType,
+    FilterType,
+    LimitType,
     MockPgstac,
+    PageType,
+    SortByType,
     create_stac_collection,
     handle_exceptions,
 )
@@ -59,6 +66,8 @@ from rs_server_common.utils.utils import (
     validate_sort_input,
     write_search_products_to_db,
 )
+
+# pylint: disable=duplicate-code # with cadip_search
 
 logger = Logging.default(__name__)
 router = APIRouter(tags=adgs_tags)
@@ -80,6 +89,9 @@ class MockPgstacAdgs(MockPgstac):
             map_mission=auxip_map_mission,
         )
 
+        # Default sortby value
+        self.sortby = "-created"
+
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
@@ -89,7 +101,7 @@ class MockPgstacAdgs(MockPgstac):
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
             self.limit,
-            self.request.query_params.get("sortby", "-created"),
+            self.sortby,
             self.page,
             Name=odata_params.get("Name", [None])[0],
             attr_platform_short_name=odata_params.get("platformShortName"),
@@ -187,7 +199,14 @@ async def get_adgs_collection(
 @handle_exceptions
 async def get_adgs_collection_items(
     request: Request,
-    collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
+    collection_id: CollectionType,
+    # stac search parameters
+    datetime: DateTimeType = None,
+    filter_: FilterType = None,
+    filter_lang: FilterLangType = "cql2-text",
+    sortby: SortByType = None,
+    limit: LimitType = None,
+    page: PageType = None,
 ) -> list[dict] | dict:
     """
     Retrieve a list of items from a specified AUXIP collection.
@@ -197,20 +216,29 @@ async def get_adgs_collection_items(
     the items based on defined query parameters.
 
     Args:
-    - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
-            (e.g., 'ins_s1'). Maximum length of 100 characters.
+        collection_id (str): AUXIP collection ID. Must be a valid collection identifier
+                             (e.g., 'ins_s1'). Maximum length of 100 characters.
 
     Returns:
-    - list[dict]: A FeatureCollection of items belonging to the specified collection, or an
+        list[dict]: A FeatureCollection of items belonging to the specified collection, or an
                     error message if the collection is not found.
 
     Raises:
-    - HTTPException: If the authentication fails, or if there are issues with the
-                    collection ID provided.
+        HTTPException: If the authentication fails, or if there are issues with the
+                       collection ID provided.
     """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
-    return await request.app.state.pgstac_client.item_collection(collection_id, request)
+    return await request.app.state.pgstac_client.item_collection(
+        collection_id,
+        request,
+        datetime=datetime,
+        filter=filter_,
+        filter_lang=filter_lang,
+        sortby=sortby,
+        limit=limit,
+        page=page,
+    )
 
 
 @router.get("/auxip/collections/{collection_id}/items/{item_id}")
@@ -300,7 +328,7 @@ def process_product_search(  # pylint: disable=too-many-locals
         station (str): Auxip station identifier.
         datetime (str): Time interval in ISO 8601 format.
         limit (int, optional): Maximum number of products to return. Defaults to 1000.
-        sortby (str: optional): Sorting field, default to created, descending.
+        sortby (str): Sort by +/-fieldName (ascending/descending).
 
     Returns:
         list[dict] | dict: A list of STAC Feature Collections or an error message.

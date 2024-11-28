@@ -50,4 +50,4 @@ resources:
       name: Staging
 
 openapi:
-  path: /openapi.json
+  path: # not used
