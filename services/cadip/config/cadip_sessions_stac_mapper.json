@@ -1,7 +1,7 @@
 {
   "id": "SessionId",
   "start_datetime": "DownlinkStart",
-  "datetime": "DownlinkStart",
+  "datetime": "PublicationDate",
   "end_datetime": "DownlinkStop",
   "published": "PublicationDate",
   "platform": "Satellite",
