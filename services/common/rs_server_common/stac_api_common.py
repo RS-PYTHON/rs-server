@@ -382,6 +382,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     detail=f"Invalid limit value: {limit!r}",
                 ) from exc
 
+        self.user_limit: int = self.limit
+        self.user_page: int = self.page
+
         # Sort results
         sortby_param = params.pop("sortby", None)
         if isinstance(sortby_param, str):
@@ -535,13 +538,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     def paginate(self, item_collection: stac_pydantic.ItemCollection) -> Dict[str, Any]:
         """Method used to apply pagination options after /search result were aggregated."""
 
-        sortby: str = self.request.query_params.get("sorbty", "-datetime")
-        search_limit: int = int(self.request.query_params.get("limit", self.odata.get("top", self.limit)))
-        search_page: int = int(self.request.query_params.get("page", self.odata.get("page", self.page)))
-
-        paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection)
+        paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection, self.sortby)
         return stac_pydantic.ItemCollection(
-            features=paginated_item_collection.features[search_limit * (search_page - 1) : search_limit * search_page],
+            features=paginated_item_collection.features[
+                self.user_limit * (self.user_page - 1) : self.user_limit * self.user_page
+            ],
             type=paginated_item_collection.type,
         ).model_dump()
 
@@ -789,10 +790,13 @@ def create_stac_collection(
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
 
 
-def sort_feature_collection(item_collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
+def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortby: str) -> stac_pydantic.ItemCollection:
     """
     Later implement sorting on multiple fields
     """
     # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
-    sorted_items = sorted(item_collection.features, key=lambda item: item.properties.datetime)  # type: ignore
+    direction, attribute = sortby[:1], sortby[1:]
+    sorted_items = sorted(
+        item_collection.features, key=lambda item: item.properties.datetime, reverse=direction == "-",
+    )  # type: ignore
     return stac_pydantic.ItemCollection(features=sorted_items, type=item_collection.type)
