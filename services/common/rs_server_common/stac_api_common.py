@@ -382,7 +382,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     detail=f"Invalid limit value: {limit!r}",
                 ) from exc
 
-        self.user_limit: int = self.limit
+        self.user_limit: int = self.limit  # type: ignore
         self.user_page: int = self.page
 
         # Sort results
@@ -795,8 +795,11 @@ def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortb
     Later implement sorting on multiple fields
     """
     # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
+    sortby = sortby.strip("'\"")
     direction, attribute = sortby[:1], sortby[1:]
     sorted_items = sorted(
-        item_collection.features, key=lambda item: item.properties.datetime, reverse=direction == "-",
+        item_collection.features,
+        key=lambda item: getattr(item.properties, attribute),  # type: ignore
+        reverse=direction == "-",
     )  # type: ignore
     return stac_pydantic.ItemCollection(features=sorted_items, type=item_collection.type)
