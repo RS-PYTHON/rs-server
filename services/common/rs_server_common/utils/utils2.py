@@ -38,7 +38,7 @@ class AuthInfo:
     apikey_config: dict
 
 
-def log_and_raise_http(
+def log_http_exception(
     logger,
     status_code: Annotated[
         int,
@@ -65,14 +65,10 @@ def log_and_raise_http(
                 """,
         ),
     ] = None,
-    original: Annotated[
-        Optional[Exception],
-        Doc("Original exception"),
-    ] = None,
-) -> None:
-    """Log error and raise an HTTP execption"""
+) -> HTTPException:
+    """Log error and return an HTTP execption to be raised by the caller"""
     logger.error(detail)
-    raise HTTPException(status_code, detail, headers) from original
+    return HTTPException(status_code, detail, headers)
 
 
 def read_response_error(response):
