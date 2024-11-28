@@ -51,7 +51,14 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
 from rs_server_common.stac_api_common import (
+    CollectionType,
+    DateTimeType,
+    FilterLangType,
+    FilterType,
+    LimitType,
     MockPgstac,
+    PageType,
+    SortByType,
     create_stac_collection,
     handle_exceptions,
 )
@@ -62,6 +69,8 @@ from rs_server_common.utils.utils import (
     validate_str_list,
     write_search_products_to_db,
 )
+
+# pylint: disable=duplicate-code # with adgs_search
 
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
@@ -84,6 +93,9 @@ class MockPgstacCadip(MockPgstac):
             map_mission=cadip_map_mission,
         )
 
+        # Default sortby value
+        self.sortby = "-published"
+
     @handle_exceptions
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
@@ -94,7 +106,7 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("Satellite", []),
             odata_params.get("PublicationDate"),
             odata_params.get("Retransfer"),
-            self.request.query_params.get("sortby", "-published"),
+            self.sortby,
             self.limit,
             self.page,
         )
@@ -275,7 +287,14 @@ async def get_cadip_collection(
 @handle_exceptions
 async def get_cadip_collection_items(
     request: Request,
-    collection_id: Annotated[str, FPath(title="CADIP collection ID.", max_length=100, description="E.G. ins_s1")],
+    collection_id: CollectionType,
+    # stac search parameters
+    datetime: DateTimeType = None,
+    filter_: FilterType = None,
+    filter_lang: FilterLangType = "cql2-text",
+    sortby: SortByType = None,
+    limit: LimitType = None,
+    page: PageType = None,
 ):
     """
     Retrieve a List of items for a specific collection.
@@ -304,7 +323,16 @@ async def get_cadip_collection_items(
     """
     logger.info(f"Starting {request.url.path}")
     auth_validation(request, collection_id, "read")
-    return await request.app.state.pgstac_client.item_collection(collection_id, request)
+    return await request.app.state.pgstac_client.item_collection(
+        collection_id,
+        request,
+        datetime=datetime,
+        filter=filter_,
+        filter_lang=filter_lang,
+        sortby=sortby,
+        limit=limit,
+        page=page,
+    )
 
 
 @router.get("/cadip/collections/{collection_id}/items/{session_id}")
@@ -396,7 +424,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
         time_interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
         limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
-        sortby (str): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
+        sortby (str): Sort by +/-fieldName (ascending/descending).
         page (int): Page number to be displayed, defaults to first one.
     Returns:
         dict (dict): A STAC Feature Collection of the sessions.

@@ -24,6 +24,8 @@ for f in $(find "$ROOT_DIR" -name pyproject.toml); do
         cd $(dirname $f)
         poetry lock
         poetry install --with dev || poetry install
-        poetry run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
+        if [[ " $@ " == *" --otel "* ]]; then
+            poetry run opentelemetry-bootstrap -a install || true # install otel instrumentation packages for dependencies
+        fi
     )
 done
