@@ -18,6 +18,10 @@ Split it from utils.py because of dependency conflicts between rs-server-catalog
 """
 
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
+
+from fastapi import HTTPException
+from typing_extensions import Annotated, Doc
 
 
 @dataclass
@@ -32,6 +36,39 @@ class AuthInfo:
 
     # Configuration associated to the API key (not implemented for now)
     apikey_config: dict
+
+
+def log_http_exception(
+    logger,
+    status_code: Annotated[
+        int,
+        Doc(
+            """
+                HTTP status code to send to the client.
+                """,
+        ),
+    ],
+    detail: Annotated[
+        Any,
+        Doc(
+            """
+                Any data to be sent to the client in the `detail` key of the JSON
+                response.
+                """,
+        ),
+    ] = None,
+    headers: Annotated[
+        Optional[Dict[str, str]],
+        Doc(
+            """
+                Any headers to send to the client in the response.
+                """,
+        ),
+    ] = None,
+) -> HTTPException:
+    """Log error and return an HTTP execption to be raised by the caller"""
+    logger.error(detail)
+    return HTTPException(status_code, detail, headers)
 
 
 def read_response_error(response):
