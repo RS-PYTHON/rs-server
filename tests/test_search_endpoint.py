@@ -1049,7 +1049,7 @@ def test_search_parameters(
 
     # Static values
     user_ids = "id1, id2"
-    user_datetime = "2021-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
+    user_datetime = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
     user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
     user_params = {
         "limit": user_limit,
@@ -1210,7 +1210,7 @@ def test_search_parameters(
             # The second collection has a query that does not intersect the user query.
             # So either it returns no results. Or, if the user query is missing, we use the collection query.
             elif collection_id == "col2":
-                odata = "" if user_query else odata_query
+                odata = odata_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
                 date_max = hardcoded_date.split("/")[1]
                 product_type = collection["query"].get("productType")
@@ -1261,7 +1261,7 @@ def test_search_parameters(
                     if cadip:
                         odata_query_files = (
                             "http://127.0.0.1:5000/Files?"
-                            "$filter=SessionId%20eq%20'S1A_20200105072204051312'&$top=10000&$skip=0"
+                            "$filter=SessionId%20eq%20'S1A_20200105072204051312'&$top=1000&$skip=0"
                         )
                         rsps.add(
                             responses.GET,

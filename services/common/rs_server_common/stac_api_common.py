@@ -554,6 +554,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """Method used to process a collection and perform search."""
         first_exception = None
         features = None
+        empty_selection = False
         # Convert search params from STAC keys to OData keys
         odata_params = self.stac_to_odata(stac_params)
         try:
@@ -580,6 +581,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
                     # If no intersection, then the selection is empty, else save the intersection
                     if start >= stop:
+                        empty_selection = True
                         break  # try next collection
                     self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
 
@@ -607,11 +609,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         if intersection:
                             intersection = ", ".join(intersection)
                         if not intersection:
+                            empty_selection = False
                             break  # try next collection
 
                     # Save the intersection
                     self.odata[key] = intersection
-
+            if empty_selection:
+                return
             # Overwrite the pagination parameters.
             # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
             if not self.limit:
