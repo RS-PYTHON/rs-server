@@ -43,14 +43,17 @@ logger = Logging.default(__name__)
 
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
+    logger.debug("start cadip_utils.read_conf")
     cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
     with open(cadip_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
+    logger.debug("end cadip_utils.read_conf")
     return config
 
 
 def select_config(configuration_id: str) -> dict | None:
     """Used to select a specific configuration from yaml file, returns None if not found."""
+    logger.debug("start cadip_utils.select_config")
     return next(
         (item for item in read_conf()["collections"] if item["id"] == configuration_id),
         None,
@@ -59,9 +62,11 @@ def select_config(configuration_id: str) -> dict | None:
 
 def stac_to_odata(stac_params: dict) -> dict:
     """Convert a parameter directory from STAC keys to OData keys. Return the new directory."""
+    logger.debug("start cadip_utils.stac_to_odata")
     stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
     with open(stac_mapper_path, encoding="utf-8") as stac_map:
         stac_mapper = json.loads(stac_map.read())
+        logger.debug("end cadip_utils.stac_to_odata")
         return {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
 
 
@@ -84,9 +89,11 @@ def update_product(product: dict) -> dict:
 
 def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, href: str) -> Asset:
     """This function is used to map extended files from odata to stac format."""
+    logger.debug("start cadip_utils.map_dag_file_to_asset")
     asset = {map_key: product.properties[map_value] for map_key, map_value in mapper.items()}
     href = re.sub(r"\([^\)]*\)", f'({product.properties["id"]})', href)
     asset.pop("id")
+    logger.debug("end cadip_utils.map_dag_file_to_asset")
     return Asset(href=href, roles=["cadu"], title=product.properties["Name"], **asset)
 
 
@@ -127,6 +134,7 @@ def from_session_expand_to_assets_serializer(
 
 def validate_products(products: eodag.EOProduct):
     """Function used to remove all miconfigured outputs."""
+    logger.debug("start cadip_utils.validate_products")
     valid_eo_products = []
     for product in products:
         try:
@@ -135,6 +143,7 @@ def validate_products(products: eodag.EOProduct):
         except eodag.utils.exceptions.MisconfiguredError as e:
             logger.warning(e)
             continue
+    logger.debug("end cadip_utils.validate_products")
     return valid_eo_products
 
 
@@ -145,6 +154,7 @@ def cadip_map_mission(platform: str, constellation: str):
     Input: platform = sentinel-1a       Output: A
     Input: constellation = sentinel-1   Output: A, B, C
     """
+    logger.debug("start cadip_utils.cadip_map_mission")
     data: dict = map_stac_platform()
     satellite: Union[None, str] = None
     satellites: Union[None, str] = None
@@ -171,22 +181,28 @@ def cadip_map_mission(platform: str, constellation: str):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Cannot map platform/constellation",
         ) from exc
+    logger.debug("end cadip_utils.cadip_map_mission")
     return satellite or satellites
 
 
 def cadip_reverse_map_mission(platform: Union[str, None]) -> Tuple[Union[str, None], Union[str, None]]:
     """Function used to re-map platform and constellation based on satellite value."""
+    logger.debug("start cadip_utils.cadip_map_mission")
     if not platform:
+        logger.debug("end cadip_utils.cadip_map_mission 1")
         return None, None
     for satellite in map_stac_platform()["satellites"]:
         for key, info in satellite.items():
             if info.get("code") == platform:
+                logger.debug("end cadip_utils.cadip_map_mission 2")
                 return key, info.get("constellation")
+    logger.debug("end cadip_utils.cadip_map_mission 3")
     return None, None
 
 
 def link_assets_to_session(session_data, assets_dict, mapper):
     """Function used to allocate assets to propper session item based on session id property."""
+    logger.debug("start cadip_utils.link_assets_to_session")
     # Validity check to be later added.
     for feature in session_data.features:
         matching_assets = [asset_item for asset_item in assets_dict if feature.id == asset_item["SessionId"]]
@@ -205,13 +221,16 @@ def link_assets_to_session(session_data, assets_dict, mapper):
         except ValueError:
             logger.warning(f"Cannot update end datetime for {feature.id}")
             continue
+    logger.debug("end cadip_utils.link_assets_to_session")
     return session_data
 
 
 def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
     """Used to create a more complex mapping on platform/constallation from odata to stac."""
+    logger.debug("start cadip_utils.prepare_collection")
     for feature in collection.features:
         feature.properties.platform, feature.properties.constellation = cadip_reverse_map_mission(
             feature.properties.platform,
         )
+    logger.debug("end cadip_utils.prepare_collection")
     return collection
