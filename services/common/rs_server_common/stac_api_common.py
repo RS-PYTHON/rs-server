@@ -550,7 +550,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         self,
         collection_id,
         stac_params,
-    ):  # pylint: disable=too-many-locals, too-many-branches
+    ):  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         """Method used to process a collection and perform search."""
         first_exception = None
         features = None
@@ -626,10 +626,19 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 self.limit = 10000
                 self.page = 1
 
-            # TODO: what to do with the sortby parameter ?
             # Do the search for this collection
             features = (await self.process_search(collection, self.odata)).features
+            # If search return maximum number of elements, increase page and process next elements
 
+            if len(features) == self.limit:
+                while True:
+                    self.page += 1
+                    next_features = (await self.process_search(collection, self.odata)).features
+                    features.extend(next_features)  # type: ignore
+                    # Extend current features.
+                    # Break the loop when result is less the maximum possible, meaning there is no next page.
+                    if len(next_features) < self.limit:
+                        break
             # Add the collection information
             for item in features:
                 item.collection = collection_id
