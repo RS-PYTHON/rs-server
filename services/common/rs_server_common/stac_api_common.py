@@ -59,6 +59,7 @@ from stac_pydantic.item import Item
 logger = Logging.default(__name__)
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+SEARCH_LIMIT = 10000
 
 # Type hints
 CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
@@ -623,22 +624,23 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if "/search" in self.request.url.path:  # type: ignore
                 # Don;t forward limit value for /search endpoints
                 # just use maximum to gather all possible results, page is always 1
-                self.limit = 10000
+                self.limit = SEARCH_LIMIT
                 self.page = 1
 
             # Do the search for this collection
             features = (await self.process_search(collection, self.odata)).features
             # If search return maximum number of elements, increase page and process next elements
 
-            if len(features) == self.limit:
+            if len(features) == SEARCH_LIMIT:
                 while True:
                     self.page += 1
                     next_features = (await self.process_search(collection, self.odata)).features
                     features.extend(next_features)  # type: ignore
                     # Extend current features.
                     # Break the loop when result is less the maximum possible, meaning there is no next page.
-                    if len(next_features) < self.limit:
+                    if len(next_features) < SEARCH_LIMIT:
                         break
+                self.page = 1
             # Add the collection information
             for item in features:
                 item.collection = collection_id
