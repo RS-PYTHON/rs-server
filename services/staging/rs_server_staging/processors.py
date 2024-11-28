@@ -714,8 +714,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         or similar storage, authenticated using the provided token.
 
         The function iterates through a list of assets (created previously after checking the catalog), represented by
-        `self.assets_info`, and submitsa Dask task for each asset to the cluster. Tasks are appended to `self.tasks` for
-        later monitoring.
+        `self.assets_info`, and submits a Dask task for each asset to the cluster. Tasks are appended to `self.tasks`
+        for later monitoring.
 
         Args:
             token (str): Authentication token used for accessing and processing the asset download
@@ -746,13 +746,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         asset_info[1],
                     ),
                 )
-                # streaming_task(
-                #     asset_info[0],
-                #     trusted_domains,
-                #     TokenAuth(token),
-                #     self.catalog_bucket,
-                #     asset_info[1],
-                # )
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
             raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
