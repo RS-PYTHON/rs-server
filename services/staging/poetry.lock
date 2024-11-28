@@ -3333,13 +3333,13 @@ sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
 name = "stac-pydantic"
-version = "2.0.0"
+version = "2.0.3"
 description = "Pydantic data models for the STAC spec"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "stac-pydantic-2.0.0.tar.gz", hash = "sha256:a76491db95f186a45d63bd6fda6b4cee504b044e8bf05fd3889911c16d25c211"},
-    {file = "stac_pydantic-2.0.0-py3-none-any.whl", hash = "sha256:220af37dae3e212f5b5ce9fcd479affd8e69885fe3f53d8bc1f91178b6b37e85"},
+    {file = "stac-pydantic-2.0.3.tar.gz", hash = "sha256:e29ee1d72ebd7a04362a127e97249aadaee779b3d573ec9429f97fec940aa684"},
+    {file = "stac_pydantic-2.0.3-py3-none-any.whl", hash = "sha256:35c82e8459f3b34b512c3b81a32147dbf93c87c48f05c785ad97b9b8a7af8b3d"},
 ]
 
 [package.dependencies]
@@ -3745,4 +3745,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "7576312f32219763eb923969aee5b056a9ac80c02439d4913aa34b98a9787be8"
+content-hash = "50311544af3b0015bed94577c45d262def171eac00f2f6e6cd777edf42273d44"

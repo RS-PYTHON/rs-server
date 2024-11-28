@@ -51,7 +51,7 @@ opentelemetry-instrumentation-aws-lambda = "^0.48b0"
 opentelemetry-test-utils = "^0.48b0"
 opentelemetry-exporter-otlp = "^1.27.0"
 python-logging-loki = "^0.3.1"
-stac-pydantic = "2.0.0"
+stac-pydantic = "2.0.3"
 aiohttp = "^3.10.5"
 dask = {extras = ["distributed"], version = "2024.1.0"}
 dask-gateway = "2024.1.0"
