@@ -46,23 +46,143 @@ template:
       url: "https://home.rs-python.eu/"
 
 collections:
-  - id: s1_adgs_OPER_AUX_ECMWFD_PDMC
+
+  # All stations deployed in the CS cluster, without queries
+
+  - id: adgs
+    station: adgs
+    title: "All from 'adgs' station"
+    description: "All from 'adgs' station"
+
+  - id: adgs2
+    station: adgs2
+    title: "All from 'adgs2' station"
+    description: "All from 'adgs2' station"
+
+  # Idem with one collection per product type
+
+  - id: adgs_aux_pp2
+    station: adgs
+    query:
+      productType: AUX_PP2
+    title: "AUX_PP2 'adgs' station"
+    description: "AUX_PP2 'adgs' station"
+
+  - id: adgs_oper_aux_ecmwfd_pdmc
     station: adgs
     query:
       productType: OPER_AUX_ECMWFD_PDMC
-    title: "'OPER_AUX_ECMWFD_PDMC' products"
-    description: "'OPER_AUX_ECMWFD_PDMC' products"
+    title: "OPER_AUX_ECMWFD_PDMC 'adgs' station"
+    description: "OPER_AUX_ECMWFD_PDMC 'adgs' station"
 
-  - id: s2_adgs2_AUX_OBMEMC
-    station: adgs2
-    query:
-      productType: AUX_OBMEMC
-    title: "'AUX_OBMEMC' products"
-    description: "'AUX_OBMEMC' products"
-
-  - id: aux_interval
+  - id: adgs_oper_aux_obmemc
     station: adgs
     query:
-      PublicationDate: "2020-01-01T00:00:00Z/2024-01-01T00:00:00Z"
-    title: "Products from 2020/2023"
-    description: "Products from 2020/2023"
+      productType: OPER_AUX_OBMEMC
+    title: "OPER_AUX_OBMEMC 'adgs' station"
+    description: "OPER_AUX_OBMEMC 'adgs' station"
+
+  - id: adgs_oper_aux_obmemc_pdmc
+    station: adgs
+    query:
+      productType: OPER_AUX_OBMEMC_PDMC
+    title: "OPER_AUX_OBMEMC_PDMC 'adgs' station"
+    description: "OPER_AUX_OBMEMC_PDMC 'adgs' station"
+
+  - id: adgs_oper_aux_preorb_opod
+    station: adgs
+    query:
+      productType: OPER_AUX_PREORB_OPOD
+    title: "OPER_AUX_PREORB_OPOD 'adgs' station"
+    description: "OPER_AUX_PREORB_OPOD 'adgs' station"
+
+  - id: adgs_oper_aux_resorb_opod
+    station: adgs
+    query:
+      productType: OPER_AUX_RESORB_OPOD
+    title: "OPER_AUX_RESORB_OPOD 'adgs' station"
+    description: "OPER_AUX_RESORB_OPOD 'adgs' station"
+
+  - id: adgs_oper_aux_resorb_opods
+    station: adgs
+    query:
+      productType: OPER_AUX_RESORB_OPODs
+    title: "OPER_AUX_RESORB_OPODs 'adgs' station"
+    description: "OPER_AUX_RESORB_OPODs 'adgs' station"
+
+  - id: adgs_oper_mpl_orbpre
+    station: adgs
+    query:
+      productType: OPER_MPL_ORBPRE
+    title: "OPER_MPL_ORBPRE 'adgs' station"
+    description: "OPER_MPL_ORBPRE 'adgs' station"
+
+  - id: adgs_oper_mpl_orbsct
+    station: adgs
+    query:
+      productType: OPER_MPL_ORBSCT
+    title: "OPER_MPL_ORBSCT 'adgs' station"
+    description: "OPER_MPL_ORBSCT 'adgs' station"
+
+  - id: adgs2_aux_pp2
+    station: adgs2
+    query:
+      productType: AUX_PP2
+    title: "AUX_PP2 'adgs2' station"
+    description: "AUX_PP2 'adgs2' station"
+
+  - id: adgs2_oper_aux_ecmwfd_pdmc
+    station: adgs2
+    query:
+      productType: OPER_AUX_ECMWFD_PDMC
+    title: "OPER_AUX_ECMWFD_PDMC 'adgs2' station"
+    description: "OPER_AUX_ECMWFD_PDMC 'adgs2' station"
+
+  - id: adgs2_oper_aux_obmemc
+    station: adgs2
+    query:
+      productType: OPER_AUX_OBMEMC
+    title: "OPER_AUX_OBMEMC 'adgs2' station"
+    description: "OPER_AUX_OBMEMC 'adgs2' station"
+
+  - id: adgs2_oper_aux_obmemc_pdmc
+    station: adgs2
+    query:
+      productType: OPER_AUX_OBMEMC_PDMC
+    title: "OPER_AUX_OBMEMC_PDMC 'adgs2' station"
+    description: "OPER_AUX_OBMEMC_PDMC 'adgs2' station"
+
+  - id: adgs2_oper_aux_preorb_opod
+    station: adgs2
+    query:
+      productType: OPER_AUX_PREORB_OPOD
+    title: "OPER_AUX_PREORB_OPOD 'adgs2' station"
+    description: "OPER_AUX_PREORB_OPOD 'adgs2' station"
+
+  - id: adgs2_oper_aux_resorb_opod
+    station: adgs2
+    query:
+      productType: OPER_AUX_RESORB_OPOD
+    title: "OPER_AUX_RESORB_OPOD 'adgs2' station"
+    description: "OPER_AUX_RESORB_OPOD 'adgs2' station"
+
+  - id: adgs2_oper_aux_resorb_opods
+    station: adgs2
+    query:
+      productType: OPER_AUX_RESORB_OPODs
+    title: "OPER_AUX_RESORB_OPODs 'adgs2' station"
+    description: "OPER_AUX_RESORB_OPODs 'adgs2' station"
+
+  - id: adgs2_oper_mpl_orbpre
+    station: adgs2
+    query:
+      productType: OPER_MPL_ORBPRE
+    title: "OPER_MPL_ORBPRE 'adgs2' station"
+    description: "OPER_MPL_ORBPRE 'adgs2' station"
+
+  - id: adgs2_oper_mpl_orbsct
+    station: adgs2
+    query:
+      productType: OPER_MPL_ORBSCT
+    title: "OPER_MPL_ORBSCT 'adgs2' station"
+    description: "OPER_MPL_ORBSCT 'adgs2' station"
