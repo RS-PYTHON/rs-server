@@ -805,16 +805,18 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
-        "endpoint, page",
+        "endpoint, page, is_last",
         [
-            ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "3"),
-            ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "1"),
-            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "3"),
-            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "1"),
+            ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "3", True),
+            ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "1", False),
+            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "3", True),
+            ("/cadip/collections/cadip_session_by_id/items?token=next:page=", "1", False),
         ],
     )
     @responses.activate
-    def test_token_in_url(self, client, mock_token_validation, endpoint, page):
+    def test_token_in_url(
+        self, client, mock_token_validation, adgs_response, cadip_session_response, endpoint, page, is_last,
+    ):
         """Used to test if application correctly builds next/previous token."""
         mock_token_validation()
         base_cadip_uri = (
@@ -822,7 +824,9 @@ class TestFeatureCollectionOdataStacMapping:
             "&$orderby=PublicationDate desc&"
             f"$top=10&$skip={(int(page) - 1) * 10}"
         )
-
+        base_cadip_files_uri = (
+            "http://127.0.0.1:5000/Files?$filter=SessionId eq 'S1A_20200105072204051312'&$top=1000&$skip=0"
+        )
         base_adgs_uri = (
             "http://127.0.0.1:5001/Products?"
             "$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name%20eq%20'productType'%20and%20"
@@ -831,26 +835,43 @@ class TestFeatureCollectionOdataStacMapping:
             f"$top=10&$skip={(int(page) - 1) * 10}&"
             "$expand=Attributes"
         )
-        responses.add(responses.GET, base_cadip_uri, json={"value": []}, status=200)
-        responses.add(responses.GET, base_adgs_uri, json={"value": []}, status=200)
+        responses.add(
+            responses.GET, base_cadip_uri, json={"value": []} if is_last else cadip_session_response, status=200,
+        )
+        responses.add(responses.GET, base_cadip_files_uri, json={"value": []}, status=200)
+        responses.add(responses.GET, base_adgs_uri, json={"value": []} if is_last else adgs_response, status=200)
 
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
+
         next_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=next:page={str(int(page) + 1)}"
-        assert {
-            "rel": "next",
-            "type": "application/geo+json",
-            "method": "GET",
-            "href": next_url,
-        } in response.json()["links"]
-        if int(page) > 1:
-            prev_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=prev:page={str(int(page) - 1)}"
+        prev_url = f"{str(response.url).split('token', maxsplit=1)[0]}token=prev:page={str(int(page) - 1)}"
+        # If this is last page (No results returned, check that "next" link doesn't exist.)
+        if is_last:
+            assert not any(link["rel"] == "next" for link in response.json()["links"])
+
+            # Check that "previous" link exists
+            assert any(link["rel"] == "previous" for link in response.json()["links"])
+            # Check content and href of "previous" link
             assert {
                 "rel": "previous",
                 "type": "application/geo+json",
                 "method": "GET",
                 "href": prev_url,
             } in response.json()["links"]
+        else:
+            # If this is first page (1) check that "previous" link doesn't exist.
+            assert any(link["rel"] == "next" for link in response.json()["links"])
+            # Check content and href of "next" link
+            assert {
+                "rel": "next",
+                "type": "application/geo+json",
+                "method": "GET",
+                "href": next_url,
+            } in response.json()["links"]
+
+            # Check that "previous" link exists
+            assert not any(link["rel"] == "previous" for link in response.json()["links"])
 
 
 class TestCollection:
