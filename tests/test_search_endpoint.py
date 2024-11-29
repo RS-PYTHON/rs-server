@@ -815,7 +815,14 @@ class TestFeatureCollectionOdataStacMapping:
     )
     @responses.activate
     def test_token_in_url(
-        self, client, mock_token_validation, adgs_response, cadip_session_response, endpoint, page, is_last,
+        self,
+        client,
+        mock_token_validation,
+        adgs_response,
+        cadip_session_response,
+        endpoint,
+        page,
+        is_last,
     ):
         """Used to test if application correctly builds next/previous token."""
         mock_token_validation()
@@ -836,7 +843,10 @@ class TestFeatureCollectionOdataStacMapping:
             "$expand=Attributes"
         )
         responses.add(
-            responses.GET, base_cadip_uri, json={"value": []} if is_last else cadip_session_response, status=200,
+            responses.GET,
+            base_cadip_uri,
+            json={"value": []} if is_last else cadip_session_response,
+            status=200,
         )
         responses.add(responses.GET, base_cadip_files_uri, json={"value": []}, status=200)
         responses.add(responses.GET, base_adgs_uri, json={"value": []} if is_last else adgs_response, status=200)
