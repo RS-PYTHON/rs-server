@@ -536,11 +536,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # Return results as a dict
         data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection")
         dict_data: Dict[str, Any] = self.paginate(data)
+
         # Handle pagination links.
-        # if len(dict_data["features"]) > 1:
-        #     # Don't create next page if the current one does not have features
-        #     dict_data["next"] = f"page={self.page + 1}"
-        dict_data["next"] = f"page={self.user_page + 1}"
+        if len(dict_data["features"]) > 0:
+            # Don't create next page if the current one does not have features
+            dict_data["next"] = f"page={self.user_page + 1}"
         if self.user_page > 1:
             dict_data["prev"] = f"page={self.user_page - 1}"
 
@@ -552,7 +552,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection, self.sortby)
         return stac_pydantic.ItemCollection(
             features=paginated_item_collection.features[
-                self.user_limit * (self.user_page - 1) : self.user_limit * self.user_page
+                self.user_limit * (self.user_page - 1) :self.user_limit * self.user_page
             ],
             type=paginated_item_collection.type,
         ).model_dump()
