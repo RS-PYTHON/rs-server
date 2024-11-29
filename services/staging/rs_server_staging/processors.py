@@ -18,15 +18,15 @@ import json
 import os
 import time
 import uuid
-from enum import Enum
+from datetime import datetime
 from typing import Union
 
 import requests
-import tinydb  # temporary, migrate to psql
 from dask.distributed import CancelledError, Client, LocalCluster, as_completed
 from dask_gateway import Gateway, JupyterHubAuth
 from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
+from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from requests.auth import AuthBase
 from rs_server_common.authentication.authentication_to_external import (
     get_station_token,
@@ -38,53 +38,7 @@ from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
-
-
-class ProcessorStatus(Enum):
-    """
-    Helper class used to enumerated processor job statuses.
-    It also contains serialization methods.
-    """
-
-    QUEUED = "queued"  # Request received, processor will start soon
-    CREATED = "created"  # Processor has been initialised
-    STARTED = "started"  # Processor execution has started
-    IN_PROGRESS = "in_progress"  # Processor execution is in progress
-    STOPPED = "stopped"
-    FAILED = "failed"
-    FINISHED = "finished"
-    PAUSED = "paused"
-    RESUMED = "resumed"
-    CANCELLED = "cancelled"
-
-    # Serialization
-    def __str__(self):
-        """
-        Returns the string representation of the ProcessorStatus instance.
-
-        Returns:
-            str: The value of the current ProcessorStatus instance.
-        """
-        return self.value
-
-    @classmethod
-    def to_json(cls, status):
-        """
-        Serializes a ProcessorStatus instance to its JSON-compatible representation.
-        """
-        if isinstance(status, cls):
-            return status.value
-        raise ValueError("Invalid ProcessorStatus")
-
-    @classmethod
-    def from_json(cls, value):
-        """
-        Deserializes a string value back into a ProcessorStatus instance.
-        """
-        for status in cls:
-            if status.value == value:
-                return status
-        raise ValueError(f"Invalid ProcessorStatus value: {value}")
+from .staging_job_status import EStagingStatus
 
 
 # Custom authentication class
@@ -184,8 +138,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         JSON: JSON containing job_id for tracking.
     """
 
-    status: ProcessorStatus = ProcessorStatus.QUEUED
-
     def __init__(
         self,
         credentials: Request,
@@ -193,9 +145,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         collection: str,
         item: str,
         provider: str,
-        db: tinydb.table.Table,
+        db_process_manager: PostgreSQLManager,
         cluster: LocalCluster,
-        tinydb_lock,
     ):  # pylint: disable=super-init-not-called
         """
         Initialize the Staging processor with credentials, input collection, catalog details,
@@ -207,7 +158,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             collection (str): The name of the collection from the catalog to use.
             item (str): The specific item to process within the collection.
             provider (str): The name of the provider offering the data for processing.
-            db (tinydb.table.Table): The database table used to track job execution status and metadata.
+            db_process_manager (PostgreSQLManager): The pygeoapi Postgresql Manager used to track job execution
+                status and metadata.
             cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
 
         Attributes:
@@ -218,7 +170,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             job_id (str): A unique identifier for the processing job, generated using UUID.
             detail (str): Status message describing the current state of the processing unit.
             progress (int): Integer tracking the progress of the current job.
-            tracker (tinydb): A tinydb instance used to store job execution details.
             item_collection (FeatureCollectionModel): Holds the input collection of features.
             catalog_collection (str): Name of the catalog collection.
             catalog_item_name (str): Name of the specific item in the catalog being processed.
@@ -245,9 +196,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         #################
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
-        self.detail: str = "Processing Unit was queued"
+        self.detail: str = "Processing Unit was created"
         self.progress: float = 0.0
-        self.tracker: tinydb.table.Table = db
+        self.db_process_manager = db_process_manager
+        self.status = EStagingStatus.QUEUED
         self.create_job_execution()
         #################
         # Inputs section
@@ -257,8 +209,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.provider: str = provider
         self.assets_info: list = []
         self.tasks: list = []
-        # Lock to protect access to percentage
-        self.lock = tinydb_lock
         # Tasks finished
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
@@ -285,7 +235,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 Example: {"started": <job_id>}
 
         Logs:
-            ProcessorStatus.CREATED: Logs the creation of a new processing job.
+            EStagingStatus.CREATED: Logs the creation of a new processing job.
             Error: Logs an error if connecting to the catalog service fails.
 
         Raises:
@@ -296,7 +246,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Check if item collection is provided
         if not self.item_collection or not hasattr(self.item_collection, "features"):
             self.log_job_execution(
-                ProcessorStatus.FINISHED,
+                EStagingStatus.FINISHED,
                 0,
                 detail="No valid items were provided in the input for staging",
             )
@@ -308,27 +258,27 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Check if any features with assets remain
         if not self.item_collection.features:
             self.log_job_execution(
-                ProcessorStatus.FINISHED,
+                EStagingStatus.FINISHED,
                 0,
                 detail="No items with assets were found in the input for staging",
             )
             return {"finished": self.job_id}
 
         # set the CREATED status for the job
-        self.log_job_execution(ProcessorStatus.CREATED)
+        self.log_job_execution(EStagingStatus.CREATED)
         # Execution section
         if not await self.check_catalog():
             self.logger.error(
                 f"Failed to start the staging process. Checking the collection '{self.catalog_collection}' failed !",
             )
             self.log_job_execution(
-                ProcessorStatus.FAILED,
+                EStagingStatus.FAILED,
                 0,
                 detail="Failed to start the staging process. "
                 f"Checking the collection '{self.catalog_collection}' failed !",
             )
             return {"failed": self.job_id}
-        self.log_job_execution(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")
+        self.log_job_execution(EStagingStatus.STARTED, 0, detail="Successfully searched catalog")
         # Start execution
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -356,36 +306,37 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         Notes:
             - The `self.tracker` is expected to have an `insert` method to store the job information.
-            - The status is converted to JSON using `ProcessorStatus.to_json()`.
+            - The status is converted to JSON using `EStagingStatus.to_json()`.
 
         """
-        self.tracker.insert(
-            {
-                "job_id": self.job_id,
-                "status": ProcessorStatus.to_json(self.status),
-                "progress": self.progress,
-                "detail": self.detail,
-            },
-        )
+        job_metadata = {
+            "identifier": self.job_id,
+            "status": self.status.value.upper(),
+            "progress": self.progress,
+            "detail": self.detail,
+        }
+        self.db_process_manager.add_job(job_metadata)
 
     def log_job_execution(
         self,
-        status: Union[ProcessorStatus, None] = None,
+        status: Union[EStagingStatus, None] = None,
         progress: Union[float, None] = None,
         detail: Union[str, None] = None,
     ):
         """Method used to log progress into db."""
         # Update both runtime and db status and progress
-        # tinydb doesn't handle multithreading
-        with self.lock:
-            self.status = status if status else self.status
-            self.progress = progress if progress else self.progress
-            self.detail = detail if detail else self.detail
-            tiny_job = tinydb.Query()
-            self.tracker.update(
-                {"status": ProcessorStatus.to_json(self.status), "progress": self.progress, "detail": self.detail},
-                tiny_job.job_id == self.job_id,
-            )
+
+        self.status = status if status else self.status
+        self.progress = progress if progress else self.progress
+        self.detail = detail if detail else self.detail
+
+        update_data = {
+            "status": self.status.value.upper(),
+            "progress": self.progress,
+            "detail": self.detail,
+            "updated_at": datetime.now(),  # Update updated_at each time a change is made
+        }
+        self.db_process_manager.update_job(self.job_id, update_data)
 
     async def check_catalog(self):
         """
@@ -436,7 +387,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             RuntimeError,
         ) as exc:
             self.logger.error(f"Failed to search catalog: {exc}")
-            self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"Failed to search catalog: {exc}")
+            self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"Failed to search catalog: {exc}")
             return False
 
     def create_streaming_list(self, catalog_response: dict):
@@ -605,7 +556,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 task.result()  # This will raise the exception from the task if it failed
                 self.tasks_finished += 1
                 self.log_job_execution(
-                    ProcessorStatus.IN_PROGRESS,
+                    EStagingStatus.IN_PROGRESS,
                     round((self.tasks_finished * 100 / len(self.tasks)), 2),
                     detail="In progress",
                 )
@@ -624,7 +575,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     timeout -= 1
                 # Update status for the job
                 self.log_job_execution(
-                    ProcessorStatus.FAILED,
+                    EStagingStatus.FAILED,
                     None,
                     detail=f"At least one of the tasks failed: {task_e}",
                 )
@@ -637,7 +588,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             if not self.publish_rspy_feature(feature):
                 # cleanup
                 self.log_job_execution(
-                    ProcessorStatus.FAILED,
+                    EStagingStatus.FAILED,
                     None,
                     detail=f"The item {feature.id} couldn't be " "published in the catalog. Cleaning up",
                 )
@@ -648,7 +599,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 return
             published_featurs_ids.append(feature.id)
         # Update status once all features are processed
-        self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished")
+        self.log_job_execution(EStagingStatus.FINISHED, 100, detail="Finished")
         self.logger.info("Tasks monitoring finished")
 
     def dask_cluster_connect(self):
@@ -707,8 +658,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         Returns:
             None
         """
-        # if the self.cluster is created already, means we are in local mode,
-        # and the cluster has been created at the start of the app
+        # If self.cluster is already created, it indicates that we are in local
+        # mode, and the cluster was initialized at the application's start.
         if not self.cluster:
             # in kubernetes cluster mode, we have to connect to the gateway and get the list of the clusters
             try:
@@ -810,10 +761,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         for feature in self.stream_list:
             if not self.prepare_streaming_tasks(feature):
-                self.log_job_execution(ProcessorStatus.FAILED, 0, detail="Unable to create tasks for the Dask cluster")
+                self.log_job_execution(EStagingStatus.FAILED, 0, detail="Unable to create tasks for the Dask cluster")
                 return
         if not self.assets_info:
-            self.log_job_execution(ProcessorStatus.FINISHED, 100, detail="Finished without processing any tasks")
+            self.log_job_execution(EStagingStatus.FINISHED, 100, detail="Finished without processing any tasks")
             self.logger.info("There are no assets to stage. Exiting....")
             return
 
@@ -827,7 +778,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
             )
             self.log_job_execution(
-                ProcessorStatus.FAILED,
+                EStagingStatus.FAILED,
                 0,
                 detail="Failed to retrieve the token needed to connect to the external "
                 f"station {self.provider.lower()}",
@@ -839,12 +790,12 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             dask_client = self.dask_cluster_connect()
             self.submit_tasks_to_dask_cluster(token, dask_client)
         except RuntimeError as re:
-            self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"{re}")
+            self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"{re}")
             self.logger.error("Failed to start the staging process")
             return
 
         # Set the status to IN_PROGRESS for the job
-        self.log_job_execution(ProcessorStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
+        self.log_job_execution(EStagingStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
 
         # starting another thread for managing the dask callbacks
         self.logger.debug("Starting tasks monitoring thread")
@@ -852,7 +803,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             await asyncio.to_thread(self.manage_dask_tasks_results, dask_client)
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.debug(f"Error from tasks monitoring thread: {e}")
-            self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"Error from tasks monitoring thread: {e}")
+            self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"Error from tasks monitoring thread: {e}")
 
         # cleanup by disconnecting the dask client
         self.assets_info = []
@@ -883,7 +834,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         Logging:
             - Logs an error message with details if the request fails.
-            - Logs the job status as `ProcessorStatus.FAILED` if the feature publishing fails.
+            - Logs the job status as `EStagingStatus.FAILED` if the feature publishing fails.
             - Calls `self.delete_files_from_bucket()` to clean up related files in case of failure.
         """
         # Publish feature to catalog

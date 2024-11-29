@@ -15,8 +15,8 @@
 """Test module for Staging processor."""
 import asyncio
 import os
-import threading
 from concurrent.futures import CancelledError
+from datetime import datetime
 from typing import Dict
 from unittest.mock import call
 
@@ -24,51 +24,29 @@ import pytest
 import requests
 from dask_gateway import Gateway
 from fastapi import HTTPException
-from rs_server_staging.processors import ProcessorStatus, TokenAuth, streaming_task
+from rs_server_staging.processors import TokenAuth, streaming_task
+from rs_server_staging.staging_job_status import EStagingStatus
 
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
 # pylint: disable=too-many-lines
 
 
-class TestProcessorStatus:
-    """."""
+class TestProcessorStatus:  # pylint: disable=too-few-public-methods
+    """Class for tests of EStagingStatus enum"""
 
     def test_str_method(self):
-        """Test the __str__ method of ProcessorStatus."""
-        assert str(ProcessorStatus.QUEUED) == "queued"
-        assert str(ProcessorStatus.FINISHED) == "finished"
-        assert str(ProcessorStatus.FAILED) == "failed"
-
-    def test_to_json_valid(self):
-        """Test the to_json method for valid ProcessorStatus instances."""
-        assert ProcessorStatus.to_json(ProcessorStatus.QUEUED) == "queued"
-        assert ProcessorStatus.to_json(ProcessorStatus.FINISHED) == "finished"
-        assert ProcessorStatus.to_json(ProcessorStatus.STARTED) == "started"
-
-    def test_to_json_invalid(self):
-        """Test the to_json method for invalid values (non-ProcessorStatus)."""
-        with pytest.raises(ValueError):
-            ProcessorStatus.to_json("invalid_status")  # Should raise a ValueError
-        with pytest.raises(ValueError):
-            ProcessorStatus.to_json(123)  # Should raise a ValueError
-        with pytest.raises(ValueError):
-            ProcessorStatus.to_json(None)  # Should raise a ValueError
-
-    def test_from_json_valid(self):
-        """Test the from_json method for valid status strings."""
-        assert ProcessorStatus.from_json("queued") == ProcessorStatus.QUEUED
-        assert ProcessorStatus.from_json("finished") == ProcessorStatus.FINISHED
-        assert ProcessorStatus.from_json("started") == ProcessorStatus.STARTED
-
-    def test_from_json_invalid(self):
-        """Test the from_json method for invalid status strings."""
-        with pytest.raises(ValueError):
-            ProcessorStatus.from_json("invalid_status")  # Should raise a ValueError
-        with pytest.raises(ValueError):
-            ProcessorStatus.from_json("not_a_status")  # Should raise a ValueError
-        with pytest.raises(ValueError):
-            ProcessorStatus.from_json(None)  # Should raise a ValueError
+        """Test the __str__ method of EStagingStatus."""
+        assert str(EStagingStatus.QUEUED) == "queued"
+        assert str(EStagingStatus.FINISHED) == "finished"
+        assert str(EStagingStatus.FAILED) == "failed"
+        assert str(EStagingStatus.CREATED) == "created"
+        assert str(EStagingStatus.STARTED) == "started"
+        assert str(EStagingStatus.IN_PROGRESS) == "in_progress"
+        assert str(EStagingStatus.STOPPED) == "stopped"
+        assert str(EStagingStatus.PAUSED) == "paused"
+        assert str(EStagingStatus.RESUMED) == "resumed"
+        assert str(EStagingStatus.CANCELLED) == "cancelled"
 
 
 class TestTokenAuth:
@@ -185,7 +163,7 @@ class TestStaging:
         # Assertions
         assert mock_log_job.call_count == 2
         mock_log_job.assert_has_calls(
-            [call(ProcessorStatus.CREATED), call(ProcessorStatus.STARTED, 0, detail="Successfully searched catalog")],
+            [call(EStagingStatus.CREATED), call(EStagingStatus.STARTED, 0, detail="Successfully searched catalog")],
         )
         mock_check_catalog.assert_called_once()
         mock_process_rspy.assert_called_once()  # Ensures processing is scheduled
@@ -210,9 +188,9 @@ class TestStaging:
         assert mock_log_job.call_count == 2
         mock_log_job.assert_has_calls(
             [
-                call(ProcessorStatus.CREATED),
+                call(EStagingStatus.CREATED),
                 call(
-                    ProcessorStatus.FAILED,
+                    EStagingStatus.FAILED,
                     0,
                     detail="Failed to start the staging process. "
                     f"Checking the collection '{staging_instance.catalog_collection}' failed !",
@@ -240,7 +218,7 @@ class TestStaging:
 
         # Assertions
         mock_log_job.assert_called_once_with(
-            ProcessorStatus.FINISHED,
+            EStagingStatus.FINISHED,
             0,
             detail="No valid items were provided in the input for staging",
         )
@@ -250,20 +228,20 @@ class TestStaging:
         """Test the create_job_execution method of the Staging class.
 
         This test verifies that the create_job_execution method correctly inserts a new job execution
-        entry into the tracker with the current job's attributes.
+        entry into the db_process_manager with the current job's attributes.
 
         Args:
             staging_instance (Staging): An instance of the Staging class, pre-initialized for testing.
             mocker (pytest_mock.MockerFixture): The mocker fixture to patch methods and objects during tests.
 
         """
-        # create mock object of self.tracker and overwrite staging instance from conftest
-        mock_tracker = mocker.Mock()
-        staging_instance.tracker = mock_tracker
+        # create mock object of self.db_process_manager and overwrite staging instance from conftest
+        mock_db_process_manager = mocker.Mock()
+        staging_instance.db_process_manager = mock_db_process_manager
 
         # Set job attributes needed for create_job_execution
         staging_instance.job_id = "12345"
-        staging_instance.status = ProcessorStatus.QUEUED
+        staging_instance.status = EStagingStatus.QUEUED
         staging_instance.progress = 0
         staging_instance.detail = "Job is starting."
 
@@ -271,10 +249,10 @@ class TestStaging:
         staging_instance.create_job_execution()
 
         # Assert that the insert method was called once with the expected arguments
-        mock_tracker.insert.assert_called_once_with(
+        mock_db_process_manager.add_job.assert_called_once_with(
             {
-                "job_id": "12345",
-                "status": ProcessorStatus.to_json(ProcessorStatus.QUEUED),
+                "identifier": "12345",
+                "status": EStagingStatus.QUEUED.value.upper(),
                 "progress": 0,
                 "detail": "Job is starting.",
             },
@@ -284,53 +262,64 @@ class TestStaging:
         """Test the log_job_execution method of the Staging class.
 
         This test verifies that the log_job_execution method correctly updates the job's status,
-        progress, and detail in the tracker database, both for default and custom attributes.
+        progress, and detail in the db_process_manager database, both for default and custom attributes.
 
         Args:
             staging_instance (Staging): An instance of the Staging class, pre-initialized for testing.
             mocker (pytest_mock.MockerFixture): The mocker fixture to patch methods and objects during tests.
 
         """
-        # Mock self.tracker and self.lock attrs
-        mock_tracker = mocker.Mock()
-        staging_instance.lock = threading.Lock()
+        # Mock self.db_process_manager and self.lock attrs
+        mock_db_process_manager = mocker.Mock()
 
-        staging_instance.tracker = mock_tracker
+        staging_instance.db_process_manager = mock_db_process_manager
         staging_instance.job_id = "12345"
-        staging_instance.status = ProcessorStatus.QUEUED
+        staging_instance.status = EStagingStatus.QUEUED
         staging_instance.progress = 0
         staging_instance.detail = "Job is starting."
 
-        # Mock the update method of the tracker
-        mock_update_default = mocker.patch.object(staging_instance.tracker, "update", return_value=None)
+        # Mock the update method of the db_process_manager
+        mock_update_job = mocker.patch.object(staging_instance.db_process_manager, "update_job", return_value=None)
+
+        # Mock datetime
+        fake_now = datetime(2024, 1, 1, 12, 0, 0)
+        mock_datetime = mocker.patch("rs_server_staging.processors.datetime")
+        mock_datetime.now.return_value = fake_now
 
         # Call log_job_execution to test status update with default attrs
         staging_instance.log_job_execution()
 
         # Assert that the update method was called with the correct parameters
-        mock_update_default.assert_called_once_with(
-            {"status": ProcessorStatus.to_json(ProcessorStatus.QUEUED), "progress": 0, "detail": "Job is starting."},
-            mocker.ANY,
+        mock_update_job.assert_called_once_with(
+            staging_instance.job_id,
+            {
+                "status": EStagingStatus.QUEUED.value.upper(),
+                "progress": 0,
+                "detail": "Job is starting.",
+                "updated_at": fake_now,
+            },
         )
-        mock_update_custom = mocker.patch.object(staging_instance.tracker, "update", return_value=None)
-        mock_query = mocker.patch("tinydb.Query", return_value=mocker.Mock())
+
+        # reset the mock called counter
+        mock_update_job.reset_mock()
+
         # Call log_job_execution to test status update with custom attrs
         staging_instance.log_job_execution(
-            status=ProcessorStatus.IN_PROGRESS,
+            status=EStagingStatus.IN_PROGRESS,
             progress=50.0,
             detail="Job is halfway done.",
         )
 
         # Assert that the update method was called with the custom parameters
-        mock_update_custom.assert_called_once_with(
+        mock_update_job.assert_called_once_with(
+            staging_instance.job_id,
             {
-                "status": ProcessorStatus.to_json(ProcessorStatus.IN_PROGRESS),
+                "status": EStagingStatus.IN_PROGRESS.value.upper(),
                 "progress": 50.0,
                 "detail": "Job is halfway done.",
+                "updated_at": fake_now,
             },
-            mocker.ANY,  # We can match the query condition later
         )
-        assert mock_query.called_once()
 
 
 class TestStagingCatalog:
@@ -441,7 +430,7 @@ class TestStagingCatalog:
             # Assert that create_streaming_list was not called during failure
             mock_create_streaming_list.assert_not_called()
             mock_log_job_execution.assert_called_once_with(
-                ProcessorStatus.FAILED,
+                EStagingStatus.FAILED,
                 0,
                 detail=f"Failed to search catalog: {get_err_msg}",
             )
@@ -461,7 +450,7 @@ class TestStagingCatalog:
         # Call the method under test
         await staging_instance.check_catalog()
         mock_log_job_execution.assert_called_once_with(
-            ProcessorStatus.FAILED,
+            EStagingStatus.FAILED,
             0,
             detail=f"Failed to search catalog: {err_msg}",
         )
@@ -820,9 +809,9 @@ class TestStagingMainExecution:
 
         staging_instance.manage_dask_tasks_results(client)
 
-        # mock_log_job.assert_any_call(ProcessorStatus.IN_PROGRESS, None, detail='In progress')
+        # mock_log_job.assert_any_call(EStagingStatus.IN_PROGRESS, None, detail='In progress')
         # Check that status was updated 3 times during execution, 1 time for each task, and 1 time with FINISH
-        mock_log_job.assert_any_call(ProcessorStatus.FINISHED, 100, detail="Finished")
+        mock_log_job.assert_any_call(EStagingStatus.FINISHED, 100, detail="Finished")
         assert mock_log_job.call_count == 3
         # Check that feature publish method was called.
         mock_publish_feature.assert_called()
@@ -849,7 +838,7 @@ class TestStagingMainExecution:
         mock_task_failure.assert_called()  # handle_task_failure called once
         mock_delete_file_from_bucket.assert_called()  # Bucket removal called once
         # logger set status to failed
-        mock_log_job.assert_called_once_with(ProcessorStatus.FAILED, None, detail="At least one of the tasks failed: ")
+        mock_log_job.assert_called_once_with(EStagingStatus.FAILED, None, detail="At least one of the tasks failed: ")
         # Features are not published here.
         mock_publish_feature.assert_not_called()
 
@@ -877,7 +866,7 @@ class TestStagingMainExecution:
         staging_instance.manage_dask_tasks_results(client)
 
         mock_log_job.assert_any_call(
-            ProcessorStatus.FAILED,
+            EStagingStatus.FAILED,
             None,
             detail=f"The item {task1.id} couldn't be " "published in the catalog. Cleaning up",
         )
@@ -905,7 +894,7 @@ class TestStagingMainExecution:
         await staging_instance.process_rspy_features()
 
         # Ensure the task preparation failed, and method returned early
-        mock_log_job.assert_called_with(ProcessorStatus.FAILED, 0, detail="Unable to create tasks for the Dask cluster")
+        mock_log_job.assert_called_with(EStagingStatus.FAILED, 0, detail="Unable to create tasks for the Dask cluster")
 
     @pytest.mark.asyncio
     async def test_process_rspy_features_empty_stream(self, mocker, staging_instance):
@@ -922,7 +911,7 @@ class TestStagingMainExecution:
         await staging_instance.process_rspy_features()
 
         # Assert initial logging and job execution calls
-        mock_log_job.assert_called_with(ProcessorStatus.FINISHED, 100, detail="Finished without processing any tasks")
+        mock_log_job.assert_called_with(EStagingStatus.FINISHED, 100, detail="Finished without processing any tasks")
 
     @pytest.mark.asyncio
     async def test_process_rspy_features_token_failure(self, mocker, staging_instance):
@@ -954,7 +943,7 @@ class TestStagingMainExecution:
             "Failed to retrieve the token needed to connect to the external station: 404: Token error",
         )
         mock_log_job.assert_called_once_with(
-            ProcessorStatus.FAILED,
+            EStagingStatus.FAILED,
             0,
             detail="Failed to retrieve the token needed to connect to the external station cadip",
         )
@@ -993,7 +982,7 @@ class TestStagingMainExecution:
         await staging_instance.process_rspy_features()
 
         # Verify log_job_execution is called with the error details
-        mock_log_job.assert_called_once_with(ProcessorStatus.FAILED, 0, detail="Dask connection failed")
+        mock_log_job.assert_called_once_with(EStagingStatus.FAILED, 0, detail="Dask connection failed")
         mock_logger.error.assert_called_once_with("Failed to start the staging process")
 
         # Verify that the task submission and monitoring thread are not executed

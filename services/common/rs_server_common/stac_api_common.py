@@ -45,6 +45,7 @@ from fastapi import Query, Request, status
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
+from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     extract_eo_product,
@@ -57,6 +58,12 @@ from stac_pydantic.item import Item
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
+
+
+def log_http_exception(*args, **kwargs) -> HTTPException:
+    """Log error and return an HTTP execption to be raised by the caller"""
+    return utils2.log_http_exception(logger, *args, **kwargs)
+
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 SEARCH_LIMIT = 10000
@@ -268,7 +275,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             collection_id = args[0]
             collection = self.select_config(collection_id)
             if not collection:
-                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown {self.service} collection: {collection_id!r}")
+                raise log_http_exception(
+                    status.HTTP_404_NOT_FOUND,
+                    f"Unknown {self.service} collection: {collection_id!r}",
+                )
 
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", "1.0.0")
@@ -286,7 +296,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             params = json.loads(args[0]) if args else {}
             return await self.search(params)
 
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
+        raise log_http_exception(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
     async def search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
         self,
@@ -365,7 +375,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.page < 1:
                     raise ValueError
             except ValueError as exc:
-                raise HTTPException(
+                raise log_http_exception(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"Invalid page value: {page!r}",
                 ) from exc
@@ -378,7 +388,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.limit < 1:
                     raise ValueError
             except ValueError as exc:
-                raise HTTPException(
+                raise log_http_exception(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"Invalid limit value: {limit!r}",
                 ) from exc
@@ -392,7 +402,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             self.sortby = sortby_param
         elif isinstance(sortby_param, list):
             if len(sortby_param) > 1:
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Only one 'sortby' search parameter is allowed: {sortby_param!r}",
                 )
@@ -411,7 +421,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 elif self.cadip:
                     stac_params["published"] = datetime
             except HTTPException as exception:
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid datetime interval: {datetime!r}. "
                     "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
@@ -427,7 +437,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Read a query or CQL filter property"""
             nonlocal stac_params
             if prop not in allowed_properties:
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query or CQL property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
@@ -447,7 +457,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Read a single property
             if op == "=":
                 if (len(args) != 2) or not (prop := args[0].get("property")):
-                    raise HTTPException(
+                    raise log_http_exception(
                         status.HTTP_422_UNPROCESSABLE_ENTITY,
                         f"Invalid CQL2 filter: {format_dict(filt)}",
                     )
@@ -457,7 +467,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Else we are reading several properties
             if op != "and":
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filt)}",
                 )
@@ -470,7 +480,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         query = params.pop("query", {})
         for prop, operator in query.items():
             if (len(operator) != 1) or not (value := operator.get("eq")):
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query: {{{prop!r}: {format_dict(operator)}}}"
                     ", only {'<property>': {'eq': <value>}} is allowed",
@@ -496,7 +506,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # If search parameters remain, they are not implemented
         if params:
-            raise HTTPException(
+            raise log_http_exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 f"Unimplemented search parameters: {format_dict(params)}",
             )
@@ -667,7 +677,7 @@ def create_collection(collection: dict) -> stac_pydantic.Collection:
         stac_collection = stac_pydantic.Collection(type="Collection", **collection)
         return stac_collection
     except ValidationError as exc:
-        raise HTTPException(
+        raise log_http_exception(
             detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         ) from exc
@@ -683,13 +693,13 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
             return await func(*args, **kwargs)
         except KeyError as exc:
             logger.error(f"KeyError caught in {func.__name__}")
-            raise HTTPException(
+            raise log_http_exception(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Cannot create STAC Collection -> Missing {exc}",
             ) from exc
         except ValidationError as exc:
             logger.error(f"ValidationError caught in {func.__name__}")
-            raise HTTPException(
+            raise log_http_exception(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Parameters validation error: {exc}",
             ) from exc
