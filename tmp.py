@@ -37,7 +37,7 @@ import requests
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
-
+os.environ["RSPY_HOST_USER"] = "jgaucher"
 os.environ["RSPY_LOCAL_MODE"] = "1"
 os.environ["S3_ACCESSKEY"] = "minio"
 os.environ["S3_SECRETKEY"] = "Strong#Pass#1234"
@@ -61,6 +61,7 @@ from resources.utils import *  # reload the global vars again
 
 import itertools
 import json
+import math
 from dataclasses import dataclass
 from datetime import timedelta
 from urllib.parse import unquote
@@ -120,21 +121,57 @@ def save_error(*args) -> None:
 
 
 # Collections to search. If None: search all collections.
-adgs_collections = None  #["adgs", "adgs2"]
-cadip_collections = None
+adgs_collections = ["adgs"]
+cadip_collections = ["cadip"]
 collections = None
 
+# Parameters on which we can sort
+adgs_sortbys = [
+    "id",
+    "auxip:id",
+    "file:size",
+    "type",
+    "eviction_datetime",
+    "created",
+    "start_datetime",
+    "end_datetime"
+    ]
+cadip_sortbys = [
+    "id",
+    "start_datetime",
+    "datetime",
+    "end_datetime",
+    "published",
+    "platform",
+    "startTimeFromAscendingNode",
+    "completionTimeFromAscendingNode",
+    "cadip:id",
+    "cadip:num_channels",
+    "cadip:station_unit_id",
+    "sat:absolute_orbit",
+    "cadip:acquisition_id",
+    "cadip:antenna_id",
+    "cadip:front_end_id",
+    "cadip:retransfer",
+    "cadip:antenna_status_ok",
+    "cadip:front_end_status_ok",
+    "cadip:planned_data_start",
+    "cadip:planned_data_stop",
+    "cadip:downlink_status_ok",
+    "cadip:delivery_push_ok"
+]
+sortbys = None
 
+def search_and_check(endpoint, params={}, from_feature=None, search_properties=[]):
+    """Call the /search endpoint, check the results, return features and links."""
 
-def search_and_check(endpoint, in_feature=None, search_properties=[], pagination={}):
-    """Call the /search endpoint, check the results, return features."""
+    print(f"Call POST {endpoint!r} with params: {list(search_properties) + list(params.keys())}")
 
-    # Build the query parameters
-    params = {"query": {}}
+    # Set the query parameters
     if collections:
         params["collections"] = collections
     for property in search_properties:
-        in_value = in_feature.get(property) or in_feature["properties"].get(property)
+        in_value = from_feature.get(property) or from_feature["properties"].get(property)
 
         if property == "id":
             params["ids"] = [in_value]
@@ -149,32 +186,26 @@ def search_and_check(endpoint, in_feature=None, search_properties=[], pagination
 
         # query parameters
         else:
-            params["query"][property] = {"eq": in_value}
-
-    # Add pagination
-    for property, value in pagination.items():
-        params[property] = value
-
-    print(f"Call POST {endpoint!r} with params: {list(search_properties) + list(pagination.keys())}")
+            params.setdefault("query", {})[property] = {"eq": in_value}
 
     # Call the search endpoint, read the returned features
     response = http_session.post(endpoint, json=params)
 
     if response.status_code != 200:
         save_error(endpoint, params, [f"Status code: {response.status_code}\n{unquote(response.content)}"])
-        return
+        return None, None
 
     ret_features = response.json()["features"]
     if not ret_features:
         save_error(endpoint, params, [f"No features returned"])
-        return
+        return None, None
 
     # Check that each returned feature property on which we filtered,
     # has the same value than in the input feature.
     messages: list[str] = []
     for property in search_properties:
         for ret_feature in ret_features:
-            in_value = in_feature.get(property) or in_feature["properties"].get(property)
+            in_value = from_feature.get(property) or from_feature["properties"].get(property)
             ret_value = ret_feature.get(property) or ret_feature["properties"].get(property)
 
             if in_value != ret_value:
@@ -183,7 +214,7 @@ def search_and_check(endpoint, in_feature=None, search_properties=[], pagination
 
     if messages:
         save_error(endpoint, params, messages)
-    return ret_features
+    return ret_features, response.json()["links"]
 
 
 for service in "auxip", "cadip":
@@ -196,26 +227,84 @@ for service in "auxip", "cadip":
     if auxip:
         endpoint = f"{auxip_client.href_adgs}/auxip/search"
         collections = adgs_collections
+        sortbys = adgs_sortbys
     elif cadip:
         endpoint = f"{cadip_client.href_cadip}/cadip/search"
         collections = cadip_collections
+        sortbys = cadip_sortbys
 
     # Get all auxip products or cadip sessions
-    features = search_and_check(endpoint, pagination={"limit": 10000})
+    all_features, _ = search_and_check(endpoint, {"limit": 10000})
+
+    ##################
+    # Test filtering #
+    ##################
 
     # We take any existing feature returned by the stations, filter on its properties,
     # and check that the filter was applied.
-    feature = features[1]
+    feature = all_features[1]
 
     # All properties on which we can filter
     properties = ["id", "datetime", "platform"]
     if auxip:
         properties += ["constellation", "product:type"]
 
-    # Test all combinations of n properties
-    for length in range(1, len(properties) + 1):
-        for search_properties in itertools.combinations(properties, length):
-            search_and_check(endpoint, feature, search_properties)
+    # # Test all combinations of n properties
+    # for length in range(1, len(properties) + 1):
+    #     for search_properties in itertools.combinations(properties, length):
+    #         search_and_check(endpoint, {}, feature, search_properties)
+
+    ###################
+    # Test pagination #
+    ###################
+
+    # Split the total number of features in n pages
+    pages = 3
+    limit = math.ceil(len(all_features) / pages)
+
+    # Test all sortby values, prefixed by + and -
+    for sortby in sortbys:
+        for direction in "asc", "desc":
+            params = {
+                "limit": limit,
+                "sortby": [{"direction": direction, "field": sortby}]
+            }
+            page_endpoint = endpoint
+            page_params = params
+
+            # For each page to request
+            for page in range(pages):
+
+                # Request current page
+                features, links = search_and_check(page_endpoint, page_params)
+
+                # In case of error, don't process next pages
+                if not links:
+                    break
+
+                # Read link tokens
+                try:
+                    next_page_token = \
+                        [link for link in links if link["rel"] == "next"][0]["body"]["token"]
+                    prev_page_token = \
+                        [link for link in links if link["rel"] == "previous"][0]["body"]["token"] if page else None
+                except (KeyError, IndexError):
+                    save_error(page_endpoint, page_params, [f"Missing self/previous/next link(s)"])
+
+                # Check the token for next and previous page
+                if f"page={page+2}" not in next_page_token:
+                    save_error(page_endpoint, page_params, 
+                        [f"Wrong 'next' page token: {next_page_token!r}, should contain: 'page={page+2}'"])
+                    break # don't process next page
+                if prev_page_token and (f"page={page}" not in prev_page_token):
+                    save_error(page_endpoint, page_params, 
+                        [f"Wrong 'previous' page token: {prev_page_token!r}, should contain: 'page={page}'"])
+                    
+                # Use the "next" token for the next page
+                page_params.update({"token": next_page_token})
+
+
+    bp = 0
 
         # if property == "limit":
         #     feature_count = len(output_features)
