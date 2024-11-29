@@ -540,9 +540,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # if len(dict_data["features"]) > 1:
         #     # Don't create next page if the current one does not have features
         #     dict_data["next"] = f"page={self.page + 1}"
-        dict_data["next"] = f"page={self.page + 1}"
-        if self.page > 1:
-            dict_data["prev"] = f"page={self.page - 1}"
+        dict_data["next"] = f"page={self.user_page + 1}"
+        if self.user_page > 1:
+            dict_data["prev"] = f"page={self.user_page - 1}"
 
         return dict_data
 
@@ -651,6 +651,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     if len(next_features) < SEARCH_LIMIT:
                         break
                 self.page = 1
+
             # Add the collection information
             for item in features:
                 item.collection = collection_id
