@@ -376,13 +376,13 @@ def test_s3_streaming_upload_fail(mocker):
     s3_handler.s3_client.create_bucket(Bucket=bucket)
     s3_key = "test_key.tst"
 
-    # test when there is no file to be deleted
+    # test when there is no bucket to upload
     with pytest.raises(RuntimeError) as exc:
-        s3_handler.s3_streaming_upload(stream_url, auth, None, s3_key)
+        s3_handler.s3_streaming_upload(stream_url, [], auth, None, s3_key)
     assert "Input error for streaming the file from" in str(exc.value)
-    # test when there is no file to be deleted
+    # test when there is no file to be uploaded
     with pytest.raises(RuntimeError) as exc:
-        s3_handler.s3_streaming_upload(stream_url, auth, bucket, None)
+        s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, None)
     assert "Input error for streaming the file from" in str(exc.value)
     # mock the rs_server_common.s3_storage_handler.wait_timeout function to speed up the test
     res = mocker.patch(
@@ -399,7 +399,7 @@ def test_s3_streaming_upload_fail(mocker):
     ]:
         mocker.patch("requests.get", side_effect=possible_exception("HTTP Error"))
         with pytest.raises(RuntimeError) as exc:
-            s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
+            s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key)
 
         assert "Failed to stream the file from" in str(exc.value)
         assert res.call_count == S3_MAX_RETRIES - 1
@@ -412,6 +412,7 @@ def test_s3_streaming_upload_fail(mocker):
         body=body,
         status=200,
     )
+
     # test when an exception occurs for the upload_fileobj s3 function
     for possible_exception in [
         botocore.exceptions.BotoCoreError,
@@ -422,11 +423,10 @@ def test_s3_streaming_upload_fail(mocker):
         boto_mocker.activate()
 
         with pytest.raises(RuntimeError) as exc:
-            s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
+            s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key, 1)
 
         assert "Failed to stream the file from" in str(exc.value)
-        assert res.call_count == S3_MAX_RETRIES - 1
-        res.call_count = 0
+        assert res.call_count == 0
         boto_mocker.deactivate()
 
     server.stop()

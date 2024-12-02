@@ -73,7 +73,7 @@ class TokenAuth(AuthBase):
         return "RSPY Token handler"
 
 
-def streaming_task(product_url: str, auth: str, bucket: str, s3_file: str):
+def streaming_task(product_url: str, trusted_domains: list[str], auth: str, bucket: str, s3_file: str):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
@@ -101,7 +101,7 @@ def streaming_task(product_url: str, auth: str, bucket: str, s3_file: str):
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
-        s3_handler.s3_streaming_upload(product_url, auth, bucket, s3_file)
+        s3_handler.s3_streaming_upload(product_url, trusted_domains, auth, bucket, s3_file)
     except RuntimeError as e:
         raise ValueError(
             f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
@@ -707,15 +707,15 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
         return client
 
-    def submit_tasks_to_dask_cluster(self, token: str, client: Client):
+    def submit_tasks_to_dask_cluster(self, token: str, trusted_domains: list[str], client: Client):
         """Submits multiple tasks to a Dask cluster for asynchronous processing.
 
         Each task involves downloading a file stream (using `streaming_task`) and uploading it to an S3 bucket
         or similar storage, authenticated using the provided token.
 
         The function iterates through a list of assets (created previously after checking the catalog), represented by
-        `self.assets_info`, and submitsa Dask task for each asset to the cluster. Tasks are appended to `self.tasks` for
-        later monitoring.
+        `self.assets_info`, and submits a Dask task for each asset to the cluster. Tasks are appended to `self.tasks`
+        for later monitoring.
 
         Args:
             token (str): Authentication token used for accessing and processing the asset download
@@ -740,6 +740,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     client.submit(
                         streaming_task,
                         asset_info[0],
+                        trusted_domains,
                         TokenAuth(token),
                         self.catalog_bucket,
                         asset_info[1],
@@ -770,9 +771,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         # retrieve the token
         try:
-            token = get_station_token(
-                load_external_auth_config_by_station_service(self.provider.lower()),
-            )
+            external_auth_config = load_external_auth_config_by_station_service(self.provider.lower())
+            token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
             self.logger.error(
                 f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
@@ -788,7 +788,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # connect to the dask cluster
         try:
             dask_client = self.dask_cluster_connect()
-            self.submit_tasks_to_dask_cluster(token, dask_client)
+            self.submit_tasks_to_dask_cluster(token, external_auth_config.trusted_domains, dask_client)
         except RuntimeError as re:
             self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"{re}")
             self.logger.error("Failed to start the staging process")
