@@ -21,6 +21,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, List, Tuple
+from urllib.parse import urlparse
 
 import boto3
 import botocore
@@ -103,6 +104,39 @@ class TransferFromS3ToS3Config:
     bucket_dst: str
     copy_only: bool = False
     max_retries: int = DWN_S3FILE_RETRIES
+
+
+class CustomSessionRedirect(requests.Session):
+    """
+    Custom session to handle HTTP 307 redirects and retain Authorization headers for allowed hosts.
+    """
+
+    def __init__(self, trusted_domains=list[str] | None):
+        """Initialize the CustomSession instance."""
+        super().__init__()
+        self.trusted_domains: list[str] = trusted_domains or []  # List of allowed hosts for redirection
+
+    def should_strip_auth(self, old_url, new_url):
+        """
+        Override the default behavior of stripping Authorization headers during redirection.
+
+        Args:
+            old_url (str): The URL of the original request.
+            new_url (str): The URL to which the request is redirected.
+
+        Returns:
+            bool: Whether to strip Authorization headers (False to retain them).
+        """
+        old_parsed = urlparse(old_url)
+        new_parsed = urlparse(new_url)
+
+        # Check if the new host is in the allowed list
+        # Also, include the original domain as an implicitly allowed domain
+        if new_parsed.hostname == old_parsed.hostname or new_parsed.hostname in self.trusted_domains:
+            # Allow protocol changes (HTTPS -> HTTP or vice versa) within the same or trusted hosts
+            return False  # Do not strip auth
+
+        return super().should_strip_auth(old_url, new_url)
 
 
 class S3StorageHandler:
@@ -818,7 +852,15 @@ retried for %s times. Aborting",
 
         return failed_files
 
-    def s3_streaming_upload(self, stream_url: str, auth: Any, bucket: str, key: str, max_retries=S3_MAX_RETRIES):
+    def s3_streaming_upload(  # pylint: disable=too-many-locals
+        self,
+        stream_url: str,
+        trusted_domains: list[str],
+        auth: Any,
+        bucket: str,
+        key: str,
+        max_retries=S3_MAX_RETRIES,
+    ):
         """
         Upload a file to an S3 bucket using HTTP byte-streaming with retries.
 
@@ -841,11 +883,12 @@ retried for %s times. Aborting",
 
         Process:
             1. The function attempts to download the file from `stream_url` using streaming and upload it to S3.
-            2. If an error occurs (e.g., connection error, S3 client error), it retries the operation with exponential
+            2. It redirects the url request by overriding the default should_strip_auth, see CustomSessionRedirect
+            3. If an error occurs (e.g., connection error, S3 client error), it retries the operation with exponential
             backoff.
-            3. The default chunk size for streaming is set to 64KB, and multipart upload configuration is used for
+            4. The default chunk size for streaming is set to 64KB, and multipart upload configuration is used for
             large files.
-            4. After `max_retries` attempts, if the upload is unsuccessful, a `RuntimeError` is raised.
+            5. After `max_retries` attempts, if the upload is unsuccessful, a `RuntimeError` is raised.
 
         Retry Mechanism:
             - Retries occur for network-related errors (`RequestException`) or S3 client errors
@@ -866,11 +909,22 @@ retried for %s times. Aborting",
         timeout: Tuple[int, int] = (HTTP_CONNECTION_TIMEOUT, HTTP_READ_TIMEOUT)
         backoff_factor = S3_RETRY_TIMEOUT
         attempt = 0
+        # Prepare the request
+        session = CustomSessionRedirect(trusted_domains)
+        self.logger.debug(f"trusted_domains = {trusted_domains}")
+        request = requests.Request(
+            method="GET",
+            url=stream_url,
+            auth=auth,
+        )
+        prepared_request = session.prepare_request(request)
         while attempt < max_retries:
             try:
                 self.connect_s3()
                 self.logger.info(f"Starting the streaming of {stream_url} to s3://{bucket}/{key}")
-                with requests.get(stream_url, stream=True, auth=auth, timeout=timeout) as response:
+                with session.send(prepared_request, stream=True, timeout=timeout) as response:
+                    # with requests.get(stream_url, stream=True, auth=auth, timeout=timeout) as response:
+                    self.logger.debug(f"Request headers: {response.request.headers}")
                     response.raise_for_status()  # Raise an error for bad responses (4xx and 5xx)
 
                     # Default chunksize is set to 64Kb, can be manually increased

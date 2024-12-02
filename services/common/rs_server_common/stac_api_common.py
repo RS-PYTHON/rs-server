@@ -615,7 +615,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     # If no intersection, then the selection is empty.
                     else:
                         for i, value in enumerate((value1, value2)):
-                            s = {v.strip() for v in value.split(",")}
+                            iterable = value if isinstance(value, list) else value.split(",")
+                            s = {v.strip() for v in iterable}
                             intersection = intersection.intersection(s) if i else s  # type: ignore
                         if intersection:
                             intersection = ", ".join(intersection)

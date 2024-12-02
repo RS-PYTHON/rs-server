@@ -139,6 +139,7 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
         client_secret (str): The client secret used for authentication.
         scope (Optional[str]): The scope of access requested in the authentication token (if applicable).
         authorization (Optional[str]): Additional authorization header (if required).
+        trusted_domains (Optional[str]): The list of allowed hosts for http redirection
     """
 
     station_id: str
@@ -154,6 +155,7 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     client_secret: str
     scope: str | None = None
     authorization: str | None = None
+    trusted_domains: list[str] | None = None
 
 
 def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str:
@@ -403,6 +405,7 @@ def create_external_auth_config(
             client_secret=station_dict.get("authentication", {}).get("client_secret"),
             scope=station_dict.get("authentication", {}).get("scope"),
             authorization=station_dict.get("authentication", {}).get("authorization"),
+            trusted_domains=station_dict.get("trusted_domains", None),
         )
     except KeyError as e:
         logger.error(f"Error loading configuration, couldn't find a key: {e}")

@@ -104,7 +104,7 @@ class TestStreaming:
             return_value=None,
         )
 
-        assert streaming_task("https://example.com/product.zip", "Bearer token", "bucket", s3_key) == s3_key
+        assert streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", s3_key) == s3_key
 
     def test_streaming_task_incorrect_env(self, mocker):
         """Test a error while creating s3 handler"""
@@ -114,7 +114,7 @@ class TestStreaming:
             {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
         )
         with pytest.raises(ValueError, match=r"Cannot create s3 connector object."):
-            streaming_task("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
+            streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", "file.zip")
 
     def test_streaming_task_runtime_error(self, mocker):
         """Test a runtimeerror while streaming-download."""
@@ -138,7 +138,7 @@ class TestStreaming:
             ValueError,
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
-            streaming_task("https://example.com/product.zip", "Bearer token", "bucket", "file.zip")
+            streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", "file.zip")
 
 
 class TestStaging:
@@ -1008,6 +1008,18 @@ class TestStagingMainExecution:
             "rs_server_staging.processors.load_external_auth_config_by_station_service",
             return_value=mocker.Mock(),
         )
+
+        mocker.patch(
+            "rs_server_staging.processors.load_external_auth_config_by_station_service",
+            return_value="mock_external_auth_config",
+        )
+        # Mock the external auth configuration
+        mock_external_auth_config = mocker.Mock()
+        mock_external_auth_config.trusted_domains = ["test_trusted.example"]  # Set the trusted_domains member
+        mocker.patch(
+            "rs_server_staging.processors.load_external_auth_config_by_station_service",
+            return_value=mock_external_auth_config,
+        )
         mocker.patch("rs_server_staging.processors.get_station_token", return_value="mock_token")
 
         # Mock Dask cluster client
@@ -1018,7 +1030,11 @@ class TestStagingMainExecution:
         await staging_instance.process_rspy_features()
 
         # Verify the function proceeds to Dask task submission
-        mock_submit_tasks.assert_called_once_with("mock_token", mock_dask_client)
+        mock_submit_tasks.assert_called_once_with(
+            "mock_token",
+            mock_external_auth_config.trusted_domains,
+            mock_dask_client,
+        )
 
         # Verify the task monitoring thread is started
         mock_logger.debug.assert_any_call("Starting tasks monitoring thread")
@@ -1174,7 +1190,7 @@ class TestStagingSubmitToDaskCluster:
         mocker.patch("rs_server_staging.processors.streaming_task", mock_streaming_task)
 
         # Call the function under test
-        staging_instance.submit_tasks_to_dask_cluster("mock_token", mock_client)
+        staging_instance.submit_tasks_to_dask_cluster("mock_token", [], mock_client)
 
         # Assert that tasks are submitted to the Dask client for each asset
         assert len(staging_instance.tasks) == 2  # Two tasks should be submitted
@@ -1183,6 +1199,7 @@ class TestStagingSubmitToDaskCluster:
         mock_client.submit.assert_any_call(
             mock_streaming_task,
             "asset1",
+            [],
             mock_token_auth.return_value,
             "mock_bucket",
             "path1",
@@ -1190,6 +1207,7 @@ class TestStagingSubmitToDaskCluster:
         mock_client.submit.assert_any_call(
             mock_streaming_task,
             "asset2",
+            [],
             mock_token_auth.return_value,
             "mock_bucket",
             "path2",
@@ -1225,7 +1243,7 @@ class TestStagingSubmitToDaskCluster:
             RuntimeError,
             match="Submitting task to dask cluster failed. Reason: Mock submission failure",
         ):
-            staging_instance.submit_tasks_to_dask_cluster("mock_token", mock_client)
+            staging_instance.submit_tasks_to_dask_cluster("mock_token", [], mock_client)
 
         # Ensure the logger catches the exception
         mock_logger.exception.assert_called_once_with(
