@@ -40,7 +40,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_404_NOT_FOUND,
+    HTTP_503_SERVICE_UNAVAILABLE,
+)
 
 from .rspy_models import ProcessMetadataModel
 
@@ -283,19 +287,17 @@ async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the j
     job = app.extra["process_manager"].get_job(job_id)
     if job:
         return job
-    raise HTTPException(status_code=404, detail="Job not found")
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 @router.get("/jobs")
 async def get_jobs_endpoint():
     """Returns the status of all jobs."""
-    jobs = app.extra["process_manager"].get_jobs()
-
-    if jobs:
-        return JSONResponse(status_code=HTTP_200_OK, content=jobs)
-
-    # If no jobs are found, return 404 with appropriate message
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="No job found")
+    try:
+        return app.extra["process_manager"].get_jobs()
+    except Exception as e:
+        # Handle exceptions and return an appropriate error message
+        raise HTTPException(status_code=HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
 
 @router.delete("/jobs/{job_id}")
@@ -304,7 +306,7 @@ async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job t
     success = app.extra["process_manager"].delete_job(job_id)
     if success:
         return {"message": f"Job {job_id} deleted successfully"}
-    raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 @router.get("/jobs/{job_id}/results")
@@ -315,7 +317,7 @@ async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID
     if job:
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
 
-    raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
 
 
 # Configure OpenTelemetry
