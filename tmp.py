@@ -227,14 +227,22 @@ for service in "auxip", "cadip":
     if auxip:
         endpoint = f"{auxip_client.href_adgs}/auxip/search"
         collections = adgs_collections
+        sortby_date = "created"
         sortbys = adgs_sortbys
     elif cadip:
         endpoint = f"{cadip_client.href_cadip}/cadip/search"
         collections = cadip_collections
+        sortby_date = "published"
         sortbys = cadip_sortbys
 
-    # Get all auxip products or cadip sessions
-    all_features, _ = search_and_check(endpoint, {"limit": 10000})
+    # Get all auxip products or cadip sessions, sorted by newest
+    all_features, _ = search_and_check(
+        endpoint, {
+            "limit": 10000, 
+            "sortby": [{"direction": "desc", "field": sortby_date}]})
+    
+    if all_features is None:
+        continue
 
     ##################
     # Test filtering #
@@ -258,60 +266,120 @@ for service in "auxip", "cadip":
     # Test pagination #
     ###################
 
-    # Split the total number of features in n pages
-    pages = 3
-    limit = math.ceil(len(all_features) / pages)
+    # Get all auxip products or cadip sessions again, but with a temporal filter: 
+    # remove the two most recent features.
+    # This is to test the pagination + filtering at the same time.
+    date_filter_stop = all_features[1]["properties"]["datetime"].replace("+00:00", "Z")
+    date_filter_param = {"datetime": f"1950-01-01T00:00:00Z/{date_filter_stop}"}
+    date_filter_features, _ = search_and_check(
+        endpoint, {
+            **date_filter_param,
+            "limit": 10000, 
+            "sortby": [{"direction": "desc", "field": sortby_date}]})
 
-    # Test all sortby values, prefixed by + and -
-    for sortby in sortbys:
-        for direction in "asc", "desc":
-            params = {
-                "limit": limit,
-                "sortby": [{"direction": direction, "field": sortby}]
-            }
-            page_endpoint = endpoint
-            page_params = params
+    # Test all sortby values, with and without reverse, with and without a date filter
+    for (
+        sortby, 
+        reverse, 
+        reference_features
+    ) in itertools.product(
+        sortbys, 
+        (False, True), 
+        (all_features, date_filter_features)
+    ):
+        # Split the total number of features in n pages
+        pages = 3
+        limit = math.ceil(len(reference_features) / pages)
 
-            # For each page to request
-            for page in range(pages):
+        params = {
+            "limit": limit,
+            "sortby": [{"direction": "desc" if reverse else "asc", "field": sortby}]
+        }
+        if reference_features == date_filter_features:
+            params.update(date_filter_param) # add filtering on date
+        page_endpoint = endpoint
+        page_params = params
 
-                # Request current page
-                features, links = search_and_check(page_endpoint, page_params)
+        def sorted_value(feature: dict):
+            """
+            Return a feature value corresponding to the current sortby field. 
+            It is either in the feature root, in its properties, or in the first asset.
+            """
+            try:
+                ret = (
+                    feature.get(sortby) or 
+                    feature["properties"].get(sortby) or
+                    list(feature["assets"].values())[0].get(sortby))
+                if not ret:
+                    raise KeyError
+                return ret
+            except (KeyError, IndexError):
+                raise RuntimeError(f"Feature is missing field {sortby!r}:\n{json.dumps(feature, indent=2)}")
 
-                # In case of error, don't process next pages
-                if not links:
-                    break
+        # Concatenate all values for the current sortby field 
+        # that will be returned by the paginated and sorted endpoints
+        all_paginated_values = []
 
-                # Read link tokens
-                try:
-                    next_page_token = \
-                        [link for link in links if link["rel"] == "next"][0]["body"]["token"]
-                    prev_page_token = \
-                        [link for link in links if link["rel"] == "previous"][0]["body"]["token"] if page else None
-                except (KeyError, IndexError):
-                    save_error(page_endpoint, page_params, [f"Missing self/previous/next link(s)"])
+        # If we manually sort the values returned by the non-paginated endpoint,
+        # we should have the same result
+        try:
+            all_expected_values = sorted(
+                [sorted_value(feature) for feature in reference_features],
+                reverse=reverse)
+        except RuntimeError as error:
+            save_error(page_endpoint, page_params, [str(error)])
+            continue # try next sortby field
 
-                # Check the token for next and previous page
-                if f"page={page+2}" not in next_page_token:
-                    save_error(page_endpoint, page_params, 
-                        [f"Wrong 'next' page token: {next_page_token!r}, should contain: 'page={page+2}'"])
-                    break # don't process next page
-                if prev_page_token and (f"page={page}" not in prev_page_token):
-                    save_error(page_endpoint, page_params, 
-                        [f"Wrong 'previous' page token: {prev_page_token!r}, should contain: 'page={page}'"])
-                    
-                # Use the "next" token for the next page
-                page_params.update({"token": next_page_token})
+        test_results = True
 
+        # For each page to request
+        for page in range(pages):
 
-    bp = 0
+            # Request current page
+            paginated_features, links = search_and_check(page_endpoint, page_params)
 
-        # if property == "limit":
-        #     feature_count = len(output_features)
-        #     # TO BE FIXED BY https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-131 ?
-        #     if feature_count > expected_value:
-        #         messages.append(f"{feature_count} features returned, expected max: {expected_value}")
-        #     continue
+            # In case of error, don't process next pages
+            if not links:
+                test_results = False
+                break
+
+            # Read the previous (for page > 1) and next pages token = 
+            # fetch the links which rel=="previous" or "next", and read their body/token contents
+            try:
+                x_page_token = lambda x: \
+                    [link for link in links if link["rel"] == x][0]["body"]["token"]
+                next_page_token = x_page_token("next")
+                prev_page_token = x_page_token("previous") if page else None
+            except (KeyError, IndexError):
+                save_error(page_endpoint, page_params, [f"Missing self/previous/next link(s)"])
+
+            # Check the token for next and previous page
+            if f"page={page+2}" not in next_page_token:
+                save_error(page_endpoint, page_params, 
+                    [f"Wrong 'next' page token: {next_page_token!r}, should contain: 'page={page+2}'"])
+                test_results = False
+                break # don't process next page
+            if prev_page_token and (f"page={page}" not in prev_page_token):
+                save_error(page_endpoint, page_params, 
+                    [f"Wrong 'previous' page token: {prev_page_token!r}, should contain: 'page={page}'"])
+                
+            # Use the "next" token when requesting the next page
+            page_params.update({"token": next_page_token})
+
+            # Concatenate all values for the current sortby field 
+            # returned by the paginated and sorted endpoint
+            try:
+                all_paginated_values += [sorted_value(feature) for feature in paginated_features]
+            except RuntimeError as error:
+                save_error(page_endpoint, page_params, [str(error)])
+                break # don't process next page
+
+        if test_results and (all_paginated_values != all_expected_values):
+            save_error(page_endpoint, page_params, [
+                f"Paginated values (len={len(all_paginated_values)}) "
+                f"are not as expected (len={len(all_expected_values)}):\n" 
+                f"Got:      {all_paginated_values}\n"
+                f"Expected: {all_expected_values}"])
 
 if errors:
     message = "\n## Error message start ##\n"
