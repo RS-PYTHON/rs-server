@@ -53,7 +53,7 @@ opentelemetry-exporter-otlp = "^1.27.0"
 python-logging-loki = "^0.3.1"
 stac-pydantic = "2.0.3"
 aiohttp = "^3.10.5"
-dask = {extras = ["distributed"], version = "2024.1.0"}
+dask = {extras = ["distributed"], version = "2024.11.2"}
 dask-gateway = "2024.1.0"
 msgpack = "1.1.0"
 toolz = "1.0.0"
