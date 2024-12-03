@@ -842,7 +842,11 @@ def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortb
             return getattr(item.properties, attribute)
         if hasattr(item, attribute):
             return getattr(item, attribute)
-        raise AttributeError(f"Attribute '{attribute}' not found in item or item.properties")
+        # Otherwise, check if the attribute exists in any asset
+        for asset in item.assets.values():
+            if hasattr(asset, attribute):
+                return getattr(asset, attribute)
+        raise AttributeError(f"Attribute '{attribute}' not found in item")
 
     # Sort the features
     try:
