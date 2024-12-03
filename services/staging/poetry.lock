@@ -726,32 +726,32 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "dask"
-version = "2024.11.2"
+version = "2024.1.0"
 description = "Parallel PyData with Task Scheduling"
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.9"
 files = [
-    {file = "dask-2024.11.2-py3-none-any.whl", hash = "sha256:6115c4b76015e8d9d9c2922b6a0a1c850e283fb7fee74eebbd2e28e9c117c30d"},
-    {file = "dask-2024.11.2.tar.gz", hash = "sha256:9a72bee3f149ff89bc492340d4bcba33d5dd3e3a9d471d2b4b3872f2d71ddaae"},
+    {file = "dask-2024.1.0-py3-none-any.whl", hash = "sha256:717102ef7c309297291095a0061d374f3b72e11ce4e1115ab9faff940e274b4b"},
+    {file = "dask-2024.1.0.tar.gz", hash = "sha256:f24fdc7a07e59a1403bf6903e6d8dc15ed6f8607d3311b4f00f88d8a2ac63e49"},
 ]
 
 [package.dependencies]
 click = ">=8.1"
-cloudpickle = ">=3.0.0"
-distributed = {version = "2024.11.2", optional = true, markers = "extra == \"distributed\""}
+cloudpickle = ">=1.5.0"
+distributed = {version = "2024.1.0", optional = true, markers = "extra == \"distributed\""}
 fsspec = ">=2021.09.0"
-importlib-metadata = {version = ">=4.13.0", markers = "python_version < \"3.12\""}
+importlib-metadata = ">=4.13.0"
 packaging = ">=20.0"
-partd = ">=1.4.0"
+partd = ">=1.2.0"
 pyyaml = ">=5.3.1"
 toolz = ">=0.10.0"
 
 [package.extras]
-array = ["numpy (>=1.24)"]
-complete = ["dask[array,dataframe,diagnostics,distributed]", "lz4 (>=4.3.2)", "pyarrow (>=14.0.1)"]
-dataframe = ["dask-expr (>=1.1,<1.2)", "dask[array]", "pandas (>=2.0)"]
-diagnostics = ["bokeh (>=3.1.0)", "jinja2 (>=2.10.3)"]
-distributed = ["distributed (==2024.11.2)"]
+array = ["numpy (>=1.21)"]
+complete = ["dask[array,dataframe,diagnostics,distributed]", "lz4 (>=4.3.2)", "pyarrow (>=7.0)", "pyarrow-hotfix"]
+dataframe = ["dask[array]", "pandas (>=1.3)"]
+diagnostics = ["bokeh (>=2.4.2)", "jinja2 (>=2.10.3)"]
+distributed = ["distributed (==2024.1.0)"]
 test = ["pandas[test]", "pre-commit", "pytest", "pytest-cov", "pytest-rerunfailures", "pytest-timeout", "pytest-xdist"]
 
 [[package]]
@@ -857,30 +857,30 @@ files = [
 
 [[package]]
 name = "distributed"
-version = "2024.11.2"
+version = "2024.1.0"
 description = "Distributed scheduler for Dask"
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.9"
 files = [
-    {file = "distributed-2024.11.2-py3-none-any.whl", hash = "sha256:a455ae031689aee151172b3492de5dd637b67531720619c171df988974985cdf"},
-    {file = "distributed-2024.11.2.tar.gz", hash = "sha256:60e430ab9d438102535f342521bc2673db08fcd373a4474b042caf9fe9fcf990"},
+    {file = "distributed-2024.1.0-py3-none-any.whl", hash = "sha256:b552c9331350ba0e7cb8eccb1da8942b44997ccb680338f61c43fe9843c69988"},
+    {file = "distributed-2024.1.0.tar.gz", hash = "sha256:f1d0e2dd5249085e32c6ff5c0ce0521c7e844dd52337683a69363a6bb1799a30"},
 ]
 
 [package.dependencies]
 click = ">=8.0"
-cloudpickle = ">=3.0.0"
-dask = "2024.11.2"
+cloudpickle = ">=1.5.0"
+dask = "2024.1.0"
 jinja2 = ">=2.10.3"
 locket = ">=1.0.0"
-msgpack = ">=1.0.2"
+msgpack = ">=1.0.0"
 packaging = ">=20.0"
-psutil = ">=5.8.0"
-pyyaml = ">=5.4.1"
+psutil = ">=5.7.2"
+pyyaml = ">=5.3.1"
 sortedcontainers = ">=2.0.5"
 tblib = ">=1.6.0"
-toolz = ">=0.11.2"
-tornado = ">=6.2.0"
-urllib3 = ">=1.26.5"
+toolz = ">=0.10.0"
+tornado = ">=6.0.4"
+urllib3 = ">=1.24.3"
 zict = ">=3.0.0"
 
 [[package]]
@@ -2566,13 +2566,13 @@ certifi = "*"
 
 [[package]]
 name = "pytest"
-version = "8.3.3"
+version = "8.3.4"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pytest-8.3.3-py3-none-any.whl", hash = "sha256:a6853c7375b2663155079443d2e45de913a911a11d669df02a50814944db57b2"},
-    {file = "pytest-8.3.3.tar.gz", hash = "sha256:70b98107bd648308a7952b06e6ca9a50bc660be218d53c257cc1fc94fda10181"},
+    {file = "pytest-8.3.4-py3-none-any.whl", hash = "sha256:50e16d954148559c9a74109af1eaf0c945ba2d8f30f0a3d3335edde19788b6f6"},
+    {file = "pytest-8.3.4.tar.gz", hash = "sha256:965370d062bce11e73868e0335abac31b4d3de0e82f4007408d242b4f8610761"},
 ]
 
 [package.dependencies]
@@ -3753,4 +3753,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "32e71685fddffe8d8eb6d96c82581d86d671024acfd2b67c87c23c826a7ec0b3"
+content-hash = "285e5bcee73a4f6c405a5b8a3f1e4242e416a7b176cec1d31ffaae2e91a70ac4"
