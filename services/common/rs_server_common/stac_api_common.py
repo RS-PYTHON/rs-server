@@ -819,14 +819,37 @@ def create_stac_collection(
 
 def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortby: str) -> stac_pydantic.ItemCollection:
     """
-    Later implement sorting on multiple fields
+    Sorts the features in the collection by a specified attribute.
+
+    The sort order can be reversed by prepending the attribute name with a "-" (e.g., "-date").
+    If the attribute is not found, it falls back to sorting by a default field.
+
+    Args:
+        item_collection (stac_pydantic.ItemCollection): The collection of items to sort.
+        sortby (str): The attribute by which to sort. If prefixed with "-", the sort order is descending.
+
+    Returns:
+        stac_pydantic.ItemCollection: A new collection sorted by the specified attribute.
     """
     # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
     sortby = sortby.strip("'\"")
     direction, attribute = sortby[:1], sortby[1:]
-    sorted_items = sorted(
-        item_collection.features,
-        key=lambda item: getattr(item.properties, attribute),  # type: ignore
-        reverse=direction == "-",
-    )  # type: ignore
+
+    # Try to sort by 'properties' first, then fallback to the 'feature' itself
+    def get_sort_key(item):
+        # Check if the attribute exists in properties, else use item directly
+        if hasattr(item.properties, attribute):
+            return getattr(item.properties, attribute)
+        if hasattr(item, attribute):
+            return getattr(item, attribute)
+        raise AttributeError(f"Attribute '{attribute}' not found in item or item.properties")
+
+    # Sort the features
+    try:
+        sorted_items = sorted(item_collection.features, key=get_sort_key, reverse=direction == "-")
+    except AttributeError as e:
+        raise log_http_exception(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid attribute '{attribute}' for sorting: {str(e)},",
+        ) from e
     return stac_pydantic.ItemCollection(features=sorted_items, type=item_collection.type)
