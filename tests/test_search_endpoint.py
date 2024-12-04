@@ -1052,7 +1052,7 @@ def test_search_parameters(
 
     # Static values
     user_ids = "id1, id2"
-    user_datetime = "2021-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
+    user_datetime = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
     user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
     user_params = {
         "limit": user_limit,
