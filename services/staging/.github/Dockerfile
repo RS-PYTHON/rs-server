@@ -39,9 +39,12 @@ RUN cd /tmp/whl && pip install --no-cache-dir rs_server_staging-*.whl
 FROM python:3.11-slim-bookworm
 
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
+# Remove unneeded libraries with critical CVEs
 RUN \
     apt update && \
     apt install -y libpq-dev libexpat1 && \
+    apt remove -y libaom3 && \
+    apt autoremove && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
 # Copy the whole /usr/local dir (that contains the python installation) from the build stage
