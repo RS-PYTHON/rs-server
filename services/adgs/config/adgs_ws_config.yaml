@@ -68,10 +68,10 @@ adgs:
       End:
       - null
       - $.ContentDate.End
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       ChecksumValue:
@@ -105,8 +105,9 @@ adgs:
         operations:
           and:
           - contains(Name, '{Name}')
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
@@ -191,10 +192,10 @@ adgs2:
       End:
       - null
       - $.ContentDate.End
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       ChecksumValue:
@@ -228,8 +229,9 @@ adgs2:
         operations:
           and:
           - contains(Name, '{Name}')
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'

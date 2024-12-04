@@ -19,7 +19,7 @@ import shutil
 import tempfile
 from pathlib import Path
 from threading import Lock
-from typing import List, Union
+from typing import Dict, List, Union
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
@@ -32,7 +32,7 @@ from eodag.utils.exceptions import (
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 
-from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
+from .provider import CreateProviderFailed, Provider, SearchProductFailed
 
 # from fastapi import HTTPException
 
@@ -89,7 +89,7 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
-    def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
+    def _specific_search(self, date_time, **kwargs) -> Union[SearchResult, List]:
         """
         Conducts a search for products within a specified time range.
 
@@ -100,8 +100,7 @@ class EodagProvider(Provider):
         respective identifiers.
 
         Args:
-            between (TimeRange): An object representing the start and end timestamps
-                                for the search range.
+            date_time: An object representing search datetime, can be fixed or open/closed interval.
 
         Returns:
             SearchResult: A dictionary where keys are product identifiers and
@@ -116,7 +115,7 @@ class EodagProvider(Provider):
         Raises:
             Exception: If the search encounters an error or fails, an exception is raised.
         """
-        mapped_search_args = {}
+        mapped_search_args: Dict[str, Union[str, None]] = {}
 
         if session_id := kwargs.pop("id", None):
             # Map session_id to the appropriate eodag parameter
@@ -139,12 +138,14 @@ class EodagProvider(Provider):
             if retransfer := kwargs.pop("retransfer", None):
                 mapped_search_args["Retransfer"] = str(retransfer).lower()
 
-        if between:
+        if date_time:
             # Since now both for files and sessions, time interval is optional, map it if provided.
+            fixed, start, end = [str(date) if date else None for date in date_time]
             mapped_search_args.update(
                 {
-                    "startTimeFromAscendingNode": str(between.start),
-                    "completionTimeFromAscendingNode": str(between.end),
+                    "PublicationDate": fixed,
+                    "StartPublicationDate": start,
+                    "StopPublicationDate": end,
                 },
             )
         try:

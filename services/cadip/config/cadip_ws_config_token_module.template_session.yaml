@@ -99,10 +99,10 @@ template:
         - null
         - "$.Files"
       # Eodag Specific map
-      startTimeFromAscendingNode:
+      StartPublicationDate:
         - null
         - "$.PublicationDate"
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
         - null
         - "$.PublicationDate"
       href:
@@ -119,8 +119,9 @@ template:
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
             - "Satellite in ({platforms})"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
+            - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
+            - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+            - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
             - "Retransfer eq {Retransfer}"
 
     sort:

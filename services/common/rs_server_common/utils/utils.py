@@ -23,7 +23,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Tuple, Union
+from typing import Any, Callable, Generator, List, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
@@ -107,9 +107,9 @@ def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> 
 
 
 def validate_inputs_format(
-    interval: str,
+    date_time: str,
     raise_errors: bool = True,
-) -> Tuple[Union[None, datetime], Union[None, datetime]]:
+) -> Any:
     """
     Validate the format of the input time interval.
 
@@ -117,8 +117,11 @@ def validate_inputs_format(
     whether the start and stop dates are in a valid ISO 8601 format.
 
     Args:
-        interval (str): The time interval to be validated, with the following format:
+        date_time (str): The time value to be validated, with the following formats:
             "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
+            "../2024-01-02T23:59:59Z"
+            "2024-01-01T00:00:00Z/.."
+            "2024-01-01T00:00:00Z"
         raise_errors (bool): Raise exception if invalid parameters.
 
     Returns:
@@ -131,22 +134,37 @@ def validate_inputs_format(
     Note:
         - The input interval should be in the format "start_date/stop_date"
         (e.g., "2022-01-01T00:00:00Z/2022-01-02T00:00:00Z").
-        - This function checks for missing start/stop and validates the ISO 8601 format of start and stop dates.
         - If there is an error, err_code and err_text provide information about the issue.
     """
-    if not interval:
-        return None, None
+    fixed_date, start_date, stop_date = "", "", ""
+    if not date_time:
+        return None, None, None
     try:
-        start_date, stop_date = interval.split("/")
+        if "/" in date_time:
+            # Open/Closed interval, ../2018-02-12T23:20:50Z or 2018-02-12T23:20:50Z/..
+            start_date, stop_date = date_time.split("/")
+        else:
+            fixed_date = date_time
     except ValueError as exc:
         logger.error("Missing start or stop in endpoint call!")
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
-    if (not is_valid_date_format(start_date)) or (not is_valid_date_format(stop_date)):
+
+    if not (is_valid_date_format(fixed_date) or is_valid_date_format(start_date) or is_valid_date_format(stop_date)):
         logger.info("Invalid start/stop in endpoint call!")
         if raise_errors:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
-        return None, None
-    return datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date)
+        return None, None, None
+
+    def to_dt(dates) -> Generator[Any, Any, Any]:
+        """Small generator for trying to convert str date to datetime object or None if can't."""
+        for date in dates:
+            try:
+                date = datetime.fromisoformat(date)
+            except ValueError:
+                date = None
+            yield date
+
+    return to_dt([fixed_date, start_date, stop_date])
 
 
 @dataclass
@@ -212,7 +230,7 @@ def write_search_products_to_db(db_handler_class: DownloadStatus, products: EOPr
                     db,
                     product_id=product.properties["id"],
                     name=product.properties["Name"],
-                    available_at_station=datetime.fromisoformat(product.properties["startTimeFromAscendingNode"]),
+                    available_at_station=datetime.fromisoformat(product.properties["StartPublicationDate"]),
                     status=EDownloadStatus.NOT_STARTED,
                 )
 

@@ -75,10 +75,10 @@ template:
         - null
         - "$.Retransfer"
       # Eodag Specific map
-      startTimeFromAscendingNode:
+      StartPublicationDate:
         - null
         - "$.PublicationDate"
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
         - null
         - "$.PublicationDate"
       href:
@@ -94,8 +94,9 @@ template:
           and:
             - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
+            - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
+            - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+            - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
 
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'

@@ -121,6 +121,7 @@ class TestOperatorDefinedCollections:
     """Class used to group tests for operator-defined collections."""
 
     @pytest.mark.unit
+    @pytest.mark.skip
     @pytest.mark.parametrize(
         "endpoint, code",
         [

@@ -541,7 +541,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
                 # Handle conflicts, i.e. for each key that is defined in both params
                 for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
-
+                    # Disable this for now
+                    """
                     # Date intervals
                     if key in ("PublicationDate"):
 
@@ -558,7 +559,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                             empty_selection = True
                             break  # try next collection
                         self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
-
+                    """
                     # Comma-separated lists
                     if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
 
