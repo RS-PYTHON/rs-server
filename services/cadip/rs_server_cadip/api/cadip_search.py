@@ -475,6 +475,8 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
         ) from exception
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(f"General failure! {exception}")
+        if isinstance(exception, HTTPException):
+            raise
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",

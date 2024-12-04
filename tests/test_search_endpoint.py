@@ -121,7 +121,6 @@ class TestOperatorDefinedCollections:
     """Class used to group tests for operator-defined collections."""
 
     @pytest.mark.unit
-    @pytest.mark.skip
     @pytest.mark.parametrize(
         "endpoint, code",
         [
@@ -804,7 +803,7 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid pages (str, negative, 0)"""
         mock_token_validation()
         response = client.get(endpoint)
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "parameter is not sortable" in response.json()["detail"]
 
     @pytest.mark.unit

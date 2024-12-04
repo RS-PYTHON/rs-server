@@ -149,11 +149,12 @@ def validate_inputs_format(
         logger.error("Missing start or stop in endpoint call!")
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
 
-    if not (is_valid_date_format(fixed_date) or is_valid_date_format(start_date) or is_valid_date_format(stop_date)):
-        logger.info("Invalid start/stop in endpoint call!")
-        if raise_errors:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
-        return None, None, None
+    for date in [fixed_date, start_date, stop_date]:
+        if date and not is_valid_date_format(date):
+            logger.info("Invalid start/stop in endpoint call!")
+            if raise_errors:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
+            return None, None, None
 
     def to_dt(dates) -> List[Any]:
         """Converts a list of date strings to datetime objects or None if the conversion fails."""

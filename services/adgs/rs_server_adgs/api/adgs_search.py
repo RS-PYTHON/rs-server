@@ -344,7 +344,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     set_eodag_auth_token(station, "auxip")
     try:
         products = init_adgs_provider(station).search(
-            validate_inputs_format(publication_date),
+            validate_inputs_format(publication_date, raise_errors=True),
             attr_ptype=product_type,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
@@ -377,6 +377,8 @@ def process_product_search(  # pylint: disable=too-many-locals
 
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(f"General failure! {exception}")
+        if isinstance(exception, HTTPException):
+            raise
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",
