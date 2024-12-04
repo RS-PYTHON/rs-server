@@ -23,7 +23,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Generator, List, Union
+from typing import Any, Callable, List, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
@@ -155,14 +155,17 @@ def validate_inputs_format(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
         return None, None, None
 
-    def to_dt(dates) -> Generator[Any, Any, Any]:
-        """Small generator for trying to convert str date to datetime object or None if can't."""
-        for date in dates:
-            try:
-                date = datetime.fromisoformat(date)
-            except ValueError:
-                date = None
-            yield date
+    def to_dt(dates) -> List[Any]:
+        """Converts a list of date strings to datetime objects or None if the conversion fails."""
+        return [datetime.fromisoformat(date) if is_valid_date(date) else None for date in dates]
+
+    def is_valid_date(date: str) -> bool:
+        """Check if the string can be converted to a valid datetime."""
+        try:
+            datetime.fromisoformat(date)
+            return True
+        except ValueError:
+            return False
 
     return to_dt([fixed_date, start_date, stop_date])
 

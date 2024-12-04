@@ -800,8 +800,9 @@ class TestFeatureCollectionOdataStacMapping:
         ],
     )
     @responses.activate
-    def test_invalid_sortby_values(self, client, endpoint):
+    def test_invalid_sortby_values(self, client, mock_token_validation, endpoint):
         """Test endpoint call with invalid pages (str, negative, 0)"""
+        mock_token_validation()
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert "parameter is not sortable" in response.json()["detail"]
@@ -817,8 +818,9 @@ class TestFeatureCollectionOdataStacMapping:
         ],
     )
     @responses.activate
-    def test_token_in_url(self, client, endpoint, page):
+    def test_token_in_url(self, client, mock_token_validation, endpoint, page):
         """Used to test if application correctly builds next/previous token."""
+        mock_token_validation()
         base_cadip_uri = (
             "http://127.0.0.1:5000/Sessions?"
             "$filter=SessionId%20eq%20'S1A_20200105072204051312'&"
