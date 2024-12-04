@@ -776,5 +776,5 @@ def create_stac_collection(
             items.append(item)
         except ValidationError as e:
             logger.error(f"STAC validation error for {feature_tmp} (STAC conversion of {product_data}): {e}")
-            raise
+            continue
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
