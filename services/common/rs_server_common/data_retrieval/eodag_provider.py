@@ -17,6 +17,7 @@
 import os
 import shutil
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 from typing import List, Union
@@ -85,9 +86,15 @@ class EodagProvider(Provider):
                 os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
                 # disable product types discovery
                 os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
-                return EODataAccessGateway(config_file.as_posix())
+                return self.cached_eodag_client(config_file.resolve().as_posix())
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
+
+    @staticmethod
+    @lru_cache()  # run this function only once for every new config file
+    def cached_eodag_client(config_file: str) -> EODataAccessGateway:
+        """Return a single EODataAccessGateway cached instance that will be reused for every new request."""
+        return EODataAccessGateway(config_file)
 
     def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
         """
