@@ -693,11 +693,12 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # This is a temporary fix for the dask cluster settings which does not create a scheduler by default
         # This code should be removed as soon as this is fixed in the kubernetes cluster
         try:
+            self.logger.debug(f"{client.get_versions(check=True)}")
             workers = client.scheduler_info()["workers"]
             self.logger.info(f"Number of running workers: {len(workers)}")
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.exception(f"Failed to retrieve worker info: {e}")
-            raise RuntimeError(f"Failed to retrieve worker info: {e}") from e
+            self.logger.exception(f"Dask cluster client failed: {e}")
+            raise RuntimeError(f"Dask cluster client failed: {e}") from e
         if len(workers) == 0:
             self.logger.info("No workers are currently running in the Dask cluster. Scaling up to 1.")
             self.cluster.scale(1)
@@ -705,6 +706,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
+
         return client
 
     def submit_tasks_to_dask_cluster(self, token: str, trusted_domains: list[str], client: Client):
