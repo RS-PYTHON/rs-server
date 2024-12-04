@@ -14,7 +14,7 @@
 
 
 # Build stage for multi stage build.
-FROM python:3.11.7-slim-bookworm AS builder
+FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
 
 # Install dependencies
 RUN apt update && apt install -y libpq-dev gcc
@@ -33,7 +33,7 @@ ADD ./*.whl /tmp/whl
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_frontend-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
-FROM python:3.11-slim-bookworm
+FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
 # Copy the python installation from the build stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
