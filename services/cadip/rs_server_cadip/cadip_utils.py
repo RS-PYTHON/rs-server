@@ -23,6 +23,7 @@ import os
 import os.path as osp
 import re
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple, Union
 
@@ -41,6 +42,7 @@ search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 logger = Logging.default(__name__)
 
 
+@lru_cache()
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
     cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))

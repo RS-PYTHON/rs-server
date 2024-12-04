@@ -204,7 +204,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     process_manager = init_db()
 
     cluster = None
-    if env_bool("RSPY_LOCAL_MODE", False):
+    if env_bool("RSPY_LOCAL_MODE", default=False):
         # Create the LocalCluster only in local mode
         cluster = LocalCluster()
         logger.info("Local Dask cluster created at startup.")
@@ -218,7 +218,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
 
     # Shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    if env_bool("RSPY_LOCAL_MODE", False) and cluster:
+    if env_bool("RSPY_LOCAL_MODE", default=False) and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
 
