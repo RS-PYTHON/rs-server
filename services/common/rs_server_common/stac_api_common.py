@@ -552,7 +552,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection, self.sortby)
         return stac_pydantic.ItemCollection(
             features=paginated_item_collection.features[
-                self.user_limit * (self.user_page - 1) : self.user_limit * self.user_page
+                self.user_limit * (self.user_page - 1) : self.user_limit * self.user_page  # noqa: E203
             ],
             type=paginated_item_collection.type,
         ).model_dump()
