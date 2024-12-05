@@ -24,8 +24,10 @@ from typing import Any, List
 
 import pytest
 import responses
-from eodag import EODataAccessGateway
-from rs_server_common.data_retrieval.eodag_provider import EodagProvider
+from rs_server_common.data_retrieval.eodag_provider import (
+    CustomEODataAccessGateway,
+    EodagProvider,
+)
 from rs_server_common.data_retrieval.provider import CreateProviderFailed, Provider
 
 
@@ -80,7 +82,7 @@ class TestAEodagProvider:
         assert os.getenv("EODAG_CFG_DIR") == provider.client.eodag_cfg_dir.name
         # check the existence of the temp directory
         assert os.path.isdir(provider.client.eodag_cfg_dir.name)
-        assert isinstance(provider.client, EODataAccessGateway)
+        assert isinstance(provider.client, CustomEODataAccessGateway)
         # check that EODAG_CFG_DIR env var was set
         assert cadip_config.provider in provider.client.available_providers()
         # test if the temp path is deleted
@@ -247,7 +249,7 @@ class TestAEodagProviderDownload:
 
         # directly calling the destructor, keep in mind that this one is not
         # guaranteed to be called by python itself
-        client.__del__()
+        client.__del__()  # pylint: disable=unnecessary-dunder-call
         # check if the temp dir has been deleted (by directly calling the destructor)
         assert isinstance(eodag_cfg_dir, tempfile.TemporaryDirectory)
         assert not os.path.isdir(eodag_cfg_dir.name)
