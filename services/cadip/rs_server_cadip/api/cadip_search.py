@@ -493,7 +493,7 @@ async def search_products(  # pylint: disable=too-many-locals, too-many-argument
     session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
-) -> list[dict] | dict:
+):  # -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.

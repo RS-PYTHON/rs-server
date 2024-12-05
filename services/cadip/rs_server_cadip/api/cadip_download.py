@@ -88,7 +88,7 @@ class CadipDownloadResponse(BaseModel):
 
 @router.get("/cadip/{station}/cadu", response_model=CadipDownloadResponse)
 @auth_validator(station="cadip", access_type="download")
-def download_products(
+async def download_products(
     request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="CADU product name")],
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),

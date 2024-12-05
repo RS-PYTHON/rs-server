@@ -31,7 +31,7 @@ router = APIRouter(tags=cadip_tags)
 
 @router.get("/cadip/{station}/cadu/status", response_model=ReadDownloadStatus)
 @auth_validator(station="cadip", access_type="download")
-def get_download_status(
+async def get_download_status(
     request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="CADU product name")],
     db: Session = Depends(get_db),
