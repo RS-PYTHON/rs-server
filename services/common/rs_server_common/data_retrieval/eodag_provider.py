@@ -23,6 +23,7 @@ from threading import Lock
 from typing import List, Union
 
 import yaml
+from asyncinit import asyncinit
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.utils.exceptions import (
     AuthenticationError,
@@ -41,8 +42,6 @@ from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeR
 
 logger = Logging.default(__name__)
 
-from asyncinit import asyncinit
-
 
 @asyncinit
 class EodagProvider(Provider):
@@ -53,7 +52,7 @@ class EodagProvider(Provider):
 
     lock = Lock()  # static Lock instance
 
-    async def __init__(self, config_file: Path, provider: str):
+    async def __init__(self, config_file: Path, provider: str):  # type: ignore
         """Create a EODAG provider.
 
         Args:
