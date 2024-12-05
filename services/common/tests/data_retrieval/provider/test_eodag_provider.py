@@ -53,17 +53,17 @@ def mock_cadip_download(product_id: str, with_content: dict | None = None):
 class TestAEodagProvider:
     """Class used to test the functionality of the EodagProvider class."""
 
-    def test_is_a_provider(self, cadip_config):
+    async def test_is_a_provider(self, cadip_config):
         """
         Verifies that EodagProvider is an instance of the Provider class.
 
         This test checks if an instance of EodagProvider is also an instance of the Provider class.
 
         """
-        provider = EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = await EodagProvider(cadip_config.file, cadip_config.provider)
         assert isinstance(provider, Provider)
 
-    def test_is_initialised_with_the_given_config(self, cadip_config):
+    async def test_is_initialised_with_the_given_config(self, cadip_config):
         """
         Verifies that EodagProvider is initialized with the given configuration.
 
@@ -73,7 +73,7 @@ class TestAEodagProvider:
         """
         # ensure that EODAG_CFG_DIR env var does not exist
         del os.environ["EODAG_CFG_DIR"]
-        provider = EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = await EodagProvider(cadip_config.file, cadip_config.provider)
         # check that EODAG_CFG_DIR env var has been set
         assert "EODAG_CFG_DIR" in os.environ
         # check the value of EODAG_CFG_DIR
@@ -89,7 +89,7 @@ class TestAEodagProvider:
         provider.__del__()  # pylint: disable=unnecessary-dunder-call
         assert not os.path.isdir(provider.eodag_cfg_dir.name)
 
-    def test_cant_be_initialized_with_a_wrong_configuration(self, not_found_config):
+    async def test_cant_be_initialized_with_a_wrong_configuration(self, not_found_config):
         """
         Verifies that EodagProvider raises CreateProviderFailed exception with a wrong configuration.
 
@@ -98,7 +98,7 @@ class TestAEodagProvider:
 
         """
         with pytest.raises(CreateProviderFailed) as exc_info:
-            EodagProvider(not_found_config.file, not_found_config.provider)
+            await EodagProvider(not_found_config.file, not_found_config.provider)
         assert "Can't initialize WRONG provider" in str(exc_info.value)
         assert isinstance(exc_info.value.__cause__, FileNotFoundError)
 
@@ -137,7 +137,7 @@ class TestAEodagProviderDownload:
         assert False
 
     @responses.activate
-    def test_download_the_file_on_the_remote_data_source_using_its_config(self, cadip_config, tmp_path):
+    async def test_download_the_file_on_the_remote_data_source_using_its_config(self, cadip_config, tmp_path):
         """
         Tests the download of a file on the remote data source using its configuration.
 
@@ -151,7 +151,7 @@ class TestAEodagProviderDownload:
         # base URL and usage of the product ID
         download_response = mock_cadip_download(product_id)
 
-        provider = EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = await EodagProvider(cadip_config.file, cadip_config.provider)
         downloaded_file = tmp_path / "downloaded.txt"
         provider.download(product_id, downloaded_file)
 
@@ -171,7 +171,7 @@ class TestAEodagProviderDownload:
         assert False
 
     @responses.activate
-    def test_write_the_downloaded_file_at_the_given_location(self, cadip_config, tmp_path):
+    async def test_write_the_downloaded_file_at_the_given_location(self, cadip_config, tmp_path):
         """
         Tests writing the downloaded file at the given location.
 
@@ -187,7 +187,7 @@ class TestAEodagProviderDownload:
         }
         mock_cadip_download(product_id, content)
 
-        provider = EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = await EodagProvider(cadip_config.file, cadip_config.provider)
         downloaded_file = tmp_path / "downloaded.txt"
         provider.download(product_id, downloaded_file)
         downloaded_file = downloaded_file / "downloaded.txt"  # eodag 3.0 specific
@@ -199,7 +199,7 @@ class TestAEodagProviderDownload:
         assert actual_content == content
 
     @responses.activate
-    def test_parallel_download_at_the_given_location(self, cadip_config):
+    async def test_parallel_download_at_the_given_location(self, cadip_config):
         """
         Tests writing the downloaded file at the given location.
 
@@ -208,7 +208,7 @@ class TestAEodagProviderDownload:
 
         """
 
-        def dwn_thread(cc, idx, result):
+        async def dwn_thread(cc, idx, result):
             product_id = f"file_{idx}.tmp"
 
             content = {
@@ -217,7 +217,7 @@ class TestAEodagProviderDownload:
             }
             mock_cadip_download(product_id, content)
 
-            provider = EodagProvider(cc.file, cc.provider)
+            provider = await EodagProvider(cc.file, cc.provider)
             with tempfile.TemporaryDirectory() as download_dir:
                 downloaded_file = Path(download_dir) / f"downloaded_thread_{idx}.txt"
                 provider.download(product_id, downloaded_file)

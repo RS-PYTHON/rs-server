@@ -31,6 +31,7 @@ from eodag.utils.exceptions import (
     ValidationError,
 )
 from fastapi import HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
@@ -40,7 +41,10 @@ from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeR
 
 logger = Logging.default(__name__)
 
+from asyncinit import asyncinit
 
+
+@asyncinit
 class EodagProvider(Provider):
     """An EODAG provider.
 
@@ -49,7 +53,7 @@ class EodagProvider(Provider):
 
     lock = Lock()  # static Lock instance
 
-    def __init__(self, config_file: Path, provider: str):
+    async def __init__(self, config_file: Path, provider: str):
         """Create a EODAG provider.
 
         Args:
@@ -59,7 +63,7 @@ class EodagProvider(Provider):
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         self.provider: str = provider
         self.config_file = config_file
-        self.client: EODataAccessGateway = self.init_eodag_client(config_file)
+        self.client: EODataAccessGateway = await self.init_eodag_client(config_file)
         self.client.set_preferred_provider(self.provider)
 
     def __del__(self):
@@ -69,7 +73,7 @@ class EodagProvider(Provider):
         except FileNotFoundError:
             pass
 
-    def init_eodag_client(self, config_file: Path) -> EODataAccessGateway:
+    async def init_eodag_client(self, config_file: Path) -> EODataAccessGateway:
         """Initialize the eodag client.
 
         The EODAG client is initialized for the given provider.
@@ -86,7 +90,11 @@ class EodagProvider(Provider):
                 os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
                 # disable product types discovery
                 os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
-                return self.cached_eodag_client(config_file.resolve().as_posix())
+
+                # The EODataAccessGateway init takes several seconds.
+                # Run it in a separate thread, see: https://stackoverflow.com/a/71517830
+                return await run_in_threadpool(self.cached_eodag_client, config_file.resolve().as_posix())
+
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 

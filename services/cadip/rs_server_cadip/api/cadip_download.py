@@ -14,6 +14,7 @@
 
 """Module used to download CADU files from CADIP stations."""
 
+import asyncio
 import os
 import os.path as osp
 import tempfile
@@ -53,7 +54,7 @@ CONF_FOLDER = Path(osp.realpath(osp.dirname(__file__))).parent.parent.parent / "
 logger = Logging.default(__name__)
 
 
-def start_eodag_download(argument: EoDAGDownloadHandler):
+async def start_eodag_download(argument: EoDAGDownloadHandler):
     """Start the eodag download process.
 
     This function initiates the eodag download process using the provided arguments. It sets up
@@ -69,7 +70,7 @@ def start_eodag_download(argument: EoDAGDownloadHandler):
     # Open a database sessions in this thread, because the session from the root thread may have closed.
     try:
         with tempfile.TemporaryDirectory() as default_temp_path, contextmanager(get_db)() as db:
-            eodag_download(
+            await eodag_download(
                 argument,
                 db,
                 init_cadip_provider,
@@ -152,8 +153,8 @@ def download_products(
     # Is there a mechanism to catch / capture return value from a function running inside a thread?
     # If start_eodag_download throws an error, there is no simple solution to return it with FastAPI
     thread = threading.Thread(
-        target=start_eodag_download,
-        args=(eodag_args,),
+        target=asyncio.run,
+        args=(start_eodag_download(eodag_args),),
     )
     thread.start()
 

@@ -23,7 +23,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Tuple, Union
+from typing import Awaitable, Callable, List, Tuple, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
@@ -277,10 +277,10 @@ def update_db(
     raise last_exception
 
 
-def eodag_download(
+async def eodag_download(
     argument: EoDAGDownloadHandler,
     db,
-    init_provider: Callable[[str], Provider],
+    init_provider: Callable[[str], Awaitable[Provider]],
     **kwargs,
 ):  # pylint: disable=too-many-locals
     """Initiates the eodag download process.
@@ -326,7 +326,7 @@ def eodag_download(
         # To be discussed: init_provider may fail, but in the same time it takes too much
         # when properly initialized, and the timeout for download endpoint return is overpassed
         argument.thread_started.set()
-        provider = init_provider(argument.station)
+        provider = await init_provider(argument.station)
         init = datetime.now()
         filename = Path(local) / argument.name
         provider.download(argument.product_id, filename)
