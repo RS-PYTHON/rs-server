@@ -435,7 +435,10 @@ def expected_config_token_file_fixture() -> dict:
                     "name": "auxip",
                     "url": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
                 },
-                "trusteddomains": "[trusted.domain1.eu, trusted.domain2.eu]",
+                "trusteddomains": [
+                    "trusted.domain1.eu",
+                    "trusted.domain2.eu",
+                ],
             },
             "ins": {
                 "authentication": {
