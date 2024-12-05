@@ -197,7 +197,10 @@ def link_assets_to_session(session_data, assets_dict, mapper):
                 map_key: asset_item[map_value] for map_key, map_value in mapper.items() if map_value in asset_item
             }
             asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
-            feature.assets.update({asset.title: asset})
+            if asset.title:
+                feature.assets.update({asset.title: asset})
+            else:
+                logger.error(f"Ignored CADU asset without title: {asset}")
         try:
             properties: ItemProperties = feature.properties
             start_date = properties.start_datetime
