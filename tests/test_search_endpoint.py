@@ -808,6 +808,104 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
+        "fastapi_app, endpoint, odata, expected_code",
+        [
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate gt 2018-02-12T23:20:50.000Z and PublicationDate"
+                " lt 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate gt 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate lt 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (ROUTER_PREFIX_AUXIP, "/auxip/search?collections=adgs&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=invalid/..",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=../invalid",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gt 2018-02-12T23:20:50.000Z and PublicationDate"
+                " lt 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/..",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gt 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=../2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lt 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=invalid/..",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=../invalid",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+        ],
+        indirect=["fastapi_app"],
+        ids=["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n"],
+    )
+    @responses.activate
+    def test_valid_datetime(self, client, mock_token_validation, endpoint, odata, expected_code):
+        """Test used to group all combination of datetime values. Fixed, closed/open interval."""
+        mock_token_validation()
+        responses.add(responses.GET, odata, json={"value": []}, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == expected_code
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
         "endpoint, page",
         [
             ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "3"),
