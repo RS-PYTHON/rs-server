@@ -97,11 +97,23 @@ def init_rs_server_config_yaml():
             # Initialize with mandatory fields the station entry if it doesn't exist
             rest_of_key = rest_of_key.strip("__").replace("__", "_") if rest_of_key else None
             station_data = config_data.setdefault(station, {"service": {"name": service}})
+            # Initialize a variable for the final processed value
+            processed_value: Any = value
+            # Check if the value looks like a list
+            if value.startswith("[") and value.endswith("]"):
+                try:
+                    processed_value = [
+                        domain.strip(" \"'") for domain in value.strip("[]").split(",")  # Remove whitespace and quotes
+                    ]
+                except Exception as e:  # pylint: disable=broad-except
+                    logger.error(f"Failed to parse list value for {var}: {value}. Error: {e}")
+                    raise RuntimeError(f"Failed to parse list value for {var}: {value}. Error: {e}") from e
+
             if rest_of_key:
                 section_data = station_data.setdefault(section, {})
-                section_data[rest_of_key] = value
+                section_data[rest_of_key] = processed_value
             else:
-                station_data[section] = value
+                station_data[section] = processed_value
     try:
         # Create the directory if it doesn't exist
         os.makedirs(os.path.dirname(CONFIG_PATH_AUTH_TO_EXTERNAL), exist_ok=True)
@@ -109,7 +121,7 @@ def init_rs_server_config_yaml():
         # Write the YAML data to the file
         main_dict = {"external_data_sources": config_data}
         with open(CONFIG_PATH_AUTH_TO_EXTERNAL, "w", encoding="utf-8") as yaml_file:
-            yaml.dump(main_dict, yaml_file, default_flow_style=False)
+            yaml.safe_dump(main_dict, yaml_file, default_flow_style=False)
         logger.info(
             f"The configuration for the external stations token module was successfully \
 written to {CONFIG_PATH_AUTH_TO_EXTERNAL}",
@@ -405,7 +417,7 @@ def create_external_auth_config(
             client_secret=station_dict.get("authentication", {}).get("client_secret"),
             scope=station_dict.get("authentication", {}).get("scope"),
             authorization=station_dict.get("authentication", {}).get("authorization"),
-            trusted_domains=station_dict.get("trusted_domains", None),
+            trusted_domains=station_dict.get("trusteddomains", None),
         )
     except KeyError as e:
         logger.error(f"Error loading configuration, couldn't find a key: {e}")

@@ -440,7 +440,25 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
                 feature_template["id"] = odata_dict[eodag_key]
             elif stac_key in feature_template["assets"]["file"]:
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
+    # to pass pydantic validation, make sure we don't have a single timerange value
+    check_and_fix_timerange(feature_template)
     return feature_template
+
+
+def check_and_fix_timerange(item: dict):
+    """This function ensures the item does not have a single timerange value"""
+    properties = item.get("properties", {})
+
+    start_dt = properties.get("start_datetime")
+    end_dt = properties.get("end_datetime")
+    dt = properties.get("datetime")
+
+    if start_dt and not end_dt:
+        properties["end_datetime"] = max(start_dt, dt) if dt else start_dt
+        logger.warning(f"Forced end_datetime property in {item}")
+    elif end_dt and not start_dt:
+        properties.pop("end_datetime", None)
+        logger.warning(f"Removed end_datetime property from {item}")
 
 
 def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:
