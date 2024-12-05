@@ -541,14 +541,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
                 # Handle conflicts, i.e. for each key that is defined in both params
                 for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
-                    # Disable this for now
-                    """
                     # Date intervals
                     if key in ("PublicationDate"):
 
                         # Read both start and stop dates
-                        start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
-                        start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
+                        _, start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
+                        _, start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
 
                         # Calculate the intersection
                         start = max(start1, start2)
@@ -559,7 +557,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                             empty_selection = True
                             break  # try next collection
                         self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
-                    """
                     # Comma-separated lists
                     if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
 
