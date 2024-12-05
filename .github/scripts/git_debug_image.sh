@@ -25,9 +25,9 @@ ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 # Read input arguments
 BRANCH_NAME="$1" # git branch name
 
-# Install components in the docker iamges
+# Install components in the docker images
 apt update
-apt install -y git vim emacs
+apt install -y git vim emacs-nox
 
 # Add aliases to bash
 cat << EOF >> /home/user/.bashrc
