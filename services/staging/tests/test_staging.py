@@ -25,7 +25,11 @@ from rs_server_staging.main import (
     init_pygeoapi,
 )
 from sqlalchemy.exc import SQLAlchemyError
-from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND
+from starlette.status import (
+    HTTP_200_OK,
+    HTTP_404_NOT_FOUND,
+    HTTP_503_SERVICE_UNAVAILABLE,
+)
 
 expected_jobs_test = [
     {
@@ -186,7 +190,8 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
 
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    mock_db_table.get_jobs.return_value = mock_jobs  # Simulate postgres returning jobs
+    # Simulate postgres returning jobs
+    mock_db_table.get_jobs.return_value = {"jobs": list(mock_jobs), "numberMatched": 2}
 
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
@@ -195,14 +200,29 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     response = staging_client.get("/jobs")
     # Assert the correct response is returned
     assert response.status_code == HTTP_200_OK
-    assert response.json() == mock_jobs  # Check if the returned data matches the mocked jobs
+    # Check if the returned data matches the mocked jobs
+    assert response.json() == {"jobs": list(mock_jobs), "numberMatched": 2}
 
     # Mock with an empty db, should return 404 since there are no jobs.
-    mock_db_table.get_jobs.return_value = []
+    mock_db_table.get_jobs.return_value = {"jobs": [], "numberMatched": 0}
+
+    # Patch app.extra with the mock db_table
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     response = staging_client.get("/jobs")
 
-    assert response.status_code == HTTP_404_NOT_FOUND
+    assert response.status_code == HTTP_200_OK
+    # Check if the returned data matches 0 jobs
+    assert response.json() == {"jobs": [], "numberMatched": 0}
+
+    # Simulate an exception
+    mock_db_table.get_jobs.side_effect = Exception("get_jobs failed")
+    # Patch app.extra with the mock db_table
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    # Call the API
+    response = staging_client.get("/jobs")
+    assert response.status_code == HTTP_503_SERVICE_UNAVAILABLE
+    assert response.json() == {"message": "get_jobs failed"}
 
 
 @pytest.mark.asyncio

@@ -17,11 +17,13 @@
 import os
 import shutil
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 from typing import List, Union
 
 import yaml
+from asyncinit import asyncinit
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.utils.exceptions import (
     AuthenticationError,
@@ -30,6 +32,7 @@ from eodag.utils.exceptions import (
     ValidationError,
 )
 from fastapi import HTTPException, status
+from fastapi.concurrency import run_in_threadpool
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
@@ -40,26 +43,26 @@ from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeR
 logger = Logging.default(__name__)
 
 
-class EodagProvider(Provider):
-    """An EODAG provider.
+class CustomEODataAccessGateway(EODataAccessGateway):
+    """EODataAccessGateway with a custom config directory management."""
 
-    It uses EODAG to provide data from external sources.
-    """
+    def __init__(self, *args, **kwargs):
+        """Constructor"""
 
-    lock = Lock()  # static Lock instance
-
-    def __init__(self, config_file: Path, provider: str):
-        """Create a EODAG provider.
-
-        Args:
-            config_file: the path to the eodag configuration file
-            provider: the name of the eodag provider
-        """
+        # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
-        self.provider: str = provider
-        self.config_file = config_file
-        self.client: EODataAccessGateway = self.init_eodag_client(config_file)
-        self.client.set_preferred_provider(self.provider)
+        os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
+        # disable product types discovery
+        os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
+
+        # Init eodag instance
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    @lru_cache
+    def create(cls, *args, **kwargs):
+        """Call a single cached instance for each different arguments."""
+        return cls(*args, **kwargs)
 
     def __del__(self):
         """Destructor"""
@@ -68,7 +71,29 @@ class EodagProvider(Provider):
         except FileNotFoundError:
             pass
 
-    def init_eodag_client(self, config_file: Path) -> EODataAccessGateway:
+
+@asyncinit
+class EodagProvider(Provider):
+    """An EODAG provider.
+
+    It uses EODAG to provide data from external sources.
+    """
+
+    lock = Lock()  # static Lock instance
+
+    async def __init__(self, config_file: Path, provider: str):  # type: ignore
+        """Create a EODAG provider.
+
+        Args:
+            config_file: the path to the eodag configuration file
+            provider: the name of the eodag provider
+        """
+        self.provider: str = provider
+        self.config_file = config_file
+        self.client: CustomEODataAccessGateway = await self.init_eodag_client(config_file)
+        self.client.set_preferred_provider(self.provider)
+
+    async def init_eodag_client(self, config_file: Path) -> CustomEODataAccessGateway:
         """Initialize the eodag client.
 
         The EODAG client is initialized for the given provider.
@@ -82,10 +107,10 @@ class EodagProvider(Provider):
         try:
             # Use thread-lock
             with EodagProvider.lock:
-                os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
-                # disable product types discovery
-                os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
-                return EODataAccessGateway(config_file.as_posix())
+                # The EODataAccessGateway init takes several seconds.
+                # Run it in a separate thread, see: https://stackoverflow.com/a/71517830
+                return await run_in_threadpool(CustomEODataAccessGateway.create, config_file.resolve().as_posix())
+
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
 
@@ -196,11 +221,13 @@ class EodagProvider(Provider):
             None
 
         """
-        product = self.create_eodag_product(product_id, to_file.name)
-        # download_plugin = self.client._plugins_manager.get_download_plugin(product)
-        # authent_plugin = self.client._plugins_manager.get_auth_plugin(product.provider)
-        # product.register_downloader(download_plugin, authent_plugin)
-        self.client.download(product, output_dir=str(to_file.parent))
+        # Use thread-lock because self.client.download is not thread-safe
+        with EodagProvider.lock:
+            product = self.create_eodag_product(product_id, to_file.name)
+            # download_plugin = self.client._plugins_manager.get_download_plugin(product)
+            # authent_plugin = self.client._plugins_manager.get_auth_plugin(product.provider)
+            # product.register_downloader(download_plugin, authent_plugin)
+            self.client.download(product, output_dir=str(to_file.parent))
 
     def create_eodag_product(self, product_id: str, filename: str):
         """Initialize an EO product with minimal properties.

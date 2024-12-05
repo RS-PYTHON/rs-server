@@ -805,15 +805,19 @@ def create_stac_collection(
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
-        item = stac_pydantic.Item(**feature_tmp)
-        # Add a default bbox and geometry, since L0 chunks items are not geo-located.
-        item.bbox = (-180.0, -90.0, 180.0, 90.0)
-        item.geometry = {
-            "type": "Polygon",
-            "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
-        }
-        item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
-        items.append(item)
+        try:
+            item = stac_pydantic.Item(**feature_tmp)
+            # Add a default bbox and geometry, since L0 chunks items are not geo-located.
+            item.bbox = (-180.0, -90.0, 180.0, 90.0)
+            item.geometry = {
+                "type": "Polygon",
+                "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+            }
+            item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
+            items.append(item)
+        except ValidationError as e:
+            logger.error(f"STAC validation error for {feature_tmp} (STAC conversion of {product_data}): {e}")
+            continue
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
 
 

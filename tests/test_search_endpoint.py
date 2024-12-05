@@ -1022,6 +1022,7 @@ def test_search_parameters(
 
     # Read the first adgs or cadip collection, keep everything except the id and hardcoded query
     collection = service_utils.read_conf()["collections"][0]
+    collection = deepcopy(collection)  # copy the cached response before we modify it
     collection.pop("id")
     collection.pop("query")
     #
