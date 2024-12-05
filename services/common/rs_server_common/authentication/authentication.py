@@ -159,9 +159,9 @@ def auth_validator(station, access_type):
 
     def decorator(func):
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        async def wrapper(*args, **kwargs):
             auth_validation(station, access_type, *args, **kwargs)
-            return func(*args, **kwargs)
+            return await func(*args, **kwargs)
 
         return wrapper
 

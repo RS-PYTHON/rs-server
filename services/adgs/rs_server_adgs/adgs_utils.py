@@ -39,7 +39,7 @@ def read_conf():
     adgs_search_config = os.environ.get("RSPY_ADGS_SEARCH_CONFIG", str(search_yaml.absolute()))
     with open(adgs_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
-    return config
+    return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
 
 
 def select_config(configuration_id: str) -> dict | None:

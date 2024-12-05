@@ -68,6 +68,7 @@ python-keycloak = "^4.5.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 stac-fastapi-pgstac = "3.0.0"
+asyncinit = "^0.2.4"
 
 [tool.poetry.group.dev]
 optional = true
@@ -90,6 +91,7 @@ markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
+asyncio_mode = "auto"
 
 [tool.mypy]
 warn_redundant_casts = true
