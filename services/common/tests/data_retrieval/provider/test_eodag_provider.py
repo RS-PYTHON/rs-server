@@ -73,22 +73,21 @@ class TestAEodagProvider:
 
         """
         # ensure that EODAG_CFG_DIR env var does not exist
-        del os.environ["EODAG_CFG_DIR"]
         provider = await EodagProvider(cadip_config.file, cadip_config.provider)
         # check that EODAG_CFG_DIR env var has been set
         assert "EODAG_CFG_DIR" in os.environ
         # check the value of EODAG_CFG_DIR
-        assert os.getenv("EODAG_CFG_DIR") == provider.eodag_cfg_dir.name
+        assert os.getenv("EODAG_CFG_DIR") == provider.client.eodag_cfg_dir.name
         # check the existence of the temp directory
-        assert os.path.isdir(provider.eodag_cfg_dir.name)
+        assert os.path.isdir(provider.client.eodag_cfg_dir.name)
         assert isinstance(provider.client, EODataAccessGateway)
         # check that EODAG_CFG_DIR env var was set
         assert cadip_config.provider in provider.client.available_providers()
         # test if the temp path is deleted
         # directly calling the destructor, keep in mind that this one is not
         # guaranteed to be called by python itself
-        provider.__del__()  # pylint: disable=unnecessary-dunder-call
-        assert not os.path.isdir(provider.eodag_cfg_dir.name)
+        provider.client.__del__()  # pylint: disable=unnecessary-dunder-call
+        assert not os.path.isdir(provider.client.eodag_cfg_dir.name)
 
     async def test_cant_be_initialized_with_a_wrong_configuration(self, not_found_config):
         """
@@ -230,10 +229,7 @@ class TestAEodagProviderDownload:
                     actual_content = json.load(f)
 
                 assert actual_content == content
-            result[idx] = provider.eodag_cfg_dir
-            # directly calling the destructor, keep in mind that this one is not
-            # guaranteed to be called by python itself
-            provider.__del__()  # pylint: disable=unnecessary-dunder-call
+            result[idx] = provider.client
 
         request_threads: List[Thread] = []
         nb_of_threads = 10
@@ -244,9 +240,14 @@ class TestAEodagProviderDownload:
             dt.start()
         for dt in request_threads:
             dt.join()
-        # assure that the temp dirs created by eodag are unique
-        assert len(results) == len(set(results))
-        # check if all the temp dirs have been deleted (by directly calling the destructor in the thread)
-        for res in results:
-            assert isinstance(res, tempfile.TemporaryDirectory)
-            assert not os.path.isdir(res.name)
+        # we should use a single eodag client cached instance
+        assert len(set(results)) == 1
+        client = results.pop()
+        eodag_cfg_dir = client.eodag_cfg_dir
+
+        # directly calling the destructor, keep in mind that this one is not
+        # guaranteed to be called by python itself
+        client.__del__()
+        # check if the temp dir has been deleted (by directly calling the destructor)
+        assert isinstance(eodag_cfg_dir, tempfile.TemporaryDirectory)
+        assert not os.path.isdir(eodag_cfg_dir.name)
