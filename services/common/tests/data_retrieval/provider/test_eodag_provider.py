@@ -14,6 +14,7 @@
 
 """Unit tests for EodagProvider."""
 
+import asyncio
 import json
 import os
 import tempfile
@@ -238,7 +239,7 @@ class TestAEodagProviderDownload:
         nb_of_threads = 10
         results: Any = [None] * nb_of_threads
         for idx in range(nb_of_threads):
-            request_threads.append(Thread(target=dwn_thread, args=(cadip_config, idx, results)))
+            request_threads.append(Thread(target=asyncio.run, args=[dwn_thread(cadip_config, idx, results)]))
         for dt in request_threads:
             dt.start()
         for dt in request_threads:

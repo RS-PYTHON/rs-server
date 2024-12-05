@@ -91,6 +91,7 @@ markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
+asyncio_mode = "auto"
 
 [tool.mypy]
 warn_redundant_casts = true
