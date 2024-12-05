@@ -14,6 +14,7 @@
 
 """EODAG Provider."""
 
+import asyncio
 import os
 import shutil
 import tempfile
@@ -79,7 +80,9 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    lock = Lock()  # static Lock instance
+    # static Lock instances
+    lock = Lock()
+    async_lock = asyncio.Lock()
 
     async def __init__(self, config_file: Path, provider: str):  # type: ignore
         """Create a EODAG provider.
@@ -106,7 +109,7 @@ class EodagProvider(Provider):
         """
         try:
             # Use thread-lock
-            with EodagProvider.lock:
+            async with EodagProvider.async_lock:
                 # The EODataAccessGateway init takes several seconds.
                 # Run it in a separate thread, see: https://stackoverflow.com/a/71517830
                 return await run_in_threadpool(CustomEODataAccessGateway.create, config_file.resolve().as_posix())
