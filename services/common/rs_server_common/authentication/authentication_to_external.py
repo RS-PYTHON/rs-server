@@ -485,7 +485,7 @@ def set_eodag_auth_token(
     ext_auth_config.station_id = ext_auth_config.station_id + session
     # call the module implemented for rspy-352
     # NOTE: the cadip_ws_config should be also configured
-    if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", False):
+    if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
         os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] = get_station_token(
             ext_auth_config,
         )

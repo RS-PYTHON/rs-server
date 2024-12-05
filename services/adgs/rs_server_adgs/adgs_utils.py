@@ -20,6 +20,7 @@ import json
 import os
 import os.path as osp
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Tuple, Union
 
@@ -32,6 +33,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"
 
 
+@lru_cache()
 def read_conf():
     """Used each time to read RSPY_ADGS_SEARCH_CONFIG config yaml."""
     adgs_search_config = os.environ.get("RSPY_ADGS_SEARCH_CONFIG", str(search_yaml.absolute()))
