@@ -103,8 +103,7 @@ def init_rs_server_config_yaml():
             if value.startswith("[") and value.endswith("]"):
                 try:
                     processed_value = [
-                        domain.strip().strip('"').strip("'")  # Remove whitespace and quotes
-                        for domain in value.strip("[]").split(",")
+                        domain.strip(" \"'") for domain in value.strip("[]").split(",")  # Remove whitespace and quotes
                     ]
                 except Exception as e:  # pylint: disable=broad-except
                     logger.error(f"Failed to parse list value for {var}: {value}. Error: {e}")
