@@ -717,6 +717,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
 
             collection = self.request_ids["collection_ids"][0]
+            if not self.request_ids["owner_id"]:
+                self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
             if (
                 request.scope["path"] == "/collections"  # POST collection
                 or request.scope["path"]
@@ -1269,7 +1271,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         if request_body:
             # Edit owner_id with the corresponding body content if exist
             if not self.request_ids["owner_id"]:
-                self.request_ids["owner_id"] = request_body.get("owner")
+                self.request_ids["owner_id"] = request_body.get("owner", None)
             # received a POST/PUT/PATCH for a STAC item or
             # a STAC collection is created
             if len(self.request_ids["collection_ids"]) == 0:

@@ -18,6 +18,7 @@
 """Integration tests for user_catalog module."""
 
 import copy
+import getpass
 import json
 import os
 import os.path as osp
@@ -481,6 +482,46 @@ class TestCatalogPublishCollectionEndpoint:
         # Check that values are correctly written in catalogDB
         assert response_content["id"] == minimal_collection["id"]
         assert response_content["owner"] == minimal_collection["owner"]
+        assert response_content["description"] == minimal_collection["description"]
+        assert response_content["type"] == minimal_collection["type"]
+        assert response_content["stac_version"] == minimal_collection["stac_version"]
+
+    def test_create_new_minimal_collection_without_setting_user(self, client):
+        """
+        Test endpoint POST /catalog/collections.
+        """
+        minimal_collection = {
+            "id": "test_collection_without_user",
+            "type": "Collection",
+            "description": "test_description",
+            "stac_version": "1.0.0",
+            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
+            "license": "public-domain",
+            "extent": {
+                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
+                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
+            },
+        }
+
+        response = client.post("/catalog/collections", json=minimal_collection)
+        # Check that collection status code is 201
+        assert response.status_code == fastapi.status.HTTP_201_CREATED
+        # Check that internal collection id is set to owner_collection
+        assert json.loads(response.content)["id"] == "test_collection_without_user"
+        assert json.loads(response.content)["owner"] == getpass.getuser()
+
+        # # Call search endpoint to verify presence of collection in catalog
+        # test_params = {"collections": "test_collection", "filter-lang": "cql2-text", "filter": "owner='test_owner'"}
+        # response = client.get("/catalog/search", params=test_params)
+        # assert response.status_code == fastapi.status.HTTP_200_OK
+
+        # Test that /catalog/collection GET endpoint returns the correct collection id
+        response = client.get("/catalog/collections/test_collection_without_user")
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        response_content = json.loads(response.content)
+        # Check that values are correctly written in catalogDB
+        assert response_content["id"] == minimal_collection["id"]
+        assert response_content["owner"] == getpass.getuser()
         assert response_content["description"] == minimal_collection["description"]
         assert response_content["type"] == minimal_collection["type"]
         assert response_content["stac_version"] == minimal_collection["stac_version"]
