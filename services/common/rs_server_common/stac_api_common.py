@@ -215,7 +215,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         can_query = True
         if collection_id:
             for field in "platformSerialIdentifier", "platformShortName", "Satellite":
-                value = self.select_config(collection_id).get("query", {}).get(field, "")
+                value = (self.select_config(collection_id).get("query") or {}).get(field) or ""
                 if value and ("," not in value):
                     can_query = False
                     break
