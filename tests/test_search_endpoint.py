@@ -1025,6 +1025,7 @@ def test_search_parameters(
     collection = deepcopy(collection)  # copy the cached response before we modify it
     collection.pop("id")
     collection.pop("query")
+
     #
     # Mock a collection with no hardcoded query, another with single values, another with multiple values
 
@@ -1329,3 +1330,57 @@ def test_search_parameters(
                     assert spy_search.call_count == 0
                     assert len(features) == 0
                 spy_search.reset_mock()
+
+
+@pytest.mark.parametrize(
+    "fastapi_app, service",
+    [(ROUTER_PREFIX_AUXIP, "adgs")],
+    ids=["adgs"],
+    indirect=["fastapi_app"],
+)
+def test_search_all_collections(
+    mocker,
+    mock_token_validation,
+    client,
+    service,
+    adgs_response,
+):
+    """Test searching all collections at the same time."""
+    mock_token_validation(service)
+    spy_search = mocker.spy(Provider, "search")
+
+    # Read the first adgs or cadip collection, keep everything except the id and hardcoded query
+    collection = adgs_utils.read_conf()["collections"][0]
+    collection = deepcopy(collection)  # copy the cached response before we modify it
+    collection.pop("id")
+    collection.pop("query")
+
+    # Mock n collections
+    collection_count = 10
+    mocked_collections = [{"id": f"col{i}", **collection} for i in range(collection_count)]
+    mocker.patch(
+        "rs_server_common.stac_api_common.MockPgstac.all_collections",
+        new_callable=mocker.PropertyMock,
+        return_value=lambda: mocked_collections,
+    )
+    mocker.patch(f"{adgs_utils.__name__}.read_conf", return_value={"collections": mocked_collections})
+
+    # Mock response
+    with responses.RequestsMock() as rsps:
+        rsps.add(
+            responses.GET,
+            "http://127.0.0.1:5000/Products?$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+            status=status.HTTP_200_OK,
+            json=adgs_response,
+        )
+
+        # Search all collections at the same time
+        url = f"{os.getenv('router_prefix')}/search"
+        response = client.get(url)
+
+        # We have mocked the same response for all n collections,
+        # so we should have n calls to the search function a single result.
+        assert response.is_success
+        features = response.json()["features"]
+        assert spy_search.call_count == collection_count
+        assert len(spy_search.spy_return) == len(features) == 1

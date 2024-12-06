@@ -69,6 +69,7 @@ itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 stac-fastapi-pgstac = "3.0.0"
 asyncinit = "^0.2.4"
+async-lru = "^2.0.4"
 
 [tool.poetry.group.dev]
 optional = true

@@ -522,19 +522,18 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         else:
             collection_ids = list(allowed_ids.intersection(collection_ids))
 
+        # Search all collections in parallel tasks
+        async with asyncio.TaskGroup() as tg:
+            all_features = [
+                tg.create_task(self.process_collection(collection_id, stac_params)) for collection_id in collection_ids
+            ]
+
         # Item features for all collections.
         # Use a dict ordered by ID so we only keep unique items, based on their ID.
-        all_features: Dict[str, Item] = {}
+        all_items = {item.id: item for features in all_features if features.result() for item in features.result()}
 
-        # For each collection to search
-        tasks = []
-        for collection_id in collection_ids:
-            task = asyncio.create_task(self.process_collection(collection_id, stac_params))
-            tasks.append(task)
-        if gathered_features := await asyncio.gather(*tasks):
-            all_features.update({item.id: item for features in gathered_features if features for item in features})
         # Return results as a dict
-        data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection")
+        data = stac_pydantic.ItemCollection(features=list(all_items.values()), type="FeatureCollection")
         dict_data: Dict[str, Any] = self.paginate(data)
 
         # Handle pagination links.

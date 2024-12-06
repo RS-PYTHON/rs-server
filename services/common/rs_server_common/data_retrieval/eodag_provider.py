@@ -24,6 +24,7 @@ from threading import Lock
 from typing import List, Union
 
 import yaml
+from async_lru import alru_cache
 from asyncinit import asyncinit
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.utils.exceptions import (
@@ -59,18 +60,20 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         # Init eodag instance
         super().__init__(*args, **kwargs)
 
-    @classmethod
-    @lru_cache
-    def create(cls, *args, **kwargs):
-        """Call a single cached instance for each different arguments."""
-        return cls(*args, **kwargs)
-
     def __del__(self):
         """Destructor"""
         try:
             shutil.rmtree(self.eodag_cfg_dir.name)  # remove the unique /tmp dir
         except FileNotFoundError:
             pass
+
+    @classmethod
+    @alru_cache
+    async def create(cls, *args, **kwargs):
+        """Call a single cached instance for each different arguments."""
+        # The EODataAccessGateway init takes several seconds.
+        # Run it in a separate thread, see: https://stackoverflow.com/a/71517830
+        return await run_in_threadpool(CustomEODataAccessGateway, *args, **kwargs)
 
 
 @asyncinit
@@ -80,9 +83,8 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    # static Lock instances
+    # static Lock instance
     lock = Lock()
-    async_lock = asyncio.Lock()
 
     async def __init__(self, config_file: Path, provider: str):  # type: ignore
         """Create a EODAG provider.
@@ -93,29 +95,13 @@ class EodagProvider(Provider):
         """
         self.provider: str = provider
         self.config_file = config_file
-        self.client: CustomEODataAccessGateway = await self.init_eodag_client(config_file)
-        self.client.set_preferred_provider(self.provider)
-
-    async def init_eodag_client(self, config_file: Path) -> CustomEODataAccessGateway:
-        """Initialize the eodag client.
-
-        The EODAG client is initialized for the given provider.
-
-        Args:
-            config_file: the path to the eodag configuration file
-
-        Returns:
-             the initialized eodag client
-        """
         try:
-            # Use thread-lock
-            async with EodagProvider.async_lock:
-                # The EODataAccessGateway init takes several seconds.
-                # Run it in a separate thread, see: https://stackoverflow.com/a/71517830
-                return await run_in_threadpool(CustomEODataAccessGateway.create, config_file.resolve().as_posix())
-
+            self.client: CustomEODataAccessGateway = await CustomEODataAccessGateway.create(
+                config_file.resolve().as_posix(),
+            )
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
+        self.client.set_preferred_provider(self.provider)
 
     def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
         """
