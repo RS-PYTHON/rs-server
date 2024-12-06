@@ -14,11 +14,9 @@
 
 """EODAG Provider."""
 
-import asyncio
 import os
 import shutil
 import tempfile
-from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 from typing import List, Union

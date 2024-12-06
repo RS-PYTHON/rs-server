@@ -568,11 +568,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             type=paginated_item_collection.type,
         ).model_dump()
 
-    async def process_collection(
+    async def process_collection(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
         collection_id,
         stac_params,
-    ) -> Sequence[Item] | Exception:  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    ) -> Sequence[Item] | Exception:
         """Method used to process a collection and perform search."""
         features = None
         empty_selection = False
@@ -637,7 +637,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     # Save the intersection
                     self.odata[key] = intersection
             if empty_selection:
-                return
+                return []
             # Overwrite the pagination parameters.
             # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
             if not self.limit:
