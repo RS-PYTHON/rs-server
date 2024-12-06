@@ -33,6 +33,7 @@ from typing import (
     Literal,
     Optional,
     Self,
+    Sequence,
     Type,
 )
 
@@ -528,9 +529,20 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 tg.create_task(self.process_collection(collection_id, stac_params)) for collection_id in collection_ids
             ]
 
-        # Item features for all collections.
-        # Use a dict ordered by ID so we only keep unique items, based on their ID.
-        all_items = {item.id: item for features in all_features if features.result() for item in features.result()}
+        # Get items and exceptions from result
+        all_items = {}
+        all_exceptions = []
+        for features in all_features:
+            if result := features.result():
+                if isinstance(result, Exception):
+                    all_exceptions.append(result)
+                else:
+                    for item in result:
+                        all_items[item.id] = item
+
+        # Raise first exception if we have no items and at least one exception
+        if (not all_items) and all_exceptions:
+            raise all_exceptions[0]
 
         # Return results as a dict
         data = stac_pydantic.ItemCollection(features=list(all_items.values()), type="FeatureCollection")
@@ -560,9 +572,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         self,
         collection_id,
         stac_params,
-    ):  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    ) -> Sequence[Item] | Exception:  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         """Method used to process a collection and perform search."""
-        first_exception = None
         features = None
         empty_selection = False
         # Convert search params from STAC keys to OData keys
@@ -655,17 +666,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Add the collection information
             for item in features:
                 item.collection = collection_id
-
             return features
-            # # Concatenate features for all collections, ordered by their ID
-            # all_features.update({item.id: item for item in features})
 
         except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error(traceback.format_exc())
-            first_exception = first_exception or exception
-        # If there are no results and we had at least one exception, raise the first one
-        if not features and first_exception:
-            raise first_exception
+            return exception
 
     @abstractmethod
     async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
