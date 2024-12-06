@@ -631,7 +631,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         if intersection:
                             intersection = ", ".join(intersection)
                         if not intersection:
-                            empty_selection = False
+                            empty_selection = True
                             break  # try next collection
 
                     # Save the intersection
