@@ -144,8 +144,6 @@ template:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels

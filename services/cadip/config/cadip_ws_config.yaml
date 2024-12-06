@@ -761,8 +761,6 @@ cadip_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -923,8 +921,6 @@ ins_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -1085,8 +1081,6 @@ mps_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -1247,8 +1241,6 @@ mti_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -1409,8 +1401,6 @@ nsg_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -1571,8 +1561,6 @@ sgs_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
