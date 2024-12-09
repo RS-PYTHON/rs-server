@@ -1243,7 +1243,10 @@ def test_search_parameters(
             # The second collection has a query that does not intersect the user query.
             # So either it returns no results. Or, if the user query is missing, we use the collection query.
             elif collection_id == "col2":
-                odata = odata_query
+                if user_query:
+                    odata = None
+                else:
+                    odata = odata_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
                 date_max = hardcoded_date.split("/")[1]
                 product_type = collection["query"].get("productType")
@@ -1268,23 +1271,30 @@ def test_search_parameters(
             else:
                 raise NotImplementedError
 
-            # Format the odata request with all possible parameters
-            if "," in satellite:
-                sats = ", ".join([f"'{sat}'" for sat in satellite.split(", ")])
-                satellite = f"({sats})"
-            else:
-                satellite = f"'{satellite}'"
-            odata = odata.format(
-                date_min=date_min,
-                date_max=date_max,
-                product_type=product_type,
-                constellation=constellation,
-                satellite=satellite,
-                satellite_op="in" if "," in satellite else "eq",
-            )
             collection_params["limit"] = limit
+
+            # Mock the station response
             with responses.RequestsMock() as rsps:
-                if odata:  # if the query should return results
+
+                # If the query should return results
+                if odata:
+
+                    # Format the odata request with all possible parameters
+                    if "," in satellite:
+                        sats = ", ".join([f"'{sat}'" for sat in satellite.split(", ")])
+                        satellite = f"({sats})"
+                    else:
+                        satellite = f"'{satellite}'"
+                    odata = odata.format(
+                        date_min=date_min,
+                        date_max=date_max,
+                        product_type=product_type,
+                        constellation=constellation,
+                        satellite=satellite,
+                        satellite_op="in" if "," in satellite else "eq",
+                    )
+
+                    # Mock the reponse
                     rsps.add(
                         responses.GET,
                         odata,
@@ -1303,6 +1313,8 @@ def test_search_parameters(
                             json=cadip_file_response,
                         )
                     expect_result = True
+
+                # The query should not return response
                 else:
                     expect_result = False
 
