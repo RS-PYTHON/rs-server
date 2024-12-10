@@ -67,7 +67,7 @@ def log_http_exception(*args, **kwargs) -> HTTPException:
 
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-SEARCH_LIMIT = 10000
+SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
 # Type hints
 CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
@@ -159,7 +159,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     page: int = 1
 
     # Number of results per page
-    limit: int | None = None
+    limit: int = 0
 
     def __post_init__(self):
         self.adgs = self.service in ("adgs", "auxip")
@@ -394,8 +394,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     detail=f"Invalid limit value: {limit!r}",
                 ) from exc
 
-        self.user_limit: int = self.limit  # type: ignore
-        self.user_page: int = self.page
+        # Default limit value
+        else:
+            self.limit = 1000
 
         # Sort results
         sortby_param = params.pop("sortby", None)
@@ -551,9 +552,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         # Handle pagination links.
         if len(dict_data["features"]) > 0:
             # Don't create next page if the current one does not have features
-            dict_data["next"] = f"page={self.user_page + 1}"
-        if self.user_page > 1:
-            dict_data["prev"] = f"page={self.user_page - 1}"
+            dict_data["next"] = f"page={self.page + 1}"
+        if self.page > 1:
+            dict_data["prev"] = f"page={self.page - 1}"
 
         return dict_data
 
@@ -563,7 +564,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection, self.sortby)
         return stac_pydantic.ItemCollection(
             features=paginated_item_collection.features[
-                self.user_limit * (self.user_page - 1) : self.user_limit * self.user_page  # noqa: E203
+                self.limit * (self.page - 1) : self.limit * self.page  # noqa: E203
             ],
             type=paginated_item_collection.type,
         ).model_dump()
@@ -638,30 +639,33 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     self.odata[key] = intersection
             if empty_selection:
                 return []
-            # Overwrite the pagination parameters.
-            # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
-            if not self.limit:
-                self.limit = self.odata.get("top", 1000)
-            if "/search" in self.request.url.path:  # type: ignore
-                # Don;t forward limit value for /search endpoints
-                # just use maximum to gather all possible results, page is always 1
-                self.limit = SEARCH_LIMIT
-                self.page = 1
+
+            # limit and page values used by the search function
+            search_limit = self.limit
+            search_page = self.page
+
+            # Don't forward limit value for /search endpoints
+            # just use maximum to gather all possible results, page is always 1
+            if "/search" in self.request.url.path:
+                search_limit = SEARCH_LIMIT
+                search_page = 1
 
             # Do the search for this collection
-            features = (await self.process_search(collection, self.odata)).features
-            # If search return maximum number of elements, increase page and process next elements
+            features = (await self.process_search(collection, self.odata, search_limit, search_page)).features
 
+            # If search return maximum number of elements, increase page and process next elements
             if len(features) == SEARCH_LIMIT:
                 while True:
-                    self.page += 1
-                    next_features = (await self.process_search(collection, self.odata)).features
+                    search_page += 1
+                    next_features = (
+                        await self.process_search(collection, self.odata, search_limit, search_page)
+                    ).features
                     features.extend(next_features)  # type: ignore
                     # Extend current features.
                     # Break the loop when result is less the maximum possible, meaning there is no next page.
                     if len(next_features) < SEARCH_LIMIT:
                         break
-                self.page = 1
+                search_page = 1
 
             # Add the collection information
             for item in features:
@@ -673,7 +677,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             return exception
 
     @abstractmethod
-    async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
+    async def process_search(
+        self,
+        collection: dict,
+        odata_params: dict,
+        limit: int,
+        page: int,
+    ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
 
 
