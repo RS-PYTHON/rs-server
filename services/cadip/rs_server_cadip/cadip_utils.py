@@ -23,15 +23,16 @@ import os
 import os.path as osp
 import re
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple, Union
 
 import eodag
-import stac_pydantic
 import yaml
 from fastapi import HTTPException, status
 from rs_server_common.stac_api_common import map_stac_platform
 from rs_server_common.utils.logging import Logging
+from stac_pydantic import ItemCollection, ItemProperties
 from stac_pydantic.shared import Asset
 
 DEFAULT_GEOM = {"geometry": "POLYGON((180 -90, 180 90, -180 90, -180 -90, 180 -90))"}
@@ -41,12 +42,13 @@ search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 logger = Logging.default(__name__)
 
 
+@lru_cache()
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
     cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
     with open(cadip_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
-    return config
+    return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
 
 
 def select_config(configuration_id: str) -> dict | None:
@@ -104,10 +106,10 @@ def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct])
 
 
 def from_session_expand_to_assets_serializer(
-    feature_collection: stac_pydantic.ItemCollection,
+    feature_collection: ItemCollection,
     input_session: eodag.EOProduct,
     mapper: dict,
-) -> stac_pydantic.ItemCollection:
+) -> ItemCollection:
     """
     Associate all expanded files with session from feature_collection and create a stac_pydantic.Asset for each file.
     """
@@ -195,20 +197,36 @@ def link_assets_to_session(session_data, assets_dict, mapper):
                 map_key: asset_item[map_value] for map_key, map_value in mapper.items() if map_value in asset_item
             }
             asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
-            feature.assets.update({asset.title: asset})
+            if asset.title:
+                feature.assets.update({asset.title: asset})
+            else:
+                logger.error(f"Ignored CADU asset without title: {asset}")
         try:
+            properties: ItemProperties = feature.properties
+            start_date = properties.start_datetime
             end_date = max(
-                (datetime.fromisoformat(item["PublicationDate"].replace("Z", "")) for item in matching_assets),
+                (
+                    datetime.fromisoformat(item["PublicationDate"].replace("Z", "")).replace(tzinfo=timezone.utc)
+                    for item in matching_assets
+                ),
                 default=None,
             )
-            feature.properties.end_datetime = datetime.fromisoformat(str(end_date)).replace(tzinfo=timezone.utc)
-        except ValueError:
-            logger.warning(f"Cannot update end datetime for {feature.id}")
+            # https://github.com/radiantearth/stac-spec/blob/master/commons/common-metadata.md#date-and-time-range
+            # Using one of the fields REQUIRES inclusion of the other field as well to enable a user to search STAC
+            # records by the provided times. So if you use start_datetime you need to add end_datetime and vice-versa.
+            if start_date and end_date:
+                properties.end_datetime = end_date
+            elif start_date or end_date:
+                logger.warning(f"{feature.id} has only one time range property: {start_date}/{end_date}")
+                properties.start_datetime = None
+                properties.end_datetime = None
+        except ValueError as e:
+            logger.warning(f"Cannot update start/end datetime for {feature.id}: {e}")
             continue
     return session_data
 
 
-def prepare_collection(collection: stac_pydantic.ItemCollection) -> stac_pydantic.ItemCollection:
+def prepare_collection(collection: ItemCollection) -> ItemCollection:
     """Used to create a more complex mapping on platform/constallation from odata to stac."""
     for feature in collection.features:
         feature.properties.platform, feature.properties.constellation = cadip_reverse_map_mission(

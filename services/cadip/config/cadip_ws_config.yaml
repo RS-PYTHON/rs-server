@@ -111,7 +111,7 @@ cadip:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -213,7 +213,7 @@ ins:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -315,7 +315,7 @@ mps:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -417,7 +417,7 @@ mti:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -519,7 +519,7 @@ nsg:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -621,7 +621,7 @@ sgs:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -781,7 +781,7 @@ cadip_session:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -941,7 +941,7 @@ ins_session:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -1101,7 +1101,7 @@ mps_session:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -1261,7 +1261,7 @@ mti_session:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -1421,7 +1421,7 @@ nsg_session:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
@@ -1581,7 +1581,7 @@ sgs_session:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}'
       total_items_nb_key_path: $.total
   download:
