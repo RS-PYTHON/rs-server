@@ -23,7 +23,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Awaitable, Callable, List, Tuple, Union
+from typing import Any, Awaitable, Callable, List, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
@@ -111,30 +111,36 @@ def validate_inputs_format(
     raise_errors: bool = True,
 ) -> Any:
     """
-    Validate the format of the input time interval.
+    Validate the format and content of a time interval string.
 
-    This function checks whether the input interval has a valid format (start_date/stop_date) and
-    whether the start and stop dates are in a valid ISO 8601 format.
+    This function checks whether the provided time interval string is in a valid format and
+    whether the start and stop dates conform to the ISO 8601 standard. It supports a variety
+    of interval formats, including open-ended intervals.
 
     Args:
-        date_time (str): The time value to be validated, with the following formats:
-            "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
-            "../2024-01-02T23:59:59Z"
-            "2024-01-01T00:00:00Z/.."
-            "2024-01-01T00:00:00Z"
-        raise_errors (bool): Raise exception if invalid parameters.
+        date_time (str): The time interval string to validate. Supported formats include:
+            - "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z" (closed interval)
+            - "../2024-01-02T23:59:59Z" (open start interval)
+            - "2024-01-01T00:00:00Z/.." (open end interval)
+            - "2024-01-01T00:00:00Z" (fixed date)
+        raise_errors (bool): If True, raises an exception for invalid input.
+            If False, returns [None, None, None] for invalid input.
 
     Returns:
-        Tuple[Union[None, datetime], Union[None, datetime]]:
-            A tuple containing:
-            - start_date (datetime): The start date of the interval.
-            - stop_date (datetime): The stop date of the interval.
-        Or [None, None] if the provided interval is empty.
+        List[Union[datetime, None]]: A list containing three elements:
+            - fixed_date (datetime or None): The single fixed date if applicable.
+            - start_date (datetime or None): The start date of the interval.
+            - stop_date (datetime or None): The stop date of the interval.
+            Returns [None, None, None] if the input is invalid or empty.
+
+    Raises:
+        HTTPException: If `raise_errors` is True and the input is invalid, an HTTP 400 or 422
+        error is raised.
 
     Note:
-        - The input interval should be in the format "start_date/stop_date"
-        (e.g., "2022-01-01T00:00:00Z/2022-01-02T00:00:00Z").
-        - If there is an error, err_code and err_text provide information about the issue.
+        - The input interval should use the ISO 8601 format for dates and times.
+        - If using an open-ended interval, one side of the interval can be omitted
+          (e.g., "../2024-01-02T23:59:59Z").
     """
     fixed_date, start_date, stop_date = "", "", ""
     if not date_time:
