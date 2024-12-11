@@ -19,8 +19,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
-from threading import Thread
-from typing import Any, List
+from typing import Any
 
 import pytest
 import responses
@@ -233,15 +232,11 @@ class TestAEodagProviderDownload:
                 assert actual_content == content
             result[idx] = provider.client
 
-        request_threads: List[Thread] = []
         nb_of_threads = 10
         results: Any = [None] * nb_of_threads
-        for idx in range(nb_of_threads):
-            request_threads.append(Thread(target=asyncio.run, args=[dwn_thread(cadip_config, idx, results)]))
-        for dt in request_threads:
-            dt.start()
-        for dt in request_threads:
-            dt.join()
+        async with asyncio.TaskGroup() as tg:
+            for idx in range(nb_of_threads):
+                tg.create_task(dwn_thread(cadip_config, idx, results))
         # we should use a single eodag client cached instance
         assert len(set(results)) == 1
         client = results.pop()

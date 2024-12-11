@@ -97,7 +97,13 @@ class MockPgstacCadip(MockPgstac):
         self.sortby = "-published"
 
     @handle_exceptions
-    async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
+    async def process_search(
+        self,
+        collection: dict,
+        odata_params: dict,
+        limit: int,
+        page: int,
+    ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
         session_data = await process_session_search(
             self.request,
@@ -107,8 +113,8 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("PublicationDate"),
             odata_params.get("Retransfer"),
             self.sortby,
-            self.limit,
-            self.page,
+            limit,
+            page,
         )
         if not session_data.features:
             # If there are no sessions, don't proceed to assets allocation
