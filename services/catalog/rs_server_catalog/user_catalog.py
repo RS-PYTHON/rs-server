@@ -357,13 +357,14 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 os.environ["S3_REGION"],
             )
 
-        collection_id = self.request_ids.get("collection_ids")[0]
+        collection_ids = self.request_ids.get("collection_ids", [])[0]
         user = self.request_ids.get("owner_id")
-        if not collection_id or not user:
+        if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
+        collection_id = collection_ids[0]
         verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
 
         files_s3_key = []
