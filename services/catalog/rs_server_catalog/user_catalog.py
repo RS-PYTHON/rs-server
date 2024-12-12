@@ -357,7 +357,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 os.environ["S3_REGION"],
             )
 
-        collection_ids = self.request_ids.get("collection_ids", [])[0]
+        collection_ids = self.request_ids.get("collection_ids", [])
         user = self.request_ids.get("owner_id")
         if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
