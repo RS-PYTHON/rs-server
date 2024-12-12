@@ -233,7 +233,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         if not item or not self.s3_handler:
             return False
         # update an item
-        existing_asset = item["assets"].get(asset_name, None)
+        existing_asset = item["assets"].get(asset_name)
         if not existing_asset:
             return False
 
@@ -357,8 +357,8 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 os.environ["S3_REGION"],
             )
 
-        collection_id = self.request_ids.get("collection_ids", None)[0]
-        user = self.request_ids.get("owner_id", None)
+        collection_id = self.request_ids.get("collection_ids")[0]
+        user = self.request_ids.get("owner_id")
         if not collection_id or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
@@ -1271,7 +1271,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
         if request_body:
             # Edit owner_id with the corresponding body content if exist
             if not self.request_ids["owner_id"]:
-                self.request_ids["owner_id"] = request_body.get("owner", None)
+                self.request_ids["owner_id"] = request_body.get("owner")
             # received a POST/PUT/PATCH for a STAC item or
             # a STAC collection is created
             if len(self.request_ids["collection_ids"]) == 0:
@@ -1280,7 +1280,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                     self.request_ids["collection_ids"] = collections if isinstance(collections, list) else [collections]
 
             if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
-                self.request_ids["item_id"] = request_body.get("id", None)
+                self.request_ids["item_id"] = request_body.get("id")
 
         if "/health" in request.scope["path"]:
             # return true if up and running
