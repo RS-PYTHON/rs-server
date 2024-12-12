@@ -426,7 +426,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid datetime interval: {datetime!r}. "
-                    "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
+                    "Expected format is either: 'YYYY-MM-DDThh:mm:ssZ', 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ', "
+                    "'YYYY-MM-DDThh:mm:ssZ/..' or '../YYYY-MM-DDThh:mm:ssZ'",
                 ) from exception
 
         #
