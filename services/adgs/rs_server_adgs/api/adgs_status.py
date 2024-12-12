@@ -29,7 +29,7 @@ router = APIRouter(tags=adgs_tags)
 
 @router.get("/adgs/aux/status", response_model=ReadDownloadStatus)
 @auth_validator(station="adgs", access_type="download")
-def get_download_status(
+async def get_download_status(
     request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="AUX product name")],
     db: Session = Depends(get_db),

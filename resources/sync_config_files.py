@@ -654,6 +654,8 @@ if __name__ == "__main__":
     # Copy resulting files to rs-demo
     for config_path_relative in (
         "services/common/config/rs-server.yaml",
+        "services/adgs/config/adgs_ws_config.yaml",
+        "services/cadip/config/cadip_ws_config.yaml",
         "services/adgs/config/adgs_ws_config_token_module.yaml",
         "services/cadip/config/cadip_ws_config_token_module.yaml",
     ):

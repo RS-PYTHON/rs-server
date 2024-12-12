@@ -46,42 +46,105 @@ template:
       url: "https://home.rs-python.eu/"
 
 collections:
-  - id: cadip_sessions_id
+
+  # All stations deployed in the CS cluster, without queries
+  - id: cadip
+    station: cadip
+    title: "All from 'cadip' station"
+    description: "All from 'cadip' station"
+
+  - id: mti
+    station: mti
+    title: "All from 'mti' station"
+    description: "All from 'mti' station"
+
+  - id: sgs
+    station: sgs
+    title: "All from 'sgs' station"
+    description: "All from 'sgs' station"
+
+  # Idem with one collection per constellation
+
+  - id: cadip_sentinel1
     station: cadip
     query:
-      top: 20
-    title: "'cadip' station"
-    description: "'cadip' station"
+      Satellite: S1A, S1B, S1C
+    title: "Sentinel-1 'cadip' station"
+    description: "Sentinel-1 'cadip' station"
 
-  - id: cadip_s1A
+  - id: cadip_sentinel2
     station: cadip
     query:
-      Satellite: S1A, S1B
-      top: 20
-    title: "'cadip' station - S1A"
-    description: "'cadip' station - S1A"
+      Satellite: S2A, S2B, S2C
+    title: "Sentinel-2 'cadip' station"
+    description: "Sentinel-2 'cadip' station"
 
-  - id: mti_s1A
+  - id: cadip_sentinel3
+    station: cadip
+    query:
+      Satellite: S3A, S3B
+    title: "Sentinel-3 'cadip' station"
+    description: "Sentinel-3 'cadip' station"
+
+  - id: cadip_sentinel5
+    station: cadip
+    query:
+      Satellite: S5P
+    title: "Sentinel-5 'cadip' station"
+    description: "Sentinel-5 'cadip' station"
+
+  - id: mti_sentinel1
     station: mti
     query:
-      Satellite: S1A
-      top: 20
-    title: "'mti' station - S1A"
-    description: "'mti' station - S1A"
+      Satellite: S1A, S1B, S1C
+    title: "Sentinel-1 'mti' station"
+    description: "Sentinel-1 'mti' station"
 
-  - id: sgs_s1A
+  - id: mti_sentinel2
+    station: mti
+    query:
+      Satellite: S2A, S2B, S2C
+    title: "Sentinel-2 'mti' station"
+    description: "Sentinel-2 'mti' station"
+
+  - id: mti_sentinel3
+    station: mti
+    query:
+      Satellite: S3A, S3B
+    title: "Sentinel-3 'mti' station"
+    description: "Sentinel-3 'mti' station"
+
+  - id: mti_sentinel5
+    station: mti
+    query:
+      Satellite: S5P
+    title: "Sentinel-5 'mti' station"
+    description: "Sentinel-5 'mti' station"
+
+  - id: sgs_sentinel1
     station: sgs
     query:
-      Satellite: S1A
-      top: 20
-    title: "'sgs' station - S1A"
-    description: "'sgs' station - S1A"
+      Satellite: S1A, S1B, S1C
+    title: "Sentinel-1 'sgs' station"
+    description: "Sentinel-1 'sgs' station"
 
-  - id: cadip_s1a_interval
-    station: cadip
+  - id: sgs_sentinel2
+    station: sgs
     query:
-      PublicationDate: "2020-01-01T00:00:00Z/2024-01-01T00:00:00Z"
-      Satellite: S1A
-      top: 20
-    title: "'cadip' station - S1A 2020/2023"
-    description: "'cadip' station - S1A 2020/2023"
+      Satellite: S2A, S2B, S2C
+    title: "Sentinel-2 'sgs' station"
+    description: "Sentinel-2 'sgs' station"
+
+  - id: sgs_sentinel3
+    station: sgs
+    query:
+      Satellite: S3A, S3B
+    title: "Sentinel-3 'sgs' station"
+    description: "Sentinel-3 'sgs' station"
+
+  - id: sgs_sentinel5
+    station: sgs
+    query:
+      Satellite: S5P
+    title: "Sentinel-5 'sgs' station"
+    description: "Sentinel-5 'sgs' station"
