@@ -842,6 +842,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Publish feature to catalog
         # how to get user? // Do we need user? should /catalog/collection/collectionId/items works with apik?
         publish_url = f"{self.catalog_url}/catalog/collections/{self.catalog_collection}/items"
+        for asset in feature.assets:
+            del asset.alternate
         try:
             response = requests.post(
                 publish_url,
