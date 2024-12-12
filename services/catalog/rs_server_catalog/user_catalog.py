@@ -695,6 +695,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         """
         try:
             content = await request.json()
+            if not self.request_ids["owner_id"]:
+                self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
             if (  # If we are in cluster mode and the user_login is not authorized
                 # to put/post returns a HTTP_401_UNAUTHORIZED status.
                 common_settings.CLUSTER_MODE
@@ -718,8 +720,6 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
 
             collection = self.request_ids["collection_ids"][0]
-            if not self.request_ids["owner_id"]:
-                self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
             if (
                 request.scope["path"] == "/collections"  # POST collection
                 or request.scope["path"]
