@@ -329,4 +329,5 @@ app.router.lifespan_context = app_lifespan
 # Mount pygeoapi endpoints
 app.mount(path="/oapi", app=api)
 
-# test
+if __name__ == "__main__":
+    pass
