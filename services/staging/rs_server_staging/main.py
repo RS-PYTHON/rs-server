@@ -328,3 +328,5 @@ app.router.lifespan_context = app_lifespan
 
 # Mount pygeoapi endpoints
 app.mount(path="/oapi", app=api)
+
+# this comment is just to trigger the sonarqube code coverage
