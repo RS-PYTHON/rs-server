@@ -75,7 +75,8 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 --cov-append \
 "
         trap "echo FAILED COMMAND: $cmd" EXIT # print the command if it fails
-        (set -x; $cmd) # run command
+        echo "+ $cmd"
+        $cmd # run command
         trap - EXIT # clear trap
     )
     echo "Finished testing '$tests_dir'"
