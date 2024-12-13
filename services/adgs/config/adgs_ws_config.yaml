@@ -105,8 +105,8 @@ adgs:
         operations:
           and:
           - contains(Name, '{Name}')
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')
@@ -229,8 +229,8 @@ adgs2:
         operations:
           and:
           - contains(Name, '{Name}')
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')

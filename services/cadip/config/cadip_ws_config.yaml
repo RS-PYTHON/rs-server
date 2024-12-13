@@ -99,8 +99,8 @@ cadip:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -201,8 +201,8 @@ ins:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -303,8 +303,8 @@ mps:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -405,8 +405,8 @@ mti:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -507,8 +507,8 @@ nsg:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -609,8 +609,8 @@ sgs:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -748,8 +748,8 @@ cadip_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
@@ -908,8 +908,8 @@ ins_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
@@ -1068,8 +1068,8 @@ mps_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
@@ -1228,8 +1228,8 @@ mti_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
@@ -1388,8 +1388,8 @@ nsg_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
@@ -1548,8 +1548,8 @@ sgs_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:

@@ -94,8 +94,8 @@ template:
           and:
             - "SessionId in ({SessionIds})"
             - "SessionId eq {SessionId}"
-            - PublicationDate gt {StartPublicationDate#to_iso_utc_datetime}
-            - PublicationDate lt {StopPublicationDate#to_iso_utc_datetime}
+            - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+            - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
             - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
 
     sort:
