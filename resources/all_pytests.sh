@@ -20,12 +20,16 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 
 # Run pytest in each sub-project directory.
-# We cannot run it once from the main directory because some sub-project may have dependency conflicts,
+# We cannot run it once from the main directory because some sub-projects may have dependency conflicts,
 # and because we have a 'ImportError while loading conftest' when several sub-projects implement
 # a 'conftest' file.
 
 # Remove the existing coverage reports
-(set -x; rm -rf ./.coverage ./cov-report.xml ./junit-xml-report.xml)
+(set -x; rm -rf ./.coverage ./cov-report.xml ./junit-xml-report*.xml)
+
+# We must manually append the junit report
+pip install junitparser
+junit=0
 
 # For each pyproject.toml file in the current directory
 for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
@@ -46,6 +50,9 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
         poetry run opentelemetry-bootstrap -a install || true
     )
 
+    # Increment junit reports index
+    junit=$((junit+1))
+
     # Subshell
     (
         # Read the .env file if it exists
@@ -64,7 +71,7 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 --cov=$relative_path \
 --cov-report=term \
 --cov-report=xml:./cov-report.xml \
---junit-xml=./junit-xml-report.xml \
+--junit-xml=./junit-xml-report-${junit}.xml \
 --cov-append \
 "
         trap "echo FAILED COMMAND: $cmd" EXIT # print the command if it fails
@@ -73,3 +80,6 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     )
     echo "Finished testing '$tests_dir'"
 done
+
+# Merge the junit reports
+junitparser merge ./junit-xml-report*.xml ./junit-xml-report.xml
