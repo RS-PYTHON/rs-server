@@ -329,5 +329,4 @@ app.router.lifespan_context = app_lifespan
 # Mount pygeoapi endpoints
 app.mount(path="/oapi", app=api)
 
-if __name__ == "__main__":
-    pass
+# trigger the sonarqube from ci/cd
