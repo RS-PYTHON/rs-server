@@ -1054,7 +1054,7 @@ class TestStagingPublishCatalog:
         """Test successful feature publishing to the catalog."""
         feature = mocker.Mock()  # Mock the feature object
         feature.json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'  # Mock the JSON serialization
-        feature.assets = []
+        feature.assets = {}
 
         # Mock requests.post to return a successful response
         mock_response = mocker.Mock()
@@ -1076,7 +1076,7 @@ class TestStagingPublishCatalog:
         """Test failure during feature publishing and cleanup on error."""
         feature = mocker.Mock()
         feature.json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'
-        feature.assets = []
+        feature.assets = {}
 
         for possible_exception in [
             requests.exceptions.HTTPError,
