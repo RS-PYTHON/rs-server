@@ -60,7 +60,7 @@ geoalchemy2 = "^0.16.0"
 # WARNING: these must be the same versions than in:
 # https://github.com/RS-PYTHON/rs-infrastructure/blob/develop/.github/common/resources/requirements.txt
 # https://github.com/RS-PYTHON/rs-infrastructure/blob/develop/.github/common/resources/requirements-force.txt
-dask = {extras = ["distributed"], version = "2024.1.0"}
+dask = {extras = ["distributed"], version = "2024.12.0"}
 numpy = "2.1.2"
 pandas = "2.2.3"
 msgpack = "1.0.7"
