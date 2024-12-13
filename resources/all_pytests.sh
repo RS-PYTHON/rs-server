@@ -75,8 +75,7 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 --cov-append \
 "
         trap "echo FAILED COMMAND: $cmd" EXIT # print the command if it fails
-        echo "+ $cmd"
-        $cmd # run command
+        (set -x; $cmd) # run command
         trap - EXIT # clear trap
     )
     echo "Finished testing '$tests_dir'"
@@ -84,3 +83,18 @@ done
 
 # Merge the junit reports
 junitparser merge ./junit-xml-report*.xml ./junit-xml-report.xml
+
+# There seems to be a bug in pytest cov with --cov-append.
+# The last tested project is malformed in the report file.
+# Use this workaround to run pytest on a dummy empty dir. This reformats the report file.
+dummy="/tmp/empty-pytest"
+mkdir -p $dummy
+# Use the last project configuration
+cmd="poetry \
+--directory $proj_dir run pytest $dummy \
+--cov=$dummy \
+--cov-report=term \
+--cov-report=xml:./cov-report.xml \
+--cov-append \
+"
+(set -x; $cmd || true) # run command, ignore the error message that says no tests exist
