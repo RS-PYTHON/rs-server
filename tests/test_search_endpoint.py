@@ -809,8 +809,8 @@ class TestFeatureCollectionOdataStacMapping:
         [
             (
                 ROUTER_PREFIX_AUXIP,
-                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z"
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.888Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888Z"
                 "&$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -849,10 +849,19 @@ class TestFeatureCollectionOdataStacMapping:
                 "x",
                 status.HTTP_400_BAD_REQUEST,
             ),
+            # datime without miliseconds
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
+                "PublicationDate lte 2018-02-12T23:20:50.999Z&$orderby=PublicationDate desc"
+                "&$top=10000&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
             (
                 ROUTER_PREFIX_CADIP,
-                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z"
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50.777Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.777Z"
                 "&$orderby=PublicationDate desc&$top=10000&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -890,9 +899,16 @@ class TestFeatureCollectionOdataStacMapping:
                 "x",
                 status.HTTP_400_BAD_REQUEST,
             ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
+                "PublicationDate lte 2018-02-12T23:20:50.999Z&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                status.HTTP_200_OK,
+            ),
         ],
         indirect=["fastapi_app"],
-        ids=["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n"],
+        ids=["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"],
     )
     @responses.activate
     def test_valid_datetime(self, client, mock_token_validation, endpoint, odata, expected_code):

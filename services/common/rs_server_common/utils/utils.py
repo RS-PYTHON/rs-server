@@ -174,7 +174,16 @@ def validate_inputs_format(
         except ValueError:
             return False
 
-    return to_dt([fixed_date, start_date, stop_date])
+    fixed_date, start_date, stop_date = to_dt([fixed_date, start_date, stop_date])
+
+    if fixed_date and "." not in str(fixed_date):
+        # If miliseconds are not defined, don't set to .000Z create a timeinterval, to gather all products
+        # from that milisecond
+        start_date = fixed_date.replace(microsecond=0)  # type: ignore
+        stop_date = fixed_date.replace(microsecond=999999)  # type: ignore
+        fixed_date = ""
+
+    return fixed_date, start_date, stop_date
 
 
 @dataclass
