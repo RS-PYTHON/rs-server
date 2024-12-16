@@ -20,6 +20,7 @@ Copy them to rs-demo, rs-helm and rs-infrastructure repositories.
 import collections.abc
 import copy
 import json
+import numbers
 import os
 import re
 import shutil
@@ -603,6 +604,12 @@ def copy_to_helm_or_infra_single_doc(
                     raise RuntimeError(f"Invalid argument: {input_value}")
                 output_config[key] = update_single_value(input_value, output_value)
 
+            # Update number values
+            elif isinstance(output_value, numbers.Number):
+                if not isinstance(input_value, numbers.Number):
+                    raise RuntimeError(f"Invalid argument: {input_value}")
+                output_config[key] = input_value
+
             # Recursive calls on lists...
             elif isinstance(output_value, list):
 
@@ -623,6 +630,10 @@ def copy_to_helm_or_infra_single_doc(
                         # ... or on list string values
                         elif isinstance(output_subvalue, str):
                             output_value[i] = update_single_value(input_subvalue, output_subvalue)
+
+                        # ... or on list number values
+                        elif isinstance(output_subvalue, numbers.Number):
+                            output_value[i] = input_subvalue
 
     update_all_values([], input_config, output_config)
 
