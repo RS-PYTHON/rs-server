@@ -42,7 +42,7 @@ os.environ["RSPY_COOKIE_SECRET"] = "RSPY_COOKIE_SECRET"  # nosec
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Iterator, Union
 
 import pytest
 from fastapi.testclient import TestClient
@@ -117,21 +117,20 @@ def client_fixture(start_database):  # pylint: disable=missing-function-docstrin
 class Collection:
     """A collection for test purpose."""
 
-    user: str
+    user: Union[str, None]
     name: str
 
     @property
     def id_(self) -> str:
         """Returns the id."""
-        return f"{self.user}_{self.name}"
+        return f"{self.user}_{self.name}" if self.user else f"{self.name}"
 
     @property
     def properties(self) -> dict[str, Any]:
         """Returns the properties."""
-        return {
+        properites = {
             "id": self.name,
             "type": "Collection",
-            "owner": self.user,
             "links": [
                 {
                     "rel": "items",
@@ -159,9 +158,13 @@ class Collection:
             "description": "Some description",
             "stac_version": "1.0.0",
         }
+        if self.user:
+            properites["owner"] = self.user
+
+        return properites
 
 
-def a_collection(user: str, name: str) -> Collection:
+def a_collection(user: Union[str, None], name: str) -> Collection:
     """Create a collection for test purpose.
 
     The collection is built from a prototype.
@@ -196,6 +199,11 @@ def titi_s2_l1_fixture() -> Collection:  # pylint: disable=missing-function-docs
 @pytest.fixture(scope="session", name="pyteam_s1_l1")
 def pyteam_s1_l1_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("pyteam", "S1_L1")
+
+
+@pytest.fixture(scope="session", name="unset_user_s2_l2")
+def unset_user_s2_l2_fixture() -> Collection:  # pylint: disable=missing-function-docstring
+    return a_collection(None, "S2_L2")
 
 
 def add_collection(client: TestClient, collection: Collection):
@@ -461,6 +469,7 @@ def setup_database(
     titi_s2_l1,
     darius_s1_l2,
     pyteam_s1_l1,
+    unset_user_s2_l2,
     feature_toto_s1_l1_0,
     feature_toto_s1_l1_1,
     feature_toto_s2_l3_0,
@@ -486,6 +495,7 @@ def setup_database(
     add_collection(client, titi_s2_l1)
     add_collection(client, darius_s1_l2)
     add_collection(client, pyteam_s1_l1)
+    add_collection(client, unset_user_s2_l2)
     add_feature(client, feature_toto_s1_l1_0)
     add_feature(client, feature_toto_s1_l1_1)
     add_feature(client, feature_toto_s2_l3_0)
