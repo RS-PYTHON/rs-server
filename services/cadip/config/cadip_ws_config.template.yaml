@@ -30,6 +30,9 @@ template:
       password: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: "{auth_for_token}"
   products:
     S1_SAR_RAW:
       productType: RAW

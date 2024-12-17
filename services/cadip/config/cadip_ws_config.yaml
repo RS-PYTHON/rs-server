@@ -36,6 +36,9 @@ cadip:
       password: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -137,6 +140,9 @@ ins:
       password: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -238,6 +244,9 @@ mps:
       password: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -339,6 +348,9 @@ mti:
       password: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -440,6 +452,9 @@ nsg:
       password: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -541,6 +556,9 @@ sgs:
       password: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
