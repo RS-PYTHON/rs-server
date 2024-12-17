@@ -174,16 +174,20 @@ def validate_inputs_format(
         except ValueError:
             return False
 
-    fixed_date, start_date, stop_date = to_dt([fixed_date, start_date, stop_date])
+    fixed_date_dt, start_date_dt, stop_date_dt = to_dt([fixed_date, start_date, stop_date])
 
-    if fixed_date and "." not in str(fixed_date):
+    if fixed_date_dt and "." not in fixed_date:
         # If miliseconds are not defined, don't set to .000Z create a timeinterval, to gather all products
         # from that milisecond
-        start_date = fixed_date.replace(microsecond=0)  # type: ignore
-        stop_date = fixed_date.replace(microsecond=999999)  # type: ignore
-        fixed_date = ""
+        start_date_dt = fixed_date_dt.replace(microsecond=0)  # type: ignore
+        stop_date_dt = fixed_date_dt.replace(microsecond=999999)  # type: ignore
+        fixed_date_dt = None
+        return fixed_date_dt, start_date_dt, stop_date_dt
+    if stop_date_dt and "." not in stop_date:
+        # If stop_date interval miliseconds value is not defined, set it to 999
+        stop_date_dt = stop_date_dt.replace(microsecond=999999)  # type: ignore
 
-    return fixed_date, start_date, stop_date
+    return fixed_date_dt, start_date_dt, stop_date_dt
 
 
 @dataclass

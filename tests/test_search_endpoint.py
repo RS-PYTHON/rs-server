@@ -73,7 +73,7 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     responses.add(
         responses.GET,
         "http://127.0.0.1:5000/Files?$filter=SessionId eq 'session_id2' and PublicationDate gte 2022-01-01T12:00:"
-        "00.000Z and PublicationDate lte 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc&$top=1000&$skip=0",
+        "00.000Z and PublicationDate lte 2023-12-30T12:00:00.999Z&$orderby=PublicationDate desc&$top=1000&$skip=0",
         json={"value": expected_products},
         status=200,
     )
@@ -92,7 +92,7 @@ def test_adgs_search_aux(client, mock_token_validation, mocker):
     responses.add(
         responses.GET,
         "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2022-01-01T12:00:00.000Z"
-        " and PublicationDate lte 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc"
+        " and PublicationDate lte 2023-12-30T12:00:00.999Z&$orderby=PublicationDate desc"
         "&$top=1000&$skip=0&$expand=Attributes",
         json={"value": []},
         status=200,
@@ -816,9 +816,9 @@ class TestFeatureCollectionOdataStacMapping:
             ),
             (
                 ROUTER_PREFIX_AUXIP,
-                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10000&"
+                "PublicationDate lte 2019-02-12T23:20:50.001Z&$orderby=PublicationDate desc&$top=10000&"
                 "$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -831,8 +831,8 @@ class TestFeatureCollectionOdataStacMapping:
             ),
             (
                 ROUTER_PREFIX_AUXIP,
-                "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate lte 2018-02-12T23:20:50.000Z"
+                "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50.001Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate lte 2018-02-12T23:20:50.001Z"
                 "&$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -869,7 +869,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                "PublicationDate lte 2019-02-12T23:20:50.999Z&$orderby=PublicationDate desc&$top=10000&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
@@ -882,7 +882,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=../2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lte 2018-02-12T23:20:50.000Z"
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lte 2018-02-12T23:20:50.999Z"
                 "&$orderby=PublicationDate desc&$top=10000&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1103,7 +1103,7 @@ class TestCollection:
 @pytest.mark.parametrize("method", ("GET", "POST"))
 @pytest.mark.parametrize(
     "fastapi_app, service",
-    ((ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_AUXIP, "adgs")),
+    ((ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_CADIP, "cadip")),
     ids=["cadip", "adgs"],
     indirect=["fastapi_app"],
 )
@@ -1162,7 +1162,7 @@ def test_search_parameters(
         }
     else:
         raise NotImplementedError
-    hardcoded_date = "2020-01-01T00:00:00.000Z/2022-01-01T00:00:00.000Z"
+    hardcoded_date = "2020-01-01T00:00:00.111Z/2022-01-01T00:00:00.111Z"
     hardcoded_limit = 10
     mocked_collections = [
         {"id": "col1", **collection},
@@ -1197,7 +1197,7 @@ def test_search_parameters(
 
     # Static values
     user_ids = "id1, id2"
-    user_datetime = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
+    user_datetime = "2020-01-01T00:00:00.111Z/2023-01-01T00:00:00.111Z"
     user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
     user_params = {
         "limit": user_limit,
