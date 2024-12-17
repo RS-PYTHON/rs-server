@@ -34,6 +34,7 @@ cadip:
     credentials:
       username: PLACEHOLDER
       password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
     retrieve_headers:
@@ -138,6 +139,7 @@ ins:
     credentials:
       username: PLACEHOLDER
       password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
     retrieve_headers:
@@ -242,6 +244,7 @@ mps:
     credentials:
       username: PLACEHOLDER
       password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
     retrieve_headers:
@@ -346,6 +349,7 @@ mti:
     credentials:
       username: PLACEHOLDER
       password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
     retrieve_headers:
@@ -450,6 +454,7 @@ nsg:
     credentials:
       username: PLACEHOLDER
       password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
     retrieve_headers:
@@ -554,6 +559,7 @@ sgs:
     credentials:
       username: PLACEHOLDER
       password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
     retrieve_headers:

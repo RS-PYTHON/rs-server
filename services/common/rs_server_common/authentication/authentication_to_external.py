@@ -437,9 +437,10 @@ def set_eodag_auth_env(ext_auth_config: ExternalAuthenticationConfig):
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__password"] = ext_auth_config.password
 
     # Used to set the authorization for token retrieval
-    os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__auth_for_token"] = (
-        ext_auth_config.authorization
-    )
+    if ext_auth_config.authorization is not None:
+        os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__auth_for_token"] = (
+            ext_auth_config.authorization
+        )
 
     # optional keys
     # NOTE: the Authorization cannot be overwritten when EODAG is sending the POST request when getting the token
