@@ -1162,7 +1162,7 @@ def test_search_parameters(
         }
     else:
         raise NotImplementedError
-    hardcoded_date = "2020-01-01T00:00:00.111Z/2022-01-01T00:00:00.111Z"
+    hardcoded_date = "2020-01-01T00:00:00.000Z/2022-01-01T00:00:00.000Z"
     hardcoded_limit = 10
     mocked_collections = [
         {"id": "col1", **collection},
@@ -1197,7 +1197,7 @@ def test_search_parameters(
 
     # Static values
     user_ids = "id1, id2"
-    user_datetime = "2020-01-01T00:00:00.111Z/2023-01-01T00:00:00.111Z"
+    user_datetime = "2020-01-01T00:00:00.000Z/2023-01-01T00:00:00.000Z"
     user_limit = 15  # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
     user_params = {
         "limit": user_limit,
@@ -1306,6 +1306,7 @@ def test_search_parameters(
             # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
             # TODO after fixing rs-server, these parameters should appear in the OData request:
             #  - sortBy (https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-131)
+
             if adgs:
                 uid = user_ids.split(",", maxsplit=1)[0]
                 odata_no_query = (
@@ -1349,7 +1350,7 @@ def test_search_parameters(
             if collection_id == "col1":
                 odata = odata_query if user_query else odata_no_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]
-                date_max = user_datetime.split("/")[1]
+                date_max = user_datetime.split("/")[1].replace(".000Z", ".999Z")
                 product_type = user_product_type
                 constellation = user_constellation
                 satellite = user_satellite
@@ -1363,7 +1364,7 @@ def test_search_parameters(
                 else:
                     odata = odata_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
-                date_max = hardcoded_date.split("/")[1]
+                date_max = hardcoded_date.split("/")[1].replace(".000Z", ".999Z")
                 product_type = collection["query"].get("productType")
                 constellation = collection["query"].get("platformShortName")
                 satellite = collection["query"].get("Satellite", "")
@@ -1373,7 +1374,7 @@ def test_search_parameters(
             elif collection_id == "col3":
                 odata = odata_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
-                date_max = hardcoded_date.split("/")[1]
+                date_max = hardcoded_date.split("/")[1].replace(".000Z", ".999Z")
                 limit = user_limit
                 if user_query:
                     product_type = user_product_type
