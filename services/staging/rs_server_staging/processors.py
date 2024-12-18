@@ -838,7 +838,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         # connect to the dask cluster
         try:
-            dask_client = self.dask_cluster_connect("dask-staging")
+            dask_client = self.dask_cluster_connect(cluster_name="dask-staging")
             self.submit_tasks_to_dask_cluster(token, dask_client)
         except RuntimeError as re:
             self.log_job_execution(ProcessorStatus.FAILED, 0, detail=f"{re}")

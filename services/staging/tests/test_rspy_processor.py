@@ -166,6 +166,10 @@ class TestStreaming:
 class TestStaging:
     """Test class for Staging processor"""
 
+    @pytest.fixture(name="cluster_name")
+    def cluster_name():
+        return "dask-staging"
+
     @pytest.mark.asyncio
     async def test_execute_with_running_loop(self, mocker, staging_instance, asyncio_loop):
         """Test execute method while a asyncio loop is running"""
@@ -736,7 +740,7 @@ class TestStagingDeleteFromBucket:
 class TestStagingMainExecution:
     """Class to test Item processing"""
 
-    def test_dask_cluster_connect(self, mocker, staging_instance):
+    def test_dask_cluster_connect(self, mocker, staging_instance, cluster_name):
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -772,7 +776,7 @@ class TestStagingMainExecution:
         mock_client.return_value = mock_client_instance
 
         # Call the method under test
-        client = staging_instance.dask_cluster_connect()
+        client = staging_instance.dask_cluster_connect(cluster_name)
 
         # assertions
         mock_list_clusters.assert_called_once()
@@ -786,7 +790,7 @@ class TestStagingMainExecution:
             f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}",
         )
 
-    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance):
+    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance, cluster_name):
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -797,7 +801,7 @@ class TestStagingMainExecution:
         )
         staging_instance.cluster = None
         with pytest.raises(RuntimeError):
-            staging_instance.dask_cluster_connect()
+            staging_instance.dask_cluster_connect(cluster_name)
 
     def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance):
         """Test to mock managing of successul tasks"""
