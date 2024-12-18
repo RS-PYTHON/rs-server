@@ -1103,7 +1103,7 @@ class TestCollection:
 @pytest.mark.parametrize("method", ("GET", "POST"))
 @pytest.mark.parametrize(
     "fastapi_app, service",
-    ((ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_CADIP, "cadip")),
+    ((ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_AUXIP, "adgs")),
     ids=["cadip", "adgs"],
     indirect=["fastapi_app"],
 )
