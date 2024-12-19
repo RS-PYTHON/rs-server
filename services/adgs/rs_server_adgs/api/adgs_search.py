@@ -92,8 +92,7 @@ class MockPgstacAdgs(MockPgstac):
         # Default sortby value
         self.sortby = "-created"
 
-    @handle_exceptions
-    async def process_search(
+    def process_search(
         self,
         collection: dict,
         odata_params: dict,
@@ -102,7 +101,7 @@ class MockPgstacAdgs(MockPgstac):
     ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
 
-        return await process_product_search(
+        return process_product_search(
             collection.get("station", "adgs"),
             odata_params.get("productType"),
             odata_params.get("PublicationDate"),
@@ -317,7 +316,7 @@ async def get_adgs_collection_specific_item(
     return item
 
 
-async def process_product_search(  # pylint: disable=too-many-locals
+def process_product_search(  # pylint: disable=too-many-locals
     station,
     product_type,
     publication_date,
@@ -350,7 +349,7 @@ async def process_product_search(  # pylint: disable=too-many-locals
     set_eodag_auth_token(station, "auxip")
     (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
-        products = (await init_adgs_provider(station)).search(
+        products = (init_adgs_provider(station)).search(
             TimeRange(start_date, stop_date),
             attr_ptype=product_type,
             items_per_page=limit,
@@ -395,7 +394,7 @@ async def process_product_search(  # pylint: disable=too-many-locals
 ######################################
 @router.get("/adgs/aux/search", deprecated=True)
 @auth_validator(station="adgs", access_type="read")
-async def search_products(  # pylint: disable=too-many-locals
+def search_products(  # pylint: disable=too-many-locals
     request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
@@ -430,7 +429,7 @@ async def search_products(  # pylint: disable=too-many-locals
     set_eodag_auth_token("adgs", "auxip")
     try:
         time_range = TimeRange(start_date, stop_date)
-        products = (await init_adgs_provider("adgs")).search(
+        products = (init_adgs_provider("adgs")).search(
             time_range,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),

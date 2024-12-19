@@ -96,8 +96,7 @@ class MockPgstacCadip(MockPgstac):
         # Default sortby value
         self.sortby = "-published"
 
-    @handle_exceptions
-    async def process_search(
+    def process_search(
         self,
         collection: dict,
         odata_params: dict,
@@ -105,7 +104,7 @@ class MockPgstacCadip(MockPgstac):
         page: int,
     ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        session_data = await process_session_search(
+        session_data = process_session_search(
             self.request,
             collection.get("station", "cadip"),
             odata_params.get("SessionId", []),
@@ -126,7 +125,7 @@ class MockPgstacCadip(MockPgstac):
         assets: list[dict] = []
         page = 1
         while True:
-            chunked_assets = await process_files_search(
+            chunked_assets = process_files_search(
                 collection.get("station", "cadip"),
                 features_ids,
                 map_to_session=True,
@@ -401,7 +400,7 @@ async def get_cadip_collection_item_details(
 
 
 @validate_call(config={"arbitrary_types_allowed": True})
-async def process_session_search(  # type: ignore # pylint: disable=too-many-arguments, too-many-locals, unused-argument
+def process_session_search(  # type: ignore # pylint: disable=too-many-arguments, too-many-locals, unused-argument
     request: Request,
     station: str,
     session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
@@ -442,7 +441,7 @@ async def process_session_search(  # type: ignore # pylint: disable=too-many-arg
     """
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
-        products = (await init_cadip_provider(f"{station}_session")).search(
+        products = (init_cadip_provider(f"{station}_session")).search(
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
             platform=platform,
@@ -492,7 +491,7 @@ async def process_session_search(  # type: ignore # pylint: disable=too-many-arg
 ######################################
 @router.get("/cadip/{station}/cadu/search", deprecated=True)
 @auth_validator(station="cadip", access_type="read")
-async def search_products(  # pylint: disable=too-many-locals, too-many-arguments
+def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
@@ -520,10 +519,10 @@ async def search_products(  # pylint: disable=too-many-locals, too-many-argument
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    return await process_files_search(station, session_id, datetime, limit, sortby=sortby, deprecated=True)
+    return process_files_search(station, session_id, datetime, limit, sortby=sortby, deprecated=True)
 
 
-async def process_files_search(  # pylint: disable=too-many-locals
+def process_files_search(  # pylint: disable=too-many-locals
     station: str,
     session_id: str,
     datetime: Union[str, None] = None,
@@ -563,7 +562,7 @@ async def process_files_search(  # pylint: disable=too-many-locals
     # Init dataretriever / get products / return
     try:
         set_eodag_auth_token(station.lower(), "cadip")
-        products = (await init_cadip_provider(station)).search(
+        products = (init_cadip_provider(station)).search(
             TimeRange(start_date, stop_date),
             id=session,
             items_per_page=limit,
