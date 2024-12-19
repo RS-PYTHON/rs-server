@@ -494,7 +494,7 @@ def write_helm_or_infra(output_configs: list[dict], yaml_as_string: bool) -> str
     return yaml_contents
 
 
-def copy_to_helm_or_infra_single_doc(
+def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
     params: HelmOrInfraParams,
     output_config: dict,
 ):

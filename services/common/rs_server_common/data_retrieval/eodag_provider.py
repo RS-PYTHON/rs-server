@@ -25,6 +25,7 @@ import yaml
 from async_lru import alru_cache
 from asyncinit import asyncinit
 from eodag import EODataAccessGateway, EOProduct, SearchResult
+from eodag.api.core import override_config_from_env
 from eodag.utils.exceptions import (
     AuthenticationError,
     MisconfiguredError,
@@ -101,6 +102,9 @@ class EodagProvider(Provider):
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
 
+        # Make sure that the provider configuration is up-to-date with the EODAG__<provider>__auth__... env vars
+        override_config_from_env(self.client.providers_config)
+
     def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
         """
         Conducts a search for products within a specified time range.
@@ -172,6 +176,8 @@ class EodagProvider(Provider):
             )
             repr(products)  # trigger eodag validation.
 
+        except ValidationError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
         except (RequestError, MisconfiguredError) as e:
             # invalid token: EODAG returns an exception with "FORBIDDEN" in e.args when the token key is invalid.
             if e.args and "FORBIDDEN" in e.args[0]:
@@ -182,8 +188,6 @@ class EodagProvider(Provider):
             raise SearchProductFailed(e) from e
         except AuthenticationError as exc:
             raise ValueError("EoDAG could not authenticate") from exc
-        except ValidationError as exc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
 
         if products.number_matched:
             logger.info(f"Returned {products.number_matched} session from {self.provider}")
