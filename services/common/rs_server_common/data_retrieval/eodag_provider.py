@@ -25,6 +25,7 @@ import yaml
 from async_lru import alru_cache
 from asyncinit import asyncinit
 from eodag import EODataAccessGateway, EOProduct, SearchResult
+from eodag.api.core import override_config_from_env
 from eodag.utils.exceptions import (
     AuthenticationError,
     MisconfiguredError,
@@ -100,6 +101,9 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
+
+        # Make sure that the provider configuration is up-to-date with the EODAG__<provider>__auth__... env vars
+        override_config_from_env(self.client.providers_config)
 
     def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
         """
