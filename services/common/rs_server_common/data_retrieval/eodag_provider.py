@@ -49,7 +49,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
 
     def __init__(self, *args, **kwargs):
         """Constructor"""
-        global old_environ
+        global old_environ  # pylint: disable=global-statement
 
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
@@ -90,7 +90,7 @@ class EodagProvider(Provider):
             config_file: the path to the eodag configuration file
             provider: the name of the eodag provider
         """
-        global old_environ
+        global old_environ  # pylint: disable=global-statement
 
         self.provider: str = provider
         self.config_file = config_file.resolve().as_posix()

@@ -22,7 +22,6 @@ import asyncio
 import copy
 import os
 import sys
-import traceback
 from contextlib import asynccontextmanager
 from os import environ as env
 from typing import Annotated, Any, Callable, Dict
@@ -31,7 +30,7 @@ import httpx
 from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, FastAPI, Request, Security
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
@@ -70,12 +69,10 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Route
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
 

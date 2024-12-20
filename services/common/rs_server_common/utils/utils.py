@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Awaitable, Callable, List, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging

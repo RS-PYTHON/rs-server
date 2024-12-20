@@ -14,6 +14,8 @@
 
 """Unit tests for the authentication."""
 
+# pylint: disable=too-many-lines
+
 import json
 import os
 import shutil
