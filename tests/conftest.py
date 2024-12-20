@@ -77,7 +77,7 @@ def before_and_after(session_mocker):
     # Before all tests #
     ####################
 
-    # Use this default value for the configuration file for authentication to extenal stations.
+    # Use this default value for the configuration file for authentication to external stations.
     session_mocker.patch(
         "rs_server_common.authentication.authentication_to_external.CONFIG_PATH_AUTH_TO_EXTERNAL",
         new=str((Path(__file__).parent.parent / "services/common/config/rs-server.yaml").resolve()),
@@ -371,6 +371,7 @@ http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
         "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__PASSWORD": TOKEN_PASSWORD,
         "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__SCOPE": "",
         "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__USERNAME": TOKEN_USERNAME,
+        "RSPY__TOKEN__AUXIP__ADGS__TRUSTEDDOMAINS": "[trusted.domain1.eu, trusted.domain2.eu]",
         "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTHORIZATION": "Basic test",
         "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__ID": "client_id",
         "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
@@ -434,6 +435,10 @@ def expected_config_token_file_fixture() -> dict:
                     "name": "auxip",
                     "url": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
                 },
+                "trusteddomains": [
+                    "trusted.domain1.eu",
+                    "trusted.domain2.eu",
+                ],
             },
             "ins": {
                 "authentication": {

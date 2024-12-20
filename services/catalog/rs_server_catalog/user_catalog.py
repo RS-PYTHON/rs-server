@@ -233,7 +233,7 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
         if not item or not self.s3_handler:
             return False
         # update an item
-        existing_asset = item["assets"].get(asset_name, None)
+        existing_asset = item["assets"].get(asset_name)
         if not existing_asset:
             return False
 
@@ -357,13 +357,14 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 os.environ["S3_REGION"],
             )
 
-        collection_id = self.request_ids.get("collection_ids", None)[0]
-        user = self.request_ids.get("owner_id", None)
-        if not collection_id or not user:
+        collection_ids = self.request_ids.get("collection_ids", [])
+        user = self.request_ids.get("owner_id")
+        if not isinstance(collection_ids, list) or not collection_ids or not user:
             raise HTTPException(
                 detail="Failed to get the user or the name of the collection!",
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
             )
+        collection_id = collection_ids[0]
         verify_existing_item_from_catalog(request.method, item, content.get("id", "Unknown"), f"{user}_{collection_id}")
 
         files_s3_key = []
@@ -694,6 +695,8 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
         """
         try:
             content = await request.json()
+            if not self.request_ids["owner_id"]:
+                self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
             if (  # If we are in cluster mode and the user_login is not authorized
                 # to put/post returns a HTTP_401_UNAUTHORIZED status.
                 common_settings.CLUSTER_MODE
@@ -1278,7 +1281,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                     self.request_ids["collection_ids"] = collections if isinstance(collections, list) else [collections]
 
             if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
-                self.request_ids["item_id"] = request_body.get("id", None)
+                self.request_ids["item_id"] = request_body.get("id")
 
         if "/health" in request.scope["path"]:
             # return true if up and running

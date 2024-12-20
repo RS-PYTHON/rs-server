@@ -14,10 +14,10 @@
 
 
 # Build stage for multi stage build.
-FROM python:3.11.7-slim-bookworm AS builder
+FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
 
 # Install dependencies
-RUN apt update && apt install -y libpq-dev gcc
+RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
 
 # TODO: remove this after we use an official git version tag for eodag
 RUN apt install -y git
@@ -36,11 +36,11 @@ ADD ./*.whl /tmp/whl
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_adgs-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
-FROM python:3.11-slim-bookworm
+FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
 RUN \
-    apt update && \
+    apt update && apt upgrade -y && \
     apt install -y libpq-dev libexpat1 && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 

@@ -23,7 +23,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Tuple, Union
+from typing import Awaitable, Callable, List, Tuple, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
@@ -277,10 +277,10 @@ def update_db(
     raise last_exception
 
 
-def eodag_download(
+async def eodag_download(
     argument: EoDAGDownloadHandler,
     db,
-    init_provider: Callable[[str], Provider],
+    init_provider: Callable[[str], Awaitable[Provider]],
     **kwargs,
 ):  # pylint: disable=too-many-locals
     """Initiates the eodag download process.
@@ -326,7 +326,7 @@ def eodag_download(
         # To be discussed: init_provider may fail, but in the same time it takes too much
         # when properly initialized, and the timeout for download endpoint return is overpassed
         argument.thread_started.set()
-        provider = init_provider(argument.station)
+        provider = await init_provider(argument.station)
         init = datetime.now()
         filename = Path(local) / argument.name
         provider.download(argument.product_id, filename)
@@ -440,7 +440,25 @@ def odata_to_stac(feature_template: dict, odata_dict: dict, odata_stac_mapper: d
                 feature_template["id"] = odata_dict[eodag_key]
             elif stac_key in feature_template["assets"]["file"]:
                 feature_template["assets"]["file"][stac_key] = odata_dict[eodag_key]
+    # to pass pydantic validation, make sure we don't have a single timerange value
+    check_and_fix_timerange(feature_template)
     return feature_template
+
+
+def check_and_fix_timerange(item: dict):
+    """This function ensures the item does not have a single timerange value"""
+    properties = item.get("properties", {})
+
+    start_dt = properties.get("start_datetime")
+    end_dt = properties.get("end_datetime")
+    dt = properties.get("datetime")
+
+    if start_dt and not end_dt:
+        properties["end_datetime"] = max(start_dt, dt) if dt else start_dt
+        logger.warning(f"Forced end_datetime property in {item}")
+    elif end_dt and not start_dt:
+        properties.pop("end_datetime", None)
+        logger.warning(f"Removed end_datetime property from {item}")
 
 
 def extract_eo_product(eo_product: EOProduct, mapper: dict) -> dict:

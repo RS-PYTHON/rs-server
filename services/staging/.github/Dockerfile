@@ -14,10 +14,10 @@
 
 
 # Build stage for multi stage build.
-FROM python:3.11.7-slim-bookworm AS builder
+FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
 
 # Install dependencies
-RUN apt update && apt install -y libpq-dev gcc
+RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip
@@ -31,20 +31,16 @@ ADD ./*.whl /tmp/whl
 
 #COPY ./config /opt/config
 
-# Set environment variables for pygeoapi
-ENV PYGEOAPI_CONFIG=/opt/config/config.yml
-ENV PYGEOAPI_OPENAPI=/opt/config/openapi.json
-
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_staging-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
-FROM python:3.11-slim-bookworm
+FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
 RUN \
-    apt update && \
+    apt update && apt upgrade -y && \
     apt install -y libpq-dev libexpat1 && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 

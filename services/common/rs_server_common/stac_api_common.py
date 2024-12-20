@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Module to share common functionalities for validating / creating stac items"""
+import asyncio
 import copy
 import json
 import traceback
@@ -32,6 +33,7 @@ from typing import (
     Literal,
     Optional,
     Self,
+    Sequence,
     Type,
 )
 
@@ -44,6 +46,7 @@ from fastapi import Query, Request, status
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
+from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
     extract_eo_product,
@@ -57,7 +60,14 @@ from stac_pydantic.item import Item
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
 
+
+def log_http_exception(*args, **kwargs) -> HTTPException:
+    """Log error and return an HTTP execption to be raised by the caller"""
+    return utils2.log_http_exception(logger, *args, **kwargs)
+
+
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
 # Type hints
 CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
@@ -130,7 +140,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     """
 
     # Set by stac-fastapi
-    request: Request | None = None
+    request: Request = Request(scope={"type": "http"})
     readwrite: Literal["r", "w"] | None = None
 
     service: Literal["adgs", "cadip"] | None = None
@@ -149,7 +159,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     page: int = 1
 
     # Number of results per page
-    limit: int | None = None
+    limit: int = 0
 
     def __post_init__(self):
         self.adgs = self.service in ("adgs", "auxip")
@@ -205,7 +215,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         can_query = True
         if collection_id:
             for field in "platformSerialIdentifier", "platformShortName", "Satellite":
-                value = self.select_config(collection_id).get("query", {}).get(field, "")
+                value = (self.select_config(collection_id).get("query") or {}).get(field) or ""
                 if value and ("," not in value):
                     can_query = False
                     break
@@ -266,7 +276,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             collection_id = args[0]
             collection = self.select_config(collection_id)
             if not collection:
-                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Unknown {self.service} collection: {collection_id!r}")
+                raise log_http_exception(
+                    status.HTTP_404_NOT_FOUND,
+                    f"Unknown {self.service} collection: {collection_id!r}",
+                )
 
             # Convert into stac object (to ensure validity) then back to dict
             collection.setdefault("stac_version", "1.0.0")
@@ -284,7 +297,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             params = json.loads(args[0]) if args else {}
             return await self.search(params)
 
-        raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
+        raise log_http_exception(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
     async def search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
         self,
@@ -363,7 +376,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.page < 1:
                     raise ValueError
             except ValueError as exc:
-                raise HTTPException(
+                raise log_http_exception(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"Invalid page value: {page!r}",
                 ) from exc
@@ -376,10 +389,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if self.limit < 1:
                     raise ValueError
             except ValueError as exc:
-                raise HTTPException(
+                raise log_http_exception(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=f"Invalid limit value: {limit!r}",
                 ) from exc
+
+        # Default limit value
+        else:
+            self.limit = 1000
 
         # Sort results
         sortby_param = params.pop("sortby", None)
@@ -387,7 +404,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             self.sortby = sortby_param
         elif isinstance(sortby_param, list):
             if len(sortby_param) > 1:
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Only one 'sortby' search parameter is allowed: {sortby_param!r}",
                 )
@@ -406,7 +423,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 elif self.cadip:
                     stac_params["published"] = datetime
             except HTTPException as exception:
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid datetime interval: {datetime!r}. "
                     "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
@@ -422,7 +439,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Read a query or CQL filter property"""
             nonlocal stac_params
             if prop not in allowed_properties:
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query or CQL property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
@@ -442,7 +459,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Read a single property
             if op == "=":
                 if (len(args) != 2) or not (prop := args[0].get("property")):
-                    raise HTTPException(
+                    raise log_http_exception(
                         status.HTTP_422_UNPROCESSABLE_ENTITY,
                         f"Invalid CQL2 filter: {format_dict(filt)}",
                     )
@@ -452,7 +469,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Else we are reading several properties
             if op != "and":
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filt)}",
                 )
@@ -465,7 +482,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         query = params.pop("query", {})
         for prop, operator in query.items():
             if (len(operator) != 1) or not (value := operator.get("eq")):
-                raise HTTPException(
+                raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query: {{{prop!r}: {format_dict(operator)}}}"
                     ", only {'<property>': {'eq': <value>}} is allowed",
@@ -491,16 +508,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # If search parameters remain, they are not implemented
         if params:
-            raise HTTPException(
+            raise log_http_exception(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 f"Unimplemented search parameters: {format_dict(params)}",
             )
 
         #
         # Step 2: do the search
-
-        # Convert search params from STAC keys to OData keys
-        odata_params = self.stac_to_odata(stac_params)
 
         # Only keep the authorized collections
         allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
@@ -510,114 +524,166 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         else:
             collection_ids = list(allowed_ids.intersection(collection_ids))
 
-        # Item features for all collections.
-        # Use a dict ordered by ID so we only keep unique items, based on their ID.
-        all_features: Dict[str, Item] = {}
+        # Search all collections in parallel tasks
+        async with asyncio.TaskGroup() as tg:
+            all_features = [
+                tg.create_task(self.process_collection(collection_id, stac_params)) for collection_id in collection_ids
+            ]
 
-        first_exception = None
+        # Get items and exceptions from result
+        all_items = {}
+        all_exceptions = []
+        for features in all_features:
+            if result := features.result():
+                if isinstance(result, Exception):
+                    all_exceptions.append(result)
+                else:
+                    for item in result:
+                        all_items[item.id] = item
 
-        # For each collection to search
-        for collection_id in collection_ids:  # pylint: disable=too-many-nested-blocks
-            try:
-
-                # Some OData search params are hardcoded in the collection configuration.
-                collection = self.select_config(collection_id)
-                odata_hardcoded = collection.get("query") or {}
-
-                # Merge the user input params with the hardcoded params (which have higher priority)
-                self.odata = {**odata_params, **odata_hardcoded}
-
-                empty_selection = False
-
-                # Handle conflicts, i.e. for each key that is defined in both params
-                for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
-
-                    # Date intervals
-                    if key in ("PublicationDate"):
-
-                        # Read both start and stop dates
-                        start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
-                        start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
-
-                        # Calculate the intersection
-                        start = max(start1, start2)
-                        stop = min(stop1, stop2)
-
-                        # If no intersection, then the selection is empty, else save the intersection
-                        if start >= stop:
-                            empty_selection = True
-                            break  # try next collection
-                        self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
-
-                    # Comma-separated lists
-                    if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
-
-                        # Read both values
-                        value1 = odata_params[key]
-                        value2 = odata_hardcoded[key]
-                        intersection = None
-
-                        # If one is empty or None, this means "keep everything".
-                        # So keep the intersection = the other list.
-                        if not value1:
-                            intersection = value2
-                        elif not value2:
-                            intersection = value1
-
-                        # Else, split by comma and keep the intersection.
-                        # If no intersection, then the selection is empty.
-                        else:
-                            for i, value in enumerate((value1, value2)):
-                                s = {v.strip() for v in value.split(",")}
-                                intersection = intersection.intersection(s) if i else s  # type: ignore
-                            if intersection:
-                                intersection = ", ".join(intersection)
-                            if not intersection:
-                                empty_selection = True
-                                break  # try next collection
-
-                        # Save the intersection
-                        self.odata[key] = intersection
-
-                # If the selection is empty, we return no items for this collection
-                if empty_selection:
-                    continue  # try next collection
-
-                # Overwrite the pagination parameters.
-                # User-defined 'limit' value has higher priority over the collection hardcoded 'top' value
-                if not self.limit:
-                    self.limit = self.odata.get("top", 1000)
-
-                # Do the search for this collection
-                features = (await self.process_search(collection, self.odata)).features
-
-                # Add the collection information
-                for item in features:
-                    item.collection = collection_id
-
-                # Concatenate features for all collections, ordered by their ID
-                all_features.update({item.id: item for item in features})
-
-            except Exception as exception:  # pylint: disable=broad-exception-caught
-                logger.error(traceback.format_exc())
-                first_exception = first_exception or exception
-
-        # If there are no results and we had at least one exception, raise the first one
-        if not all_features and first_exception:
-            raise first_exception
+        # Raise first exception if we have no items and at least one exception
+        if (not all_items) and all_exceptions:
+            raise all_exceptions[0]
 
         # Return results as a dict
-        data = stac_pydantic.ItemCollection(features=list(all_features.values()), type="FeatureCollection").model_dump()
+        data = stac_pydantic.ItemCollection(features=list(all_items.values()), type="FeatureCollection")
+        dict_data: Dict[str, Any] = self.paginate(data)
 
         # Handle pagination links.
-        data["next"] = f"page={self.page + 1}"
+        if len(dict_data["features"]) > 0:
+            # Don't create next page if the current one does not have features
+            dict_data["next"] = f"page={self.page + 1}"
         if self.page > 1:
-            data["prev"] = f"page={self.page - 1}"
+            dict_data["prev"] = f"page={self.page - 1}"
 
-        return data
+        return dict_data
+
+    def paginate(self, item_collection: stac_pydantic.ItemCollection) -> Dict[str, Any]:
+        """Method used to apply pagination options after /search result were aggregated."""
+
+        paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection, self.sortby)
+        return stac_pydantic.ItemCollection(
+            features=paginated_item_collection.features[
+                self.limit * (self.page - 1) : self.limit * self.page  # noqa: E203
+            ],
+            type=paginated_item_collection.type,
+        ).model_dump()
+
+    async def process_collection(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+        self,
+        collection_id,
+        stac_params,
+    ) -> Sequence[Item] | Exception:
+        """Method used to process a collection and perform search."""
+        features = None
+        empty_selection = False
+        # Convert search params from STAC keys to OData keys
+        odata_params = self.stac_to_odata(stac_params)
+        try:
+            # Some OData search params are hardcoded in the collection configuration.
+            collection = self.select_config(collection_id)
+            odata_hardcoded = collection.get("query") or {}
+
+            # Merge the user input params with the hardcoded params (which have higher priority)
+            self.odata = {**odata_params, **odata_hardcoded}
+
+            # Handle conflicts, i.e. for each key that is defined in both params
+            for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
+
+                # Date intervals
+                if key in ("PublicationDate"):
+
+                    # Read both start and stop dates
+                    start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
+                    start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
+
+                    # Calculate the intersection
+                    start = max(start1, start2)
+                    stop = min(stop1, stop2)
+
+                    # If no intersection, then the selection is empty, else save the intersection
+                    if start >= stop:
+                        empty_selection = True
+                        break  # try next collection
+                    self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
+
+                # Comma-separated lists
+                if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
+
+                    # Read both values
+                    value1 = odata_params[key]
+                    value2 = odata_hardcoded[key]
+                    intersection = None
+
+                    # If one is empty or None, this means "keep everything".
+                    # So keep the intersection = the other list.
+                    if not value1:
+                        intersection = value2
+                    elif not value2:
+                        intersection = value1
+
+                    # Else, split by comma and keep the intersection.
+                    # If no intersection, then the selection is empty.
+                    else:
+                        for i, value in enumerate((value1, value2)):
+                            iterable = value if isinstance(value, list) else value.split(",")
+                            s = {v.strip() for v in iterable}
+                            intersection = intersection.intersection(s) if i else s  # type: ignore
+                        if intersection:
+                            intersection = ", ".join(intersection)
+                        if not intersection:
+                            empty_selection = True
+                            break  # try next collection
+
+                    # Save the intersection
+                    self.odata[key] = intersection
+            if empty_selection:
+                return []
+
+            # limit and page values used by the search function
+            search_limit = self.limit
+            search_page = self.page
+
+            # Don't forward limit value for /search endpoints
+            # just use maximum to gather all possible results, page is always 1
+            if "/search" in self.request.url.path:
+                search_limit = SEARCH_LIMIT
+                search_page = 1
+
+            # Do the search for this collection
+            features = (await self.process_search(collection, self.odata, search_limit, search_page)).features
+
+            # If search return maximum number of elements, increase page and process next elements
+            if len(features) == SEARCH_LIMIT:
+                while True:
+                    search_page += 1
+                    next_features = (
+                        await self.process_search(collection, self.odata, search_limit, search_page)
+                    ).features
+                    features.extend(next_features)  # type: ignore
+                    # Extend current features.
+                    # Break the loop when result is less the maximum possible, meaning there is no next page.
+                    if len(next_features) < SEARCH_LIMIT:
+                        break
+                search_page = 1
+
+            # Add the collection information
+            for item in features:
+                item.collection = collection_id
+            return features
+
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            logger.error(traceback.format_exc())
+            return exception
 
     @abstractmethod
-    async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
+    async def process_search(
+        self,
+        collection: dict,
+        odata_params: dict,
+        limit: int,
+        page: int,
+    ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
 
 
@@ -627,7 +693,7 @@ def create_collection(collection: dict) -> stac_pydantic.Collection:
         stac_collection = stac_pydantic.Collection(type="Collection", **collection)
         return stac_collection
     except ValidationError as exc:
-        raise HTTPException(
+        raise log_http_exception(
             detail=f"Unable to create stac_pydantic.Collection, {repr(exc.errors())}",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         ) from exc
@@ -643,13 +709,13 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
             return await func(*args, **kwargs)
         except KeyError as exc:
             logger.error(f"KeyError caught in {func.__name__}")
-            raise HTTPException(
+            raise log_http_exception(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Cannot create STAC Collection -> Missing {exc}",
             ) from exc
         except ValidationError as exc:
             logger.error(f"ValidationError caught in {func.__name__}")
-            raise HTTPException(
+            raise log_http_exception(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Parameters validation error: {exc}",
             ) from exc
@@ -753,13 +819,59 @@ def create_stac_collection(
     for product in products:
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
-        item = stac_pydantic.Item(**feature_tmp)
-        # Add a default bbox and geometry, since L0 chunks items are not geo-located.
-        item.bbox = (-180.0, -90.0, 180.0, 90.0)
-        item.geometry = {
-            "type": "Polygon",
-            "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
-        }
-        item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
-        items.append(item)
+        try:
+            item = stac_pydantic.Item(**feature_tmp)
+            # Add a default bbox and geometry, since L0 chunks items are not geo-located.
+            item.bbox = (-180.0, -90.0, 180.0, 90.0)
+            item.geometry = {
+                "type": "Polygon",
+                "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+            }
+            item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
+            items.append(item)
+        except ValidationError as e:
+            logger.error(f"STAC validation error for {feature_tmp} (STAC conversion of {product_data}): {e}")
+            continue
     return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
+
+
+def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortby: str) -> stac_pydantic.ItemCollection:
+    """
+    Sorts the features in the collection by a specified attribute.
+
+    The sort order can be reversed by prepending the attribute name with a "-" (e.g., "-date").
+    If the attribute is not found, it falls back to sorting by a default field.
+
+    Args:
+        item_collection (stac_pydantic.ItemCollection): The collection of items to sort.
+        sortby (str): The attribute by which to sort. If prefixed with "-", the sort order is descending.
+
+    Returns:
+        stac_pydantic.ItemCollection: A new collection sorted by the specified attribute.
+    """
+    # Force default sorting even if the input is invalid, don't block the return collection because of sorting.
+    sortby = sortby.strip("'\"")
+    direction, attribute = sortby[:1], sortby[1:]
+
+    # Try to sort by 'properties' first, then fallback to the 'feature' itself
+    def get_sort_key(item):
+        # Check if the attribute exists in properties, else use item directly
+        if hasattr(item.properties, attribute):
+            return getattr(item.properties, attribute)
+        if hasattr(item, attribute):
+            return getattr(item, attribute)
+        # Otherwise, check if the attribute exists in any asset
+        for asset in item.assets.values():
+            if hasattr(asset, attribute):
+                return getattr(asset, attribute)
+        raise AttributeError(f"Attribute '{attribute}' not found in item")
+
+    # Sort the features
+    try:
+        sorted_items = sorted(item_collection.features, key=get_sort_key, reverse=direction == "-")
+    except AttributeError as e:
+        raise log_http_exception(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid attribute '{attribute}' for sorting: {str(e)},",
+        ) from e
+    return stac_pydantic.ItemCollection(features=sorted_items, type=item_collection.type)

@@ -22,7 +22,7 @@ from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.settings import env_bool
 
-if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", False):
+if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
     DEFAULT_EODAG_CONFIG = (
         Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "cadip_ws_config_token_module.yaml"
     )
@@ -30,7 +30,7 @@ else:
     DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "cadip_ws_config.yaml"
 
 
-def init_cadip_provider(station: str) -> EodagProvider:
+async def init_cadip_provider(station: str) -> EodagProvider:
     """Initialize the cadip provider for the given station.
 
     It initializes an eodag provider for the given station.
@@ -51,6 +51,6 @@ def init_cadip_provider(station: str) -> EodagProvider:
         # Check if the config file path is overriden in the environment variables
         eodag_config = Path(os.environ.get("EODAG_CADIP_CONFIG", DEFAULT_EODAG_CONFIG))
         # default to eodag, stations may be ins, mps, mti, nsg, sgs, cadip(?)
-        return EodagProvider(eodag_config, station.lower())
+        return await EodagProvider(eodag_config, station.lower())
     except Exception as exception:
         raise CreateProviderFailed("Failed to setup eodag") from exception

@@ -1112,7 +1112,7 @@ def test_s3_streaming_upload(mocker):
     server, s3_handler, bucket, s3_key = streaming_setup_s3_handler_and_bucket(secrets)
 
     try:
-        s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
+        s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key)
     except RuntimeError:
         server.stop()
         assert False, "s3_handler.s3_streaming_upload raised exception !"
@@ -1199,8 +1199,9 @@ def streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, 
     boto_mocker.activate()
 
     try:
-        s3_handler.s3_streaming_upload(stream_url, auth, bucket, s3_key)
+        s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key)
     except RuntimeError:
+        boto_mocker.deactivate()
         assert False, "s3_handler.s3_streaming_upload raised exception!"
 
     # Check if retries were attempted

@@ -33,8 +33,12 @@ adgs:
     credentials:
       username: PLACEHOLDER
       password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     CAMS_GRF_AUX:
       productType: cams-ads-grf-aux
@@ -131,7 +135,7 @@ adgs:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes'
       total_items_nb_key_path: $.total
   download:
@@ -156,8 +160,12 @@ adgs2:
     credentials:
       username: PLACEHOLDER
       password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     CAMS_GRF_AUX:
       productType: cams-ads-grf-aux
@@ -254,7 +262,7 @@ adgs2:
         descending: desc
       max_sort_params: 1
     pagination:
-      max_items_per_page: 1000
+      max_items_per_page: 10000
       next_page_url_tpl: '{url}?{search}&$top={items_per_page}&$skip={skip}&$expand=Attributes'
       total_items_nb_key_path: $.total
   download:

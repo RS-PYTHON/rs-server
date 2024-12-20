@@ -20,12 +20,16 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 
 # Run pytest in each sub-project directory.
-# We cannot run it once from the main directory because some sub-project may have dependency conflicts,
+# We cannot run it once from the main directory because some sub-projects may have dependency conflicts,
 # and because we have a 'ImportError while loading conftest' when several sub-projects implement
 # a 'conftest' file.
 
 # Remove the existing coverage reports
-(set -x; rm -rf ./.coverage ./cov-report.xml ./junit-xml-report.xml)
+(set -x; rm -rf ./.coverage ./cov-report.xml ./junit-xml-report*.xml)
+
+# We must manually append the junit report
+pip install junitparser
+junit=0
 
 # For each pyproject.toml file in the current directory
 for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
@@ -46,6 +50,9 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
         poetry run opentelemetry-bootstrap -a install || true
     )
 
+    # Increment junit reports index
+    junit=$((junit+1))
+
     # Subshell
     (
         # Read the .env file if it exists
@@ -64,7 +71,7 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 --cov=$relative_path \
 --cov-report=term \
 --cov-report=xml:./cov-report.xml \
---junit-xml=./junit-xml-report.xml \
+--junit-xml=./junit-xml-report-${junit}.xml \
 --cov-append \
 "
         trap "echo FAILED COMMAND: $cmd" EXIT # print the command if it fails
@@ -73,3 +80,21 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     )
     echo "Finished testing '$tests_dir'"
 done
+
+# Merge the junit reports
+junitparser merge ./junit-xml-report*.xml ./junit-xml-report.xml
+
+# There seems to be a bug in pytest cov with --cov-append.
+# The last tested project is malformed in the report file.
+# Use this workaround to run pytest on a dummy empty dir. This reformats the report file.
+dummy="/tmp/empty-pytest"
+mkdir -p $dummy
+# Use the last project configuration
+cmd="poetry \
+--directory $proj_dir run pytest $dummy \
+--cov=$dummy \
+--cov-report=term \
+--cov-report=xml:./cov-report.xml \
+--cov-append \
+"
+(set -x; $cmd || true) # run command, ignore the error message that says no tests exist

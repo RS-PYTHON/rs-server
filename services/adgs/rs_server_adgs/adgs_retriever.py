@@ -22,7 +22,7 @@ from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.settings import env_bool
 
-if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", False):
+if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
     DEFAULT_EODAG_CONFIG = (
         Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "adgs_ws_config_token_module.yaml"
     )
@@ -30,7 +30,7 @@ else:
     DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "adgs_ws_config.yaml"
 
 
-def init_adgs_provider(station: str) -> EodagProvider:
+async def init_adgs_provider(station: str) -> EodagProvider:
     """Initialize the adgs provider for the given station.
 
     It initializes an eodag provider for the given station.
@@ -50,6 +50,6 @@ def init_adgs_provider(station: str) -> EodagProvider:
     try:
         # Check if the config file path is overriden in the environment variables
         eodag_config = Path(os.environ.get("EODAG_ADGS_CONFIG", DEFAULT_EODAG_CONFIG))
-        return EodagProvider(eodag_config, station.lower())  # default to eodag, default station "adgs"
+        return await EodagProvider(eodag_config, station.lower())  # default to eodag, default station "adgs"
     except Exception as exception:
         raise CreateProviderFailed("Failed to setup eodag") from exception

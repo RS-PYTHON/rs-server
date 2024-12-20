@@ -97,11 +97,23 @@ def init_rs_server_config_yaml():
             # Initialize with mandatory fields the station entry if it doesn't exist
             rest_of_key = rest_of_key.strip("__").replace("__", "_") if rest_of_key else None
             station_data = config_data.setdefault(station, {"service": {"name": service}})
+            # Initialize a variable for the final processed value
+            processed_value: Any = value
+            # Check if the value looks like a list
+            if value.startswith("[") and value.endswith("]"):
+                try:
+                    processed_value = [
+                        domain.strip(" \"'") for domain in value.strip("[]").split(",")  # Remove whitespace and quotes
+                    ]
+                except Exception as e:  # pylint: disable=broad-except
+                    logger.error(f"Failed to parse list value for {var}: {value}. Error: {e}")
+                    raise RuntimeError(f"Failed to parse list value for {var}: {value}. Error: {e}") from e
+
             if rest_of_key:
                 section_data = station_data.setdefault(section, {})
-                section_data[rest_of_key] = value
+                section_data[rest_of_key] = processed_value
             else:
-                station_data[section] = value
+                station_data[section] = processed_value
     try:
         # Create the directory if it doesn't exist
         os.makedirs(os.path.dirname(CONFIG_PATH_AUTH_TO_EXTERNAL), exist_ok=True)
@@ -109,7 +121,7 @@ def init_rs_server_config_yaml():
         # Write the YAML data to the file
         main_dict = {"external_data_sources": config_data}
         with open(CONFIG_PATH_AUTH_TO_EXTERNAL, "w", encoding="utf-8") as yaml_file:
-            yaml.dump(main_dict, yaml_file, default_flow_style=False)
+            yaml.safe_dump(main_dict, yaml_file, default_flow_style=False)
         logger.info(
             f"The configuration for the external stations token module was successfully \
 written to {CONFIG_PATH_AUTH_TO_EXTERNAL}",
@@ -139,6 +151,7 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
         client_secret (str): The client secret used for authentication.
         scope (Optional[str]): The scope of access requested in the authentication token (if applicable).
         authorization (Optional[str]): Additional authorization header (if required).
+        trusted_domains (Optional[str]): The list of allowed hosts for http redirection
     """
 
     station_id: str
@@ -154,6 +167,7 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     client_secret: str
     scope: str | None = None
     authorization: str | None = None
+    trusted_domains: list[str] | None = None
 
 
 def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str:
@@ -403,6 +417,7 @@ def create_external_auth_config(
             client_secret=station_dict.get("authentication", {}).get("client_secret"),
             scope=station_dict.get("authentication", {}).get("scope"),
             authorization=station_dict.get("authentication", {}).get("authorization"),
+            trusted_domains=station_dict.get("trusteddomains", None),
         )
     except KeyError as e:
         logger.error(f"Error loading configuration, couldn't find a key: {e}")
@@ -420,6 +435,13 @@ def set_eodag_auth_env(ext_auth_config: ExternalAuthenticationConfig):
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__grant_type"] = ext_auth_config.grant_type
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__username"] = ext_auth_config.username
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__password"] = ext_auth_config.password
+
+    # Used to set the authorization for token retrieval
+    if ext_auth_config.authorization is not None:
+        os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__auth_for_token"] = (
+            ext_auth_config.authorization
+        )
+
     # optional keys
     # NOTE: the Authorization cannot be overwritten when EODAG is sending the POST request when getting the token
     # if ext_auth_config.authorization:
@@ -469,7 +491,7 @@ def set_eodag_auth_token(
     ext_auth_config.station_id = ext_auth_config.station_id + session
     # call the module implemented for rspy-352
     # NOTE: the cadip_ws_config should be also configured
-    if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", False):
+    if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
         os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] = get_station_token(
             ext_auth_config,
         )

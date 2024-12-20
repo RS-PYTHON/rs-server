@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for utility funtions."""
+"""Unit tests for utility funtions defined in utils2.py."""
 
 import requests
 import responses
@@ -23,7 +23,7 @@ from rs_server_common.utils.utils2 import read_response_error
 def test_response_error():
     """Test reading responses errors."""
 
-    dummy_href = "http://DUMMY_HREF"
+    dummy_href = "https://DUMMY_HREF"
     detail = "detail message"
     error = "error message"
     content = "response content"

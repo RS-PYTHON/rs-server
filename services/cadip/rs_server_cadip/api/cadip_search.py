@@ -75,6 +75,8 @@ from rs_server_common.utils.utils import (
 router = APIRouter(tags=cadip_tags)
 logger = Logging.default(__name__)
 
+DEFAULT_FILES_LIMIT = 1000
+
 
 class MockPgstacCadip(MockPgstac):
     """Cadip implementation of MockPgstac"""
@@ -95,9 +97,15 @@ class MockPgstacCadip(MockPgstac):
         self.sortby = "-published"
 
     @handle_exceptions
-    async def process_search(self, collection: dict, odata_params: dict) -> stac_pydantic.ItemCollection:
+    async def process_search(
+        self,
+        collection: dict,
+        odata_params: dict,
+        limit: int,
+        page: int,
+    ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        session_data = process_session_search(
+        session_data = await process_session_search(
             self.request,
             collection.get("station", "cadip"),
             odata_params.get("SessionId", []),
@@ -105,8 +113,8 @@ class MockPgstacCadip(MockPgstac):
             odata_params.get("PublicationDate"),
             odata_params.get("Retransfer"),
             self.sortby,
-            self.limit,
-            self.page,
+            limit,
+            page,
         )
         if not session_data.features:
             # If there are no sessions, don't proceed to assets allocation
@@ -114,11 +122,24 @@ class MockPgstacCadip(MockPgstac):
 
         # To be updated with proper ('')
         features_ids = ", ".join(feature.id for feature in session_data.features)
-        assets = process_files_search(
-            collection.get("station", "cadip"),
-            features_ids,
-            map_to_session=True,
-        )
+
+        assets: list[dict] = []
+        page = 1
+        while True:
+            chunked_assets = await process_files_search(
+                collection.get("station", "cadip"),
+                features_ids,
+                map_to_session=True,
+                page=page,
+            )
+            # Gather results into assets list for later allocation
+            assets.extend(chunked_assets)
+
+            if len(chunked_assets) < DEFAULT_FILES_LIMIT:
+                # If assets are less than maximum limit, then session is complete.
+                break
+            # If assets are equal to maximum limit, then send another request for the next page
+            page += 1
 
         with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
             return link_assets_to_session(session_data, assets, json.loads(mapper.read()))
@@ -380,7 +401,7 @@ async def get_cadip_collection_item_details(
 
 
 @validate_call(config={"arbitrary_types_allowed": True})
-def process_session_search(  # type: ignore  # pylint: disable=too-many-arguments, too-many-locals, unused-argument
+async def process_session_search(  # type: ignore # pylint: disable=too-many-arguments, too-many-locals, unused-argument
     request: Request,
     station: str,
     session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
@@ -421,7 +442,7 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
     """
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
-        products = init_cadip_provider(f"{station}_session").search(
+        products = (await init_cadip_provider(f"{station}_session")).search(
             TimeRange(*time_interval),
             id=session_id,  # pylint: disable=redefined-builtin
             platform=platform,
@@ -471,14 +492,14 @@ def process_session_search(  # type: ignore  # pylint: disable=too-many-argument
 ######################################
 @router.get("/cadip/{station}/cadu/search", deprecated=True)
 @auth_validator(station="cadip", access_type="read")
-def search_products(  # pylint: disable=too-many-locals, too-many-arguments
+async def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
     session_id: Annotated[str, Query(description="Session from which file belong")] = "",
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
     sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
-) -> list[dict] | dict:
+):  # -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
     This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
     writes the search results to the database, and generates a STAC Feature Collection from the products.
@@ -499,14 +520,14 @@ def search_products(  # pylint: disable=too-many-locals, too-many-arguments
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    return process_files_search(station, session_id, datetime, limit, sortby=sortby, deprecated=True)
+    return await process_files_search(station, session_id, datetime, limit, sortby=sortby, deprecated=True)
 
 
-def process_files_search(  # pylint: disable=too-many-locals
+async def process_files_search(  # pylint: disable=too-many-locals
     station: str,
     session_id: str,
     datetime: Union[str, None] = None,
-    limit: Union[int, None] = 1000,
+    limit: Union[int, None] = DEFAULT_FILES_LIMIT,
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
@@ -542,11 +563,12 @@ def process_files_search(  # pylint: disable=too-many-locals
     # Init dataretriever / get products / return
     try:
         set_eodag_auth_token(station.lower(), "cadip")
-        products = init_cadip_provider(station).search(
+        products = (await init_cadip_provider(station)).search(
             TimeRange(start_date, stop_date),
             id=session,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
+            page=kwargs.get("page", 1),
         )
         if kwargs.get("deprecated", False):
             write_search_products_to_db(CadipDownloadStatus, products)
