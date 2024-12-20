@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Module to share common functionalities for validating / creating stac items"""
-import asyncio
 import copy
 import json
 import threading
@@ -22,7 +21,7 @@ import urllib.parse
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
-from functools import wraps
+from functools import lru_cache
 from pathlib import Path
 from typing import (
     Annotated,
@@ -815,6 +814,7 @@ def filter_allowed_collections(all_collections, role, request):
     return stac_collections
 
 
+@lru_cache
 def map_stac_platform() -> dict:
     """Function used to read and interpret from constellation.yaml"""
     with open(Path(__file__).parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
