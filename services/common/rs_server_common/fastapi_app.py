@@ -65,7 +65,7 @@ async def health() -> HealthSchema:
     \f
     Otherwise this code won't be run anyway and the caller will have other sorts of errors.
     """
-    return HealthSchema(healthy=False)
+    return HealthSchema(healthy=True)
 
 
 @typing.no_type_check

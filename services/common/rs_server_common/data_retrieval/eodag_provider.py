@@ -44,7 +44,6 @@ logger = Logging.default(__name__)
 lock = Lock()
 
 
-@lru_cache
 class CustomEODataAccessGateway(EODataAccessGateway):
     """EODataAccessGateway with a custom config directory management."""
 
@@ -67,6 +66,12 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         except FileNotFoundError:
             pass
 
+    @classmethod
+    @lru_cache
+    def create(cls, *args, **kwargs):
+        """Return a cached instance of the class."""
+        return cls(*args, **kwargs)
+
 
 class EodagProvider(Provider):
     """An EODAG provider.
@@ -85,7 +90,7 @@ class EodagProvider(Provider):
         self.config_file = config_file.resolve().as_posix()
         try:
             with lock:
-                self.client = CustomEODataAccessGateway(self.config_file)
+                self.client = CustomEODataAccessGateway.create(self.config_file)
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
