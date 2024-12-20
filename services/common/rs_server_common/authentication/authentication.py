@@ -18,7 +18,6 @@ Authentication functions implementation.
 
 import os
 from contextlib import contextmanager
-from functools import wraps
 from typing import Annotated
 
 import jwt
