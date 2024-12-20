@@ -96,6 +96,7 @@ class MockPgstacCadip(MockPgstac):
         # Default sortby value
         self.sortby = "-published"
 
+    @handle_exceptions
     def process_search(
         self,
         collection: dict,
@@ -491,7 +492,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
 ######################################
 @router.get("/cadip/{station}/cadu/search", deprecated=True)
 @auth_validator(station="cadip", access_type="read")
-def search_products(  # pylint: disable=too-many-locals, too-many-arguments
+async def search_products(  # pylint: disable=too-many-locals, too-many-arguments
     request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
     station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),

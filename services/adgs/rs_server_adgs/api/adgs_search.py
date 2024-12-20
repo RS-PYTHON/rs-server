@@ -92,6 +92,7 @@ class MockPgstacAdgs(MockPgstac):
         # Default sortby value
         self.sortby = "-created"
 
+    @handle_exceptions
     def process_search(
         self,
         collection: dict,
@@ -394,7 +395,7 @@ def process_product_search(  # pylint: disable=too-many-locals
 ######################################
 @router.get("/adgs/aux/search", deprecated=True)
 @auth_validator(station="adgs", access_type="read")
-def search_products(  # pylint: disable=too-many-locals
+async def search_products(  # pylint: disable=too-many-locals
     request: Request,  # pylint: disable=unused-argument
     datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
     limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,

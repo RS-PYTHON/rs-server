@@ -499,5 +499,5 @@ def set_eodag_auth_token(
     else:
         # use eodag to get the token
         # NOTE: the cadip_ws_config should be also configured
-        logger.info("Let eodag to fetch the token")
+        logger.info("Let eodag fetch the token")
         set_eodag_auth_env(ext_auth_config)

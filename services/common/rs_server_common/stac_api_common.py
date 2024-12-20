@@ -13,13 +13,14 @@
 # limitations under the License.
 
 """Module to share common functionalities for validating / creating stac items"""
+import asyncio
 import copy
 import json
 import threading
 import traceback
 import urllib.parse
 from abc import ABC, abstractmethod
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
@@ -316,7 +317,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Do the search in a synchronized thread so we don't block the main thread,
         # see: https://stackoverflow.com/a/71517830
-        await run_in_threadpool(self.sync_search(*args, **kwargs, post_json_body=post_json_body))
+        return await run_in_threadpool(self.sync_search, *args, **kwargs, post_json_body=post_json_body)
 
     def sync_search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
         self,
@@ -719,13 +720,15 @@ def create_collection(collection: dict) -> stac_pydantic.Collection:
 
 
 def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors while creating/validating
-    items."""
+    """
+    Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors
+    while creating/validating items.
+    """
 
-    @wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+    @contextmanager
+    def wrapping_logic(*_args, **_kwargs):
         try:
-            return await func(*args, **kwargs)
+            yield
         except KeyError as exc:
             logger.error(f"KeyError caught in {func.__name__}")
             raise log_http_exception(
@@ -739,7 +742,8 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
                 detail=f"Parameters validation error: {exc}",
             ) from exc
 
-    return wrapper
+    # Decorator for both sync and async functions
+    return utils2.decorate_sync_async(wrapping_logic, func)
 
 
 def filter_allowed_collections(all_collections, role, request):
