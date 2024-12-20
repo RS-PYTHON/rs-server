@@ -300,7 +300,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         raise log_http_exception(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
-    async def search(self, *args, **kwargs) -> dict[str, Any]:
+    async def search(self, params: dict) -> dict[str, Any]:
         """
         Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
         """
@@ -316,7 +316,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Do the search in a synchronized thread so we don't block the main thread,
         # see: https://stackoverflow.com/a/71517830
-        return await run_in_threadpool(self.sync_search, *args, **kwargs, post_json_body=post_json_body)
+        return await run_in_threadpool(self.sync_search, params, post_json_body)
 
     def sync_search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
         self,
@@ -541,7 +541,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             collection_ids = list(allowed_ids.intersection(collection_ids))
 
         # Search all collections in parallel threads
-        all_results = []
+        all_results: list[Sequence[Item] | Exception] = []
         threads = [
             threading.Thread(target=self.process_collection, args=(collection_id, stac_params, all_results))
             for collection_id in collection_ids
@@ -593,8 +593,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         self,
         collection_id,
         stac_params,
-        return_values: list,
-    ) -> Sequence[Item] | Exception:
+        return_values: list[Sequence[Item] | Exception],
+    ):
         """Method used to process a collection and perform search."""
         features = None
         empty_selection = False
