@@ -38,10 +38,7 @@ from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeR
 
 logger = Logging.default(__name__)
 
-lock = Lock()
-
-# Environment variable values, the last time we checked them
-old_environ = {}
+global_lock = Lock()
 
 
 class CustomEODataAccessGateway(EODataAccessGateway):
@@ -49,7 +46,8 @@ class CustomEODataAccessGateway(EODataAccessGateway):
 
     def __init__(self, *args, **kwargs):
         """Constructor"""
-        global old_environ  # pylint: disable=global-statement
+
+        self.lock = Lock()
 
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
@@ -57,8 +55,8 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         # disable product types discovery
         os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
 
-        # The current env vars will be loaded by eodag
-        old_environ = dict(os.environ)
+        # Environment variable values, the last time we checked them. They will be read by eodag.
+        self.old_environ = dict(os.environ)
 
         # Init eodag instance
         super().__init__(*args, **kwargs)
@@ -76,6 +74,16 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 
+    def override_config_from_env(self):
+        """
+        Update the eodag conf from the latest EODAG__<provider>__auth__... env vars
+        that are set in authentication_to_external.py, if they have changed
+        """
+        with self.lock:  # safer to use a thread lock before calling eodag and modifying a global var
+            if (new_environ := dict(os.environ)) != self.old_environ:
+                self.old_environ = new_environ
+                override_config_from_env(self.providers_config)
+
 
 class EodagProvider(Provider):
     """An EODAG provider.
@@ -90,23 +98,18 @@ class EodagProvider(Provider):
             config_file: the path to the eodag configuration file
             provider: the name of the eodag provider
         """
-        global old_environ  # pylint: disable=global-statement
-
         self.provider: str = provider
         self.config_file = config_file.resolve().as_posix()
         try:
-            with lock:  # use a thread lock before calling the lru_cache
+            with global_lock:  # use a thread lock before calling the lru_cache
                 self.client = CustomEODataAccessGateway.create(self.config_file)
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
 
-        # If we retrieved the CustomEODataAccessGateway object in cache, maybe it didn't load the
-        # latest EODAG__<provider>__auth__... env vars that are set in authentication_to_external.py
-        with lock:  # safer to use a thread lock before calling eodag and modifying a global var
-            if (new_environ := dict(os.environ)) != old_environ:
-                old_environ = new_environ
-                override_config_from_env(self.client.providers_config)
+        # If the eodag object was already existing and retrieved from the lru_cache,
+        # we need to update its configuration from the latest env vars, if they have changed
+        self.client.override_config_from_env()
 
     def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
         """
@@ -216,7 +219,7 @@ class EodagProvider(Provider):
 
         """
         # Use thread-lock because self.client.download is not thread-safe
-        with lock:
+        with self.client.lock:
             product = self.create_eodag_product(product_id, to_file.name)
             # download_plugin = self.client._plugins_manager.get_download_plugin(product)
             # authent_plugin = self.client._plugins_manager.get_auth_plugin(product.provider)
