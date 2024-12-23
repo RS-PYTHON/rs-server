@@ -658,11 +658,15 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         Returns:
             None
         """
-        if not cluster_name:
-            raise RuntimeError("Failed to get the name of the cluster")
-        # If self.cluster is already created, it indicates that we are in local
-        # mode, and the cluster was initialized at the application's start.
+
+        # If self.cluster is already initialized, it means the application is running in local mode, and
+        # the cluster was created when the application started.
         if not self.cluster:
+            if not cluster_name:
+                raise RuntimeError(
+                    "Failed to get the name of the cluster from the environment "
+                    "variable RSPY_DASK_STAGING_CLUSTER_NAME",
+                )
             # in kubernetes cluster mode, we have to connect to the gateway and get the list of the clusters
             try:
                 # check the auth type, only jupyterhub type supported for now
