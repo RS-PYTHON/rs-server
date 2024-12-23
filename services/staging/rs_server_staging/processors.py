@@ -681,10 +681,15 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 self.logger.debug(f"The list of clusters: {clusters}")
 
                 # Get the identifier of the cluster whose name is equal to the cluster_name variable
+                # Protection for the case when this cluster does not exit
                 cluster_id = [
                     cluster.name
                     for cluster in gateway.list_clusters()
-                    if "cluster_name" in cluster.options and cluster.options["cluster_name"] == cluster_name
+                    if (
+                        isinstance(cluster.options, dict)
+                        and "cluster_name" in cluster.options
+                        and cluster.options["cluster_name"] == cluster_name
+                    )
                 ][0]
                 self.cluster = gateway.connect(cluster_id)
 
@@ -693,8 +698,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 self.logger.exception(f"Failed to find the needed environment variable to use the dask gateway: {e}")
                 raise RuntimeError from e
             except IndexError as e:
-                self.logger.exception(f"There is no dask cluster to connect. Exception: {e}")
-                raise RuntimeError("There is no dask cluster to connect") from e
+                self.logger.exception(f"No dask cluster named '{cluster_name}' was found to connect to. Exception: {e}")
+                raise RuntimeError(f"No dask cluster named '{cluster_name}' was found to connect to") from e
 
         self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
         # create the client as well
@@ -801,7 +806,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         try:
 
             dask_client = self.dask_cluster_connect(cluster_name=os.getenv("RSPY_DASK_STAGING_CLUSTER_NAME"))
-            self.submit_tasks_to_dask_cluster(token, dask_client)
+            self.submit_tasks_to_dask_cluster(token, external_auth_config.trusted_domains, dask_client)
         except RuntimeError as re:
             self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"{re}")
             self.logger.error("Failed to start the staging process")

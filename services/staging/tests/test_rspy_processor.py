@@ -144,10 +144,6 @@ class TestStreaming:
 class TestStaging:
     """Test class for Staging processor"""
 
-    @pytest.fixture(name="cluster_name")
-    def cluster_name():
-        return "dask-staging"
-
     @pytest.mark.asyncio
     async def test_execute_with_running_loop(self, mocker, staging_instance, asyncio_loop):
         """Test execute method while a asyncio loop is running"""
@@ -729,7 +725,7 @@ class TestStagingDeleteFromBucket:
 class TestStagingMainExecution:
     """Class to test Item processing"""
 
-    def test_dask_cluster_connect(self, mocker, staging_instance, cluster_name):
+    def test_dask_cluster_connect(self, mocker, staging_instance, cluster_options):
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -751,7 +747,8 @@ class TestStagingMainExecution:
         mock_security = mocker.patch("dask.distributed.Security")
         # Mock the cluster with the required attributes for Client
         mock_cluster = mocker.Mock()
-        mock_cluster.name = "test-cluster"
+        mock_cluster.name = "dask-gateway-id"
+        mock_cluster.options = cluster_options
         mock_cluster.dashboard_link = "https://mock-dashboard"
         mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
         mock_cluster.security = mock_security  # Add mocked security attribute
@@ -765,11 +762,12 @@ class TestStagingMainExecution:
         mock_client.return_value = mock_client_instance
 
         # Call the method under test
-        client = staging_instance.dask_cluster_connect(cluster_name)
+        client = staging_instance.dask_cluster_connect(cluster_options["cluster_name"])
 
         # assertions
-        mock_list_clusters.assert_called_once()
-        mock_connect.assert_called_once_with("test-cluster")
+        # mock_list_clusters.assert_called_once()
+        assert mock_list_clusters.call_count == 2
+        mock_connect.assert_called_once_with("dask-gateway-id")
         mock_client.assert_called_once_with(staging_instance.cluster)
 
         # Ensure logging was called as expected
@@ -779,7 +777,45 @@ class TestStagingMainExecution:
             f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}",
         )
 
-    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance, cluster_name):
+    def test_dask_cluster_connect_failure_no_cluster_name(self, mocker, staging_instance, cluster_options):
+        """Test the bahavior in case no cluster name is found"""
+
+        # Mock environment variables to simulate gateway mode
+        mocker.patch.dict(
+            os.environ,
+            {
+                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
+                "JUPYTERHUB_API_TOKEN": "mock_api_token",
+            },
+        )
+        # Mock the logger
+        mock_logger = mocker.patch.object(staging_instance, "logger")
+        staging_instance.cluster = None
+        # Mock the JupyterHubAuth, Gateway, and Client classes
+        mock_list_clusters = mocker.patch.object(Gateway, "list_clusters")
+        mock_connect = mocker.patch.object(Gateway, "connect")
+
+        # Mock the Security object
+        mock_security = mocker.patch("dask.distributed.Security")
+        # Mock the cluster with the required attributes for Client
+        mock_cluster = mocker.Mock()
+        mock_cluster.name = "dask-gateway-id"
+        mock_cluster.options = cluster_options
+        mock_cluster.dashboard_link = "https://mock-dashboard"
+        mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
+        mock_cluster.security = mock_security  # Add mocked security attribute
+        mock_list_clusters.return_value = [mock_cluster]
+        mock_connect.return_value = mock_cluster
+        non_existent = "another-cluster-name"
+        with pytest.raises(RuntimeError):
+            staging_instance.dask_cluster_connect(non_existent)
+        # Ensure logging was called as expected
+        mock_logger.exception.assert_any_call(
+            f"No dask cluster named '{non_existent}' was found to connect to. Exception: list index out of range",
+        )
+
+    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance, cluster_options):
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -790,7 +826,7 @@ class TestStagingMainExecution:
         )
         staging_instance.cluster = None
         with pytest.raises(RuntimeError):
-            staging_instance.dask_cluster_connect(cluster_name)
+            staging_instance.dask_cluster_connect(cluster_options["cluster_name"])
 
     def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance):
         """Test to mock managing of successul tasks"""

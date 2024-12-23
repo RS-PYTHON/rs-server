@@ -133,7 +133,7 @@ def dbj_():
 
 @pytest.fixture(name="staging_instance")
 def staging(mocker):
-    """Fixture to mock Staging object"""
+    """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
     mock_credentials = mocker.Mock()
     mock_credentials.headers = {"cookie": "fake-cookie"}
@@ -176,3 +176,42 @@ def event_loop():
     if pending:
         loop.run_until_complete(asyncio.gather(*pending))  # Wait for them to finish
     loop.close()
+
+
+@pytest.fixture(name="cluster_options")
+def cluster_options():
+    """Fixture to get a cluster options"""
+    return {
+        "cluster_max_cores": 4,
+        "cluster_max_memory": 17179869184,
+        "cluster_max_workers": 5,
+        "cluster_name": "dask-tests",
+        "environment": {
+            "S3_ENDPOINT": "http://fake-s3-endpoint",
+            "S3_REGION": "fake-region",
+            "TEMPO_ENDPOINT": "fake-tempo",
+        },
+        "image": "fake-image",
+        "namespace": "dask-gateway",
+        "scheduler_extra_container_config": {"imagePullPolicy": "Always"},
+        "scheduler_extra_pod_annotations": {"access": "internal", "usage": "unknown"},
+        "scheduler_extra_pod_labels": {"cluster_name": "dask-tests"},
+        "worker_cores": 1,
+        "worker_extra_container_config": {"envFrom": [{"secretRef": {"name": "obs"}}]},
+        "worker_extra_pod_config": {
+            "affinity": {
+                "nodeAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": {
+                        "nodeSelectorTerms": [
+                            {
+                                "matchExpressions": [
+                                    {"key": "fake-node-role.kubernetes.io/fake-infra", "operator": "Exists"},
+                                ],
+                            },
+                        ],
+                    },
+                },
+            },
+        },
+        "worker_memory": 2,
+    }
