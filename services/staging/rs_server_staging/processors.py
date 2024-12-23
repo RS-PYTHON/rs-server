@@ -622,8 +622,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             None
 
         Raises:
-            RuntimeError: Raised if the cluster name is None, required environment variables are missing, cluster creation fails,
-                        or authentication errors occur.
+            RuntimeError: Raised if the cluster name is None, required environment variables are missing,
+                        cluster creation fails or authentication errors occur.
             KeyError: Raised if the necessary Dask Gateway environment variables (`DASK_GATEWAY__ADDRESS`,
                     `DASK_GATEWAY__AUTH__TYPE`) are not set.
             IndexError: Raised if no clusters are found in the Dask Gateway and new cluster creation is attempted.
