@@ -602,7 +602,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.log_job_execution(EStagingStatus.FINISHED, 100, detail="Finished")
         self.logger.info("Tasks monitoring finished")
 
-    def dask_cluster_connect(self):
+    def dask_cluster_connect(self, cluster_name):
         """Connects a dask cluster scheduler
         Establishes a connection to a Dask cluster, either in a local environment or via a Dask Gateway in
         a Kubernetes cluster. This method checks if the cluster is already created (for local mode) or connects
@@ -622,7 +622,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             None
 
         Raises:
-            RuntimeError: Raised if required environment variables are missing, cluster creation fails,
+            RuntimeError: Raised if the cluster name is None, required environment variables are missing, cluster creation fails,
                         or authentication errors occur.
             KeyError: Raised if the necessary Dask Gateway environment variables (`DASK_GATEWAY__ADDRESS`,
                     `DASK_GATEWAY__AUTH__TYPE`) are not set.
@@ -658,6 +658,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         Returns:
             None
         """
+        if not cluster_name:
+            raise RuntimeError("Failed to get the name of the cluster")
         # If self.cluster is already created, it indicates that we are in local
         # mode, and the cluster was initialized at the application's start.
         if not self.cluster:
@@ -677,7 +679,15 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 )
                 clusters = gateway.list_clusters()
                 self.logger.debug(f"The list of clusters: {clusters}")
-                self.cluster = gateway.connect(clusters[0].name)
+
+                # Get the identifier of the cluster whose name is equal to the cluster_name variable
+                cluster_id = [
+                    cluster.name
+                    for cluster in gateway.list_clusters()
+                    if "cluster_name" in cluster.options and cluster.options["cluster_name"] == cluster_name
+                ][0]
+                self.cluster = gateway.connect(cluster_id)
+
                 self.logger.info("Connection with the dask cluster succeeded.")
             except KeyError as e:
                 self.logger.exception(f"Failed to find the needed environment variable to use the dask gateway: {e}")
@@ -789,8 +799,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         # connect to the dask cluster
         try:
-            dask_client = self.dask_cluster_connect()
-            self.submit_tasks_to_dask_cluster(token, external_auth_config.trusted_domains, dask_client)
+
+            dask_client = self.dask_cluster_connect(cluster_name=os.getenv("RSPY_DASK_STAGING_CLUSTER_NAME"))
+            self.submit_tasks_to_dask_cluster(token, dask_client)
         except RuntimeError as re:
             self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"{re}")
             self.logger.error("Failed to start the staging process")
