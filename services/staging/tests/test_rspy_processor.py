@@ -734,6 +734,7 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
+                "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],
             },
         )
         # Mock the logger
@@ -762,7 +763,7 @@ class TestStagingMainExecution:
         mock_client.return_value = mock_client_instance
 
         # Call the method under test
-        client = staging_instance.dask_cluster_connect(cluster_options["cluster_name"])
+        client = staging_instance.dask_cluster_connect()
 
         # assertions
         # mock_list_clusters.assert_called_once()
@@ -779,7 +780,7 @@ class TestStagingMainExecution:
 
     def test_dask_cluster_connect_failure_no_cluster_name(self, mocker, staging_instance, cluster_options):
         """Test the bahavior in case no cluster name is found"""
-
+        non_existent_cluster = "another-cluster-name"
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
             os.environ,
@@ -787,6 +788,7 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
+                "RSPY_DASK_STAGING_CLUSTER_NAME": non_existent_cluster,
             },
         )
         # Mock the logger
@@ -807,17 +809,18 @@ class TestStagingMainExecution:
         mock_cluster.security = mock_security  # Add mocked security attribute
         mock_list_clusters.return_value = [mock_cluster]
         mock_connect.return_value = mock_cluster
-        non_existent = "another-cluster-name"
+
         with pytest.raises(RuntimeError):
-            staging_instance.dask_cluster_connect(non_existent)
+            staging_instance.dask_cluster_connect()
         # Ensure logging was called as expected
         mock_logger.exception.assert_any_call(
-            f"No dask cluster named '{non_existent}' was found to connect to. Exception: list index out of range",
+            f"No dask cluster named '{non_existent_cluster}' was found to connect to. "
+            "Exception: list index out of range",
         )
 
-    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance, cluster_options):
+    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance):
         """Test to mock the connection to a dask cluster"""
-        # Mock environment variables to simulate gateway mode
+        # Not all the needed env vars are mocked
         mocker.patch.dict(
             os.environ,
             {
@@ -826,7 +829,7 @@ class TestStagingMainExecution:
         )
         staging_instance.cluster = None
         with pytest.raises(RuntimeError):
-            staging_instance.dask_cluster_connect(cluster_options["cluster_name"])
+            staging_instance.dask_cluster_connect()
 
     def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance):
         """Test to mock managing of successul tasks"""
@@ -1015,14 +1018,14 @@ class TestStagingMainExecution:
         mocker.patch.object(
             staging_instance,
             "dask_cluster_connect",
-            side_effect=RuntimeError("Dask connection failed"),
+            side_effect=RuntimeError("Dask cluster client failed"),
         )
 
         # Call the async function
         await staging_instance.process_rspy_features()
 
         # Verify log_job_execution is called with the error details
-        mock_log_job.assert_called_once_with(EStagingStatus.FAILED, 0, detail="Dask connection failed")
+        mock_log_job.assert_called_once_with(EStagingStatus.FAILED, 0, detail="Dask cluster client failed")
         mock_logger.error.assert_called_once_with("Failed to start the staging process")
 
         # Verify that the task submission and monitoring thread are not executed
