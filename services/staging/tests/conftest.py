@@ -187,7 +187,7 @@ def cluster_options():
         "cluster_max_workers": 5,
         "cluster_name": "dask-tests",
         "environment": {
-            "S3_ENDPOINT": "http://fake-s3-endpoint",
+            "S3_ENDPOINT": "https://fake-s3-endpoint",
             "S3_REGION": "fake-region",
             "TEMPO_ENDPOINT": "fake-tempo",
         },
