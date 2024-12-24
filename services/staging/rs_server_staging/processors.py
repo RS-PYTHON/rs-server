@@ -683,18 +683,21 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
                 # Get the identifier of the cluster whose name is equal to the cluster_name variable
                 # Protection for the case when this cluster does not exit
-                cluster_id = [
-                    cluster.name
-                    for cluster in gateway.list_clusters()
-                    if (
-                        isinstance(cluster.options, dict)
-                        and "cluster_name" in cluster.options
-                        and cluster.options["cluster_name"] == cluster_name
-                    )
-                ][0]
+                cluster_id = next(
+                    (
+                        cluster.name
+                        for cluster in clusters
+                        if isinstance(cluster.options, dict) and cluster.options.get("cluster_name") == cluster_name
+                    ),
+                    None,
+                )
+
+                if not cluster_id:
+                    raise IndexError(f"No dask cluster named '{cluster_name}' was found.")
+
                 self.cluster = gateway.connect(cluster_id)
 
-                self.logger.info("Connection with the dask cluster succeeded.")
+                self.logger.info(f"Successfully connected to the {cluster_name} dask cluster")
             except KeyError as e:
                 self.logger.exception(
                     "Failed to retrieve the required connection details for "
@@ -705,8 +708,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
                 raise RuntimeError from e
             except IndexError as e:
-                self.logger.exception(f"No dask cluster named '{cluster_name}' was found to connect to. Exception: {e}")
-                raise RuntimeError(f"No dask cluster named '{cluster_name}' was found to connect to") from e
+                self.logger.exception(f"Failed to find the specified dask cluster: {e}")
+                raise RuntimeError(f"No dask cluster named '{cluster_name}' was found.") from e
 
         self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
         # create the client as well

@@ -766,8 +766,7 @@ class TestStagingMainExecution:
         client = staging_instance.dask_cluster_connect()
 
         # assertions
-        # mock_list_clusters.assert_called_once()
-        assert mock_list_clusters.call_count == 2
+        mock_list_clusters.assert_called_once()
         mock_connect.assert_called_once_with("dask-gateway-id")
         mock_client.assert_called_once_with(staging_instance.cluster)
 
@@ -814,8 +813,7 @@ class TestStagingMainExecution:
             staging_instance.dask_cluster_connect()
         # Ensure logging was called as expected
         mock_logger.exception.assert_any_call(
-            f"No dask cluster named '{non_existent_cluster}' was found to connect to. "
-            "Exception: list index out of range",
+            "Failed to find the specified dask cluster: " f"No dask cluster named '{non_existent_cluster}' was found.",
         )
 
     def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance):
