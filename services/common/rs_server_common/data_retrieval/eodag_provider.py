@@ -17,13 +17,12 @@
 import os
 import shutil
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from threading import Lock
 from typing import List, Union
 
 import yaml
-from async_lru import alru_cache
-from asyncinit import asyncinit
 from eodag import EODataAccessGateway, EOProduct, SearchResult
 from eodag.api.core import override_config_from_env
 from eodag.utils.exceptions import (
@@ -33,15 +32,13 @@ from eodag.utils.exceptions import (
     ValidationError,
 )
 from fastapi import HTTPException, status
-from fastapi.concurrency import run_in_threadpool
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
 
-# from fastapi import HTTPException
-
-
 logger = Logging.default(__name__)
+
+global_lock = Lock()
 
 
 class CustomEODataAccessGateway(EODataAccessGateway):
@@ -50,11 +47,16 @@ class CustomEODataAccessGateway(EODataAccessGateway):
     def __init__(self, *args, **kwargs):
         """Constructor"""
 
+        self.lock = Lock()
+
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
         os.environ["EODAG_CFG_DIR"] = self.eodag_cfg_dir.name
         # disable product types discovery
         os.environ["EODAG_EXT_PRODUCT_TYPES_CFG_FILE"] = ""
+
+        # Environment variable values, the last time we checked them. They will be read by eodag.
+        self.old_environ = dict(os.environ)
 
         # Init eodag instance
         super().__init__(*args, **kwargs)
@@ -67,25 +69,29 @@ class CustomEODataAccessGateway(EODataAccessGateway):
             pass
 
     @classmethod
-    @alru_cache
-    async def create(cls, *args, **kwargs):
-        """Call a single cached instance for each different arguments."""
-        # The EODataAccessGateway init takes several seconds.
-        # Run it in a separate thread, see: https://stackoverflow.com/a/71517830
-        return await run_in_threadpool(CustomEODataAccessGateway, *args, **kwargs)
+    @lru_cache
+    def create(cls, *args, **kwargs):
+        """Return a cached instance of the class."""
+        return cls(*args, **kwargs)
+
+    def override_config_from_env(self):
+        """
+        Update the eodag conf from the latest EODAG__<provider>__auth__... env vars
+        that are set in authentication_to_external.py, if they have changed
+        """
+        with self.lock:  # safer to use a thread lock before calling eodag and modifying a global var
+            if (new_environ := dict(os.environ)) != self.old_environ:
+                self.old_environ = new_environ
+                override_config_from_env(self.providers_config)
 
 
-@asyncinit
 class EodagProvider(Provider):
     """An EODAG provider.
 
     It uses EODAG to provide data from external sources.
     """
 
-    # static Lock instance
-    lock = Lock()
-
-    async def __init__(self, config_file: Path, provider: str):  # type: ignore
+    def __init__(self, config_file: Path, provider: str):  # type: ignore
         """Create a EODAG provider.
 
         Args:
@@ -93,17 +99,17 @@ class EodagProvider(Provider):
             provider: the name of the eodag provider
         """
         self.provider: str = provider
-        self.config_file = config_file
+        self.config_file = config_file.resolve().as_posix()
         try:
-            self.client: CustomEODataAccessGateway = await CustomEODataAccessGateway.create(
-                config_file.resolve().as_posix(),
-            )
+            with global_lock:  # use a thread lock before calling the lru_cache
+                self.client = CustomEODataAccessGateway.create(self.config_file)
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
 
-        # Make sure that the provider configuration is up-to-date with the EODAG__<provider>__auth__... env vars
-        override_config_from_env(self.client.providers_config)
+        # If the eodag object was already existing and retrieved from the lru_cache,
+        # we need to update its configuration from the latest env vars, if they have changed
+        self.client.override_config_from_env()
 
     def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
         """
@@ -213,7 +219,7 @@ class EodagProvider(Provider):
 
         """
         # Use thread-lock because self.client.download is not thread-safe
-        with EodagProvider.lock:
+        with self.client.lock:
             product = self.create_eodag_product(product_id, to_file.name)
             # download_plugin = self.client._plugins_manager.get_download_plugin(product)
             # authent_plugin = self.client._plugins_manager.get_auth_plugin(product.provider)
