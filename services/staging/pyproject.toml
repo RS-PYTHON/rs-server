@@ -94,7 +94,7 @@ pytest-asyncio = "^0.24.0"
 pytest-cov = "^5.0.0"
 pytest-docker = "^3.1.0"
 pytest-error-for-skips = "^2.0.2"
-pytest-httpx = "^0.32.0"
+pytest-httpx = ">=0.32,<0.35"
 pytest-mock = "^3.14.0"
 
 [tool.black]
