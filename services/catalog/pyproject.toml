@@ -37,7 +37,7 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pygeofilter = "^0.2.4"
+pygeofilter = ">=0.2.4,<0.4.0"
 rs-server-common = {path = "../common", develop = true}
 
 [tool.poetry.group.dev]
