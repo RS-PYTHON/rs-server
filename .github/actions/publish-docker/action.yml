@@ -140,7 +140,8 @@ runs:
         format: sarif
         output: trivy-results-docker.sarif
         exit-code: 0
-        #severity: HIGH,CRITICAL
+        limit-severities-for-sarif: true
+        severity: HIGH,CRITICAL
         #timeout: '30m'
 
     - name: Upload Trivy scan results to GitHub Security tab
