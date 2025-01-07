@@ -435,8 +435,6 @@ def set_eodag_auth_env(ext_auth_config: ExternalAuthenticationConfig):
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__username"] = ext_auth_config.username
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__password"] = ext_auth_config.password
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__grant_type"] = ext_auth_config.grant_type
-    os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__username"] = ext_auth_config.username
-    os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__password"] = ext_auth_config.password
 
     # Used to set the authorization for token retrieval
     if ext_auth_config.authorization is not None:
