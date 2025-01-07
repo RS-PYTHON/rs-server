@@ -26,7 +26,7 @@ template:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      auth_for_token: PLACEHOLDER
+      auth_for_token: PLACEHOLDER # WARNING: the 'credentials" field must be present with at least one value !
     headers:
       Content-Type: application/x-www-form-urlencoded
     retrieve_headers:
