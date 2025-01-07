@@ -32,8 +32,6 @@ cadip:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -137,8 +135,6 @@ ins:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -242,8 +238,6 @@ mps:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -347,8 +341,6 @@ mti:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -452,8 +444,6 @@ nsg:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -557,8 +547,6 @@ sgs:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -662,8 +650,6 @@ cadip_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -827,8 +813,6 @@ ins_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -992,8 +976,6 @@ mps_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -1157,8 +1139,6 @@ mti_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -1322,8 +1302,6 @@ nsg_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
@@ -1487,8 +1465,6 @@ sgs_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
       auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
