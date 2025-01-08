@@ -32,7 +32,7 @@ pip install junitparser
 junit=0
 
 # For each pyproject.toml file in the current directory
-for toml in $(find "$ROOT_DIR"/services/staging -name pyproject.toml | sort); do
+for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 
     # Go to the parent dir = project dir
     proj_dir=$(dirname "$toml")
@@ -62,7 +62,6 @@ for toml in $(find "$ROOT_DIR"/services/staging -name pyproject.toml | sort); do
 
         # Run pytest from the root directory. Update the coverage reports.
         cd "$ROOT_DIR"
-        # relative_path=$(realpath "$proj_dir" --relative-to "$ROOT_DIR")
         cmd="poetry \
 --directory $proj_dir run pytest $tests_dir \
 -s --disable-pytest-warnings \
