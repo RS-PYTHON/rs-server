@@ -32,7 +32,7 @@ pip install junitparser
 junit=0
 
 # For each pyproject.toml file in the current directory
-for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
+for toml in $(find "$ROOT_DIR"/services/staging -name pyproject.toml | sort); do
 
     # Go to the parent dir = project dir
     proj_dir=$(dirname "$toml")
