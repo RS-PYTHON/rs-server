@@ -665,24 +665,22 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             search_limit = self.limit
             search_page = self.page
 
-            # Don't forward limit value for /search endpoints
-            # just use maximum to gather all possible results, page is always 1
+            # for /search endpoints, page is always 1
             if "/search" in self.request.url.path:
-                search_limit = SEARCH_LIMIT
                 search_page = 1
 
             # Do the search for this collection
             features = (self.process_search(collection, self.odata, search_limit, search_page)).features
 
             # If search return maximum number of elements, increase page and process next elements
-            if len(features) == SEARCH_LIMIT:
+            if len(features) == search_limit:
                 while True:
                     search_page += 1
                     next_features = (self.process_search(collection, self.odata, search_limit, search_page)).features
                     features.extend(next_features)  # type: ignore
                     # Extend current features.
                     # Break the loop when result is less the maximum possible, meaning there is no next page.
-                    if len(next_features) < SEARCH_LIMIT:
+                    if len(next_features) < search_limit:
                         break
                 search_page = 1
 
