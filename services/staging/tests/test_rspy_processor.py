@@ -725,7 +725,7 @@ class TestStagingDeleteFromBucket:
 class TestStagingMainExecution:
     """Class to test Item processing"""
 
-    def test_dask_cluster_connect(self, mocker, staging_instance):
+    def test_dask_cluster_connect(self, mocker, staging_instance, cluster_options):
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -734,6 +734,7 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
+                "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],
             },
         )
         # Mock the logger
@@ -747,7 +748,8 @@ class TestStagingMainExecution:
         mock_security = mocker.patch("dask.distributed.Security")
         # Mock the cluster with the required attributes for Client
         mock_cluster = mocker.Mock()
-        mock_cluster.name = "test-cluster"
+        mock_cluster.name = "dask-gateway-id"
+        mock_cluster.options = cluster_options
         mock_cluster.dashboard_link = "https://mock-dashboard"
         mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
         mock_cluster.security = mock_security  # Add mocked security attribute
@@ -765,7 +767,7 @@ class TestStagingMainExecution:
 
         # assertions
         mock_list_clusters.assert_called_once()
-        mock_connect.assert_called_once_with("test-cluster")
+        mock_connect.assert_called_once_with("dask-gateway-id")
         mock_client.assert_called_once_with(staging_instance.cluster)
 
         # Ensure logging was called as expected
@@ -775,9 +777,48 @@ class TestStagingMainExecution:
             f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}",
         )
 
+    def test_dask_cluster_connect_failure_no_cluster_name(self, mocker, staging_instance, cluster_options):
+        """Test the bahavior in case no cluster name is found"""
+        non_existent_cluster = "another-cluster-name"
+        # Mock environment variables to simulate gateway mode
+        mocker.patch.dict(
+            os.environ,
+            {
+                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
+                "JUPYTERHUB_API_TOKEN": "mock_api_token",
+                "RSPY_DASK_STAGING_CLUSTER_NAME": non_existent_cluster,
+            },
+        )
+        # Mock the logger
+        mock_logger = mocker.patch.object(staging_instance, "logger")
+        staging_instance.cluster = None
+        # Mock the JupyterHubAuth, Gateway, and Client classes
+        mock_list_clusters = mocker.patch.object(Gateway, "list_clusters")
+        mock_connect = mocker.patch.object(Gateway, "connect")
+
+        # Mock the Security object
+        mock_security = mocker.patch("dask.distributed.Security")
+        # Mock the cluster with the required attributes for Client
+        mock_cluster = mocker.Mock()
+        mock_cluster.name = "dask-gateway-id"
+        mock_cluster.options = cluster_options
+        mock_cluster.dashboard_link = "https://mock-dashboard"
+        mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
+        mock_cluster.security = mock_security  # Add mocked security attribute
+        mock_list_clusters.return_value = [mock_cluster]
+        mock_connect.return_value = mock_cluster
+
+        with pytest.raises(RuntimeError):
+            staging_instance.dask_cluster_connect()
+        # Ensure logging was called as expected
+        mock_logger.exception.assert_any_call(
+            "Failed to find the specified dask cluster: " f"No dask cluster named '{non_existent_cluster}' was found.",
+        )
+
     def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance):
         """Test to mock the connection to a dask cluster"""
-        # Mock environment variables to simulate gateway mode
+        # Not all the needed env vars are mocked
         mocker.patch.dict(
             os.environ,
             {
@@ -975,14 +1016,14 @@ class TestStagingMainExecution:
         mocker.patch.object(
             staging_instance,
             "dask_cluster_connect",
-            side_effect=RuntimeError("Dask connection failed"),
+            side_effect=RuntimeError("Dask cluster client failed"),
         )
 
         # Call the async function
         await staging_instance.process_rspy_features()
 
         # Verify log_job_execution is called with the error details
-        mock_log_job.assert_called_once_with(EStagingStatus.FAILED, 0, detail="Dask connection failed")
+        mock_log_job.assert_called_once_with(EStagingStatus.FAILED, 0, detail="Dask cluster client failed")
         mock_logger.error.assert_called_once_with("Failed to start the staging process")
 
         # Verify that the task submission and monitoring thread are not executed
