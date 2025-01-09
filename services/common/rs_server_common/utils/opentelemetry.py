@@ -28,6 +28,7 @@ from opentelemetry.instrumentation.aws_lambda import AwsLambdaInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.instrumentor import BaseInstrumentor  # type: ignore
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -36,6 +37,22 @@ from rs_server_common.utils.logging import Logging
 logger = Logging.default(__name__)
 
 FROM_PYTEST = False
+
+
+def request_hook(span, request):
+    """
+    HTTP requests intrumentation
+    """
+    if span:
+        span.set_attribute("http.request.headers", str(request.headers))
+
+
+def response_hook(span, request, response):  # pylint: disable=W0613
+    """
+    HTTP responses intrumentation
+    """
+    if span:
+        span.set_attribute("http.response.headers", str(response.headers))
 
 
 def init_traces(app: fastapi.FastAPI, service_name: str):
@@ -115,7 +132,13 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
             if callable(_instrument):
 
                 _class_instance = _class()
-                if not _class_instance.is_instrumented_by_opentelemetry:
+                if _class == RequestsInstrumentor and os.getenv("OTEL_PYTHON_REQUESTS_TRACE_HEADERS"):
+                    _class_instance.instrument(
+                        tracer_provider=otel_tracer,
+                        request_hook=request_hook,
+                        response_hook=response_hook,
+                    )
+                elif not _class_instance.is_instrumented_by_opentelemetry:
                     _class_instance.instrument(tracer_provider=otel_tracer)
                 # name = f"{module_str}.{_class.__name__}".removeprefix(prefix)
                 # logger.debug(f"OpenTelemetry instrumentation of {name!r}")

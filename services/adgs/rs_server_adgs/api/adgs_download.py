@@ -14,7 +14,6 @@
 
 """Module used to download AUX files from ADGS station."""
 
-import asyncio
 import tempfile
 import threading
 from contextlib import contextmanager
@@ -46,7 +45,7 @@ router = APIRouter(tags=adgs_tags)
 logger = Logging.default(__name__)
 
 
-async def start_eodag_download(argument: EoDAGDownloadHandler):
+def start_eodag_download(argument: EoDAGDownloadHandler):
     """Start the eodag download process.
 
     This function initiates the eodag download process using the provided arguments. It sets up
@@ -60,7 +59,7 @@ async def start_eodag_download(argument: EoDAGDownloadHandler):
     # Open a database sessions in this thread, because the session from the root thread may have closed.
     try:
         with tempfile.TemporaryDirectory() as default_temp_path, contextmanager(get_db)() as db:
-            await eodag_download(
+            eodag_download(
                 argument,
                 db,
                 init_adgs_provider,
@@ -78,7 +77,7 @@ class AdgsDownloadResponse(BaseModel):
 
 @router.get("/adgs/aux", response_model=AdgsDownloadResponse)
 @auth_validator(station="adgs", access_type="download")
-async def download_products(
+def download_products(
     request: Request,  # pylint: disable=unused-argument
     name: Annotated[str, Query(description="AUX product name")],
     local: Annotated[str | None, Query(description="Local download directory")] = None,
@@ -125,8 +124,8 @@ async def download_products(
     )
     # fmt: on
     thread = threading.Thread(
-        target=asyncio.run,
-        args=(start_eodag_download(eodag_args),),
+        target=start_eodag_download,
+        args=(eodag_args,),
     )
     thread.start()
 

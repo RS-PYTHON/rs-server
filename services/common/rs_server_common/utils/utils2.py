@@ -17,9 +17,10 @@ This module is used to share common functions between apis endpoints.
 Split it from utils.py because of dependency conflicts between rs-server-catalog and rs-server-common.
 """
 
+import asyncio
+import functools
 import os
 from dataclasses import dataclass
-from functools import wraps
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -98,7 +99,7 @@ def filelock(func, env_var: str):
         env_var: environment variable that defines the folder where to save the lock file.
     """
 
-    @wraps(func)
+    @functools.wraps(func)
     def with_filelock(*args, **kwargs):
         """Wrap the the call to 'func' inside the lock."""
 
@@ -113,3 +114,20 @@ def filelock(func, env_var: str):
             return func(*args, **kwargs)
 
     return with_filelock
+
+
+def decorate_sync_async(decorating_context, func):
+    """Decorator for both sync and async functions, see: https://stackoverflow.com/a/68746329"""
+    if asyncio.iscoroutinefunction(func):
+
+        async def decorated(*args, **kwargs):
+            with decorating_context(*args, **kwargs):
+                return await func(*args, **kwargs)
+
+    else:
+
+        def decorated(*args, **kwargs):
+            with decorating_context(*args, **kwargs):
+                return func(*args, **kwargs)
+
+    return functools.wraps(func)(decorated)

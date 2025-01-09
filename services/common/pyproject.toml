@@ -43,7 +43,7 @@ botocore = ">=1.35.40"
 sqlalchemy = "^2.0.35"
 # TODO: replace by official eodag version tag that will contain this feature.
 # Then, in adgs/cadip/catalog docker images, remove the "RUN apt install -y git"
-eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "add-tolower-toupper-parameters-mapping-v3.0.0" }
+eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "develop" }
 pydantic = ">=2.9.2, < 2.10.0"
 markdown = "^3.6"
 python-dotenv = "^1.0.0"
@@ -68,8 +68,6 @@ python-keycloak = "^4.5.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 stac-fastapi-pgstac = "3.0.0"
-asyncinit = "^0.2.4"
-async-lru = "^2.0.4"
 
 [tool.poetry.group.dev]
 optional = true

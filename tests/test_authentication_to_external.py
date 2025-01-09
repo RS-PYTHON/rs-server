@@ -14,6 +14,8 @@
 
 """Unit tests for the authentication."""
 
+# pylint: disable=too-many-lines
+
 import json
 import os
 import shutil
@@ -23,6 +25,7 @@ import pytest
 import responses
 import yaml
 from fastapi import HTTPException
+from rs_server_common.authentication import authentication_to_external
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     create_external_auth_config,
@@ -53,6 +56,12 @@ CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 TOKEN = os.getenv("RSPY_TOKEN", "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI")
 
 logger = Logging.default(__name__)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clear_config_cache():
+    """Clear the station configuration cache before each pytest."""
+    authentication_to_external.read_config_file.cache_clear()
 
 
 @pytest.mark.unit

@@ -62,7 +62,7 @@ class TestAEodagProvider:
         This test checks if an instance of EodagProvider is also an instance of the Provider class.
 
         """
-        provider = await EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = EodagProvider(cadip_config.file, cadip_config.provider)
         assert isinstance(provider, Provider)
 
     async def test_is_initialised_with_the_given_config(self, cadip_config):
@@ -74,7 +74,7 @@ class TestAEodagProvider:
 
         """
         # ensure that EODAG_CFG_DIR env var does not exist
-        provider = await EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = EodagProvider(cadip_config.file, cadip_config.provider)
         # check that EODAG_CFG_DIR env var has been set
         assert "EODAG_CFG_DIR" in os.environ
         # check the value of EODAG_CFG_DIR
@@ -99,7 +99,7 @@ class TestAEodagProvider:
 
         """
         with pytest.raises(CreateProviderFailed) as exc_info:
-            await EodagProvider(not_found_config.file, not_found_config.provider)
+            EodagProvider(not_found_config.file, not_found_config.provider)
         assert "Can't initialize WRONG provider" in str(exc_info.value)
         assert isinstance(exc_info.value.__cause__, FileNotFoundError)
 
@@ -152,7 +152,7 @@ class TestAEodagProviderDownload:
         # base URL and usage of the product ID
         download_response = mock_cadip_download(product_id)
 
-        provider = await EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = EodagProvider(cadip_config.file, cadip_config.provider)
         downloaded_file = tmp_path / "downloaded.txt"
         provider.download(product_id, downloaded_file)
 
@@ -188,7 +188,7 @@ class TestAEodagProviderDownload:
         }
         mock_cadip_download(product_id, content)
 
-        provider = await EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = EodagProvider(cadip_config.file, cadip_config.provider)
         downloaded_file = tmp_path / "downloaded.txt"
         provider.download(product_id, downloaded_file)
         downloaded_file = downloaded_file / "downloaded.txt"  # eodag 3.0 specific
@@ -218,7 +218,7 @@ class TestAEodagProviderDownload:
             }
             mock_cadip_download(product_id, content)
 
-            provider = await EodagProvider(cc.file, cc.provider)
+            provider = EodagProvider(cc.file, cc.provider)
             with tempfile.TemporaryDirectory() as download_dir:
                 downloaded_file = Path(download_dir) / f"downloaded_thread_{idx}.txt"
                 provider.download(product_id, downloaded_file)

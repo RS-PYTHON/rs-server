@@ -1280,6 +1280,8 @@ def test_search_parameters(
                 if odata:
 
                     # Format the odata request with all possible parameters
+                    if adgs:
+                        constellation = constellation.upper()
                     if "," in satellite:
                         sats = ", ".join([f"'{sat}'" for sat in satellite.split(", ")])
                         satellite = f"({sats})"

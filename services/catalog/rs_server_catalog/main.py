@@ -22,7 +22,6 @@ import asyncio
 import copy
 import os
 import sys
-import traceback
 from contextlib import asynccontextmanager
 from os import environ as env
 from typing import Annotated, Any, Callable, Dict
@@ -31,7 +30,7 @@ import httpx
 from brotli_asgi import BrotliMiddleware
 from fastapi import Depends, FastAPI, Request, Security
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
@@ -46,6 +45,7 @@ from rs_server_common.authentication.apikey import (
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import DontRaiseExceptions
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import (
@@ -69,12 +69,10 @@ from stac_fastapi.pgstac.extensions import QueryExtension
 from stac_fastapi.pgstac.extensions.filter import FiltersClient
 from stac_fastapi.pgstac.transactions import BulkTransactionsClient, TransactionsClient
 from stac_fastapi.pgstac.types.search import PgstacSearch
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Route
-from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 logger = Logging.default(__name__)
 
@@ -301,38 +299,6 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
 
         # Call the next middleware
         return await call_next(request)
-
-
-class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
-    """
-    In FastAPI we can raise HttpExceptions in the middle of the python code, instead of returning a JSONResponse.
-    But that doesn't work well in the middlewares: a response with error 500 is returned instead of the
-    original HttpException status code. So we handle this by making the conversion manually.
-    """
-
-    async def dispatch(self, request: Request, call_next: Callable):
-        """
-        Middleware implementation.
-        """
-
-        try:
-            return await call_next(request)  # Call the next middleware
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-
-            # Print the error with the stacktrace in the log
-            logger.error(traceback.format_exc())
-
-            # Get the status code and content from the HTTPException
-            if isinstance(exception, StarletteHTTPException):
-                status_code = exception.status_code
-                content = exception.detail
-
-            # Else use a generic status code, and content = exception message
-            else:
-                status_code = HTTP_500_INTERNAL_SERVER_ERROR
-                content = repr(exception)
-
-            return JSONResponse(status_code=status_code, content=content)
 
 
 client = CoreCrudClient(post_request_model=post_request_model)

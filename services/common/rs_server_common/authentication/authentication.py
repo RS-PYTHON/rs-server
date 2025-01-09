@@ -17,7 +17,7 @@ Authentication functions implementation.
 """
 
 import os
-from functools import wraps
+from contextlib import contextmanager
 from typing import Annotated
 
 import jwt
@@ -27,6 +27,7 @@ from fastapi import HTTPException, Request, Security, status
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, apikey_security
+from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import AuthInfo
 
@@ -158,12 +159,13 @@ def auth_validator(station, access_type):
     """
 
     def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
+        @contextmanager
+        def wrapping_logic(*args, **kwargs):
             auth_validation(station, access_type, *args, **kwargs)
-            return await func(*args, **kwargs)
+            yield
 
-        return wrapper
+        # Decorator for both sync and async functions
+        return utils2.decorate_sync_async(wrapping_logic, func)
 
     return decorator
 

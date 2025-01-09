@@ -622,10 +622,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             None
 
         Raises:
-            RuntimeError: Raised if required environment variables are missing, cluster creation fails,
-                        or authentication errors occur.
+            RuntimeError: Raised if the cluster name is None, required environment variables are missing,
+                        cluster creation fails or authentication errors occur.
             KeyError: Raised if the necessary Dask Gateway environment variables (`DASK_GATEWAY__ADDRESS`,
-                    `DASK_GATEWAY__AUTH__TYPE`) are not set.
+                `DASK_GATEWAY__AUTH__TYPE`, `RSPY_DASK_STAGING_CLUSTER_NAME`, `JUPYTERHUB_API_TOKEN` ) are not set.
             IndexError: Raised if no clusters are found in the Dask Gateway and new cluster creation is attempted.
             dask_gateway.exceptions.GatewayServerError: Raised when there is a server-side error in Dask Gateway.
             dask_gateway.exceptions.AuthenticationError: Raised if authentication to the Dask Gateway fails.
@@ -658,11 +658,14 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         Returns:
             None
         """
-        # If self.cluster is already created, it indicates that we are in local
-        # mode, and the cluster was initialized at the application's start.
+
+        # If self.cluster is already initialized, it means the application is running in local mode, and
+        # the cluster was created when the application started.
         if not self.cluster:
             # in kubernetes cluster mode, we have to connect to the gateway and get the list of the clusters
             try:
+                # get the name of the cluster
+                cluster_name = os.environ["RSPY_DASK_STAGING_CLUSTER_NAME"]
                 # check the auth type, only jupyterhub type supported for now
                 auth_type = os.environ["DASK_GATEWAY__AUTH__TYPE"]
                 # Handle JupyterHub authentication
@@ -677,14 +680,36 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 )
                 clusters = gateway.list_clusters()
                 self.logger.debug(f"The list of clusters: {clusters}")
-                self.cluster = gateway.connect(clusters[0].name)
-                self.logger.info("Connection with the dask cluster succeeded.")
+
+                # Get the identifier of the cluster whose name is equal to the cluster_name variable
+                # Protection for the case when this cluster does not exit
+                cluster_id = next(
+                    (
+                        cluster.name
+                        for cluster in clusters
+                        if isinstance(cluster.options, dict) and cluster.options.get("cluster_name") == cluster_name
+                    ),
+                    None,
+                )
+
+                if not cluster_id:
+                    raise IndexError(f"No dask cluster named '{cluster_name}' was found.")
+
+                self.cluster = gateway.connect(cluster_id)
+
+                self.logger.info(f"Successfully connected to the {cluster_name} dask cluster")
             except KeyError as e:
-                self.logger.exception(f"Failed to find the needed environment variable to use the dask gateway: {e}")
+                self.logger.exception(
+                    "Failed to retrieve the required connection details for "
+                    "the Dask Gateway from one or more of the following environment variables: "
+                    "DASK_GATEWAY__ADDRESS, RSPY_DASK_STAGING_CLUSTER_NAME, "
+                    f"JUPYTERHUB_API_TOKEN, DASK_GATEWAY__AUTH__TYPE. {e}",
+                )
+
                 raise RuntimeError from e
             except IndexError as e:
-                self.logger.exception(f"There is no dask cluster to connect. Exception: {e}")
-                raise RuntimeError("There is no dask cluster to connect") from e
+                self.logger.exception(f"Failed to find the specified dask cluster: {e}")
+                raise RuntimeError(f"No dask cluster named '{cluster_name}' was found.") from e
 
         self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
         # create the client as well
@@ -789,6 +814,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         # connect to the dask cluster
         try:
+
             dask_client = self.dask_cluster_connect()
             self.submit_tasks_to_dask_cluster(token, external_auth_config.trusted_domains, dask_client)
         except RuntimeError as re:
