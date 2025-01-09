@@ -40,7 +40,7 @@ jobs:
         id: filter
         with:
           filters: |
-            code: ['**.py', '**.yaml', '**.yml']
+            code: ['**.py']
             conf: ['**.lock', '**.json', '**.raw', '**.toml', '**.yaml', '**.yml']
 
   check-format:
