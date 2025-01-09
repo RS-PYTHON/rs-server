@@ -62,13 +62,12 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 
         # Run pytest from the root directory. Update the coverage reports.
         cd "$ROOT_DIR"
-        relative_path=$(realpath "$proj_dir" --relative-to "$ROOT_DIR")
         cmd="poetry \
 --directory $proj_dir run pytest $tests_dir \
 -s --disable-pytest-warnings \
 --durations=0 \
 --error-for-skips \
---cov=$relative_path \
+--cov=. \
 --cov-report=term \
 --cov-report=xml:./cov-report.xml \
 --junit-xml=./junit-xml-report-${junit}.xml \
