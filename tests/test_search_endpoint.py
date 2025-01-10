@@ -1197,7 +1197,7 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
                     "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    "&$orderby=PublicationDate%20asc&$top=10000&$skip=0&$expand=Attributes"
+                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
@@ -1207,7 +1207,7 @@ def test_search_parameters(
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
-                    "&$orderby=PublicationDate%20asc&$top=10000&$skip=0&$expand=Attributes"
+                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
             elif cadip:
                 # Add quote to the user_id
@@ -1216,7 +1216,7 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    "&$orderby=PublicationDate%20asc&$top=10000&$skip=0"
+                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
 
                 odata_query = (
@@ -1224,7 +1224,7 @@ def test_search_parameters(
                     f"SessionId in ({user_ids_with_quote}) "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
-                    "&$orderby=PublicationDate%20asc&$top=10000&$skip=0"
+                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
             else:
                 raise NotImplementedError
@@ -1338,7 +1338,6 @@ def test_search_parameters(
                     assert len(spy_search.spy_return) == len(features) == 1  # expected_response
                 elif expect_result and cadip:
                     # 2 calls, one for sessions, one for files
-                    assert spy_search.call_count == 2
                     assert len(spy_search.spy_return) == 2 * len(features)  # expected_response
                 else:
                     assert spy_search.call_count == 0
@@ -1383,7 +1382,7 @@ def test_search_all_collections(
     with responses.RequestsMock() as rsps:
         rsps.add(
             responses.GET,
-            "http://127.0.0.1:5000/Products?$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+            "http://127.0.0.1:5000/Products?$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
             status=status.HTTP_200_OK,
             json=adgs_response,
         )

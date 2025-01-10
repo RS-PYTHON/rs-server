@@ -591,8 +591,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 thread.start()
             for thread in file_threads:
                 thread.join()
-
-        dict_data = file_results[-1].model_dump()
+            if file_results:
+                dict_data = file_results[-1].model_dump()
         # Handle pagination links.
         if len(dict_data["features"]) > 0:
             # Don't create next page if the current one does not have features
