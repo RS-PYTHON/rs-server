@@ -46,8 +46,8 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 
     # Install dependencies
     (set -x
-        cd "$proj_dir" && poetry install --with dev
-        poetry run opentelemetry-bootstrap -a install || true
+        cd "$proj_dir" && poetry -q install --with dev
+        poetry -q run opentelemetry-bootstrap -a install || true
     )
 
     # Increment junit reports index
