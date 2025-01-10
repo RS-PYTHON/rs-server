@@ -97,12 +97,14 @@ class MockPgstacCadip(MockPgstac):
         self.sortby = "-published"
 
     @handle_exceptions
-    def process_search(
+    def process_search(  # type: ignore
         self,
         collection: dict,
         odata_params: dict,
         limit: int,
         page: int,
+        paginated_data=None,
+        outputs=None,
     ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
         session_data = process_session_search(
@@ -116,13 +118,11 @@ class MockPgstacCadip(MockPgstac):
             limit,
             page,
         )
-        if not session_data.features:
-            # If there are no sessions, don't proceed to assets allocation
+        if not paginated_data:
             return session_data
 
         # To be updated with proper ('')
-        features_ids = ", ".join(feature.id for feature in session_data.features)
-
+        features_ids = ", ".join(feature.id for feature in paginated_data.features)
         assets: list[dict] = []
         page = 1
         while True:
@@ -142,7 +142,10 @@ class MockPgstacCadip(MockPgstac):
             page += 1
 
         with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
-            return link_assets_to_session(session_data, assets, json.loads(mapper.read()))
+            outputs.append(link_assets_to_session(paginated_data, assets, json.loads(mapper.read())))
+
+        # Ensure a valid return value
+        return paginated_data
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):

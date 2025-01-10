@@ -569,6 +569,30 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         data = stac_pydantic.ItemCollection(features=list(all_items.values()), type="FeatureCollection")
         dict_data: Dict[str, Any] = self.paginate(data)
 
+        # fill assets for cadip only
+        if "/cadip" in self.request.url.path:
+            file_data = stac_pydantic.ItemCollection.model_validate(dict_data)
+            file_results: List = []
+            file_threads = [
+                threading.Thread(
+                    target=self.process_search,
+                    args=(
+                        self.select_config(item["collection"]),
+                        self.odata,
+                        self.limit,
+                        self.page,
+                        file_data,
+                        file_results,
+                    ),
+                )
+                for item in dict_data["features"]
+            ]
+            for thread in file_threads:
+                thread.start()
+            for thread in file_threads:
+                thread.join()
+
+        dict_data = file_results[-1].model_dump()
         # Handle pagination links.
         if len(dict_data["features"]) > 0:
             # Don't create next page if the current one does not have features
@@ -665,11 +689,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             search_limit = self.limit
             search_page = self.page
 
-            # Don't forward limit value for /search endpoints
-            # just use maximum to gather all possible results, page is always 1
-            if "/search" in self.request.url.path:
-                search_limit = SEARCH_LIMIT
-                search_page = 1
+            # # Don't forward limit value for /search endpoints
+            # # just use maximum to gather all possible results, page is always 1
+            # if "/search" in self.request.url.path:
+            #     search_limit = self.limit
+            #     search_page = 1
 
             # Do the search for this collection
             features = (self.process_search(collection, self.odata, search_limit, search_page)).features
