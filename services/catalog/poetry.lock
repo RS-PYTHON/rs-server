@@ -1621,13 +1621,13 @@ files = [
 
 [[package]]
 name = "moto"
-version = "5.0.26"
+version = "5.0.25"
 description = "A library that allows you to easily mock out tests based on AWS infrastructure"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "moto-5.0.26-py3-none-any.whl", hash = "sha256:803831f427ca6c0452ae4fb898d731cfc19906466a33a88cbc1076abcbfcbba7"},
-    {file = "moto-5.0.26.tar.gz", hash = "sha256:6829f58a670a087e7c5b63f8183c6b72d64a1444e420c212250b7326b69a9183"},
+    {file = "moto-5.0.25-py3-none-any.whl", hash = "sha256:ab790f9d7d08f30667a196af7cacead03e76c10be2d1148ea00a731d47918a1e"},
+    {file = "moto-5.0.25.tar.gz", hash = "sha256:deea8b158cec5a65c9635ae1fff4579d735b11ac8a0e5226fbbeb742ce0ce6b2"},
 ]
 
 [package.dependencies]
@@ -2406,24 +2406,25 @@ yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
 name = "pygeofilter"
-version = "0.2.4"
+version = "0.3.1"
 description = "pygeofilter is a pure Python parser implementation of OGC filtering standards"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pygeofilter-0.2.4-py2.py3-none-any.whl", hash = "sha256:3462e7d6d08e27da281b3de6f360bb6cf09b6dedafd2c630474d4900c1d89abf"},
-    {file = "pygeofilter-0.2.4.tar.gz", hash = "sha256:265a0a5d47e8421b7f07710d66422e94c4ee2590ce3fad6bd4b61a248e4e816b"},
+    {file = "pygeofilter-0.3.1-py2.py3-none-any.whl", hash = "sha256:f13dcdd685bdca32cf9e6665bf2938522276bee140abff321ab04abb12f5761d"},
+    {file = "pygeofilter-0.3.1.tar.gz", hash = "sha256:f92bc0622099f87fe8b36de7abdd86059d615a89ed60822737082223a578e150"},
 ]
 
 [package.dependencies]
 dateparser = "*"
-lark = "<1.0"
+lark = "*"
 pygeoif = ">=1.0.0"
 
 [package.extras]
 backend-django = ["django"]
 backend-elasticsearch = ["elasticsearch", "elasticsearch-dsl"]
 backend-native = ["shapely"]
+backend-opensearch = ["opensearch-dsl", "opensearch-py"]
 backend-sqlalchemy = ["geoalchemy2", "sqlalchemy"]
 fes = ["pygml (>=0.2)"]
 
@@ -3743,4 +3744,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "1feaab15f33fa8f3a512006a5debdc97512a7293a17275c0c92af301549dbda9"
+content-hash = "a66db1e2509b0e8c9b74ca38e8b34fc95482ba88ca60e4e544c2de1568fca059"
