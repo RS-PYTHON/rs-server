@@ -2466,13 +2466,13 @@ email = ["email-validator (>=1.0.3)"]
 
 [[package]]
 name = "pygeoapi"
-version = "0.19.0"
+version = "0.18.0"
 description = "pygeoapi provides an API to geospatial data"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "pygeoapi-0.19.0-py2.py3-none-any.whl", hash = "sha256:38098520615f6ac2e4308cb102e58238ef746fde6b85f8b58dec660ef10832b4"},
-    {file = "pygeoapi-0.19.0.tar.gz", hash = "sha256:b9a2cd68f4c288f24ed27ad532310967df83cff9f9fc4276fd7bf67f568c8e31"},
+    {file = "pygeoapi-0.18.0-py2.py3-none-any.whl", hash = "sha256:2acdf508d207b1bc4b0c29d06201c053eb7dfb760454b4faba28cdd329293050"},
+    {file = "pygeoapi-0.18.0.tar.gz", hash = "sha256:3349c5aa9d5b2c8f2c0c59f1d2d265137cc1bd97d65359f93cdf036e0a9dc16f"},
 ]
 
 [package.dependencies]
@@ -2492,7 +2492,7 @@ PyYAML = "*"
 rasterio = "*"
 requests = "*"
 shapely = "*"
-SQLAlchemy = "*"
+SQLAlchemy = "<2.0.0"
 tinydb = "*"
 
 [[package]]
@@ -2641,20 +2641,20 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.24.0"
+version = "0.25.2"
 description = "Pytest support for asyncio"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "pytest_asyncio-0.24.0-py3-none-any.whl", hash = "sha256:a811296ed596b69bf0b6f3dc40f83bcaf341b155a269052d82efa2b25ac7037b"},
-    {file = "pytest_asyncio-0.24.0.tar.gz", hash = "sha256:d081d828e576d85f875399194281e92bf8a68d60d72d1a2faf2feddb6c46b276"},
+    {file = "pytest_asyncio-0.25.2-py3-none-any.whl", hash = "sha256:0d0bb693f7b99da304a0634afc0a4b19e49d5e0de2d670f38dc4bfa5727c5075"},
+    {file = "pytest_asyncio-0.25.2.tar.gz", hash = "sha256:3f8ef9a98f45948ea91a0ed3dc4268b5326c0e7bce73892acc654df4262ad45f"},
 ]
 
 [package.dependencies]
 pytest = ">=8.2,<9"
 
 [package.extras]
-docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1.0)"]
+docs = ["sphinx (>=5.3)", "sphinx-rtd-theme (>=1)"]
 testing = ["coverage (>=6.2)", "hypothesis (>=5.7.1)"]
 
 [[package]]
@@ -3821,4 +3821,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "323e133605953bb544b80d30805d6e263150f375114bf32529e9400321734619"
+content-hash = "d9bc1408e0c355ccbaa1c768b33865180d95a070eec549952db36d396944b085"
