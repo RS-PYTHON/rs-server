@@ -19,6 +19,7 @@ Authentication to external stations module.
 import os
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -286,6 +287,7 @@ def validate_token_format(token: str) -> None:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid token format received from the station.")
 
 
+@lru_cache
 def read_config_file():
     """
     Reads and loads the external station authentication configuration from a YAML file.
@@ -433,8 +435,13 @@ def set_eodag_auth_env(ext_auth_config: ExternalAuthenticationConfig):
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__username"] = ext_auth_config.username
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__password"] = ext_auth_config.password
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__grant_type"] = ext_auth_config.grant_type
-    os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__username"] = ext_auth_config.username
-    os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__password"] = ext_auth_config.password
+
+    # Used to set the authorization for token retrieval
+    if ext_auth_config.authorization is not None:
+        os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__auth_for_token"] = (
+            ext_auth_config.authorization
+        )
+
     # optional keys
     # NOTE: the Authorization cannot be overwritten when EODAG is sending the POST request when getting the token
     # if ext_auth_config.authorization:
@@ -492,5 +499,5 @@ def set_eodag_auth_token(
     else:
         # use eodag to get the token
         # NOTE: the cadip_ws_config should be also configured
-        logger.info("Let eodag to fetch the token")
+        logger.info("Let eodag fetch the token")
         set_eodag_auth_env(ext_auth_config)

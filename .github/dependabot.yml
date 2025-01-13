@@ -15,37 +15,106 @@
 # Please see the documentation for all configuration options:
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
+# WARNING: the ignored dependencies must be the same than in:
+# https://github.com/RS-PYTHON/rs-infrastructure/blob/develop/.github/common/resources/requirements.txt
+# https://github.com/RS-PYTHON/rs-infrastructure/blob/develop/.github/common/resources/requirements-force.txt
+# See https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/controlling-dependencies-updated#ignoring-specific-dependencies
+
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "dask:*"
+      - dependency-name: "dask-gateway:*"
+      - dependency-name: "distributed:*"
+      - dependency-name: "numpy:*"
+      - dependency-name: "pandas:*"
+      - dependency-name: "msgpack:*"
+      - dependency-name: "toolz:*"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "dask:*"
+      - dependency-name: "dask-gateway:*"
+      - dependency-name: "distributed:*"
+      - dependency-name: "numpy:*"
+      - dependency-name: "pandas:*"
+      - dependency-name: "msgpack:*"
+      - dependency-name: "toolz:*"
   - package-ecosystem: "pip"
     directory: "/services/adgs"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "dask:*"
+      - dependency-name: "dask-gateway:*"
+      - dependency-name: "distributed:*"
+      - dependency-name: "numpy:*"
+      - dependency-name: "pandas:*"
+      - dependency-name: "msgpack:*"
+      - dependency-name: "toolz:*"
   - package-ecosystem: "pip"
     directory: "/services/cadip"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "dask:*"
+      - dependency-name: "dask-gateway:*"
+      - dependency-name: "distributed:*"
+      - dependency-name: "numpy:*"
+      - dependency-name: "pandas:*"
+      - dependency-name: "msgpack:*"
+      - dependency-name: "toolz:*"
   - package-ecosystem: "pip"
     directory: "/services/catalog"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "dask:*"
+      - dependency-name: "dask-gateway:*"
+      - dependency-name: "distributed:*"
+      - dependency-name: "numpy:*"
+      - dependency-name: "pandas:*"
+      - dependency-name: "msgpack:*"
+      - dependency-name: "toolz:*"
   - package-ecosystem: "pip"
     directory: "/services/common"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "dask:*"
+      - dependency-name: "dask-gateway:*"
+      - dependency-name: "distributed:*"
+      - dependency-name: "numpy:*"
+      - dependency-name: "pandas:*"
+      - dependency-name: "msgpack:*"
+      - dependency-name: "toolz:*"
   - package-ecosystem: "pip"
     directory: "/services/frontend"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "dask:*"
+      - dependency-name: "dask-gateway:*"
+      - dependency-name: "distributed:*"
+      - dependency-name: "numpy:*"
+      - dependency-name: "pandas:*"
+      - dependency-name: "msgpack:*"
+      - dependency-name: "toolz:*"
   - package-ecosystem: "pip"
     directory: "/services/staging"
     schedule:
       interval: "daily"
+    ignore:
+      - dependency-name: "dask:*"
+      - dependency-name: "dask-gateway:*"
+      - dependency-name: "distributed:*"
+      - dependency-name: "numpy:*"
+      - dependency-name: "pandas:*"
+      - dependency-name: "msgpack:*"
+      - dependency-name: "toolz:*"

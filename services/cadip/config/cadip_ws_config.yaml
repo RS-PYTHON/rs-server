@@ -32,10 +32,12 @@ cadip:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -134,10 +136,12 @@ ins:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -236,10 +240,12 @@ mps:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -338,10 +344,12 @@ mti:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -440,10 +448,12 @@ nsg:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -542,10 +552,12 @@ sgs:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -644,10 +656,12 @@ cadip_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -804,10 +818,12 @@ ins_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -964,10 +980,12 @@ mps_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -1124,10 +1142,12 @@ mti_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -1284,10 +1304,12 @@ nsg_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW
@@ -1444,10 +1466,12 @@ sgs_session:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: '{auth_for_token}'
   products:
     S1_SAR_RAW:
       productType: RAW

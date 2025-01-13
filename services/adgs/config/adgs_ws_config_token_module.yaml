@@ -102,7 +102,7 @@ adgs:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
             and att/OData.CSC.StringAttribute/Value eq '{attr_serial_identif}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
-            and att/OData.CSC.StringAttribute/Value eq '{attr_platform_short_name}')
+            and att/OData.CSC.StringAttribute/Value eq '{attr_platform_short_name#to_upper}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{attr_processing_date#to_iso_utc_datetime}')
     sort:
@@ -215,7 +215,7 @@ adgs2:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier'
             and att/OData.CSC.StringAttribute/Value eq '{attr_serial_identif}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName'
-            and att/OData.CSC.StringAttribute/Value eq '{attr_platform_short_name}')
+            and att/OData.CSC.StringAttribute/Value eq '{attr_platform_short_name#to_upper}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{attr_processing_date#to_iso_utc_datetime}')
     sort:

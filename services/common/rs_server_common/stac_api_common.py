@@ -13,15 +13,15 @@
 # limitations under the License.
 
 """Module to share common functionalities for validating / creating stac items"""
-import asyncio
 import copy
 import json
+import threading
 import traceback
 import urllib.parse
 from abc import ABC, abstractmethod
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
-from functools import wraps
+from functools import lru_cache
 from pathlib import Path
 from typing import (
     Annotated,
@@ -43,6 +43,7 @@ import yaml
 from fastapi import HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
@@ -299,15 +300,30 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         raise log_http_exception(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented PostgreSQL query: {query!r}")
 
-    async def search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
-        self,
-        params: dict,
-    ) -> dict[str, Any]:
+    async def search(self, params: dict) -> dict[str, Any]:
         """
         Search products using filters coming from the STAC FastAPI PgSTAC /search endpoints.
         """
         if self.request is None:
             raise AssertionError("Request should be defined")
+
+        # Read the POST request json body, if any.
+        # Note: this must be done from an async function.
+        try:
+            post_json_body = await self.request.json()
+        except json.JSONDecodeError:
+            post_json_body = {}
+
+        # Do the search in a synchronized thread so we don't block the main thread,
+        # see: https://stackoverflow.com/a/71517830
+        return await run_in_threadpool(self.sync_search, params, post_json_body)
+
+    def sync_search(  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
+        self,
+        params: dict,
+        post_json_body: dict,
+    ) -> dict[str, Any]:
+        """Synchronized search."""
 
         #
         # Step 1: read input params
@@ -327,7 +343,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 token = query_params.get("token")  # for GET
                 if not token:
                     try:
-                        token = (await self.request.json()).get("token")  # for POST
+                        token = post_json_body.get("token")  # for POST
                     except json.JSONDecodeError:
                         pass
                 if not token:
@@ -525,22 +541,26 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         else:
             collection_ids = list(allowed_ids.intersection(collection_ids))
 
-        # Search all collections in parallel tasks
-        async with asyncio.TaskGroup() as tg:
-            all_features = [
-                tg.create_task(self.process_collection(collection_id, stac_params)) for collection_id in collection_ids
-            ]
+        # Search all collections in parallel threads
+        all_results: list[Sequence[Item] | Exception] = []
+        threads = [
+            threading.Thread(target=self.process_collection, args=(collection_id, stac_params, all_results))
+            for collection_id in collection_ids
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
 
         # Get items and exceptions from result
         all_items = {}
         all_exceptions = []
-        for features in all_features:
-            if result := features.result():
-                if isinstance(result, Exception):
-                    all_exceptions.append(result)
-                else:
-                    for item in result:
-                        all_items[item.id] = item
+        for result in all_results:
+            if isinstance(result, Exception):
+                all_exceptions.append(result)
+            else:  # item list
+                for item in result:
+                    all_items[item.id] = item
 
         # Raise first exception if we have no items and at least one exception
         if (not all_items) and all_exceptions:
@@ -570,11 +590,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             type=paginated_item_collection.type,
         ).model_dump()
 
-    async def process_collection(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    def process_collection(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
         collection_id,
         stac_params,
-    ) -> Sequence[Item] | Exception:
+        return_values: list[Sequence[Item] | Exception],
+    ):
         """Method used to process a collection and perform search."""
         features = None
         empty_selection = False
@@ -637,7 +658,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     # Save the intersection
                     self.odata[key] = intersection
             if empty_selection:
-                return []
+                return
 
             # limit and page values used by the search function
             search_limit = self.limit
@@ -650,15 +671,13 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 search_page = 1
 
             # Do the search for this collection
-            features = (await self.process_search(collection, self.odata, search_limit, search_page)).features
+            features = (self.process_search(collection, self.odata, search_limit, search_page)).features
 
             # If search return maximum number of elements, increase page and process next elements
             if len(features) == SEARCH_LIMIT:
                 while True:
                     search_page += 1
-                    next_features = (
-                        await self.process_search(collection, self.odata, search_limit, search_page)
-                    ).features
+                    next_features = (self.process_search(collection, self.odata, search_limit, search_page)).features
                     features.extend(next_features)  # type: ignore
                     # Extend current features.
                     # Break the loop when result is less the maximum possible, meaning there is no next page.
@@ -669,14 +688,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             # Add the collection information
             for item in features:
                 item.collection = collection_id
-            return features
+            return_values.append(features)
 
         except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error(traceback.format_exc())
-            return exception
+            return_values.append(exception)
 
     @abstractmethod
-    async def process_search(
+    def process_search(
         self,
         collection: dict,
         odata_params: dict,
@@ -699,13 +718,15 @@ def create_collection(collection: dict) -> stac_pydantic.Collection:
 
 
 def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors while creating/validating
-    items."""
+    """
+    Decorator used to wrapp all endpoints that can raise KeyErrors / ValidationErrors
+    while creating/validating items.
+    """
 
-    @wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+    @contextmanager
+    def wrapping_logic(*_args, **_kwargs):
         try:
-            return await func(*args, **kwargs)
+            yield
         except KeyError as exc:
             logger.error(f"KeyError caught in {func.__name__}")
             raise log_http_exception(
@@ -719,7 +740,8 @@ def handle_exceptions(func: Callable[..., Any]) -> Callable[..., Any]:
                 detail=f"Parameters validation error: {exc}",
             ) from exc
 
-    return wrapper
+    # Decorator for both sync and async functions
+    return utils2.decorate_sync_async(wrapping_logic, func)
 
 
 def filter_allowed_collections(all_collections, role, request):
@@ -791,6 +813,7 @@ def filter_allowed_collections(all_collections, role, request):
     return stac_collections
 
 
+@lru_cache
 def map_stac_platform() -> dict:
     """Function used to read and interpret from constellation.yaml"""
     with open(Path(__file__).parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:

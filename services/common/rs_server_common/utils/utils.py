@@ -18,16 +18,18 @@ import os
 import shutil
 import threading
 import time
+import traceback
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Awaitable, Callable, List, Union
+from typing import Any, Callable, List, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError, ValidatorFunctionWrapHandler
 from rs_server_common.data_retrieval.provider import Provider
 from rs_server_common.db.database import get_db
@@ -37,6 +39,8 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
 from rs_server_common.utils.logging import Logging
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # pylint: disable=too-few-public-methods
 
@@ -318,10 +322,10 @@ def update_db(
     raise last_exception
 
 
-async def eodag_download(
+def eodag_download(
     argument: EoDAGDownloadHandler,
     db,
-    init_provider: Callable[[str], Awaitable[Provider]],
+    init_provider: Callable[[str], Provider],
     **kwargs,
 ):  # pylint: disable=too-many-locals
     """Initiates the eodag download process.
@@ -367,7 +371,7 @@ async def eodag_download(
         # To be discussed: init_provider may fail, but in the same time it takes too much
         # when properly initialized, and the timeout for download endpoint return is overpassed
         argument.thread_started.set()
-        provider = await init_provider(argument.station)
+        provider = init_provider(argument.station)
         init = datetime.now()
         filename = Path(local) / argument.name
         provider.download(argument.product_id, filename)
@@ -516,3 +520,34 @@ def validate_sort_input(sortby: str):
     """
     sortby = sortby.strip("'\"").lower()
     return [(sortby[1:], "DESC" if sortby[0] == "-" else "ASC")]
+
+
+class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """
+    In FastAPI we can raise HttpExceptions in the middle of the python code, instead of returning a JSONResponse.
+    But that doesn't work well in some cases. So we catch all exceptions and return a JSONResponse instead.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """
+        Middleware implementation.
+        """
+
+        try:
+            return await call_next(request)  # Call the next middleware
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+
+            # Print the error with the stacktrace in the log
+            logger.error(traceback.format_exc())
+
+            # Get the status code and content from the HTTPException
+            if isinstance(exception, StarletteHTTPException):
+                status_code = exception.status_code
+                content = exception.detail
+
+            # Else use a generic status code, and content = exception message
+            else:
+                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+                content = repr(exception)
+
+            return JSONResponse(status_code=status_code, content=content)

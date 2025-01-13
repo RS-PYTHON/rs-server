@@ -26,10 +26,12 @@ template:
       username: PLACEHOLDER
       password: PLACEHOLDER
     credentials:
-      username: PLACEHOLDER
-      password: PLACEHOLDER
+      auth_for_token: PLACEHOLDER # WARNING: the 'credentials" field must be present with at least one value !
     headers:
       Content-Type: application/x-www-form-urlencoded
+    retrieve_headers:
+      Content-Type: application/x-www-form-urlencoded
+      Authorization: "{auth_for_token}"
   products:
     S1_SAR_RAW:
       productType: RAW
