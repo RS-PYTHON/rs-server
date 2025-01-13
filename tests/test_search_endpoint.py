@@ -1350,7 +1350,11 @@ def test_search_parameters(
             if collection_id == "col1":
                 odata = odata_query if user_query else odata_no_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]
-                date_max = user_datetime.split("/")[1].replace(".000Z", ".999Z")
+                date_max = (
+                    user_datetime.split("/")[1].replace(".000Z", ".999Z")
+                    if method == "GET"
+                    else user_datetime.split("/")[1]
+                )
                 product_type = user_product_type
                 constellation = user_constellation
                 satellite = user_satellite
