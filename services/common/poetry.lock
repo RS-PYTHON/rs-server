@@ -745,12 +745,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.0.2.dev30+g053627e5"
+version = "3.1.0b1"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
-files = []
-develop = false
+files = [
+    {file = "eodag-3.1.0b1-py3-none-any.whl", hash = "sha256:ddccf34bddf3b2f2b179958e9e7aed8574860ea21f667ea3a6e26a16e5e8557d"},
+    {file = "eodag-3.1.0b1.tar.gz", hash = "sha256:853b3ddaf92af3cdb1efd93bc5e03ff2622d00fc88f06b467270bd4a37444500"},
+]
 
 [package.dependencies]
 annotated-types = "*"
@@ -793,12 +795,6 @@ server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter"
 stubs = ["boto3-stubs[essential]", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-tqdm", "types-urllib3"]
 tutorials = ["eodag-cube (>=0.2.0)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
 usgs = ["usgs (>=0.3.1)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/jgaucher-cs/eodag"
-reference = "develop"
-resolved_reference = "053627e5f8d299d5f7f2ef3882cfc3e55ee4667a"
 
 [[package]]
 name = "fastapi"
@@ -3342,4 +3338,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "0a5d6119df97210ea5bcf3d2f8caa4ceecc92140fd3ac185afb8873449746c71"
+content-hash = "36d6b505657396efa8a76b282e9a2d403f0dbaee37feddc1fc1d68adfda0ac42"
