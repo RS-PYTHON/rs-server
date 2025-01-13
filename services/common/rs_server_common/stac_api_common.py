@@ -47,6 +47,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
+from rs_server_common.rspy_models import Item, ItemCollection
 from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -56,7 +57,6 @@ from rs_server_common.utils.utils import (
 )
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
-from rs_server_common.rspy_models import Item, ItemCollection
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
