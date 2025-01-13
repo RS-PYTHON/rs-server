@@ -1069,13 +1069,13 @@ tqdm = ["tqdm"]
 
 [[package]]
 name = "geoalchemy2"
-version = "0.17.0"
+version = "0.16.0"
 description = "Using SQLAlchemy with Spatial Databases"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "GeoAlchemy2-0.17.0-py3-none-any.whl", hash = "sha256:2218d7d5a8f123cc4b88cbf3f9595ef3b2741c26e417a2bff56ba96ac9208919"},
-    {file = "geoalchemy2-0.17.0.tar.gz", hash = "sha256:00e105e6a93cc2815914a29acb4fc129da5b2ebd500bf447b108e7904138c83f"},
+    {file = "GeoAlchemy2-0.16.0-py3-none-any.whl", hash = "sha256:b0f27d5500ee757af4654c6262e0f834b7a843504d193653ec747ef1128d2ab5"},
+    {file = "geoalchemy2-0.16.0.tar.gz", hash = "sha256:df64bb72af70daafaac3f359492c96501c37ab85ed20f9510c99cc6d02881100"},
 ]
 
 [package.dependencies]
@@ -2466,13 +2466,13 @@ email = ["email-validator (>=1.0.3)"]
 
 [[package]]
 name = "pygeoapi"
-version = "0.18.0"
+version = "0.19.0"
 description = "pygeoapi provides an API to geospatial data"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "pygeoapi-0.18.0-py2.py3-none-any.whl", hash = "sha256:2acdf508d207b1bc4b0c29d06201c053eb7dfb760454b4faba28cdd329293050"},
-    {file = "pygeoapi-0.18.0.tar.gz", hash = "sha256:3349c5aa9d5b2c8f2c0c59f1d2d265137cc1bd97d65359f93cdf036e0a9dc16f"},
+    {file = "pygeoapi-0.19.0-py2.py3-none-any.whl", hash = "sha256:38098520615f6ac2e4308cb102e58238ef746fde6b85f8b58dec660ef10832b4"},
+    {file = "pygeoapi-0.19.0.tar.gz", hash = "sha256:b9a2cd68f4c288f24ed27ad532310967df83cff9f9fc4276fd7bf67f568c8e31"},
 ]
 
 [package.dependencies]
@@ -2492,7 +2492,7 @@ PyYAML = "*"
 rasterio = "*"
 requests = "*"
 shapely = "*"
-SQLAlchemy = "<2.0.0"
+SQLAlchemy = "*"
 tinydb = "*"
 
 [[package]]
@@ -3821,4 +3821,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "a6039a1eb017c13228fd8b1dd9fc2498c0eed1b7a8c459544b13149a454ed14d"
+content-hash = "323e133605953bb544b80d30805d6e263150f375114bf32529e9400321734619"
