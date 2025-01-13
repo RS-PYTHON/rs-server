@@ -55,7 +55,7 @@ stac-pydantic = "2.0.3"
 aiohttp = "^3.10.5"
 dask-gateway = "2024.1.0"
 tornado = "6.4.2"
-geoalchemy2 = "^0.16.0"
+geoalchemy2 = ">=0.16,<0.18"
 
 # WARNING: these must be the same versions than in:
 # https://github.com/RS-PYTHON/rs-infrastructure/blob/develop/.github/common/resources/requirements.txt
