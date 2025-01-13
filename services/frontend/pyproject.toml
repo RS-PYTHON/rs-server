@@ -51,7 +51,7 @@ optional = true
 # Testing
 pytest = "^8.3.3"
 pytest-asyncio = "^0.24.0"
-pytest-cov = "^5.0.0"
+pytest-cov = ">=5,<7"
 pytest-docker = "^3.1.0"
 pytest-error-for-skips = "^2.0.2"
 pytest-httpx = "^0.32.0"
