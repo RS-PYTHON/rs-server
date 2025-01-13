@@ -56,7 +56,7 @@ from rs_server_common.utils.utils import (
 )
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
-from stac_pydantic.item import Item
+from rs_server_common.rspy_models import Item, ItemCollection
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
@@ -567,7 +567,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             raise all_exceptions[0]
 
         # Return results as a dict
-        data = stac_pydantic.ItemCollection(features=list(all_items.values()), type="FeatureCollection")
+        data = ItemCollection(features=list(all_items.values()), type="FeatureCollection")
         dict_data: Dict[str, Any] = self.paginate(data)
 
         # Handle pagination links.
@@ -579,11 +579,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return dict_data
 
-    def paginate(self, item_collection: stac_pydantic.ItemCollection) -> Dict[str, Any]:
+    def paginate(self, item_collection: ItemCollection) -> Dict[str, Any]:
         """Method used to apply pagination options after /search result were aggregated."""
 
-        paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection, self.sortby)
-        return stac_pydantic.ItemCollection(
+        paginated_item_collection: ItemCollection = sort_feature_collection(item_collection, self.sortby)
+        return ItemCollection(
             features=paginated_item_collection.features[
                 self.limit * (self.page - 1) : self.limit * self.page  # noqa: E203
             ],
@@ -701,7 +701,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         odata_params: dict,
         limit: int,
         page: int,
-    ) -> stac_pydantic.ItemCollection:
+    ) -> ItemCollection:
         """Do the search for the given collection and OData parameters."""
 
 
@@ -824,7 +824,7 @@ def create_stac_collection(
     products: List[Any],
     feature_template: dict,
     stac_mapper: dict,
-) -> stac_pydantic.ItemCollection:
+) -> ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
 
@@ -842,7 +842,7 @@ def create_stac_collection(
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
         try:
-            item = stac_pydantic.Item(**feature_tmp)
+            item = Item(**feature_tmp)
             # Add a default bbox and geometry, since L0 chunks items are not geo-located.
             item.bbox = (-180.0, -90.0, 180.0, 90.0)
             item.geometry = {
@@ -854,10 +854,10 @@ def create_stac_collection(
         except ValidationError as e:
             logger.error(f"STAC validation error for {feature_tmp} (STAC conversion of {product_data}): {e}")
             continue
-    return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
+    return ItemCollection(features=items, type="FeatureCollection")
 
 
-def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortby: str) -> stac_pydantic.ItemCollection:
+def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> ItemCollection:
     """
     Sorts the features in the collection by a specified attribute.
 
@@ -896,4 +896,4 @@ def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortb
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid attribute '{attribute}' for sorting: {str(e)},",
         ) from e
-    return stac_pydantic.ItemCollection(features=sorted_items, type=item_collection.type)
+    return ItemCollection(features=sorted_items, type=item_collection.type)
