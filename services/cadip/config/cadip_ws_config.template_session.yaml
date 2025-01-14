@@ -112,10 +112,10 @@ template:
         - null
         - "$.Files"
       # Eodag Specific map
-      startTimeFromAscendingNode:
+      StartPublicationDate:
         - null
         - "$.PublicationDate"
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
         - null
         - "$.PublicationDate"
       href:
@@ -132,8 +132,9 @@ template:
             - "SessionId eq {SessionId}"
             - "Satellite eq {platform}"
             - "Satellite in ({platforms})"
-            - "PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}"
-            - "PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}"
+            - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+            - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+            - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
             - "Retransfer eq {Retransfer}"
 
     sort:
@@ -145,8 +146,6 @@ template:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels

@@ -34,16 +34,16 @@
         ]
     },
     "properties": {
-        "datetime": "2021-02-21T00:00:00Z",
-        "created": "2021-02-14T00:00:00Z",
-        "start_datetime": "2021-02-21T00:00:00Z",
-        "end_datetime": "2021-02-21T00:00:00Z",
+        "datetime": "2021-02-21T10:21:05.821Z",
+        "created": "2021-02-14T10:21:05.821Z",
+        "start_datetime": "2021-02-21T10:21:05.821Z",
+        "end_datetime": "2021-02-21T10:21:05.821Z",
         "platform": "sentinel-1a",
         "constellation": "sentinel-1",
         "auxip:id": "0a88d2a2-6e73-41a1-abce-2cdf29dfcf04",
-        "published": "2021-02-14T00:00:00.000Z",
+        "published": "2021-02-14T10:21:05.821Z",
         "product:type": "AUX_OBMEMC",
-        "processing:datetime": "2021-02-21T00:00:00.000Z",
+        "processing:datetime": "2021-02-21T10:21:05.821Z",
         "processing:facility": "FOS"
     },
     "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
@@ -54,7 +54,7 @@
             "type": "application/octet-stream",
             "file:size": 2100565,
             "file:checksum": "144921a67fc7ede75e4818121fcf4d6c",
-            "eviction_datetime": "2021-02-21T00:00:00.000Z"
+            "eviction_datetime": "2021-02-21T10:21:05.821Z"
         }
     },
     "links": [

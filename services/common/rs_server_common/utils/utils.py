@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, List, Tuple, Union
+from typing import Any, Callable, List, Union
 
 import sqlalchemy
 from eodag import EOProduct, setup_logging
@@ -111,46 +111,87 @@ def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> 
 
 
 def validate_inputs_format(
-    interval: str,
+    date_time: str,
     raise_errors: bool = True,
-) -> Tuple[Union[None, datetime], Union[None, datetime]]:
+) -> Any:
     """
-    Validate the format of the input time interval.
+    Validate the format and content of a time interval string.
 
-    This function checks whether the input interval has a valid format (start_date/stop_date) and
-    whether the start and stop dates are in a valid ISO 8601 format.
+    This function checks whether the provided time interval string is in a valid format and
+    whether the start and stop dates conform to the ISO 8601 standard. It supports a variety
+    of interval formats, including open-ended intervals.
 
     Args:
-        interval (str): The time interval to be validated, with the following format:
-            "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"
-        raise_errors (bool): Raise exception if invalid parameters.
+        date_time (str): The time interval string to validate. Supported formats include:
+            - "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z" (closed interval)
+            - "../2024-01-02T23:59:59Z" (open start interval)
+            - "2024-01-01T00:00:00Z/.." (open end interval)
+            - "2024-01-01T00:00:00Z" (fixed date)
+        raise_errors (bool): If True, raises an exception for invalid input.
+            If False, returns [None, None, None] for invalid input.
 
     Returns:
-        Tuple[Union[None, datetime], Union[None, datetime]]:
-            A tuple containing:
-            - start_date (datetime): The start date of the interval.
-            - stop_date (datetime): The stop date of the interval.
-        Or [None, None] if the provided interval is empty.
+        List[Union[datetime, None]]: A list containing three elements:
+            - fixed_date (datetime or None): The single fixed date if applicable.
+            - start_date (datetime or None): The start date of the interval.
+            - stop_date (datetime or None): The stop date of the interval.
+            Returns [None, None, None] if the input is invalid or empty.
+
+    Raises:
+        HTTPException: If `raise_errors` is True and the input is invalid, an HTTP 400 or 422
+        error is raised.
 
     Note:
-        - The input interval should be in the format "start_date/stop_date"
-        (e.g., "2022-01-01T00:00:00Z/2022-01-02T00:00:00Z").
-        - This function checks for missing start/stop and validates the ISO 8601 format of start and stop dates.
-        - If there is an error, err_code and err_text provide information about the issue.
+        - The input interval should use the ISO 8601 format for dates and times.
+        - If using an open-ended interval, one side of the interval can be omitted
+          (e.g., "../2024-01-02T23:59:59Z").
     """
-    if not interval:
-        return None, None
+    fixed_date, start_date, stop_date = "", "", ""
+    if not date_time:
+        return None, None, None
     try:
-        start_date, stop_date = interval.split("/")
+        if "/" in date_time:
+            # Open/Closed interval, ../2018-02-12T23:20:50Z or 2018-02-12T23:20:50Z/..
+            start_date, stop_date = date_time.split("/")
+        else:
+            fixed_date = date_time
     except ValueError as exc:
         logger.error("Missing start or stop in endpoint call!")
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing start/stop") from exc
-    if (not is_valid_date_format(start_date)) or (not is_valid_date_format(stop_date)):
-        logger.info("Invalid start/stop in endpoint call!")
-        if raise_errors:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
-        return None, None
-    return datetime.fromisoformat(start_date), datetime.fromisoformat(stop_date)
+
+    for date in [fixed_date, start_date, stop_date]:
+        if date.strip("'\".") and not is_valid_date_format(date):
+            logger.info("Invalid start/stop in endpoint call!")
+            if raise_errors:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
+            return None, None, None
+
+    def to_dt(dates) -> List[Any]:
+        """Converts a list of date strings to datetime objects or None if the conversion fails."""
+        return [datetime.fromisoformat(date) if is_valid_date(date) else None for date in dates]
+
+    def is_valid_date(date: str) -> bool:
+        """Check if the string can be converted to a valid datetime."""
+        try:
+            datetime.fromisoformat(date)
+            return True
+        except ValueError:
+            return False
+
+    fixed_date_dt, start_date_dt, stop_date_dt = to_dt([fixed_date, start_date, stop_date])
+
+    # if fixed_date_dt and "." not in fixed_date:
+    #     # If miliseconds are not defined, don't set to .000Z create a timeinterval, to gather all products
+    #     # from that milisecond
+    #     start_date_dt = fixed_date_dt.replace(microsecond=0)  # type: ignore
+    #     stop_date_dt = fixed_date_dt.replace(microsecond=999999)  # type: ignore
+    #     fixed_date_dt = None
+    #     return fixed_date_dt, start_date_dt, stop_date_dt
+    # if stop_date_dt and "." not in stop_date:
+    #     # If stop_date interval miliseconds value is not defined, set it to 999
+    #     stop_date_dt = stop_date_dt.replace(microsecond=999999)  # type: ignore
+
+    return fixed_date_dt, start_date_dt, stop_date_dt
 
 
 @dataclass
@@ -216,7 +257,7 @@ def write_search_products_to_db(db_handler_class: DownloadStatus, products: EOPr
                     db,
                     product_id=product.properties["id"],
                     name=product.properties["Name"],
-                    available_at_station=datetime.fromisoformat(product.properties["startTimeFromAscendingNode"]),
+                    available_at_station=datetime.fromisoformat(product.properties["StartPublicationDate"]),
                     status=EDownloadStatus.NOT_STARTED,
                 )
 
