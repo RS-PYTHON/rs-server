@@ -29,54 +29,54 @@ None
 
 ## Added
 
-RSPY-481: OVH : deploy publication service PODS
-RSPY-511: Search pagination from multiple CADIP/AUXIP stations
-RSPY-572: "Hello World" prefect @flow with @task run in parallel with Dask
+- RSPY-481: OVH : deploy publication service PODS
+- RSPY-511: Search pagination from multiple CADIP/AUXIP stations
+- RSPY-572: "Hello World" prefect @flow with @task run in parallel with Dask
 
 ## Fixed
 
-RSPY-438: [Catalog] Issue while creating a new collection without explicit owner
-RSPY-514: JWT signature expired in rs-server-cadip
-RSPY-546: Can't filter ADGS products by constellation
-RSPY-548: No OpenTelemetry support in dask cluster
-RSPY-555: [RS-SERVER-ADGS] Collection configuration not modifiable with configmap update
-RSPY-558: Affinity and Toleration not set on rs-server-cadip, rs-server-adgs
-RSPY-562: [RS-CADIP] pod restarted due to timeout on his liveness/readiness probe
-RSPY-568: [RS-STAGING] unable to stage stac products with alternate s3 configuration
-RSPY-575: Cannot contact MasPalomas station anymore with token module = false
+- RSPY-438: [Catalog] Issue while creating a new collection without explicit owner
+- RSPY-514: JWT signature expired in rs-server-cadip
+- RSPY-546: Can't filter ADGS products by constellation
+- RSPY-548: No OpenTelemetry support in dask cluster
+- RSPY-555: [RS-SERVER-ADGS] Collection configuration not modifiable with configmap update
+- RSPY-558: Affinity and Toleration not set on rs-server-cadip, rs-server-adgs
+- RSPY-562: [RS-CADIP] pod restarted due to timeout on his liveness/readiness probe
+- RSPY-568: [RS-STAGING] unable to stage stac products with alternate s3 configuration
+- RSPY-575: Cannot contact MasPalomas station anymore with token module = false
 
 [0.2a8] - Sprint 18 - 2024-12-06
 ================================
 
 ## Added
 
-RSPY-231: Add POST versions of CADIP endpoints
-RSPY-339: Update to Prefect 3 (infra)
-RSPY-342: Persist staging jobs in a postgresql database (needs pygeoapi 0.18)
-RSPY-425: CI/CD chain to build a Dask base image that embeds rs-client library
-RSPY-510: Update the CADIP/STAC mapping for dates to support incomplete sessions
-RSPY-526: Force "eq" OData operator for single SessionId retrieval
-RSPY-527: Securely support redirections when downloading a CADIP/AUXIP file
-RSPY-528: Sprint 18 corrections of issues
+- RSPY-231: Add POST versions of CADIP endpoints
+- RSPY-339: Update to Prefect 3 (infra)
+- RSPY-342: Persist staging jobs in a postgresql database (needs pygeoapi 0.18)
+- RSPY-425: CI/CD chain to build a Dask base image that embeds rs-client library
+- RSPY-510: Update the CADIP/STAC mapping for dates to support incomplete sessions
+- RSPY-526: Force "eq" OData operator for single SessionId retrieval
+- RSPY-527: Securely support redirections when downloading a CADIP/AUXIP file
+- RSPY-528: Sprint 18 corrections of issues
 
 ## Fixed
 
-RSPY-429: Endpoint /catalog/collections/S1A_aux/queryables still provide "KeyError('id')" output
-RSPY-491: CADIP: bad requests for Sessions queries with filter parameters
-RSPY-492: No sessions returned (retransfer CADIP sessions without downlink start/stop dates)
-RSPY-495: CADIP: STAC mapping error of Files response (SessionID)
-RSPY-504: OData -> STAC mapping error for CADIP files
-RSPY-506: Wrong OData queries to ADGS
-RSPY-507: Wrong OData query to CADIP when requesting a single SessionId
-RSPY-515: Authentication error when accessing source item from STAC browser
-RSPY-520: HTTP 401 error when staging product from Neustrelitz CADIP station (http redirect)
-RSPY-531: [RS-STAGING] Bucket name not modifiable on current configuration
-RSPY-537: Date parsing error when fetching CADIP chunks from Matera (lack of pagination)
-RSPY-538: Search CADIP sessions by date does not work
-RSPY-541: Staging: status for GET /jobs is 404 and not 200 if there are no jobs
-RSPY-549: Error 500 while searching for S2B CADIP sessions
-RSPY-556: Low performance of CADIP/AUXIP searches
-RSPY-567: start_datetime requires end_datetime and vice versa
+- RSPY-429: Endpoint /catalog/collections/S1A_aux/queryables still provide "KeyError('id')" output
+- RSPY-491: CADIP: bad requests for Sessions queries with filter parameters
+- RSPY-492: No sessions returned (retransfer CADIP sessions without downlink start/stop dates)
+- RSPY-495: CADIP: STAC mapping error of Files response (SessionID)
+- RSPY-504: OData -> STAC mapping error for CADIP files
+- RSPY-506: Wrong OData queries to ADGS
+- RSPY-507: Wrong OData query to CADIP when requesting a single SessionId
+- RSPY-515: Authentication error when accessing source item from STAC browser
+- RSPY-520: HTTP 401 error when staging product from Neustrelitz CADIP station (http redirect)
+- RSPY-531: [RS-STAGING] Bucket name not modifiable on current configuration
+- RSPY-537: Date parsing error when fetching CADIP chunks from Matera (lack of pagination)
+- RSPY-538: Search CADIP sessions by date does not work
+- RSPY-541: Staging: status for GET /jobs is 404 and not 200 if there are no jobs
+- RSPY-549: Error 500 while searching for S2B CADIP sessions
+- RSPY-556: Low performance of CADIP/AUXIP searches
+- RSPY-567: start_datetime requires end_datetime and vice versa
 
 [0.2a7] - Sprint 17 - 2024-11-20
 ================================
