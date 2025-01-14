@@ -37,7 +37,7 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pygeofilter = "^0.2.4"
+pygeofilter = ">=0.2.4,<0.4.0"
 rs-server-common = {path = "../common", develop = true}
 
 [tool.poetry.group.dev]
@@ -53,7 +53,7 @@ pytest-error-for-skips = "^2.0.2"
 pytest-docker = "^3.1.0"
 pytest-dotenv = "^0.5.2"
 pytest-mock = "^3.14.0"
-moto = "==5.0.25"
+moto = "==5.0.26"
 flask = "^3.0.3"
 flask-cors = "^5.0.0"
 # httpx is used by fastapi for test purpose
