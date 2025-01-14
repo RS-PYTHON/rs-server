@@ -24,6 +24,27 @@ Changed
 
 None
 
+[0.2a9] - Sprint 19 - 2025-01-15
+================================
+
+## Added
+
+RSPY-481: OVH : deploy publication service PODS
+RSPY-511: Search pagination from multiple CADIP/AUXIP stations
+RSPY-572: "Hello World" prefect @flow with @task run in parallel with Dask
+
+## Fixed
+
+RSPY-438: [Catalog] Issue while creating a new collection without explicit owner
+RSPY-514: JWT signature expired in rs-server-cadip
+RSPY-546: Can't filter ADGS products by constellation
+RSPY-548: No OpenTelemetry support in dask cluster
+RSPY-555: [RS-SERVER-ADGS] Collection configuration not modifiable with configmap update
+RSPY-558: Affinity and Toleration not set on rs-server-cadip, rs-server-adgs
+RSPY-562: [RS-CADIP] pod restarted due to timeout on his liveness/readiness probe
+RSPY-568: [RS-STAGING] unable to stage stac products with alternate s3 configuration
+RSPY-575: Cannot contact MasPalomas station anymore with token module = false
+
 [0.2a8] - Sprint 18 - 2024-12-06
 ================================
 
