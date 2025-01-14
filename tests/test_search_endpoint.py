@@ -853,9 +853,8 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2018-02-12T23:20:50.999Z&$orderby=PublicationDate desc"
-                "&$top=10000&$skip=0&$expand=Attributes",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
@@ -902,8 +901,8 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2018-02-12T23:20:50.999Z&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "PublicationDate desc&$top=10000&$skip=0",
                 status.HTTP_200_OK,
             ),
         ],
