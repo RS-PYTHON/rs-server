@@ -29,6 +29,8 @@ from stac_pydantic.shared import StacBaseModel, StacCommonMetadata
 class WrapStacCommonMetadata(StacCommonMetadata):
     """
     Custom implementation of pydantic.StacCommonMetadata
+    Overload stac_pydantic datetime-like objects from item properties to use a string with custom format.
+    Datetime only use microseconds ".512000Z", so this model is updated to store a more flexible date type.
     """
 
     datetime: Optional[str] = Field(...)
