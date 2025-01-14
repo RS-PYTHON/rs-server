@@ -191,7 +191,7 @@ class TestAEodagProviderDownload:
         provider = EodagProvider(cadip_config.file, cadip_config.provider)
         downloaded_file = tmp_path / "downloaded.txt"
         provider.download(product_id, downloaded_file)
-        downloaded_file = downloaded_file / "downloaded.txt"  # eodag 3.0 specific
+        downloaded_file = downloaded_file / "downloaded.json"  # eodag 3.0 specific
         assert downloaded_file.exists()
         assert downloaded_file.is_file()
 
@@ -222,7 +222,7 @@ class TestAEodagProviderDownload:
             with tempfile.TemporaryDirectory() as download_dir:
                 downloaded_file = Path(download_dir) / f"downloaded_thread_{idx}.txt"
                 provider.download(product_id, downloaded_file)
-                downloaded_file = downloaded_file / f"downloaded_thread_{idx}.txt"  # Eodag 3.0 specific
+                downloaded_file = downloaded_file / f"downloaded_thread_{idx}.json"  # Eodag 3.0 specific
                 assert downloaded_file.exists()
                 assert downloaded_file.is_file()
 

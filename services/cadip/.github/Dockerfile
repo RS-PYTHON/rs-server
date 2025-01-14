@@ -19,9 +19,6 @@ FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
 # Install dependencies
 RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
 
-# TODO: remove this after we use an official git version tag for eodag
-RUN apt install -y git
-
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip
 

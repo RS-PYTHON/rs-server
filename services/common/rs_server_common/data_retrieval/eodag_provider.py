@@ -222,6 +222,10 @@ class EodagProvider(Provider):
             None
 
         """
+        # Dirty fix for eodag: change extension
+        org_file = to_file
+        to_file = to_file.with_suffix(to_file.suffix + "_fix_eodag")
+
         # Use thread-lock because self.client.download is not thread-safe
         with self.client.lock:
             product = self.create_eodag_product(product_id, to_file.name)
@@ -229,6 +233,10 @@ class EodagProvider(Provider):
             # authent_plugin = self.client._plugins_manager.get_auth_plugin(product.provider)
             # product.register_downloader(download_plugin, authent_plugin)
             self.client.download(product, output_dir=str(to_file.parent))
+
+            # Dirty fix continued: rename the download directory
+            if to_file.is_dir() and (not org_file.is_dir()):
+                to_file.rename(org_file)
 
     def create_eodag_product(self, product_id: str, filename: str):
         """Initialize an EO product with minimal properties.

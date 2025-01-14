@@ -402,11 +402,18 @@ def eodag_download(
     file_dir = Path(local) / argument.name
     file_location = file_dir / argument.name
 
-    if file_dir.is_dir() and file_location.is_file():
-        temp_loc = Path(local) / f"{uuid.uuid4()}_{argument.name}"
-        shutil.move(file_location, temp_loc)
-        file_dir.rmdir()  # Remove the original directory
-        shutil.move(temp_loc, file_dir)
+    if file_dir.is_dir():
+
+        # If eodag changed the file extension, restore it
+        files = list(file_dir.iterdir())
+        if (len(files) == 1) and (files[0] != file_location) and (files[0].stem == file_location.stem):
+            shutil.move(files[0], file_location)
+
+        if file_location.is_file():
+            temp_loc = Path(local) / f"{uuid.uuid4()}_{argument.name}"
+            shutil.move(file_location, temp_loc)
+            file_dir.rmdir()  # Remove the original directory
+            shutil.move(temp_loc, file_dir)
 
     if argument.obs:
         try:
