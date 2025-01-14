@@ -81,10 +81,10 @@ cadip:
       Retransfer:
       - null
       - $.Retransfer
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -101,8 +101,9 @@ cadip:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -184,10 +185,10 @@ ins:
       Retransfer:
       - null
       - $.Retransfer
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -204,8 +205,9 @@ ins:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -287,10 +289,10 @@ mps:
       Retransfer:
       - null
       - $.Retransfer
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -307,8 +309,9 @@ mps:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -390,10 +393,10 @@ mti:
       Retransfer:
       - null
       - $.Retransfer
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -410,8 +413,9 @@ mti:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -493,10 +497,10 @@ nsg:
       Retransfer:
       - null
       - $.Retransfer
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -513,8 +517,9 @@ nsg:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -596,10 +601,10 @@ sgs:
       Retransfer:
       - null
       - $.Retransfer
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -616,8 +621,9 @@ sgs:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -735,10 +741,10 @@ cadip_session:
       Files:
       - null
       - $.Files
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -756,8 +762,9 @@ cadip_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -768,8 +775,6 @@ cadip_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -898,10 +903,10 @@ ins_session:
       Files:
       - null
       - $.Files
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -919,8 +924,9 @@ ins_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -931,8 +937,6 @@ ins_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -1061,10 +1065,10 @@ mps_session:
       Files:
       - null
       - $.Files
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -1082,8 +1086,9 @@ mps_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -1094,8 +1099,6 @@ mps_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -1224,10 +1227,10 @@ mti_session:
       Files:
       - null
       - $.Files
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -1245,8 +1248,9 @@ mti_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -1257,8 +1261,6 @@ mti_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -1387,10 +1389,10 @@ nsg_session:
       Files:
       - null
       - $.Files
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -1408,8 +1410,9 @@ nsg_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -1420,8 +1423,6 @@ nsg_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels
@@ -1550,10 +1551,10 @@ sgs_session:
       Files:
       - null
       - $.Files
-      startTimeFromAscendingNode:
+      StartPublicationDate:
       - null
       - $.PublicationDate
-      completionTimeFromAscendingNode:
+      StopPublicationDate:
       - null
       - $.PublicationDate
       href:
@@ -1571,8 +1572,9 @@ sgs_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gt {startTimeFromAscendingNode#to_iso_utc_datetime}
-          - PublicationDate lt {completionTimeFromAscendingNode#to_iso_utc_datetime}
+          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
+          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Retransfer eq {Retransfer}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -1583,8 +1585,6 @@ sgs_session:
         end_datetime: DownlinkStop
         published: PublicationDate
         platform: Satellite
-        startTimeFromAscendingNode: DownlinkStart
-        completionTimeFromAscendingNode: DownlinkStop
         publicationDate: PublicationDate
         cadip:id: Id
         cadip:num_channels: NumChannels

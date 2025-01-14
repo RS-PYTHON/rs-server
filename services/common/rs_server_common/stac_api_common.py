@@ -47,6 +47,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
+from rs_server_common.rspy_models import Item, ItemCollection
 from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -56,7 +57,6 @@ from rs_server_common.utils.utils import (
 )
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
-from stac_pydantic.item import Item
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
@@ -442,7 +442,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid datetime interval: {datetime!r}. "
-                    "Expected format is: 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ'",
+                    "Expected format is either: 'YYYY-MM-DDThh:mm:ssZ', 'YYYY-MM-DDThh:mm:ssZ/YYYY-MM-DDThh:mm:ssZ', "
+                    "'YYYY-MM-DDThh:mm:ssZ/..' or '../YYYY-MM-DDThh:mm:ssZ'",
                 ) from exception
 
         #
@@ -566,7 +567,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             raise all_exceptions[0]
 
         # Return results as a dict
-        data = stac_pydantic.ItemCollection(features=list(all_items.values()), type="FeatureCollection")
+        data = ItemCollection(features=list(all_items.values()), type="FeatureCollection")
         dict_data: Dict[str, Any] = self.paginate(data)
 
         # Handle pagination links.
@@ -578,11 +579,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return dict_data
 
-    def paginate(self, item_collection: stac_pydantic.ItemCollection) -> Dict[str, Any]:
+    def paginate(self, item_collection: ItemCollection) -> Dict[str, Any]:
         """Method used to apply pagination options after /search result were aggregated."""
 
-        paginated_item_collection: stac_pydantic.ItemCollection = sort_feature_collection(item_collection, self.sortby)
-        return stac_pydantic.ItemCollection(
+        paginated_item_collection: ItemCollection = sort_feature_collection(item_collection, self.sortby)
+        return ItemCollection(
             features=paginated_item_collection.features[
                 self.limit * (self.page - 1) : self.limit * self.page  # noqa: E203
             ],
@@ -610,13 +611,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             # Handle conflicts, i.e. for each key that is defined in both params
             for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
-
                 # Date intervals
                 if key in ("PublicationDate"):
 
                     # Read both start and stop dates
-                    start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
-                    start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
+                    _, start1, stop1 = validate_inputs_format(odata_params[key], raise_errors=True)
+                    _, start2, stop2 = validate_inputs_format(odata_hardcoded[key], raise_errors=True)
 
                     # Calculate the intersection
                     start = max(start1, start2)
@@ -627,7 +627,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                         empty_selection = True
                         break  # try next collection
                     self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
-
                 # Comma-separated lists
                 if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
 
@@ -702,7 +701,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         odata_params: dict,
         limit: int,
         page: int,
-    ) -> stac_pydantic.ItemCollection:
+    ) -> ItemCollection:
         """Do the search for the given collection and OData parameters."""
 
 
@@ -825,7 +824,7 @@ def create_stac_collection(
     products: List[Any],
     feature_template: dict,
     stac_mapper: dict,
-) -> stac_pydantic.ItemCollection:
+) -> ItemCollection:
     """
     Creates a STAC feature collection based on a given template for a list of EOProducts.
 
@@ -843,7 +842,7 @@ def create_stac_collection(
         product_data = extract_eo_product(product, stac_mapper)
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
         try:
-            item = stac_pydantic.Item(**feature_tmp)
+            item = Item(**feature_tmp)
             # Add a default bbox and geometry, since L0 chunks items are not geo-located.
             item.bbox = (-180.0, -90.0, 180.0, 90.0)
             item.geometry = {
@@ -855,10 +854,10 @@ def create_stac_collection(
         except ValidationError as e:
             logger.error(f"STAC validation error for {feature_tmp} (STAC conversion of {product_data}): {e}")
             continue
-    return stac_pydantic.ItemCollection(features=items, type="FeatureCollection")
+    return ItemCollection(features=items, type="FeatureCollection")
 
 
-def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortby: str) -> stac_pydantic.ItemCollection:
+def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> ItemCollection:
     """
     Sorts the features in the collection by a specified attribute.
 
@@ -897,4 +896,4 @@ def sort_feature_collection(item_collection: stac_pydantic.ItemCollection, sortb
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid attribute '{attribute}' for sorting: {str(e)},",
         ) from e
-    return stac_pydantic.ItemCollection(features=sorted_items, type=item_collection.type)
+    return ItemCollection(features=sorted_items, type=item_collection.type)

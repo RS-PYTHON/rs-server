@@ -72,8 +72,8 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     # Nominal case, combined session_id and datetime
     responses.add(
         responses.GET,
-        "http://127.0.0.1:5000/Files?$filter=SessionId eq 'session_id2' and PublicationDate gt 2022-01-01T12:00:00.000Z"
-        " and PublicationDate lt 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc&$top=1000&$skip=0",
+        "http://127.0.0.1:5000/Files?$filter=SessionId eq 'session_id2' and PublicationDate gte 2022-01-01T12:00:"
+        "00.000Z and PublicationDate lte 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc&$top=1000&$skip=0",
         json={"value": expected_products},
         status=200,
     )
@@ -91,8 +91,8 @@ def test_adgs_search_aux(client, mock_token_validation, mocker):
     mock_token_validation("adgs")
     responses.add(
         responses.GET,
-        "http://127.0.0.1:5000/Products?$filter=PublicationDate gt 2022-01-01T12:00:00.000Z"
-        " and PublicationDate lt 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc"
+        "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2022-01-01T12:00:00.000Z"
+        " and PublicationDate lte 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc"
         "&$top=1000&$skip=0&$expand=Attributes",
         json={"value": []},
         status=200,
@@ -800,8 +800,122 @@ class TestFeatureCollectionOdataStacMapping:
         """Test endpoint call with invalid pages (str, negative, 0)"""
         mock_token_validation()
         response = client.get(endpoint)
-        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+        assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "parameter is not sortable" in response.json()["detail"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint, odata, expected_code",
+        [
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.888Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888Z"
+                "&$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
+                "PublicationDate lte 2019-02-12T23:20:50.001Z&$orderby=PublicationDate desc&$top=10000&"
+                "$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50.001Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate lte 2018-02-12T23:20:50.001Z"
+                "&$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (ROUTER_PREFIX_AUXIP, "/auxip/search?collections=adgs&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=invalid/..",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=../invalid",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            # datime without miliseconds
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50.777Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.777Z"
+                "&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
+                "PublicationDate lte 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/..",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=../2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lte 2018-02-12T23:20:50.000Z"
+                "&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=invalid/..",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=../invalid",
+                "x",
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z",
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
+                "PublicationDate desc&$top=10000&$skip=0",
+                status.HTTP_200_OK,
+            ),
+        ],
+        indirect=["fastapi_app"],
+        ids=["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"],
+    )
+    @responses.activate
+    def test_valid_datetime(self, client, mock_token_validation, endpoint, odata, expected_code):
+        """Test used to group all combination of datetime values. Fixed, closed/open interval."""
+        mock_token_validation()
+        responses.add(responses.GET, odata, json={"value": []}, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == expected_code
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -1191,18 +1305,19 @@ def test_search_parameters(
             # Decode the query (for better readability) using: https://meyerweb.com/eric/tools/dencoder/
             # TODO after fixing rs-server, these parameters should appear in the OData request:
             #  - sortBy (https://pforge-exchange2.astrium.eads.net/jira/browse/RSPY-131)
+
             if adgs:
                 uid = user_ids.split(",", maxsplit=1)[0]
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
-                    "PublicationDate gt {date_min} and PublicationDate lt {date_max}"
+                    "PublicationDate gte {date_min} and PublicationDate lte {date_max}"
                     "&$orderby=PublicationDate%20asc&$top=10000&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
-                    "PublicationDate gt {date_min} and PublicationDate lt {date_max} "
+                    "PublicationDate gte {date_min} and PublicationDate lte {date_max} "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
@@ -1215,7 +1330,7 @@ def test_search_parameters(
                 odata_no_query = (
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
-                    "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
+                    "and PublicationDate gte {date_min} and PublicationDate lte {date_max}"
                     "&$orderby=PublicationDate%20asc&$top=10000&$skip=0"
                 )
 
@@ -1223,7 +1338,7 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
                     "and Satellite {satellite_op} {satellite} "
-                    "and PublicationDate gt {date_min} and PublicationDate lt {date_max}"
+                    "and PublicationDate gte {date_min} and PublicationDate lte {date_max}"
                     "&$orderby=PublicationDate%20asc&$top=10000&$skip=0"
                 )
             else:
@@ -1234,6 +1349,11 @@ def test_search_parameters(
             if collection_id == "col1":
                 odata = odata_query if user_query else odata_no_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]
+                # date_max = (
+                #     user_datetime.split("/")[1].replace(".000Z", ".999Z")
+                #     if method == "GET"
+                #     else user_datetime.split("/")[1]
+                # )
                 date_max = user_datetime.split("/")[1]
                 product_type = user_product_type
                 constellation = user_constellation
