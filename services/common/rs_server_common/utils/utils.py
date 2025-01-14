@@ -187,9 +187,9 @@ def validate_inputs_format(
     #     stop_date_dt = fixed_date_dt.replace(microsecond=999999)  # type: ignore
     #     fixed_date_dt = None
     #     return fixed_date_dt, start_date_dt, stop_date_dt
-    if stop_date_dt and "." not in stop_date:
-        # If stop_date interval miliseconds value is not defined, set it to 999
-        stop_date_dt = stop_date_dt.replace(microsecond=999999)  # type: ignore
+    # if stop_date_dt and "." not in stop_date:
+    #     # If stop_date interval miliseconds value is not defined, set it to 999
+    #     stop_date_dt = stop_date_dt.replace(microsecond=999999)  # type: ignore
 
     return fixed_date_dt, start_date_dt, stop_date_dt
 

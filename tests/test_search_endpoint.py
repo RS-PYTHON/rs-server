@@ -73,7 +73,7 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     responses.add(
         responses.GET,
         "http://127.0.0.1:5000/Files?$filter=SessionId eq 'session_id2' and PublicationDate gte 2022-01-01T12:00:"
-        "00.000Z and PublicationDate lte 2023-12-30T12:00:00.999Z&$orderby=PublicationDate desc&$top=1000&$skip=0",
+        "00.000Z and PublicationDate lte 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc&$top=1000&$skip=0",
         json={"value": expected_products},
         status=200,
     )
@@ -92,7 +92,7 @@ def test_adgs_search_aux(client, mock_token_validation, mocker):
     responses.add(
         responses.GET,
         "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2022-01-01T12:00:00.000Z"
-        " and PublicationDate lte 2023-12-30T12:00:00.999Z&$orderby=PublicationDate desc"
+        " and PublicationDate lte 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc"
         "&$top=1000&$skip=0&$expand=Attributes",
         json={"value": []},
         status=200,
@@ -868,7 +868,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.999Z&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                "PublicationDate lte 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10000&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
@@ -881,7 +881,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=../2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lte 2018-02-12T23:20:50.999Z"
+                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lte 2018-02-12T23:20:50.000Z"
                 "&$orderby=PublicationDate desc&$top=10000&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1349,11 +1349,12 @@ def test_search_parameters(
             if collection_id == "col1":
                 odata = odata_query if user_query else odata_no_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]
-                date_max = (
-                    user_datetime.split("/")[1].replace(".000Z", ".999Z")
-                    if method == "GET"
-                    else user_datetime.split("/")[1]
-                )
+                # date_max = (
+                #     user_datetime.split("/")[1].replace(".000Z", ".999Z")
+                #     if method == "GET"
+                #     else user_datetime.split("/")[1]
+                # )
+                date_max = user_datetime.split("/")[1]
                 product_type = user_product_type
                 constellation = user_constellation
                 satellite = user_satellite
@@ -1367,7 +1368,7 @@ def test_search_parameters(
                 else:
                     odata = odata_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
-                date_max = hardcoded_date.split("/")[1].replace(".000Z", ".999Z")
+                date_max = hardcoded_date.split("/")[1]
                 product_type = collection["query"].get("productType")
                 constellation = collection["query"].get("platformShortName")
                 satellite = collection["query"].get("Satellite", "")
@@ -1377,7 +1378,7 @@ def test_search_parameters(
             elif collection_id == "col3":
                 odata = odata_query
                 date_min = user_datetime.split("/", maxsplit=1)[0]  # intersection between user and hardcoded datetimes
-                date_max = hardcoded_date.split("/")[1].replace(".000Z", ".999Z")
+                date_max = hardcoded_date.split("/")[1]
                 limit = user_limit
                 if user_query:
                     product_type = user_product_type
