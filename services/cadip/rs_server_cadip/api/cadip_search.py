@@ -103,26 +103,30 @@ class MockPgstacCadip(MockPgstac):
         odata_params: dict,
         limit: int,
         page: int,
-        paginated_data=None,
+        feature=None,
         outputs=None,
     ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        session_data = process_session_search(
-            self.request,
-            collection.get("station", "cadip"),
-            odata_params.get("SessionId", []),
-            odata_params.get("Satellite", []),
-            odata_params.get("PublicationDate"),
-            odata_params.get("Retransfer"),
-            self.sortby,
-            limit,
-            page,
-        )
-        if not paginated_data:
-            return session_data
+        if not feature:
+            return process_session_search(
+                self.request,
+                collection.get("station", "cadip"),
+                odata_params.get("SessionId", []),
+                odata_params.get("Satellite", []),
+                odata_params.get("PublicationDate"),
+                odata_params.get("Retransfer"),
+                self.sortby,
+                limit,
+                page,
+            )
 
         # To be updated with proper ('')
-        features_ids = ", ".join(feature.id for feature in paginated_data.features)
+        if isinstance(feature, list):
+            features_ids = ", ".join(feature.id for feature in feature)
+        else:
+            features_ids = feature.id
+            feature = [feature]
+
         assets: list[dict] = []
         page = 1
         while True:
@@ -142,10 +146,10 @@ class MockPgstacCadip(MockPgstac):
             page += 1
 
         with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
-            outputs.append(link_assets_to_session(paginated_data, assets, json.loads(mapper.read())))
+            outputs.append(link_assets_to_session(feature, assets, json.loads(mapper.read())))
 
         # Ensure a valid return value
-        return paginated_data
+        return feature
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):

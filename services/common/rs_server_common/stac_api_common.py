@@ -19,6 +19,7 @@ import threading
 import traceback
 import urllib.parse
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from functools import lru_cache
@@ -572,28 +573,37 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # fill assets for cadip only
         if "/cadip" in self.request.url.path:
-            file_data = stac_pydantic.ItemCollection.model_validate(dict_data)
+            # After sessions were paginated, populate them with according assets.
+            # Group station and features, and send requests in parralell.
+            sessions_data = stac_pydantic.ItemCollection.model_validate(dict_data)
+            grouped_features = defaultdict(list)
+            for feature in sessions_data.features:
+                grouped_features[feature.collection].append(feature)
+            grouped_features = dict(grouped_features)  # type: ignore
             file_results: List = []
             file_threads = [
                 threading.Thread(
                     target=self.process_search,
                     args=(
-                        self.select_config(item["collection"]),
+                        self.select_config(collection),
                         self.odata,
                         self.limit,
                         self.page,
-                        file_data,
+                        grouped_features[collection],
                         file_results,
                     ),
                 )
-                for item in dict_data["features"]
+                for collection in grouped_features
             ]
+
             for thread in file_threads:
                 thread.start()
             for thread in file_threads:
                 thread.join()
+
             if file_results:
-                dict_data = file_results[-1].model_dump()
+                file_results = [Item(**feature) for feature in file_results[0]]
+                dict_data = ItemCollection(features=file_results, type="FeatureCollection").model_dump()
         # Handle pagination links.
         if len(dict_data["features"]) > 0:
             # Don't create next page if the current one does not have features
@@ -608,9 +618,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         paginated_item_collection: ItemCollection = sort_feature_collection(item_collection, self.sortby)
         return ItemCollection(
-            features=paginated_item_collection.features[
-                self.limit * (self.page - 1) : self.limit * self.page  # noqa: E203
-            ],
+            features=paginated_item_collection.features,
             type=paginated_item_collection.type,
         ).model_dump()
 

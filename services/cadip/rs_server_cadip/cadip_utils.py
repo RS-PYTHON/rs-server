@@ -187,10 +187,10 @@ def cadip_reverse_map_mission(platform: Union[str, None]) -> Tuple[Union[str, No
     return None, None
 
 
-def link_assets_to_session(session_data, assets_dict, mapper):
+def link_assets_to_session(features, assets_dict, mapper):
     """Function used to allocate assets to propper session item based on session id property."""
     # Validity check to be later added.
-    for feature in session_data.features:
+    for feature in features:
         matching_assets = [asset_item for asset_item in assets_dict if feature.id == asset_item["SessionId"]]
         for asset_item in matching_assets:
             asset_dict = {
@@ -223,7 +223,7 @@ def link_assets_to_session(session_data, assets_dict, mapper):
         except ValueError as e:
             logger.warning(f"Cannot update start/end datetime for {feature.id}: {e}")
             continue
-    return session_data
+    return [feature.model_dump() for feature in features]
 
 
 def prepare_collection(collection: ItemCollection) -> ItemCollection:
