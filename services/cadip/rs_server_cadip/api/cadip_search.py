@@ -49,7 +49,7 @@ from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
-from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
+from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.stac_api_common import (
     CollectionType,
     DateTimeType,
@@ -409,7 +409,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     station: str,
     session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
     platform: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
-    time_interval: Annotated[
+    datetime: Annotated[
         Union[str, None],
         WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=True)),
     ],
@@ -431,7 +431,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
         session_id (str, optional): Session identifier(s), comma-separated. Defaults to None.
         platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
-        time_interval (str, optional): Time interval in ISO 8601 format. Defaults to None.
+        datetime (str, optional): Datetime in ISO 8601 format. Defaults to None. Can be fixed, closed/open interval.
         limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
         sortby (str): Sort by +/-fieldName (ascending/descending).
         page (int): Page number to be displayed, defaults to first one.
@@ -446,7 +446,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
         products = (init_cadip_provider(f"{station}_session")).search(
-            TimeRange(*time_interval),
+            datetime,
             id=session_id,  # pylint: disable=redefined-builtin
             platform=platform,
             retransfer=retransfer,
@@ -484,6 +484,8 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         ) from exception
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(f"General failure! {exception}")
+        if isinstance(exception, HTTPException):
+            raise
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",
@@ -555,7 +557,6 @@ def process_files_search(  # pylint: disable=too-many-locals
     """
     if not (datetime or session_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
-    start_date, stop_date = validate_inputs_format(datetime)
     session: Union[List[str], str, None] = (
         ([sid.strip() for sid in session_id.split(",")] if session_id and "," in session_id else session_id)
         if session_id
@@ -567,7 +568,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     try:
         set_eodag_auth_token(station.lower(), "cadip")
         products = (init_cadip_provider(station)).search(
-            TimeRange(start_date, stop_date),
+            validate_inputs_format(datetime),
             id=session,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,

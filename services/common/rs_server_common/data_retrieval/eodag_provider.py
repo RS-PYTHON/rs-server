@@ -20,7 +20,7 @@ import tempfile
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
-from typing import List, Union
+from typing import Dict, List, Union
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
@@ -34,7 +34,10 @@ from eodag.utils.exceptions import (
 from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
 
-from .provider import CreateProviderFailed, Provider, SearchProductFailed, TimeRange
+from .provider import CreateProviderFailed, Provider, SearchProductFailed
+
+# from fastapi import HTTPException
+
 
 logger = Logging.default(__name__)
 
@@ -111,7 +114,7 @@ class EodagProvider(Provider):
         # we need to update its configuration from the latest env vars, if they have changed
         self.client.override_config_from_env()
 
-    def _specific_search(self, between: TimeRange, **kwargs) -> Union[SearchResult, List]:
+    def _specific_search(self, date_time, **kwargs) -> Union[SearchResult, List]:
         """
         Conducts a search for products within a specified time range.
 
@@ -122,8 +125,7 @@ class EodagProvider(Provider):
         respective identifiers.
 
         Args:
-            between (TimeRange): An object representing the start and end timestamps
-                                for the search range.
+            date_time: An object representing search datetime, can be fixed or open/closed interval.
 
         Returns:
             SearchResult: A dictionary where keys are product identifiers and
@@ -138,7 +140,7 @@ class EodagProvider(Provider):
         Raises:
             Exception: If the search encounters an error or fails, an exception is raised.
         """
-        mapped_search_args = {}
+        mapped_search_args: Dict[str, Union[str, None]] = {}
 
         if session_id := kwargs.pop("id", None):
             # Map session_id to the appropriate eodag parameter
@@ -161,12 +163,14 @@ class EodagProvider(Provider):
             if retransfer := kwargs.pop("retransfer", None):
                 mapped_search_args["Retransfer"] = str(retransfer).lower()
 
-        if between:
+        if date_time:
             # Since now both for files and sessions, time interval is optional, map it if provided.
+            fixed, start, end = [str(date) if date else None for date in date_time]
             mapped_search_args.update(
                 {
-                    "startTimeFromAscendingNode": str(between.start),
-                    "completionTimeFromAscendingNode": str(between.end),
+                    "PublicationDate": fixed,
+                    "StartPublicationDate": start,
+                    "StopPublicationDate": end,
                 },
             )
         try:
@@ -218,6 +222,10 @@ class EodagProvider(Provider):
             None
 
         """
+        # Dirty fix for eodag: change extension
+        org_file = to_file
+        to_file = to_file.with_suffix(to_file.suffix + "_fix_eodag")
+
         # Use thread-lock because self.client.download is not thread-safe
         with self.client.lock:
             product = self.create_eodag_product(product_id, to_file.name)
@@ -225,6 +233,10 @@ class EodagProvider(Provider):
             # authent_plugin = self.client._plugins_manager.get_auth_plugin(product.provider)
             # product.register_downloader(download_plugin, authent_plugin)
             self.client.download(product, output_dir=str(to_file.parent))
+
+            # Dirty fix continued: rename the download directory
+            if to_file.is_dir() and (not org_file.is_dir()):
+                to_file.rename(org_file)
 
     def create_eodag_product(self, product_id: str, filename: str):
         """Initialize an EO product with minimal properties.

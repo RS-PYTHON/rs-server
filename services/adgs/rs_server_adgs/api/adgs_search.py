@@ -47,7 +47,7 @@ from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
-from rs_server_common.data_retrieval.provider import CreateProviderFailed, TimeRange
+from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.stac_api_common import (
     CollectionType,
     DateTimeType,
@@ -348,10 +348,9 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
     set_eodag_auth_token(station, "auxip")
-    (start_date, stop_date) = validate_inputs_format(publication_date) if publication_date else (None, None)
     try:
         products = (init_adgs_provider(station)).search(
-            TimeRange(start_date, stop_date),
+            validate_inputs_format(publication_date, raise_errors=True),
             attr_ptype=product_type,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
@@ -384,6 +383,8 @@ def process_product_search(  # pylint: disable=too-many-locals
 
     except Exception as exception:  # pylint: disable=broad-exception-caught
         logger.error(f"General failure! {exception}")
+        if isinstance(exception, HTTPException):
+            raise
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",
@@ -424,14 +425,12 @@ async def search_products(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
 
-    start_date, stop_date = validate_inputs_format(datetime)
     if limit < 1:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     set_eodag_auth_token("adgs", "auxip")
     try:
-        time_range = TimeRange(start_date, stop_date)
         products = (init_adgs_provider("adgs")).search(
-            time_range,
+            validate_inputs_format(datetime),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
         )

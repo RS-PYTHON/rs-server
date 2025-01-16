@@ -102,15 +102,7 @@ def do_test_link_assets_to_session(start: bool, end: bool):
                 0,
                 tzinfo=timezone.utc,
             )
-            assert item.properties.end_datetime == datetime(  # pylint: disable=no-member
-                2024,
-                12,
-                2,
-                18,
-                49,
-                55,
-                tzinfo=timezone.utc,
-            )
+            assert item.properties.end_datetime == "2024-12-02T18:49:55.000Z"  # pylint: disable=no-member
         else:
             assert item.properties.start_datetime is None  # pylint: disable=no-member
             assert item.properties.end_datetime is None  # pylint: disable=no-member

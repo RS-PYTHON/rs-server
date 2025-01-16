@@ -5,17 +5,17 @@
             "Name": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
             "ContentType": "application/octet-stream",
             "ContentLength": "2100565",
-            "OriginDate": "2024-04-12T15:16:47.000Z",
-            "PublicationDate": "2021-02-14T00:00:00.000Z",
-            "EvictionDate": "2021-02-21T00:00:00.000Z",
+            "OriginDate": "2024-04-12T10:21:05.821Z",
+            "PublicationDate": "2021-02-14T10:21:05.821Z",
+            "EvictionDate": "2021-02-21T10:21:05.821Z",
             "Checksum": [
                 {
                     "Algorithm": "MD5",
                     "Value": "144921A67fc7EdE75e4818121fcf4d6C",
-                    "ChecksumDate": "2021-02-14T00:00:00.000Z"
+                    "ChecksumDate": "2021-02-14T10:21:05.821Z"
                 }
             ],
-            "ContentDate": {"Start": "2021-02-21T00:00:00.000Z", "End": "2021-02-21T00:00:00.000Z"},
+            "ContentDate": {"Start": "2021-02-21T10:21:05.821Z", "End": "2021-02-21T10:21:05.821Z"},
             "Attributes": [
                 {
                     "@odata.type": "#OData.CSC.StringAttribute",
@@ -45,7 +45,7 @@
                     "@odata.type": "#OData.CSC.DateTimeOffsetAttribute",
                     "Name": "endingDateTime",
                     "ValueType": "DateTimeOffset",
-                    "Value": "2021-02-21T00:00:00.000Z"
+                    "Value": "2021-02-21T10:21:05.821Z"
                 },
                 {
                     "@odata.type": "#OData.CSC.StringAttribute",
@@ -63,7 +63,7 @@
                     "@odata.type": "#OData.CSC.DateTimeOffsetAttribute",
                     "Name": "processingDate",
                     "ValueType": "DateTimeOffset",
-                    "Value": "2021-02-21T00:00:00.000Z"
+                    "Value": "2021-02-21T10:21:05.821Z"
                 }
             ]
         }
