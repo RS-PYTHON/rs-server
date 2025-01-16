@@ -964,11 +964,11 @@ class TestStagingMainExecution:
         # Simulate successful task preparation
         mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
         mock_dask_cluster_connect = mocker.patch.object(staging_instance, "dask_cluster_connect")
-        staging_instance.assets_info = ["some_asset"]
+        staging_instance.assets_info = [("https://cadip/some_asset", "some_asset")]
 
         # Simulate an exception in the token retrieval
         mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_station_service",
+            "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mocker.Mock(),
         )
         mocker.patch(
@@ -1007,7 +1007,7 @@ class TestStagingMainExecution:
         mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks_results")
         # Mock token retrieval
         mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_station_service",
+            "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mocker.Mock(),
         )
         mocker.patch("rs_server_staging.processors.get_station_token", return_value="mock_token")
@@ -1046,19 +1046,19 @@ class TestStagingMainExecution:
         mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks_results")
         # Mock token retrieval
         mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_station_service",
+            "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mocker.Mock(),
         )
 
         mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_station_service",
+            "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value="mock_external_auth_config",
         )
         # Mock the external auth configuration
         mock_external_auth_config = mocker.Mock()
         mock_external_auth_config.trusted_domains = ["test_trusted.example"]  # Set the trusted_domains member
         mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_station_service",
+            "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mock_external_auth_config,
         )
         mocker.patch("rs_server_staging.processors.get_station_token", return_value="mock_token")

@@ -99,17 +99,15 @@ class InputModel(BaseModel):
     """Model for input data.
 
     This model encapsulates the input information, including a collection of features,
-    metadata, and the provider.
+    metadata.
 
     Attributes:
         collection (CollectionModel): The collection of metadata for the input.
         items (FeatureCollectionModel): A collection of features related to the input.
-        provider (str): The name or identifier of the data provider.
     """
 
     collection: CollectionModel
     items: FeatureCollectionModel
-    provider: str
 
 
 class OutputModel(BaseModel):
