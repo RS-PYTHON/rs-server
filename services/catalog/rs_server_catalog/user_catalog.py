@@ -401,9 +401,8 @@ from the the {self.request_ids['owner_id']}_{self.request_ids['collection_ids'][
                 # Check if the S3 key exists
                 if not self.check_s3_key(item, asset, s3_key):
                     # update the 'href' key with the download link
-                    item_id = self.request_ids["item_id"]
                     new_href = f"https://{request.url.netloc}/catalog/\
-collections/{user}:{collection_id}/items/{item_id}/download/{asset}"
+collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/{asset}"
                     content["assets"][asset].update({"href": new_href})
                     # Update the S3 path to use the catalog bucket and create the alternate field
                     new_s3_href = {"s3": {"href": s3_key}}

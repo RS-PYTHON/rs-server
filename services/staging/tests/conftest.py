@@ -136,7 +136,7 @@ def staging(mocker):
     """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
     mock_credentials = mocker.Mock()
-    mock_credentials.headers = {"cookie": "fake-cookie"}
+    mock_credentials.headers = {"cookie": "fake-cookie", "host": "fake-host"}
     mock_input_collection = mocker.Mock()
     mock_collection = "test_collection"
     mock_item = "test_item"
