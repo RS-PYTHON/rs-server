@@ -129,6 +129,7 @@ yaml.add_representer(LiteralStr, represent_literal_str)
 
 # Replace local urls like http(s)://(127.0.0.1|localhost):5xxx
 REGEX_URL = re.compile(r"(https?://)(127.0.0.1|localhost):5\d+")
+REGEX_DOMAIN = re.compile(r"mockup-.+-svc.processing.svc.cluster.local")
 
 # Replace k8s values
 REGEX_RANGE_START = r"({{-?\s*range\s.*-?}})"
@@ -324,13 +325,13 @@ def copy_to_demo(input_path_relative: str):
             if not isinstance(value, str):
                 raise RuntimeError(f"Invalid argument: {value}")
             if station.adgs:
-                return re.sub(REGEX_URL, r"\g<1>adgs-station:5000", value)
+                return re.sub(REGEX_DOMAIN, "adgs-station", re.sub(REGEX_URL, r"\g<1>adgs-station:5000", value))
             if station.cadip:
-                return re.sub(REGEX_URL, r"\g<1>cadip-station:5000", value)
+                return re.sub(REGEX_DOMAIN, "cadip-station", re.sub(REGEX_URL, r"\g<1>cadip-station:5000", value))
             if station.lta:
-                return re.sub(REGEX_URL, r"\g<1>lta-station:5000", value)
+                return re.sub(REGEX_DOMAIN, "lta-station", re.sub(REGEX_URL, r"\g<1>lta-station:5000", value))
             if station.prip:
-                return re.sub(REGEX_URL, r"\g<1>prip-station:5000", value)
+                return re.sub(REGEX_DOMAIN, "prip-station", re.sub(REGEX_URL, r"\g<1>prip-station:5000", value))
             # No modification
             return value
 

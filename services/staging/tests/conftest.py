@@ -140,7 +140,6 @@ def staging(mocker):
     mock_input_collection = mocker.Mock()
     mock_collection = "test_collection"
     mock_item = "test_item"
-    mock_provider = "cadip"
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
 
@@ -157,7 +156,6 @@ def staging(mocker):
         input_collection=mock_input_collection,
         collection=mock_collection,
         item=mock_item,
-        provider=mock_provider,
         db_process_manager=mock_db,
         cluster=mock_cluster,
     )
