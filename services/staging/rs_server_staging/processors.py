@@ -20,6 +20,7 @@ import time
 import uuid
 from datetime import datetime
 from typing import Union
+from urllib.parse import urlparse
 
 import requests
 from dask.distributed import CancelledError, Client, LocalCluster, as_completed
@@ -30,7 +31,7 @@ from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from requests.auth import AuthBase
 from rs_server_common.authentication.authentication_to_external import (
     get_station_token,
-    load_external_auth_config_by_station_service,
+    load_external_auth_config_by_domain,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
@@ -144,7 +145,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         input_collection: FeatureCollectionModel,
         collection: str,
         item: str,
-        provider: str,
         db_process_manager: PostgreSQLManager,
         cluster: LocalCluster,
     ):  # pylint: disable=super-init-not-called
@@ -157,7 +157,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             input_collection (FeatureCollectionModel): The input collection of RSPY features to process.
             collection (str): The name of the collection from the catalog to use.
             item (str): The specific item to process within the collection.
-            provider (str): The name of the provider offering the data for processing.
             db_process_manager (PostgreSQLManager): The pygeoapi Postgresql Manager used to track job execution
                 status and metadata.
             cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
@@ -173,7 +172,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             item_collection (FeatureCollectionModel): Holds the input collection of features.
             catalog_collection (str): Name of the catalog collection.
             catalog_item_name (str): Name of the specific item in the catalog being processed.
-            provider (str): The data provider for the current processing task.
             assets_info (list): Holds information about assets associated with the processing.
             tasks (list): List of tasks to be executed for processing.
             lock (threading.Lock): A threading lock to synchronize access to shared resources.
@@ -206,7 +204,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.item_collection: FeatureCollectionModel = input_collection
         self.catalog_collection: str = collection
         self.catalog_item_name: str = item
-        self.provider: str = provider
         self.assets_info: list = []
         self.tasks: list = []
         # Tasks finished
@@ -796,9 +793,21 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             self.logger.info("There are no assets to stage. Exiting....")
             return
 
+        # Determine the domain(s)
+        domains = list({urlparse(asset[0]).hostname for asset in self.assets_info})
+        self.logger.info("Staging from domain(s) {domains}")
+        if len(domains) > 1:
+            self.log_job_execution(
+                EStagingStatus.FAILED,
+                0,
+                detail="Staging from multiple domains is not supported yet",
+            )
+            return
+        domain = domains[0]
+
         # retrieve the token
         try:
-            external_auth_config = load_external_auth_config_by_station_service(self.provider.lower())
+            external_auth_config = load_external_auth_config_by_domain(domain)
             token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
             self.logger.error(
@@ -807,8 +816,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             self.log_job_execution(
                 EStagingStatus.FAILED,
                 0,
-                detail="Failed to retrieve the token needed to connect to the external "
-                f"station {self.provider.lower()}",
+                detail=f"Failed to retrieve the token needed to connect to the external station {domain}",
             )
             return
 

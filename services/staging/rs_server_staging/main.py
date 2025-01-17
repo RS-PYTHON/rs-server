@@ -271,7 +271,6 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             data.inputs.items,
             data.inputs.collection.id,
             data.outputs["result"].id,
-            data.inputs.provider,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
         ).execute()
