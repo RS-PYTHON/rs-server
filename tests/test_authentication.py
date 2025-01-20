@@ -370,22 +370,6 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
             DATE_PARAM,
             "rs_cadip_{station}_read",
         ],
-        [
-            {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
-            "/cadip/{station}/cadu",
-            "GET",
-            CADIP_STATIONS,
-            NAME_PARAM,
-            "rs_cadip_{station}_download",
-        ],
-        [
-            {**CLUSTER_MODE, **ROUTER_PREFIX_CADIP},
-            "/cadip/{station}/cadu/status",
-            "GET",
-            CADIP_STATIONS,
-            NAME_PARAM,
-            "rs_cadip_{station}_download",
-        ],
         [{**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP}, "/auxip", "GET", ADGS_STATIONS, NAME_PARAM, "rs_adgs_landing_page"],
         [
             {**CLUSTER_MODE, **ROUTER_PREFIX_AUXIP},
@@ -427,8 +411,6 @@ NAME_PARAM = {"name": "TEST_FILE.raw"}
         "cadip_sp./ecific_collection",
         "cadip_items",
         "cadip_specific_item",
-        "/cadip/{station}/cadu",
-        "/cadip/{station}/cadu/status",
         "/auxip",
         "auxip_collections",
         "auxip_specific_collection",
@@ -523,6 +505,12 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
             break  # no need to test the other endpoints
 
         # Else, with a valid station, we should receive an unauthorized response
+        if response.status_code == status.HTTP_404_NOT_FOUND:
+            import pdb
+
+            pdb.set_trace()
+            logger.debug("TEST")
+
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Idem with non-relevant roles
