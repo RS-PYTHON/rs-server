@@ -603,10 +603,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
             if file_results:
                 file_results = [Item(**feature) for feature in file_results[0]]
-                dict_data = sort_feature_collection(
-                    ItemCollection(features=file_results, type="FeatureCollection"),
-                    self.sortby,
-                ).model_dump()
+                dict_data = ItemCollection(features=file_results, type="FeatureCollection").model_dump()
         # Handle pagination links.
         if len(dict_data["features"]) > 0:
             # Don't create next page if the current one does not have features
