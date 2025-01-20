@@ -16,9 +16,9 @@
 
 from __future__ import annotations
 
-import enum
 from threading import Lock
 
+from pygeoapi.util import JobStatus
 from rs_server_common.db import Base
 from sqlalchemy import Column, DateTime, Enum, Float, String, func, orm
 
@@ -27,33 +27,13 @@ from sqlalchemy import Column, DateTime, Enum, Float, String, func, orm
 # Ignore pylint and mypy false positive errors on sqlalchemy
 
 
-class EStagingStatus(str, enum.Enum):
-    """
-    Staging status enumeration.
-    """
-
-    QUEUED = "queued"  # Request received, processor will start soon
-    CREATED = "created"  # Processor has been initialised
-    STARTED = "started"  # Processor execution has started
-    IN_PROGRESS = "in_progress"  # Processor execution is in progress
-    STOPPED = "stopped"
-    FAILED = "failed"
-    FINISHED = "finished"
-    PAUSED = "paused"
-    RESUMED = "resumed"
-    CANCELLED = "cancelled"
-
-    def __str__(self):
-        return self.value
-
-
 class StagingJobStatus(Base):  # pylint: disable=too-few-public-methods
     """Abstract implementation of SQLAlchemy Base"""
 
     __tablename__ = "jobs"
 
     identifier = Column(String, primary_key=True, unique=True, index=True)
-    status = Column(Enum(EStagingStatus), nullable=False)
+    status = Column(Enum(JobStatus), nullable=False)
     progress = Column(Float, server_default="0.0")
     # Pylint issue with func.now, check this: https://github.com/sqlalchemy/sqlalchemy/issues/9189
     created_at = Column(DateTime, server_default=func.now())  # pylint: disable=not-callable

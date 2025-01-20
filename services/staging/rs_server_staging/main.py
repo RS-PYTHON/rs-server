@@ -46,6 +46,9 @@ from starlette.status import (
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
+# flake8: noqa: F401
+# pylint: disable=W0611
+from . import staging_job_status  # DON'T REMOVE (needed for SQLAlchemy)
 from .rspy_models import ProcessMetadataModel
 
 logger = Logging.default(__name__)
@@ -116,7 +119,7 @@ def init_db(pause: int = 3, timeout: int | None = None) -> PostgreSQLManager:
 
     This function constructs the database URL using environment variables for PostgreSQL
     credentials, host, port, and database name. It then creates an SQLAlchemy engine and
-    registers the ENUM type EStagingStatus and the 'job' tables if they don't already exist.
+    registers the ENUM type JobStatus and the 'job' tables if they don't already exist.
 
     Environment Variables:
         - POSTGRES_USER: Username for database authentication.

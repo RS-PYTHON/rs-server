@@ -98,7 +98,7 @@ def dbj_():
     return [
         {
             "identifier": "job_1",
-            "status": "started",
+            "status": "running",
             "progress": 0.0,
             "detail": TEST_DETAIL,
             "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
@@ -106,7 +106,7 @@ def dbj_():
         },
         {
             "identifier": "job_2",
-            "status": "in_progress",
+            "status": "running",
             "progress": 55.0,
             "detail": TEST_DETAIL,
             "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
@@ -114,7 +114,7 @@ def dbj_():
         },
         {
             "identifier": "job_3",
-            "status": "paused",
+            "status": "running",
             "progress": 15.0,
             "detail": TEST_DETAIL,
             "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
@@ -122,7 +122,7 @@ def dbj_():
         },
         {
             "identifier": "job_4",
-            "status": "finished",
+            "status": "successful",
             "progress": 100.0,
             "detail": TEST_DETAIL,
             "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
