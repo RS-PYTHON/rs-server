@@ -505,12 +505,6 @@ async def test_endpoint_roles(  # pylint: disable=too-many-arguments,too-many-lo
             break  # no need to test the other endpoints
 
         # Else, with a valid station, we should receive an unauthorized response
-        if response.status_code == status.HTTP_404_NOT_FOUND:
-            import pdb
-
-            pdb.set_trace()
-            logger.debug("TEST")
-
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
         # Idem with non-relevant roles
