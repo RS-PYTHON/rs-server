@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# We will add rs-server-staging to the dask-gateway-server image for local mode
+FROM ghcr.io/rs-python/base/dask-gateway-server/local:latest
 
-# Build stage for multi stage build.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
+USER root
 
-# Install dependencies
+# Install dependencies for compilation
 RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
 
 # Update pip version
@@ -32,17 +33,12 @@ ADD ./*.whl /tmp/whl
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_staging-*.whl
 
-# Final stage. Don't use alpine, it's too different from the build stage.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
+# Remove dependencies for compilation
+RUN apt autoremove -y libpq-dev gcc
 
 # Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
-RUN \
-    apt update && apt upgrade -y && \
-    apt install -y libpq-dev libexpat1 && \
+RUN apt install -y libpq-dev libexpat1 && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
-
-# Copy the whole /usr/local dir (that contains the python installation) from the build stage
-COPY --from=builder /usr/local /usr/local
 
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install
@@ -50,17 +46,8 @@ RUN opentelemetry-bootstrap -a install
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
 
-# Add a default user
-RUN useradd -m user
-USER user
-WORKDIR /home/user
-
 # The CI/CD will replace this tag in debug mode or else remove it
 # [DEBUG_MODE_COMMANDS]
 
-# After this, make sure we're still non-root
-USER user
-
-ENTRYPOINT [ \
-    "python", "-m", "uvicorn", "rs_server_staging.main:app", \
-    "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
+# Restore default user from parent image
+USER dask:dask
