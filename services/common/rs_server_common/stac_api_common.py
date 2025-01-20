@@ -604,7 +604,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if file_results:
                 file_results = [Item(**feature) for feature in file_results[0]]
                 dict_data = sort_feature_collection(
-                    ItemCollection(features=file_results, type="FeatureCollection"), self.sortby,
+                    ItemCollection(features=file_results, type="FeatureCollection"),
+                    self.sortby,
                 ).model_dump()
         # Handle pagination links.
         if len(dict_data["features"]) > 0:
@@ -620,7 +621,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         paginated_item_collection: ItemCollection = sort_feature_collection(item_collection, self.sortby)
         return ItemCollection(
-            features=paginated_item_collection.features,
+            features=paginated_item_collection.features[
+                self.limit * (self.page - 1) : self.limit * self.page  # noqa: E203
+            ],
             type=paginated_item_collection.type,
         ).model_dump()
 
@@ -698,11 +701,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             search_limit = self.limit
             search_page = self.page
 
-            # # Don't forward limit value for /search endpoints
-            # # just use maximum to gather all possible results, page is always 1
-            # if "/search" in self.request.url.path:
-            #     search_limit = self.limit
-            #     search_page = 1
+            # Don't forward limit value for /search endpoints
+            # just use maximum to gather all possible results, page is always 1
+            if "/search" in self.request.url.path:
+                search_limit = self.limit * self.page
+                search_page = 1
 
             # Do the search for this collection
             features = (self.process_search(collection, self.odata, search_limit, search_page)).features
