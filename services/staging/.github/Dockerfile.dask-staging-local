@@ -13,15 +13,21 @@
 # limitations under the License.
 
 # We will add rs-server-staging to the dask-gateway-server image for local mode
-FROM ghcr.io/rs-python/base/dask-gateway-server/local:latest
+FROM ghcr.io/rs-python/base/dask-gateway-server/local:2024.1.0
 
-USER root
+# Default user from parent image
+ARG USER=dask:dask
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+#
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/staging/.github/Dockerfile.dask-staging-local"
 
 # Install dependencies for compilation
+USER root
 RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
-
-# Update pip version
-RUN pip install --no-cache-dir --upgrade pip
+USER $USER
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
@@ -33,21 +39,16 @@ ADD ./*.whl /tmp/whl
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_staging-*.whl
 
-# Remove dependencies for compilation
-RUN apt autoremove -y libpq-dev gcc
-
-# Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
-RUN apt install -y libpq-dev libexpat1 && \
-    rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
-
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install
 
+# Remove dependencies for compilation
+USER root
+RUN apt autoremove -y libpq-dev gcc
+
+# Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
+RUN apt install -y libpq-dev libexpat1
+
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
-
-# The CI/CD will replace this tag in debug mode or else remove it
-# [DEBUG_MODE_COMMANDS]
-
-# Restore default user from parent image
-USER dask:dask
+USER $USER
