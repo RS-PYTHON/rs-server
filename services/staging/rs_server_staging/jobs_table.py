@@ -16,37 +16,58 @@
 
 from __future__ import annotations
 
+import enum
 from threading import Lock
 
 from pygeoapi.util import JobStatus
 from rs_server_common.db import Base
-from sqlalchemy import Column, DateTime, Enum, Float, String, func, orm
+from sqlalchemy import Column, DateTime, Enum, Integer, String, func, orm
 
 # pylint: disable=attribute-defined-outside-init
 # mypy: ignore-errors
 # Ignore pylint and mypy false positive errors on sqlalchemy
 
 
-class StagingJobStatus(Base):  # pylint: disable=too-few-public-methods
-    """Abstract implementation of SQLAlchemy Base"""
+class JobType(enum.Enum):
+    """
+    Enum for the job type specified in OGC API Processes specification
+    """
+
+    #  From the specification
+    process = "process"  # pylint: disable=invalid-name
+
+
+class JobsTable(Base):  # pylint: disable=too-few-public-methods
+    """
+    Abstract implementation of SQLAlchemy Base
+
+    Must be kept in line with
+    https://github.com/geopython/pygeoapi/blob/master/tests/data/postgres_manager_full_structure.backup.sql
+    """
 
     __tablename__ = "jobs"
 
+    type = Column(Enum(JobType), nullable=False, server_default=JobType.process.value)
     identifier = Column(String, primary_key=True, unique=True, index=True)
+    process_id = Column(String, nullable=False)
     status = Column(Enum(JobStatus), nullable=False)
-    progress = Column(Float, server_default="0.0")
+    progress = Column(Integer, server_default="0", nullable=False)
     # Pylint issue with func.now, check this: https://github.com/sqlalchemy/sqlalchemy/issues/9189
-    created_at = Column(DateTime, server_default=func.now())  # pylint: disable=not-callable
+    created = Column(DateTime, server_default=func.now())  # pylint: disable=not-callable
+    started = Column(DateTime, server_default=func.now())  # pylint: disable=not-callable
+    finished = Column(DateTime)  # pylint: disable=not-callable
     # onupdate=func.now(), server_onupdate=func.now() is not working, did not figure why
-    # instead, force the PostgresqlManager from pygeoapi to update the updated_at column specifically with
+    # instead, force the PostgreSQLManager from pygeoapi to update the updated column specifically with
     # update_job function (check processors.py log_job_execution function)
-    updated_at = Column(
+    updated = Column(
         DateTime,
         server_default=func.now(),  # pylint: disable=not-callable
         onupdate=func.now(),  # pylint: disable=not-callable
         server_onupdate=func.now(),  # pylint: disable=not-callable
     )
-    detail = Column(String)
+    location = Column(String)
+    mimetype = Column(String)
+    message = Column(String)
 
     def __init__(self, *args, **kwargs):
         """Invoked when creating a new record in the database table."""

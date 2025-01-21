@@ -48,7 +48,7 @@ from starlette.status import (
 
 # flake8: noqa: F401
 # pylint: disable=W0611
-from . import staging_job_status  # DON'T REMOVE (needed for SQLAlchemy)
+from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
 from .rspy_models import ProcessMetadataModel
 
 logger = Logging.default(__name__)
