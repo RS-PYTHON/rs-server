@@ -98,35 +98,35 @@ def dbj_():
     return [
         {
             "identifier": "job_1",
-            "status": "started",
+            "status": "running",
             "progress": 0.0,
-            "detail": TEST_DETAIL,
-            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+            "message": TEST_DETAIL,
+            "created": str(datetime(2024, 1, 1, 12, 0, 0)),
+            "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
         },
         {
             "identifier": "job_2",
-            "status": "in_progress",
+            "status": "running",
             "progress": 55.0,
-            "detail": TEST_DETAIL,
-            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+            "message": TEST_DETAIL,
+            "created": str(datetime(2024, 1, 2, 12, 0, 0)),
+            "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
         },
         {
             "identifier": "job_3",
-            "status": "paused",
+            "status": "running",
             "progress": 15.0,
-            "detail": TEST_DETAIL,
-            "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
+            "message": TEST_DETAIL,
+            "created": str(datetime(2024, 1, 3, 12, 0, 0)),
+            "updated": str(datetime(2024, 1, 3, 13, 0, 0)),
         },
         {
             "identifier": "job_4",
-            "status": "finished",
+            "status": "successful",
             "progress": 100.0,
-            "detail": TEST_DETAIL,
-            "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
+            "message": TEST_DETAIL,
+            "created": str(datetime(2024, 1, 4, 12, 0, 0)),
+            "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
         },
     ]
 
@@ -140,7 +140,6 @@ def staging(mocker):
     mock_input_collection = mocker.Mock()
     mock_collection = "test_collection"
     mock_item = "test_item"
-    mock_provider = "cadip"
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
 
@@ -157,7 +156,6 @@ def staging(mocker):
         input_collection=mock_input_collection,
         collection=mock_collection,
         item=mock_item,
-        provider=mock_provider,
         db_process_manager=mock_db,
         cluster=mock_cluster,
     )

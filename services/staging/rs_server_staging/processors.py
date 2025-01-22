@@ -20,6 +20,7 @@ import time
 import uuid
 from datetime import datetime
 from typing import Union
+from urllib.parse import urlparse
 
 import requests
 from dask.distributed import CancelledError, Client, LocalCluster, as_completed
@@ -27,10 +28,11 @@ from dask_gateway import Gateway, JupyterHubAuth
 from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
+from pygeoapi.util import JobStatus
 from requests.auth import AuthBase
 from rs_server_common.authentication.authentication_to_external import (
     get_station_token,
-    load_external_auth_config_by_station_service,
+    load_external_auth_config_by_domain,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
@@ -38,7 +40,6 @@ from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
-from .staging_job_status import EStagingStatus
 
 
 # Custom authentication class
@@ -144,7 +145,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         input_collection: FeatureCollectionModel,
         collection: str,
         item: str,
-        provider: str,
         db_process_manager: PostgreSQLManager,
         cluster: LocalCluster,
     ):  # pylint: disable=super-init-not-called
@@ -157,7 +157,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             input_collection (FeatureCollectionModel): The input collection of RSPY features to process.
             collection (str): The name of the collection from the catalog to use.
             item (str): The specific item to process within the collection.
-            provider (str): The name of the provider offering the data for processing.
             db_process_manager (PostgreSQLManager): The pygeoapi Postgresql Manager used to track job execution
                 status and metadata.
             cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
@@ -168,12 +167,11 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             catalog_url (str): URL of the catalog service, fetched from environment or default value.
             download_url (str): URL of the RS server, fetched from environment or default value.
             job_id (str): A unique identifier for the processing job, generated using UUID.
-            detail (str): Status message describing the current state of the processing unit.
+            message (str): Status message describing the current state of the processing unit.
             progress (int): Integer tracking the progress of the current job.
             item_collection (FeatureCollectionModel): Holds the input collection of features.
             catalog_collection (str): Name of the catalog collection.
             catalog_item_name (str): Name of the specific item in the catalog being processed.
-            provider (str): The data provider for the current processing task.
             assets_info (list): Holds information about assets associated with the processing.
             tasks (list): List of tasks to be executed for processing.
             lock (threading.Lock): A threading lock to synchronize access to shared resources.
@@ -196,17 +194,16 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         #################
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
-        self.detail: str = "Processing Unit was created"
+        self.message: str = "Processing Unit was created"
         self.progress: float = 0.0
         self.db_process_manager = db_process_manager
-        self.status = EStagingStatus.QUEUED
+        self.status = JobStatus.accepted
         self.create_job_execution()
         #################
         # Inputs section
         self.item_collection: FeatureCollectionModel = input_collection
         self.catalog_collection: str = collection
         self.catalog_item_name: str = item
-        self.provider: str = provider
         self.assets_info: list = []
         self.tasks: list = []
         # Tasks finished
@@ -232,10 +229,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         Returns:
             dict: A dictionary containing the job ID and a status message indicating the job
                 has started.
-                Example: {"started": <job_id>}
+                Example: {"running": <job_id>}
 
         Logs:
-            EStagingStatus.CREATED: Logs the creation of a new processing job.
             Error: Logs an error if connecting to the catalog service fails.
 
         Raises:
@@ -246,11 +242,11 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Check if item collection is provided
         if not self.item_collection or not hasattr(self.item_collection, "features"):
             self.log_job_execution(
-                EStagingStatus.FINISHED,
+                JobStatus.successful,
                 0,
-                detail="No valid items were provided in the input for staging",
+                message="No valid items were provided in the input for staging",
             )
-            return {"finished": self.job_id}
+            return {JobStatus.successful.value: self.job_id}
 
         # Filter out features with no assets
         self.item_collection.features = [feature for feature in self.item_collection.features if feature.assets]
@@ -258,27 +254,25 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Check if any features with assets remain
         if not self.item_collection.features:
             self.log_job_execution(
-                EStagingStatus.FINISHED,
+                JobStatus.successful,
                 0,
-                detail="No items with assets were found in the input for staging",
+                message="No items with assets were found in the input for staging",
             )
-            return {"finished": self.job_id}
+            return {JobStatus.successful.value: self.job_id}
 
-        # set the CREATED status for the job
-        self.log_job_execution(EStagingStatus.CREATED)
         # Execution section
         if not await self.check_catalog():
             self.logger.error(
                 f"Failed to start the staging process. Checking the collection '{self.catalog_collection}' failed !",
             )
             self.log_job_execution(
-                EStagingStatus.FAILED,
+                JobStatus.failed,
                 0,
-                detail="Failed to start the staging process. "
+                message="Failed to start the staging process. "
                 f"Checking the collection '{self.catalog_collection}' failed !",
             )
-            return {"failed": self.job_id}
-        self.log_job_execution(EStagingStatus.STARTED, 0, detail="Successfully searched catalog")
+            return {JobStatus.failed.value: self.job_id}
+        self.log_job_execution(JobStatus.running, 0, message="Successfully searched catalog")
         # Start execution
         loop = asyncio.get_event_loop()
         if loop.is_running():
@@ -288,53 +282,54 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             # If the loop is not running, run it until complete
             loop.run_until_complete(self.process_rspy_features())
 
-        return {"started": self.job_id}
+        return {JobStatus.running.value: self.job_id}
 
     def create_job_execution(self):
         """
         Creates a new job execution entry and tracks its status.
 
         This method creates a job entry in the tracker with the current job's ID, status,
-        progress, and detail. The job information is stored in a persistent tracker to allow
+        progress, and message. The job information is stored in a persistent tracker to allow
         monitoring and updating of the job's execution state.
 
         The following information is stored:
             - `job_id`: The unique identifier for the job.
             - `status`: The current status of the job, converted to a JSON-serializable format.
             - `progress`: The progress of the job execution.
-            - `detail`: Additional details about the job's execution.
+            - `message`: Additional details about the job's execution.
 
         Notes:
             - The `self.tracker` is expected to have an `insert` method to store the job information.
-            - The status is converted to JSON using `EStagingStatus.to_json()`.
+            - The status is converted to JSON using `JobStatus.to_json()`.
 
         """
         job_metadata = {
             "identifier": self.job_id,
-            "status": self.status.value.upper(),
+            "process_id": "staging",
+            "status": self.status.value,
             "progress": self.progress,
-            "detail": self.detail,
+            "message": self.message,
         }
         self.db_process_manager.add_job(job_metadata)
 
     def log_job_execution(
         self,
-        status: Union[EStagingStatus, None] = None,
+        status: Union[JobStatus, None] = None,
         progress: Union[float, None] = None,
-        detail: Union[str, None] = None,
+        message: Union[str, None] = None,
     ):
         """Method used to log progress into db."""
         # Update both runtime and db status and progress
 
         self.status = status if status else self.status
         self.progress = progress if progress else self.progress
-        self.detail = detail if detail else self.detail
+        self.message = message if message else self.message
 
         update_data = {
-            "status": self.status.value.upper(),
+            "status": self.status.value,
             "progress": self.progress,
-            "detail": self.detail,
-            "updated_at": datetime.now(),  # Update updated_at each time a change is made
+            "message": self.message,
+            "updated": datetime.now(),  # Update updated each time a change is made
         }
         self.db_process_manager.update_job(self.job_id, update_data)
 
@@ -387,7 +382,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             RuntimeError,
         ) as exc:
             self.logger.error(f"Failed to search catalog: {exc}")
-            self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"Failed to search catalog: {exc}")
+            self.log_job_execution(JobStatus.failed, 0, message=f"Failed to search catalog: {exc}")
             return False
 
     def create_streaming_list(self, catalog_response: dict):
@@ -556,9 +551,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 task.result()  # This will raise the exception from the task if it failed
                 self.tasks_finished += 1
                 self.log_job_execution(
-                    EStagingStatus.IN_PROGRESS,
+                    JobStatus.running,
                     round((self.tasks_finished * 100 / len(self.tasks)), 2),
-                    detail="In progress",
+                    message="In progress",
                 )
                 self.logger.debug("%s Task streaming completed", task.key)
             except Exception as task_e:  # pylint: disable=broad-exception-caught
@@ -575,9 +570,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     timeout -= 1
                 # Update status for the job
                 self.log_job_execution(
-                    EStagingStatus.FAILED,
+                    JobStatus.failed,
                     None,
-                    detail=f"At least one of the tasks failed: {task_e}",
+                    message=f"At least one of the tasks failed: {task_e}",
                 )
                 self.delete_files_from_bucket()
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
@@ -588,9 +583,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             if not self.publish_rspy_feature(feature):
                 # cleanup
                 self.log_job_execution(
-                    EStagingStatus.FAILED,
+                    JobStatus.failed,
                     None,
-                    detail=f"The item {feature.id} couldn't be " "published in the catalog. Cleaning up",
+                    message=f"The item {feature.id} couldn't be " "published in the catalog. Cleaning up",
                 )
                 # delete the files
                 self.delete_files_from_bucket()
@@ -599,7 +594,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 return
             published_featurs_ids.append(feature.id)
         # Update status once all features are processed
-        self.log_job_execution(EStagingStatus.FINISHED, 100, detail="Finished")
+        self.log_job_execution(JobStatus.successful, 100, message="Finished")
         self.logger.info("Tasks monitoring finished")
 
     def dask_cluster_connect(self):
@@ -789,41 +784,51 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         for feature in self.stream_list:
             if not self.prepare_streaming_tasks(feature):
-                self.log_job_execution(EStagingStatus.FAILED, 0, detail="Unable to create tasks for the Dask cluster")
+                self.log_job_execution(JobStatus.failed, 0, message="Unable to create tasks for the Dask cluster")
                 return
         if not self.assets_info:
-            self.log_job_execution(EStagingStatus.FINISHED, 100, detail="Finished without processing any tasks")
+            self.log_job_execution(JobStatus.successful, 100, message="Finished without processing any tasks")
             self.logger.info("There are no assets to stage. Exiting....")
             return
 
+        # Determine the domain(s)
+        domains = list({urlparse(asset[0]).hostname for asset in self.assets_info})
+        self.logger.info("Staging from domain(s) {domains}")
+        if len(domains) > 1:
+            self.log_job_execution(
+                JobStatus.failed,
+                0,
+                message="Staging from multiple domains is not supported yet",
+            )
+            return
+        domain = domains[0]
+
         # retrieve the token
         try:
-            external_auth_config = load_external_auth_config_by_station_service(self.provider.lower())
+            external_auth_config = load_external_auth_config_by_domain(domain)
             token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
             self.logger.error(
                 f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
             )
             self.log_job_execution(
-                EStagingStatus.FAILED,
+                JobStatus.failed,
                 0,
-                detail="Failed to retrieve the token needed to connect to the external "
-                f"station {self.provider.lower()}",
+                message=f"Failed to retrieve the token needed to connect to the external station {domain}",
             )
             return
 
         # connect to the dask cluster
         try:
-
             dask_client = self.dask_cluster_connect()
             self.submit_tasks_to_dask_cluster(token, external_auth_config.trusted_domains, dask_client)
         except RuntimeError as re:
-            self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"{re}")
+            self.log_job_execution(JobStatus.failed, 0, message=f"{re}")
             self.logger.error("Failed to start the staging process")
             return
 
-        # Set the status to IN_PROGRESS for the job
-        self.log_job_execution(EStagingStatus.IN_PROGRESS, 0, detail="Sending tasks to the dask cluster")
+        # Set the status to running for the job
+        self.log_job_execution(JobStatus.running, 0, message="Sending tasks to the dask cluster")
 
         # starting another thread for managing the dask callbacks
         self.logger.debug("Starting tasks monitoring thread")
@@ -831,7 +836,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             await asyncio.to_thread(self.manage_dask_tasks_results, dask_client)
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.logger.debug(f"Error from tasks monitoring thread: {e}")
-            self.log_job_execution(EStagingStatus.FAILED, 0, detail=f"Error from tasks monitoring thread: {e}")
+            self.log_job_execution(JobStatus.failed, 0, message=f"Error from tasks monitoring thread: {e}")
 
         # cleanup by disconnecting the dask client
         self.assets_info = []
@@ -862,7 +867,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         Logging:
             - Logs an error message with details if the request fails.
-            - Logs the job status as `EStagingStatus.FAILED` if the feature publishing fails.
+            - Logs the job status as `JobStatus.failed` if the feature publishing fails.
             - Calls `self.delete_files_from_bucket()` to clean up related files in case of failure.
         """
         # Publish feature to catalog
