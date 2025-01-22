@@ -13,7 +13,8 @@
 # limitations under the License.
 
 # We will add rs-server-staging to the dask-gateway-server image for local mode
-FROM ghcr.io/rs-python/dask-gateway-server/base/local:2024.1.0
+ARG DASK_TAG=xxx
+FROM ghcr.io/rs-python/dask-gateway-server/base/local:${DASK_TAG}
 
 # Default user from parent image
 ARG USER=dask:dask
