@@ -34,7 +34,7 @@ from starlette.status import (
 expected_jobs_test = [
     {
         "identifier": "job_1",
-        "status": "started",
+        "status": "running",
         "progress": 0.0,
         "detail": "Test detail",
         "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
@@ -42,7 +42,7 @@ expected_jobs_test = [
     },
     {
         "identifier": "job_2",
-        "status": "in_progress",
+        "status": "running",
         "progress": 55.0,
         "detail": "Test detail",
         "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
@@ -50,7 +50,7 @@ expected_jobs_test = [
     },
     {
         "identifier": "job_3",
-        "status": "paused",
+        "status": "running",
         "progress": 15.0,
         "detail": "Test detail",
         "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
@@ -58,7 +58,7 @@ expected_jobs_test = [
     },
     {
         "identifier": "job_4",
-        "status": "finished",
+        "status": "successful",
         "progress": 100.0,
         "detail": "Test detail",
         "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
@@ -66,7 +66,7 @@ expected_jobs_test = [
     },
     {
         "identifier": "non_existing",
-        "status": "finished",
+        "status": "successful",
         "progress": 100.0,
         "detail": "Test detail",
         "created_at": "unknown",
@@ -172,7 +172,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     mock_jobs = [
         {
             "identifier": "job_1",
-            "status": "completed",
+            "status": "successful",
             "progress": 100.0,
             "detail": "Test detail",
             "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
@@ -180,7 +180,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
         },
         {
             "identifier": "job_2",
-            "status": "in-progress",
+            "status": "running",
             "progress": 90.25,
             "detail": "Test detail",
             "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
