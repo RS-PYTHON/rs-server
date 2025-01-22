@@ -83,7 +83,7 @@ done
 
 # Override the poetry.lock files from the new pyproject.toml files
 for f in $(find "$ROOT_DIR" -name pyproject.toml); do
-    (set -x; cd $(dirname $f) && poetry lock --no-update)
+    (set -x; cd $(dirname $f) && poetry lock)
 done
 
 # Commit & push
