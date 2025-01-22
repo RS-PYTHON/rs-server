@@ -36,41 +36,41 @@ expected_jobs_test = [
         "identifier": "job_1",
         "status": "running",
         "progress": 0.0,
-        "detail": "Test detail",
-        "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
-        "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+        "message": "Test detail",
+        "created": str(datetime(2024, 1, 1, 12, 0, 0)),
+        "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
     },
     {
         "identifier": "job_2",
         "status": "running",
         "progress": 55.0,
-        "detail": "Test detail",
-        "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
-        "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+        "message": "Test detail",
+        "created": str(datetime(2024, 1, 2, 12, 0, 0)),
+        "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
     },
     {
         "identifier": "job_3",
         "status": "running",
         "progress": 15.0,
-        "detail": "Test detail",
-        "created_at": str(datetime(2024, 1, 3, 12, 0, 0)),
-        "updated_at": str(datetime(2024, 1, 3, 13, 0, 0)),
+        "message": "Test detail",
+        "created": str(datetime(2024, 1, 3, 12, 0, 0)),
+        "updated": str(datetime(2024, 1, 3, 13, 0, 0)),
     },
     {
         "identifier": "job_4",
         "status": "successful",
         "progress": 100.0,
-        "detail": "Test detail",
-        "created_at": str(datetime(2024, 1, 4, 12, 0, 0)),
-        "updated_at": str(datetime(2024, 1, 4, 13, 0, 0)),
+        "message": "Test detail",
+        "created": str(datetime(2024, 1, 4, 12, 0, 0)),
+        "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
     },
     {
         "identifier": "non_existing",
         "status": "successful",
         "progress": 100.0,
-        "detail": "Test detail",
-        "created_at": "unknown",
-        "updated_at": "unknown",
+        "message": "Test detail",
+        "created": "unknown",
+        "updated": "unknown",
     },
 ]
 
@@ -174,17 +174,17 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
             "identifier": "job_1",
             "status": "successful",
             "progress": 100.0,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 1, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 1, 13, 0, 0)),
+            "message": "Test detail",
+            "created": str(datetime(2024, 1, 1, 12, 0, 0)),
+            "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
         },
         {
             "identifier": "job_2",
             "status": "running",
             "progress": 90.25,
-            "detail": "Test detail",
-            "created_at": str(datetime(2024, 1, 2, 12, 0, 0)),
-            "updated_at": str(datetime(2024, 1, 2, 13, 0, 0)),
+            "message": "Test detail",
+            "created": str(datetime(2024, 1, 2, 12, 0, 0)),
+            "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
         },
     ]
 
@@ -248,7 +248,7 @@ async def test_get_job(
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
         expected_job (dict): The expected job dictionary containing job_id,
-            status, progress, and detail for the job to be retrieved.
+            status, progress, and message for the job to be retrieved.
 
     Assertions:
         - Asserts that the response status code is 200 and the returned job
@@ -297,7 +297,7 @@ async def test_get_job_result(
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
         expected_job (dict): The expected job dictionary containing job_id,
-            status, progress, and detail for the job whose results are to be retrieved.
+            status, progress, and message for the job whose results are to be retrieved.
 
     Assertions:
         - Asserts that the response status code is 200 and the returned job result
@@ -345,7 +345,7 @@ async def test_delete_job_endpoint(
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
         expected_job (dict): The expected job dictionary containing job_id,
-            status, progress, and detail for the job to be deleted.
+            status, progress, and message for the job to be deleted.
 
     Assertions:
         - Asserts that the response status code is 200 if the job is successfully deleted.
