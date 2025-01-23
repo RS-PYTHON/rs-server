@@ -894,6 +894,11 @@ field is not permitted also.",
         auth_roles = []
         user_login = ""
 
+        if content.get("geometry") == DEFAULT_GEOM:
+            content["geometry"] = None
+        if content.get("bbox") == DEFAULT_BBOX:
+            content["bbox"] = None
+
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
             user_login = request.state.user_login
