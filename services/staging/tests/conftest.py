@@ -131,14 +131,33 @@ def dbj_():
     ]
 
 
+def feature(f_id: str) -> dict:
+    """Create a new empty Feature"""
+    return {
+        "type": "Feature",
+        "properties": {},
+        "id": f_id,
+        "stac_version": "1.0.0",
+        "assets": {"asset1": {"href": "https://fake-data"}},
+        "stac_extensions": [],
+    }
+
+
+@pytest.fixture(name="staging_inputs")
+def staging_inputs():
+    """Fixture to mock the staging execution inputs"""
+    return {
+        "collection": {"id": "test_collection"},
+        "items": {"type": "FeatureCollection", "features": [feature("1"), feature("2")]},
+    }
+
+
 @pytest.fixture(name="staging_instance")
 def staging(mocker):
     """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
     mock_credentials = mocker.Mock()
     mock_credentials.headers = {"cookie": "fake-cookie", "host": "fake-host"}
-    mock_input_collection = mocker.Mock()
-    mock_collection = "test_collection"
     mock_item = "test_item"
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
@@ -153,8 +172,6 @@ def staging(mocker):
     # Instantiate the Staging class with the mocked dependencies
     staging_instance = Staging(
         credentials=mock_credentials,
-        input_collection=mock_input_collection,
-        collection=mock_collection,
         item=mock_item,
         db_process_manager=mock_db,
         cluster=mock_cluster,
