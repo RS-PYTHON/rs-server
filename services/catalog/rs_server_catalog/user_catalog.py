@@ -773,6 +773,7 @@ field is not permitted also.",
                             original_published=published,
                             original_expires=expires,
                         )
+                    # If item doesn't contain a geometry/bbox, just fill with a default one.
                     if not content.get("geometry", None):
                         content["geometry"] = DEFAULT_GEOM
                     if not content.get("bbox", None):
