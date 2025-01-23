@@ -702,10 +702,6 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             if not self.request_ids["owner_id"]:
                 self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
             # If item is not geolocated, add a default one to comply pgstac format.
-            if not content.get("geometry", None):
-                content["geometry"] = DEFAULT_GEOM
-            if not content.get("bbox", None):
-                content["bbox"] = DEFAULT_BBOX
             if (  # If we are in cluster mode and the user_login is not authorized
                 # to put/post returns a HTTP_401_UNAUTHORIZED status.
                 common_settings.CLUSTER_MODE
@@ -777,6 +773,10 @@ field is not permitted also.",
                             original_published=published,
                             original_expires=expires,
                         )
+                    if not content.get("geometry", None):
+                        content["geometry"] = DEFAULT_GEOM
+                    if not content.get("bbox", None):
+                        content["bbox"] = DEFAULT_BBOX
                 if hasattr(content, "status_code"):
                     return content
 
@@ -1059,10 +1059,6 @@ field is not permitted also.",
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
             # Don't display geometry and bbox for default case since it was added just for compliance.
-            if response_content.get("geometry") == DEFAULT_GEOM:
-                response_content["geometry"] = None
-            if response_content.get("bbox") == DEFAULT_BBOX:
-                response_content["bbox"] = None
             if request.scope["path"] == "/collections":
                 response_content = remove_user_from_collection(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
@@ -1072,6 +1068,10 @@ field is not permitted also.",
             ):
                 response_content = remove_user_from_feature(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
+                if response_content.get("geometry") == DEFAULT_GEOM:
+                    response_content["geometry"] = None
+                if response_content.get("bbox") == DEFAULT_BBOX:
+                    response_content["bbox"] = None
             delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
