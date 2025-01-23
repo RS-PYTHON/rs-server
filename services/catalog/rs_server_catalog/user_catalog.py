@@ -91,9 +91,9 @@ from starlette.status import (
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 DEFAULT_GEOM = {
-                "type": "Polygon",
-                "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
-            }
+    "type": "Polygon",
+    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+}
 DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
 # pylint: disable=too-many-lines
 logger = Logging.default(__name__)
@@ -703,9 +703,9 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
                 self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
             # If item is not geolocated, add a default one to comply pgstac format.
             if not content.get("geometry", None):
-                content['geometry'] = DEFAULT_GEOM
+                content["geometry"] = DEFAULT_GEOM
             if not content.get("bbox", None):
-                content['bbox'] = DEFAULT_BBOX
+                content["bbox"] = DEFAULT_BBOX
             if (  # If we are in cluster mode and the user_login is not authorized
                 # to put/post returns a HTTP_401_UNAUTHORIZED status.
                 common_settings.CLUSTER_MODE
@@ -1053,7 +1053,11 @@ field is not permitted also.",
             user = self.request_ids["owner_id"]
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
-
+            # Don't display geometry and bbox for default case since it was added just for compliance.
+            if response_content.get("geometry") == DEFAULT_GEOM:
+                response_content["geometry"] = None
+            if response_content.get("bbox") == DEFAULT_BBOX:
+                response_content["bbox"] = None
             if request.scope["path"] == "/collections":
                 response_content = remove_user_from_collection(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
