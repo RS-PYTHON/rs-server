@@ -90,7 +90,11 @@ from starlette.status import (
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
-
+DEFAULT_GEOM = {
+                "type": "Polygon",
+                "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+            }
+DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
 # pylint: disable=too-many-lines
 logger = Logging.default(__name__)
 
@@ -697,6 +701,11 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             content = await request.json()
             if not self.request_ids["owner_id"]:
                 self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
+            # If item is not geolocated, add a default one to comply pgstac format.
+            if not content.get("geometry", None):
+                content['geometry'] = DEFAULT_GEOM
+            if not content.get("bbox", None):
+                content['bbox'] = DEFAULT_BBOX
             if (  # If we are in cluster mode and the user_login is not authorized
                 # to put/post returns a HTTP_401_UNAUTHORIZED status.
                 common_settings.CLUSTER_MODE

@@ -843,12 +843,6 @@ def create_stac_collection(
         feature_tmp = odata_to_stac(copy.deepcopy(feature_template), product_data, stac_mapper)
         try:
             item = Item(**feature_tmp)
-            # Add a default bbox and geometry, since L0 chunks items are not geo-located.
-            item.bbox = (-180.0, -90.0, 180.0, 90.0)
-            item.geometry = {
-                "type": "Polygon",
-                "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
-            }
             item.stac_extensions = [str(se) for se in item.stac_extensions]  # type: ignore
             items.append(item)
         except ValidationError as e:
