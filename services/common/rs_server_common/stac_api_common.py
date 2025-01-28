@@ -570,9 +570,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         data = ItemCollection(features=list(all_items.values()), type="FeatureCollection")
         dict_data: Dict[str, Any] = self.paginate(data)
 
-        # fill assets for cadip only
+        # In cadip, we retrieved the sessions data.
+        # We need to fill their assets with the session files data.
         if self.cadip:
             dict_data = self.process_files(dict_data)
+
         # Handle pagination links.
         if len(dict_data["features"]) > 0:
             # Don't create next page if the current one does not have features
@@ -707,18 +709,24 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     ) -> ItemCollection:
         """Do the search for the given collection and OData parameters."""
 
-    @abstractmethod
     def process_asset_search(
         self,
-        collection: dict,
-        features: list[Item],
-        outputs: list[list[dict]],
-    ) -> ItemCollection:
-        """Search assets for given Item / ItemCollection."""
+        station: str,
+        session_features: list[Item],
+    ):
+        """
+        Implemented only by cadip.
+        Search cadip files for each input cadip session and their associated station.
+        Update input session assets with their associated files.
+        """
+        raise NotImplementedError
 
-    @abstractmethod
     def process_files(self, empty_sessions_data: dict) -> dict:
-        """Handle process_asset_search IO"""
+        """
+        Implemented only by cadip.
+        Search cadip files for each input cadip session. Update the sessions data with their files data.
+        """
+        raise NotImplementedError
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:

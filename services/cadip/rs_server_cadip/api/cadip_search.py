@@ -40,6 +40,7 @@ from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
     cadip_map_mission,
+    cadip_stac_mapper,
     link_assets_to_session,
     prepare_collection,
     read_conf,
@@ -53,7 +54,7 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
-from rs_server_common.rspy_models import Item, ItemCollection
+from rs_server_common.rspy_models import Item
 from rs_server_common.stac_api_common import (
     CollectionType,
     DateTimeType,
@@ -108,7 +109,7 @@ class MockPgstacCadip(MockPgstac):
         limit: int,
         page: int,
     ) -> stac_pydantic.ItemCollection:
-        """Do the search for the given collection and OData parameters."""
+        """Search cadip sessions the given collection and OData parameters."""
         return process_session_search(
             self.request,
             collection.get("station", "cadip"),
@@ -122,22 +123,28 @@ class MockPgstacCadip(MockPgstac):
         )
 
     @handle_exceptions
-    def process_asset_search(  # type: ignore
+    def process_asset_search(
         self,
-        collection: dict,
-        features: list[Item],
-        outputs: list[list[dict]],
-    ) -> stac_pydantic.ItemCollection:
-        """Do the search for the given collection and OData parameters."""
+        station: str,
+        session_features: list[Item],
+    ):
+        """
+        Search cadip files for each input cadip session and their associated station.
+        Update input session assets with their associated files.
 
-        # To be updated with proper ('')
-        features_ids = ", ".join(feature.id for feature in features)
+        Args:
+            station (str): station identifier
+            session_features (list[Item]): sessions as Item objects
+        """
+
+        # Join session ids with ', '
+        features_ids = ", ".join(feature.id for feature in session_features)
 
         assets: list[dict] = []
         page = 1
         while True:
             chunked_assets = process_files_search(
-                collection.get("station", "cadip"),
+                station,
                 features_ids,
                 map_to_session=True,
                 page=page,
@@ -151,37 +158,46 @@ class MockPgstacCadip(MockPgstac):
             # If assets are equal to maximum limit, then send another request for the next page
             page += 1
 
-        with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
-            outputs.extend(link_assets_to_session(features, assets, json.loads(mapper.read())))
+        # Update input session items with assets
+        link_assets_to_session(session_features, assets)
 
-    def process_files(self, empty_sessions_data: dict):
-        """Function used to gather assets in parallel and map them to ItemCollection with sessions."""
-        # After sessions were paginated, populate them with according assets.
-        # Group station and features, and send requests in parralell.
-        sessions_data = stac_pydantic.ItemCollection.model_validate(empty_sessions_data)
-        grouped_features = defaultdict(list)
-        for feature in sessions_data.features:
-            grouped_features[feature.collection].append(feature)
-        # Group sessions coming from the same station. {station1: "item1, item2", station2: "item3" }
-        file_results: List = []
+    def process_files(self, empty_sessions_data: dict) -> dict:
+        """
+        Search cadip files for each input cadip session. Update the sessions data with their files data.
+
+        Args:
+            empty_sessions_data (dict): dict representation of an ItemCollection
+
+        Returns:
+            dict: updated input dict.
+        """
+
+        # Convert input dict into stac object
+        item_collection = stac_pydantic.ItemCollection.model_validate(empty_sessions_data)
+
+        # Group sessions coming from the same collection. {col1: "item1, item2", col2: "item3" }
+        grouped_sessions = defaultdict(list)
+        for session in item_collection.features:
+            grouped_sessions[session.collection].append(session)
+
+        # Update input session assets with their associated files, in separate threads
         file_threads = [
             threading.Thread(
                 target=self.process_asset_search,
                 args=(
-                    self.select_config(collection),
-                    dict(grouped_features)[collection],
-                    file_results,
+                    self.select_config(collection_id)["station"],
+                    session_features,
                 ),
             )
-            for collection in grouped_features
+            for collection_id, session_features in grouped_sessions.items()
         ]
         for thread in file_threads:
             thread.start()
         for thread in file_threads:
             thread.join()
-        if file_results:
-            file_results = [Item(**feature) for feature in file_results]
-        return ItemCollection(features=file_results, type="FeatureCollection").model_dump()
+
+        # Convert back the stac object into dict
+        return item_collection.model_dump()
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
@@ -494,15 +510,12 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         products = validate_products(products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
-        expanded_session_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
         with (
             open(feature_template_path, encoding="utf-8") as template,
             open(stac_mapper_path, encoding="utf-8") as stac_map,
-            open(expanded_session_mapper_path, encoding="utf-8") as expanded_session_mapper,
         ):
             feature_template = json.loads(template.read())
             stac_mapper = json.loads(stac_map.read())
-            expanded_session_mapper = json.loads(expanded_session_mapper.read())
             collection = create_stac_collection(products, feature_template, stac_mapper)
             return prepare_collection(collection)
 
@@ -613,14 +626,9 @@ def process_files_search(  # pylint: disable=too-many-locals
         if kwargs.get("deprecated", False):
             write_search_products_to_db(CadipDownloadStatus, products)
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
-        stac_mapper_path = CADIP_CONFIG / "cadip_stac_mapper.json"
-        with (
-            open(feature_template_path, encoding="utf-8") as template,
-            open(stac_mapper_path, encoding="utf-8") as stac_map,
-        ):
+        with open(feature_template_path, encoding="utf-8") as template:
             feature_template = json.loads(template.read())
-            stac_mapper = json.loads(stac_map.read())
-            cadip_item_collection = create_stac_collection(products, feature_template, stac_mapper)
+            cadip_item_collection = create_stac_collection(products, feature_template, cadip_stac_mapper())
         logger.info("Succesfully listed and processed products from CADIP station")
         if kwargs.get("map_to_session", False):
             return [product.properties for product in products]

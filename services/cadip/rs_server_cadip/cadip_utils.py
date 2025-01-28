@@ -49,7 +49,15 @@ def read_conf():
     cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
     with open(cadip_search_config, encoding="utf-8") as search_conf:
         config = yaml.safe_load(search_conf)
-    return config  # WARNING: if the caller wants to modify this cached object, it must deepcopy it first
+    return config  # WARNING: if the caller wants to modify this cached object, he must deepcopy it first
+
+
+@lru_cache()
+def cadip_stac_mapper():
+    """Used each time to read the cadip_stac_mapper config yaml."""
+    with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
+        config = json.loads(mapper.read())
+    return config  # WARNING: if the caller wants to modify this cached object, he must deepcopy it first
 
 
 def select_config(configuration_id: str) -> dict | None:
@@ -188,15 +196,16 @@ def cadip_reverse_map_mission(platform: Union[str, None]) -> Tuple[Union[str, No
     return None, None
 
 
-def link_assets_to_session(session_features: list[Item], asset_items: list[dict], mapper: dict) -> list:
-    """Function used to allocate assets to propper session item based on session id property.
-    Output is a list that contains each session with allocated assets."""
+def link_assets_to_session(session_features: list[Item], asset_items: list[dict]):
+    """Update input session items with associated assets based on session id property."""
     # Validity check to be later added.
     for feature in session_features:
         matching_assets = [asset_item for asset_item in asset_items if feature.id == asset_item["SessionId"]]
         for asset_item in matching_assets:
             asset_dict = {
-                map_key: asset_item[map_value] for map_key, map_value in mapper.items() if map_value in asset_item
+                map_key: asset_item[map_value]
+                for map_key, map_value in cadip_stac_mapper().items()
+                if map_value in asset_item
             }
             asset: Asset = Asset(title=asset_dict.pop("id"), roles=["cadu"], **asset_dict)
             if asset.title:
@@ -225,7 +234,6 @@ def link_assets_to_session(session_features: list[Item], asset_items: list[dict]
         except ValueError as e:
             logger.warning(f"Cannot update start/end datetime for {feature.id}: {e}")
             continue
-    return [feature.model_dump() for feature in session_features]
 
 
 def prepare_collection(collection: ItemCollection) -> ItemCollection:
