@@ -599,7 +599,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 thread.join()
 
             if file_results:
-                file_results = [Item(**feature) for feature in file_results[0]]
+                file_results = [Item(**feature) for feature in file_results]
                 dict_data = ItemCollection(features=file_results, type="FeatureCollection").model_dump()
         # Handle pagination links.
         if len(dict_data["features"]) > 0:

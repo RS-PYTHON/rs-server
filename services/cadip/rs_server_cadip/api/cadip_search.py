@@ -149,7 +149,7 @@ class MockPgstacCadip(MockPgstac):
             page += 1
 
         with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
-            outputs.append(link_assets_to_session(features, assets, json.loads(mapper.read())))
+            outputs.extend(link_assets_to_session(features, assets, json.loads(mapper.read())))
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
