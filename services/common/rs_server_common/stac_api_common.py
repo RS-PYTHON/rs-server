@@ -586,7 +586,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     target=self.process_asset_search,
                     args=(
                         self.select_config(collection),
-                        self.page,
                         dict(grouped_features)[collection],
                         file_results,
                     ),
@@ -740,7 +739,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     def process_asset_search(
         self,
         collection: dict,
-        page: int,
         features: list[Item],
         outputs: list[list[dict]],
     ) -> ItemCollection:

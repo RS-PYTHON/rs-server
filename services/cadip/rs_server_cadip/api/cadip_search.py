@@ -122,7 +122,6 @@ class MockPgstacCadip(MockPgstac):
     def process_asset_search(  # type: ignore
         self,
         collection: dict,
-        page: int,
         features: list[Item],
         outputs: list[list[dict]],
     ) -> stac_pydantic.ItemCollection:
