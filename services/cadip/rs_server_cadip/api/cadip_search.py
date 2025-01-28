@@ -196,7 +196,11 @@ class MockPgstacCadip(MockPgstac):
         for thread in file_threads:
             thread.join()
 
-        # Convert back the stac object into dict
+        # Convert back the stac object into dict.
+        # We implemented some custom Item formating, so we do a back and forth conversion
+        # to apply the formating, then finally return a dict.
+        for i, feature in enumerate(item_collection.features):
+            item_collection.features[i] = Item.model_validate(feature.model_dump())
         return item_collection.model_dump()
 
 
