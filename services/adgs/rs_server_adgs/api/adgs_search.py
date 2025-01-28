@@ -100,7 +100,7 @@ class MockPgstacAdgs(MockPgstac):
         limit: int,
         page: int,
     ) -> stac_pydantic.ItemCollection:
-        """Do the search for the given collection and OData parameters."""
+        """Search adgs products for the given collection and OData parameters."""
 
         return process_product_search(
             collection.get("station", "adgs"),
