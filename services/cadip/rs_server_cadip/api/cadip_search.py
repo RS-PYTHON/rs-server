@@ -50,6 +50,7 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
+from rs_server_common.rspy_models import Item
 from rs_server_common.stac_api_common import (
     CollectionType,
     DateTimeType,
@@ -103,29 +104,32 @@ class MockPgstacCadip(MockPgstac):
         odata_params: dict,
         limit: int,
         page: int,
-        feature=None,
-        outputs=None,
     ) -> stac_pydantic.ItemCollection:
         """Do the search for the given collection and OData parameters."""
-        if not feature:
-            return process_session_search(
-                self.request,
-                collection.get("station", "cadip"),
-                odata_params.get("SessionId", []),
-                odata_params.get("Satellite", []),
-                odata_params.get("PublicationDate"),
-                odata_params.get("Retransfer"),
-                self.sortby,
-                limit,
-                page,
-            )
+        return process_session_search(
+            self.request,
+            collection.get("station", "cadip"),
+            odata_params.get("SessionId", []),
+            odata_params.get("Satellite", []),
+            odata_params.get("PublicationDate"),
+            odata_params.get("Retransfer"),
+            self.sortby,
+            limit,
+            page,
+        )
+
+    @handle_exceptions
+    def process_asset_search(  # type: ignore
+        self,
+        collection: dict,
+        page: int,
+        features: list[Item],
+        outputs: list[list[dict]],
+    ) -> stac_pydantic.ItemCollection:
+        """Do the search for the given collection and OData parameters."""
 
         # To be updated with proper ('')
-        if isinstance(feature, list):
-            features_ids = ", ".join(feature.id for feature in feature)
-        else:
-            features_ids = feature.id
-            feature = [feature]
+        features_ids = ", ".join(feature.id for feature in features)
 
         assets: list[dict] = []
         page = 1
@@ -146,10 +150,7 @@ class MockPgstacCadip(MockPgstac):
             page += 1
 
         with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
-            outputs.append(link_assets_to_session(feature, assets, json.loads(mapper.read())))
-
-        # Ensure a valid return value
-        return feature
+            outputs.append(link_assets_to_session(features, assets, json.loads(mapper.read())))
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):

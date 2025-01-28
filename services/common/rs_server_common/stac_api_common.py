@@ -572,24 +572,22 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         dict_data: Dict[str, Any] = self.paginate(data)
 
         # fill assets for cadip only
-        if "/cadip" in self.request.url.path:
+        if self.cadip:
             # After sessions were paginated, populate them with according assets.
             # Group station and features, and send requests in parralell.
             sessions_data = stac_pydantic.ItemCollection.model_validate(dict_data)
             grouped_features = defaultdict(list)
             for feature in sessions_data.features:
                 grouped_features[feature.collection].append(feature)
-            grouped_features = dict(grouped_features)  # type: ignore
+            # Group sessions coming from the same station. {station1: "item1, item2", station2: "item3" }
             file_results: List = []
             file_threads = [
                 threading.Thread(
-                    target=self.process_search,
+                    target=self.process_asset_search,
                     args=(
                         self.select_config(collection),
-                        self.odata,
-                        self.limit,
                         self.page,
-                        grouped_features[collection],
+                        dict(grouped_features)[collection],
                         file_results,
                     ),
                 )
@@ -737,6 +735,16 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         page: int,
     ) -> ItemCollection:
         """Do the search for the given collection and OData parameters."""
+
+    @abstractmethod
+    def process_asset_search(
+        self,
+        collection: dict,
+        page: int,
+        features: list[Item],
+        outputs: list[list[dict]],
+    ) -> ItemCollection:
+        """Search assets for given Item / ItemCollection."""
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:

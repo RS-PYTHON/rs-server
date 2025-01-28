@@ -48,6 +48,7 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
+from rs_server_common.rspy_models import Item
 from rs_server_common.stac_api_common import (
     CollectionType,
     DateTimeType,
@@ -113,6 +114,17 @@ class MockPgstacAdgs(MockPgstac):
             attr_platform_short_name=odata_params.get("platformShortName"),
             attr_serial_identif=odata_params.get("platformSerialIdentifier"),
         )
+
+    @handle_exceptions
+    def process_asset_search(  # type: ignore
+        self,
+        collection: dict,
+        page: int,
+        features: list[Item],
+        outputs: list[list[dict]],
+    ) -> stac_pydantic.ItemCollection:
+        """NotImplemented for ADGS."""
+        raise NotImplementedError
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):

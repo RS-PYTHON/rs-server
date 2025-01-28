@@ -30,6 +30,7 @@ from typing import List, Tuple, Union
 import eodag
 import yaml
 from fastapi import HTTPException, status
+from rs_server_common.rspy_models import Item
 from rs_server_common.stac_api_common import map_stac_platform
 from rs_server_common.utils.logging import Logging
 from stac_pydantic import ItemCollection, ItemProperties
@@ -187,11 +188,12 @@ def cadip_reverse_map_mission(platform: Union[str, None]) -> Tuple[Union[str, No
     return None, None
 
 
-def link_assets_to_session(features, assets_dict, mapper):
-    """Function used to allocate assets to propper session item based on session id property."""
+def link_assets_to_session(session_features: list[Item], asset_items: list[dict], mapper: dict) -> list:
+    """Function used to allocate assets to propper session item based on session id property.
+    Output is a list that contains each session with allocated assets."""
     # Validity check to be later added.
-    for feature in features:
-        matching_assets = [asset_item for asset_item in assets_dict if feature.id == asset_item["SessionId"]]
+    for feature in session_features:
+        matching_assets = [asset_item for asset_item in asset_items if feature.id == asset_item["SessionId"]]
         for asset_item in matching_assets:
             asset_dict = {
                 map_key: asset_item[map_value] for map_key, map_value in mapper.items() if map_value in asset_item
@@ -223,7 +225,7 @@ def link_assets_to_session(features, assets_dict, mapper):
         except ValueError as e:
             logger.warning(f"Cannot update start/end datetime for {feature.id}: {e}")
             continue
-    return [feature.model_dump() for feature in features]
+    return [feature.model_dump() for feature in session_features]
 
 
 def prepare_collection(collection: ItemCollection) -> ItemCollection:
