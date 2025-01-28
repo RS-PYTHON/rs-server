@@ -90,7 +90,11 @@ from starlette.status import (
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
 CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
-
+DEFAULT_GEOM = {
+    "type": "Polygon",
+    "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
+}
+DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
 # pylint: disable=too-many-lines
 logger = Logging.default(__name__)
 
@@ -697,6 +701,7 @@ collections/{user}:{collection_id}/items/{fid}/download/{asset}"
             content = await request.json()
             if not self.request_ids["owner_id"]:
                 self.request_ids["owner_id"] = get_user(None, self.request_ids["user_login"])
+            # If item is not geolocated, add a default one to comply pgstac format.
             if (  # If we are in cluster mode and the user_login is not authorized
                 # to put/post returns a HTTP_401_UNAUTHORIZED status.
                 common_settings.CLUSTER_MODE
@@ -768,6 +773,11 @@ field is not permitted also.",
                             original_published=published,
                             original_expires=expires,
                         )
+                    # If item doesn't contain a geometry/bbox, just fill with a default one.
+                    if not content.get("geometry", None):
+                        content["geometry"] = DEFAULT_GEOM
+                    if not content.get("bbox", None):
+                        content["bbox"] = DEFAULT_BBOX
                 if hasattr(content, "status_code"):
                     return content
 
@@ -884,6 +894,11 @@ field is not permitted also.",
         self.update_stac_catalog_metadata(content)
         auth_roles = []
         user_login = ""
+
+        if content.get("geometry") == DEFAULT_GEOM:
+            content["geometry"] = None
+        if content.get("bbox") == DEFAULT_BBOX:
+            content["bbox"] = None
 
         if common_settings.CLUSTER_MODE:  # Get the list of access and the user_login calling the endpoint.
             auth_roles = request.state.auth_roles
@@ -1044,7 +1059,7 @@ field is not permitted also.",
             user = self.request_ids["owner_id"]
             body = [chunk async for chunk in response.body_iterator]
             response_content = json.loads(b"".join(body).decode())  # type: ignore
-
+            # Don't display geometry and bbox for default case since it was added just for compliance.
             if request.scope["path"] == "/collections":
                 response_content = remove_user_from_collection(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
@@ -1054,6 +1069,10 @@ field is not permitted also.",
             ):
                 response_content = remove_user_from_feature(response_content, user)
                 response_content = self.adapt_object_links(response_content, user)
+                if response_content.get("geometry") == DEFAULT_GEOM:
+                    response_content["geometry"] = None
+                if response_content.get("bbox") == DEFAULT_BBOX:
+                    response_content["bbox"] = None
             delete_s3_files(self.s3_files_to_be_deleted)
             self.s3_files_to_be_deleted.clear()
         except RuntimeError as exc:
