@@ -196,8 +196,11 @@ class MockPgstacCadip(MockPgstac):
         for thread in file_threads:
             thread.join()
 
-        # Convert back the stac object into dict
-        return item_collection.model_dump()
+        # Convert back the stac object into dict.
+        # We implemented some custom Item formating, so we do a back and forth conversion
+        # to apply the formating, then finally return a dict.
+        formatted = [Item.model_validate(feature.model_dump()) for feature in item_collection.features]
+        return stac_pydantic.ItemCollection(features=formatted, type=item_collection.type).model_dump()
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
