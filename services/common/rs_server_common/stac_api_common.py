@@ -19,7 +19,6 @@ import threading
 import traceback
 import urllib.parse
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from functools import lru_cache
@@ -573,34 +572,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # fill assets for cadip only
         if self.cadip:
-            # After sessions were paginated, populate them with according assets.
-            # Group station and features, and send requests in parralell.
-            sessions_data = stac_pydantic.ItemCollection.model_validate(dict_data)
-            grouped_features = defaultdict(list)
-            for feature in sessions_data.features:
-                grouped_features[feature.collection].append(feature)
-            # Group sessions coming from the same station. {station1: "item1, item2", station2: "item3" }
-            file_results: List = []
-            file_threads = [
-                threading.Thread(
-                    target=self.process_asset_search,
-                    args=(
-                        self.select_config(collection),
-                        dict(grouped_features)[collection],
-                        file_results,
-                    ),
-                )
-                for collection in grouped_features
-            ]
-
-            for thread in file_threads:
-                thread.start()
-            for thread in file_threads:
-                thread.join()
-
-            if file_results:
-                file_results = [Item(**feature) for feature in file_results]
-                dict_data = ItemCollection(features=file_results, type="FeatureCollection").model_dump()
+            dict_data = self.process_files(dict_data)
         # Handle pagination links.
         if len(dict_data["features"]) > 0:
             # Don't create next page if the current one does not have features
@@ -743,6 +715,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         outputs: list[list[dict]],
     ) -> ItemCollection:
         """Search assets for given Item / ItemCollection."""
+
+    @abstractmethod
+    def process_files(self, empty_sessions_data: dict) -> dict:
+        """Handle process_asset_search IO"""
 
 
 def create_collection(collection: dict) -> stac_pydantic.Collection:

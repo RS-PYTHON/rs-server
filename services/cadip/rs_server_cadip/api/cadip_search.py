@@ -18,9 +18,12 @@ This module provides functionality to retrieve a list of products from the CADU 
 It includes an API endpoint, utility functions, and initialization for accessing EODataAccessGateway.
 """
 
-# pylint: disable=redefined-builtin
 import json
+import threading
 import traceback
+
+# pylint: disable=redefined-builtin
+from collections import defaultdict
 from typing import Annotated, List, Literal, Union
 
 import requests
@@ -50,7 +53,7 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
-from rs_server_common.rspy_models import Item
+from rs_server_common.rspy_models import Item, ItemCollection
 from rs_server_common.stac_api_common import (
     CollectionType,
     DateTimeType,
@@ -150,6 +153,35 @@ class MockPgstacCadip(MockPgstac):
 
         with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
             outputs.extend(link_assets_to_session(features, assets, json.loads(mapper.read())))
+
+    def process_files(self, empty_sessions_data: dict):
+        """Function used to gather assets in parallel and map them to ItemCollection with sessions."""
+        # After sessions were paginated, populate them with according assets.
+        # Group station and features, and send requests in parralell.
+        sessions_data = stac_pydantic.ItemCollection.model_validate(empty_sessions_data)
+        grouped_features = defaultdict(list)
+        for feature in sessions_data.features:
+            grouped_features[feature.collection].append(feature)
+        # Group sessions coming from the same station. {station1: "item1, item2", station2: "item3" }
+        file_results: List = []
+        file_threads = [
+            threading.Thread(
+                target=self.process_asset_search,
+                args=(
+                    self.select_config(collection),
+                    dict(grouped_features)[collection],
+                    file_results,
+                ),
+            )
+            for collection in grouped_features
+        ]
+        for thread in file_threads:
+            thread.start()
+        for thread in file_threads:
+            thread.join()
+        if file_results:
+            file_results = [Item(**feature) for feature in file_results]
+        return ItemCollection(features=file_results, type="FeatureCollection").model_dump()
 
 
 def auth_validation(request: Request, collection_id: str, access_type: str):

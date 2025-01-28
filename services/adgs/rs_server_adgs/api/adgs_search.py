@@ -125,6 +125,11 @@ class MockPgstacAdgs(MockPgstac):
         """NotImplemented for ADGS."""
         raise NotImplementedError
 
+    @handle_exceptions
+    def process_files(self, empty_sessions_data: dict) -> dict:
+        """NotImplemented for ADGS."""
+        raise NotImplementedError
+
 
 def auth_validation(request: Request, collection_id: str, access_type: str):
     """
