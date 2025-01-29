@@ -880,7 +880,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         try:
             response = requests.post(
                 publish_url,
-                headers={"cookie": self.headers.get("cookie", None)},
+                headers={"cookie": self.headers.get("cookie", None), "host": self.headers.get("host", None)},
                 data=feature.json(),
                 timeout=10,
             )
