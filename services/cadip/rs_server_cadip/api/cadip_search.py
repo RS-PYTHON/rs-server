@@ -519,7 +519,9 @@ async def search_products(  # pylint: disable=too-many-locals, too-many-argument
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    return process_files_search(station, session_id, datetime, limit, sortby=sortby, deprecated=True)
+    # tempfix, will be removed.
+    query = {"SessionId": session_id, "PublicationDate": datetime}
+    return process_files_search(station, query, limit, sortby=sortby, deprecated=True)
 
 
 def process_files_search(  # pylint: disable=too-many-locals
@@ -563,7 +565,7 @@ def process_files_search(  # pylint: disable=too-many-locals
     try:
         set_eodag_auth_token(station.lower(), "cadip")
         products = (init_cadip_provider(station)).search(
-            **queryables,
+            **validate(queryables),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
             page=kwargs.get("page", 1),

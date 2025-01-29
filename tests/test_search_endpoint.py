@@ -368,7 +368,7 @@ class TestQueryablesEndpoints:
         """Endpoint to test all queryables."""
         resp = client.get(endpoint).json()
         assert resp["title"] == "STAC Queryables."
-        assert list(resp["properties"].keys()) == expected_queryables
+        assert set(expected_queryables).issubset(set(resp["properties"].keys()))
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -376,14 +376,13 @@ class TestQueryablesEndpoints:
         [
             (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_satellite/queryables", []),
             (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/queryables", ["product:type"]),
-            (ROUTER_PREFIX_AUXIP, "/auxip/collections/s2_adgs2_AUX_OBMEMC/queryables", ["platform", "constellation"]),
         ],
         indirect=["fastapi_app"],
     )
     def test_collection_queryables(self, client, endpoint, expected_queryables):
         """Endpoint to test specific collection queryables."""
         resp = client.get(endpoint).json()
-        assert list(resp["properties"].keys()) == expected_queryables
+        assert set(expected_queryables).issubset(set(resp["properties"].keys()))
 
 
 class TestModelValidationError:

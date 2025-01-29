@@ -437,7 +437,8 @@ async def search_products(  # pylint: disable=too-many-locals
     set_eodag_auth_token("adgs", "auxip")
     try:
         products = (init_adgs_provider("adgs")).search(
-            validate_inputs_format(datetime),
+            # Temp, will be removed.
+            **{"PublicationDate": validate_inputs_format(datetime)},
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
         )
