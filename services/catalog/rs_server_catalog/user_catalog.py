@@ -964,7 +964,7 @@ field is not permitted also.",
             content = self.adapt_links(
                 content,
                 self.request_ids["owner_id"],
-                self.request_ids["collection_ids"],
+                self.request_ids["collection_ids"][0],
                 "features",
             )
         elif request.scope["path"] == "/search":
