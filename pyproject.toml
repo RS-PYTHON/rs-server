@@ -63,7 +63,7 @@ optional = true
 # All the dev dependencies are set here so they can be used by the CI.
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.3"
-pytest-asyncio = "^0.25.1"
+pytest-asyncio = "^0.25.3"
 pytest-cov = "^6.0.0"
 pytest-docker = "^3.1.0"
 pytest-error-for-skips = "^2.0.2"
