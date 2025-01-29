@@ -14,7 +14,6 @@
 
 """Unit tests for the CADIP utilities."""
 
-import json
 import os.path as osp
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,61 +47,60 @@ def test_link_assets_to_session_start_and_end():
 
 def do_test_link_assets_to_session(start: bool, end: bool):
     """checks correct behaviour of link_assets_to_session for timerange properties"""
-    with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
-        item: Item = Item(
-            type="Feature",
-            stac_version="1.0.0",
-            id="S1A_20241202183845056817",
-            properties=ItemProperties(
-                datetime=datetime.fromisoformat("2024-12-02T18:38:45").replace(tzinfo=timezone.utc),
-                start_datetime=(
-                    datetime.fromisoformat("2024-12-02T18:00:00").replace(tzinfo=timezone.utc) if start else None
-                ),
-                end_datetime=(
-                    datetime.fromisoformat("2024-12-02T18:00:00").replace(tzinfo=timezone.utc) if start else None
-                ),
-                gsd=None,
+    item: Item = Item(
+        type="Feature",
+        stac_version="1.0.0",
+        id="S1A_20241202183845056817",
+        properties=ItemProperties(
+            datetime=datetime.fromisoformat("2024-12-02T18:38:45").replace(tzinfo=timezone.utc),
+            start_datetime=(
+                datetime.fromisoformat("2024-12-02T18:00:00").replace(tzinfo=timezone.utc) if start else None
             ),
-            geometry=None,
-            assets={},
-            links=Links([]),
-        )
-        session_data = ItemCollection(features=[item], type="FeatureCollection")
-        assets: list[dict] = (
-            [
-                {
-                    "Name": "chunk_1.tgz",
-                    "SessionId": "S1A_20241202183845056817",
-                    "PublicationDate": "2024-12-02T18:49:55Z",
-                    "href": "https://localhost/chunk_1.tgz",
-                },
-            ]
-            if end
-            else []
-        )
+            end_datetime=(
+                datetime.fromisoformat("2024-12-02T18:00:00").replace(tzinfo=timezone.utc) if start else None
+            ),
+            gsd=None,
+        ),
+        geometry=None,
+        assets={},
+        links=Links([]),
+    )
+    session_data = ItemCollection(features=[item], type="FeatureCollection")
+    assets: list[dict] = (
+        [
+            {
+                "Name": "chunk_1.tgz",
+                "SessionId": "S1A_20241202183845056817",
+                "PublicationDate": "2024-12-02T18:49:55Z",
+                "href": "https://localhost/chunk_1.tgz",
+            },
+        ]
+        if end
+        else []
+    )
 
-        link_assets_to_session(session_data, assets, json.loads(mapper.read()))
+    link_assets_to_session(session_data, assets)
 
-        assert item.properties.datetime == datetime(  # pylint: disable=no-member
+    assert item.properties.datetime == datetime(  # pylint: disable=no-member
+        2024,
+        12,
+        2,
+        18,
+        38,
+        45,
+        tzinfo=timezone.utc,
+    )  # pylint: disable=no-member
+    if start and end:
+        assert item.properties.start_datetime == datetime(  # pylint: disable=no-member
             2024,
             12,
             2,
             18,
-            38,
-            45,
+            0,
+            0,
             tzinfo=timezone.utc,
-        )  # pylint: disable=no-member
-        if start and end:
-            assert item.properties.start_datetime == datetime(  # pylint: disable=no-member
-                2024,
-                12,
-                2,
-                18,
-                0,
-                0,
-                tzinfo=timezone.utc,
-            )
-            assert item.properties.end_datetime == "2024-12-02T18:49:55.000Z"  # pylint: disable=no-member
-        else:
-            assert item.properties.start_datetime is None  # pylint: disable=no-member
-            assert item.properties.end_datetime is None  # pylint: disable=no-member
+        )
+        assert item.properties.end_datetime == "2024-12-02T18:49:55.000Z"  # pylint: disable=no-member
+    else:
+        assert item.properties.start_datetime is None  # pylint: disable=no-member
+        assert item.properties.end_datetime is None  # pylint: disable=no-member

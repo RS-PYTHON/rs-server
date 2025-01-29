@@ -16,8 +16,10 @@
 Module used to overwrite stac_pydantic with RSPY types.
 """
 
+from datetime import datetime
+
 # mypy: ignore-errors
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 
 import stac_pydantic
 from geojson_pydantic import FeatureCollection
@@ -46,6 +48,16 @@ class ItemProperties(WrapStacCommonMetadata):
     """
 
     model_config = ConfigDict(extra="allow")
+
+    def __init__(self, **data: Any):
+        """Force convert datetime to str if any in init."""
+        data = {
+            key: (value.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z" if isinstance(value, datetime) else value)
+            for key, value in data.items()
+        }
+
+        # Call the parent class's initializer
+        super().__init__(**data)
 
 
 class Item(stac_pydantic.item.Item):
