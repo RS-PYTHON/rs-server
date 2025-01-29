@@ -21,7 +21,7 @@ It includes an API endpoint, utility functions, and initialization for accessing
 # pylint: disable=redefined-builtin
 import json
 import traceback
-from typing import Annotated, List, Literal, Union
+from typing import Annotated, Literal, Union
 
 import requests
 import sqlalchemy
@@ -30,7 +30,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
 from fastapi.responses import RedirectResponse
-from pydantic import WrapValidator, validate_call
+from pydantic import validate_call
 from rs_server_cadip import cadip_tags
 from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
@@ -78,6 +78,17 @@ logger = Logging.default(__name__)
 DEFAULT_FILES_LIMIT = 1000
 
 
+def validate(queryables: dict):
+    """Function used to verify / update ADGS-specific queryables before being sent to eodag."""
+    for queryable_name, queryable_data in queryables.items():
+        if queryable_name == "PublicationDate":
+            queryables[queryable_name] = validate_inputs_format(queryable_data)
+        elif isinstance(queryable_data, (str, list)):
+            queryables[queryable_name] = validate_str_list(queryable_data)
+
+    return queryables
+
+
 class MockPgstacCadip(MockPgstac):
     """Cadip implementation of MockPgstac"""
 
@@ -108,10 +119,7 @@ class MockPgstacCadip(MockPgstac):
         session_data = process_session_search(
             self.request,
             collection.get("station", "cadip"),
-            odata_params.get("SessionId", []),
-            odata_params.get("Satellite", []),
-            odata_params.get("PublicationDate"),
-            odata_params.get("Retransfer"),
+            odata_params,
             self.sortby,
             limit,
             page,
@@ -128,7 +136,7 @@ class MockPgstacCadip(MockPgstac):
         while True:
             chunked_assets = process_files_search(
                 collection.get("station", "cadip"),
-                features_ids,
+                {"SessionId": features_ids},
                 map_to_session=True,
                 page=page,
             )
@@ -404,13 +412,7 @@ async def get_cadip_collection_item_details(
 def process_session_search(  # type: ignore # pylint: disable=too-many-arguments, too-many-locals, unused-argument
     request: Request,
     station: str,
-    session_id: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
-    platform: Annotated[Union[str, List[str]], WrapValidator(validate_str_list)],
-    datetime: Annotated[
-        Union[str, None],
-        WrapValidator(lambda interval, info, handler: validate_inputs_format(interval, raise_errors=True)),
-    ],
-    retransfer: Union[bool, None],
+    queryables,
     sortby: str,
     limit: Annotated[
         Union[int, None],
@@ -426,9 +428,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     Args:
         request (Request): The request object (unused).
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        session_id (str, optional): Session identifier(s), comma-separated. Defaults to None.
-        platform (str, optional): Satellite identifier(s), comma-separated. Defaults to None.
-        datetime (str, optional): Datetime in ISO 8601 format. Defaults to None. Can be fixed, closed/open interval.
+        queryables: Lists of queryables applicable to search op.
         limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
         sortby (str): Sort by +/-fieldName (ascending/descending).
         page (int): Page number to be displayed, defaults to first one.
@@ -443,10 +443,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     try:
         set_eodag_auth_token(f"{station.lower()}_session", "cadip")
         products = (init_cadip_provider(f"{station}_session")).search(
-            datetime,
-            id=session_id,  # pylint: disable=redefined-builtin
-            platform=platform,
-            retransfer=retransfer,
+            **validate(queryables),
             sessions_search=True,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
@@ -527,8 +524,7 @@ async def search_products(  # pylint: disable=too-many-locals, too-many-argument
 
 def process_files_search(  # pylint: disable=too-many-locals
     station: str,
-    session_id: str,
-    datetime: Union[str, None] = None,
+    queryables,
     limit: Union[int, None] = DEFAULT_FILES_LIMIT,
     **kwargs,
 ) -> list[dict] | dict:
@@ -552,21 +548,22 @@ def process_files_search(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    if not (datetime or session_id):
+    query_datetime = queryables.get("datetime")
+    session_id = queryables.get("SessionId")
+
+    if not query_datetime and not session_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
-    session: Union[List[str], str, None] = (
-        ([sid.strip() for sid in session_id.split(",")] if session_id and "," in session_id else session_id)
-        if session_id
-        else None
-    )
+
+    if session_id:
+        queryables["SessionId"] = [sid.strip() for sid in session_id.split(",")] if "," in session_id else session_id
+
     if limit < 1:  # type: ignore
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
         set_eodag_auth_token(station.lower(), "cadip")
         products = (init_cadip_provider(station)).search(
-            validate_inputs_format(datetime),
-            id=session,
+            **queryables,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
             page=kwargs.get("page", 1),

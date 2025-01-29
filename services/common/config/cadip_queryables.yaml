@@ -1,0 +1,105 @@
+id:
+  type: string
+  title: platform
+  format: string
+  description: string
+platform:
+  type: string
+  title: platform
+  format: string
+  description: string
+constellation:
+  type: string
+  title: platform
+  format: string
+  description: string
+sat:absolute_orbit:
+  type: string
+  title: platform
+  format: string
+  description: string
+datetime:
+  type: string
+  title: platform
+  format: string
+  description: string
+start_datetime:
+  type: string
+  title: platform
+  format: string
+  description: string
+end_datetime:
+  type: string
+  title: platform
+  format: string
+  description: string
+published:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:id:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:num_channels:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:acquisition_id:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:antenna_id:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:station_unit_id:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:front_end_id:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:planned_data_start:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:planned_data_stop:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:retransfer:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:antenna_status_ok:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:front_end_status_ok:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:downlink_status_ok:
+  type: string
+  title: platform
+  format: string
+  description: string
+cadip:delivery_push_ok:
+  type: string
+  title: platform
+  format: string
+  description: string

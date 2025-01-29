@@ -91,7 +91,21 @@ cadip:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -183,7 +197,21 @@ ins:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -275,7 +303,21 @@ mps:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -367,7 +409,21 @@ mti:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -459,7 +515,21 @@ nsg:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -551,7 +621,21 @@ sgs:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -680,7 +764,21 @@ cadip_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -828,7 +926,21 @@ ins_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -976,7 +1088,21 @@ mps_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1124,7 +1250,21 @@ mti_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1272,7 +1412,21 @@ nsg_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -1420,7 +1574,21 @@ sgs_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - DownlinkOrbit eq {DownlinkOrbit}
+          - DownlinkStart eq {DownlinkStart}
+          - DownlinkStop eq {DownlinkStop}
+          - NumChannels eq {NumChannels}
+          - AcquisitionId eq {AcquisitionId}
+          - AntennaId eq {AntennaId}
+          - StationUnitId eq {StationUnitId}
+          - FrontEndId eq {FrontEndId}
+          - PlannedDataStart eq {PlannedDataStart}
+          - PlannedDataStop eq {PlannedDataStop}
           - Retransfer eq {Retransfer}
+          - AntennaStatusOK eq {AntennaStatusOK}
+          - FrontEndStatusOK eq {FrontEndStatusOK}
+          - DownlinkStatusOK eq {DownlinkStatusOK}
+          - DeliveryPushOK eq {DeliveryPushOK}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:

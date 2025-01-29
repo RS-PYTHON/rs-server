@@ -1,0 +1,90 @@
+platform:
+  type: string
+  title: platform
+  format: string
+  description: string
+constellation:
+  type: string
+  title: platform
+  format: string
+  description: string
+Name:
+  type: string
+  title: platform
+  format: string
+  description: string
+auxip:id:
+  type: string
+  title: platform
+  format: string
+  description: string
+created:
+  type: string
+  title: platform
+  format: string
+  description: string
+datetime:
+  type: string
+  title: platform
+  format: string
+  description: string
+start_datetime:
+  type: string
+  title: platform
+  format: string
+  description: string
+end_datetime:
+  type: string
+  title: platform
+  format: string
+  description: string
+file:size:
+  type: string
+  title: platform
+  format: string
+  description: string
+type:
+  type: string
+  title: platform
+  format: string
+  description: string
+eviction_datetime:
+  type: string
+  title: platform
+  format: string
+  description: string
+product:type:
+  type: string
+  title: platform
+  format: string
+  description: string
+processing:
+  type: string
+  title: platform
+  format: string
+  description: string
+published:
+  type: string
+  title: platform
+  format: string
+  description: string
+file:checksum:
+  type: string
+  title: platform
+  format: string
+  description: string
+platform:
+  type: string
+  title: platform
+  format: string
+  description: string
+constellation:
+  type: string
+  title: platform
+  format: string
+  description: string
+processing:
+  type: string
+  title: platform
+  format: string
+  description: string

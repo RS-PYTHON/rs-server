@@ -64,7 +64,9 @@ def stac_to_odata(stac_params: dict) -> dict:
     stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
     with open(stac_mapper_path, encoding="utf-8") as stac_map:
         stac_mapper = json.loads(stac_map.read())
-        return {stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items()}
+        return {
+            stac_mapper.get(stac_key, stac_key): value for stac_key, value in stac_params.items() if value is not None
+        }
 
 
 def rename_keys(product: dict) -> dict:

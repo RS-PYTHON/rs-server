@@ -194,7 +194,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Note: the queryables contain stac keys
         queryables = {}
-
         # If the collection has a product type field hard-coded with a single value,
         # the user cannot query on it.
         # TODO: factorize this code for all query parameters.
@@ -205,12 +204,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if value and ("," not in value):
                     can_query = False
             if can_query:
-                queryables["product:type"] = QueryableField(
-                    type="string",
-                    title="productType",
-                    format="string",
-                    description="String",
-                )
+                for queryable_name, queryable_data in get_adgs_queryables().items():
+                    queryables.update({queryable_name: QueryableField(**queryable_data)})
+
+            return queryables
 
         # Idem for satellite or platform
         can_query = True
@@ -221,33 +218,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     can_query = False
                     break
 
-        # Read all platforms and constellations from the configuration file
         if can_query:
-            config = {}
-            for satellite in map_stac_platform().get("satellites", {}):
-                config.update(satellite)
-            platforms = sorted(set(config.keys()))
-            connstellations = sorted(
-                {platform["constellation"] for platform in config.values() if "constellation" in platform},
-            )
-            queryables.update(
-                {
-                    "platform": QueryableField(
-                        type="string",
-                        title="platform",
-                        format="string",
-                        description="String",
-                        enum=platforms,
-                    ),
-                    "constellation": QueryableField(
-                        type="string",
-                        title="constellation",
-                        format="string",
-                        description="String",
-                        enum=connstellations,
-                    ),
-                },
-            )
+            for queryable_name, queryable_data in get_cadip_queryables().items():
+                queryables.update({queryable_name: QueryableField(**queryable_data)})
 
         return queryables
 
@@ -817,6 +790,21 @@ def filter_allowed_collections(all_collections, role, request):
 def map_stac_platform() -> dict:
     """Function used to read and interpret from constellation.yaml"""
     with open(Path(__file__).parent.parent / "config" / "constellation.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
+## todo, Transofrm to single func
+@lru_cache
+def get_cadip_queryables() -> dict:
+    """Function used to read and interpret from cadip_queryables.yaml"""
+    with open(Path(__file__).parent.parent / "config" / "cadip_queryables.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
+@lru_cache
+def get_adgs_queryables() -> dict:
+    """Function used to read and interpret from adgs_queryables.yaml"""
+    with open(Path(__file__).parent.parent / "config" / "adgs_queryables.yaml", encoding="utf-8") as cf:
         return yaml.safe_load(cf)
 
 
