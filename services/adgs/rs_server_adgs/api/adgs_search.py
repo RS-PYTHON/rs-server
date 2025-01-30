@@ -108,7 +108,7 @@ class MockPgstacAdgs(MockPgstac):
         limit: int,
         page: int,
     ) -> stac_pydantic.ItemCollection:
-        """Do the search for the given collection and OData parameters."""
+        """Search adgs products for the given collection and OData parameters."""
         # Update odata names that shadow eodag builtins (productype)
         odata_params["Name"] = odata_params.pop("Name", [None])[0]
         odata_params["attr_platform_short_name"] = odata_params.pop("platformShortName", None)

@@ -1090,7 +1090,7 @@ class TestStagingPublishCatalog:
         assert result is True  # Should return True for successful publishing
         mock_post.assert_called_once_with(
             f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/items",
-            headers={"cookie": "fake-cookie"},
+            headers={"cookie": "fake-cookie", "host": "fake-host"},
             data=feature.json(),
             timeout=10,
         )
@@ -1119,7 +1119,7 @@ class TestStagingPublishCatalog:
             assert result is False  # Should return False for failure
             mock_post.assert_called_once_with(
                 f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/items",
-                headers={"cookie": "fake-cookie"},
+                headers={"cookie": "fake-cookie", "host": "fake-host"},
                 data=feature.json(),
                 timeout=10,
             )
