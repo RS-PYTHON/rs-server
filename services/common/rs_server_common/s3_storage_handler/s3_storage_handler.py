@@ -33,7 +33,6 @@ from rs_server_common.authentication.authentication_to_external import (
     TokenAuth,
 )
 from fastapi import HTTPException
-from pygeoapi.util import JobStatus
 
 
 # seconds
@@ -937,6 +936,7 @@ retried for %s times. Aborting",
                     self.logger.error(
                         f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
                     )
+                    from pygeoapi.util import JobStatus
                     self.log_job_execution(
                         JobStatus.failed,
                         0,
