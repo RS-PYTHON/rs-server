@@ -57,52 +57,22 @@ end_datetime:
   title: platform
   format: string
   description: string
-file:size:
-  type: string
-  title: platform
-  format: string
-  description: string
-type:
-  type: string
-  title: platform
-  format: string
-  description: string
-eviction_datetime:
-  type: string
-  title: platform
-  format: string
-  description: string
 product:type:
   type: string
   title: platform
   format: string
   description: string
-processing:
+processing:datetime:
+  type: string
+  title: platform
+  format: string
+  description: string
+processing:facility:
   type: string
   title: platform
   format: string
   description: string
 published:
-  type: string
-  title: platform
-  format: string
-  description: string
-file:checksum:
-  type: string
-  title: platform
-  format: string
-  description: string
-platform:
-  type: string
-  title: platform
-  format: string
-  description: string
-constellation:
-  type: string
-  title: platform
-  format: string
-  description: string
-processing:
   type: string
   title: platform
   format: string

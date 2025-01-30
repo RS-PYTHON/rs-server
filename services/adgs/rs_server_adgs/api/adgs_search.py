@@ -111,8 +111,6 @@ class MockPgstacAdgs(MockPgstac):
         """Search adgs products for the given collection and OData parameters."""
         # Update odata names that shadow eodag builtins (productype)
         odata_params["Name"] = odata_params.pop("Name", [None])[0]
-        odata_params["attr_platform_short_name"] = odata_params.pop("platformShortName", None)
-        odata_params["attr_serial_identif"] = odata_params.pop("platformSerialIdentifier", None)
         odata_params["attr_ptype"] = odata_params.pop("productType", None)
 
         return process_product_search(
