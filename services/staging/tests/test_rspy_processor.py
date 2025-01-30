@@ -25,7 +25,8 @@ import requests
 from dask_gateway import Gateway
 from fastapi import HTTPException
 from pygeoapi.util import JobStatus
-from rs_server_staging.processors import TokenAuth, streaming_task
+from rs_server_staging.processors import streaming_task
+from rs_server_common.authentication.authentication_to_external import TokenAuth
 
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
@@ -1202,7 +1203,7 @@ class TestStagingSubmitToDaskCluster:
         mock_streaming_task = mocker.Mock()
 
         # Patch the TokenAuth to return a mock object
-        mock_token_auth = mocker.patch("rs_server_staging.processors.TokenAuth")
+        mock_token_auth = mocker.patch("rs_server_common.authentification.authentification_to_external.TokenAuth")
 
         # Mock assets_info (list of tuples)
         mock_assets_info = [("asset1", "path1"), ("asset2", "path2")]

@@ -27,6 +27,14 @@ import boto3
 import botocore
 import requests
 from rs_server_common.utils.logging import Logging
+from rs_server_common.authentication.authentication_to_external import (
+    get_station_token, 
+    load_external_auth_config_by_domain,
+    TokenAuth,
+)
+from fastapi import HTTPException
+from pygeoapi.util import JobStatus
+
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6
@@ -855,7 +863,7 @@ retried for %s times. Aborting",
     def s3_streaming_upload(  # pylint: disable=too-many-locals
         self,
         stream_url: str,
-        trusted_domains: list[str],
+        domain: str,
         auth: Any,
         bucket: str,
         key: str,
@@ -910,18 +918,39 @@ retried for %s times. Aborting",
         backoff_factor = S3_RETRY_TIMEOUT
         attempt = 0
         # Prepare the request
+        external_auth_config = load_external_auth_config_by_domain(domain)
+        trusted_domains = external_auth_config.trusted_domains
         session = CustomSessionRedirect(trusted_domains)
         self.logger.debug(f"trusted_domains = {trusted_domains}")
-        request = requests.Request(
-            method="GET",
-            url=stream_url,
-            auth=auth,
-        )
-        prepared_request = session.prepare_request(request)
+       
         while attempt < max_retries:
             try:
                 self.connect_s3()
                 self.logger.info(f"Starting the streaming of {stream_url} to s3://{bucket}/{key}")
+                
+                # Get/refresh the access token if necessary
+                try:
+                    auth = get_station_token(external_auth_config, auth)
+                    token_auth_object = TokenAuth(auth)
+                    
+                except HTTPException as http_exception:
+                    self.logger.error(
+                        f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
+                    )
+                    self.log_job_execution(
+                        JobStatus.failed,
+                        0,
+                        message=f"Failed to retrieve the token needed to connect to the external station {auth['domain']}",
+                    )
+                    return
+    
+                request = requests.Request(
+                    method="GET",
+                    url=stream_url,
+                    auth=token_auth_object,
+                )
+                prepared_request = session.prepare_request(request)
+                             
                 with session.send(prepared_request, stream=True, timeout=timeout) as response:
                     # with requests.get(stream_url, stream=True, auth=auth, timeout=timeout) as response:
                     self.logger.debug(f"Request headers: {response.request.headers}")

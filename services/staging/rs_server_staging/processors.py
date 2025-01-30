@@ -29,10 +29,10 @@ from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.util import JobStatus
-from requests.auth import AuthBase
 from rs_server_common.authentication.authentication_to_external import (
     get_station_token,
     load_external_auth_config_by_domain,
+    ACCESS_TK_KEY_IN_RESPONSE,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
@@ -42,39 +42,7 @@ from starlette.requests import Request
 from .rspy_models import Feature, FeatureCollectionModel
 
 
-# Custom authentication class
-class TokenAuth(AuthBase):
-    """Custom authentication class
-
-    Args:
-        AuthBase (ABC): Base auth class
-    """
-
-    def __init__(self, token: str):
-        """Init token auth
-
-        Args:
-            token (str): Token value
-        """
-        self.token = token
-
-    def __call__(self, request: Request):  # type: ignore
-        """Add the Authorization header to the request
-
-        Args:
-            request (Request): request to be modified
-
-        Returns:
-            Request: request with modified headers
-        """
-        request.headers["Authorization"] = f"Bearer {self.token}"  # type: ignore
-        return request
-
-    def __repr__(self) -> str:
-        return "RSPY Token handler"
-
-
-def streaming_task(product_url: str, trusted_domains: list[str], auth: str, bucket: str, s3_file: str):
+def streaming_task(product_url: str, domain: str, auth: str, bucket: str, s3_file: str):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
@@ -102,7 +70,7 @@ def streaming_task(product_url: str, trusted_domains: list[str], auth: str, buck
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
-        s3_handler.s3_streaming_upload(product_url, trusted_domains, auth, bucket, s3_file)
+        s3_handler.s3_streaming_upload(product_url, domain, auth, bucket, s3_file)
     except RuntimeError as e:
         raise ValueError(
             f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
@@ -211,6 +179,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.logger = Logging.default(__name__)
         self.cluster = cluster
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
+        
+        self.token_dict = {}
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(self):  # pylint: disable=arguments-differ, invalid-overridden-method
@@ -729,7 +699,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         return client
 
-    def submit_tasks_to_dask_cluster(self, token: str, trusted_domains: list[str], client: Client):
+    def submit_tasks_to_dask_cluster(self, token_dict: dict, domain: str, client: Client):
         """Submits multiple tasks to a Dask cluster for asynchronous processing.
 
         Each task involves downloading a file stream (using `streaming_task`) and uploading it to an S3 bucket
@@ -762,8 +732,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     client.submit(
                         streaming_task,
                         asset_info[0],
-                        trusted_domains,
-                        TokenAuth(token),
+                        domain,
+                        ###TokenAuth(token_dict.get(ACCESS_TK_KEY_IN_RESPONSE)),
+                        token_dict.get(ACCESS_TK_KEY_IN_RESPONSE),
                         self.catalog_bucket,
                         asset_info[1],
                     ),
@@ -802,26 +773,29 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             )
             return
         domain = domains[0]
-
+        
         # retrieve the token
-        try:
-            external_auth_config = load_external_auth_config_by_domain(domain)
-            token = get_station_token(external_auth_config)
-        except HTTPException as http_exception:
-            self.logger.error(
-                f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
-            )
-            self.log_job_execution(
-                JobStatus.failed,
-                0,
-                message=f"Failed to retrieve the token needed to connect to the external station {domain}",
-            )
-            return
+        # try:
+        #     external_auth_config = load_external_auth_config_by_domain(domain)
+        #     self.token_dict = get_station_token(external_auth_config, self.token_dict)
+            
+        # except HTTPException as http_exception:
+        #     self.logger.error(
+        #         f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
+        #     )
+        #     self.log_job_execution(
+        #         JobStatus.failed,
+        #         0,
+        #         message=f"Failed to retrieve the token needed to connect to the external station {domain}",
+        #     )
+        #     return
 
         # connect to the dask cluster
         try:
             dask_client = self.dask_cluster_connect()
-            self.submit_tasks_to_dask_cluster(token, external_auth_config.trusted_domains, dask_client)
+            ###self.submit_tasks_to_dask_cluster(self.token_dict, external_auth_config.trusted_domains, dask_client)
+            self.submit_tasks_to_dask_cluster(self.token_dict, domain, dask_client)
+
         except RuntimeError as re:
             self.log_job_execution(JobStatus.failed, 0, message=f"{re}")
             self.logger.error("Failed to start the staging process")

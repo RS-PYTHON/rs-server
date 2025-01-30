@@ -18,17 +18,19 @@ Authentication to external stations module.
 
 import os
 import re
+from requests.auth import AuthBase
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-
+import datetime
 import requests
 import yaml
 from fastapi import HTTPException
 from rs_server_common import settings
 from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
+from starlette.requests import Request
 from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
@@ -45,6 +47,42 @@ DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL = f"{os.path.expanduser('~')}/.config/rs-se
 
 ACCESS_TK_KEY_IN_RESPONSE = "access_token"
 HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded"
+
+
+
+# Custom authentication class
+class TokenAuth(AuthBase):
+    """Custom authentication class
+
+    Args:
+        AuthBase (ABC): Base auth class
+    """
+
+    def __init__(self, token: str, token_creation_date: datetime, refresh_expires: str, refresh_token: str = None):
+        """Init token auth
+
+        Args:
+            token (str): Token value
+        """
+        self.token = token
+        self.token_creation_date = token_creation_date
+        self.refresh_expires = refresh_expires
+        self.refresh_token = refresh_token
+
+    def __call__(self, request: Request):  # type: ignore
+        """Add the Authorization header to the request
+
+        Args:
+            request (Request): request to be modified
+
+        Returns:
+            Request: request with modified headers
+        """
+        request.headers["Authorization"] = f"Bearer {self.token}"  # type: ignore
+        return request
+
+    def __repr__(self) -> str:
+        return "RSPY Token handler"
 
 
 def init_rs_server_config_yaml():
@@ -171,7 +209,7 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     trusted_domains: list[str] | None = None
 
 
-def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str:
+def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_dict: dict) -> str:
     """
     Retrieve and validate an authentication token for a specific station and service.
 
@@ -186,52 +224,71 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
         HTTPException: If the external authentication configuration cannot be retrieved,
                        if the token request fails, or if the token format is invalid.
     """
-    if not external_auth_config:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Failed to retrieve the configuration for the station token.",
-        )
+    # If no tokens are yet registered, we ask the authorisation server to generate ones by providing 
+    # an "authorisation grant" to the authorisation server
+    if not token_dict:
+        if not external_auth_config:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Failed to retrieve the configuration for the station token.",
+            )
 
-    headers = prepare_headers(external_auth_config)
-    data_to_send = prepare_data(external_auth_config)
-    logger.info(f"Fetching access token from station url: {external_auth_config.token_url}")
-    try:
-        response = requests.post(
-            external_auth_config.token_url,
-            data=data_to_send,
-            timeout=5,
-            headers=headers,
-        )
-        if response.status_code != HTTP_200_OK:
+        headers = prepare_headers(external_auth_config)
+        data_to_send = prepare_data(external_auth_config)
+        logger.info(f"Fetching access token from station url: {external_auth_config.token_url}")
+        try:
+            response = requests.post(
+                external_auth_config.token_url,
+                data=data_to_send,
+                timeout=5,
+                headers=headers,
+            )
+            if response.status_code != HTTP_200_OK:
+                logger.error(
+                    f"Failed to get the token from the station {external_auth_config.station_id}. "
+                    f"Response from the station: {response.text or ''}",
+                )
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Failed to get the token from the station {external_auth_config.station_id}. "
+                    f"Response from the station: {response.text or ''}",
+                )
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request to token endpoint failed: {str(e)}")
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Request to token endpoint failed: {str(e)}",
+            ) from e
+
+        new_token_dict = response.json()
+        # Is it worth validating it?
+        # validate_token_format(token.get(ACCESS_TK_KEY_IN_RESPONSE, ""))
+        if ACCESS_TK_KEY_IN_RESPONSE not in new_token_dict:
             logger.error(
-                f"Failed to get the token from the station {external_auth_config.station_id}. "
-                f"Response from the station: {response.text or ''}",
+                f"The token field was not found in the response from the station {external_auth_config.station_id}. ",
             )
             raise HTTPException(
-                status_code=response.status_code,
-                detail=f"Failed to get the token from the station {external_auth_config.station_id}. "
-                f"Response from the station: {response.text or ''}",
+                status_code=HTTP_404_NOT_FOUND,
+                detail=f"The token field was not found in the response from the station {external_auth_config.station_id}.",
             )
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request to token endpoint failed: {str(e)}")
-        raise HTTPException(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Request to token endpoint failed: {str(e)}",
-        ) from e
-
-    token = response.json()
-    # Is it worth validating it?
-    # validate_token_format(token.get(ACCESS_TK_KEY_IN_RESPONSE, ""))
-    if ACCESS_TK_KEY_IN_RESPONSE not in token:
-        logger.error(
-            f"The token field was not found in the response from the station {external_auth_config.station_id}. ",
-        )
-        raise HTTPException(
-            status_code=HTTP_404_NOT_FOUND,
-            detail=f"The token field was not found in the response from the station {external_auth_config.station_id}.",
-        )
-    logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
-    return token.get(ACCESS_TK_KEY_IN_RESPONSE)
+        logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
+        return new_token_dict###token.get(ACCESS_TK_KEY_IN_RESPONSE)
+    else:
+        # Check if the token is expired or nearky expired (in less than one minute)
+        # If it is the case generate a new token using the refresh token, otherwise
+        # keep the current one
+        current_date = datetime.datetime.now()
+        diff_in_sec = (current_date - token_dict["token_creation_date"]).total_seconds()
+        if diff_in_sec > token_dict["refresh_expires"] - 60:
+            data_to_send = {"refresh_token": token_dict["refresh_token"]}
+            response = requests.post(
+                external_auth_config.token_url,
+                data=data_to_send,
+                timeout=5,
+                headers=headers,
+            )
+            return response.json()
+        return token_dict
 
 
 def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> Dict[str, str]:
