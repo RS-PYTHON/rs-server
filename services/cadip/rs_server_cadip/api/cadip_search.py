@@ -550,9 +550,9 @@ def process_files_search(  # pylint: disable=too-many-locals
         HTTPException (fastapi.exceptions): If there is a connection error to the station.
         HTTPException (fastapi.exceptions): If there is a general failure during the process.
     """
-    query_datetime = queryables.get("datetime")
-    session_id = queryables.get("SessionId")
+    query_datetime = queryables.get("PublicationDate")
 
+    session_id = queryables.get("SessionId")
     if not query_datetime and not session_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing search parameters")
 

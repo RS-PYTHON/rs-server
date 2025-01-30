@@ -793,7 +793,7 @@ def map_stac_platform() -> dict:
         return yaml.safe_load(cf)
 
 
-## todo, Transofrm to single func
+# todo, Transofrm to single func
 @lru_cache
 def get_cadip_queryables() -> dict:
     """Function used to read and interpret from cadip_queryables.yaml"""
