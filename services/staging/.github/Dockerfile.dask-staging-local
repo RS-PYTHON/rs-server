@@ -15,6 +15,7 @@
 # We will add rs-server-staging to the dask-gateway-server image for local mode
 ARG DASK_TAG=xxx
 FROM ghcr.io/rs-python/dask-gateway-server/base/local:${DASK_TAG}
+ARG DASK_TAG=xxx
 
 # Default user from parent image
 ARG USER=dask:dask
@@ -29,6 +30,11 @@ LABEL org.opencontainers.image.url="https://github.com/RS-PYTHON/rs-server/blob/
 USER root
 RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
 USER $USER
+
+# Install complete dask subsets
+RUN pip install -U pip && \
+pip install -U \
+    dask[complete]==${DASK_TAG}
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
 # so the .whl files are under ./*.whl
