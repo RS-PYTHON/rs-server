@@ -29,6 +29,13 @@ from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
     HTTP_503_SERVICE_UNAVAILABLE,
+    HTTP_500_INTERNAL_SERVER_ERROR,
+)
+
+from pygeoapi.process.base import (
+    JobNotFoundError,
+    JobResultNotFoundError,
+    ProcessorGenericError
 )
 
 expected_jobs_test = [
@@ -69,6 +76,14 @@ expected_jobs_test = [
         "status": "successful",
         "progress": 100.0,
         "message": "Test detail",
+        "created": "unknown",
+        "updated": "unknown",
+    },
+    {
+        "identifier": "trigger_500",
+        "status": "error",
+        "progress": 0.0,
+        "message": "This job will trigger an internal server error.",
         "created": "unknown",
         "updated": "unknown",
     },
@@ -306,20 +321,42 @@ async def test_get_job_result(
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    try:
-        job_index = next(i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"])
+    
+    if expected_job["identifier"] == "non_existing":
+        # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
+        mock_db_table.get_job.side_effect = JobNotFoundError
+        expected_status = HTTP_404_NOT_FOUND
+        expected_response = {
+            "title": "No Such Job",
+            "detail": f"Job with ID {expected_job['identifier']} not found.",
+        }
+    elif expected_job["identifier"] == "trigger_500":
+        # Simulate an unexpected exception (HTTP 500)
+        mock_db_table.get_job.side_effect = Exception("Unexpected error occurred")
+        expected_status = HTTP_500_INTERNAL_SERVER_ERROR
+        expected_response = {
+            "title": "Internal Server Error",
+            "detail": "Unexpected error occurred",
+        }
+    else:
+        # Return an existing job normally (HTTP 200)
+        job_index = next(
+            i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"]
+        )
         mock_db_table.get_job.return_value = mock_jobs[job_index]
-    except StopIteration:
-        mock_db_table.get_job.return_value = []
+        expected_status = HTTP_200_OK
+        expected_response = expected_job["status"]
+    
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    response = staging_client.get(f"/jobs/{expected_job['identifier']}/results")
-    # assert response is OK and job info match, or not found for last case
-    assert (
-        response.status_code == HTTP_200_OK and response.json() == expected_job["status"]
-    ) or response.status_code == HTTP_404_NOT_FOUND
+    job_id = expected_job.get("identifier")  
+    response = staging_client.get(f"/jobs/{job_id}/results")
+    
+    # Assert response status code and content
+    assert response.status_code == expected_status
+    assert response.json() == expected_response
 
 
 @pytest.mark.asyncio
