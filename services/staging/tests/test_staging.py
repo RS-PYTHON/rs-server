@@ -18,6 +18,7 @@ from datetime import datetime
 
 import pytest
 from fastapi import FastAPI
+from pygeoapi.process.base import JobNotFoundError
 from rs_server_staging.main import (
     app_lifespan,
     get_config_contents,
@@ -28,14 +29,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
-    HTTP_503_SERVICE_UNAVAILABLE,
     HTTP_500_INTERNAL_SERVER_ERROR,
-)
-
-from pygeoapi.process.base import (
-    JobNotFoundError,
-    JobResultNotFoundError,
-    ProcessorGenericError
+    HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 expected_jobs_test = [
@@ -321,7 +316,7 @@ async def test_get_job_result(
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    
+
     if expected_job["identifier"] == "non_existing":
         # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
         mock_db_table.get_job.side_effect = JobNotFoundError
@@ -340,20 +335,18 @@ async def test_get_job_result(
         }
     else:
         # Return an existing job normally (HTTP 200)
-        job_index = next(
-            i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"]
-        )
+        job_index = next(i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"])
         mock_db_table.get_job.return_value = mock_jobs[job_index]
         expected_status = HTTP_200_OK
         expected_response = expected_job["status"]
-    
+
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    job_id = expected_job.get("identifier")  
+    job_id = expected_job.get("identifier")
     response = staging_client.get(f"/jobs/{job_id}/results")
-    
+
     # Assert response status code and content
     assert response.status_code == expected_status
     assert response.json() == expected_response

@@ -24,12 +24,8 @@ import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
+from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
-from pygeoapi.process.base import (
-    JobNotFoundError,
-    JobResultNotFoundError,
-    ProcessorGenericError
-)
 from pygeoapi.provider.postgresql import get_engine
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
@@ -48,8 +44,8 @@ from starlette.responses import JSONResponse
 from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
-    HTTP_503_SERVICE_UNAVAILABLE,
     HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 # flake8: noqa: F401
@@ -328,16 +324,13 @@ async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID
         # Handle case when job_id is not found
         return JSONResponse(
             status_code=HTTP_404_NOT_FOUND,
-            content={
-                "title": "No Such Job",
-                "detail": f"Job with ID {job_id} not found."
-            }
+            content={"title": "No Such Job", "detail": f"Job with ID {job_id} not found."},
         )
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         # Catch any other unexpected exceptions
         return JSONResponse(
             status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"title": "Internal Server Error", "detail": str(e)}
+            content={"title": "Internal Server Error", "detail": str(e)},
         )
 
 
