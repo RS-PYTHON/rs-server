@@ -25,7 +25,8 @@ import requests
 from dask_gateway import Gateway
 from fastapi import HTTPException
 from pygeoapi.util import JobStatus
-from rs_server_staging.processors import TokenAuth, streaming_task
+from rs_server_staging.processors import Staging, TokenAuth, streaming_task
+from rs_server_staging.rspy_models import FeatureCollectionModel
 
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
@@ -128,85 +129,92 @@ class TestStaging:
     """Test class for Staging processor"""
 
     @pytest.mark.asyncio
-    async def test_execute_with_running_loop(self, mocker, staging_instance, asyncio_loop):
+    async def test_execute_with_running_loop(
+        self,
+        mocker,
+        staging_instance: Staging,
+        staging_inputs: dict,
+        asyncio_loop,
+    ):
         """Test execute method while a asyncio loop is running"""
-        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+        spy_log_job = mocker.spy(staging_instance, "log_job_execution")
         mock_check_catalog = mocker.patch.object(staging_instance, "check_catalog", return_value=True)
         mock_process_rspy = mocker.patch.object(staging_instance, "process_rspy_features", return_value=True)
-        # Mocking the item_collection and its features
-        staging_instance.item_collection = mocker.Mock()
-        staging_instance.item_collection.features = [mocker.Mock(id="1"), mocker.Mock(id="2")]
         # Simulate an already running event loop
         mocker.patch.object(asyncio, "get_event_loop", return_value=asyncio_loop)
         mocker.patch.object(asyncio_loop, "is_running", return_value=True)
 
         # Call the async execute method
-        result = await staging_instance.execute()
+        result = await staging_instance.execute(staging_inputs)
 
         # Assertions
-        assert mock_log_job.call_count == 1
-        mock_log_job.assert_has_calls(
-            [call(JobStatus.running, 0, message="Successfully searched catalog")],
+        assert spy_log_job.call_count == 1
+        spy_log_job.assert_has_calls(
+            [call(JobStatus.running, 0, "Successfully searched catalog")],
         )
         mock_check_catalog.assert_called_once()
         mock_process_rspy.assert_called_once()  # Ensures processing is scheduled
-        assert result == {"running": staging_instance.job_id}
+        assert result == ("application/json", {"running": staging_instance.job_id})
 
     @pytest.mark.asyncio
-    async def test_execute_fails_in_checking_catalog(self, mocker, staging_instance, asyncio_loop):
+    async def test_execute_fails_in_checking_catalog(
+        self,
+        mocker,
+        staging_instance: Staging,
+        staging_inputs: dict,
+        asyncio_loop,
+    ):
         """Test execute method while a asyncio loop is running"""
-        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+        spy_log_job = mocker.spy(staging_instance, "log_job_execution")
         mock_check_catalog = mocker.patch.object(staging_instance, "check_catalog", return_value=False)
-        # Mocking the item_collection and its features
-        staging_instance.item_collection = mocker.Mock()
-        staging_instance.item_collection.features = [mocker.Mock(id="1"), mocker.Mock(id="2")]
         # Simulate an already running event loop
         mocker.patch.object(asyncio, "get_event_loop", return_value=asyncio_loop)
         mocker.patch.object(asyncio_loop, "is_running", return_value=True)
 
         # Call the async execute method
-        result = await staging_instance.execute()
+        result = await staging_instance.execute(staging_inputs)
 
         # Assertions
-        assert mock_log_job.call_count == 1
-        mock_log_job.assert_has_calls(
+        assert spy_log_job.call_count == 1
+        spy_log_job.assert_has_calls(
             [
                 call(
                     JobStatus.failed,
                     0,
-                    message="Failed to start the staging process. "
-                    f"Checking the collection '{staging_instance.catalog_collection}' failed !",
+                    "Failed to start the staging process. Checking the collection 'test_collection' failed !",
                 ),
             ],
         )
         mock_check_catalog.assert_called_once()
 
-        assert result == {"failed": staging_instance.job_id}
+        assert result == ("application/json", {"failed": staging_instance.job_id})
 
     @pytest.mark.asyncio
-    async def test_execute_with_running_loop_without_item_collection(self, mocker, staging_instance, asyncio_loop):
+    async def test_execute_with_running_loop_without_item_collection(
+        self,
+        mocker,
+        staging_instance: Staging,
+        asyncio_loop,
+    ):
         """Test execute method while a asyncio loop is running"""
-        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+        spy_log_job = mocker.spy(staging_instance, "log_job_execution")
 
         # Simulate an already running event loop
         mocker.patch.object(asyncio, "get_event_loop", return_value=asyncio_loop)
         mocker.patch.object(asyncio_loop, "is_running", return_value=True)
 
-        # set item_collection to None
-        staging_instance.item_collection = None
-
         # Call the async execute method
-        result = await staging_instance.execute()
+        result = await staging_instance.execute(data={"collection": {"id": "test_collection"}})
 
         # Assertions
-        mock_log_job.assert_called_once_with(
+        spy_log_job.assert_called_once_with(
             JobStatus.successful,
             0,
-            message="No valid items were provided in the input for staging",
+            "No valid items were provided in the input for staging",
         )
-        assert result == {"successful": staging_instance.job_id}
+        assert result == ("application/json", {"successful": staging_instance.job_id})
 
-    def test_create_job_execution(self, staging_instance, mocker):
+    def test_create_job_execution(self, staging_instance: Staging, mocker):
         """Test the create_job_execution method of the Staging class.
 
         This test verifies that the create_job_execution method correctly inserts a new job execution
@@ -241,7 +249,7 @@ class TestStaging:
             },
         )
 
-    def test_log_job_execution(self, staging_instance, mocker):
+    def test_log_job_execution(self, staging_instance: Staging, mocker):
         """Test the log_job_execution method of the Staging class.
 
         This test verifies that the log_job_execution method correctly updates the job's status,
@@ -288,9 +296,9 @@ class TestStaging:
 
         # Call log_job_execution to test status update with custom attrs
         staging_instance.log_job_execution(
-            status=JobStatus.running,
-            progress=50.0,
-            message="Job is halfway done.",
+            JobStatus.running,
+            50.0,
+            "Job is halfway done.",
         )
 
         # Assert that the update method was called with the custom parameters
@@ -308,8 +316,14 @@ class TestStaging:
 class TestStagingCatalog:
     """Group of all tests used for method that search the catalog before processing."""
 
+    def _call_check_catalog(self, staging_instance: Staging, staging_inputs: dict):
+        return staging_instance.check_catalog(
+            staging_inputs["collection"]["id"],
+            FeatureCollectionModel.parse_obj(staging_inputs["items"]).features,
+        )
+
     @pytest.mark.asyncio
-    async def test_check_catalog_success(self, mocker, staging_instance):
+    async def test_check_catalog_success(self, mocker, staging_instance: Staging, staging_inputs: dict):
         """Test the check_catalog method for successful execution.
 
         This test verifies that the check_catalog method correctly formats the request
@@ -319,10 +333,6 @@ class TestStagingCatalog:
             mocker: The mocker fixture to patch methods and objects during tests.
             staging_instance (Staging): An instance of the Staging class, pre-initialized for testing.
         """
-        # Mocking the item_collection and its features
-        staging_instance.item_collection = mocker.Mock()
-        staging_instance.item_collection.features = [mocker.Mock(id="1"), mocker.Mock(id="2")]
-
         # Setting up the catalog_url and headers
         staging_instance.catalog_url = "https://test_rspy_catalog_url.com"
 
@@ -337,7 +347,7 @@ class TestStagingCatalog:
         mocker.patch("requests.get", return_value=mock_response)
 
         # Call the method under test
-        result = await staging_instance.check_catalog()
+        result = await self._call_check_catalog(staging_instance, staging_inputs)
 
         # Assert that the result is True (successful catalog check)
         assert result is True
@@ -357,12 +367,8 @@ class TestStagingCatalog:
         mock_log_job_execution.called_once()
 
     @pytest.mark.asyncio
-    async def test_check_catalog_get_wrong_response(self, mocker, staging_instance):
+    async def test_check_catalog_get_wrong_response(self, mocker, staging_instance: Staging, staging_inputs: dict):
         """docstring to be added"""
-        # Mocking the item_collection and its features
-        staging_instance.item_collection = mocker.Mock()
-        staging_instance.item_collection.features = [mocker.Mock(id="1"), mocker.Mock(id="2")]
-
         # Setting up the catalog_url and headers
         staging_instance.catalog_url = "https://test_rspy_catalog_url.com"
 
@@ -373,18 +379,14 @@ class TestStagingCatalog:
         mocker.patch("requests.get", return_value=mock_response)
 
         # Call the method under test
-        result = await staging_instance.check_catalog()
+        result = await self._call_check_catalog(staging_instance, staging_inputs)
 
         # Assert that the result is True (successful catalog check)
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_check_catalog_failure(self, mocker, staging_instance):
+    async def test_check_catalog_failure(self, mocker, staging_instance: Staging, staging_inputs: dict):
         """docstring to be added"""
-        # Mocking the item_collection and its features
-        staging_instance.item_collection = mocker.Mock()
-        staging_instance.item_collection.features = [mocker.Mock(id=1), mocker.Mock(id=2)]
-
         # Setting up the catalog_url and headers
         staging_instance.catalog_url = "https://test_rspy_catalog_url.com"
 
@@ -405,7 +407,7 @@ class TestStagingCatalog:
             mock_create_streaming_list = mocker.patch.object(staging_instance, "create_streaming_list")
 
             # Call the method under test
-            result = await staging_instance.check_catalog()
+            result = await self._call_check_catalog(staging_instance, staging_inputs)
 
             # Assert that the result is False (failed catalog check)
             assert result is False
@@ -415,7 +417,7 @@ class TestStagingCatalog:
             mock_log_job_execution.assert_called_once_with(
                 JobStatus.failed,
                 0,
-                message=f"Failed to search catalog: {get_err_msg}",
+                f"Failed to search catalog: {get_err_msg}",
             )
 
         # Mock the requests.get method
@@ -431,77 +433,77 @@ class TestStagingCatalog:
             side_effect=RuntimeError(err_msg),
         )
         # Call the method under test
-        await staging_instance.check_catalog()
+        await self._call_check_catalog(staging_instance, staging_inputs)
         mock_log_job_execution.assert_called_once_with(
             JobStatus.failed,
             0,
-            message=f"Failed to search catalog: {err_msg}",
+            f"Failed to search catalog: {err_msg}",
         )
 
 
 class TestPrepareStreaming:
     """Class that groups tests for methods that prepare inputs for streaming process."""
 
-    def test_create_streaming_list_all_downloaded(self, mocker, staging_instance):
+    def test_create_streaming_list_all_downloaded(self, mocker, staging_instance: Staging):
         """Test create_streaming_list when all features are already downloaded."""
-        # Set up the staging instance
-        staging_instance.item_collection.features = [mocker.Mock(id=1), mocker.Mock(id=2)]
+        features = [mocker.Mock(id=1), mocker.Mock(id=2)]
 
         # Create a mock catalog response indicating all features have been downloaded
         catalog_response = {"context": {"returned": 2}, "features": [{"id": 1}, {"id": 2}]}
 
         # Call the method under test
-        staging_instance.create_streaming_list(catalog_response)
+        staging_instance.create_streaming_list(features, catalog_response)
 
         # Assert that stream_list is empty
         assert staging_instance.stream_list == []
 
-    def test_create_streaming_list_no_download(self, mocker, staging_instance):
+    def test_create_streaming_list_no_download(self, mocker, staging_instance: Staging):
         """Test create_streaming_list when no features are found in the catalog."""
-        staging_instance.item_collection.features = [mocker.Mock(id=1), mocker.Mock(id=2)]
+        features = [mocker.Mock(id=1), mocker.Mock(id=2)]
 
         # Create a mock catalog response with no features found
         catalog_response = {"context": {"returned": 0}, "features": []}
 
-        staging_instance.create_streaming_list(catalog_response)
+        staging_instance.create_streaming_list(features, catalog_response)
 
         # Assert that stream_list contains all features
-        assert staging_instance.stream_list == staging_instance.item_collection.features
+        assert staging_instance.stream_list == features
 
-    def test_create_streaming_list_partial_download(self, mocker, staging_instance):
+    def test_create_streaming_list_partial_download(self, mocker, staging_instance: Staging):
         """Test create_streaming_list when some features are not yet downloaded."""
         feature_1 = mocker.Mock(id=1)
         feature_2 = mocker.Mock(id=2)
         feature_3 = mocker.Mock(id=3)
-        staging_instance.item_collection.features = [feature_1, feature_2, feature_3]
+        features = [feature_1, feature_2, feature_3]
 
         # Create a mock catalog response indicating only some features have been downloaded
         # Only feature 1 has been already staged
         catalog_response = {"context": {"returned": 1}, "features": [{"id": 1}]}
 
-        staging_instance.create_streaming_list(catalog_response)
+        staging_instance.create_streaming_list(features, catalog_response)
 
         # Assert that stream_list contains features 2 and 3 (not downloaded)
         assert staging_instance.stream_list == [feature_2, feature_3]
 
-    def test_create_streaming_list_wrong_catalog_input(self, mocker, staging_instance):
+    def test_create_streaming_list_wrong_catalog_input(self, mocker, staging_instance: Staging):
         """Test create_streaming_list when a wrong response is received from the catalog."""
         feature_1 = mocker.Mock(id=1)
         feature_2 = mocker.Mock(id=2)
         feature_3 = mocker.Mock(id=3)
-        staging_instance.item_collection.features = [feature_1, feature_2, feature_3]
+        features = [feature_1, feature_2, feature_3]
 
         # Create a mock catalog response which is malformed
         catalog_response = {"context": {"returned": 1}, "wrong_key": [{"id": 1}]}
 
         with pytest.raises(
             RuntimeError,
-            match="The 'features' field is missing in the response from the catalog service. ",
+            match="The 'features' field is missing in the response from the catalog service.",
         ):
-            staging_instance.create_streaming_list(catalog_response)
+            staging_instance.create_streaming_list(features, catalog_response)
 
-    def test_prepare_streaming_tasks_all_valid(self, mocker, staging_instance):
+    def test_prepare_streaming_tasks_all_valid(self, mocker, staging_instance: Staging):
         """Test prepare_streaming_tasks when all assets are valid."""
+        catalog_collection = "test_collection"
         feature = mocker.Mock()
         feature.id = "feature_id"
         feature.assets = {
@@ -509,36 +511,29 @@ class TestPrepareStreaming:
             "asset2": mocker.Mock(href="https://example.com/asset2"),
         }
 
-        result = staging_instance.prepare_streaming_tasks(feature)
+        result = staging_instance.prepare_streaming_tasks(catalog_collection, feature)
 
         # Assert that the method returns True
         assert result is True
         # Assert that assets_info has been populated correctly
         assert staging_instance.assets_info == [
-            ("https://example.com/asset1", f"{staging_instance.catalog_collection}/{feature.id}/asset1"),
-            ("https://example.com/asset2", f"{staging_instance.catalog_collection}/{feature.id}/asset2"),
+            ("https://example.com/asset1", f"{catalog_collection}/{feature.id}/asset1"),
+            ("https://example.com/asset2", f"{catalog_collection}/{feature.id}/asset2"),
         ]
         # Assert that asset hrefs are updated correctly
-        assert (
-            feature.assets["asset1"].href
-            == f"s3://rtmpop/{staging_instance.catalog_collection}/{feature.id}/\
-asset1"
-        )
-        assert (
-            feature.assets["asset2"].href
-            == f"s3://rtmpop/{staging_instance.catalog_collection}/{feature.id}/\
-asset2"
-        )
+        assert feature.assets["asset1"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset1"
+        assert feature.assets["asset2"].href == f"s3://rtmpop/{catalog_collection}/{feature.id}/asset2"
 
-    def test_prepare_streaming_tasks_one_invalid(self, mocker, staging_instance):
+    def test_prepare_streaming_tasks_one_invalid(self, mocker, staging_instance: Staging):
         """Test prepare_streaming_tasks when all assets are valid."""
+        catalog_collection = "test_collection"
         feature = mocker.Mock()
         feature.id = "feature_id"
         feature.assets = {
             "asset1": mocker.Mock(href="", title="asset1_title"),
             "asset2": mocker.Mock(href="https://example.com/asset2", title="asset2_title"),
         }
-        result = staging_instance.prepare_streaming_tasks(feature)
+        result = staging_instance.prepare_streaming_tasks(catalog_collection, feature)
 
         # Assert that the method returns False
         assert result is False
@@ -547,7 +542,7 @@ asset2"
 class TestStagingTaskFailure:  # pylint: disable=too-few-public-methods
     """Class to group tests that handle dask task failure"""
 
-    def test_handle_task_failure_all_tasks_canceled(self, mocker, staging_instance):
+    def test_handle_task_failure_all_tasks_canceled(self, mocker, staging_instance: Staging):
         """Test handle_task_failure when all tasks are successfully canceled."""
         # Create mock tasks
         task_1 = mocker.Mock()
@@ -570,7 +565,7 @@ class TestStagingTaskFailure:  # pylint: disable=too-few-public-methods
         task_1.cancel.assert_called_once()
         task_2.cancel.assert_called_once()
 
-    def test_handle_task_failure_with_canceled_error(self, mocker, staging_instance):
+    def test_handle_task_failure_with_canceled_error(self, mocker, staging_instance: Staging):
         """Test handle_task_failure when one task raises CanceledError"""
         # Mock task objects
         mock_task1 = mocker.Mock()
@@ -625,7 +620,7 @@ class TestStagingTaskFailure:  # pylint: disable=too-few-public-methods
 class TestStagingDeleteFromBucket:
     """Class used to group tests that handle file bucket removal if failure"""
 
-    def test_delete_files_from_bucket_succes(self, mocker, staging_instance):
+    def test_delete_files_from_bucket_succes(self, mocker, staging_instance: Staging):
         """Test all files were removed from given bucket"""
         mocker.patch.dict(
             os.environ,
@@ -646,7 +641,7 @@ class TestStagingDeleteFromBucket:
         # Assert that S3StorageHandler was instantiated with the correct environment variables
         mock_s3_handler.delete_file_from_s3.assert_called_once_with("fake_bucket", "fake_s3_path")
 
-    def test_delete_files_from_bucket_empty(self, mocker, staging_instance):
+    def test_delete_files_from_bucket_empty(self, mocker, staging_instance: Staging):
         """Test delete files with no assets, nothing should happen."""
         staging_instance.assets_info = []
         # Mock S3StorageHandler to ensure it's not used
@@ -657,7 +652,7 @@ class TestStagingDeleteFromBucket:
         # Assert that delete_file_from_s3 was never called since there are no assets
         mock_s3_handler.delete_file_from_s3.assert_not_called()
 
-    def test_delete_files_from_bucket_failed_to_create_s3_handler(self, mocker, staging_instance):
+    def test_delete_files_from_bucket_failed_to_create_s3_handler(self, mocker, staging_instance: Staging):
         """Test a failure in creating s3 storage handler."""
         # Mock the environment variables but leave one out to trigger KeyError
         mocker.patch.dict(
@@ -678,7 +673,7 @@ class TestStagingDeleteFromBucket:
         # Assert that the error was logged
         mock_logger.error.assert_called_once_with("Cannot connect to s3 storage, %s", mocker.ANY)
 
-    def test_delete_files_from_bucket_fail_while_in_progress(self, mocker, staging_instance):
+    def test_delete_files_from_bucket_fail_while_in_progress(self, mocker, staging_instance: Staging):
         """Test a runtime error while using s3_handler.delete_file_from_s3, should produce a logger error,
         nothing else?
         """
@@ -708,7 +703,7 @@ class TestStagingDeleteFromBucket:
 class TestStagingMainExecution:
     """Class to test Item processing"""
 
-    def test_dask_cluster_connect(self, mocker, staging_instance, cluster_options):
+    def test_dask_cluster_connect(self, mocker, staging_instance: Staging, cluster_options):
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -760,7 +755,7 @@ class TestStagingMainExecution:
             f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}",
         )
 
-    def test_dask_cluster_connect_failure_no_cluster_name(self, mocker, staging_instance, cluster_options):
+    def test_dask_cluster_connect_failure_no_cluster_name(self, mocker, staging_instance: Staging, cluster_options):
         """Test the bahavior in case no cluster name is found"""
         non_existent_cluster = "another-cluster-name"
         # Mock environment variables to simulate gateway mode
@@ -799,7 +794,7 @@ class TestStagingMainExecution:
             "Failed to find the specified dask cluster: " f"No dask cluster named '{non_existent_cluster}' was found.",
         )
 
-    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance):
+    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance: Staging):
         """Test to mock the connection to a dask cluster"""
         # Not all the needed env vars are mocked
         mocker.patch.dict(
@@ -812,7 +807,7 @@ class TestStagingMainExecution:
         with pytest.raises(RuntimeError):
             staging_instance.dask_cluster_connect()
 
-    def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance):
+    def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance: Staging):
         """Test to mock managing of successul tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
@@ -831,16 +826,16 @@ class TestStagingMainExecution:
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
         mock_publish_feature = mocker.patch.object(staging_instance, "publish_rspy_feature")
 
-        staging_instance.manage_dask_tasks_results(client)
+        staging_instance.manage_dask_tasks_results(client, "test_collection")
 
-        # mock_log_job.assert_any_call(JobStatus.running, None, message='In progress')
+        # mock_log_job.assert_any_call(JobStatus.running, None, 'In progress')
         # Check that status was updated 3 times during execution, 1 time for each task, and 1 time with FINISH
-        mock_log_job.assert_any_call(JobStatus.successful, 100, message="Finished")
+        mock_log_job.assert_any_call(JobStatus.successful, 100, "Finished")
         assert mock_log_job.call_count == 3
         # Check that feature publish method was called.
         mock_publish_feature.assert_called()
 
-    def test_manage_dask_tasks_results_failure(self, mocker, staging_instance):
+    def test_manage_dask_tasks_results_failure(self, mocker, staging_instance: Staging):
         """Test handling callbacks when error on one task"""
         task1 = mocker.Mock()
         task1.result = mocker.Mock(return_value=None, side_effect=Exception)  # Simulate a exception in task
@@ -857,16 +852,16 @@ class TestStagingMainExecution:
         # Set timeout to 0, in order to skip that while loop
         mocker.patch.dict("os.environ", {"RSPY_STAGING_TIMEOUT": "0"})
 
-        staging_instance.manage_dask_tasks_results(client)
+        staging_instance.manage_dask_tasks_results(client, "test_collection")
 
         mock_task_failure.assert_called()  # handle_task_failure called once
         mock_delete_file_from_bucket.assert_called()  # Bucket removal called once
         # logger set status to failed
-        mock_log_job.assert_called_once_with(JobStatus.failed, None, message="At least one of the tasks failed: ")
+        mock_log_job.assert_called_once_with(JobStatus.failed, None, "At least one of the tasks failed: ")
         # Features are not published here.
         mock_publish_feature.assert_not_called()
 
-    def test_manage_dask_tasks_failed_to_publish(self, mocker, staging_instance):
+    def test_manage_dask_tasks_failed_to_publish(self, mocker, staging_instance: Staging):
         """Test to mock managing of successul tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
@@ -887,23 +882,23 @@ class TestStagingMainExecution:
         mocker.patch.object(staging_instance, "publish_rspy_feature", return_value=False)
         mock_delete_file_from_bucket = mocker.patch.object(staging_instance, "delete_files_from_bucket")
 
-        staging_instance.manage_dask_tasks_results(client)
+        staging_instance.manage_dask_tasks_results(client, "test_collection")
 
         mock_log_job.assert_any_call(
             JobStatus.failed,
             None,
-            message=f"The item {task1.id} couldn't be " "published in the catalog. Cleaning up",
+            f"The item {task1.id} couldn't be published in the catalog. Cleaning up",
         )
         mock_delete_file_from_bucket.assert_called()
 
-    def test_manage_dask_tasks_no_dask_client(self, mocker, staging_instance):
+    def test_manage_dask_tasks_no_dask_client(self, mocker, staging_instance: Staging):
         """Test the manage_dask_tasks when no valid dask client is received"""
         mock_logger = mocker.patch.object(staging_instance, "logger")
-        staging_instance.manage_dask_tasks_results(None)
+        staging_instance.manage_dask_tasks_results(None, "test_collection")
         mock_logger.error.assert_called_once_with("The dask cluster client object is not created. Exiting")
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_empty_assets(self, mocker, staging_instance):
+    async def test_process_rspy_features_empty_assets(self, mocker, staging_instance: Staging):
         """Test that process_rspy_features handles task preparation failure."""
 
         # Mock dependencies
@@ -915,13 +910,13 @@ class TestStagingMainExecution:
         staging_instance.stream_list = [mock_feature]
 
         # Call the method
-        await staging_instance.process_rspy_features()
+        await staging_instance.process_rspy_features("test_collection")
 
         # Ensure the task preparation failed, and method returned early
-        mock_log_job.assert_called_with(JobStatus.failed, 0, message="Unable to create tasks for the Dask cluster")
+        mock_log_job.assert_called_with(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_empty_stream(self, mocker, staging_instance):
+    async def test_process_rspy_features_empty_stream(self, mocker, staging_instance: Staging):
         """Test that process_rspy_features logs the initial setup and starts the main loop."""
 
         # Mock dependencies
@@ -932,13 +927,13 @@ class TestStagingMainExecution:
         staging_instance.stream_list = []
 
         # Call the method
-        await staging_instance.process_rspy_features()
+        await staging_instance.process_rspy_features("test_collection")
 
         # Assert initial logging and job execution calls
-        mock_log_job.assert_called_with(JobStatus.successful, 100, message="Finished without processing any tasks")
+        mock_log_job.assert_called_with(JobStatus.successful, 100, "Finished without processing any tasks")
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_token_failure(self, mocker, staging_instance):
+    async def test_process_rspy_features_token_failure(self, mocker, staging_instance: Staging):
         """Test case where retrieving the token raises an exception."""
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
@@ -960,7 +955,7 @@ class TestStagingMainExecution:
         )
 
         # Call the async function
-        await staging_instance.process_rspy_features()
+        await staging_instance.process_rspy_features("test_collection")
 
         # Verify logger and log_job_execution are called with the error details
         mock_logger.error.assert_called_once_with(
@@ -969,14 +964,14 @@ class TestStagingMainExecution:
         mock_log_job.assert_called_once_with(
             JobStatus.failed,
             0,
-            message="Failed to retrieve the token needed to connect to the external station cadip",
+            "Failed to retrieve the token needed to connect to the external station cadip",
         )
 
         # Verify the function returns early without proceeding to Dask cluster connection
         mock_dask_cluster_connect.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_dask_connection_failure(self, mocker, staging_instance):
+    async def test_process_rspy_features_dask_connection_failure(self, mocker, staging_instance: Staging):
         """Test case where connecting to the Dask cluster raises a RuntimeError."""
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
@@ -1003,10 +998,10 @@ class TestStagingMainExecution:
         )
 
         # Call the async function
-        await staging_instance.process_rspy_features()
+        await staging_instance.process_rspy_features("test_collection")
 
         # Verify log_job_execution is called with the error details
-        mock_log_job.assert_called_once_with(JobStatus.failed, 0, message="Dask cluster client failed")
+        mock_log_job.assert_called_once_with(JobStatus.failed, 0, "Dask cluster client failed")
         mock_logger.error.assert_called_once_with("Failed to start the staging process")
 
         # Verify that the task submission and monitoring thread are not executed
@@ -1014,7 +1009,7 @@ class TestStagingMainExecution:
         mock_manage_dask_tasks.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_success(self, mocker, staging_instance):
+    async def test_process_rspy_features_success(self, mocker, staging_instance: Staging):
         """Test case where the entire process runs successfully."""
 
         # Mock the logger
@@ -1051,7 +1046,7 @@ class TestStagingMainExecution:
         mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=mock_dask_client)
 
         # Call the async function
-        await staging_instance.process_rspy_features()
+        await staging_instance.process_rspy_features("test_collection")
 
         # Verify the function proceeds to Dask task submission
         mock_submit_tasks.assert_called_once_with(
@@ -1062,7 +1057,7 @@ class TestStagingMainExecution:
 
         # Verify the task monitoring thread is started
         mock_logger.debug.assert_any_call("Starting tasks monitoring thread")
-        mock_manage_dask_tasks.assert_called_once_with(mock_dask_client)
+        mock_manage_dask_tasks.assert_called_once_with(mock_dask_client, "test_collection")
 
         # Ensure the Dask client is closed after the tasks are processed
         mock_dask_client.close.assert_called_once()
@@ -1074,7 +1069,7 @@ class TestStagingMainExecution:
 class TestStagingPublishCatalog:
     """Class to group tests for catalog publishing after streaming was processes"""
 
-    def test_publish_rspy_feature_success(self, mocker, staging_instance):
+    def test_publish_rspy_feature_success(self, mocker, staging_instance: Staging):
         """Test successful feature publishing to the catalog."""
         feature = mocker.Mock()  # Mock the feature object
         feature.json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'  # Mock the JSON serialization
@@ -1085,18 +1080,18 @@ class TestStagingPublishCatalog:
         mock_response.raise_for_status.return_value = None  # No error
         mock_post = mocker.patch("requests.post", return_value=mock_response)
 
-        result = staging_instance.publish_rspy_feature(feature)
+        result = staging_instance.publish_rspy_feature("test_collection", feature)
 
         assert result is True  # Should return True for successful publishing
         mock_post.assert_called_once_with(
-            f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/items",
+            f"{staging_instance.catalog_url}/catalog/collections/test_collection/items",
             headers={"cookie": "fake-cookie", "host": "fake-host"},
             data=feature.json(),
             timeout=10,
         )
         feature.json.assert_called()  # Ensure the feature JSON serialization was called
 
-    def test_publish_rspy_feature_fail(self, mocker, staging_instance):
+    def test_publish_rspy_feature_fail(self, mocker, staging_instance: Staging):
         """Test failure during feature publishing and cleanup on error."""
         feature = mocker.Mock()
         feature.json.return_value = '{"id": "feature1", "properties": {"name": "test"}}'
@@ -1114,18 +1109,18 @@ class TestStagingPublishCatalog:
             # Mock the logger and other methods called on failure
             mock_logger = mocker.patch.object(staging_instance, "logger")
 
-            result = staging_instance.publish_rspy_feature(feature)
+            result = staging_instance.publish_rspy_feature("test_collection", feature)
 
             assert result is False  # Should return False for failure
             mock_post.assert_called_once_with(
-                f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/items",
+                f"{staging_instance.catalog_url}/catalog/collections/test_collection/items",
                 headers={"cookie": "fake-cookie", "host": "fake-host"},
                 data=feature.json(),
                 timeout=10,
             )
             mock_logger.error.assert_called_once_with("Error while publishing items to rspy catalog %s", mocker.ANY)
 
-    def test_repr(self, staging_instance):
+    def test_repr(self, staging_instance: Staging):
         """Test repr method for coverage"""
         assert repr(staging_instance) == "RSPY Staging OGC API Processor"
 
@@ -1133,7 +1128,7 @@ class TestStagingPublishCatalog:
 class TestStagingUnpublishCatalog:
     """Class to group tests for catalog unpublishing after streaming failed"""
 
-    def test_unpublish_rspy_features_success(self, mocker, staging_instance):
+    def test_unpublish_rspy_features_success(self, mocker, staging_instance: Staging):
         """Test successful unpublishing feature ids to the catalog."""
         feature_ids = ["feature-1", "feature-2"]
         mock_logger = mocker.patch.object(staging_instance, "logger")
@@ -1143,23 +1138,23 @@ class TestStagingUnpublishCatalog:
         mock_delete = mocker.patch("requests.delete")
         mock_delete.return_value.status_code = 200
 
-        staging_instance.unpublish_rspy_features(feature_ids)
+        staging_instance.unpublish_rspy_features("test_collection", feature_ids)
 
         # Assert that delete was called with the correct URL and headers
         mock_delete.assert_any_call(
-            f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/items/feature-1",
+            f"{staging_instance.catalog_url}/catalog/collections/test_collection/items/feature-1",
             headers={"cookie": "fake-cookie"},
             timeout=3,
         )
         mock_delete.assert_any_call(
-            f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/items/feature-2",
+            f"{staging_instance.catalog_url}/catalog/collections/test_collection/items/feature-2",
             headers={"cookie": "fake-cookie"},
             timeout=3,
         )
         # Ensure no error was logged
         mock_logger.error.assert_not_called()
 
-    def test_unpublish_rspy_features_fail(self, mocker, staging_instance):
+    def test_unpublish_rspy_features_fail(self, mocker, staging_instance: Staging):
         """Test failure during feature unpublishing ."""
         feature_ids = ["feature-1"]
 
@@ -1175,17 +1170,16 @@ class TestStagingUnpublishCatalog:
             # Mock the logger and other methods called on failure
             mock_logger = mocker.patch.object(staging_instance, "logger")
 
-            staging_instance.unpublish_rspy_features(feature_ids)
+            staging_instance.unpublish_rspy_features("test_collection", feature_ids)
 
             mock_delete.assert_any_call(
-                f"{staging_instance.catalog_url}/catalog/collections/{staging_instance.catalog_collection}/\
-items/feature-1",
+                f"{staging_instance.catalog_url}/catalog/collections/test_collection/items/feature-1",
                 headers={"cookie": "fake-cookie"},
                 timeout=3,
             )
             mock_logger.error.assert_called_once_with("Error while deleting the item from rspy catalog %s", mocker.ANY)
 
-    def test_repr(self, staging_instance):
+    def test_repr(self, staging_instance: Staging):
         """Test repr method for coverage"""
         assert repr(staging_instance) == "RSPY Staging OGC API Processor"
 
@@ -1193,7 +1187,7 @@ items/feature-1",
 class TestStagingSubmitToDaskCluster:
     """Class to group tests for submiting tasks to dask cluster"""
 
-    def test_submit_tasks_to_dask_cluster_success(self, mocker, staging_instance):
+    def test_submit_tasks_to_dask_cluster_success(self, mocker, staging_instance: Staging):
         """Test the submiting tasks to dask cluster function when successful"""
         # Mock the Dask client
         mock_client = mocker.Mock()
@@ -1242,7 +1236,7 @@ class TestStagingSubmitToDaskCluster:
         # Ensure tasks were added to obj.tasks
         assert len(staging_instance.tasks) == 2
 
-    def test_submit_tasks_to_dask_cluster_failure(self, mocker, staging_instance):
+    def test_submit_tasks_to_dask_cluster_failure(self, mocker, staging_instance: Staging):
         """Test the submiting tasks to dask cluster function when fails"""
         # Mock the Dask client
         mock_client = mocker.Mock()
