@@ -46,6 +46,9 @@ adgs:
     need_auth: true
     results_entry: $.value | $
     metadata_mapping:
+      id:
+      - null
+      - $.Id
       auxip:id:
       - null
       - $.Id
@@ -178,6 +181,9 @@ adgs2:
     need_auth: true
     results_entry: $.value | $
     metadata_mapping:
+      id:
+      - null
+      - $.Id
       auxip:id:
       - null
       - $.Id

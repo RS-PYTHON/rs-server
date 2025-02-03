@@ -491,7 +491,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     f"Invalid query filter property: {prop!r}, " f"allowed properties are: {allowed_properties}",
                 )
             # Update stac params
-            stac_params[prop] = str(query_arg.split(op)[1]).strip()  # type: ignore
+            stac_params[prop] = str(query_arg.split(op)[1]).strip("'\"")  # type: ignore
 
         read_cql(params.pop("filter", {}))
         read_query(self.request.query_params.get("filter"))
