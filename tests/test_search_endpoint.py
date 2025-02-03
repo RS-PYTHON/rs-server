@@ -758,6 +758,20 @@ class TestFeatureCollectionOdataStacMapping:
                 " and PublicationDate eq 2020-02-16T12:00:00.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:retransfer=True",
+                "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A' "
+                "and Retransfer eq True&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:num_channels=2",
+                "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A' and NumChannels eq 2&"
+                "$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
             # By setting filter with a invalid value (not withing queryables), should result in a 422
             (
                 ROUTER_PREFIX_CADIP,
@@ -793,6 +807,16 @@ class TestFeatureCollectionOdataStacMapping:
             ),
             (
                 ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=processing:facility=PDMC",
+                "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name"
+                " eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+                "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and "
+                "att/OData.CSC.StringAttribute/Value eq 'PDMC')&$orderby=PublicationDate desc&$top=10"
+                "&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/adgs_by_platform/items?filter=invalid=x",
                 "No odata",
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -803,10 +827,13 @@ class TestFeatureCollectionOdataStacMapping:
             "cadip",
             "cadip_id",
             "cadip_id_and_dt",
+            "cadip_retransfer",
+            "cadip_numchans",
             "cadip_inv",
             "auxip",
             "auxip_name",
             "auxip_name_and_dt",
+            "auxip_processing",
             "auxip_inv",
         ],
     )

@@ -81,9 +81,9 @@ adgs:
       processing:datetime:
       - null
       - $.processing:datetime
-      processing:facility:
+      processingCenter:
       - null
-      - $.processing:facility
+      - $.processingCenter
       attrs:
       - null
       - $.Attributes
@@ -101,6 +101,8 @@ adgs:
           and:
           - contains(Name, '{Name}')
           - contains(Id, '{auxip:id}')
+          - ContentDate/Start gt {Start#to_iso_utc_datetime}
+          - ContentDate/Start lt {Stop#to_iso_utc_datetime}
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
@@ -113,7 +115,7 @@ adgs:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
-            and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
+            and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -203,9 +205,9 @@ adgs2:
       processing:datetime:
       - null
       - $.processing:datetime
-      processing:facility:
+      processingCenter:
       - null
-      - $.processing:facility
+      - $.processingCenter
       attrs:
       - null
       - $.Attributes
@@ -223,6 +225,8 @@ adgs2:
           and:
           - contains(Name, '{Name}')
           - contains(Id, '{auxip:id}')
+          - ContentDate/Start gt {Start#to_iso_utc_datetime}
+          - ContentDate/Start lt {Stop#to_iso_utc_datetime}
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
@@ -235,7 +239,7 @@ adgs2:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
-            and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
+            and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
