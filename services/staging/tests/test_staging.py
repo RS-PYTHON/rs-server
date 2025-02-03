@@ -255,13 +255,17 @@ async def test_get_job(
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
+        mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
             status, progress, and message for the job to be retrieved.
+        expected_status: response HTTP status code
+        expected_response: response body (JSON object)
 
     Assertions:
         - Asserts that the response status code is 200 and the returned job
           details match the expected job dictionary when the job exists.
         - Asserts that the response status code is 404 when the job does not exist.
+        - Asserts that the response status code is 500 if other exception occurs.
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
@@ -325,13 +329,17 @@ async def test_get_job_result(
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
+        mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
             status, progress, and message for the job whose results are to be retrieved.
+        expected_status: response HTTP status code
+        expected_response: response body (JSON object)
 
     Assertions:
         - Asserts that the response status code is 200 and the returned job result
           matches the expected job status when the job exists.
         - Asserts that the response status code is 404 when the job does not exist.
+        - Asserts that the response status code is 500 if other exception occurs.
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
