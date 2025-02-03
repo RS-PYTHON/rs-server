@@ -466,8 +466,35 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             for sub_filter in args:
                 read_cql(sub_filter)
 
-        read_cql(params.pop("filter", {}))
+        def read_query(query_arg: str | None):
+            """WIP, this should evolve, hande case with more ops (in, gt, lt).
+            Check if operand is coherent with operator"""
+            if not query_arg:
+                return
+            # If there are more filters defined and joined by AND keyword, process each one and update stac_params.
+            if "AND" in query_arg:  # only AND for now.
+                conditions = [c.strip() for c in query_arg.split("AND")]
+                for condition in conditions:
+                    read_query(condition)
+                return
+            # Handle only '=' for now
+            op = "="
+            if op not in query_arg:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "Invalid query filter, only '=' operator is allowed",
+                )
+            # Extract prop and check if it's in the queryables.
+            if (prop := query_arg.split(op)[0].strip()) not in allowed_properties:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Invalid query filter property: {prop!r}, " f"allowed properties are: {allowed_properties}",
+                )
+            # Update stac params
+            stac_params[prop] = str(query_arg.split(op)[1]).strip()  # type: ignore
 
+        read_cql(params.pop("filter", {}))
+        read_query(self.request.query_params.get("filter"))
         # Read the query
         query = params.pop("query", {})
         for prop, operator in query.items():
