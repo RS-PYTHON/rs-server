@@ -301,7 +301,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         return await call_next(request)
 
 
-client = CoreCrudClient(post_request_model=post_request_model)
+client = CoreCrudClient(pgstac_search_model=post_request_model)
 
 
 class UserCatalogMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
@@ -323,7 +323,7 @@ api = StacApi(
     settings=settings,
     extensions=extensions,
     items_get_request_model=items_get_request_model,
-    client=CoreCrudClient(post_request_model=post_request_model),
+    client=CoreCrudClient(pgstac_search_model=post_request_model),
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
