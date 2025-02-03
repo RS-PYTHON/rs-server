@@ -226,7 +226,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
         (
             {"identifier": "non_existing_id"},
             HTTP_404_NOT_FOUND,
-            {"title": "No Such Job", "detail": "Job with ID non_existing_id not found."},
+            {"title": "No Such Job", "detail": "Job with ID non_existing_id not found"},
         ),
         (
             {"identifier": "trigger_500"},
@@ -266,14 +266,14 @@ async def test_get_job(
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
 
+    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
     if expected_status == HTTP_404_NOT_FOUND:
-        # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
         mock_db_table.get_job.side_effect = JobNotFoundError
+    # Simulate an unexpected exception (HTTP 500)
     elif expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
-        # Simulate an unexpected exception (HTTP 500)
         mock_db_table.get_job.side_effect = Exception("Unexpected error occurred")
+    # Return an existing job normally (HTTP 200)
     else:
-        # Return an existing job normally (HTTP 200)
         mock_db_table.get_job.return_value = next(
             job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
         )
@@ -296,7 +296,7 @@ async def test_get_job(
         (
             {"identifier": "non_existing_id"},
             HTTP_404_NOT_FOUND,
-            {"title": "No Such Job", "detail": "Job with ID non_existing_id not found."},
+            {"title": "No Such Job", "detail": "Job with ID non_existing_id not found"},
         ),
         (
             {"identifier": "trigger_500"},
@@ -336,14 +336,14 @@ async def test_get_job_result(
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
 
+    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
     if expected_status == HTTP_404_NOT_FOUND:
-        # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
         mock_db_table.get_job.side_effect = JobNotFoundError
+    # Simulate an unexpected exception (HTTP 500)
     elif expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
-        # Simulate an unexpected exception (HTTP 500)
         mock_db_table.get_job.side_effect = Exception("Unexpected error occurred")
+    # Return an existing job normally (HTTP 200)
     else:
-        # Return an existing job normally (HTTP 200)
         mock_db_table.get_job.return_value = next(
             job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
         )
@@ -367,7 +367,7 @@ async def test_get_job_result(
         (
             {"identifier": "non_existing_id"},
             HTTP_404_NOT_FOUND,
-            {"title": "No Such Job", "detail": "Job with ID non_existing_id not found."},
+            {"title": "No Such Job", "detail": "Job with ID non_existing_id not found"},
         ),
         (
             {"identifier": "trigger_500"},
@@ -399,25 +399,29 @@ async def test_delete_job_endpoint(
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
+        mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
             status, progress, and message for the job to be deleted.
+        expected_status: response HTTP status code
+        expected_response: response body (JSON object)
 
     Assertions:
         - Asserts that the response status code is 200 if the job is successfully deleted.
         - Asserts that the response status code is 404 if the job does not exist.
+        - Asserts that the response status code is 500 if other exception occurs.
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
 
+    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
     if expected_status == HTTP_404_NOT_FOUND:
-        # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
-        mock_db_table.get_job.side_effect = JobNotFoundError
+        mock_db_table.delete_job.side_effect = JobNotFoundError
+    # Simulate an unexpected exception (HTTP 500)
     elif expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
-        # Simulate an unexpected exception (HTTP 500)
-        mock_db_table.get_job.side_effect = Exception("Unexpected error occurred")
+        mock_db_table.delete_job.side_effect = Exception("Unexpected error occurred")
+    # Return an existing job normally (HTTP 200)
     else:
-        # Return an existing job normally (HTTP 200)
-        mock_db_table.get_job.return_value = next(
+        mock_db_table.delete_job.return_value = next(
             job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
         )
 

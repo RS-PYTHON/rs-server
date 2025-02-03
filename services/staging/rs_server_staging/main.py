@@ -286,10 +286,20 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
 @router.get("/jobs/{job_id}")
 async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
-    job = app.extra["process_manager"].get_job(job_id)
-    if job:
-        return job
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+    try:
+        return app.extra["process_manager"].get_job(job_id)
+    except JobNotFoundError:
+        # Handle case when job_id is not found
+        return JSONResponse(
+            status_code=HTTP_404_NOT_FOUND,
+            content={"title": "No Such Job", "detail": f"Job with ID {job_id} not found"},
+        )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Catch any other unexpected exceptions
+        return JSONResponse(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"title": "Internal Server Error", "detail": str(e)},
+        )
 
 
 @router.get("/jobs")
@@ -305,10 +315,21 @@ async def get_jobs_endpoint():
 @router.delete("/jobs/{job_id}")
 async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
-    success = app.extra["process_manager"].delete_job(job_id)
-    if success:
+    try:
+        app.extra["process_manager"].delete_job(job_id)
         return {"message": f"Job {job_id} deleted successfully"}
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+    except JobNotFoundError:
+        # Handle case when job_id is not found
+        return JSONResponse(
+            status_code=HTTP_404_NOT_FOUND,
+            content={"title": "No Such Job", "detail": f"Job with ID {job_id} not found"},
+        )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Catch any other unexpected exceptions
+        return JSONResponse(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"title": "Internal Server Error", "detail": str(e)},
+        )
 
 
 @router.get("/jobs/{job_id}/results")
@@ -322,7 +343,7 @@ async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID
         # Handle case when job_id is not found
         return JSONResponse(
             status_code=HTTP_404_NOT_FOUND,
-            content={"title": "No Such Job", "detail": f"Job with ID {job_id} not found."},
+            content={"title": "No Such Job", "detail": f"Job with ID {job_id} not found"},
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
         # Catch any other unexpected exceptions
