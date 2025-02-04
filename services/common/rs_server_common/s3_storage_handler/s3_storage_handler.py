@@ -29,11 +29,10 @@ import requests
 from rs_server_common.utils.logging import Logging
 from rs_server_common.authentication.authentication_to_external import (
     get_station_token, 
-    load_external_auth_config_by_domain,
     TokenAuth,
+    ExternalAuthenticationConfig
 )
 from fastapi import HTTPException
-
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6
@@ -862,8 +861,11 @@ retried for %s times. Aborting",
     def s3_streaming_upload(  # pylint: disable=too-many-locals
         self,
         stream_url: str,
-        domain: str,
-        auth: Any,
+        config: ExternalAuthenticationConfig,
+        token_info: dict,
+        token_lock: Any,
+        process_lock: Any,
+        thread_lock: Any,
         bucket: str,
         key: str,
         max_retries=S3_MAX_RETRIES,
@@ -917,8 +919,7 @@ retried for %s times. Aborting",
         backoff_factor = S3_RETRY_TIMEOUT
         attempt = 0
         # Prepare the request
-        external_auth_config = load_external_auth_config_by_domain(domain)
-        trusted_domains = external_auth_config.trusted_domains
+        trusted_domains = config.trusted_domains
         session = CustomSessionRedirect(trusted_domains)
         self.logger.debug(f"trusted_domains = {trusted_domains}")
        
@@ -929,8 +930,12 @@ retried for %s times. Aborting",
                 
                 # Get/refresh the access token if necessary
                 try:
-                    auth = get_station_token(external_auth_config, auth)
-                    token_auth_object = TokenAuth(auth)
+                    # Use locks to allow only one thread from one process from one worker to 
+                    # access/refresh the shared token dictionary at a time
+                    with token_lock:
+                        with process_lock:
+                            with thread_lock:
+                                get_station_token(config, token_info)
                     
                 except HTTPException as http_exception:
                     self.logger.error(
@@ -940,14 +945,14 @@ retried for %s times. Aborting",
                     self.log_job_execution(
                         JobStatus.failed,
                         0,
-                        message=f"Failed to retrieve the token needed to connect to the external station {auth['domain']}",
+                        message=f"Failed to retrieve the token needed to connect to the external station {config.domain}",
                     )
                     return
     
                 request = requests.Request(
                     method="GET",
                     url=stream_url,
-                    auth=token_auth_object,
+                    auth=TokenAuth(token_info.get()["access_token"]),
                 )
                 prepared_request = session.prepare_request(request)
                              

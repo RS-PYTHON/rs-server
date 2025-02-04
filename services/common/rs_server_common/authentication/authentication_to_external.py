@@ -48,7 +48,13 @@ DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL = f"{os.path.expanduser('~')}/.config/rs-se
 ACCESS_TK_KEY_IN_RESPONSE = "access_token"
 HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded"
 
+MANDATORY_TOKEN_ATTRS = ["access_token", "expires_in", "refresh_token", "refresh_expires_in"]
 
+class ServiceNotFound(Exception):
+    """ Raised if there are no existing service matching the provided domain """
+
+class TokenDataNotFound(Exception):
+    """Raised if there are missing data in the dictionary to handle information about the token"""
 
 # Custom authentication class
 class TokenAuth(AuthBase):
@@ -58,16 +64,13 @@ class TokenAuth(AuthBase):
         AuthBase (ABC): Base auth class
     """
 
-    def __init__(self, token: str, token_creation_date: datetime, refresh_expires: str, refresh_token: str = None):
+    def __init__(self, token: str):
         """Init token auth
 
         Args:
             token (str): Token value
         """
         self.token = token
-        self.token_creation_date = token_creation_date
-        self.refresh_expires = refresh_expires
-        self.refresh_token = refresh_token
 
     def __call__(self, request: Request):  # type: ignore
         """Add the Authorization header to the request
@@ -83,7 +86,6 @@ class TokenAuth(AuthBase):
 
     def __repr__(self) -> str:
         return "RSPY Token handler"
-
 
 def init_rs_server_config_yaml():
     """
@@ -209,7 +211,17 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     trusted_domains: list[str] | None = None
 
 
-def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_dict: dict) -> str:
+def validate_token_dict(token_dict: Dict):
+    """Check if the token dictionary contains the mandatory attributes"""
+     # Check that the token dictionary contains the mandatory elements
+    if token_dict:
+        for attr in MANDATORY_TOKEN_ATTRS:
+            if attr not in token_dict:
+                raise TokenDataNotFound(f"Mandatory attribute {attr} is not defined in the token dictionary !")
+            if not token_dict[attr]:
+                raise TokenDataNotFound(f"Token dictionary attribute {attr} is None !")
+
+def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_info: dict) -> str:
     """
     Retrieve and validate an authentication token for a specific station and service.
 
@@ -224,8 +236,11 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         HTTPException: If the external authentication configuration cannot be retrieved,
                        if the token request fails, or if the token format is invalid.
     """
-    # If no tokens are yet registered, we ask the authorisation server to generate ones by providing 
+    # If no tokens are yet registered, we ask the authorisation server to generate one by providing 
     # an "authorisation grant" to the authorisation server
+    token_dict = token_info.get()
+    validate_token_dict(token_dict)
+    
     if not token_dict:
         if not external_auth_config:
             raise HTTPException(
@@ -233,15 +248,13 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
                 detail="Failed to retrieve the configuration for the station token.",
             )
 
-        headers = prepare_headers(external_auth_config)
-        data_to_send = prepare_data(external_auth_config)
         logger.info(f"Fetching access token from station url: {external_auth_config.token_url}")
         try:
             response = requests.post(
                 external_auth_config.token_url,
-                data=data_to_send,
+                data=prepare_data(external_auth_config),
                 timeout=5,
-                headers=headers,
+                headers=prepare_headers(external_auth_config),
             )
             if response.status_code != HTTP_200_OK:
                 logger.error(
@@ -260,10 +273,13 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
                 detail=f"Request to token endpoint failed: {str(e)}",
             ) from e
 
-        new_token_dict = response.json()
+        # Get the new token and add its creation date
+        token_dict.update(response.json())
+        token_dict["token_creation_date"] = datetime.datetime.now()
+        
         # Is it worth validating it?
         # validate_token_format(token.get(ACCESS_TK_KEY_IN_RESPONSE, ""))
-        if ACCESS_TK_KEY_IN_RESPONSE not in new_token_dict:
+        if ACCESS_TK_KEY_IN_RESPONSE not in token_dict:
             logger.error(
                 f"The token field was not found in the response from the station {external_auth_config.station_id}. ",
             )
@@ -272,24 +288,42 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
                 detail=f"The token field was not found in the response from the station {external_auth_config.station_id}.",
             )
         logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
-        return new_token_dict###token.get(ACCESS_TK_KEY_IN_RESPONSE)
+        logger.info(f"----------- CREATED NEW TOKEN: {token_dict}")
+        # Validate the token dictionary and then update the shared token
+        validate_token_dict(token_dict)
+        token_info.set(token_dict)
     else:
-        # Check if the token is expired or nearky expired (in less than one minute)
-        # If it is the case generate a new token using the refresh token, otherwise
-        # keep the current one
+        
+        # Check that the token dictionary contains the mandatory elements
+        validate_token_dict(token_dict)
+        
+        # If the current token expires in less than one minute, create a new request to send 
+        # to the authorisation server with the refresh token given in the payload of the request
         current_date = datetime.datetime.now()
         diff_in_sec = (current_date - token_dict["token_creation_date"]).total_seconds()
-        if diff_in_sec > token_dict["refresh_expires"] - 60:
-            data_to_send = {"refresh_token": token_dict["refresh_token"]}
+        
+        logger.info(f"----------- DIFF VAUT: {diff_in_sec}")   
+        if diff_in_sec > token_dict["expires_in"] - 60:        
+            logger.info(f"Current access_token is about to expire. Launching request to refresh the token...")
+            data_to_send = prepare_data(external_auth_config)
+            
+            data_to_send.update({"refresh_token": token_dict["refresh_token"]})
+            
             response = requests.post(
                 external_auth_config.token_url,
                 data=data_to_send,
                 timeout=5,
-                headers=headers,
+                headers=prepare_headers(external_auth_config),
             )
-            return response.json()
-        return token_dict
+            # Refresh the token and add the creation date of the newly created token
+            token_dict.update(response.json())
+            token_dict["token_creation_date"] = datetime.datetime.now()
 
+            # Update the shared token
+            validate_token_dict(token_dict)
+            token_info.set(token_dict)
+            logger.info(f"Access token has been successfully refreshed !")
+            logger.info(f"----------- REFRESHED NEW TOKEN: {token_dict}")
 
 def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> Dict[str, str]:
     """Prepare HTTP headers for token requests.
@@ -438,9 +472,8 @@ def load_external_auth_config_by_domain(domain: str) -> Optional[ExternalAuthent
         if station_dict.get("domain") == domain:
             return create_external_auth_config(station_id, station_dict, station_dict.get("service", {}))
 
-    logger.warning(f"No matching service found for domain: {domain}")
-    return None
-
+    # Return an exception if there are no matching services for the given domain
+    raise ServiceNotFound(f"No matching service found for domain: {domain}")
 
 def create_external_auth_config(
     station_id: str,

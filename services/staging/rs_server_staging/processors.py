@@ -40,9 +40,15 @@ from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
+from rs_server_common.authentication.authentication_to_external import ExternalAuthenticationConfig
 
+from dask.distributed import Variable, Lock
+import threading, multiprocessing
+from typing import Any
 
-def streaming_task(product_url: str, domain: str, auth: str, bucket: str, s3_file: str):
+def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
+                   token_dict: dict, token_lock: Lock, process_lock: Any,
+                   bucket: str, s3_file: str):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
@@ -64,13 +70,18 @@ def streaming_task(product_url: str, domain: str, auth: str, bucket: str, s3_fil
     """
 
     try:
+        # Create a thread lock to synchronize access to shared resources between the threads of a 
+        # given worker
+        thread_lock = threading.Lock()
+        
         s3_handler = S3StorageHandler(
             os.environ["S3_ACCESSKEY"],
             os.environ["S3_SECRETKEY"],
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
-        s3_handler.s3_streaming_upload(product_url, domain, auth, bucket, s3_file)
+        s3_handler.s3_streaming_upload(product_url, config, token_dict, token_lock, process_lock, thread_lock,
+                                       bucket, s3_file)
     except RuntimeError as e:
         raise ValueError(
             f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
@@ -142,7 +153,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             catalog_item_name (str): Name of the specific item in the catalog being processed.
             assets_info (list): Holds information about assets associated with the processing.
             tasks (list): List of tasks to be executed for processing.
-            lock (threading.Lock): A threading lock to synchronize access to shared resources.
             tasks_finished (int): Tracks the number of tasks completed.
             logger (Logger): Logger instance for capturing log output.
             cluster (LocalCluster): Dask LocalCluster instance managing computation resources, used in local mode
@@ -177,10 +187,11 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Tasks finished
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
+        
         self.cluster = cluster
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
         
-        self.token_dict = {}
+        self.process_lock = multiprocessing.Manager().Lock() 
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(self):  # pylint: disable=arguments-differ, invalid-overridden-method
@@ -694,12 +705,18 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             self.cluster.scale(1)
         # end of TODO
 
+        # Create a dask.distributed.Variable object which will be shared by all the workers
+        self.token_info = Variable(name="shared_token")
+        self.token_info.set({})
+        # Create a dask.distributed.Lock object to synchronize the access to the shared resource between
+        # the Dask workers
+        self.token_lock = Lock(name="token_management_lock")
+
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
-
         return client
 
-    def submit_tasks_to_dask_cluster(self, token_dict: dict, domain: str, client: Client):
+    def submit_tasks_to_dask_cluster(self, config: ExternalAuthenticationConfig, client: Client):
         """Submits multiple tasks to a Dask cluster for asynchronous processing.
 
         Each task involves downloading a file stream (using `streaming_task`) and uploading it to an S3 bucket
@@ -732,9 +749,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     client.submit(
                         streaming_task,
                         asset_info[0],
-                        domain,
-                        ###TokenAuth(token_dict.get(ACCESS_TK_KEY_IN_RESPONSE)),
-                        token_dict.get(ACCESS_TK_KEY_IN_RESPONSE),
+                        config,
+                        self.token_info,
+                        self.token_lock,
+                        self.process_lock,
                         self.catalog_bucket,
                         asset_info[1],
                     ),
@@ -775,26 +793,12 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         domain = domains[0]
         
         # retrieve the token
-        # try:
-        #     external_auth_config = load_external_auth_config_by_domain(domain)
-        #     self.token_dict = get_station_token(external_auth_config, self.token_dict)
-            
-        # except HTTPException as http_exception:
-        #     self.logger.error(
-        #         f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
-        #     )
-        #     self.log_job_execution(
-        #         JobStatus.failed,
-        #         0,
-        #         message=f"Failed to retrieve the token needed to connect to the external station {domain}",
-        #     )
-        #     return
+        external_auth_config = load_external_auth_config_by_domain(domain)
 
         # connect to the dask cluster
         try:
             dask_client = self.dask_cluster_connect()
-            ###self.submit_tasks_to_dask_cluster(self.token_dict, external_auth_config.trusted_domains, dask_client)
-            self.submit_tasks_to_dask_cluster(self.token_dict, domain, dask_client)
+            self.submit_tasks_to_dask_cluster(external_auth_config, dask_client)
 
         except RuntimeError as re:
             self.log_job_execution(JobStatus.failed, 0, message=f"{re}")
