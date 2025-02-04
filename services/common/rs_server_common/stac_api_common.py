@@ -956,10 +956,8 @@ def check_input_type(field_info, key, input_value):
 
 def check_datetime_input(input_value: Any) -> bool:
     """Used to check if a parameter is a datetime-like string"""
-    if isinstance(input_value, str):  # If input is a string, try parsing it
-        try:
-            dt.fromisoformat(input_value)  # ISO 8601 format check
-            return True
-        except ValueError:
-            return False
-    return False  # Not a string, so it can't be a valid datetime
+    try:
+        dt.fromisoformat(input_value)  # ISO 8601 format check
+        return True
+    except ValueError:
+        return False

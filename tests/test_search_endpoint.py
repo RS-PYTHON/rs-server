@@ -767,6 +767,12 @@ class TestFeatureCollectionOdataStacMapping:
             ),
             (
                 ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:retransfer=should_be_bool",
+                "no_odata",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
                 "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:num_channels=2",
                 "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A' and NumChannels eq 2&"
                 "$orderby=PublicationDate desc&$top=10&$skip=0",
@@ -821,6 +827,12 @@ class TestFeatureCollectionOdataStacMapping:
                 "No odata",
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
             ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=published=invalid_date_format2020",
+                "No odata",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
         ],
         indirect=["fastapi_app"],
         ids=[
@@ -828,6 +840,7 @@ class TestFeatureCollectionOdataStacMapping:
             "cadip_id",
             "cadip_id_and_dt",
             "cadip_retransfer",
+            "cadip_retransfer_invalid",
             "cadip_numchans",
             "cadip_inv",
             "auxip",
@@ -835,6 +848,7 @@ class TestFeatureCollectionOdataStacMapping:
             "auxip_name_and_dt",
             "auxip_processing",
             "auxip_inv",
+            "auxip_inv_dt",
         ],
     )
     @responses.activate
