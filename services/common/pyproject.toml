@@ -44,7 +44,7 @@ sqlalchemy = "^2.0.35"
 # # TODO: replace by official eodag version tag that will contain this feature.
 # # Then, in adgs/cadip/catalog docker images, remove the "RUN apt install -y git"
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "develop" }
-eodag = "==v3.1.0b1"
+eodag = "==v3.1.0b2"
 pydantic = ">=2.9.2,<2.11.0"
 markdown = "^3.6"
 python-dotenv = "^1.0.0"

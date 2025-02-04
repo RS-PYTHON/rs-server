@@ -796,13 +796,13 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.1.0b1"
+version = "3.1.0b2"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "eodag-3.1.0b1-py3-none-any.whl", hash = "sha256:ddccf34bddf3b2f2b179958e9e7aed8574860ea21f667ea3a6e26a16e5e8557d"},
-    {file = "eodag-3.1.0b1.tar.gz", hash = "sha256:853b3ddaf92af3cdb1efd93bc5e03ff2622d00fc88f06b467270bd4a37444500"},
+    {file = "eodag-3.1.0b2-py3-none-any.whl", hash = "sha256:6ffb8ba2dad4f717808190dbeb7c85c24ae80522b5b48034a21c7c07360a10fb"},
+    {file = "eodag-3.1.0b2.tar.gz", hash = "sha256:943ebe5bd8ed8c78c7bdc0e1ca301939301560f283063e12548abebcff1ec5f5"},
 ]
 
 [package.dependencies]
@@ -838,13 +838,13 @@ Whoosh = "*"
 all = ["eodag[all-providers,csw,server,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
-dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (<3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (<0.24.0)", "stdlib-list", "tox", "tox-uv", "twine", "wheel"]
+dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto (>=5)", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (<3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (<0.24.0)", "stdlib-list", "tox", "tox-uv", "twine", "wheel"]
 docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs", "sphinx_autodoc_typehints", "sphinxemoji"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
 server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
 stubs = ["boto3-stubs[essential]", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-tqdm", "types-urllib3"]
-tutorials = ["eodag-cube (>=0.2.0)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
+tutorials = ["cartopy", "eodag-cube (>=0.6.0b1)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
 usgs = ["usgs (>=0.3.1)"]
 
 [[package]]
@@ -3403,4 +3403,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "ae2e8900eaf78646341eea5fbab8421f564271ae2ff12bcad60d267f35c355cb"
+content-hash = "314d2e237cb8dd1ac216d566c8d96dda02051b8f55850dfca29a389d139496dc"
