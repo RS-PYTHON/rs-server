@@ -269,14 +269,12 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        status = await processor(
+        _, status = await processor(
             req,
-            data.inputs.items,
-            data.inputs.collection.id,
             data.outputs["result"].id,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
-        ).execute()
+        ).execute(data.inputs.dict())
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")

@@ -38,28 +38,6 @@ else
     cd "stac-browser"
 fi
 
-# The docker entrypoint will run the script 'docker/docker-entrypoint.sh'
-# and create the config.js file that will contain: window.STAC_BROWSER_CONFIG = {...}
-# We add a sed command to the .sh script that will modify the .js file to add
-# the oauth2 configuration based on environment variables: OIDC_ENDPOINT, OIDC_REALM, PUBLIC_CLIENT_ID
-#
-# Note: we substitute env vars in ThisIsUsedBySed, not in "ThisGoesToEntrypointSh"
-cat <<- "ThisGoesToEntrypointSh" >> docker/docker-entrypoint.sh
-
-# This was added by https://github.com/RS-PYTHON/rs-server/tree/develop/resources/deploy_stac_browser.sh
-authConfig=$(cat <<- ThisIsUsedBySed
-  authConfig: { \n\
-    "type": "openIdConnect", \n\
-    "openIdConnectUrl": "${OIDC_ENDPOINT}/realms/${OIDC_REALM}/.well-known/openid-configuration", \n\
-    "oidcConfig": { \n\
-      "client_id": "${PUBLIC_CLIENT_ID}" \n\
-    } \n\
-  },
-ThisIsUsedBySed
-)
-sed -i "s@\(window.STAC_BROWSER_CONFIG = {\)@\1\n$authConfig@g" /usr/share/nginx/html/config.js
-ThisGoesToEntrypointSh
-
 # Docker image tag = 'last commit hash'.'last commit date'
 tag="$(git rev-parse --short HEAD).$(git log -1 --format="%at" | xargs -I{} date -d @{} +%Y-%m-%d)"
 
