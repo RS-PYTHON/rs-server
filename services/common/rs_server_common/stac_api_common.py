@@ -489,7 +489,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             if (prop := query_arg.split(op)[0].strip()) not in allowed_properties:
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid query filter property: {prop!r}, " f"allowed properties are: {allowed_properties}",
+                    f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
                 )
             # Update stac params
             stac_params[prop] = str(query_arg.split(op)[1]).strip("'\"")  # type: ignore
@@ -845,7 +845,6 @@ def map_stac_platform() -> dict:
         return yaml.safe_load(cf)
 
 
-# todo, Transofrm to single func
 @lru_cache
 def get_cadip_queryables() -> dict:
     """Function used to read and interpret from cadip_queryables.yaml"""
