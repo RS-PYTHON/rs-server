@@ -44,7 +44,6 @@ from starlette.responses import JSONResponse
 from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
-    HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
@@ -288,18 +287,9 @@ async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the j
     """Used to get status of processing job."""
     try:
         return app.extra["process_manager"].get_job(job_id)
-    except JobNotFoundError:
+    except JobNotFoundError as error:
         # Handle case when job_id is not found
-        return JSONResponse(
-            status_code=HTTP_404_NOT_FOUND,
-            content={"title": "No Such Job", "detail": f"Job with ID {job_id} not found"},
-        )
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # Catch any other unexpected exceptions
-        return JSONResponse(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"title": "Internal Server Error", "detail": str(e)},
-        )
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 @router.get("/jobs")
@@ -318,18 +308,9 @@ async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job t
     try:
         app.extra["process_manager"].delete_job(job_id)
         return {"message": f"Job {job_id} deleted successfully"}
-    except JobNotFoundError:
+    except JobNotFoundError as error:
         # Handle case when job_id is not found
-        return JSONResponse(
-            status_code=HTTP_404_NOT_FOUND,
-            content={"title": "No Such Job", "detail": f"Job with ID {job_id} not found"},
-        )
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # Catch any other unexpected exceptions
-        return JSONResponse(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"title": "Internal Server Error", "detail": str(e)},
-        )
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 @router.get("/jobs/{job_id}/results")
@@ -339,18 +320,9 @@ async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID
         # Query the database to find the job by job_id
         job = app.extra["process_manager"].get_job(job_id)
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
-    except JobNotFoundError:
+    except JobNotFoundError as error:
         # Handle case when job_id is not found
-        return JSONResponse(
-            status_code=HTTP_404_NOT_FOUND,
-            content={"title": "No Such Job", "detail": f"Job with ID {job_id} not found"},
-        )
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        # Catch any other unexpected exceptions
-        return JSONResponse(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"title": "Internal Server Error", "detail": str(e)},
-        )
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 # Configure OpenTelemetry
