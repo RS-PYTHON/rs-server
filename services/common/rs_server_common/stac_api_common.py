@@ -467,8 +467,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 read_cql(sub_filter)
 
         def read_query(query_arg: str | None):
-            """WIP, this should evolve, hande case with more ops (in, gt, lt).
-            Check if operand is coherent with operator"""
+            """Used to read query parameter cql2-text filter.
+            filter=prop1 = prop2
+            """
             if not query_arg:
                 return
             # If there are more filters defined and joined by AND keyword, process each one and update stac_params.
