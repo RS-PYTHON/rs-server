@@ -21,6 +21,7 @@ import urllib.parse
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
+from datetime import datetime as dt
 from functools import lru_cache
 from pathlib import Path
 from typing import (
@@ -491,8 +492,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
                     f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
                 )
+            value = str(query_arg.split(op)[1]).strip("'\"")
+            check_input_type(self.get_queryables(), prop, value)
             # Update stac params
-            stac_params[prop] = str(query_arg.split(op)[1]).strip("'\"")  # type: ignore
+            stac_params[prop] = value  # type: ignore
 
         read_cql(params.pop("filter", {}))
         read_query(self.request.query_params.get("filter"))
@@ -930,3 +933,33 @@ def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> Ite
             detail=f"Invalid attribute '{attribute}' for sorting: {str(e)},",
         ) from e
     return ItemCollection(features=sorted_items, type=item_collection.type)
+
+
+def check_input_type(field_info, key, input_value):
+    """Function to check query parameters types agains default queryables."""
+    expected_type = field_info[key].type  # Get the expected type as a string
+
+    # Map expected type to actual Python types
+    type_mapping = {
+        "string": lambda input: isinstance(input, str),
+        "integer": lambda input: input.isdigit(),
+        "bool": lambda input_value: input_value.lower() in [True, False, 1, 0, "true", "false", "1", "0"],
+        "datetime": check_datetime_input,  # Adding support for datetime
+    }
+
+    if not type_mapping.get(expected_type)(input_value):  # type: ignore
+        raise log_http_exception(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Invalid CQL2 filter value",
+        )
+
+
+def check_datetime_input(input_value: Any) -> bool:
+    """Used to check if a parameter is a datetime-like string"""
+    if isinstance(input_value, str):  # If input is a string, try parsing it
+        try:
+            dt.fromisoformat(input_value)  # ISO 8601 format check
+            return True
+        except ValueError:
+            return False
+    return False  # Not a string, so it can't be a valid datetime
