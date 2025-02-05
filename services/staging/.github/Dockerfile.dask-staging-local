@@ -20,12 +20,6 @@ ARG DASK_TAG=xxx
 # Default user from parent image
 ARG USER=dask:dask
 
-# Set labels based on the Open Containers Initiative (OCI):
-# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
-#
-LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
-LABEL org.opencontainers.image.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/staging/.github/Dockerfile.dask-staging-local"
-
 # Install dependencies for compilation
 USER root
 RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
@@ -59,3 +53,10 @@ RUN apt install -y libpq-dev libexpat1
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
 USER $USER
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+#
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/dask-gateway-server/staging/local"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/staging/.github/Dockerfile.dask-staging-local"
