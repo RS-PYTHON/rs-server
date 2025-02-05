@@ -729,14 +729,14 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.888Z",
                 "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.888Z"
-                "&$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.001Z&$orderby=PublicationDate desc&$top=10000&"
+                "PublicationDate lte 2019-02-12T23:20:50.001Z&$orderby=PublicationDate desc&$top=10&"
                 "$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -744,14 +744,14 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
                 "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z"
-                "&$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50.001Z",
                 "http://127.0.0.1:5000/Products?$filter=PublicationDate lte 2018-02-12T23:20:50.001Z"
-                "&$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (ROUTER_PREFIX_AUXIP, "/auxip/search?collections=adgs&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
@@ -772,35 +772,35 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Products?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
-                "PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+                "PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50.777Z",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.777Z"
-                "&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                "PublicationDate lte 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/..",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z"
-                "&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=../2018-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lte 2018-02-12T23:20:50.000Z"
-                "&$orderby=PublicationDate desc&$top=10000&$skip=0",
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (ROUTER_PREFIX_CADIP, "/cadip/search?collections=cadip&datetime=../..", "x", status.HTTP_400_BAD_REQUEST),
@@ -820,7 +820,7 @@ class TestFeatureCollectionOdataStacMapping:
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z",
                 "http://127.0.0.1:5000/Sessions?$filter=PublicationDate eq 2018-02-12T23:20:50.000Z&$orderby="
-                "PublicationDate desc&$top=10000&$skip=0",
+                "PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
         ],
@@ -1230,7 +1230,7 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
                     "PublicationDate gte {date_min} and PublicationDate lte {date_max}"
-                    "&$orderby=PublicationDate%20asc&$top=10000&$skip=0&$expand=Attributes"
+                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
@@ -1240,7 +1240,7 @@ def test_search_parameters(
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
                     "and att/OData.CSC.StringAttribute/Value eq '{constellation}')"
-                    "&$orderby=PublicationDate%20asc&$top=10000&$skip=0&$expand=Attributes"
+                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
             elif cadip:
                 # Add quote to the user_id
@@ -1249,7 +1249,7 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
                     "and PublicationDate gte {date_min} and PublicationDate lte {date_max}"
-                    "&$orderby=PublicationDate%20asc&$top=10000&$skip=0"
+                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
 
                 odata_query = (
@@ -1257,7 +1257,7 @@ def test_search_parameters(
                     f"SessionId in ({user_ids_with_quote}) "
                     "and Satellite {satellite_op} {satellite} "
                     "and PublicationDate gte {date_min} and PublicationDate lte {date_max}"
-                    "&$orderby=PublicationDate%20asc&$top=10000&$skip=0"
+                    "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
             else:
                 raise NotImplementedError
@@ -1421,7 +1421,7 @@ def test_search_all_collections(
     with responses.RequestsMock() as rsps:
         rsps.add(
             responses.GET,
-            "http://127.0.0.1:5000/Products?$orderby=PublicationDate desc&$top=10000&$skip=0&$expand=Attributes",
+            "http://127.0.0.1:5000/Products?$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
             status=status.HTTP_200_OK,
             json=adgs_response,
         )
