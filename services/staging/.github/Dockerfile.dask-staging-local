@@ -45,10 +45,10 @@ RUN opentelemetry-bootstrap -a install
 
 # Remove dependencies for compilation
 USER root
-RUN apt autoremove -y libpq-dev gcc
+RUN apt autoremove -y gcc
 
-# Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
-RUN apt install -y libpq-dev libexpat1
+# Install dependencies necessary for execution not compilation
+RUN apt install -y libexpat1
 
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
