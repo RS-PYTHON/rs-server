@@ -261,13 +261,6 @@ jobs:
           fetch-depth: 0 # so that Dunamai produce the correct version
       - uses: ./.github/actions/install-python
 
-      # - name: Log into Docker registry
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: ${{ env.DOCKER_REGISTRY }}
-      #     username: ${{ github.actor }}
-      #     password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Generate the aggregated openapi.json/swagger
         run: |
           set -x

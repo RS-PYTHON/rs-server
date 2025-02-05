@@ -49,6 +49,9 @@ USER root
 RUN apt update && apt upgrade -y
 USER $user
 
+# Upgrade pip version
+RUN pip install -U pip
+
 # Set labels based on the Open Containers Initiative (OCI):
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 #
@@ -59,6 +62,31 @@ LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resour
 # Note: don't remove cache so the child images that use this one as a base will build faster
 # RUN rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 EOF
+
+    # For the jupyter images
+    if [[ $image == *"jupyter"* ]]; then
+        cat << EOF >> "$dockerfile"
+
+# Install python 3.11.7 using conda then prefect and dask and other packages.
+# The versions must be the same than the cluster images.
+RUN conda install --yes conda-forge::python="3.11.7"
+
+# Note: put s3fs before boto3 to have a recent version
+RUN pip install \
+        dask[complete]=="2024.5.2" \
+        dask-gateway=="2024.1.0" \
+        prefect[dask,aws]=="3.1.4" \
+        ipywidgets \
+        s3fs \
+        boto3
+
+# Install dot and clean conda
+USER root
+RUN apt install -y python3-pydot graphviz
+RUN conda clean --all --yes
+USER jovyan
+EOF
+    fi
 
     cat "$dockerfile"
 
