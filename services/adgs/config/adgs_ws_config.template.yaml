@@ -42,6 +42,9 @@ template:
     need_auth: true
     results_entry: $.value | $
     metadata_mapping:
+      id:
+        - null
+        - "$.Id"
       auxip:id:
         - null
         - "$.Id"
@@ -87,9 +90,9 @@ template:
       processing:datetime:
         - null
         - "$.processing:datetime"
-      processing:facility:
+      processingCenter:
         - null
-        - "$.processing:facility"
+        - "$.processingCenter"
       attrs:
         - null
         - "$.Attributes"
@@ -106,6 +109,8 @@ template:
           and:
             - "contains(Name, '{Name}')"
             - "contains(Id, '{auxip:id}')"
+            - "ContentDate/Start gt {Start#to_iso_utc_datetime}"
+            - "ContentDate/Start lt {Stop#to_iso_utc_datetime}"
             - "PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}"
             - "PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}"
             - "PublicationDate eq {PublicationDate#to_iso_utc_datetime}"

@@ -728,6 +728,138 @@ class TestFeatureCollectionOdataStacMapping:
         assert response["features"] == [adgs_feature], "Features don't match"
 
     @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint, odata, expected_code",
+        [
+            # Default case, cadip_session_by_satellite collection sets Satellite to S1A
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items",
+                "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A'&$orderby=PublicationDate "
+                "desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            # by setting filter filter=id=S1A_20200105072204051312, apart from satellite eq S1A which is
+            #  set by collection, also add SessionId eq S1A_20200105072204051312 to odata.
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=id=S1A_20200105072204051312",
+                "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312' "
+                "and Satellite eq 'S1A'&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            # set filter with id AND datetime, check that odata is updated, now with SessionId, Satellite and PB date.
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=id=S1A_20200105072204051312 AND datetime="
+                "2020-02-16T12:00:00.000Z",
+                "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312' and Satellite eq 'S1A'"
+                " and PublicationDate eq 2020-02-16T12:00:00.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:retransfer=True",
+                "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A' "
+                "and Retransfer eq True&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:retransfer=should_be_bool",
+                "no_odata",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:num_channels=2",
+                "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A' and NumChannels eq 2&"
+                "$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            # By setting filter with a invalid value (not withing queryables), should result in a 422
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=invalid=x",
+                "No odata for this",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items",
+                "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC."
+                "StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value"
+                " eq 'SENTINEL-1')&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA",
+                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and Attributes/OData.CSC."
+                "StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value"
+                " eq 'SENTINEL-1')&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA AND published="
+                "2020-02-16T12:00:00.000Z",
+                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and PublicationDate eq "
+                "2020-02-16T12:00:00.000Z and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+                "'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=processing:facility=PDMC",
+                "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name"
+                " eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+                "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and "
+                "att/OData.CSC.StringAttribute/Value eq 'PDMC')&$orderby=PublicationDate desc&$top=10"
+                "&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=invalid=x",
+                "No odata",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=published=invalid_date_format2020",
+                "No odata",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+        ],
+        indirect=["fastapi_app"],
+        ids=[
+            "cadip",
+            "cadip_id",
+            "cadip_id_and_dt",
+            "cadip_retransfer",
+            "cadip_retransfer_invalid",
+            "cadip_numchans",
+            "cadip_inv",
+            "auxip",
+            "auxip_name",
+            "auxip_name_and_dt",
+            "auxip_processing",
+            "auxip_inv",
+            "auxip_inv_dt",
+        ],
+    )
+    @responses.activate
+    def test_cadip_query_filter(self, client, mock_token_validation, endpoint, odata, expected_code):
+        """Test used for joining default collections with additional queries from filter param."""
+        mock_token_validation()
+        responses.add(responses.GET, odata, json={"value": []}, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == expected_code
+
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "endpoint, detail",
         [

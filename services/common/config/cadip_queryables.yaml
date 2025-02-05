@@ -14,9 +14,9 @@
 
 id:
   type: string
-  title: platform
+  title: id
   format: string
-  description: string
+  description: SessionId
 platform:
   type: string
   title: platform
@@ -24,96 +24,96 @@ platform:
   description: string
 constellation:
   type: string
-  title: platform
+  title: constellation
   format: string
   description: string
 sat:absolute_orbit:
   type: string
-  title: platform
+  title: sat:absolute_orbit
   format: string
-  description: string
+  description: DownlinkOrbit
 datetime:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: datetime
+  format: datetime
+  description: datetime
 start_datetime:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: start_datetime
+  format: datetime
+  description: DownlinkStart
 end_datetime:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: end_datetime
+  format: datetime
+  description: DownlinkStop
 published:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: published
+  format: datetime
+  description: PublicationDate
 cadip:id:
   type: string
-  title: platform
+  title: cadip:id
   format: string
-  description: string
+  description: id
 cadip:num_channels:
   type: string
-  title: platform
+  title: cadip:num_channels
   format: string
-  description: string
+  description: NumChannels
 cadip:acquisition_id:
   type: string
-  title: platform
+  title: cadip:acquisition_id
   format: string
-  description: string
+  description: AcquisitionId
 cadip:antenna_id:
   type: string
-  title: platform
+  title: cadip:antenna_id
   format: string
-  description: string
+  description: AntennaId
 cadip:station_unit_id:
   type: string
-  title: platform
+  title: cadip:station_unit_id
   format: string
-  description: string
+  description: StationUnitId
 cadip:front_end_id:
   type: string
-  title: platform
+  title: cadip:front_end_id
   format: string
-  description: string
+  description: FrontEndId
 cadip:planned_data_start:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: cadip:planned_data_start
+  format: datetime
+  description: PlannedDataStart
 cadip:planned_data_stop:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: cadip:planned_data_stop
+  format: datetime
+  description: PlannedDataStop
 cadip:retransfer:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: bool
+  title: cadip:retransfer
+  format: bool
+  description: Retransfer
 cadip:antenna_status_ok:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: bool
+  title: cadip:antenna_status_ok
+  format: bool
+  description: AntennaStatusOK
 cadip:front_end_status_ok:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: bool
+  title: cadip:front_end_status_ok
+  format: bool
+  description: FrontEndStatusOK
 cadip:downlink_status_ok:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: bool
+  title: cadip:downlink_status_ok
+  format: bool
+  description: DownlinkStatusOK
 cadip:delivery_push_ok:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: bool
+  title: cadip:delivery_push_ok
+  format: bool
+  description: DeliveryPushOK

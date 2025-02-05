@@ -14,7 +14,7 @@
 
 product:type:
   type: string
-  title: platform
+  title: product:type
   format: string
   description: string
 platform:
@@ -24,56 +24,56 @@ platform:
   description: string
 constellation:
   type: string
-  title: platform
+  title: constellation
   format: string
   description: string
 Name:
   type: string
-  title: platform
+  title: Name
   format: string
   description: string
 auxip:id:
   type: string
-  title: platform
+  title: auxip:id
   format: string
-  description: string
+  description: id
 created:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: created
+  format: datetime
+  description: PublicationDate
 datetime:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: datetime
+  format: datetime
+  description: ContentDate/Start
 start_datetime:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: start_datetime
+  format: datetime
+  description: ContentDate/Start
 end_datetime:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: end_datetime
+  format: datetime
+  description: ContentDate/End
 product:type:
   type: string
-  title: platform
+  title: product:type
   format: string
-  description: string
+  description: productType
 processing:datetime:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: processing:datetime
+  format: datetime
+  description: processingDate
 processing:facility:
   type: string
-  title: platform
+  title: processing:facility
   format: string
-  description: string
+  description: processingCenter
 published:
-  type: string
-  title: platform
-  format: string
-  description: string
+  type: datetime
+  title: published
+  format: datetime
+  description: PublicationDate

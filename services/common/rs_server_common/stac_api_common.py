@@ -21,6 +21,7 @@ import urllib.parse
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
+from datetime import datetime as dt
 from functools import lru_cache
 from pathlib import Path
 from typing import (
@@ -466,8 +467,38 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             for sub_filter in args:
                 read_cql(sub_filter)
 
-        read_cql(params.pop("filter", {}))
+        def read_query(query_arg: str | None):
+            """Used to read query parameter cql2-text filter.
+            filter=prop1 = prop2
+            """
+            if not query_arg:
+                return
+            # If there are more filters defined and joined by AND keyword, process each one and update stac_params.
+            if "AND" in query_arg:  # only AND for now.
+                conditions = [c.strip() for c in query_arg.split("AND")]
+                for condition in conditions:
+                    read_query(condition)
+                return
+            # Handle only '=' for now
+            op = "="
+            if op not in query_arg:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "Invalid query filter, only '=' operator is allowed",
+                )
+            # Extract prop and check if it's in the queryables.
+            if (prop := query_arg.split(op)[0].strip()) not in allowed_properties:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
+                )
+            value = str(query_arg.split(op)[1]).strip("'\"")
+            check_input_type(self.get_queryables(), prop, value)
+            # Update stac params
+            stac_params[prop] = value  # type: ignore
 
+        read_cql(params.pop("filter", {}))
+        read_query(self.request.query_params.get("filter"))
         # Read the query
         query = params.pop("query", {})
         for prop, operator in query.items():
@@ -817,7 +848,6 @@ def map_stac_platform() -> dict:
         return yaml.safe_load(cf)
 
 
-# todo, Transofrm to single func
 @lru_cache
 def get_cadip_queryables() -> dict:
     """Function used to read and interpret from cadip_queryables.yaml"""
@@ -903,3 +933,31 @@ def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> Ite
             detail=f"Invalid attribute '{attribute}' for sorting: {str(e)},",
         ) from e
     return ItemCollection(features=sorted_items, type=item_collection.type)
+
+
+def check_input_type(field_info, key, input_value):
+    """Function to check query parameters types agains default queryables."""
+    expected_type = field_info[key].type  # Get the expected type as a string
+
+    # Map expected type to actual Python types
+    type_mapping = {
+        "string": lambda input: isinstance(input, str),
+        "integer": lambda input: input.isdigit(),
+        "bool": lambda input_value: input_value.lower() in [True, False, 1, 0, "true", "false", "1", "0"],
+        "datetime": check_datetime_input,  # Adding support for datetime
+    }
+
+    if not type_mapping.get(expected_type)(input_value):  # type: ignore
+        raise log_http_exception(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Invalid CQL2 filter value",
+        )
+
+
+def check_datetime_input(input_value: Any) -> bool:
+    """Used to check if a parameter is a datetime-like string"""
+    try:
+        dt.fromisoformat(input_value)  # ISO 8601 format check
+        return True
+    except ValueError:
+        return False
