@@ -191,8 +191,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.cluster = cluster
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
         
-        self.process_lock = multiprocessing.Manager().Lock() 
-
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(self):  # pylint: disable=arguments-differ, invalid-overridden-method
         """
@@ -578,7 +576,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.log_job_execution(JobStatus.successful, 100, message="Finished")
         self.logger.info("Tasks monitoring finished")
 
-    def dask_cluster_connect(self):
+    def dask_cluster_connect(self, staging_station_id: str):
         """Connects a dask cluster scheduler
         Establishes a connection to a Dask cluster, either in a local environment or via a Dask Gateway in
         a Kubernetes cluster. This method checks if the cluster is already created (for local mode) or connects
@@ -595,7 +593,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         - If no clusters are available, it attempts to create a new cluster scheduler.
 
         Args:
-            None
+            staging_station_id: identifier of the station on which we want to stage data. 
+            This variable will ve used to define the dask.distributed.Variable object used
+            to create an access_token shared by all of the Dask workers (there will be as many
+            shared variable as station involved in the staging process)
 
         Raises:
             RuntimeError: Raised if the cluster name is None, required environment variables are missing,
@@ -706,11 +707,18 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # end of TODO
 
         # Create a dask.distributed.Variable object which will be shared by all the workers
-        self.token_info = Variable(name="shared_token")
+        self.token_info = Variable(name=f"{staging_station_id}_shared_token")
         self.token_info.set({})
-        # Create a dask.distributed.Lock object to synchronize the access to the shared resource between
-        # the Dask workers
-        self.token_lock = Lock(name="token_management_lock")
+        
+        # Create lock objects to synchronize the access to the shared resource between
+        # the Dask workers and process. Other locks are created inside the Dask treatments
+        # to synchronize resources between the threads process running on a given worker
+        # (thread locks cannot be serialized so they need to be created directly inside the 
+        # workers). There will be one shared resource (dask.distributed.Variable) + one triplet 
+        # of locks (worker_lock, process_lock, thread_lock) for each station involved in the 
+        # staging process
+        self.token_lock = Lock(name=f"{staging_station_id}_lock")
+        self.process_lock = multiprocessing.Manager().Lock() 
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
@@ -797,7 +805,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         # connect to the dask cluster
         try:
-            dask_client = self.dask_cluster_connect()
+            dask_client = self.dask_cluster_connect(external_auth_config.station_id)
             self.submit_tasks_to_dask_cluster(external_auth_config, dask_client)
 
         except RuntimeError as re:
