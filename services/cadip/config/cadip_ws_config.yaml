@@ -765,6 +765,7 @@ cadip_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
@@ -941,6 +942,7 @@ ins_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
@@ -1117,6 +1119,7 @@ mps_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
@@ -1293,6 +1296,7 @@ mti_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
@@ -1469,6 +1473,7 @@ nsg_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
@@ -1645,6 +1650,7 @@ sgs_session:
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+          - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}

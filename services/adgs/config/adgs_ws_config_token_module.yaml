@@ -111,6 +111,8 @@ adgs:
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
+          - ContentDate/Start gt {Start#to_iso_utc_datetime}
+          - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
@@ -230,6 +232,8 @@ adgs2:
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
+          - ContentDate/Start gt {Start#to_iso_utc_datetime}
+          - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:

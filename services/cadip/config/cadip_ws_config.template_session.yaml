@@ -135,6 +135,7 @@ template:
             - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
             - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
             - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
+            - Id eq {id}
             - DownlinkOrbit eq {DownlinkOrbit}
             - DownlinkStart eq {DownlinkStart}
             - DownlinkStop eq {DownlinkStop}
