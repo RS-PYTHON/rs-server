@@ -515,6 +515,50 @@ jobs:
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: ${{ needs.set-env.outputs.debug_mode }}
 
+  dask-staging-local-img:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "'dask-gateway-server/staging/local' Docker image"
+    # TODO: this has to be activated when the pydantic conflict is solved
+    #needs: [set-env, services-common-whl, services-staging-whl]
+    # TODO: this has to be deleted when the pydantic conflict is solved
+    needs: [set-env, services-staging-whl]
+    permissions: write-all
+    outputs:
+      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download .whl files into a local dir
+      # TODO: the next 5 commented lines must be reactivated when the pydantic conflict is solved
+      #- name: Download .whl dependencies
+      #  uses: actions/download-artifact@v4
+      #  with:
+      #    name: ${{ needs.services-common-whl.outputs.package_name }}
+      #    path: ./whl
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.services-staging-whl.outputs.package_name }}
+          path: ./build_context_path
+
+      - id: publish-docker
+        uses: ./.github/actions/publish-docker
+        with:
+          dockerfile: ./services/staging/.github/Dockerfile.dask-staging-local
+          build_context_path: ./build_context_path
+          image_basename: "${{ github.repository_owner }}/dask-gateway-server"
+          image_suffix: /staging/local
+          version_name: ${{ needs.services-staging-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
+          debug_mode: false
+          build_args: |
+            DASK_GATEWAY_TAG=2024.1.0
+
   ###########
   # TESTING #
   ###########

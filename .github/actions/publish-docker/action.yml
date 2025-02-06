@@ -22,6 +22,9 @@ inputs:
   build_context_path:
     description: "'docker build' context path"
     required: true
+  image_basename:
+    description: Docker image base name = rs-server by default
+    default: ${{ github.repository }}
   image_suffix:
     description: Docker image name suffix e.g. _services-cadip
     required: true
@@ -45,6 +48,9 @@ inputs:
     required: true
   debug_mode:
     description: Add debug tools to the docker image
+    required: false
+  build_args:
+    description: List of build-time variables
     required: false
 
 outputs:
@@ -78,7 +84,7 @@ runs:
     # Full Docker image name:tag as ghcr.io/RS-PYTHON/rs-server<suffix>:<version> in lowercase
     - id: docker_image
       run: |
-        docker_image=${{ env.DOCKER_REGISTRY }}/${{ github.repository }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}
+        docker_image=${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}
         docker_image=${docker_image,,} # lowercase
         echo docker_image=${docker_image} >> $GITHUB_ENV
         echo docker_image=${docker_image} >> $GITHUB_OUTPUT
@@ -130,6 +136,7 @@ runs:
         tags: ${{ env.docker_image }}
         labels: ${{ steps.meta.outputs.labels }}
         push: false # push after the security scans below
+        build-args: ${{ inputs.build_args }}
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
