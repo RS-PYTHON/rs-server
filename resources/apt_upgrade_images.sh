@@ -65,6 +65,11 @@ EOF
 
     # For the jupyter images
     if [[ $image == *"jupyter"* ]]; then
+
+        DASK_TAG=2024.5.2
+        DASK_GATEWAY_TAG=2024.1.0
+        PREFECT_TAG=3.1.4
+
         cat << EOF >> "$dockerfile"
 
 # Install python 3.11.7 using conda then prefect and dask and other packages.
@@ -73,9 +78,10 @@ RUN conda install --yes conda-forge::python="3.11.7"
 
 # Note: put s3fs before boto3 to have a recent version
 RUN pip install \
-        dask[complete]=="2024.5.2" \
-        dask-gateway=="2024.1.0" \
-        prefect[dask,aws]=="3.1.4" \
+        dask[complete]=="${DASK_TAG}" \
+        distributed=="${DASK_TAG}" \
+        dask-gateway=="${DASK_GATEWAY_TAG}" \
+        prefect[dask,aws]=="${PREFECT_TAG}" \
         ipywidgets \
         s3fs \
         boto3
@@ -91,6 +97,6 @@ EOF
     cat "$dockerfile"
 
     # Build and publish the image
-    docker build -f "$dockerfile" -t "$target" "$dockerdir"
+    docker build --progress plain -f "$dockerfile" -t "$target" "$dockerdir"
     docker push "$target"
 done
