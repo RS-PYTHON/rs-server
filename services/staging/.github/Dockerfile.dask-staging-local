@@ -59,4 +59,4 @@ LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
 LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/dask-gateway-server/staging/local"
 LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/staging/.github/Dockerfile.dask-staging-local"
 
-LABEL org.opencontainers.image.description="dask-gateway-server image in which we installed the rs-server-staging wheel package."
+LABEL org.opencontainers.image.description="dask-gateway-server image for local mode in which we installed the rs-server-staging wheel package."
