@@ -23,8 +23,8 @@ inputs:
     description: "'docker build' context path"
     required: true
   image_basename:
-    description: Docker image base name = rs-server by default
-    default: ${{ github.repository }}
+    description: Docker image base name
+    default: ${{ github.repository }} # = owner/repository-name
   image_suffix:
     description: Docker image name suffix e.g. _services-cadip
     required: true
