@@ -864,8 +864,6 @@ retried for %s times. Aborting",
         config: ExternalAuthenticationConfig,
         token_info: dict,
         token_lock: Any,
-        process_lock: Any,
-        thread_lock: Any,
         bucket: str,
         key: str,
         max_retries=S3_MAX_RETRIES,
@@ -933,10 +931,12 @@ retried for %s times. Aborting",
                     # Use locks to allow only one thread from one process from one worker to 
                     # access/refresh the shared token dictionary at a time
                     with token_lock:
-                        with process_lock:
-                            with thread_lock:
-                                get_station_token(config, token_info)
-                    
+                        test_before = token_info.get()
+                        self.logger.info(f"----------- TOKEN BEFORE FUNCTION: {token_info.get()}")
+                        get_station_token(config, token_info)
+                        test_after = token_info.get()
+                        self.logger.info(f"----------- TOKEN AFTER FUNCTION: {token_info.get()}")
+
                 except HTTPException as http_exception:
                     self.logger.error(
                         f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
@@ -948,12 +948,13 @@ retried for %s times. Aborting",
                         message=f"Failed to retrieve the token needed to connect to the external station {config.domain}",
                     )
                     return
-    
+                self.logger.info(f"----------- LAUNCHING DATA REQUEST WITH token {token_info.get()}")
                 request = requests.Request(
                     method="GET",
                     url=stream_url,
                     auth=TokenAuth(token_info.get()["access_token"]),
                 )
+                
                 prepared_request = session.prepare_request(request)
                              
                 with session.send(prepared_request, stream=True, timeout=timeout) as response:

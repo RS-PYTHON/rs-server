@@ -30,7 +30,6 @@ from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.util import JobStatus
 from rs_server_common.authentication.authentication_to_external import (
-    get_station_token,
     load_external_auth_config_by_domain,
     ACCESS_TK_KEY_IN_RESPONSE,
 )
@@ -47,7 +46,7 @@ import threading, multiprocessing
 from typing import Any
 
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
-                   token_dict: dict, token_lock: Lock, process_lock: Any,
+                   token_dict: dict, token_lock: Lock,
                    bucket: str, s3_file: str):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
@@ -72,7 +71,6 @@ def streaming_task(product_url: str, config: ExternalAuthenticationConfig,
     try:
         # Create a thread lock to synchronize access to shared resources between the threads of a 
         # given worker
-        thread_lock = threading.Lock()
         
         s3_handler = S3StorageHandler(
             os.environ["S3_ACCESSKEY"],
@@ -80,7 +78,7 @@ def streaming_task(product_url: str, config: ExternalAuthenticationConfig,
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
-        s3_handler.s3_streaming_upload(product_url, config, token_dict, token_lock, process_lock, thread_lock,
+        s3_handler.s3_streaming_upload(product_url, config, token_dict, token_lock,
                                        bucket, s3_file)
     except RuntimeError as e:
         raise ValueError(
@@ -710,15 +708,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.token_info = Variable(name=f"{staging_station_id}_shared_token")
         self.token_info.set({})
         
-        # Create lock objects to synchronize the access to the shared resource between
-        # the Dask workers and process. Other locks are created inside the Dask treatments
-        # to synchronize resources between the threads process running on a given worker
-        # (thread locks cannot be serialized so they need to be created directly inside the 
-        # workers). There will be one shared resource (dask.distributed.Variable) + one triplet 
-        # of locks (worker_lock, process_lock, thread_lock) for each station involved in the 
-        # staging process
+        # Create dask.distributed.Locks objects to synchronize the access to the shared resource between
+        # the Dask workers (with this lock we have only 1 thread reading the shared resource at once)
         self.token_lock = Lock(name=f"{staging_station_id}_lock")
-        self.process_lock = multiprocessing.Manager().Lock() 
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
@@ -760,7 +752,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         config,
                         self.token_info,
                         self.token_lock,
-                        self.process_lock,
                         self.catalog_bucket,
                         asset_info[1],
                     ),

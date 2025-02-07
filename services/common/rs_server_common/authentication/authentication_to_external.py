@@ -240,8 +240,15 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
     # an "authorisation grant" to the authorisation server
     token_dict = token_info.get()
     validate_token_dict(token_dict)
+    current_date = datetime.datetime.now()     
     
-    if not token_dict:
+    # If we have no token yet or if both the access and refresh tokens are expired, we get a new token
+    # using the authorisation grant
+    if (
+        not token_dict 
+        or (token_dict 
+        and (current_date - token_dict["refresh_token_creation_date"]).total_seconds() > token_dict["refresh_expires_in"] - 60)
+    ):
         if not external_auth_config:
             raise HTTPException(
                 status_code=HTTP_401_UNAUTHORIZED,
@@ -275,7 +282,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
 
         # Get the new token and add its creation date
         token_dict.update(response.json())
-        token_dict["token_creation_date"] = datetime.datetime.now()
+        token_dict["access_token_creation_date"] = token_dict["refresh_token_creation_date"] = datetime.datetime.now()
         
         # Is it worth validating it?
         # validate_token_format(token.get(ACCESS_TK_KEY_IN_RESPONSE, ""))
@@ -293,14 +300,13 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         validate_token_dict(token_dict)
         token_info.set(token_dict)
     else:
-        
         # Check that the token dictionary contains the mandatory elements
         validate_token_dict(token_dict)
         
         # If the current token expires in less than one minute, create a new request to send 
         # to the authorisation server with the refresh token given in the payload of the request
         current_date = datetime.datetime.now()
-        diff_in_sec = (current_date - token_dict["token_creation_date"]).total_seconds()
+        diff_in_sec = (current_date - token_dict["access_token_creation_date"]).total_seconds()
         
         logger.info(f"----------- DIFF VAUT: {diff_in_sec}")   
         if diff_in_sec > token_dict["expires_in"] - 60:        
@@ -317,7 +323,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
             )
             # Refresh the token and add the creation date of the newly created token
             token_dict.update(response.json())
-            token_dict["token_creation_date"] = datetime.datetime.now()
+            token_dict["access_token_creation_date"] = datetime.datetime.now()
 
             # Update the shared token
             validate_token_dict(token_dict)
