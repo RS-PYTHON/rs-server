@@ -583,7 +583,7 @@ jobs:
           set -x
 
           # Clone the rs-demo repository
-          git clone git@github.com:RS-PYTHON/rs-demo.git
+          git clone https://github.com/RS-PYTHON/rs-demo.git
 
           # Try to checkout in rs-demo the same branch name than in rs-server.
           # If the branch doesn't exist, it's ok, we stay on the default branch.
