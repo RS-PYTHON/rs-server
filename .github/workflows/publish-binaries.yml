@@ -582,11 +582,7 @@ jobs:
         run: |
           set -x
 
-          # Clone the rs-demo repository.
-          # Use the ssh public key from: https://github.com/RS-PYTHON/rs-demo/settings/keys
-          # and the private key from: https://github.com/RS-PYTHON/rs-server/settings/secrets/actions
-          eval "$(ssh-agent -s)"
-          ssh-add - <<< "${{ secrets.RS_DEMO_PRIVATE_SSH_KEY }}"
+          # Clone the rs-demo repository
           git clone git@github.com:RS-PYTHON/rs-demo.git
 
           # Try to checkout in rs-demo the same branch name than in rs-server.
