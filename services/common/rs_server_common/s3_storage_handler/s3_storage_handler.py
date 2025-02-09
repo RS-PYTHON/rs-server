@@ -54,6 +54,12 @@ HTTP_READ_TIMEOUT = 120
 S3_PROTOCOL_MAX_ATTEMPTS = 5
 
 
+class StagingLockNotDefined(Exception):
+    """ 
+    Exception raised if we don't defined a dask.distributed.Lock object to synchronize access 
+    to the shared token information during the staging process.
+    """
+
 # pylint: disable=too-many-lines
 @dataclass
 class GetKeysFromS3Config:
@@ -862,11 +868,11 @@ retried for %s times. Aborting",
         self,
         stream_url: str,
         config: ExternalAuthenticationConfig,
-        token_info: dict,
-        token_lock: Any,
         bucket: str,
         key: str,
         max_retries=S3_MAX_RETRIES,
+        token_info: dict={},
+        token_lock: Any=None,
     ):
         """
         Upload a file to an S3 bucket using HTTP byte-streaming with retries.
@@ -930,6 +936,8 @@ retried for %s times. Aborting",
                 try:
                     # Use locks to allow only one thread from one process from one worker to 
                     # access/refresh the shared token dictionary at a time
+                    if not token_lock:
+                        raise StagingLockNotDefined("Staging dask.distributed.lock object is None but is mandatory for the staging")
                     with token_lock:
                         test_before = token_info.get()
                         self.logger.info(f"----------- TOKEN BEFORE FUNCTION: {token_info.get()}")

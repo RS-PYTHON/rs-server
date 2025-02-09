@@ -46,8 +46,7 @@ import threading, multiprocessing
 from typing import Any
 
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
-                   token_dict: dict, token_lock: Lock,
-                   bucket: str, s3_file: str):
+                   bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
@@ -78,8 +77,8 @@ def streaming_task(product_url: str, config: ExternalAuthenticationConfig,
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
-        s3_handler.s3_streaming_upload(product_url, config, token_dict, token_lock,
-                                       bucket, s3_file)
+        s3_handler.s3_streaming_upload(product_url, config,
+                                       bucket, s3_file, token_dict, token_lock)
     except RuntimeError as e:
         raise ValueError(
             f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
@@ -750,10 +749,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         streaming_task,
                         asset_info[0],
                         config,
-                        self.token_info,
-                        self.token_lock,
                         self.catalog_bucket,
                         asset_info[1],
+                        self.token_info,
+                        self.token_lock,
                     ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
