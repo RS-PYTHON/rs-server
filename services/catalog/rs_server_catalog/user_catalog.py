@@ -563,6 +563,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 for i, collection in enumerate(content["collections"]):
                     if not await self.collection_exists(request, collection):
                         content["collections"][i] = f"{self.request_ids['owner_id']}_{collection}"
+                        logger.debug(f"Using collection name: {content['collections'][i]}")
 
                 self.request_ids["collection_ids"] = content["collections"]
                 request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
@@ -610,6 +611,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                 for i, collection in enumerate(coll_list):
                     if not await self.collection_exists(request, collection):
                         coll_list[i] = f"{self.request_ids['owner_id']}_{collection}"
+                        logger.debug(f"Using collection name: {coll_list[i]}")
 
                 self.request_ids["collection_ids"] = coll_list
                 query_params_dict["collections"] = ",".join(coll_list)
@@ -1260,7 +1262,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             user_login = get_user(None, None)
         owner_id = ""  # Default owner_id is empty
         logger.debug(
-            f"Received {request.method} user_login is '{user_login}' url request.url.path = {request.url.path}",
+            f"Received {request.method} user_login is '{user_login}' | {request.url.path}?{request.query_params}",
         )
 
         # ---------- Request rerouting
