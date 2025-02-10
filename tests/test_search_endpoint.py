@@ -735,22 +735,25 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.001Z&$orderby=PublicationDate desc&$top=10&"
-                "$skip=0&$expand=Attributes",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
+                "(PublicationDate lt 2019-02-12T23:20:50.001Z or PublicationDate eq 2019-02-12T23:20:50.001Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z"
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50.001Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate lte 2018-02-12T23:20:50.001Z"
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate lt 2018-02-12T23:20:50.001Z or PublicationDate eq 2018-02-12T23:20:50.001Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -785,21 +788,25 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
+                "http://127.0.0.1:5000/Sessions?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
+                "(PublicationDate lt 2019-02-12T23:20:50.000Z or PublicationDate eq 2019-02-12T23:20:50.000Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/..",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z"
+                "http://127.0.0.1:5000/Sessions?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=../2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lte 2018-02-12T23:20:50.000Z"
+                "http://127.0.0.1:5000/Sessions?$filter="
+                "(PublicationDate lt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1229,13 +1236,15 @@ def test_search_parameters(
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
-                    "PublicationDate gte {date_min} and PublicationDate lte {date_max}"
+                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
+                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
-                    "PublicationDate gte {date_min} and PublicationDate lte {date_max} "
+                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
+                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
@@ -1248,7 +1257,8 @@ def test_search_parameters(
                 odata_no_query = (
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
-                    "and PublicationDate gte {date_min} and PublicationDate lte {date_max}"
+                    "and (PublicationDate gt {date_min} or PublicationDate eq {date_min}) "
+                    "and (PublicationDate lt {date_max} or PublicationDate eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
 
@@ -1256,7 +1266,8 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
                     "and Satellite {satellite_op} {satellite} "
-                    "and PublicationDate gte {date_min} and PublicationDate lte {date_max}"
+                    "and (PublicationDate gt {date_min} or PublicationDate eq {date_min}) "
+                    "and (PublicationDate lt {date_max} or PublicationDate eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
             else:
