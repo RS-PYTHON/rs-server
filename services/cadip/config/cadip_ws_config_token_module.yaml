@@ -88,8 +88,10 @@ cadip:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -195,8 +197,10 @@ ins:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -302,8 +306,10 @@ mps:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -409,8 +415,10 @@ mti:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -516,8 +524,10 @@ nsg:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -623,8 +633,10 @@ sgs:
           and:
           - SessionId in ({SessionIds})
           - SessionId eq {SessionId}
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -767,8 +779,10 @@ cadip_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -930,8 +944,10 @@ ins_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -1093,8 +1109,10 @@ mps_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -1256,8 +1274,10 @@ mti_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -1419,8 +1439,10 @@ nsg_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}
@@ -1582,8 +1604,10 @@ sgs_session:
           - SessionId eq {SessionId}
           - Satellite eq {platform}
           - Satellite in ({platforms})
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Id eq {id}
           - DownlinkOrbit eq {DownlinkOrbit}

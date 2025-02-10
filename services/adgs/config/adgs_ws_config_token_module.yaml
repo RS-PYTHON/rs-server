@@ -104,8 +104,10 @@ adgs:
           and:
           - contains(Name, '{Name}')
           - contains(Id, '{auxip:id}')
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')
@@ -231,9 +233,16 @@ adgs2:
         operations:
           and:
           - contains(Name, '{Name}')
+<<<<<<< HEAD
           - contains(Id, '{auxip:id}')
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
+=======
+          - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StartPublicationDate#to_iso_utc_datetime})
+          - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
+            eq {StopPublicationDate#to_iso_utc_datetime})
+>>>>>>> develop
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')

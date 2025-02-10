@@ -493,7 +493,7 @@ jobs:
       - uses: actions/checkout@v4
 
       # Download .whl files into a local dir
-      # TODO: the following 5 comments have to be activated when the pydantic conflict is solved
+      # TODO: the next 5 commented lines must be reactivated when the pydantic conflict is solved
       #- name: Download .whl dependencies
       #  uses: actions/download-artifact@v4
       #  with:
@@ -547,12 +547,8 @@ jobs:
         run: |
           set -x
 
-          # Clone the rs-demo repository.
-          # Use the ssh public key from: https://github.com/RS-PYTHON/rs-demo/settings/keys
-          # and the private key from: https://github.com/RS-PYTHON/rs-server/settings/secrets/actions
-          eval "$(ssh-agent -s)"
-          ssh-add - <<< "${{ secrets.RS_DEMO_PRIVATE_SSH_KEY }}"
-          git clone git@github.com:RS-PYTHON/rs-demo.git
+          # Clone the rs-demo repository
+          git clone https://github.com/RS-PYTHON/rs-demo.git
 
           # Try to checkout in rs-demo the same branch name than in rs-server.
           # If the branch doesn't exist, it's ok, we stay on the default branch.

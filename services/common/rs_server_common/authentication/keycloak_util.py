@@ -87,8 +87,10 @@ class KCUtil:  # pylint: disable=too-few-public-methods
 
             # If the user is not found, this means he was removed from keycloak.
             # Thus we must remove all his api keys from the database.
-            if (error.response_code == HTTP_404_NOT_FOUND) and (
-                "User not found" in error.response_body.decode("utf-8")  # type: ignore
+            if (
+                error.response_code == HTTP_404_NOT_FOUND
+                and error.response_body is not None
+                and "User not found" in error.response_body.decode("utf-8")
             ):
                 logger.warning(f"User '{user_id}' not found in keycloak.")
                 return KCInfo(False, [])
