@@ -101,8 +101,6 @@ adgs:
           and:
           - contains(Name, '{Name}')
           - contains(Id, '{auxip:id}')
-          - ContentDate/Start gt {Start#to_iso_utc_datetime}
-          - ContentDate/Start lt {Stop#to_iso_utc_datetime}
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
@@ -227,8 +225,6 @@ adgs2:
           and:
           - contains(Name, '{Name}')
           - contains(Id, '{auxip:id}')
-          - ContentDate/Start gt {Start#to_iso_utc_datetime}
-          - ContentDate/Start lt {Stop#to_iso_utc_datetime}
           - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
           - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
@@ -241,13 +237,9 @@ adgs2:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
-<<<<<<< HEAD
             and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
-=======
-            and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
->>>>>>> 8983c0753a83f12df54d489727238a62e958f923
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:
