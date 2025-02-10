@@ -568,7 +568,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Return results as a dict
         data = ItemCollection(features=list(all_items.values()), type="FeatureCollection")
-        dict_data: Dict[str, Any] = self.paginate(data)
+        if "/search" in self.request.url.path:
+            # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
+            dict_data: Dict[str, Any] = self.paginate(data)
+        else:
+            dict_data = data.model_dump()
 
         # In cadip, we retrieved the sessions data.
         # We need to fill their assets with the session files data.
