@@ -114,7 +114,7 @@ class EodagProvider(Provider):
         # we need to update its configuration from the latest env vars, if they have changed
         self.client.override_config_from_env()
 
-    def _specific_search(self, date_time, **kwargs) -> Union[SearchResult, List]:
+    def _specific_search(self, **kwargs) -> Union[SearchResult, List]:
         """
         Conducts a search for products within a specified time range.
 
@@ -141,8 +141,7 @@ class EodagProvider(Provider):
             Exception: If the search encounters an error or fails, an exception is raised.
         """
         mapped_search_args: Dict[str, Union[str, None]] = {}
-
-        if session_id := kwargs.pop("id", None):
+        if session_id := kwargs.pop("SessionId", None):
             # Map session_id to the appropriate eodag parameter
             session_id = session_id[0] if len(session_id) == 1 else session_id
             key = "SessionIds" if isinstance(session_id, list) else "SessionId"
@@ -151,7 +150,7 @@ class EodagProvider(Provider):
 
         if kwargs.pop("sessions_search", False):
             # If request is for session search, handle platform - if any provided.
-            platform = kwargs.pop("platform", None)
+            platform = kwargs.pop("Satellite", None)
 
             if platform:
                 key = "platforms" if isinstance(platform, list) else "platform"
@@ -163,7 +162,7 @@ class EodagProvider(Provider):
             if retransfer := kwargs.pop("retransfer", None):
                 mapped_search_args["Retransfer"] = str(retransfer).lower()
 
-        if date_time:
+        if date_time := kwargs.pop("PublicationDate", False):
             # Since now both for files and sessions, time interval is optional, map it if provided.
             fixed, start, end = [str(date) if date else None for date in date_time]
             mapped_search_args.update(

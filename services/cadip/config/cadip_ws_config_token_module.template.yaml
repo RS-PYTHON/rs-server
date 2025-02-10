@@ -86,7 +86,22 @@ template:
             - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})
             - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})
             - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-            - "Retransfer eq {Retransfer}"
+            - Id eq {id}
+            - DownlinkOrbit eq {DownlinkOrbit}
+            - DownlinkStart eq {DownlinkStart}
+            - DownlinkStop eq {DownlinkStop}
+            - NumChannels eq {NumChannels}
+            - AcquisitionId eq {AcquisitionId}
+            - AntennaId eq {AntennaId}
+            - StationUnitId eq {StationUnitId}
+            - FrontEndId eq {FrontEndId}
+            - PlannedDataStart eq {PlannedDataStart}
+            - PlannedDataStop eq {PlannedDataStop}
+            - Retransfer eq {Retransfer}
+            - AntennaStatusOK eq {AntennaStatusOK}
+            - FrontEndStatusOK eq {FrontEndStatusOK}
+            - DownlinkStatusOK eq {DownlinkStatusOK}
+            - DeliveryPushOK eq {DeliveryPushOK}
 
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
