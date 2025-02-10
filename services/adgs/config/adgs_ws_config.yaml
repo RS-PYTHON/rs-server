@@ -131,7 +131,7 @@ adgs:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
-            and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
+            and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
@@ -259,16 +259,11 @@ adgs2:
         operations:
           and:
           - contains(Name, '{Name}')
-<<<<<<< HEAD
           - contains(Id, '{auxip:id}')
-          - PublicationDate gte {StartPublicationDate#to_iso_utc_datetime}
-          - PublicationDate lte {StopPublicationDate#to_iso_utc_datetime}
-=======
           - (PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StartPublicationDate#to_iso_utc_datetime})
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
->>>>>>> develop
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType'
             and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')
@@ -279,7 +274,7 @@ adgs2:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate'
             and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
-            and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
+            and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
           - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}

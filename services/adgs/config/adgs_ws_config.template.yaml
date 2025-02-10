@@ -119,7 +119,7 @@ template:
             - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq '{platformSerialIdentifier}')"
             - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq '{platformShortName#to_upper}')"
             - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')"
-            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')"
             - "ContentDate/Start gt {Start#to_iso_utc_datetime}"
             - "ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}"
             - "ContentDate/Stop lt {Stop#to_iso_utc_datetime}"
