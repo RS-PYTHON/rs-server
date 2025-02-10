@@ -67,6 +67,9 @@ adgs:
       EvictionDate:
       - null
       - $.EvictionDate
+      DatetimeStart:
+      - null
+      - $.ContentDate.Start
       Start:
       - null
       - $.ContentDate.Start
@@ -128,6 +131,7 @@ adgs:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
+          - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
@@ -204,6 +208,9 @@ adgs2:
       EvictionDate:
       - null
       - $.EvictionDate
+      DatetimeStart:
+      - null
+      - $.ContentDate.Start
       Start:
       - null
       - $.ContentDate.Start
@@ -265,6 +272,7 @@ adgs2:
           - Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter'
             and att/OData.CSC.StringAttribute/Value eq '{processing:facility#to_iso_utc_datetime}')
           - ContentDate/Start gt {Start#to_iso_utc_datetime}
+          - ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}
           - ContentDate/Stop lt {Stop#to_iso_utc_datetime}
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
