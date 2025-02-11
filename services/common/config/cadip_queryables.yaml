@@ -1,0 +1,121 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+id:
+  type: string
+  title: id
+  format: string
+  description: SessionId
+platform:
+  type: string
+  title: platform
+  format: string
+  description: string
+  enum: ["sentinel-1a", "sentinel-1b", "sentinel-1c", "sentinel-2a", "sentinel-2b", "sentinel-2c", "sentinel-3a", "sentinel-3b", "sentinel-5P"]
+constellation:
+  type: string
+  title: constellation
+  format: string
+  description: string
+  enum: ["sentinel-1", "sentinel-2", "sentinel-3", "sentinel-5P"]
+sat:absolute_orbit:
+  type: string
+  title: sat:absolute_orbit
+  format: string
+  description: DownlinkOrbit
+datetime:
+  type: datetime
+  title: datetime
+  format: datetime
+  description: datetime
+start_datetime:
+  type: datetime
+  title: start_datetime
+  format: datetime
+  description: DownlinkStart
+end_datetime:
+  type: datetime
+  title: end_datetime
+  format: datetime
+  description: DownlinkStop
+published:
+  type: datetime
+  title: published
+  format: datetime
+  description: PublicationDate
+cadip:id:
+  type: string
+  title: cadip:id
+  format: string
+  description: id
+cadip:num_channels:
+  type: string
+  title: cadip:num_channels
+  format: string
+  description: NumChannels
+cadip:acquisition_id:
+  type: string
+  title: cadip:acquisition_id
+  format: string
+  description: AcquisitionId
+cadip:antenna_id:
+  type: string
+  title: cadip:antenna_id
+  format: string
+  description: AntennaId
+cadip:station_unit_id:
+  type: string
+  title: cadip:station_unit_id
+  format: string
+  description: StationUnitId
+cadip:front_end_id:
+  type: string
+  title: cadip:front_end_id
+  format: string
+  description: FrontEndId
+cadip:planned_data_start:
+  type: datetime
+  title: cadip:planned_data_start
+  format: datetime
+  description: PlannedDataStart
+cadip:planned_data_stop:
+  type: datetime
+  title: cadip:planned_data_stop
+  format: datetime
+  description: PlannedDataStop
+cadip:retransfer:
+  type: bool
+  title: cadip:retransfer
+  format: bool
+  description: Retransfer
+cadip:antenna_status_ok:
+  type: bool
+  title: cadip:antenna_status_ok
+  format: bool
+  description: AntennaStatusOK
+cadip:front_end_status_ok:
+  type: bool
+  title: cadip:front_end_status_ok
+  format: bool
+  description: FrontEndStatusOK
+cadip:downlink_status_ok:
+  type: bool
+  title: cadip:downlink_status_ok
+  format: bool
+  description: DownlinkStatusOK
+cadip:delivery_push_ok:
+  type: bool
+  title: cadip:delivery_push_ok
+  format: bool
+  description: DeliveryPushOK
