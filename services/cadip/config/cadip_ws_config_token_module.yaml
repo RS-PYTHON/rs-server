@@ -93,14 +93,14 @@ cadip:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -202,14 +202,14 @@ ins:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -311,14 +311,14 @@ mps:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -420,14 +420,14 @@ mti:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -529,14 +529,14 @@ nsg:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -638,14 +638,14 @@ sgs:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -784,14 +784,14 @@ cadip_session:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -949,14 +949,14 @@ ins_session:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -1114,14 +1114,14 @@ mps_session:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -1279,14 +1279,14 @@ mti_session:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -1444,14 +1444,14 @@ nsg_session:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
@@ -1609,14 +1609,14 @@ sgs_session:
           - (PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate
             eq {StopPublicationDate#to_iso_utc_datetime})
           - PublicationDate eq {PublicationDate#to_iso_utc_datetime}
-          - Id eq {id}
+          - Id eq '{id}'
           - DownlinkOrbit eq {DownlinkOrbit}
           - DownlinkStart eq {DownlinkStart}
           - DownlinkStop eq {DownlinkStop}
           - NumChannels eq {NumChannels}
-          - AcquisitionId eq {AcquisitionId}
-          - AntennaId eq {AntennaId}
-          - StationUnitId eq {StationUnitId}
+          - AcquisitionId eq '{AcquisitionId}'
+          - AntennaId eq '{AntennaId}'
+          - StationUnitId eq '{StationUnitId}'
           - FrontEndId eq {FrontEndId}
           - PlannedDataStart eq {PlannedDataStart}
           - PlannedDataStop eq {PlannedDataStop}
