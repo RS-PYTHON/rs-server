@@ -22,11 +22,13 @@ platform:
   title: platform
   format: string
   description: string
+  enum: ["sentinel-1a", "sentinel-2a"]
 constellation:
   type: string
   title: constellation
   format: string
   description: string
+  enum: ["sentinel-1", "sentinel-2"]
 Name:
   type: string
   title: Name
