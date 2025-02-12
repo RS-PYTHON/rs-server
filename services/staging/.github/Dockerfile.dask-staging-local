@@ -1,0 +1,62 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# We will add rs-server-staging to the dask-gateway-server image for local mode
+ARG DASK_GATEWAY_TAG=xxx
+FROM ghcr.io/rs-python/dask-gateway-server/base/local:${DASK_GATEWAY_TAG}
+ARG DASK_GATEWAY_TAG=xxx
+
+# Default user from parent image
+ARG USER=dask:dask
+
+# Install dependencies for compilation
+USER root
+RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
+USER $USER
+
+# The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
+# so the .whl files are under ./*.whl
+# We copy them into a /tmp directory that we can clean at the end.
+RUN mkdir -p /tmp/whl
+ADD ./*.whl /tmp/whl
+
+# Install the wheel packages in the right order (dependencies first).
+# This also installs all the sub-dependencies e.g. fastapi etc ...
+RUN cd /tmp/whl && pip install -U --no-cache-dir rs_server_staging-*.whl
+
+# Install opentelemetry instrumentation packages for dependencies
+RUN opentelemetry-bootstrap -a install
+
+# Install complete dask subsets
+RUN pip install dask[complete]
+
+# Remove dependencies for compilation
+USER root
+RUN apt autoremove -y gcc
+
+# Install dependencies necessary for execution not compilation
+RUN apt install -y libexpat1
+
+# Clean everything
+RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
+USER $USER
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+#
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/dask-gateway-server/staging/local"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/staging/.github/Dockerfile.dask-staging-local"
+
+LABEL org.opencontainers.image.description="dask-gateway-server image for local mode in which we installed the rs-server-staging wheel package."

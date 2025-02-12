@@ -68,3 +68,10 @@ WORKDIR /home/user
 USER user
 
 ENTRYPOINT [ "/bin/bash", "-c", "set -x; /scripts/entrypoint_frontend.sh [DEBUG_MODE_RELOAD_FRONTEND]" ]
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+#
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/rs-server-frontend"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/frontend/.github/Dockerfile"

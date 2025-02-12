@@ -28,9 +28,6 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
 
-
-#COPY ./config /opt/config
-
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_staging-*.whl
@@ -67,3 +64,10 @@ USER user
 ENTRYPOINT [ \
     "python", "-m", "uvicorn", "rs_server_staging.main:app", \
     "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+#
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/rs-server-staging"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/staging/.github/Dockerfile"
