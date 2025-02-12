@@ -21,7 +21,6 @@ from typing import Any, Callable, List, Union
 from eodag import EOProduct
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from pydantic import ValidationError, ValidatorFunctionWrapHandler
 from rs_server_common.utils.logging import Logging
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -56,7 +55,7 @@ def is_valid_date_format(date: str) -> bool:
     return False
 
 
-def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> Union[List, str]:
+def validate_str_list(parameter: str) -> Union[List, str]:
     """
     Validates and parses a parameter that can be either a string or a comma-separated list of strings.
 
@@ -79,15 +78,6 @@ def validate_str_list(parameter: str, handler: ValidatorFunctionWrapHandler) -> 
         - Input: 'S1A, S2B, '
           Output: ['S1A', 'S2B'] (list of str)
     """
-    try:
-        if parameter:
-            handler(parameter)
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Cannot validate: {parameter}",
-        ) from exc
-
     if parameter and "," in parameter:
         items = [item.strip() for item in parameter.split(",") if item.strip()]
         return items if len(items) > 1 else items[0]

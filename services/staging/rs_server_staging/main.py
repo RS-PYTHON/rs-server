@@ -24,6 +24,7 @@ import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
+from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
 from rs_server_common.authentication.authentication_to_external import (
@@ -284,10 +285,11 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
 @router.get("/jobs/{job_id}")
 async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
-    job = app.extra["process_manager"].get_job(job_id)
-    if job:
-        return job
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+    try:
+        return app.extra["process_manager"].get_job(job_id)
+    except JobNotFoundError as error:
+        # Handle case when job_id is not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 @router.get("/jobs")
@@ -303,21 +305,24 @@ async def get_jobs_endpoint():
 @router.delete("/jobs/{job_id}")
 async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
-    success = app.extra["process_manager"].delete_job(job_id)
-    if success:
+    try:
+        app.extra["process_manager"].delete_job(job_id)
         return {"message": f"Job {job_id} deleted successfully"}
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+    except JobNotFoundError as error:
+        # Handle case when job_id is not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 @router.get("/jobs/{job_id}/results")
 async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
-    # Query the database to find the job by job_id
-    job = app.extra["process_manager"].get_job(job_id)
-    if job:
+    try:
+        # Query the database to find the job by job_id
+        job = app.extra["process_manager"].get_job(job_id)
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
-
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+    except JobNotFoundError as error:
+        # Handle case when job_id is not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 # Configure OpenTelemetry

@@ -67,6 +67,14 @@ router = APIRouter(tags=adgs_tags)
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent.parent / "config"
 
 
+def validate(queryables: dict):
+    """Function used to verify / update ADGS-specific queryables before being sent to eodag."""
+    if "PublicationDate" in queryables:
+        queryables["PublicationDate"] = validate_inputs_format(queryables["PublicationDate"])
+
+    return queryables
+
+
 class MockPgstacAdgs(MockPgstac):
     """Adgs implementation of MockPgstac"""
 
@@ -94,17 +102,17 @@ class MockPgstacAdgs(MockPgstac):
         page: int,
     ) -> stac_pydantic.ItemCollection:
         """Search adgs products for the given collection and OData parameters."""
+        # Update odata names that shadow eodag builtins (productype)
+
+        odata_params["Name"] = names[0] if isinstance(names := odata_params.get("Name"), list) else names
+        odata_params["attr_ptype"] = odata_params.pop("productType", None)
 
         return process_product_search(
             collection.get("station", "adgs"),
-            odata_params.get("productType"),
-            odata_params.get("PublicationDate"),
+            odata_params,
             limit,
             self.sortby,
             page,
-            Name=odata_params.get("Name", [None])[0],
-            attr_platform_short_name=odata_params.get("platformShortName"),
-            attr_serial_identif=odata_params.get("platformSerialIdentifier"),
         )
 
 
@@ -312,8 +320,7 @@ async def get_adgs_collection_specific_item(
 
 def process_product_search(  # pylint: disable=too-many-locals
     station,
-    product_type,
-    publication_date,
+    queryables,
     limit,
     sortby,
     page: int = 1,
@@ -343,8 +350,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     set_eodag_auth_token(station, "auxip")
     try:
         products = (init_adgs_provider(station)).search(
-            validate_inputs_format(publication_date, raise_errors=True),
-            attr_ptype=product_type,
+            **validate(queryables),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
             page=page,

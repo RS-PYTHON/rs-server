@@ -18,6 +18,7 @@ from datetime import datetime
 
 import pytest
 from fastapi import FastAPI
+from pygeoapi.process.base import JobNotFoundError
 from rs_server_staging.main import (
     app_lifespan,
     get_config_contents,
@@ -63,14 +64,6 @@ expected_jobs_test = [
         "message": "Test detail",
         "created": str(datetime(2024, 1, 4, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
-    },
-    {
-        "identifier": "non_existing",
-        "status": "successful",
-        "progress": 100.0,
-        "message": "Test detail",
-        "created": "unknown",
-        "updated": "unknown",
     },
 ]
 
@@ -227,15 +220,24 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_job",
-    expected_jobs_test,
+    "expected_job, expected_status, expected_response",
+    [
+        (
+            {"identifier": "non_existing_id"},
+            HTTP_404_NOT_FOUND,
+            {"message": "Job with ID non_existing_id not found"},
+        ),
+        *[(job, HTTP_200_OK, job) for job in expected_jobs_test],
+    ],
 )
 async def test_get_job(
     mocker,
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,
     mock_jobs,
-    expected_job,  # pylint: disable=unused-argument
+    expected_job,
+    expected_status,
+    expected_response,
 ):
     """
     Test the GET /jobs/{job_id} endpoint for retrieving job details.
@@ -247,8 +249,11 @@ async def test_get_job(
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
+        mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
             status, progress, and message for the job to be retrieved.
+        expected_status: response HTTP status code
+        expected_response: response body (JSON object)
 
     Assertions:
         - Asserts that the response status code is 200 and the returned job
@@ -257,34 +262,47 @@ async def test_get_job(
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    try:
-        job_index = next(i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"])
-        mock_db_table.get_job.return_value = mock_jobs[job_index]
-    except StopIteration:
-        mock_db_table.get_job.return_value = []
+
+    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
+    if expected_status == HTTP_404_NOT_FOUND:
+        mock_db_table.get_job.side_effect = JobNotFoundError
+    # Return an existing job normally (HTTP 200)
+    else:
+        mock_db_table.get_job.return_value = next(
+            job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
+        )
 
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
     response = staging_client.get(f"/jobs/{expected_job['identifier']}")
-    # assert response is OK and job info match, or not found for last case
-    assert (
-        response.status_code == HTTP_200_OK and response.json() == expected_job
-    ) or response.status_code == HTTP_404_NOT_FOUND
+
+    # Assert response status code and content
+    assert response.status_code == expected_status
+    assert response.json() == expected_response
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_job",
-    expected_jobs_test,
+    "expected_job, expected_status, expected_response",
+    [
+        (
+            {"identifier": "non_existing_id"},
+            HTTP_404_NOT_FOUND,
+            {"message": "Job with ID non_existing_id not found"},
+        ),
+        *[(job, HTTP_200_OK, job["status"]) for job in expected_jobs_test],
+    ],
 )
 async def test_get_job_result(
     mocker,
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,
     mock_jobs,
-    expected_job,  # pylint: disable=unused-argument
+    expected_job,
+    expected_status,
+    expected_response,
 ):
     """
     Test the GET /jobs/{job_id}/results endpoint for retrieving job results.
@@ -296,8 +314,11 @@ async def test_get_job_result(
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
+        mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
             status, progress, and message for the job whose results are to be retrieved.
+        expected_status: response HTTP status code
+        expected_response: response body (JSON object)
 
     Assertions:
         - Asserts that the response status code is 200 and the returned job result
@@ -306,33 +327,51 @@ async def test_get_job_result(
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    try:
-        job_index = next(i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"])
-        mock_db_table.get_job.return_value = mock_jobs[job_index]
-    except StopIteration:
-        mock_db_table.get_job.return_value = []
+
+    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
+    if expected_status == HTTP_404_NOT_FOUND:
+        mock_db_table.get_job.side_effect = JobNotFoundError
+    # Return an existing job normally (HTTP 200)
+    else:
+        mock_db_table.get_job.return_value = next(
+            job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
+        )
+
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    response = staging_client.get(f"/jobs/{expected_job['identifier']}/results")
-    # assert response is OK and job info match, or not found for last case
-    assert (
-        response.status_code == HTTP_200_OK and response.json() == expected_job["status"]
-    ) or response.status_code == HTTP_404_NOT_FOUND
+    job_id = expected_job.get("identifier")
+    response = staging_client.get(f"/jobs/{job_id}/results")
+
+    # Assert response status code and content
+    assert response.status_code == expected_status
+    assert response.json() == expected_response
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_job",
-    expected_jobs_test,
+    "expected_job, expected_status, expected_response",
+    [
+        (
+            {"identifier": "non_existing_id"},
+            HTTP_404_NOT_FOUND,
+            {"message": "Job with ID non_existing_id not found"},
+        ),
+        *[
+            (job, HTTP_200_OK, {"message": f"Job {job['identifier']} deleted successfully"})
+            for job in expected_jobs_test
+        ],
+    ],
 )
 async def test_delete_job_endpoint(
     mocker,
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,
     mock_jobs,
-    expected_job,  # pylint: disable=unused-argument
+    expected_job,
+    expected_status,
+    expected_response,
 ):
     """
     Test the DELETE /jobs/{job_id} endpoint for deleting a specific job.
@@ -344,27 +383,38 @@ async def test_delete_job_endpoint(
     Args:
         mocker: A mocker object used to create mocks and patches for testing.
         staging_client: A test client for making requests to the FastAPI application.
+        mock_jobs: Fixture used to mock output of tiny db jobs
         expected_job (dict): The expected job dictionary containing job_id,
             status, progress, and message for the job to be deleted.
+        expected_status: response HTTP status code
+        expected_response: response body (JSON object)
 
     Assertions:
         - Asserts that the response status code is 200 if the job is successfully deleted.
         - Asserts that the response status code is 404 if the job does not exist.
+        - Asserts that the response status code is 500 if other exception occurs.
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    try:
-        job_index = next(i for i, job in enumerate(mock_jobs) if job["identifier"] == expected_job["identifier"])
-        mock_db_table.get_job.return_value = mock_jobs[job_index]
-    except StopIteration:
-        mock_db_table.get_job.return_value = []
+
+    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
+    if expected_status == HTTP_404_NOT_FOUND:
+        mock_db_table.delete_job.side_effect = JobNotFoundError
+    # Return an existing job normally (HTTP 200)
+    else:
+        mock_db_table.delete_job.return_value = next(
+            job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
+        )
+
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
     response = staging_client.delete(f"/jobs/{expected_job['identifier']}")
-    # assert response is OK, or not found for last case
-    assert response.status_code in [HTTP_200_OK, HTTP_404_NOT_FOUND]
+
+    # Assert response status code and content
+    assert response.status_code == expected_status
+    assert response.json() == expected_response
 
 
 @pytest.mark.asyncio
