@@ -23,6 +23,7 @@ from time import sleep
 import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI, HTTPException, Path
+from fastapi.concurrency import run_in_threadpool
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
@@ -267,18 +268,24 @@ async def get_resource(resource: str):
 @router.post("/processes/{resource}/execution")
 async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
     """Used to execute processing jobs."""
+
+    logger.critical(f"start execute_process")
+
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        _, status = await processor(
+        _, status = processor(
             req,
             data.outputs["result"].id,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
         ).execute(data.inputs.dict())
+
+        logger.critical(f"end execute_process")
+
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
@@ -286,8 +293,11 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
 
 # Endpoint to get the status of a job by job_id
 @router.get("/jobs/{job_id}")
-async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the job")):
+def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
+
+    logger.critical("start get_job_status_endpoint")
+
     try:
         return app.extra["process_manager"].get_job(job_id)
     except JobNotFoundError as error:
