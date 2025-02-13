@@ -100,8 +100,6 @@ def streaming_task(product_url: str, trusted_domains: list[str], auth: str, buck
     Raises:
         ValueError: If the streaming process fails, raises a ValueError with details of the failure.
     """
-    logger = Logging.default(__name__)
-    logger.critical(f"start streaming_task")
 
     try:
         s3_handler = S3StorageHandler(
@@ -117,7 +115,6 @@ def streaming_task(product_url: str, trusted_domains: list[str], auth: str, buck
         ) from e
     except KeyError as exc:
         raise ValueError(f"Cannot create s3 connector object. Reason: {exc}") from exc
-    logger.critical(f"end streaming_task")
     return s3_file
 
 
@@ -214,7 +211,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
-    def execute(
+    async def execute(
         self,
         data: dict,
         outputs: dict | None = None,  # pylint: disable=unused-argument
@@ -273,7 +270,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             )
 
         # Execution section
-        if not self.check_catalog(catalog_collection, item_collection.features):
+        if not await self.check_catalog(catalog_collection, item_collection.features):
             return self.log_job_execution(
                 JobStatus.failed,
                 0,
@@ -360,7 +357,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.db_process_manager.update_job(self.job_id, update_data)
         return self._get_execute_result()
 
-    def check_catalog(self, catalog_collection: str, features: list[Feature]) -> bool:
+    async def check_catalog(self, catalog_collection: str, features: list[Feature]) -> bool:
         """
         Method used to check RSPY catalog if a feature from input_collection is already published.
 
@@ -572,10 +569,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             catalog_collection (str): Name of the catalog collection.
         """
         self.logger.info("Tasks monitoring started")
-        self.logger.critical("start manage_dask_tasks_results")
         if not client:
             self.logger.error("The dask cluster client object is not created. Exiting")
-            self.logger.critical("end manage_dask_tasks_results 1")
             return
         for task in as_completed(self.tasks):
             try:
@@ -603,7 +598,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 self.log_job_execution(JobStatus.failed, None, f"At least one of the tasks failed: {task_e}")
                 self.delete_files_from_bucket()
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
-                self.logger.critical("end manage_dask_tasks_results 2")
                 return
         # Publish all the features once processed
         published_featurs_ids: list[str] = []
@@ -619,13 +613,11 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 self.delete_files_from_bucket()
                 # delete the published items
                 self.unpublish_rspy_features(catalog_collection, published_featurs_ids)
-                self.logger.critical("end manage_dask_tasks_results 3")
                 return
             published_featurs_ids.append(feature.id)
         # Update status once all features are processed
         self.log_job_execution(JobStatus.successful, 100, "Finished")
         self.logger.info("Tasks monitoring finished")
-        self.logger.critical("end manage_dask_tasks_results 5")
 
     def dask_cluster_connect(self) -> Client:
         """Connects a dask cluster scheduler
@@ -714,8 +706,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 clusters = gateway.list_clusters()
                 self.logger.debug(f"The list of clusters: {clusters}")
 
-                self.logger.critical(f"Cluster names: {[cluster.options.get('cluster_name') for cluster in clusters]}")
-
                 # In local mode, get the first cluster from the gateway.
                 cluster_id = None
                 if local_mode:
@@ -737,11 +727,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 if not cluster_id:
                     raise IndexError(f"No dask cluster named '{cluster_name}' was found.")
 
-                self.logger.critical(
-                    f"Connect to gateway {os.environ['DASK_GATEWAY__ADDRESS']} cluster_id: {cluster_id}",
-                )
                 self.cluster = gateway.connect(cluster_id)
-                self.logger.critical(f"Connected: {self.cluster}")
 
                 self.logger.info(f"Successfully connected to the {cluster_name} dask cluster")
             except KeyError as e:
@@ -817,9 +803,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         """
         # empty the list
         self.tasks = []
-
-        self.logger.critical(f"start submit_tasks_to_dask_cluster")
-
         # Submit tasks
         try:
             for asset_info in self.assets_info:
@@ -837,8 +820,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
             raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
 
-        self.logger.critical(f"end submit_tasks_to_dask_cluster")
-
     async def process_rspy_features(self, catalog_collection: str) -> tuple[str, dict]:
         """
         Method used to trigger dask distributed streaming process.
@@ -855,23 +836,19 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 Example: ("application/json", {"running": <job_id>})
         """
         self.logger.debug("Starting main loop")
-        self.logger.critical(f"process_rspy_features")
 
         # Process each feature by initiating the streaming download of its assets to the final bucket.
         for feature in self.stream_list:
             if not self.prepare_streaming_tasks(catalog_collection, feature):
-                self.logger.critical(f"process_rspy_features 1")
                 return self.log_job_execution(JobStatus.failed, 0, "Unable to create tasks for the Dask cluster")
         if not self.assets_info:
             self.logger.info("There are no assets to stage. Exiting....")
-            self.logger.critical(f"process_rspy_features 2")
             return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
         # Determine the domain(s)
         domains = list({urlparse(asset[0]).hostname for asset in self.assets_info})
         self.logger.info("Staging from domain(s) {domains}")
         if len(domains) > 1:
-            self.logger.critical(f"process_rspy_features 3")
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
         domain = domains[0]
 
@@ -883,7 +860,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             self.logger.error(
                 f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
             )
-            self.logger.critical(f"process_rspy_features 4")
             return self.log_job_execution(
                 JobStatus.failed,
                 0,
@@ -896,7 +872,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             self.submit_tasks_to_dask_cluster(token, external_auth_config.trusted_domains, dask_client)
         except RuntimeError as re:
             self.logger.error("Failed to start the staging process")
-            self.logger.critical(f"process_rspy_features 5")
             return self.log_job_execution(JobStatus.failed, 0, f"{re}")
 
         # Set the status to running for the job
@@ -913,7 +888,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.assets_info = []
         dask_client.close()
 
-        self.logger.critical(f"process_rspy_features 6")
         return self._get_execute_result()
 
     def publish_rspy_feature(self, catalog_collection: str, feature: Feature):
