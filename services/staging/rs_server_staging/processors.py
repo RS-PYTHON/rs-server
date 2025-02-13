@@ -44,7 +44,7 @@ from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
 
-local_mode = env_bool("RSPY_LOCAL_MODE", default=False)
+LOCAL_MODE = env_bool("RSPY_LOCAL_MODE", default=False)
 
 
 # Custom authentication class
@@ -619,7 +619,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.log_job_execution(JobStatus.successful, 100, "Finished")
         self.logger.info("Tasks monitoring finished")
 
-    def dask_cluster_connect(self) -> Client:
+    def dask_cluster_connect(self) -> Client:  # pylint: disable=too-many-branches,too-many-statements
         """Connects a dask cluster scheduler
         Establishes a connection to a Dask cluster, either in a local environment or via a Dask Gateway in
         a Kubernetes cluster. This method checks if the cluster is already created (for local mode) or connects
@@ -682,7 +682,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 cluster_name = os.environ["RSPY_DASK_STAGING_CLUSTER_NAME"]
 
                 # In local mode, authenticate to the dask cluster with username/password
-                if local_mode:
+                if LOCAL_MODE:
                     gateway_auth = BasicAuth(
                         os.environ["LOCAL_DASK_USERNAME"],
                         os.environ["LOCAL_DASK_PASSWORD"],
@@ -708,7 +708,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
                 # In local mode, get the first cluster from the gateway.
                 cluster_id = None
-                if local_mode:
+                if LOCAL_MODE:
                     if clusters:
                         cluster_id = clusters[0].name
 

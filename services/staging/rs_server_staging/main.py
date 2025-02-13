@@ -52,7 +52,7 @@ from starlette.status import (
 from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
 from .rspy_models import ProcessMetadataModel
 
-local_mode = env_bool("RSPY_LOCAL_MODE", default=False)
+LOCAL_MODE = env_bool("RSPY_LOCAL_MODE", default=False)
 
 logger = Logging.default(__name__)
 
@@ -211,7 +211,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
 
     # In local mode, if the gateway is not defined, create a dask LocalCluster
     cluster = None
-    if local_mode and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
+    if LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
         # Create the LocalCluster only in local mode
         cluster = LocalCluster()
         logger.info("Local Dask cluster created at startup.")
@@ -225,7 +225,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
 
     # Shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    if local_mode and cluster:
+    if LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
 
@@ -328,7 +328,7 @@ async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
-if local_mode:
+if LOCAL_MODE:
 
     @router.post("/staging/dask/auth")
     async def dask_auth(local_dask_username: str, local_dask_password: str):
