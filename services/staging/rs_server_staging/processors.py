@@ -24,7 +24,8 @@ from urllib.parse import urlparse
 
 import requests
 from dask.distributed import CancelledError, Client, LocalCluster, as_completed
-from dask_gateway import Gateway, JupyterHubAuth
+from dask_gateway import Gateway
+from dask_gateway.auth import BasicAuth, JupyterHubAuth
 from fastapi import HTTPException
 from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
@@ -36,11 +37,14 @@ from rs_server_common.authentication.authentication_to_external import (
     load_external_auth_config_by_domain,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
+
+local_mode = env_bool("RSPY_LOCAL_MODE", default=False)
 
 
 # Custom authentication class
@@ -672,18 +676,29 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # If self.cluster is already initialized, it means the application is running in local mode, and
         # the cluster was created when the application started.
         if not self.cluster:
-            # in kubernetes cluster mode, we have to connect to the gateway and get the list of the clusters
+            # Cconnect to the gateway and get the list of the clusters
             try:
                 # get the name of the cluster
                 cluster_name = os.environ["RSPY_DASK_STAGING_CLUSTER_NAME"]
-                # check the auth type, only jupyterhub type supported for now
-                auth_type = os.environ["DASK_GATEWAY__AUTH__TYPE"]
-                # Handle JupyterHub authentication
-                if auth_type == "jupyterhub":
-                    gateway_auth = JupyterHubAuth(api_token=os.environ["JUPYTERHUB_API_TOKEN"])
+
+                # In local mode, authenticate to the dask cluster with username/password
+                if local_mode:
+                    gateway_auth = BasicAuth(
+                        os.environ["LOCAL_DASK_USERNAME"],
+                        os.environ["LOCAL_DASK_PASSWORD"],
+                    )
+
+                # Cluster mode
                 else:
-                    self.logger.error(f"Unsupported authentication type: {auth_type}")
-                    raise RuntimeError(f"Unsupported authentication type: {auth_type}")
+                    # check the auth type, only jupyterhub type supported for now
+                    auth_type = os.environ["DASK_GATEWAY__AUTH__TYPE"]
+                    # Handle JupyterHub authentication
+                    if auth_type == "jupyterhub":
+                        gateway_auth = JupyterHubAuth(api_token=os.environ["JUPYTERHUB_API_TOKEN"])
+                    else:
+                        self.logger.error(f"Unsupported authentication type: {auth_type}")
+                        raise RuntimeError(f"Unsupported authentication type: {auth_type}")
+
                 gateway = Gateway(
                     address=os.environ["DASK_GATEWAY__ADDRESS"],
                     auth=gateway_auth,
@@ -691,16 +706,23 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 clusters = gateway.list_clusters()
                 self.logger.debug(f"The list of clusters: {clusters}")
 
-                # Get the identifier of the cluster whose name is equal to the cluster_name variable
+                # In local mode, get the first cluster from the gateway.
+                cluster_id = None
+                if local_mode:
+                    if clusters:
+                        cluster_id = clusters[0].name
+
+                # In cluster mode, get the identifier of the cluster whose name is equal to the cluster_name variable.
                 # Protection for the case when this cluster does not exit
-                cluster_id = next(
-                    (
-                        cluster.name
-                        for cluster in clusters
-                        if isinstance(cluster.options, dict) and cluster.options.get("cluster_name") == cluster_name
-                    ),
-                    None,
-                )
+                else:
+                    cluster_id = next(
+                        (
+                            cluster.name
+                            for cluster in clusters
+                            if isinstance(cluster.options, dict) and cluster.options.get("cluster_name") == cluster_name
+                        ),
+                        None,
+                    )
 
                 if not cluster_id:
                     raise IndexError(f"No dask cluster named '{cluster_name}' was found.")
@@ -724,6 +746,13 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
         # create the client as well
         client = Client(self.cluster)
+
+        def set_dask_env(host_env: dict):
+            """Pass environment variables to the dask workers."""
+            for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"]:
+                os.environ[name] = host_env[name]
+
+        client.run(set_dask_env, os.environ)
 
         # This is a temporary fix for the dask cluster settings which does not create a scheduler by default
         # This code should be removed as soon as this is fixed in the kubernetes cluster
