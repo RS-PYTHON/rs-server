@@ -747,6 +747,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # create the client as well
         client = Client(self.cluster)
 
+        # Forward logging from dask workers to the caller
+        client.forward_logging()
+
         def set_dask_env(host_env: dict):
             """Pass environment variables to the dask workers."""
             for name in ["S3_ACCESSKEY", "S3_SECRETKEY", "S3_ENDPOINT", "S3_REGION"]:
