@@ -14,6 +14,7 @@
 """RSPY Staging processor."""
 
 import asyncio  # for handling asynchronous tasks
+import json
 import os
 import time
 import uuid
@@ -37,14 +38,12 @@ from rs_server_common.authentication.authentication_to_external import (
     load_external_auth_config_by_domain,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
-from rs_server_common.settings import env_bool
+from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
-
-LOCAL_MODE = env_bool("RSPY_LOCAL_MODE", default=False)
 
 
 # Custom authentication class
@@ -703,8 +702,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     address=os.environ["DASK_GATEWAY__ADDRESS"],
                     auth=gateway_auth,
                 )
-                clusters = gateway.list_clusters()
-                self.logger.debug(f"The list of clusters: {clusters}")
+
+                # Sort the clusters by newest first
+                clusters = sorted(gateway.list_clusters(), key=lambda cluster: cluster.start_time, reverse=True)
+                self.logger.debug(f"Cluster list for gateway {os.environ['DASK_GATEWAY__ADDRESS']!r}:{clusters}")
 
                 # In local mode, get the first cluster from the gateway.
                 cluster_id = None
@@ -725,11 +726,11 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     )
 
                 if not cluster_id:
-                    raise IndexError(f"No dask cluster named '{cluster_name}' was found.")
+                    raise IndexError(f"Dask cluster with 'cluster_name'={cluster_name!r} was not found.")
 
                 self.cluster = gateway.connect(cluster_id)
-
                 self.logger.info(f"Successfully connected to the {cluster_name} dask cluster")
+
             except KeyError as e:
                 self.logger.exception(
                     "Failed to retrieve the required connection details for "

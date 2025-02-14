@@ -31,7 +31,7 @@ from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
 from rs_server_common.db import Base
-from rs_server_common.settings import env_bool
+from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
@@ -51,8 +51,6 @@ from starlette.status import (
 # pylint: disable=W0611
 from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
 from .rspy_models import ProcessMetadataModel
-
-LOCAL_MODE = env_bool("RSPY_LOCAL_MODE", default=False)
 
 logger = Logging.default(__name__)
 
