@@ -120,8 +120,8 @@ def test_get_user():
     assert get_user(None, None) == getpass.getuser()
 
 
-class TestRemovePrefix:  # pylint: disable=missing-function-docstring
-    """This Class contains unit tests for the function remove_user_prefix."""
+class TestRerouteURL:  # pylint: disable=missing-function-docstring
+    """This Class contains unit tests for the function reroute_url."""
 
     def test_root_url(self, request_ids):
         request = Request(
@@ -219,6 +219,43 @@ class TestRemovePrefix:  # pylint: disable=missing-function-docstring
         )
         reroute_url(request, request_ids)
         assert request.scope["path"] == "/docs/oauth2-redirect"
+
+    @pytest.mark.parametrize(
+        "path, expected",
+        [
+            ("/catalog/", "/"),
+            ("/catalog", "/"),
+        ],
+    )
+    def test_reroute_catalog(self, request_ids, path, expected):
+        """Test that reroute_url modifies "/catalog" and "/catalog/" to the root URL ("/")."""
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": path,
+                "query_string": "",
+                "user": "",
+                "headers": {},
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == expected
+
+    def test_reroute_catalog_api(self, request_ids):
+        """Test that reroute_url modifies "/catalog/api" to the "/api"."""
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": "/catalog/api",
+                "query_string": "",
+                "user": "",
+                "headers": {},
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == "/api"
 
     def test_reroute_queryables(self, request_ids):
         request = Request(
