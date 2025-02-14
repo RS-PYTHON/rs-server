@@ -52,7 +52,7 @@ services:
       "": CADIP stations
       Filter Extension: CADIP (Filter Extension)
   catalog:
-    openapi_url: http://localhost:8003/catalog/api
+    openapi_url: http://localhost:8003/api
     change_tags:
       "": Catalog
       Liveliness/Readiness: Catalog (Liveliness/Readiness)

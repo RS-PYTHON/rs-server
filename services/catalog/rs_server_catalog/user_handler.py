@@ -83,10 +83,11 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
     # Catch one endpoint of the following list
     regexp_list = [
         "/",
+        "/catalog",
         "/catalog/",
         "/catalog/search",
         "/catalog/queryables",
-        "catalog/api",
+        "/catalog/api",
         "/catalog/api.html",
         "/catalog/docs/oauth2-redirect",
         "/catalog/queryables",
@@ -95,7 +96,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
     is_in_regexp_list = False
     for pattern in regexp_list:
         if re.fullmatch(pattern, path):
-            path = path.replace("/catalog", "") if path != "/" else path
+            path = path.replace("/catalog", "") or "/"
             is_in_regexp_list = True
             break
     if is_in_regexp_list:
