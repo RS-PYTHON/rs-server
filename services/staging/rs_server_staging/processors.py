@@ -14,7 +14,6 @@
 """RSPY Staging processor."""
 
 import asyncio  # for handling asynchronous tasks
-import json
 import os
 import time
 import uuid
@@ -705,7 +704,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
                 # Sort the clusters by newest first
                 clusters = sorted(gateway.list_clusters(), key=lambda cluster: cluster.start_time, reverse=True)
-                self.logger.debug(f"Cluster list for gateway {os.environ['DASK_GATEWAY__ADDRESS']!r}:{clusters}")
+                self.logger.debug(f"Cluster list for gateway {os.environ['DASK_GATEWAY__ADDRESS']!r}: {clusters}")
 
                 # In local mode, get the first cluster from the gateway.
                 cluster_id = None
