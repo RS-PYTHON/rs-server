@@ -674,7 +674,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # If self.cluster is already initialized, it means the application is running in local mode, and
         # the cluster was created when the application started.
         if not self.cluster:
-            # Cconnect to the gateway and get the list of the clusters
+            # Connect to the gateway and get the list of the clusters
             try:
                 # get the name of the cluster
                 cluster_name = os.environ["RSPY_DASK_STAGING_CLUSTER_NAME"]
