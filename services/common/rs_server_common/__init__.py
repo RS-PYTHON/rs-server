@@ -14,5 +14,13 @@
 
 """Main package of commons of rs-server services."""
 
+import os
+
 # Set automatically by running `poetry dynamic-versioning`
 __version__ = "0.0.0"
+
+# Some kind of workaround for boto3 to avoid checksum being added inside
+# the file contents uploaded to the s3 bucket e.g. x-amz-checksum-crc32:xxx
+# See: https://github.com/boto/boto3/issues/4435
+os.environ["AWS_REQUEST_CHECKSUM_CALCULATION"] = "when_required"
+os.environ["AWS_RESPONSE_CHECKSUM_VALIDATION"] = "when_required"
