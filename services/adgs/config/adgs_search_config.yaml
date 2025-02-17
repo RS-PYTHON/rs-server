@@ -43,6 +43,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -78,6 +79,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -114,6 +116,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -150,6 +153,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -186,6 +190,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -222,6 +227,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -258,6 +264,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -294,6 +301,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -330,6 +338,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -366,6 +375,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -402,6 +412,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -438,6 +449,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -474,6 +486,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -510,6 +523,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -546,6 +560,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -582,6 +597,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -618,6 +634,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -654,6 +671,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -690,6 +708,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -726,6 +745,7 @@ collections:
   - rel: license
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
+    type: application/pdf
   providers:
   - name: European Union/ESA/Copernicus
     roles:
