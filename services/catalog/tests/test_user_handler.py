@@ -271,6 +271,28 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         reroute_url(request, request_ids)
         assert request.scope["path"] == "/queryables"
 
+    @pytest.mark.parametrize(
+        "path, expected",
+        [
+            ("/whatever-test/health", "/health"),
+            ("/health", "/health"),
+        ],
+    )
+    def test_reroute_health(self, request_ids, path, expected):
+        """Test that reroute_url catch health endpoints "/health"."""
+        request = Request(
+            scope={
+                "type": "http",
+                "method": "GET",
+                "path": path,
+                "query_string": "",
+                "user": "",
+                "headers": {},
+            },
+        )
+        reroute_url(request, request_ids)
+        assert request.scope["path"] == expected
+
     def test_search_collection(self, request_ids):
         request = Request(
             scope={
