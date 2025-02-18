@@ -44,6 +44,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -80,6 +84,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -116,6 +124,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -153,6 +165,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -190,6 +206,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -227,6 +247,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -264,6 +288,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -301,6 +329,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -338,6 +370,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -375,6 +411,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -412,6 +452,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -449,6 +493,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -486,6 +534,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -523,6 +575,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
@@ -560,6 +616,10 @@ collections:
     href: https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf
     title: Legal notice on the use of Copernicus Sentinel Data and Service Information
     type: application/pdf
+  - rel: describedby
+    href: https://sentiwiki.copernicus.eu/web/copernicus-operations#CopernicusOperations-DataAcquisition
+    title: Data Acquisition
+    type: text/html
   providers:
   - name: European Union/ESA/Copernicus
     roles:
