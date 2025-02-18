@@ -870,9 +870,9 @@ retried for %s times. Aborting",
         config: ExternalAuthenticationConfig,
         bucket: str,
         key: str,
-        max_retries=S3_MAX_RETRIES,
         token_info: dict={},
         token_lock: Any=None,
+        max_retries=S3_MAX_RETRIES,
     ):
         """
         Upload a file to an S3 bucket using HTTP byte-streaming with retries.
