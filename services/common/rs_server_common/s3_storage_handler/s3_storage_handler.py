@@ -124,7 +124,12 @@ class CustomSessionRedirect(requests.Session):
     """
 
     def __init__(self, trusted_domains=list[str] | None):
-        """Initialize the CustomSession instance."""
+        """
+        Initialize the CustomSession instance.
+
+        Args:
+            trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
+        """
         super().__init__()
         self.trusted_domains: list[str] = trusted_domains or []  # List of allowed hosts for redirection
 
@@ -884,6 +889,7 @@ retried for %s times. Aborting",
 
         Args:
             stream_url (str): The URL of the file to be streamed and uploaded.
+            trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
             auth (Any): Authentication credentials for the HTTP request (if required).
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.

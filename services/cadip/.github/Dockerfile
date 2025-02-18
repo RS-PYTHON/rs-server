@@ -64,3 +64,10 @@ USER user
 ENTRYPOINT [ \
     "python", "-m", "uvicorn", "rs_server_cadip.fastapi.cadip_app:app", \
     "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+#
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/rs-server-cadip"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/cadip/.github/Dockerfile"

@@ -24,13 +24,14 @@ import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI, HTTPException, Path
 from pygeoapi.api import API
+from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
 from rs_server_common.db import Base
-from rs_server_common.settings import env_bool
+from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
@@ -206,8 +207,9 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     # Create jobs table
     process_manager = init_db()
 
+    # In local mode, if the gateway is not defined, create a dask LocalCluster
     cluster = None
-    if env_bool("RSPY_LOCAL_MODE", default=False):
+    if LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
         # Create the LocalCluster only in local mode
         cluster = LocalCluster()
         logger.info("Local Dask cluster created at startup.")
@@ -221,7 +223,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
 
     # Shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    if env_bool("RSPY_LOCAL_MODE", default=False) and cluster:
+    if LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
 
@@ -269,14 +271,12 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        status = await processor(
+        _, status = await processor(
             req,
-            data.inputs.items,
-            data.inputs.collection.id,
             data.outputs["result"].id,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
-        ).execute()
+        ).execute(data.inputs.dict())
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
@@ -286,10 +286,11 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
 @router.get("/jobs/{job_id}")
 async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
-    job = app.extra["process_manager"].get_job(job_id)
-    if job:
-        return job
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+    try:
+        return app.extra["process_manager"].get_job(job_id)
+    except JobNotFoundError as error:
+        # Handle case when job_id is not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 @router.get("/jobs")
@@ -305,21 +306,33 @@ async def get_jobs_endpoint():
 @router.delete("/jobs/{job_id}")
 async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
-    success = app.extra["process_manager"].delete_job(job_id)
-    if success:
+    try:
+        app.extra["process_manager"].delete_job(job_id)
         return {"message": f"Job {job_id} deleted successfully"}
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+    except JobNotFoundError as error:
+        # Handle case when job_id is not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 @router.get("/jobs/{job_id}/results")
 async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
-    # Query the database to find the job by job_id
-    job = app.extra["process_manager"].get_job(job_id)
-    if job:
+    try:
+        # Query the database to find the job by job_id
+        job = app.extra["process_manager"].get_job(job_id)
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
+    except JobNotFoundError as error:
+        # Handle case when job_id is not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found")
+
+if LOCAL_MODE:
+
+    @router.post("/staging/dask/auth")
+    async def dask_auth(local_dask_username: str, local_dask_password: str):
+        """Set dask cluster authentication, only in local mode."""
+        os.environ["LOCAL_DASK_USERNAME"] = local_dask_username
+        os.environ["LOCAL_DASK_PASSWORD"] = local_dask_password
 
 
 # Configure OpenTelemetry

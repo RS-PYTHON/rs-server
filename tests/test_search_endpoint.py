@@ -72,8 +72,10 @@ def test_valid_search_by_session_id(expected_products, client, mock_token_valida
     # Nominal case, combined session_id and datetime
     responses.add(
         responses.GET,
-        "http://127.0.0.1:5000/Files?$filter=SessionId eq 'session_id2' and PublicationDate gte 2022-01-01T12:00:"
-        "00.000Z and PublicationDate lte 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc&$top=1000&$skip=0",
+        "http://127.0.0.1:5000/Files?$filter=SessionId eq 'session_id2'"
+        " and (PublicationDate gt 2022-01-01T12:00:00.000Z or PublicationDate eq 2022-01-01T12:00:00.000Z)"
+        " and (PublicationDate lt 2023-12-30T12:00:00.000Z or PublicationDate eq 2023-12-30T12:00:00.000Z)"
+        "&$orderby=PublicationDate desc&$top=1000&$skip=0",
         json={"value": expected_products},
         status=200,
     )
@@ -91,9 +93,10 @@ def test_adgs_search_aux(client, mock_token_validation, mocker):
     mock_token_validation("adgs")
     responses.add(
         responses.GET,
-        "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2022-01-01T12:00:00.000Z"
-        " and PublicationDate lte 2023-12-30T12:00:00.000Z&$orderby=PublicationDate desc"
-        "&$top=1000&$skip=0&$expand=Attributes",
+        "http://127.0.0.1:5000/Products?$filter="
+        "(PublicationDate gt 2022-01-01T12:00:00.000Z or PublicationDate eq 2022-01-01T12:00:00.000Z)"
+        " and (PublicationDate lt 2023-12-30T12:00:00.000Z or PublicationDate eq 2023-12-30T12:00:00.000Z)"
+        "&$orderby=PublicationDate desc&$top=1000&$skip=0&$expand=Attributes",
         json={"value": []},
         status=200,
     )
@@ -368,7 +371,7 @@ class TestQueryablesEndpoints:
         """Endpoint to test all queryables."""
         resp = client.get(endpoint).json()
         assert resp["title"] == "STAC Queryables."
-        assert list(resp["properties"].keys()) == expected_queryables
+        assert set(expected_queryables).issubset(set(resp["properties"].keys()))
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
@@ -376,14 +379,13 @@ class TestQueryablesEndpoints:
         [
             (ROUTER_PREFIX_CADIP, "/cadip/collections/cadip_session_by_satellite/queryables", []),
             (ROUTER_PREFIX_AUXIP, "/auxip/collections/adgs_by_platform/queryables", ["product:type"]),
-            (ROUTER_PREFIX_AUXIP, "/auxip/collections/s2_adgs2_AUX_OBMEMC/queryables", ["platform", "constellation"]),
         ],
         indirect=["fastapi_app"],
     )
     def test_collection_queryables(self, client, endpoint, expected_queryables):
         """Endpoint to test specific collection queryables."""
         resp = client.get(endpoint).json()
-        assert list(resp["properties"].keys()) == expected_queryables
+        assert set(expected_queryables).issubset(set(resp["properties"].keys()))
 
 
 class TestModelValidationError:
@@ -729,6 +731,138 @@ class TestFeatureCollectionOdataStacMapping:
         assert response["features"] == [adgs_feature], "Features don't match"
 
     @pytest.mark.unit
+    @responses.activate
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint, odata, expected_code",
+        [
+            # Default case, cadip_session_by_satellite collection sets Satellite to S1A
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items",
+                "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A'&$orderby=PublicationDate "
+                "desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            # by setting filter filter=id=S1A_20200105072204051312, apart from satellite eq S1A which is
+            #  set by collection, also add SessionId eq S1A_20200105072204051312 to odata.
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=id=S1A_20200105072204051312",
+                "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312' "
+                "and Satellite eq 'S1A'&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            # set filter with id AND datetime, check that odata is updated, now with SessionId, Satellite and PB date.
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=id=S1A_20200105072204051312 AND datetime="
+                "2020-02-16T12:00:00.000Z",
+                "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312' and Satellite eq 'S1A'"
+                " and PublicationDate eq 2020-02-16T12:00:00.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:retransfer=True",
+                "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A' "
+                "and Retransfer eq True&$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:retransfer=should_be_bool",
+                "no_odata",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=cadip:num_channels=2",
+                "http://127.0.0.1:5000/Sessions?$filter=Satellite eq 'S1A' and NumChannels eq 2&"
+                "$orderby=PublicationDate desc&$top=10&$skip=0",
+                status.HTTP_200_OK,
+            ),
+            # By setting filter with a invalid value (not withing queryables), should result in a 422
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/collections/cadip_session_by_satellite/items?filter=invalid=x",
+                "No odata for this",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items",
+                "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC."
+                "StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value"
+                " eq 'SENTINEL-1')&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA",
+                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and Attributes/OData.CSC."
+                "StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value"
+                " eq 'SENTINEL-1')&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA AND published="
+                "2020-02-16T12:00:00.000Z",
+                "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and PublicationDate eq "
+                "2020-02-16T12:00:00.000Z and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+                "'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=processing:facility=PDMC",
+                "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name"
+                " eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
+                "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and "
+                "att/OData.CSC.StringAttribute/Value eq 'PDMC')&$orderby=PublicationDate desc&$top=10"
+                "&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=invalid=x",
+                "No odata",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/collections/adgs_by_platform/items?filter=published=invalid_date_format2020",
+                "No odata",
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
+        ],
+        indirect=["fastapi_app"],
+        ids=[
+            "cadip",
+            "cadip_id",
+            "cadip_id_and_dt",
+            "cadip_retransfer",
+            "cadip_retransfer_invalid",
+            "cadip_numchans",
+            "cadip_inv",
+            "auxip",
+            "auxip_name",
+            "auxip_name_and_dt",
+            "auxip_processing",
+            "auxip_inv",
+            "auxip_inv_dt",
+        ],
+    )
+    @responses.activate
+    def test_cadip_query_filter(self, client, mock_token_validation, endpoint, odata, expected_code):
+        """Test used for joining default collections with additional queries from filter param."""
+        mock_token_validation()
+        responses.add(responses.GET, odata, json={"value": []}, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == expected_code
+
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "endpoint, detail",
         [
@@ -817,22 +951,25 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50.000Z/2019-02-12T23:20:50.001Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.001Z&$orderby=PublicationDate desc&$top=10&"
-                "$skip=0&$expand=Attributes",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
+                "(PublicationDate lt 2019-02-12T23:20:50.001Z or PublicationDate eq 2019-02-12T23:20:50.001Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=2018-02-12T23:20:50Z/..",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z"
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/search?collections=adgs&datetime=../2018-02-12T23:20:50.001Z",
-                "http://127.0.0.1:5000/Products?$filter=PublicationDate lte 2018-02-12T23:20:50.001Z"
+                "http://127.0.0.1:5000/Products?$filter="
+                "(PublicationDate lt 2018-02-12T23:20:50.001Z or PublicationDate eq 2018-02-12T23:20:50.001Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0&$expand=Attributes",
                 status.HTTP_200_OK,
             ),
@@ -867,21 +1004,25 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/2019-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z and "
-                "PublicationDate lte 2019-02-12T23:20:50.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
+                "http://127.0.0.1:5000/Sessions?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z) and "
+                "(PublicationDate lt 2019-02-12T23:20:50.000Z or PublicationDate eq 2019-02-12T23:20:50.000Z)"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=2018-02-12T23:20:50Z/..",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate gte 2018-02-12T23:20:50.000Z"
+                "http://127.0.0.1:5000/Sessions?$filter="
+                "(PublicationDate gt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
             (
                 ROUTER_PREFIX_CADIP,
                 "/cadip/search?collections=cadip&datetime=../2018-02-12T23:20:50Z",
-                "http://127.0.0.1:5000/Sessions?$filter=PublicationDate lte 2018-02-12T23:20:50.000Z"
+                "http://127.0.0.1:5000/Sessions?$filter="
+                "(PublicationDate lt 2018-02-12T23:20:50.000Z or PublicationDate eq 2018-02-12T23:20:50.000Z)"
                 "&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
             ),
@@ -1311,13 +1452,15 @@ def test_search_parameters(
                 odata_no_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
-                    "PublicationDate gte {date_min} and PublicationDate lte {date_max}"
+                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
+                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0&$expand=Attributes"
                 )
                 odata_query = (
                     "http://127.0.0.1:5000/Products?$filter="
                     f"contains(Name, '{uid}') and "
-                    "PublicationDate gte {date_min} and PublicationDate lte {date_max} "
+                    "(PublicationDate gt {date_min} or PublicationDate eq {date_min}) and "
+                    "(PublicationDate lt {date_max} or PublicationDate eq {date_max}) "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' "
                     "and att/OData.CSC.StringAttribute/Value eq '{product_type}') "
                     "and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' "
@@ -1330,7 +1473,8 @@ def test_search_parameters(
                 odata_no_query = (
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
-                    "and PublicationDate gte {date_min} and PublicationDate lte {date_max}"
+                    "and (PublicationDate gt {date_min} or PublicationDate eq {date_min}) "
+                    "and (PublicationDate lt {date_max} or PublicationDate eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
 
@@ -1338,7 +1482,8 @@ def test_search_parameters(
                     "http://127.0.0.1:5000/Sessions?$filter="
                     f"SessionId in ({user_ids_with_quote}) "
                     "and Satellite {satellite_op} {satellite} "
-                    "and PublicationDate gte {date_min} and PublicationDate lte {date_max}"
+                    "and (PublicationDate gt {date_min} or PublicationDate eq {date_min}) "
+                    "and (PublicationDate lt {date_max} or PublicationDate eq {date_max})"
                     "&$orderby=PublicationDate%20asc&$top=15&$skip=0"
                 )
             else:

@@ -24,6 +24,30 @@ Changed
 
 None
 
+[0.2a10] - Sprint 20 - 2025-02-12
+================================
+
+## Added
+
+- RSPY-493: Search/Sort by any attribute from external data sources
+- RSPY-517: Remove unwanted dependencies to Prefect
+- RSPY-530: Implement staging rs client
+- RSPY-550: Handle null geometries
+- RSPY-570: Integrate DPR empty processor
+- RSPY-577: OVH: deployment of cluster nodes and managed kubernetes
+- RSPY-580: OVH : implements a playbook to start/stop the cluster nodes
+- RSPY-593: Sprint 20 corrections of issues
+- RSPY-596: Update to stac-browser 3.3
+
+## Fixed
+
+- RSPY-448: Staging : status for GET jobs/WRONG_ID/results is 200 and not 404
+- RSPY-544: Invalid catalog download links of staged products (bad id + cluster local domain name)
+- RSPY-578: 'limit' parameter is ignored in cadip search, creating too large requests to stations
+- RSPY-591: Wazuh agents are not connected
+- RSPY-597: config error: datetime parameter ignored in POST /cadip/search & /auxip/search
+- RSPY-598: CADIP stations and ADGS don't support lte/gte operators
+
 [0.2a9] - Sprint 19 - 2025-01-15
 ================================
 
