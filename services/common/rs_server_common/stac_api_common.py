@@ -115,13 +115,13 @@ class Queryables(BaseModel):
     id: str = Field("", alias="$id")
     type: str = Field("object")
     title: str = Field("STAC Queryables.")
-    schema: str = Field("http://json-schema.org/draft-07/schema#", alias="$schema")  # type: ignore
+    schema_url: str = Field("http://json-schema.org/draft-07/schema#", alias="$schema")  # type: ignore
     properties: dict[str, Any] = Field({})
 
     class Config:  # pylint: disable=too-few-public-methods
         """Used to overwrite BaseModel config and display aliases in model_dump."""
 
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class QueryableField(BaseModel):
