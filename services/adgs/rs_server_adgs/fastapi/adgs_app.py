@@ -26,8 +26,8 @@ from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_common.fastapi_app import init_app
 
-warnings.simplefilter("ignore", UserWarning)  # Used to supress pydatinc userwarnings related to serialization
-
+# Used to supress stac_pydantic userwarnings related to serialization
+warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
 
 # Init the FastAPI application with the adgs routers.
 app = init_app(__version__, adgs_routers, init_db=True, router_prefix="/auxip")
