@@ -697,6 +697,13 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 # In cluster mode, get the identifier of the cluster whose name is equal to the cluster_name variable.
                 # Protection for the case when this cluster does not exit
                 else:
+                    
+                    self.logger.info(f"my cluster name: {cluster_name}")
+                    for cluster in clusters:
+                        self.logger.info(f"Existing cluster names: {cluster.options.get('cluster_name')}")
+                        is_equal = cluster.options.get('cluster_name') == cluster_name
+                        self.logger.info(f"Is equal: {is_equal}")
+                    
                     cluster_id = next(
                         (
                             cluster.name
@@ -705,6 +712,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         ),
                         None,
                     )
+                    self.logger.info(f"Cluster id vaut: {cluster_id}")
 
                 if not cluster_id:
                     raise IndexError(f"Dask cluster with 'cluster_name'={cluster_name!r} was not found.")
