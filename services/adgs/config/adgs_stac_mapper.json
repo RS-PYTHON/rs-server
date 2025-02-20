@@ -2,7 +2,7 @@
     "id": "Name",
     "auxip:id": "id",
     "created": "PublicationDate",
-    "datetime": "Start",
+    "datetime": "DatetimeStart",
     "start_datetime": "Start",
     "end_datetime": "End",
     "file:size": "ContentLength",

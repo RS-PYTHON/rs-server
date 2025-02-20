@@ -21,6 +21,7 @@ import urllib.parse
 from abc import ABC, abstractmethod
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
+from datetime import datetime as dt
 from functools import lru_cache
 from pathlib import Path
 from typing import (
@@ -114,13 +115,13 @@ class Queryables(BaseModel):
     id: str = Field("", alias="$id")
     type: str = Field("object")
     title: str = Field("STAC Queryables.")
-    schema: str = Field("http://json-schema.org/draft-07/schema#", alias="$schema")  # type: ignore
+    schema_url: str = Field("http://json-schema.org/draft-07/schema#", alias="$schema")  # type: ignore
     properties: dict[str, Any] = Field({})
 
     class Config:  # pylint: disable=too-few-public-methods
         """Used to overwrite BaseModel config and display aliases in model_dump."""
 
-        allow_population_by_field_name = True
+        populate_by_name = True
 
 
 class QueryableField(BaseModel):
@@ -194,7 +195,6 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Note: the queryables contain stac keys
         queryables = {}
-
         # If the collection has a product type field hard-coded with a single value,
         # the user cannot query on it.
         # TODO: factorize this code for all query parameters.
@@ -205,12 +205,10 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 if value and ("," not in value):
                     can_query = False
             if can_query:
-                queryables["product:type"] = QueryableField(
-                    type="string",
-                    title="productType",
-                    format="string",
-                    description="String",
-                )
+                for queryable_name, queryable_data in get_adgs_queryables().items():
+                    queryables.update({queryable_name: QueryableField(**queryable_data)})
+
+            return queryables
 
         # Idem for satellite or platform
         can_query = True
@@ -221,33 +219,9 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     can_query = False
                     break
 
-        # Read all platforms and constellations from the configuration file
         if can_query:
-            config = {}
-            for satellite in map_stac_platform().get("satellites", {}):
-                config.update(satellite)
-            platforms = sorted(set(config.keys()))
-            connstellations = sorted(
-                {platform["constellation"] for platform in config.values() if "constellation" in platform},
-            )
-            queryables.update(
-                {
-                    "platform": QueryableField(
-                        type="string",
-                        title="platform",
-                        format="string",
-                        description="String",
-                        enum=platforms,
-                    ),
-                    "constellation": QueryableField(
-                        type="string",
-                        title="constellation",
-                        format="string",
-                        description="String",
-                        enum=connstellations,
-                    ),
-                },
-            )
+            for queryable_name, queryable_data in get_cadip_queryables().items():
+                queryables.update({queryable_name: QueryableField(**queryable_data)})
 
         return queryables
 
@@ -493,8 +467,38 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             for sub_filter in args:
                 read_cql(sub_filter)
 
-        read_cql(params.pop("filter", {}))
+        def read_query(query_arg: str | None):
+            """Used to read query parameter cql2-text filter.
+            filter=prop1 = prop2
+            """
+            if not query_arg:
+                return
+            # If there are more filters defined and joined by AND keyword, process each one and update stac_params.
+            if "AND" in query_arg:  # only AND for now.
+                conditions = [c.strip() for c in query_arg.split("AND")]
+                for condition in conditions:
+                    read_query(condition)
+                return
+            # Handle only '=' for now
+            op = "="
+            if op not in query_arg:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "Invalid query filter, only '=' operator is allowed",
+                )
+            # Extract prop and check if it's in the queryables.
+            if (prop := query_arg.split(op)[0].strip()) not in allowed_properties:
+                raise log_http_exception(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
+                )
+            value = str(query_arg.split(op)[1]).strip("'\"")
+            check_input_type(self.get_queryables(), prop, value)
+            # Update stac params
+            stac_params[prop] = value  # type: ignore
 
+        read_cql(params.pop("filter", {}))
+        read_query(self.request.query_params.get("filter"))
         # Read the query
         query = params.pop("query", {})
         for prop, operator in query.items():
@@ -568,7 +572,11 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Return results as a dict
         data = ItemCollection(features=list(all_items.values()), type="FeatureCollection")
-        dict_data: Dict[str, Any] = self.paginate(data)
+        if "/search" in self.request.url.path:
+            # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
+            dict_data: Dict[str, Any] = self.paginate(data)
+        else:
+            dict_data = data.model_dump()
 
         # In cadip, we retrieved the sessions data.
         # We need to fill their assets with the session files data.
@@ -844,6 +852,20 @@ def map_stac_platform() -> dict:
         return yaml.safe_load(cf)
 
 
+@lru_cache
+def get_cadip_queryables() -> dict:
+    """Function used to read and interpret from cadip_queryables.yaml"""
+    with open(Path(__file__).parent.parent / "config" / "cadip_queryables.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
+@lru_cache
+def get_adgs_queryables() -> dict:
+    """Function used to read and interpret from adgs_queryables.yaml"""
+    with open(Path(__file__).parent.parent / "config" / "adgs_queryables.yaml", encoding="utf-8") as cf:
+        return yaml.safe_load(cf)
+
+
 def create_stac_collection(
     products: List[Any],
     feature_template: dict,
@@ -915,3 +937,31 @@ def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> Ite
             detail=f"Invalid attribute '{attribute}' for sorting: {str(e)},",
         ) from e
     return ItemCollection(features=sorted_items, type=item_collection.type)
+
+
+def check_input_type(field_info, key, input_value):
+    """Function to check query parameters types agains default queryables."""
+    expected_type = field_info[key].type  # Get the expected type as a string
+
+    # Map expected type to actual Python types
+    type_mapping = {
+        "string": lambda input: isinstance(input, str),
+        "integer": lambda input: input.isdigit(),
+        "bool": lambda input_value: input_value.lower() in [True, False, 1, 0, "true", "false", "1", "0"],
+        "datetime": check_datetime_input,  # Adding support for datetime
+    }
+
+    if not type_mapping.get(expected_type)(input_value):  # type: ignore
+        raise log_http_exception(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Invalid CQL2 filter value",
+        )
+
+
+def check_datetime_input(input_value: Any) -> bool:
+    """Used to check if a parameter is a datetime-like string"""
+    try:
+        dt.fromisoformat(input_value)  # ISO 8601 format check
+        return True
+    except ValueError:
+        return False

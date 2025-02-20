@@ -45,6 +45,9 @@ template:
       id:
         - null
         - "$.Id"
+      auxip:id:
+        - null
+        - "$.Id"
       Name:
         - null
         - "$.Name"
@@ -60,6 +63,9 @@ template:
       EvictionDate:
         - null
         - "$.EvictionDate"
+      DatetimeStart:
+        - null
+        - "$.ContentDate.Start"
       Start:
         - null
         - "$.ContentDate.Start"
@@ -78,15 +84,18 @@ template:
       attr_ptype:
         - null
         - "$.attr_ptype"
-      attr_serial_identif:
+      platformSerialIdentifier:
         - null
-        - "$.attr_serial_identif"
-      attr_platform_short_name:
+        - "$.platformSerialIdentifier"
+      platformShortName:
         - null
-        - "$.attr_platform_short_name"
-      attr_processing_date:
+        - "$.platformShortName"
+      processing:datetime:
         - null
-        - "$.attr_processing_date"
+        - "$.processing:datetime"
+      processingCenter:
+        - null
+        - "$.processingCenter"
       attrs:
         - null
         - "$.Attributes"
@@ -102,14 +111,18 @@ template:
         operations:
           and:
             - "contains(Name, '{Name}')"
+            - "contains(Id, '{auxip:id}')"
             - "(PublicationDate gt {StartPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StartPublicationDate#to_iso_utc_datetime})"
             - "(PublicationDate lt {StopPublicationDate#to_iso_utc_datetime} or PublicationDate eq {StopPublicationDate#to_iso_utc_datetime})"
             - "PublicationDate eq {PublicationDate#to_iso_utc_datetime}"
             - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'productType' and att/OData.CSC.StringAttribute/Value eq '{attr_ptype}')"
-            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq '{attr_serial_identif}')"
-            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq '{attr_platform_short_name#to_upper}')"
-            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{attr_processing_date#to_iso_utc_datetime}')"
-
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformSerialIdentifier' and att/OData.CSC.StringAttribute/Value eq '{platformSerialIdentifier}')"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq '{platformShortName#to_upper}')"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingDate' and att/OData.CSC.StringAttribute/Value eq '{processing:datetime#to_iso_utc_datetime}')"
+            - "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and att/OData.CSC.StringAttribute/Value eq '{processingCenter#to_iso_utc_datetime}')"
+            - "ContentDate/Start gt {Start#to_iso_utc_datetime}"
+            - "ContentDate/Start eq {DatetimeStart#to_iso_utc_datetime}"
+            - "ContentDate/Stop lt {Stop#to_iso_utc_datetime}"
     sort:
       sort_by_tpl: '&$orderby={sort_param} {sort_order}'
       sort_param_mapping:

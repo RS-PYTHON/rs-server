@@ -69,34 +69,29 @@ class Provider(ABC):
     and download them locally.
     """
 
-    def search(self, time, **kwargs) -> Any:
+    def search(self, **kwargs) -> Any:
         """Search for products with the given time range.
 
         The search result is a dictionary of products found indexed by id.
-
-        Args:
-            time: the search time value
 
         Returns:
             The files found indexed by file id. Specific to each provider.
 
         """
+        time = kwargs.get("datetime", [None, None])
         between = TimeRange(start, stop) if (start := time[1]) and (stop := time[2]) else None
         if between:
             if between.duration() == timedelta(0):
                 return []
             if between.duration() < timedelta(0):
                 raise SearchProductFailed(f"Search timerange is inverted : ({between.start} -> {between.end})")
-        return self._specific_search(time, **kwargs)
+        return self._specific_search(**kwargs)
 
     @abstractmethod
-    def _specific_search(self, date_time: Any) -> Any:
-        """Search for products with the given time range.
+    def _specific_search(self, **kwargs) -> Any:
+        """Search for products with the given query parameters.
 
         Specific search for products after common verification.
-
-        Args:
-            date_time: the search value in ISO format.
 
         Returns:
             the files found indexed by file id.
