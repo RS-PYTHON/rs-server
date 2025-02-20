@@ -1345,6 +1345,23 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             response_content = json.loads(b"".join(body).decode())  # type:ignore
             self.clear_catalog_bucket(response_content)
 
+            # GET: '/catalog/queryables' when no collections in the catalog
+            if (
+                request.method == "GET"
+                and request.scope["path"] == "/queryables"
+                and not self.request_ids["collection_ids"]
+                and response_content["code"] == "NotFoundError"
+            ):
+                empty_catalog_queryables_response = {
+                    "$id": f"{request.base_url}queryables",
+                    "type": "object",
+                    "title": "STAC Queryables.",
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "properties": {},
+                    "additionalProperties": True,
+                }
+                return JSONResponse(status_code=HTTP_200_OK, content=empty_catalog_queryables_response)
+
             # Return a regular JSON response instead of StreamingResponse because the body cannot be read again.
             return JSONResponse(status_code=response.status_code, content=response_content)
 
