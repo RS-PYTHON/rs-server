@@ -49,7 +49,7 @@ import threading, multiprocessing
 from typing import Any
 
 def hello(product_url: str, config: ExternalAuthenticationConfig, bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
-    pass
+    raise Exception("toto")
 
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
                    bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
