@@ -810,20 +810,20 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # empty the list
         self.tasks = []
         # Submit tasks
-        try:
-            client.submit(
-                hello, 
-                self.assets_info[0][0], 
-                config, 
-                self.catalog_bucket, 
-                self.assets_info[0][1],
-                self.token_info,
-                self.token_lock,
-            )
-        except Exception as e:  
-            raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
+        # try:
+        #     client.submit(
+        #         hello, 
+        #         self.assets_info[0][0], 
+        #         config, 
+        #         self.catalog_bucket, 
+        #         self.assets_info[0][1],
+        #         self.token_info,
+        #         self.token_lock,
+        #     )
+        # except Exception as e:  
+        #     raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
         
-        raise Exception("toto")
+        # raise Exception("toto")
         try:
             self.logger.info(f"Assets info vaut: {self.assets_info[0][0]}")
             for asset_info in self.assets_info:
