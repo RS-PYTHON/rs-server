@@ -831,7 +831,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         ###########################
         # raise Exception("toto")
 
-        # Update the function on all workers
+        # We use this command to force to update the definition of this function on all workers 
+        # (otherwise an older version of this function could be kept in memory and the dask processing
+        # could not work)
         from dask.distributed import Function
         streaming_task = Function(streaming_task)
         try:
