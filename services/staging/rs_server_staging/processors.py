@@ -813,7 +813,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         try:
             client.submit(
                 hello, 
-            )
+            ).result()
         except Exception as e:  
             raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
         
