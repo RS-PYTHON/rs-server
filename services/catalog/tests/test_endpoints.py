@@ -1718,12 +1718,22 @@ def test_queryables(client):
     assert response.status_code == fastapi.status.HTTP_200_OK
 
 
+def test_catalog_catalogs_owner_id_is_disabled(client):
+    """
+    Test that the endpoint /catalog/catalogs/{owner_id} is no longer working as expected.
+    """
+
+    response = client.get("/catalog/catalogs/toto")
+    assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+
+
 def test_queryables_with_empty_catalog(client_with_empty_catalog):
     """
     Test Queryables feature endpoint when catalog has no collections in it
     """
-    response = client_with_empty_catalog.get("/catalog/queryables")
-    assert response.status_code == fastapi.status.HTTP_200_OK
+    response_empty = client_with_empty_catalog.get("/catalog/queryables")
+
+    assert response_empty.status_code == fastapi.status.HTTP_200_OK
     expected_response = {
         "$id": f"{client_with_empty_catalog.base_url}/queryables",
         "type": "object",
@@ -1732,13 +1742,4 @@ def test_queryables_with_empty_catalog(client_with_empty_catalog):
         "properties": {},
         "additionalProperties": True,
     }
-    assert response.json() == expected_response  # JSON Content Check
-
-
-def test_catalog_catalogs_owner_id_is_disabled(client):
-    """
-    Test that the endpoint /catalog/catalogs/{owner_id} is no longer working as expected.
-    """
-
-    response = client.get("/catalog/catalogs/toto")
-    assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+    assert response_empty.json() == expected_response  # JSON Content Check
