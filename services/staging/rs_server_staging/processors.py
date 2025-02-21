@@ -819,10 +819,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         
         client.submit(
             streaming_task,
-            self.assets_info[0][0],
-            config,
-            self.catalog_bucket,
-            self.assets_info[0][1],
         ).result()
         
         raise Exception("toto")
