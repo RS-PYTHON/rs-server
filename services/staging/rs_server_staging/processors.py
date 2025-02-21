@@ -823,8 +823,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             config,
             self.catalog_bucket,
             self.assets_info[0][1],
-            self.token_info,
-            self.token_lock,
         ).result()
         
         raise Exception("toto")
