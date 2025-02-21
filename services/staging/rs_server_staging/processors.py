@@ -836,7 +836,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             for asset_info in self.assets_info:
                 self.tasks.append(
                     client.submit(
-                        hello,
+                        streaming_task,
                         asset_info[0],
                         config,
                         # streaming_task,
