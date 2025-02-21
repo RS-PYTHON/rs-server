@@ -823,7 +823,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         asset_info[1],
                         self.token_info,
                         self.token_lock,
-                        self.token_info,
                     ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
