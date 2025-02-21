@@ -50,6 +50,7 @@ from typing import Any
 
 def hello(product_url: str, config: ExternalAuthenticationConfig, bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
     pass
+
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
                    bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
     """
@@ -809,12 +810,18 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # empty the list
         self.tasks = []
         # Submit tasks
-        # try:
-        #     client.submit(
-        #         hello
-        #     )
-        # except Exception as e:  
-        #     raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
+        try:
+            client.submit(
+                hello, 
+                self.assets_info[0][0], 
+                config, 
+                self.catalog_bucket, 
+                self.assets_info[0][1],
+                self.token_info,
+                self.token_lock,
+            )
+        except Exception as e:  
+            raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
         
         raise Exception("toto")
         try:
