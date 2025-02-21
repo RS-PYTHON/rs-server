@@ -1356,7 +1356,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                     "$id": f"{request.base_url}queryables",
                     "type": "object",
                     "title": "STAC Queryables.",
-                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "$schema": "https://json-schema.org/draft-07/schema#",
                     "properties": {},
                     "additionalProperties": True,
                 }

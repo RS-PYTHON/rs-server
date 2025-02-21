@@ -1718,6 +1718,23 @@ def test_queryables(client):
     assert response.status_code == fastapi.status.HTTP_200_OK
 
 
+def test_queryables_with_empty_catalog(client_with_empty_catalog):
+    """
+    Test Queryables feature endpoint when catalog has no collections in it
+    """
+    response = client_with_empty_catalog.get("/catalog/queryables")
+    assert response.status_code == fastapi.status.HTTP_200_OK
+    expected_response = {
+        "$id": f"{client_with_empty_catalog.base_url}/queryables",
+        "type": "object",
+        "title": "STAC Queryables.",
+        "$schema": "https://json-schema.org/draft-07/schema#",
+        "properties": {},
+        "additionalProperties": True,
+    }
+    assert response.json() == expected_response  # JSON Content Check
+
+
 def test_catalog_catalogs_owner_id_is_disabled(client):
     """
     Test that the endpoint /catalog/catalogs/{owner_id} is no longer working as expected.
