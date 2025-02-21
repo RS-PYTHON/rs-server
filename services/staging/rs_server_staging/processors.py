@@ -811,7 +811,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.tasks = []
         # Submit tasks
         try:
-            client.submit(hello, assets_info[0][0], config)
+            client.submit(hello, self.assets_info[0][0], config)
             raise Exception()
             
             for asset_info in self.assets_info:
