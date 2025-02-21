@@ -112,7 +112,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
         path = "/health"
 
     # The endpoint PUT "/catalog/collections" does not exists.
-    elif path == CATALOG_COLLECTION and method != "PUT":
+    elif path.rstrip("/") == CATALOG_COLLECTION and method != "PUT":
         path = "/collections"
 
     # Catch endpoint /catalog/collections/[{owner_id}:]{collection_id}/bulk_items

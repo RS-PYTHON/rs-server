@@ -943,10 +943,9 @@ field is not permitted also.",
                     user_login,
                 )
                 content["collections"] = self.update_links_for_all_collections(content["collections"])
-                self_parser = urlparse(content["links"][2]["href"])
+                self_parser = urlparse(content["links"][1]["href"])
                 content["links"][0]["href"] += "catalog/"
-                content["links"][1]["href"] += "catalog/"
-                content["links"][2]["href"] = self_parser._replace(path="/catalog/collections").geturl()
+                content["links"][1]["href"] = self_parser._replace(path="/catalog/collections").geturl()
 
         # If we are in cluster mode and the user_login is not authorized
         # to this endpoint returns a HTTP_401_UNAUTHORIZED status.

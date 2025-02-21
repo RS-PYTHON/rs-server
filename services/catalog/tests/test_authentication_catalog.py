@@ -1304,7 +1304,7 @@ class TestAuthenticationSearchInCollection:
         )
         assert response.status_code == HTTP_200_OK
         content = json.loads(response.content)
-        assert content["context"] == {"limit": 10, "returned": 1}
+        assert content["numberReturned"] == 1
 
         response = client.request(
             "GET",
@@ -1314,7 +1314,7 @@ class TestAuthenticationSearchInCollection:
         )
         assert response.status_code == HTTP_200_OK
         content = json.loads(response.content)
-        assert content["context"] == {"limit": 10, "returned": 2}
+        assert content["numberReturned"] == 2
 
         response = client.request(
             "POST",
@@ -1324,7 +1324,7 @@ class TestAuthenticationSearchInCollection:
         )
         assert response.status_code == HTTP_200_OK
         content = json.loads(response.content)
-        assert content["context"] == {"limit": 10, "returned": 2}
+        assert content["numberReturned"] == 2
 
     @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
     async def test_fails_without_good_perms(self, mocker, httpx_mock: HTTPXMock, client, test_apikey, test_oauth2):

@@ -14,6 +14,8 @@
 
 """Init the FastAPI application."""
 
+import warnings
+
 # Import the database table modules before initializing the FastAPI,
 # that will init the database session and create the tables.
 # pylint: disable=unused-import, import-outside-toplevel
@@ -23,6 +25,9 @@ from rs_server_cadip import __version__
 from rs_server_cadip.api.cadip_search import MockPgstacCadip
 from rs_server_cadip.fastapi.cadip_routers import cadip_routers
 from rs_server_common.fastapi_app import init_app
+
+# Used to supress stac_pydantic userwarnings related to serialization
+warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
 
 # Init the FastAPI application with the cadip routers.
 app = init_app(__version__, cadip_routers, init_db=True, router_prefix="/cadip")
