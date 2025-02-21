@@ -831,6 +831,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         ###########################
         # raise Exception("toto")
 
+        from dask.distributed import Function
+        streaming_task = Function(streaming_task)
         try:
             self.logger.info(f"Assets info vaut: {self.assets_info[0][0]}")
             for asset_info in self.assets_info:
