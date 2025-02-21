@@ -817,17 +817,16 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # except Exception as e:  
         #     raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
         
-        self.tasks.append(
-            client.submit(
-                streaming_task,
-                self.assets_info[0][0],
-                config,
-                self.catalog_bucket,
-                self.assets_info[0][1],
-                self.token_info,
-                self.token_lock,
-            ),
+        client.submit(
+            streaming_task,
+            self.assets_info[0][0],
+            config,
+            self.catalog_bucket,
+            self.assets_info[0][1],
+            self.token_info,
+            self.token_lock,
         ).result()
+        
         raise Exception("toto")
 
         try:
