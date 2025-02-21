@@ -839,13 +839,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         streaming_task,
                         asset_info[0],
                         config,
-                        # streaming_task,
-                        # asset_info[0],
-                        # config,
-                        # self.catalog_bucket,
-                        # asset_info[1],
-                        # self.token_info,
-                        # self.token_lock,
+                        self.catalog_bucket,
+                        asset_info[1],
+                        self.token_info,
+                        self.token_lock,
                     ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
