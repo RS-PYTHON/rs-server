@@ -48,7 +48,7 @@ from dask.distributed import Variable, Lock
 import threading, multiprocessing
 from typing import Any
 
-def hello(product_url: str, config: ExternalAuthenticationConfig, bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
+def hello(product_url: str, config: ExternalAuthenticationConfig):
     pass
 
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
@@ -836,13 +836,16 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             for asset_info in self.assets_info:
                 self.tasks.append(
                     client.submit(
-                        streaming_task,
+                        hello,
                         asset_info[0],
                         config,
-                        self.catalog_bucket,
-                        asset_info[1],
-                        self.token_info,
-                        self.token_lock,
+                        # streaming_task,
+                        # asset_info[0],
+                        # config,
+                        # self.catalog_bucket,
+                        # asset_info[1],
+                        # self.token_info,
+                        # self.token_lock,
                     ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
