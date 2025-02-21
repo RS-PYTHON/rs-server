@@ -48,7 +48,7 @@ from dask.distributed import Variable, Lock
 import threading, multiprocessing
 from typing import Any
 
-def hello(product_url: str, config: ExternalAuthenticationConfig, bucket: str, s3_file: str, token_dict: dict={},  token_lock: Lock=None):
+def hello(product_url: str, config: ExternalAuthenticationConfig, bucket: str, s3_file: str):
     pass
 
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
@@ -817,8 +817,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 config, 
                 self.catalog_bucket, 
                 self.assets_info[0][1],
-                self.token_info,
-                self.token_lock
             )
         except Exception as e:  
             raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
