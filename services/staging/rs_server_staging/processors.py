@@ -48,6 +48,9 @@ from dask.distributed import Variable, Lock
 import threading, multiprocessing
 from typing import Any
 
+def hello(product_url: str, config: ExternalAuthenticationConfig):
+    pass
+
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
                    bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
     """
@@ -808,6 +811,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.tasks = []
         # Submit tasks
         try:
+            client.submit(hello, asset_info[0], config)
             for asset_info in self.assets_info:
                 self.tasks.append(
                     client.submit(
