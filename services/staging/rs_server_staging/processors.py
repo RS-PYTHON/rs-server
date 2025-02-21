@@ -47,7 +47,6 @@ from rs_server_common.authentication.authentication_to_external import ExternalA
 from dask.distributed import Variable, Lock
 import threading, multiprocessing
 from typing import Any
-from dask.distributed import Function
 
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
                    bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
@@ -812,7 +811,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # We use this command to force to update the definition of this function on all workers 
         # (otherwise an older version of this function could be kept in memory and the dask processing
         # could not work)
-        streaming_task = Function(streaming_task)
         try:
             self.logger.info(f"Assets info vaut: {self.assets_info[0][0]}")
             for asset_info in self.assets_info:
