@@ -817,6 +817,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 config, 
                 self.catalog_bucket, 
                 self.assets_info[0][1],
+                self.token_info,
+                self.token_lock,
             )
         except Exception as e:  
             raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
