@@ -831,6 +831,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         ###########################
         # raise Exception("toto")
 
+        # Update the function on all workers
         from dask.distributed import Function
         streaming_task = Function(streaming_task)
         try:
@@ -843,6 +844,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         config,
                         self.catalog_bucket,
                         asset_info[1],
+                        self.token_info,
+                        self.token_lock
                     ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
