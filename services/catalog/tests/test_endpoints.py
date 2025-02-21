@@ -698,7 +698,7 @@ class TestCatalogDeleteEndpoints:
         """
         first_get_collection_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert first_get_collection_response.status_code == fastapi.status.HTTP_200_OK
-        assert json.loads(first_get_collection_response.content)["context"]["returned"] == 0
+        assert json.loads(first_get_collection_response.content)["numberReturned"] == 0
         # Post the feature to the collection
         updated_feature_sent = copy.deepcopy(a_correct_feature)
         updated_feature_sent["collection"] = "fixture_collection"
@@ -710,7 +710,7 @@ class TestCatalogDeleteEndpoints:
         # Test that the collection is not empty
         second_get_collection_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert second_get_collection_response.status_code == fastapi.status.HTTP_200_OK
-        assert json.loads(second_get_collection_response.content)["context"]["returned"] > 0
+        assert json.loads(second_get_collection_response.content)["numberReturned"] > 0
         # Delete the collection
         delete_response = client.delete("/catalog/collections/fixture_owner:fixture_collection")
         assert delete_response.status_code == fastapi.status.HTTP_200_OK
@@ -1480,7 +1480,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         assert check_features_response.status_code == fastapi.status.HTTP_200_OK
         # Test if query returns only one feature for this collection
         returned_features = json.loads(check_features_response.content)
-        assert returned_features["context"]["returned"] == 1
+        assert returned_features["numberReturned"] == 1
         # Test feature content
         assert returned_features["features"][0]["id"] == a_correct_feature["id"]
         assert returned_features["features"][0]["geometry"] == a_correct_feature["geometry"]
@@ -1696,7 +1696,7 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         collection_content_response = client.get("/catalog/collections/fixture_owner:fixture_collection/items")
         assert collection_content_response.status_code == fastapi.status.HTTP_200_OK
         collection_content_response = json.loads(collection_content_response.content)
-        assert collection_content_response["context"]["returned"] == 0
+        assert collection_content_response["numberReturned"] == 0
         assert (
             client.delete("/catalog/collections/fixture_owner:fixture_collection").status_code
             == fastapi.status.HTTP_200_OK
