@@ -820,6 +820,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             )
         except Exception as e:  
             raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
+        
+        raise Exception("toto")
         try:
             self.logger.info(f"Assets info vaut: {self.assets_info[0][0]}")
             for asset_info in self.assets_info:
