@@ -811,6 +811,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # We use this command to force to update the definition of this function on all workers 
         # (otherwise an older version of this function could be kept in memory and the dask processing
         # could not work)
+        client.restart()
         try:
             self.logger.info(f"Assets info vaut: {self.assets_info[0][0]}")
             for asset_info in self.assets_info:
@@ -823,7 +824,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         asset_info[1],
                         self.token_info,
                         self.token_lock,
-                        self.token_info,
                     ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
