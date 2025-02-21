@@ -47,9 +47,7 @@ from rs_server_common.authentication.authentication_to_external import ExternalA
 from dask.distributed import Variable, Lock
 import threading, multiprocessing
 from typing import Any
-
-def hello(product_url: str, config: ExternalAuthenticationConfig):
-    pass
+from dask.distributed import Function
 
 def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
                    bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
@@ -811,30 +809,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.tasks = []
         # Submit tasks
         
-        ###########################
-        # try:
-        #     client.submit(
-        #         hello, 
-        #     ).result()
-        # except Exception as e:  
-        #     raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
-        
-        # self.logger.info(f" LOGGING TASK: {client.submit(
-        #     streaming_task,
-        #     self.assets_info[0][0],
-        #     config,
-        #     self.catalog_bucket,
-        #     self.assets_info[0][1],
-        #     self.token_info,
-        #     self.token_lock,
-        # ).result()}")
-        ###########################
-        # raise Exception("toto")
-
         # We use this command to force to update the definition of this function on all workers 
         # (otherwise an older version of this function could be kept in memory and the dask processing
         # could not work)
-        from dask.distributed import Function
         streaming_task = Function(streaming_task)
         try:
             self.logger.info(f"Assets info vaut: {self.assets_info[0][0]}")
@@ -847,7 +824,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                         self.catalog_bucket,
                         asset_info[1],
                         self.token_info,
-                        self.token_lock
+                        self.token_lock,
+                        self.token_info,
                     ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
