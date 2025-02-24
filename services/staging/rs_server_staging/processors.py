@@ -60,10 +60,13 @@ def streaming_task(product_url: str, config: ExternalAuthenticationConfig,
 
     Args:
         product_url (str): The URL of the product to download.
-        trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
-        auth (str): The authentication token or credentials required for the download.
+        config (ExternalAuthenticationConfig): Authentification configuration containing the list of
+        allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
+        bucket (str): Name of the destination bucket where we want to stage our data
         s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
-
+        token_dict (dict): The authentication dictionary (including the access token) required for the download.
+        token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads 
+        to the station
     Returns:
         str: The S3 file path where the file was uploaded.
 
@@ -790,9 +793,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         for later monitoring.
 
         Args:
-            token (str): Authentication token used for accessing and processing the asset download
-            from the external station (wrapped in `TokenAuth`).
-            trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
+            config (ExternalAuthenticationConfig): authentification configuration
             client (Client): The dask cluster client created in the dask_cluster_connect function
 
         Raises:

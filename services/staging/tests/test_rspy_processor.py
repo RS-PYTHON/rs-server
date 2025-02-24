@@ -25,8 +25,8 @@ import requests
 from dask_gateway import Gateway
 from fastapi import HTTPException
 from pygeoapi.util import JobStatus
-from rs_server_staging.processors import Staging, TokenAuth, streaming_task
-from rs_server_common.authentication.authentication_to_external import TokenAuth
+from rs_server_staging.processors import Staging, streaming_task
+from rs_server_common.authentication.authentication_to_external import TokenAuth, ExternalAuthenticationConfig
 from rs_server_staging.rspy_models import FeatureCollectionModel
 
 # pylint: disable=undefined-variable
@@ -88,8 +88,29 @@ class TestStreaming:
             "rs_server_staging.processors.S3StorageHandler.s3_streaming_upload",
             return_value=None,
         )
-
-        assert streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", s3_key) == s3_key
+        
+        config = ExternalAuthenticationConfig( 
+            station_id = "",
+            domain = "",
+            service_name = "",
+            service_url = "",
+            auth_type = "",
+            token_url = "",
+            grant_type = "",
+            username = "",
+            password = "",
+            client_id = "",
+            client_secret = "", 
+        )
+        
+        assert streaming_task(
+            product_url="https://example.com/product.zip", 
+            config = config, 
+            bucket="bucket", 
+            s3_file=s3_key, 
+            token_dict={}, 
+            token_lock=None
+        ) == s3_key
 
     def test_streaming_task_incorrect_env(self, mocker):
         """Test a error while creating s3 handler"""

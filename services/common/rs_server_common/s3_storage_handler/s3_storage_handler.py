@@ -889,10 +889,13 @@ retried for %s times. Aborting",
 
         Args:
             stream_url (str): The URL of the file to be streamed and uploaded.
-            trusted_domains (list): List of allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
-            auth (Any): Authentication credentials for the HTTP request (if required).
+            config (ExternalAuthenticationConfig): Authentification configuration containing the list of
+            allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
+            token_dict (dict): The authentication dictionary (including the access token) required for the download.
+            token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads 
+            to the station
             max_retries (int, optional): The maximum number of retry attempts if an error occurs
             (default is `S3_MAX_RETRIES`).
 
