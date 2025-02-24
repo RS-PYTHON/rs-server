@@ -174,7 +174,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         # BulkTransactionExtension(client=BulkTransactionsClient()),
     ]
     search_post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
-    app.state.pgstac_client = CoreCrudClient(post_request_model=search_post_request_model)
+    app.state.pgstac_client = CoreCrudClient(pgstac_search_model=search_post_request_model)
 
     # TODO: remove this when adgs and cadip switch to a stac_fastapi application.
     app.state.pgstac_client.extensions = extensions
