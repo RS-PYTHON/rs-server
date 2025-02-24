@@ -1725,3 +1725,21 @@ def test_catalog_catalogs_owner_id_is_disabled(client):
 
     response = client.get("/catalog/catalogs/toto")
     assert response.status_code == fastapi.status.HTTP_400_BAD_REQUEST
+
+
+def test_queryables_with_empty_catalog(client_with_empty_catalog):
+    """
+    Test Queryables feature endpoint when catalog has no collections in it
+    """
+    response_empty = client_with_empty_catalog.get("/catalog/queryables")
+
+    assert response_empty.status_code == fastapi.status.HTTP_200_OK
+    expected_response = {
+        "$id": f"{client_with_empty_catalog.base_url}/queryables",
+        "type": "object",
+        "title": "STAC Queryables.",
+        "$schema": "https://json-schema.org/draft-07/schema#",
+        "properties": {},
+        "additionalProperties": True,
+    }
+    assert response_empty.json() == expected_response  # JSON Content Check

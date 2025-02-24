@@ -95,6 +95,7 @@ DEFAULT_GEOM = {
     "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
 }
 DEFAULT_BBOX = (-180.0, -90.0, 180.0, 90.0)
+QUERYABLES = "/queryables"
 # pylint: disable=too-many-lines
 logger = Logging.default(__name__)
 
@@ -961,7 +962,7 @@ field is not permitted also.",
             )
             # I don't know why but the STAC browser doesn't send authentication for the queryables endpoint.
             # So allow this endpoint without authentication in this specific case.
-            and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith("/queryables"))
+            and not (common_settings.request_from_stacbrowser(request) and request.url.path.endswith(QUERYABLES))
         ):
             detail = {"error": "Unauthorized access."}
             return JSONResponse(content=detail, status_code=HTTP_401_UNAUTHORIZED)
@@ -1344,6 +1345,25 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             response_content = json.loads(b"".join(body).decode())  # type:ignore
             self.clear_catalog_bucket(response_content)
 
+            # GET: '/catalog/queryables' when no collections in the catalog
+            if (
+                request.method == "GET"
+                and request.scope["path"] == QUERYABLES
+                and not self.request_ids["collection_ids"]
+                and response_content["code"] == "NotFoundError"
+            ):
+                # Return empty list of properties and additionalProperties set to true on /catalog/queryables
+                # when there are no collections in catalog.
+                empty_catalog_queryables_response = {
+                    "$id": f"{request.base_url}queryables",
+                    "type": "object",
+                    "title": "STAC Queryables.",
+                    "$schema": "https://json-schema.org/draft-07/schema#",
+                    "properties": {},
+                    "additionalProperties": True,
+                }
+                return JSONResponse(status_code=HTTP_200_OK, content=empty_catalog_queryables_response)
+
             # Return a regular JSON response instead of StreamingResponse because the body cannot be read again.
             return JSONResponse(status_code=response.status_code, content=response_content)
 
@@ -1356,7 +1376,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             response = await self.manage_download_response(request, response)
 
         elif request.method == "GET" and (
-            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections", "/queryables"]
+            self.request_ids["owner_id"] or request.scope["path"] in ["/", "/collections", QUERYABLES]
         ):
             # URL: GET: '/catalog/collections/{USER}:{COLLECTION}'
             # URL: GET: '/catalog/'
