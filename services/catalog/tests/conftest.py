@@ -113,6 +113,20 @@ def client_fixture(start_database):  # pylint: disable=missing-function-docstrin
         yield client
 
 
+@pytest.mark.integration
+@pytest.fixture(scope="session", name="client_with_empty_catalog")
+def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-function-docstring, unused-argument
+    """Client with an empty catalog (no collections added)."""
+    with TestClient(app, follow_redirects=False) as client:
+        # Ensure the catalog is empty by deleting all collections
+        response = client.get("/catalog/collections")
+        if response.status_code == 200:
+            for collection in response.json().get("collections", []):
+                collection_id = collection["id"].replace("_", ":", 1)
+                client.delete(f"/catalog/collections/{collection_id}")
+        yield client  # Does NOT trigger setup_database!
+
+
 @dataclass
 class Collection:
     """A collection for test purpose."""
@@ -490,6 +504,7 @@ def setup_database(
         feature_titi_S2_L1_0 (_type_): a feature from the collection S2_L1 with the
         user id titi.
     """
+
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s2_l1)
