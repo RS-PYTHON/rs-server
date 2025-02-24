@@ -116,30 +116,32 @@ class EodagProvider(Provider):
 
     def _specific_search(self, **kwargs) -> Union[SearchResult, List]:
         """
-        Conducts a search for products within a specified time range.
+        Conducts a search for products using the specified OData arguments.
 
-        This private method interfaces with the client's search functionality,
-        retrieving products that fall within the given time range. The 'between'
-        parameter is expected to be a TimeRange object, encompassing start and end
-        timestamps. The method returns a dictionary of products keyed by their
-        respective identifiers.
+        This private method interfaces with the EODAG client's search functionality
+        to retrieve products that match the given search parameters. It handles
+        special cases such as `PublicationDate` and session ID lists while enforcing
+        pagination constraints as per provider limitations.
 
         Args:
-            date_time: An object representing search datetime, can be fixed or open/closed interval.
+            **kwargs: Arbitrary keyword arguments specifying search parameters,
+                including all queryables defined in the provider's configuration as OData arguments.
 
         Returns:
-            SearchResult: A dictionary where keys are product identifiers and
-                            values are EOProduct instances.
-
-        Note:
-            The time format of the 'between' parameter should be verified or formatted
-            appropriately before invoking this method. The method also assumes that the
-            client's search function is correctly set up to handle the provided time
-            range format.
+            Union[SearchResult, List]: A `SearchResult` object containing the matched products
+            or an empty list if no matches are found.
 
         Raises:
-            Exception: If the search encounters an error or fails, an exception is raised.
+            HTTPException: If a validation error occurs in the search query.
+            SearchProductFailed: If the search request fails due to request errors,
+                misconfiguration, or authentication issues.
+            ValueError: If authentication with EODAG fails.
+
+        Notes:
+            - Ensures compliance with provider-specific constraints, such as pagination limits.
+            - Logs encountered errors and provides detailed messages in case of failures.
         """
+
         mapped_search_args: Dict[str, Union[str, None]] = {}
         if session_id := kwargs.pop("SessionId", None):
             # Map session_id to the appropriate eodag parameter
