@@ -157,11 +157,6 @@ class EodagProvider(Provider):
                 value = ", ".join(f"'{p}'" for p in platform) if isinstance(platform, list) else f"'{platform}'"
                 mapped_search_args[key] = value
 
-            # TODO: check if it is the right way of doing this, looks very cumbersome to do it for every field
-            # Tempfix, will be updated, to dirrectly, to verify kwargs and then forward to search.
-            if retransfer := kwargs.pop("retransfer", None):
-                mapped_search_args["Retransfer"] = str(retransfer).lower()
-
         if date_time := kwargs.pop("PublicationDate", False):
             # Since now both for files and sessions, time interval is optional, map it if provided.
             fixed, start, end = [str(date) if date else None for date in date_time]
@@ -172,6 +167,14 @@ class EodagProvider(Provider):
                     "StopPublicationDate": end,
                 },
             )
+        max_items_allowed = int(self.client.providers_config[self.provider].search.pagination["max_items_per_page"])
+        if int(kwargs["items_per_page"]) > max_items_allowed:
+            logger.warning(
+                f"Requesting {kwargs['items_per_page']} exceeds maximum of {max_items_allowed} "
+                "allowed for this provider!",
+            )
+            logger.warning(f"Number of items per page was set to {max_items_allowed - 1}.")
+            kwargs["items_per_page"] = max_items_allowed - 1
         try:
             logger.info(f"Searching from {self.provider} with parameters {mapped_search_args}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
