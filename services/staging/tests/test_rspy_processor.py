@@ -23,18 +23,20 @@ from unittest.mock import call
 import pytest
 import requests
 from dask_gateway import Gateway
+from dask.distributed import Variable, Lock
 from fastapi import HTTPException
 from pygeoapi.util import JobStatus
 from rs_server_staging.processors import Staging, streaming_task
 from rs_server_common.authentication.authentication_to_external import TokenAuth, ExternalAuthenticationConfig
 from rs_server_staging.rspy_models import FeatureCollectionModel
 
+
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
 # pylint: disable=too-many-lines
 
 @pytest.fixture(name="config")
-def authentification_config():
+def authentication_config():
     return ExternalAuthenticationConfig( 
             station_id = "cadip",
             domain = "http://127.0.0.1:5000",
@@ -1267,15 +1269,28 @@ class TestStagingSubmitToDaskCluster:
         mock_streaming_task = mocker.Mock()
 
         # Patch the TokenAuth to return a mock object
-        mock_token_auth = mocker.patch("rs_server_common.authentification.authentification_to_external.TokenAuth")
+        mock_token_auth = mocker.patch("rs_server_common.authentication.authentication_to_external.TokenAuth")
 
         # Mock assets_info (list of tuples)
         mock_assets_info = [("asset1", "path1"), ("asset2", "path2")]
 
         # Create a sample object with attributes
-
         staging_instance.assets_info = mock_assets_info
         staging_instance.catalog_bucket = "mock_bucket"
+        
+        # Setup mock for Dask.distributed.variable
+        mock_variable = mocker.MagicMock()
+        mock_variable.get.return_value = {}
+        mock_variable.set.return_value = None
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+        
+        # Setup mock for dask.distributed.lock
+        mock_lock = mocker.MagicMock()
+        mock_lock.acquire.return_value = True  
+        mock_lock.release.return_value = None 
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
 
         # Patch the streaming_task function within the object under test
         mocker.patch("rs_server_staging.processors.streaming_task", mock_streaming_task)
