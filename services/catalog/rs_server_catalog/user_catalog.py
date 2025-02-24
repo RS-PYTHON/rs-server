@@ -1352,6 +1352,8 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
                 and not self.request_ids["collection_ids"]
                 and response_content["code"] == "NotFoundError"
             ):
+                # Return empty list of properties and additionalProperties set to true on /catalog/queryables
+                # when there are no collections in catalog.
                 empty_catalog_queryables_response = {
                     "$id": f"{request.base_url}queryables",
                     "type": "object",
