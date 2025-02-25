@@ -474,7 +474,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     sortby: str,
     limit: Annotated[
         Union[int, None],
-        Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
+        Query(gt=0, default=1000, description="Pagination Limit"),
     ],
     page: Union[int, None] = 1,
 ) -> stac_pydantic.ItemCollection:
