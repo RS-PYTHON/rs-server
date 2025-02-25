@@ -243,13 +243,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.36.25"
+version = "1.36.26"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.36.25-py3-none-any.whl", hash = "sha256:04c8ff03531e8d92baa8c98d1850bdf01668a805467f4222b65e5325f94aa8af"},
-    {file = "botocore-1.36.25.tar.gz", hash = "sha256:3b0a857d2621c336fb82a36cb6da4b6e062d346451ac46d110b074e5e5fd7cfc"},
+    {file = "botocore-1.36.26-py3-none-any.whl", hash = "sha256:4e3f19913887a58502e71ef8d696fe7eaa54de7813ff73390cd5883f837dfa6e"},
+    {file = "botocore-1.36.26.tar.gz", hash = "sha256:4a63bcef7ecf6146fd3a61dc4f9b33b7473b49bdaf1770e9aaca6eee0c9eab62"},
 ]
 
 [package.dependencies]
@@ -384,13 +384,13 @@ files = [
 
 [[package]]
 name = "cachetools"
-version = "5.3.3"
+version = "5.5.2"
 description = "Extensible memoizing collections and decorators"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "cachetools-5.3.3-py3-none-any.whl", hash = "sha256:0abad1021d3f8325b2fc1d2e9c8b9c9d57b04c3932657a72465447332c24d945"},
-    {file = "cachetools-5.3.3.tar.gz", hash = "sha256:ba29e2dfa0b8b556606f097407ed1aa62080ee108ab0dc5ec9d6a723a007d105"},
+    {file = "cachetools-5.5.2-py3-none-any.whl", hash = "sha256:d26a22bcc62eb95c3beabd9f1ee5e820d3d2704fe2967cbe350e20c8ffcd3f0a"},
+    {file = "cachetools-5.5.2.tar.gz", hash = "sha256:1a661caa9175d26759571b2e19580f9d6393969e5dfca11fdb1f947a23e640d4"},
 ]
 
 [[package]]
@@ -2386,32 +2386,32 @@ tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
 
 [[package]]
 name = "pypgstac"
-version = "0.9.3"
+version = "0.9.4"
 description = "Schema, functions and a python library for storing and accessing STAC collections and items in PostgreSQL"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pypgstac-0.9.3-py3-none-any.whl", hash = "sha256:2e794eb5a9c9b1a995564910287a03e1f0b52531a43fc87f204d430b50bcb666"},
-    {file = "pypgstac-0.9.3.tar.gz", hash = "sha256:f97f821ac0589e915e04dda57e6a450ef84efeb2e90fb1d666ae0587ecf18f39"},
+    {file = "pypgstac-0.9.4-py3-none-any.whl", hash = "sha256:eab122cae0265a2a803e9d857895ba061e0a32b894ef9fcd5370ceff714c9f97"},
+    {file = "pypgstac-0.9.4.tar.gz", hash = "sha256:3b469732df995e3ef2f48238001621aaaf2d7ee9001853cfd67dd467aac85f5b"},
 ]
 
 [package.dependencies]
-cachetools = "==5.3.*"
-fire = "==0.4.*"
-hydraters = "==0.1.*"
-orjson = ">=3.6.2"
-plpygis = "==0.2.*"
+cachetools = ">=5.3.0"
+fire = ">=0.4.0"
+hydraters = ">=0.1.0"
+orjson = ">=3.7.0"
+plpygis = ">=0.2.0"
 pydantic = ">=1.7"
-python-dateutil = "==2.8.*"
-smart-open = ">=4.2"
-tenacity = "==8.1.*"
+python-dateutil = ">=2.8.0"
+smart-open = ">=5.0"
+tenacity = ">=8.1.0"
 version-parser = ">=1.0.1"
 
 [package.extras]
 dev = ["black (>=24.10.0)", "flake8 (==7.1.1)", "mypy (>=1.13.0)", "pre-commit", "ruff (==0.8.2)", "types-setuptools"]
 migrations = ["migra", "psycopg2-binary"]
-psycopg = ["psycopg-pool (==3.1.*)", "psycopg[binary] (==3.1.*)"]
-test = ["pystac[validation] (==1.*)", "pytest", "pytest-cov", "types-cachetools"]
+psycopg = ["psycopg-pool (>=3.1.0)", "psycopg[binary] (>=3.1.0)"]
+test = ["pystac[validation] (==1.*)", "pytest (==8.3.*)", "pytest-cov (==6.0.*)", "types-cachetools (==5.5.*)"]
 
 [[package]]
 name = "pyproj"
@@ -2911,8 +2911,8 @@ develop = true
 asyncache = "^0.3.1"
 authlib = "^1.3.1"
 boto3 = ">=1.35.40"
-botocore = ">=1.35.99"
-cachetools = ">=5.3.*"
+botocore = ">=1.36.26"
+cachetools = ">=5.5.2"
 eodag = "==v3.1.0b2"
 fastapi = "^0.115.0"
 filelock = "^3.16.1"
