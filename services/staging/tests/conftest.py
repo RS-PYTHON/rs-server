@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from rs_server_common.authentication.authentication_to_external import ExternalAuthenticationConfig
 
 os.environ["RSPY_LOCAL_MODE"] = "1"
 from rs_server_staging.processors import Staging  # pylint: disable=import-error
@@ -230,3 +231,37 @@ def cluster_options():
         },
         "worker_memory": 2,
     }
+
+@pytest.fixture(name="config")
+def authentication_config():
+    return ExternalAuthenticationConfig( 
+            station_id = "cadip",
+            domain = "http://127.0.0.1:5000",
+            service_name = "cadip",
+            service_url = "http://127.0.0.1:5000/oauth2/token",
+            auth_type = "oauth2",
+            token_url = "http://127.0.0.1:5000/oauth2/token",
+            grant_type = "password",
+            username = "test",
+            password = "test",
+            client_id = "client_id",
+            client_secret = "client_secret", 
+        )
+
+# Define fixtures for mock of dask.distributed.Lock and dask.distributed.Variable objects
+@pytest.fixture(name="mock_variable")  
+def get_mock_variable(mocker):
+    # Setup mock for Dask.distributed.variable
+    mock_variable = mocker.MagicMock()
+    mock_variable.get.return_value = {}
+    mock_variable.set.return_value = None
+    return mock_variable
+    
+@pytest.fixture(name="mock_lock")  
+def get_mock_lock(mocker):  
+    # Setup mock for dask.distributed.lock
+    mock_lock = mocker.MagicMock()
+    mock_lock.acquire.return_value = True  
+    mock_lock.release.return_value = None 
+    return mock_lock
+    

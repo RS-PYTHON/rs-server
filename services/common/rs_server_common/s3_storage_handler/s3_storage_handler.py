@@ -869,6 +869,23 @@ retried for %s times. Aborting",
 
         return failed_files
 
+    def get_station_token_with_lock(
+            self,
+            config: ExternalAuthenticationConfig,
+            token_info: dict={},
+            token_lock: Any=None,
+        ):
+        """
+        Get the station token using a  dask.distributed.Lock object in order to
+        synchronize all threads
+        """
+        if not token_lock:
+            raise StagingLockNotDefined("Staging dask.distributed.lock object is None but is mandatory for the staging")
+        with token_lock:
+            self.logger.info(f"----------- TOKEN BEFORE FUNCTION: {token_info.get()}")
+            get_station_token(config, token_info)
+            self.logger.info(f"----------- TOKEN AFTER FUNCTION: {token_info.get()}")
+
     def s3_streaming_upload(  # pylint: disable=too-many-locals
         self,
         stream_url: str,
@@ -945,27 +962,19 @@ retried for %s times. Aborting",
                 try:
                     # Use locks to allow only one thread from one process from one worker to 
                     # access/refresh the shared token dictionary at a time
-                    if not token_lock:
-                        raise StagingLockNotDefined("Staging dask.distributed.lock object is None but is mandatory for the staging")
-                    with token_lock:
-                        test_before = token_info.get()
-                        self.logger.info(f"----------- TOKEN BEFORE FUNCTION: {token_info.get()}")
-                        get_station_token(config, token_info)
-                        test_after = token_info.get()
-                        self.logger.info(f"----------- TOKEN AFTER FUNCTION: {token_info.get()}")
+                    self.get_station_token_with_lock(config, token_info, token_lock)
 
+                # If we get an error to retrieve the token, we directly stop the loop and raise an exception
                 except HTTPException as http_exception:
                     self.logger.error(
                         f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
                     )
-                    from pygeoapi.util import JobStatus
                     self.log_job_execution(
-                        JobStatus.failed,
+                        "failed",
                         0,
                         message=f"Failed to retrieve the token needed to connect to the external station {config.domain}",
                     )
                     return
-                self.logger.info(f"----------- LAUNCHING DATA REQUEST WITH token {token_info.get()}")
                 request = requests.Request(
                     method="GET",
                     url=stream_url,

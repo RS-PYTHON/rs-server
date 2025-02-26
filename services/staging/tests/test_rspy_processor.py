@@ -29,28 +29,13 @@ from pygeoapi.util import JobStatus
 from rs_server_staging.processors import Staging, streaming_task
 from rs_server_common.authentication.authentication_to_external import TokenAuth, ExternalAuthenticationConfig
 from rs_server_staging.rspy_models import FeatureCollectionModel
-
+from rs_server_staging.processors import S3StorageHandler
 
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
 # pylint: disable=too-many-lines
 
-@pytest.fixture(name="config")
-def authentication_config():
-    return ExternalAuthenticationConfig( 
-            station_id = "cadip",
-            domain = "http://127.0.0.1:5000",
-            service_name = "cadip",
-            service_url = "http://127.0.0.1:5000/oauth2/token",
-            auth_type = "oauth2",
-            token_url = "http://127.0.0.1:5000/oauth2/token",
-            grant_type = "password",
-            username = "test",
-            password = "test",
-            client_id = "client_id",
-            client_secret = "client_secret", 
-        )
-    
+
 class TestTokenAuth:
     """Class with tests for token auth."""
 
@@ -745,7 +730,8 @@ class TestStagingMainExecution:
     """Class to test Item processing"""
 
     def test_dask_cluster_connect(self, mocker, staging_instance: Staging, 
-                                  cluster_options: str, config: ExternalAuthenticationConfig):
+                                  cluster_options: str, config: ExternalAuthenticationConfig,
+                                  mock_variable):
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -785,9 +771,6 @@ class TestStagingMainExecution:
         mock_client.return_value = mock_client_instance
 
         # Setup mock for Dask.distributed.variable
-        mock_variable = mocker.MagicMock()
-        mock_variable.get.return_value = {}
-        mock_variable.set.return_value = None
         mocker.patch("rs_server_staging.processors.Variable", return_value=mock_variable)
                 
         # Call the method under test
@@ -1002,8 +985,10 @@ class TestStagingMainExecution:
         # Assert initial logging and job execution calls
         mock_log_job.assert_called_with(JobStatus.successful, 100, "Finished without processing any tasks")
 
+
     @pytest.mark.asyncio
-    async def test_process_rspy_features_token_failure(self, mocker, staging_instance: Staging):
+    async def test_process_rspy_features_token_failure(self, mocker, staging_instance: Staging, 
+                                                       mock_variable, mock_lock):
         """Test case where retrieving the token raises an exception."""
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
@@ -1023,7 +1008,15 @@ class TestStagingMainExecution:
             "rs_server_common.authentication.authentication_to_external.get_station_token",
             side_effect=HTTPException(status_code=404, detail="Token error"),
         )
-
+        
+        # Setup mock for Dask.distributed.variable
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+        
+        # Setup mock for dask.distributed.lock
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
+        
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")
 
@@ -1260,7 +1253,8 @@ class TestStagingSubmitToDaskCluster:
     """Class to group tests for submiting tasks to dask cluster"""
 
     def test_submit_tasks_to_dask_cluster_success(self, mocker, staging_instance: Staging, 
-                                                  config: ExternalAuthenticationConfig):
+                                                  config: ExternalAuthenticationConfig, 
+                                                  mock_variable, mock_lock):
         """Test the submiting tasks to dask cluster function when successful"""
         # Mock the Dask client
         mock_client = mocker.Mock()
@@ -1279,16 +1273,10 @@ class TestStagingSubmitToDaskCluster:
         staging_instance.catalog_bucket = "mock_bucket"
         
         # Setup mock for Dask.distributed.variable
-        mock_variable = mocker.MagicMock()
-        mock_variable.get.return_value = {}
-        mock_variable.set.return_value = None
         mocker.patch("dask.distributed.Variable", return_value=mock_variable)
         staging_instance.token_info = Variable("test_variable")
         
         # Setup mock for dask.distributed.lock
-        mock_lock = mocker.MagicMock()
-        mock_lock.acquire.return_value = True  
-        mock_lock.release.return_value = None 
         mocker.patch("dask.distributed.Lock", return_value=mock_lock)
         staging_instance.token_lock = Lock("test_lock")
 
@@ -1301,22 +1289,25 @@ class TestStagingSubmitToDaskCluster:
         # Assert that tasks are submitted to the Dask client for each asset
         assert len(staging_instance.tasks) == 2  # Two tasks should be submitted
 
-        # Ensure that client.submit was called with correct arguments
+        # Ensure that client.submit was called with correct arguments   
         mock_client.submit.assert_any_call(
             mock_streaming_task,
-            "asset1",
-            [],
-            mock_token_auth.return_value,
-            "mock_bucket",
-            "path1",
+            "asset1", 
+            config, 
+            "mock_bucket", 
+            "path1", 
+            staging_instance.token_info,
+            staging_instance.token_lock
         )
+
         mock_client.submit.assert_any_call(
             mock_streaming_task,
-            "asset2",
-            [],
-            mock_token_auth.return_value,
-            "mock_bucket",
-            "path2",
+            "asset2", 
+            config, 
+            "mock_bucket", 
+            "path2", 
+            staging_instance.token_info,
+            staging_instance.token_lock
         )
 
         # Ensure tasks were added to obj.tasks
