@@ -188,13 +188,13 @@ tests-mypy = ["mypy (>=1.11.1)", "pytest-mypy-plugins"]
 
 [[package]]
 name = "authlib"
-version = "1.4.1"
+version = "1.5.0"
 description = "The ultimate Python library in building OAuth and OpenID Connect servers and clients."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "Authlib-1.4.1-py2.py3-none-any.whl", hash = "sha256:edc29c3f6a3e72cd9e9f45fff67fc663a2c364022eb0371c003f22d5405915c1"},
-    {file = "authlib-1.4.1.tar.gz", hash = "sha256:30ead9ea4993cdbab821dc6e01e818362f92da290c04c7f6a1940f86507a790d"},
+    {file = "Authlib-1.5.0-py2.py3-none-any.whl", hash = "sha256:b3cc5ccfc19cf87678046b6e7cb19d402d8a631a33c40e36385232203227953a"},
+    {file = "authlib-1.5.0.tar.gz", hash = "sha256:8fd8bd8f806485a532ac39a17b579982cf54688f956174f995cc938a91725423"},
 ]
 
 [package.dependencies]
@@ -314,13 +314,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.36.25"
+version = "1.36.26"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.36.25-py3-none-any.whl", hash = "sha256:04c8ff03531e8d92baa8c98d1850bdf01668a805467f4222b65e5325f94aa8af"},
-    {file = "botocore-1.36.25.tar.gz", hash = "sha256:3b0a857d2621c336fb82a36cb6da4b6e062d346451ac46d110b074e5e5fd7cfc"},
+    {file = "botocore-1.36.26-py3-none-any.whl", hash = "sha256:4e3f19913887a58502e71ef8d696fe7eaa54de7813ff73390cd5883f837dfa6e"},
+    {file = "botocore-1.36.26.tar.gz", hash = "sha256:4a63bcef7ecf6146fd3a61dc4f9b33b7473b49bdaf1770e9aaca6eee0c9eab62"},
 ]
 
 [package.dependencies]
@@ -455,13 +455,13 @@ files = [
 
 [[package]]
 name = "cachetools"
-version = "5.3.3"
+version = "5.5.2"
 description = "Extensible memoizing collections and decorators"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "cachetools-5.3.3-py3-none-any.whl", hash = "sha256:0abad1021d3f8325b2fc1d2e9c8b9c9d57b04c3932657a72465447332c24d945"},
-    {file = "cachetools-5.3.3.tar.gz", hash = "sha256:ba29e2dfa0b8b556606f097407ed1aa62080ee108ab0dc5ec9d6a723a007d105"},
+    {file = "cachetools-5.5.2-py3-none-any.whl", hash = "sha256:d26a22bcc62eb95c3beabd9f1ee5e820d3d2704fe2967cbe350e20c8ffcd3f0a"},
+    {file = "cachetools-5.5.2.tar.gz", hash = "sha256:1a661caa9175d26759571b2e19580f9d6393969e5dfca11fdb1f947a23e640d4"},
 ]
 
 [[package]]
@@ -1099,17 +1099,18 @@ dotenv = ["python-dotenv"]
 
 [[package]]
 name = "flask-cors"
-version = "5.0.0"
-description = "A Flask extension adding a decorator for CORS support"
+version = "5.0.1"
+description = "A Flask extension simplifying CORS support"
 optional = false
-python-versions = "*"
+python-versions = "<4.0,>=3.9"
 files = [
-    {file = "Flask_Cors-5.0.0-py2.py3-none-any.whl", hash = "sha256:b9e307d082a9261c100d8fb0ba909eec6a228ed1b60a8315fd85f783d61910bc"},
-    {file = "flask_cors-5.0.0.tar.gz", hash = "sha256:5aadb4b950c4e93745034594d9f3ea6591f734bb3662e16e255ffbf5e89c88ef"},
+    {file = "flask_cors-5.0.1-py3-none-any.whl", hash = "sha256:fa5cb364ead54bbf401a26dbf03030c6b18fb2fcaf70408096a572b409586b0c"},
+    {file = "flask_cors-5.0.1.tar.gz", hash = "sha256:6ccb38d16d6b72bbc156c1c3f192bc435bfcc3c2bc864b2df1eb9b2d97b2403c"},
 ]
 
 [package.dependencies]
-Flask = ">=0.9"
+flask = ">=0.9"
+Werkzeug = ">=0.7"
 
 [[package]]
 name = "geojson"
@@ -2061,13 +2062,13 @@ files = [
 
 [[package]]
 name = "moto"
-version = "5.0.28"
+version = "5.1.0"
 description = "A library that allows you to easily mock out tests based on AWS infrastructure"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "moto-5.0.28-py3-none-any.whl", hash = "sha256:2dfbea1afe3b593e13192059a1a7fc4b3cf7fdf92e432070c22346efa45aa0f0"},
-    {file = "moto-5.0.28.tar.gz", hash = "sha256:4d3437693411ec943c13c77de5b0b520c4b0a9ac850fead4ba2a54709e086e8b"},
+    {file = "moto-5.1.0-py3-none-any.whl", hash = "sha256:4fada00cedfba661aa58fe0b33b3ba9a0ef96d0e9937c9bed5163053898b4a27"},
+    {file = "moto-5.1.0.tar.gz", hash = "sha256:879274a9d2213ca49706e3c8ea380d90953ec1ec642976f6315255394d36edc0"},
 ]
 
 [package.dependencies]
@@ -2082,7 +2083,7 @@ werkzeug = ">=0.5,<2.2.0 || >2.2.0,<2.2.1 || >2.2.1"
 xmltodict = "*"
 
 [package.extras]
-all = ["PyYAML (>=5.1)", "antlr4-python3-runtime", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "graphql-core", "joserfc (>=0.9.0)", "jsonpath-ng", "jsonschema", "multipart", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.6.1)", "pyparsing (>=3.0.7)", "setuptools"]
+all = ["PyYAML (>=5.1)", "antlr4-python3-runtime", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "graphql-core", "joserfc (>=0.9.0)", "jsonpath_ng", "jsonschema", "multipart", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.6.1)", "pyparsing (>=3.0.7)", "setuptools"]
 apigateway = ["PyYAML (>=5.1)", "joserfc (>=0.9.0)", "openapi-spec-validator (>=0.5.0)"]
 apigatewayv2 = ["PyYAML (>=5.1)", "openapi-spec-validator (>=0.5.0)"]
 appsync = ["graphql-core"]
@@ -2092,16 +2093,16 @@ cloudformation = ["PyYAML (>=5.1)", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>
 cognitoidp = ["joserfc (>=0.9.0)"]
 dynamodb = ["docker (>=3.0.0)", "py-partiql-parser (==0.6.1)"]
 dynamodbstreams = ["docker (>=3.0.0)", "py-partiql-parser (==0.6.1)"]
-events = ["jsonpath-ng"]
+events = ["jsonpath_ng"]
 glue = ["pyparsing (>=3.0.7)"]
-proxy = ["PyYAML (>=5.1)", "antlr4-python3-runtime", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=2.5.1)", "graphql-core", "joserfc (>=0.9.0)", "jsonpath-ng", "multipart", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.6.1)", "pyparsing (>=3.0.7)", "setuptools"]
+proxy = ["PyYAML (>=5.1)", "antlr4-python3-runtime", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=2.5.1)", "graphql-core", "joserfc (>=0.9.0)", "jsonpath_ng", "multipart", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.6.1)", "pyparsing (>=3.0.7)", "setuptools"]
 quicksight = ["jsonschema"]
 resourcegroupstaggingapi = ["PyYAML (>=5.1)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "graphql-core", "joserfc (>=0.9.0)", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.6.1)", "pyparsing (>=3.0.7)"]
 s3 = ["PyYAML (>=5.1)", "py-partiql-parser (==0.6.1)"]
 s3crc32c = ["PyYAML (>=5.1)", "crc32c", "py-partiql-parser (==0.6.1)"]
-server = ["PyYAML (>=5.1)", "antlr4-python3-runtime", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "flask (!=2.2.0,!=2.2.1)", "flask-cors", "graphql-core", "joserfc (>=0.9.0)", "jsonpath-ng", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.6.1)", "pyparsing (>=3.0.7)", "setuptools"]
+server = ["PyYAML (>=5.1)", "antlr4-python3-runtime", "aws-xray-sdk (>=0.93,!=0.96)", "cfn-lint (>=0.40.0)", "docker (>=3.0.0)", "flask (!=2.2.0,!=2.2.1)", "flask-cors", "graphql-core", "joserfc (>=0.9.0)", "jsonpath_ng", "openapi-spec-validator (>=0.5.0)", "py-partiql-parser (==0.6.1)", "pyparsing (>=3.0.7)", "setuptools"]
 ssm = ["PyYAML (>=5.1)"]
-stepfunctions = ["antlr4-python3-runtime", "jsonpath-ng"]
+stepfunctions = ["antlr4-python3-runtime", "jsonpath_ng"]
 xray = ["aws-xray-sdk (>=0.93,!=0.96)", "setuptools"]
 
 [[package]]
@@ -3058,32 +3059,32 @@ testutils = ["gitpython (>3)"]
 
 [[package]]
 name = "pypgstac"
-version = "0.9.3"
+version = "0.9.4"
 description = "Schema, functions and a python library for storing and accessing STAC collections and items in PostgreSQL"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pypgstac-0.9.3-py3-none-any.whl", hash = "sha256:2e794eb5a9c9b1a995564910287a03e1f0b52531a43fc87f204d430b50bcb666"},
-    {file = "pypgstac-0.9.3.tar.gz", hash = "sha256:f97f821ac0589e915e04dda57e6a450ef84efeb2e90fb1d666ae0587ecf18f39"},
+    {file = "pypgstac-0.9.4-py3-none-any.whl", hash = "sha256:eab122cae0265a2a803e9d857895ba061e0a32b894ef9fcd5370ceff714c9f97"},
+    {file = "pypgstac-0.9.4.tar.gz", hash = "sha256:3b469732df995e3ef2f48238001621aaaf2d7ee9001853cfd67dd467aac85f5b"},
 ]
 
 [package.dependencies]
-cachetools = "==5.3.*"
-fire = "==0.4.*"
-hydraters = "==0.1.*"
-orjson = ">=3.6.2"
-plpygis = "==0.2.*"
+cachetools = ">=5.3.0"
+fire = ">=0.4.0"
+hydraters = ">=0.1.0"
+orjson = ">=3.7.0"
+plpygis = ">=0.2.0"
 pydantic = ">=1.7"
-python-dateutil = "==2.8.*"
-smart-open = ">=4.2"
-tenacity = "==8.1.*"
+python-dateutil = ">=2.8.0"
+smart-open = ">=5.0"
+tenacity = ">=8.1.0"
 version-parser = ">=1.0.1"
 
 [package.extras]
 dev = ["black (>=24.10.0)", "flake8 (==7.1.1)", "mypy (>=1.13.0)", "pre-commit", "ruff (==0.8.2)", "types-setuptools"]
 migrations = ["migra", "psycopg2-binary"]
-psycopg = ["psycopg-pool (==3.1.*)", "psycopg[binary] (==3.1.*)"]
-test = ["pystac[validation] (==1.*)", "pytest", "pytest-cov", "types-cachetools"]
+psycopg = ["psycopg-pool (>=3.1.0)", "psycopg[binary] (>=3.1.0)"]
+test = ["pystac[validation] (==1.*)", "pytest (==8.3.*)", "pytest-cov (==6.0.*)", "types-cachetools (==5.5.*)"]
 
 [[package]]
 name = "pyproj"
@@ -3796,10 +3797,10 @@ develop = true
 
 [package.dependencies]
 asyncache = "^0.3.1"
-authlib = "^1.3.1"
+authlib = "^1.5.0"
 boto3 = ">=1.35.40"
 botocore = ">=1.35.99"
-cachetools = ">=5.3.*"
+cachetools = ">=5.5.2"
 eodag = "==v3.1.0b2"
 fastapi = "^0.115.0"
 filelock = "^3.16.1"
@@ -4135,13 +4136,13 @@ files = [
 
 [[package]]
 name = "sphinx"
-version = "8.2.0"
+version = "8.2.1"
 description = "Python documentation generator"
 optional = false
 python-versions = ">=3.11"
 files = [
-    {file = "sphinx-8.2.0-py3-none-any.whl", hash = "sha256:3c0a40ff71ace28b316bde7387d93b9249a3688c202181519689b66d5d0aed53"},
-    {file = "sphinx-8.2.0.tar.gz", hash = "sha256:5b0067853d6e97f3fa87563e3404ebd008fce03525b55b25da90706764da6215"},
+    {file = "sphinx-8.2.1-py3-none-any.whl", hash = "sha256:b5d2bb3cdf6207fcacde9f92085d2b97667b05b9c346eaec426ca4be8af505e9"},
+    {file = "sphinx-8.2.1.tar.gz", hash = "sha256:e4b932951b9c18b039f73b72e4e63afe967d90408700ec222b981ac24647c01e"},
 ]
 
 [package.dependencies]
@@ -4165,7 +4166,7 @@ sphinxcontrib-serializinghtml = ">=1.1.9"
 
 [package.extras]
 docs = ["sphinxcontrib-websupport"]
-lint = ["betterproto (==2.0.0b6)", "mypy (==1.15.0)", "pypi-attestations (==0.0.21)", "pyright (==1.1.394)", "pytest (>=8.0)", "ruff (==0.9.6)", "sphinx-lint (>=0.9)", "types-Pillow (==10.2.0.20240822)", "types-Pygments (==2.19.0.20250107)", "types-colorama (==0.4.15.20240311)", "types-defusedxml (==0.7.0.20240218)", "types-docutils (==0.21.0.20241128)", "types-requests (==2.32.0.20241016)", "types-urllib3 (==1.26.25.14)"]
+lint = ["betterproto (==2.0.0b6)", "mypy (==1.15.0)", "pypi-attestations (==0.0.21)", "pyright (==1.1.394)", "pytest (>=8.0)", "ruff (==0.9.7)", "sphinx-lint (>=0.9)", "types-Pillow (==10.2.0.20240822)", "types-Pygments (==2.19.0.20250219)", "types-colorama (==0.4.15.20240311)", "types-defusedxml (==0.7.0.20240218)", "types-docutils (==0.21.0.20241128)", "types-requests (==2.32.0.20241016)", "types-urllib3 (==1.26.25.14)"]
 test = ["cython (>=3.0)", "defusedxml (>=0.7.1)", "pytest (>=8.0)", "pytest-xdist[psutil] (>=3.4)", "setuptools (>=70.0)", "typing_extensions (>=4.9)"]
 
 [[package]]
@@ -4925,4 +4926,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "45f4ebfc9ca857b05afb5ed159d1440c845ebe06be203b9d8945e4c8eea3c053"
+content-hash = "4d789c28a925d6f1b295aba9b3e2d401e022ad3ec8205b544f3faea4360117cf"
