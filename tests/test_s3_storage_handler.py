@@ -30,6 +30,7 @@ from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
 from requests.auth import HTTPBasicAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3_MAX_RETRIES,
     S3_RETRY_TIMEOUT,
     SLEEP_TIME,
     GetKeysFromS3Config,
@@ -1067,7 +1068,8 @@ def test_check_s3_key_on_bucket_success(mocker):
 
 @pytest.mark.unit
 @responses.activate
-def test_s3_streaming_upload(mocker):
+@pytest.mark.parametrize("station_id",  ["adgs", "ins"])
+def test_s3_streaming_upload(mocker, get_external_auth_config, mock_variable, mock_lock):
     """Unit test for testing the streaming of a file from an HTTP URL to an
     S3 bucket using byte-streaming.
 
@@ -1107,12 +1109,17 @@ def test_s3_streaming_upload(mocker):
     Raises:
         AssertionError: If any part of the test fails.
     """
-    secrets, stream_url, auth, body = streaming_setup_test_env()
+    config = get_external_auth_config
+    # Use mock for dask.distributed.Variable and dask.distributed.Lock
+    token_info = mock_variable
+    token_lock = mock_lock
+    
+    secrets, stream_url, body = streaming_setup_test_env()
     # Start the moto server and create S3 handler
     server, s3_handler, bucket, s3_key = streaming_setup_s3_handler_and_bucket(secrets)
 
     try:
-        s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key)
+        s3_handler.s3_streaming_upload(stream_url, config, bucket, s3_key, token_info, token_lock)
     except RuntimeError:
         server.stop()
         assert False, "s3_handler.s3_streaming_upload raised exception !"
@@ -1121,7 +1128,7 @@ def test_s3_streaming_upload(mocker):
     streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
 
     # Test retry behavior with stubbed S3 client errors
-    streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body)
+    streaming_retry_logic(mocker, s3_handler, stream_url, config, bucket, s3_key, token_info, token_lock, body)
 
     server.stop()
 
@@ -1130,13 +1137,12 @@ def streaming_setup_test_env():
     """Set up test environment variables, stream URL, and mock HTTP response."""
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     stream_url = "http://127.0.0.1:6000/file"
-    auth = HTTPBasicAuth("user", "pass")
     body = "some byte-array data to test the streaming of a file from http to a s3 bucket\n"
 
     # Add a mock HTTP GET response for the stream URL
     responses.add(responses.GET, stream_url, body=body, status=200)
 
-    return secrets, stream_url, auth, body
+    return secrets, stream_url, body
 
 
 def streaming_setup_s3_handler_and_bucket(secrets):
@@ -1188,29 +1194,36 @@ def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
         assert False, "s3_handler.delete_file_from_s3 raised exception!"
 
 
-def streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body):
+def streaming_retry_logic(mocker, s3_handler, stream_url, config, bucket, s3_key, token_info, token_lock, body):
     """Test S3 retry behavior using Stubber to simulate errors."""
     # Patch time.sleep to speed up retries
-    res = mocker.patch("time.sleep", side_effect=None)
-
+    res = mocker.patch(
+        "rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.wait_timeout", 
+        side_effect = None
+    )
     # Stub S3 client errors to test retry logic
     boto_mocker = Stubber(s3_handler.s3_client)
-    boto_mocker.add_client_error("upload_fileobj", service_error_code="botocore.exceptions.BotoCoreError")
+    
+    # We directly mock the put_object method which is called inside upload_fileobj 
+    # when uploading an object to an s3 bucket
+    boto_mocker.add_client_error(
+       "put_object", 
+       service_error_code="InternalError",
+       expected_params=None
+    )
     boto_mocker.activate()
-
     try:
-        s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key)
+        s3_handler.s3_streaming_upload(stream_url, config, bucket, s3_key, token_info, token_lock)
+
     except RuntimeError:
         boto_mocker.deactivate()
         assert False, "s3_handler.s3_streaming_upload raised exception!"
 
     # Check if retries were attempted
-    assert res.call_count == int(S3_RETRY_TIMEOUT / SLEEP_TIME)
+    assert res.call_count == 1 
 
     # Verify file after retry logic
     streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
-
     boto_mocker.deactivate()
-
 
 # end of the helper functions

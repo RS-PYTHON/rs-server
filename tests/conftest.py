@@ -27,6 +27,7 @@ import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
+import datetime
 
 # We are in local mode (no cluster).
 # Do this before any other imports.
@@ -588,11 +589,15 @@ def adgs_pickup_response():
 def get_mock_variable(mocker):
     # Setup mock for Dask.distributed.variable
     mock_variable = mocker.MagicMock()
+
     mock_variable.get.return_value = {
         'access_token': 'fakeAccessToken', 
-        'refresh_token': 'fakeRefreshToken', 
+        'expires_in': 3600,
+        'access_token_creation_date': datetime.datetime.now(),
+        'refresh_token': 'fakeRefreshToken',
+        'refresh_expires_in': 7200,
+        'refresh_token_creation_date': datetime.datetime.now(),
         'token_type': 'Bearer', 
-        'expires_in': 3600
     }
     mock_variable.set.return_value = None
     return mock_variable
