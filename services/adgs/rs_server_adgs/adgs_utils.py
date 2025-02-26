@@ -31,7 +31,6 @@ from rs_server_common.stac_api_common import QueryableField, map_stac_platform
 
 ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"
-TIMESTAMPS_EXTENSION_1_1_0 = "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
 
 
 @lru_cache()
@@ -60,13 +59,9 @@ def stac_to_odata(stac_params: dict) -> dict:
 
 
 def serialize_adgs_asset(feature_collection, products):
-    """Update ADGS asset with proper href and format {asset_name: asset_body},
-    and ensure the timestamps extension is included when a 'published' field is present."""
-
+    """Used to update adgs asset with propper href and format {asset_name: asset_body}."""
     for feature in feature_collection.features:
-        props = feature.properties.dict()
-        auxip_id = props["auxip:id"]
-
+        auxip_id = feature.properties.dict()["auxip:id"]
         # Find matching product by id and update feature href
         try:
             matched_product = next((p for p in products if p.properties["id"] == auxip_id), None)
@@ -74,13 +69,7 @@ def serialize_adgs_asset(feature_collection, products):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Unable to map {feature.id}") from exc
         if matched_product:
             feature.assets["file"].href = re.sub(r"\([^\)]*\)", f"({auxip_id})", matched_product.properties["href"])
-
-            # Check for the 'published' field; if present, ensure the timestamps extension is added.
-            if "published" in props:
-                if TIMESTAMPS_EXTENSION_1_1_0 not in feature.stac_extensions:
-                    feature.stac_extensions.append(TIMESTAMPS_EXTENSION_1_1_0)
-
-        # Rename the "file" asset key to feature.id
+        # Rename "file" asset to feature.id
         feature.assets[feature.id] = feature.assets.pop("file")
 
     return feature_collection
