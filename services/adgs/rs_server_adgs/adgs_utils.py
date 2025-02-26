@@ -60,7 +60,8 @@ def stac_to_odata(stac_params: dict) -> dict:
 
 
 def serialize_adgs_asset(feature_collection, products):
-    """Update ADGS asset with proper href and format {asset_name: asset_body},and ensure the timestamps extension is included when a 'published' field is present."""
+    """Update ADGS asset with proper href and format {asset_name: asset_body},
+    and ensure the timestamps extension is included when a 'published' field is present."""
 
     for feature in feature_collection.features:
         props = feature.properties.dict()
