@@ -38,7 +38,8 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_env,
     set_eodag_auth_token,
     validate_token_format,
-    TokenDataNotFound
+    TokenDataNotFound,
+    ServiceNotFound
 )
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
@@ -736,9 +737,12 @@ def test_load_external_auth_config_by_domain_no_matching_domain(mocker, get_exte
         "yaml.safe_load",
         return_value=yaml.safe_load(mock_yaml_content),
     )
-    result = load_external_auth_config_by_domain("unknwon_domain")
-    assert result is None
-
+    domain = "unknwon_domain"
+    with pytest.raises(ServiceNotFound) as exc:
+        load_external_auth_config_by_domain(domain)
+    assert f"No matching service found for domain: {domain}" in str(
+                                            exc.value,
+                                        )
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
