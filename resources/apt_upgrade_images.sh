@@ -69,6 +69,7 @@ EOF
         DASK_TAG=2024.5.2
         DASK_GATEWAY_TAG=2024.1.0
         PREFECT_TAG=3.1.4
+        PREFECT_DASK_TAG=0.3.3
 
         cat << EOF >> "$dockerfile"
 
@@ -81,7 +82,8 @@ RUN pip install \
         dask[complete]=="${DASK_TAG}" \
         distributed=="${DASK_TAG}" \
         dask-gateway=="${DASK_GATEWAY_TAG}" \
-        prefect[dask,aws]=="${PREFECT_TAG}" \
+        prefect[aws]=="${PREFECT_TAG}" \
+        prefect-dask=="${PREFECT_DASK_TAG}" \
         ipywidgets \
         s3fs \
         boto3
