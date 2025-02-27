@@ -715,6 +715,8 @@ class TestStagingMainExecution:
                 "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],
             },
         )
+        # Mock the cluster mode
+        mocker.patch("rs_server_staging.processors.LOCAL_MODE", new=False, autospec=False)
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
         staging_instance.cluster = None
@@ -749,7 +751,9 @@ class TestStagingMainExecution:
         mock_client.assert_called_once_with(staging_instance.cluster)
 
         # Ensure logging was called as expected
-        mock_logger.debug.assert_any_call(f"The list of clusters: {mock_list_clusters.return_value}")
+        mock_logger.debug.assert_any_call(
+            f"Cluster list for gateway 'gateway-address': {mock_list_clusters.return_value}",
+        )
         mock_logger.info.assert_any_call("Number of running workers: 2")
         mock_logger.debug.assert_any_call(
             f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}",
@@ -768,6 +772,8 @@ class TestStagingMainExecution:
                 "RSPY_DASK_STAGING_CLUSTER_NAME": non_existent_cluster,
             },
         )
+        # Mock the cluster mode
+        mocker.patch("rs_server_staging.processors.LOCAL_MODE", new=False, autospec=False)
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
         staging_instance.cluster = None
@@ -791,7 +797,8 @@ class TestStagingMainExecution:
             staging_instance.dask_cluster_connect()
         # Ensure logging was called as expected
         mock_logger.exception.assert_any_call(
-            "Failed to find the specified dask cluster: " f"No dask cluster named '{non_existent_cluster}' was found.",
+            "Failed to find the specified dask cluster: "
+            f"Dask cluster with 'cluster_name'={non_existent_cluster!r} was not found.",
         )
 
     def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance: Staging):

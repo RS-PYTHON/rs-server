@@ -38,11 +38,20 @@ else
     cd "stac-browser"
 fi
 
+registry="ghcr.io/rs-python/stac-browser"
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+cat << EOF >> "Dockerfile"
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.ref.name="$registry"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resources/deploy_stac_browser.sh"
+EOF
+
 # Docker image tag = 'last commit hash'.'last commit date'
 tag="$(git rev-parse --short HEAD).$(git log -1 --format="%at" | xargs -I{} date -d @{} +%Y-%m-%d)"
 
 # Build Docker image with tag + latest. It will be pushed to the rs-server registry.
-registry="ghcr.io/rs-python/stac-browser"
 docker build -t "${registry}:latest" -t "${registry}:${tag}" .
 
 # Push the images

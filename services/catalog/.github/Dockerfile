@@ -72,3 +72,10 @@ USER user
 #     reload=settings.reload,
 #     root_path=os.getenv("UVICORN_ROOT_PATH", ""),
 ENTRYPOINT [ "python", "-m", "rs_server_catalog.main" ]
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+#
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/rs-server-catalog"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/services/catalog/.github/Dockerfile"
