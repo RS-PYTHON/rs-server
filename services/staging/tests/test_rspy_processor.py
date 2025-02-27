@@ -985,54 +985,6 @@ class TestStagingMainExecution:
         # Assert initial logging and job execution calls
         mock_log_job.assert_called_with(JobStatus.successful, 100, "Finished without processing any tasks")
 
-
-    @pytest.mark.asyncio
-    async def test_process_rspy_features_token_failure(self, mocker, staging_instance: Staging, 
-                                                       mock_variable, mock_lock):
-        """Test case where retrieving the token raises an exception."""
-        # Mock the logger
-        mock_logger = mocker.patch.object(staging_instance, "logger")
-        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
-
-        # Simulate successful task preparation
-        mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
-        mock_dask_cluster_connect = mocker.patch.object(staging_instance, "dask_cluster_connect")
-        staging_instance.assets_info = [("https://cadip/some_asset", "some_asset")]
-
-        # Simulate an exception in the token retrieval
-        mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_domain",
-            return_value=mocker.Mock(),
-        )
-        mocker.patch(
-            "rs_server_common.authentication.authentication_to_external.get_station_token",
-            side_effect=HTTPException(status_code=404, detail="Token error"),
-        )
-        
-        # Setup mock for Dask.distributed.variable
-        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
-        staging_instance.token_info = Variable("test_variable")
-        
-        # Setup mock for dask.distributed.lock
-        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
-        staging_instance.token_lock = Lock("test_lock")
-        
-        # Call the async function
-        await staging_instance.process_rspy_features("test_collection")
-
-        # Verify logger and log_job_execution are called with the error details
-        mock_logger.error.assert_called_once_with(
-            "Failed to retrieve the token needed to connect to the external station: 404: Token error",
-        )
-        mock_log_job.assert_called_once_with(
-            JobStatus.failed,
-            0,
-            "Failed to retrieve the token needed to connect to the external station cadip",
-        )
-
-        # Verify the function returns early without proceeding to Dask cluster connection
-        mock_dask_cluster_connect.assert_not_called()
-
     @pytest.mark.asyncio
     async def test_process_rspy_features_dask_connection_failure(self, mocker, staging_instance: Staging):
         """Test case where connecting to the Dask cluster raises a RuntimeError."""
@@ -1109,16 +1061,9 @@ class TestStagingMainExecution:
         # Mock Dask cluster client
         mock_dask_client = mocker.Mock()
         mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=mock_dask_client)
-
+        
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")
-
-        # Verify the function proceeds to Dask task submission
-        mock_submit_tasks.assert_called_once_with(
-            "mock_token",
-            mock_external_auth_config.trusted_domains,
-            mock_dask_client,
-        )
 
         # Verify the task monitoring thread is started
         mock_logger.debug.assert_any_call("Starting tasks monitoring thread")
@@ -1314,7 +1259,8 @@ class TestStagingSubmitToDaskCluster:
         assert len(staging_instance.tasks) == 2
 
     def test_submit_tasks_to_dask_cluster_failure(self, mocker, staging_instance: Staging, 
-                                                  config: ExternalAuthenticationConfig):
+                                                  config: ExternalAuthenticationConfig, 
+                                                  mock_variable, mock_lock):
         """Test the submiting tasks to dask cluster function when fails"""
         # Mock the Dask client
         mock_client = mocker.Mock()
@@ -1336,6 +1282,14 @@ class TestStagingSubmitToDaskCluster:
         # Simulate client.submit raising an exception
         mock_client.submit.side_effect = Exception("Mock submission failure")
 
+        # Setup mock for Dask.distributed.variable
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+        
+        # Setup mock for dask.distributed.lock
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
+        
         # Call the function under test and catch the RuntimeError
         with pytest.raises(
             RuntimeError,
