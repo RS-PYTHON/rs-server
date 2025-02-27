@@ -474,7 +474,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     sortby: str,
     limit: Annotated[
         Union[int, None],
-        Query(gt=0, le=10000, default=1000, description="Pagination Limit"),
+        Query(gt=0, default=100, description="Pagination Limit"),
     ],
     page: Union[int, None] = 1,
 ) -> stac_pydantic.ItemCollection:
@@ -487,7 +487,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         request (Request): The request object (unused).
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
         queryables: Lists of queryables applicable to search op.
-        limit (int, optional): Maximum number of products to return. Beetween 0 and 10000, defaults to 1000.
+        limit (int, optional): Maximum number of products to return. Greater than 0, defaults to 100.
         sortby (str): Sort by +/-fieldName (ascending/descending).
         page (int): Page number to be displayed, defaults to first one.
     Returns:
