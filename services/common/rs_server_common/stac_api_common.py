@@ -584,8 +584,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             dict_data = self.process_files(dict_data)
 
         # Handle pagination links.
-        if len(dict_data["features"]) > 0:
-            # Don't create next page if the current one does not have features
+        if len(dict_data["features"]) == self.limit:
+            # Create next page if the current one reaches limit
             dict_data["next"] = f"page={self.page + 1}"
         if self.page > 1:
             dict_data["prev"] = f"page={self.page - 1}"
