@@ -25,14 +25,12 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 import requests
-import sqlalchemy
 import stac_pydantic
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
-from fastapi import Query, Request, status
+from fastapi import Request, status
 from fastapi.responses import RedirectResponse
 from rs_server_adgs import adgs_tags
-from rs_server_adgs.adgs_download_status import AdgsDownloadStatus
 from rs_server_adgs.adgs_retriever import init_adgs_provider
 from rs_server_adgs.adgs_utils import (
     auxip_map_mission,
@@ -43,7 +41,6 @@ from rs_server_adgs.adgs_utils import (
     stac_to_odata,
 )
 from rs_server_common.authentication import authentication
-from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
@@ -61,11 +58,7 @@ from rs_server_common.stac_api_common import (
     handle_exceptions,
 )
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import (
-    validate_inputs_format,
-    validate_sort_input,
-    write_search_products_to_db,
-)
+from rs_server_common.utils.utils import validate_inputs_format, validate_sort_input
 
 # pylint: disable=duplicate-code # with cadip_search
 
@@ -391,94 +384,6 @@ def process_product_search(  # pylint: disable=too-many-locals
         logger.error(f"General failure! {exception}")
         if isinstance(exception, HTTPException):
             raise
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"General failure: {exception}",
-        ) from exception
-
-
-######################################
-# DEPRECATED CODE, WILL BE REMOVED !!!
-######################################
-@router.get("/adgs/aux/search", deprecated=True)
-@auth_validator(station="adgs", access_type="read")
-async def search_products(  # pylint: disable=too-many-locals
-    request: Request,  # pylint: disable=unused-argument
-    datetime: Annotated[str, Query(description='Time interval e.g. "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')],
-    limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-created",
-) -> list[dict] | stac_pydantic.ItemCollection:
-    """Endpoint to handle the search for products in the AUX station within a specified time interval.
-
-    This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
-    writes the search results to the database, and generates a STAC Feature Collection from the products.
-
-    Args:
-        request (Request): The request object (unused).
-        datetime (str): Time interval in ISO 8601 format.
-        limit (int, optional): Maximum number of products to return. Defaults to 1000.
-        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
-
-    Returns:
-        list[dict] | dict: A list of STAC Feature Collections or an error message.
-                           If no products are found in the specified time range, returns an empty list.
-
-    Raises:
-        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
-        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
-        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
-        HTTPException (fastapi.exceptions): If there is a connection error to the station.
-        HTTPException (fastapi.exceptions): If there is a general failure during the process.
-    """
-
-    if limit < 1:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
-    set_eodag_auth_token("adgs", "auxip")
-    try:
-        products = (init_adgs_provider("adgs")).search(
-            # Temp, will be removed.
-            **{"PublicationDate": validate_inputs_format(datetime)},
-            items_per_page=limit,
-            sort_by=validate_sort_input(sortby),
-        )
-        write_search_products_to_db(AdgsDownloadStatus, products)
-        feature_template_path = ADGS_CONFIG / "ODataToSTAC_template.json"
-        stac_mapper_path = ADGS_CONFIG / "adgs_stac_mapper.json"
-        with (
-            open(feature_template_path, encoding="utf-8") as template,
-            open(stac_mapper_path, encoding="utf-8") as stac_map,
-        ):
-            feature_template = json.loads(template.read())
-            stac_mapper = json.loads(stac_map.read())
-            adgs_item_collection = create_stac_collection(products, feature_template, stac_mapper)
-        logger.info("Succesfully listed and processed products from AUX station")
-        return prepare_collection(serialize_adgs_asset(adgs_item_collection, products))
-
-    # pylint: disable=duplicate-code
-    except CreateProviderFailed as exception:
-        logger.error(f"Failed to create EODAG provider!\n{traceback.format_exc()}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bad station identifier: {exception}",
-        ) from exception
-
-    # pylint: disable=duplicate-code
-    except sqlalchemy.exc.OperationalError as exception:
-        logger.error("Failed to connect to database!")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database connection error: {exception}",
-        ) from exception
-
-    except requests.exceptions.ConnectionError as exception:
-        logger.error("Failed to connect to station!")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Station ADGS connection error: {exception}",
-        ) from exception
-
-    except Exception as exception:  # pylint: disable=broad-exception-caught
-        logger.error(f"General failure! {exception}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"General failure: {exception}",

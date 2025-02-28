@@ -35,7 +35,6 @@ from fastapi import Query, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import validate_call
 from rs_server_cadip import cadip_tags
-from rs_server_cadip.cadip_download_status import CadipDownloadStatus
 from rs_server_cadip.cadip_retriever import init_cadip_provider
 from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
@@ -49,7 +48,6 @@ from rs_server_cadip.cadip_utils import (
     validate_products,
 )
 from rs_server_common.authentication import authentication
-from rs_server_common.authentication.authentication import auth_validator
 from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_token,
 )
@@ -72,7 +70,6 @@ from rs_server_common.utils.utils import (
     validate_inputs_format,
     validate_sort_input,
     validate_str_list,
-    write_search_products_to_db,
 )
 
 # pylint: disable=duplicate-code # with adgs_search
@@ -541,44 +538,6 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         ) from exception
 
 
-######################################
-# DEPRECATED CODE, WILL BE REMOVED !!!
-######################################
-@router.get("/cadip/{station}/cadu/search", deprecated=True)
-@auth_validator(station="cadip", access_type="read")
-async def search_products(  # pylint: disable=too-many-locals, too-many-arguments
-    request: Request,  # pylint: disable=unused-argument
-    datetime: Annotated[str, Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"')] = "",
-    station: str = FPath(description="CADIP station identifier (MTI, SGS, MPU, INU, etc)"),
-    session_id: Annotated[str, Query(description="Session from which file belong")] = "",
-    limit: Annotated[int, Query(description="Maximum number of products to return")] = 1000,
-    sortby: Annotated[str, Query(description="Sort by +/-fieldName (ascending/descending)")] = "-datetime",
-):  # -> list[dict] | dict:
-    """Endpoint to retrieve a list of products from the CADU system for a specified station.
-    This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
-    writes the search results to the database, and generates a STAC Feature Collection from the products.
-    Args:
-        request (Request): The request object (unused).
-        datetime (str): Time interval in ISO 8601 format.
-        station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        session_id (str): Session from which file belong.
-        limit (int, optional): Maximum number of products to return. Defaults to 1000.
-        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
-    Returns:
-        list[dict] | dict: A list of STAC Feature Collections or an error message.
-                           If no products are found in the specified time range, returns an empty list.
-    Raises:
-        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
-        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
-        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
-        HTTPException (fastapi.exceptions): If there is a connection error to the station.
-        HTTPException (fastapi.exceptions): If there is a general failure during the process.
-    """
-    # tempfix, will be removed.
-    query = {"SessionId": session_id, "PublicationDate": datetime}
-    return process_files_search(station, query, limit, sortby=sortby, deprecated=True)
-
-
 def process_files_search(  # pylint: disable=too-many-locals
     station: str,
     queryables,
@@ -625,8 +584,7 @@ def process_files_search(  # pylint: disable=too-many-locals
             sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
             page=kwargs.get("page", 1),
         )
-        if kwargs.get("deprecated", False):
-            write_search_products_to_db(CadipDownloadStatus, products)
+
         feature_template_path = CADIP_CONFIG / "ODataToSTAC_template.json"
         with open(feature_template_path, encoding="utf-8") as template:
             feature_template = json.loads(template.read())

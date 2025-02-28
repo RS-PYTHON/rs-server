@@ -522,12 +522,9 @@ def validate_token(mocker):
             # If not defined, mock both adgs and cadip
             mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
             mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
-            mocker.patch("rs_server_cadip.api.cadip_download.set_eodag_auth_token", side_effect=None)
-            mocker.patch("rs_server_adgs.api.adgs_download.set_eodag_auth_token", side_effect=None)
         else:
             # If defined, custom path mock
             mocker.patch(f"rs_server_{service}.api.{service}_search.set_eodag_auth_token", side_effect=None)
-            mocker.patch(f"rs_server_{service}.api.{service}_download.set_eodag_auth_token", side_effect=None)
         responses.add(
             responses.POST,
             TOKEN_URL,
