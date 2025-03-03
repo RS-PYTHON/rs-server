@@ -863,7 +863,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # retrieve the token
         try:
             external_auth_config = load_external_auth_config_by_domain(domain)
-            auth_validation("x", "y", request=self.request, staging_process=True)
+            auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
             token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
             self.logger.error(
