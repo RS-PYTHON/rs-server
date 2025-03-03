@@ -24,13 +24,12 @@ import pytest
 import requests
 from dask.distributed import Lock, Variable
 from dask_gateway import Gateway
-from fastapi import HTTPException
 from pygeoapi.util import JobStatus
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     TokenAuth,
 )
-from rs_server_staging.processors import S3StorageHandler, Staging, streaming_task
+from rs_server_staging.processors import Staging, streaming_task
 from rs_server_staging.rspy_models import FeatureCollectionModel
 
 # pylint: disable=undefined-variable
@@ -739,7 +738,7 @@ class TestStagingMainExecution:
         cluster_options: str,
         config: ExternalAuthenticationConfig,
         mock_variable,
-    ):
+    ):  # pylint: disable=R0913, R0917
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -748,7 +747,7 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
-                "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],
+                "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],  # type: ignore
             },
         )
         # Mock the cluster mode
@@ -1055,7 +1054,7 @@ class TestStagingMainExecution:
         staging_instance.assets_info = ["some_asset"]
 
         # Mock the called methods
-        mock_submit_tasks = mocker.patch.object(staging_instance, "submit_tasks_to_dask_cluster")
+        # mock_submit_tasks = mocker.patch.object(staging_instance, "submit_tasks_to_dask_cluster")
         mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks_results")
         # Mock token retrieval
         mocker.patch(
@@ -1225,16 +1224,13 @@ class TestStagingSubmitToDaskCluster:
         config: ExternalAuthenticationConfig,
         mock_variable,
         mock_lock,
-    ):
+    ):  # pylint: disable=R0913, R0917
         """Test the submiting tasks to dask cluster function when successful"""
         # Mock the Dask client
         mock_client = mocker.Mock()
 
         # Mock the streaming_task function
         mock_streaming_task = mocker.Mock()
-
-        # Patch the TokenAuth to return a mock object
-        mock_token_auth = mocker.patch("rs_server_common.authentication.authentication_to_external.TokenAuth")
 
         # Mock assets_info (list of tuples)
         mock_assets_info = [("asset1", "path1"), ("asset2", "path2")]
@@ -1291,7 +1287,7 @@ class TestStagingSubmitToDaskCluster:
         config: ExternalAuthenticationConfig,
         mock_variable,
         mock_lock,
-    ):
+    ):  # pylint: disable=R0913, R0917
         """Test the submiting tasks to dask cluster function when fails"""
         # Mock the Dask client
         mock_client = mocker.Mock()

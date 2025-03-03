@@ -259,7 +259,7 @@ def validate_token_dict(token_dict: Any, config: ExternalAuthenticationConfig):
                 )
 
 
-def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_var: Any) -> str:
+def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_dict: dict) -> dict:
     """
     Retrieve and validate an authentication token for a specific station and service.
     Thee are two main use cases:
@@ -290,18 +290,18 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         )
     # If no tokens are yet registered, we ask the authorisation server to generate one by providing
     # an "authorisation grant" to the authorisation server
-    token_dict = token_var.get()
     validate_token_dict(token_dict, external_auth_config)
     current_date = datetime.datetime.now()
 
-    nb_secs_before_token_exp = int(os.getenv("RSPY_TIME_BEFORE_ACCESS_TOKEN_EXPIRE"), 60)
-    nb_secs_before_refresh_token_exp = int(os.getenv("RSPY_TIME_BEFORE_REFRESH_TOKEN_EXPIRE"), 60)
+    nb_secs_before_token_exp = int(os.getenv("RSPY_TIME_BEFORE_ACCESS_TOKEN_EXPIRE", 60))
+    nb_secs_before_refresh_token_exp = int(os.getenv("RSPY_TIME_BEFORE_REFRESH_TOKEN_EXPIRE", 60))
 
     # If we have no token yet or if both the access and refresh tokens are expired, we get a new token
     # using the authorisation grant
     if not token_dict or (
         token_dict
-        and (current_date - token_dict["access_token_creation_date"]).total_seconds() > token_dict["expires_in"] - nb_secs_before_token_exp
+        and (current_date - token_dict["access_token_creation_date"]).total_seconds()
+        > token_dict["expires_in"] - nb_secs_before_token_exp
         and (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
         > token_dict["refresh_expires_in"] - nb_secs_before_refresh_token_exp
     ):
@@ -349,7 +349,6 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         logger.info(f"--------- CREATED NEW TOKEN: {token_dict}")
         # Validate the token variable and then update the shared token
         validate_token_dict(token_dict, external_auth_config)
-        token_var.set(token_dict)
     else:
         # Check that the token variable contains the mandatory elements
         validate_token_dict(token_dict, external_auth_config)
@@ -398,9 +397,9 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
 
             # Validate the new token dictionary and update the shared token variable with this dictionary
             validate_token_dict(token_dict, external_auth_config)
-            token_var.set(token_dict)
             logger.info(f"Access token has been successfully refreshed !")
             logger.info(f"----------- REFRESHED NEW TOKEN: {token_dict}")
+    return token_dict
 
 
 def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> Dict[str, str]:
@@ -663,7 +662,8 @@ def set_eodag_auth_token(
     if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
         os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] = get_station_token(
             ext_auth_config,
-        )
+            {},
+        )["access_token"]
         logger.info("Token has been set to eodag")
     else:
         # use eodag to get the token

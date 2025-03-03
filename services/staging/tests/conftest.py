@@ -237,6 +237,7 @@ def cluster_options():
 
 @pytest.fixture(name="config")
 def authentication_config():
+    """Return an example of external authentication configuration"""
     return ExternalAuthenticationConfig(
         station_id="cadip",
         domain="http://127.0.0.1:5000",
@@ -255,6 +256,7 @@ def authentication_config():
 # Define fixtures for mock of dask.distributed.Lock and dask.distributed.Variable objects
 @pytest.fixture(name="mock_variable")
 def get_mock_variable(mocker):
+    """Mock for the shared Variable (dask.distributed.Variable) containing the token information"""
     # Setup mock for Dask.distributed.variable
     mock_variable = mocker.MagicMock()
     mock_variable.get.return_value = {}
@@ -264,6 +266,10 @@ def get_mock_variable(mocker):
 
 @pytest.fixture(name="mock_lock")
 def get_mock_lock(mocker):
+    """
+    Mock for the lock (dask.distributed.Lock) used to synchronize the access to the token variable
+    between the different threads of the dask workers
+    """
     # Setup mock for dask.distributed.lock
     mock_lock = mocker.MagicMock()
     mock_lock.acquire.return_value = True

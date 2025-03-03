@@ -590,6 +590,7 @@ def adgs_pickup_response():
     with open(adgs_response_json, encoding="utf-8") as file:
         return json.loads(file.read())
 
+
 # Define fixtures for mock of dask.distributed.Lock and dask.distributed.Variable objects
 @pytest.fixture(name="mock_variable")
 def get_mock_variable(mocker):
@@ -616,6 +617,8 @@ def get_mock_lock(mocker):
     mock_lock.acquire.return_value = True
     mock_lock.release.return_value = None
     return mock_lock
+
+
 @pytest.fixture(name="adgs_response_10_items")
 @lru_cache(maxsize=1)
 def adgs_pickup_response_10_items():

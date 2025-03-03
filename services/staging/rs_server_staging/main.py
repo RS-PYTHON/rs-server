@@ -37,11 +37,13 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
 from sqlalchemy.exc import SQLAlchemyError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.status import (
+from starlette.exceptions import (
+    HTTPException as StarletteHTTPException,  # pylint: disable=C0411
+)
+from starlette.middleware.cors import CORSMiddleware  # pylint: disable=C0411
+from starlette.requests import Request  # pylint: disable=C0411
+from starlette.responses import JSONResponse  # pylint: disable=C0411
+from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
     HTTP_503_SERVICE_UNAVAILABLE,
@@ -150,13 +152,13 @@ def init_db(pause: int = 3, timeout: int | None = None) -> PostgreSQLManager:
         try:
             # This registers the ENUM type and creates the jobs table if they do not exist
             Base.metadata.create_all(bind=engine)
-            logger.info(f"Reached {engine.url!r}")
+            logger.info("Reached %r", engine.url)
             logger.info("Database table and ENUM type created successfully.")
             break
 
         # It fails if the database is unreachable. Wait a few seconds and try again.
         except SQLAlchemyError:
-            logger.warning(f"Trying to reach {engine.url!r}")
+            logger.warning("Trying to reach %r", engine.url)
 
             # Sleep for n seconds and raise exception if timeout is reached.
             if timeout is not None:

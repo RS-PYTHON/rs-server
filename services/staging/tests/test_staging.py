@@ -238,7 +238,7 @@ async def test_get_job(
     expected_job,
     expected_status,
     expected_response,
-):
+):  # pylint: disable=R0913, R0917
     """
     Test the GET /jobs/{job_id} endpoint for retrieving job details.
 
@@ -303,7 +303,7 @@ async def test_get_job_result(
     expected_job,
     expected_status,
     expected_response,
-):
+):  # pylint: disable=R0913, R0917
     """
     Test the GET /jobs/{job_id}/results endpoint for retrieving job results.
 
@@ -372,7 +372,7 @@ async def test_delete_job_endpoint(
     expected_job,
     expected_status,
     expected_response,
-):
+):  # pylint: disable=R0913, R0917
     """
     Test the DELETE /jobs/{job_id} endpoint for deleting a specific job.
 

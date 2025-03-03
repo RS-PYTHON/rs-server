@@ -873,8 +873,8 @@ retried for %s times. Aborting",
     def get_station_token_with_lock(
         self,
         config: ExternalAuthenticationConfig,
-        token_info: dict = {},
-        token_lock: Any = None,
+        token_info: Any,
+        token_lock: Any,
     ):
         """
         Get the station token using a  dask.distributed.Lock object in order to
@@ -883,9 +883,7 @@ retried for %s times. Aborting",
         if not token_lock:
             raise StagingLockNotDefined("Staging dask.distributed.lock object is None but is mandatory for the staging")
         with token_lock:
-            self.logger.info(f"----------- TOKEN BEFORE FUNCTION: {token_info.get()}")
-            get_station_token(config, token_info)
-            self.logger.info(f"----------- TOKEN AFTER FUNCTION: {token_info.get()}")
+            token_info.set(get_station_token(config, token_info.get()))
 
     def s3_streaming_upload(  # pylint: disable=too-many-locals
         self,
@@ -893,8 +891,8 @@ retried for %s times. Aborting",
         config: ExternalAuthenticationConfig,
         bucket: str,
         key: str,
-        token_info: dict = {},
-        token_lock: Any = None,
+        token_info: Any,
+        token_lock: Any,
         max_retries=S3_MAX_RETRIES,
     ):
         """
@@ -970,7 +968,7 @@ retried for %s times. Aborting",
                     self.logger.error(
                         f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
                     )
-                    self.log_job_execution(
+                    self.log_job_execution(  # type: ignore
                         "failed",
                         0,
                         message=f"Failed to retrieve the token needed to connect to the external station {config.domain}",
