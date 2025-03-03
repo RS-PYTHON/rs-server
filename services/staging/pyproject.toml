@@ -74,6 +74,7 @@ asyncache = "^0.3.1"
 authlib = "^1.5.0"
 python-keycloak = "5.3.1"
 itsdangerous = "^2.2.0"
+pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 
 [tool.poetry.group.dev]
 optional = true
