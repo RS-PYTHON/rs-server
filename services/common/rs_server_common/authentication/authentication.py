@@ -184,7 +184,11 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
     else:
         full_station = station_type
 
-    requested_role = f"rs_{full_station}_{access_type}".upper()
+    if not kwargs.get("staging_process", False):
+        requested_role = f"rs_{full_station}_{access_type}".upper()
+    else:
+        requested_role = f"rs_processes_staging_{access_type}_{station_type}"
+
     logger.debug(f"Requested role: {requested_role}")
     try:
         auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]

@@ -32,6 +32,7 @@ from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.util import JobStatus
 from requests.auth import AuthBase
 from requests.exceptions import RequestException
+from rs_server_common.authentication.authentication import auth_validation
 from rs_server_common.authentication.authentication_to_external import (
     get_station_token,
     load_external_auth_config_by_domain,
@@ -181,6 +182,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         """
         #################
         # Locals
+        self.request = credentials
         self.headers: Headers = credentials.headers
         self.stream_list: list[Feature] = []
         #################
@@ -861,6 +863,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # retrieve the token
         try:
             external_auth_config = load_external_auth_config_by_domain(domain)
+            auth_validation("x", "y", request=self.request, staging_process=True)
             token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
             self.logger.error(
