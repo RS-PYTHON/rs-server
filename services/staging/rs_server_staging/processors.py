@@ -54,7 +54,7 @@ from starlette.requests import Request
 from .rspy_models import Feature, FeatureCollectionModel
 
 
-def streaming_task(
+def streaming_task( # pylint: disable=R0913, R0917
     product_url: str,
     config: ExternalAuthenticationConfig,
     bucket: str,
@@ -106,7 +106,7 @@ def streaming_task(
     return s3_file
 
 
-class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed
+class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopping actions if status is failed # pylint: disable=R0913 
     """
     RSPY staging implementation, the processor should perform the following actions after being triggered:
 

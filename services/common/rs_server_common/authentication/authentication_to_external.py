@@ -294,13 +294,16 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
     validate_token_dict(token_dict, external_auth_config)
     current_date = datetime.datetime.now()
 
+    nb_secs_before_token_exp = int(os.getenv("RSPY_TIME_BEFORE_ACCESS_TOKEN_EXPIRE"), 60)
+    nb_secs_before_refresh_token_exp = int(os.getenv("RSPY_TIME_BEFORE_REFRESH_TOKEN_EXPIRE"), 60)
+
     # If we have no token yet or if both the access and refresh tokens are expired, we get a new token
     # using the authorisation grant
     if not token_dict or (
         token_dict
-        and (current_date - token_dict["access_token_creation_date"]).total_seconds() > token_dict["expires_in"] - 60
+        and (current_date - token_dict["access_token_creation_date"]).total_seconds() > token_dict["expires_in"] - nb_secs_before_token_exp
         and (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
-        > token_dict["refresh_expires_in"] - 60
+        > token_dict["refresh_expires_in"] - nb_secs_before_refresh_token_exp
     ):
         if not token_dict:
             logger.info(
@@ -357,7 +360,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         diff_in_sec = (current_date - token_dict["access_token_creation_date"]).total_seconds()
 
         logger.info(f"----------- DIFF VAUT: {diff_in_sec}")
-        if diff_in_sec > token_dict["expires_in"] - 60:
+        if diff_in_sec > token_dict["expires_in"] - nb_secs_before_token_exp:
             logger.info(f"Current access_token is about to expire. Launching request to refresh the token...")
             data_to_send = prepare_data(external_auth_config)
 
