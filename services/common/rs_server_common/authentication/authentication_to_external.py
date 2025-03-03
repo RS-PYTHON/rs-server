@@ -346,7 +346,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         token_dict["access_token_creation_date"] = token_dict["refresh_token_creation_date"] = datetime.datetime.now()
 
         logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
-        logger.info(f"----------- CREATED NEW TOKEN: {token_dict}")
+        logger.info(f"--------- CREATED NEW TOKEN: {token_dict}")
         # Validate the token variable and then update the shared token
         validate_token_dict(token_dict, external_auth_config)
         token_var.set(token_dict)
