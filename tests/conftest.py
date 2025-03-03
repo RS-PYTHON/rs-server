@@ -523,12 +523,9 @@ def validate_token(mocker):
             # If not defined, mock both adgs and cadip
             mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
             mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
-            mocker.patch("rs_server_cadip.api.cadip_download.set_eodag_auth_token", side_effect=None)
-            mocker.patch("rs_server_adgs.api.adgs_download.set_eodag_auth_token", side_effect=None)
         else:
             # If defined, custom path mock
             mocker.patch(f"rs_server_{service}.api.{service}_search.set_eodag_auth_token", side_effect=None)
-            mocker.patch(f"rs_server_{service}.api.{service}_download.set_eodag_auth_token", side_effect=None)
         responses.add(
             responses.POST,
             TOKEN_URL,
@@ -554,6 +551,15 @@ def cadip_stac_feature():
 def cadip_session_pickup_response():
     """Fixture used to mock the response from CADIP data pickup-point."""
     cadip_response_json = RESOURCES_FOLDER / "endpoints" / "cadip_session_pickup_response.json"
+    with open(cadip_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="cadip_session_response_10_items")
+@lru_cache(maxsize=1)
+def cadip_session_pickup_response_10_items():
+    """Fixture used to mock the response from CADIP data pickup-point."""
+    cadip_response_json = RESOURCES_FOLDER / "endpoints" / "cadip_session_pickup_response_10_items.json"
     with open(cadip_response_json, encoding="utf-8") as file:
         return json.loads(file.read())
 
@@ -584,7 +590,6 @@ def adgs_pickup_response():
     with open(adgs_response_json, encoding="utf-8") as file:
         return json.loads(file.read())
 
-
 # Define fixtures for mock of dask.distributed.Lock and dask.distributed.Variable objects
 @pytest.fixture(name="mock_variable")
 def get_mock_variable(mocker):
@@ -611,3 +616,10 @@ def get_mock_lock(mocker):
     mock_lock.acquire.return_value = True
     mock_lock.release.return_value = None
     return mock_lock
+@pytest.fixture(name="adgs_response_10_items")
+@lru_cache(maxsize=1)
+def adgs_pickup_response_10_items():
+    """Fixture used to mock the response from ADGS data pickup-point."""
+    adgs_response_json = RESOURCES_FOLDER / "endpoints" / "adgs_pickup_response_10_items.json"
+    with open(adgs_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())

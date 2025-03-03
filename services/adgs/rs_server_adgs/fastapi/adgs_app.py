@@ -20,7 +20,6 @@ import warnings
 # that will init the database session and create the tables.
 # pylint: disable=unused-import, import-outside-toplevel
 # flake8: noqa
-import rs_server_adgs.adgs_download_status  # DON'T REMOVE
 from rs_server_adgs import __version__
 from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
