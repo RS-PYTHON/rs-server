@@ -26,13 +26,13 @@ from urllib.parse import urlparse
 import boto3
 import botocore
 import requests
-from rs_server_common.utils.logging import Logging
-from rs_server_common.authentication.authentication_to_external import (
-    get_station_token, 
-    TokenAuth,
-    ExternalAuthenticationConfig
-)
 from fastapi import HTTPException
+from rs_server_common.authentication.authentication_to_external import (
+    ExternalAuthenticationConfig,
+    TokenAuth,
+    get_station_token,
+)
+from rs_server_common.utils.logging import Logging
 
 # seconds
 DWN_S3FILE_RETRY_TIMEOUT = 6
@@ -55,10 +55,11 @@ S3_PROTOCOL_MAX_ATTEMPTS = 5
 
 
 class StagingLockNotDefined(Exception):
-    """ 
-    Exception raised if we don't defined a dask.distributed.Lock object to synchronize access 
+    """
+    Exception raised if we don't defined a dask.distributed.Lock object to synchronize access
     to the shared token information during the staging process.
     """
+
 
 # pylint: disable=too-many-lines
 @dataclass
@@ -870,11 +871,11 @@ retried for %s times. Aborting",
         return failed_files
 
     def get_station_token_with_lock(
-            self,
-            config: ExternalAuthenticationConfig,
-            token_info: dict={},
-            token_lock: Any=None,
-        ):
+        self,
+        config: ExternalAuthenticationConfig,
+        token_info: dict = {},
+        token_lock: Any = None,
+    ):
         """
         Get the station token using a  dask.distributed.Lock object in order to
         synchronize all threads
@@ -892,8 +893,8 @@ retried for %s times. Aborting",
         config: ExternalAuthenticationConfig,
         bucket: str,
         key: str,
-        token_info: dict={},
-        token_lock: Any=None,
+        token_info: dict = {},
+        token_lock: Any = None,
         max_retries=S3_MAX_RETRIES,
     ):
         """
@@ -911,7 +912,7 @@ retried for %s times. Aborting",
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
             token_dict (dict): The authentication dictionary (including the access token) required for the download.
-            token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads 
+            token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads
             to the station
             max_retries (int, optional): The maximum number of retry attempts if an error occurs
             (default is `S3_MAX_RETRIES`).
@@ -952,15 +953,15 @@ retried for %s times. Aborting",
         trusted_domains = config.trusted_domains
         session = CustomSessionRedirect(trusted_domains)
         self.logger.debug(f"trusted_domains = {trusted_domains}")
-       
+
         while attempt < max_retries:
             try:
                 self.connect_s3()
                 self.logger.info(f"Starting the streaming of {stream_url} to s3://{bucket}/{key}")
-                
+
                 # Get/refresh the access token if necessary
                 try:
-                    # Use locks to allow only one thread from one process from one worker to 
+                    # Use locks to allow only one thread from one process from one worker to
                     # access/refresh the shared token dictionary at a time
                     self.get_station_token_with_lock(config, token_info, token_lock)
 
@@ -980,9 +981,9 @@ retried for %s times. Aborting",
                     url=stream_url,
                     auth=TokenAuth(token_info.get()["access_token"]),
                 )
-                
+
                 prepared_request = session.prepare_request(request)
-                             
+
                 with session.send(prepared_request, stream=True, timeout=timeout) as response:
                     # with requests.get(stream_url, stream=True, auth=auth, timeout=timeout) as response:
                     self.logger.debug(f"Request headers: {response.request.headers}")

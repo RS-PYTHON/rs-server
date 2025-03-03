@@ -16,17 +16,18 @@
 Authentication to external stations module.
 """
 
+import datetime
 import os
 import re
-from requests.auth import AuthBase
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-import datetime
+
 import requests
 import yaml
 from fastapi import HTTPException
+from requests.auth import AuthBase
 from rs_server_common import settings
 from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
@@ -53,19 +54,22 @@ HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded"
 # the station response because we also add the creation date of the
 # access and refresh token in addition to the station response.
 MANDATORY_TOKEN_ATTRS = [
-    "access_token", 
-    "access_token_creation_date", 
-    "expires_in", 
-    "refresh_token", 
+    "access_token",
+    "access_token_creation_date",
+    "expires_in",
+    "refresh_token",
     "refresh_token_creation_date",
-    "refresh_expires_in"
+    "refresh_expires_in",
 ]
 
+
 class ServiceNotFound(Exception):
-    """ Raised if there are no existing service matching the provided domain """
+    """Raised if there are no existing service matching the provided domain"""
+
 
 class TokenDataNotFound(Exception):
     """Raised if there are missing data in the dictionary to handle information about the token"""
+
 
 # Custom authentication class
 class TokenAuth(AuthBase):
@@ -97,6 +101,7 @@ class TokenAuth(AuthBase):
 
     def __repr__(self) -> str:
         return "RSPY Token handler"
+
 
 def init_rs_server_config_yaml():
     """
@@ -225,7 +230,7 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
 def validate_token_dict(token_dict: Any, config: ExternalAuthenticationConfig):
     """
     Check if the token variable contains the mandatory attributes
-    
+
     Args:
         token_dict (Any):
         config (ExternalAuthenticationConfig):
@@ -239,17 +244,20 @@ def validate_token_dict(token_dict: Any, config: ExternalAuthenticationConfig):
             if attr not in token_dict:
                 logger.error(
                     f"""Mandatory attribute {attr} is not defined in the token variable """
-                    f"""of the station {config.station_id}!"""
+                    f"""of the station {config.station_id}!""",
                 )
-                raise TokenDataNotFound(f"""Mandatory attribute {attr} is not defined in the token variable
-                                        of the station {config.station_id}!""")
+                raise TokenDataNotFound(
+                    f"""Mandatory attribute {attr} is not defined in the token variable
+                                        of the station {config.station_id}!""",
+                )
             if not token_dict[attr]:
                 logger.error(
-                    f"""Token variable attribute {attr} of the station """
-                                        f"""{config.station_id} is None !"""
+                    f"""Token variable attribute {attr} of the station """ f"""{config.station_id} is None !""",
                 )
-                raise TokenDataNotFound(f"""Token variable attribute {attr} of the station"""
-                                        f"""{config.station_id} is None !""")
+                raise TokenDataNotFound(
+                    f"""Token variable attribute {attr} of the station""" f"""{config.station_id} is None !""",
+                )
+
 
 def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_var: Any) -> str:
     """
@@ -258,14 +266,14 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         - If the token shared variable is empty, it means that we don't have any token for now
           so we will retrieve one by requesting the authorisation server of the station
         - If the token shared variable is not empty, it means we already have a token. If it
-          is still valid, we use it to request data to the resource server of the station. 
-          If it is not valid anymore, we use the refresh token to request a new token to 
+          is still valid, we use it to request data to the resource server of the station.
+          If it is not valid anymore, we use the refresh token to request a new token to
           the authorisation server
 
     Args:
         external_auth_config (ExternalAuthenticationConfig): The configuration object loaded
         from the rs-server.yaml file.
-        token_var (dask.distributed.Variable): variable shared between all workers containing 
+        token_var (dask.distributed.Variable): variable shared between all workers containing
         information of the current token used to request data on the current station
 
     Returns:
@@ -280,28 +288,30 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Failed to retrieve the configuration for the station token.",
         )
-    # If no tokens are yet registered, we ask the authorisation server to generate one by providing 
+    # If no tokens are yet registered, we ask the authorisation server to generate one by providing
     # an "authorisation grant" to the authorisation server
     token_dict = token_var.get()
     validate_token_dict(token_dict, external_auth_config)
-    current_date = datetime.datetime.now()     
-    
+    current_date = datetime.datetime.now()
+
     # If we have no token yet or if both the access and refresh tokens are expired, we get a new token
     # using the authorisation grant
-    if (
-        not token_dict 
-        or (
-            token_dict and 
-            (current_date - token_dict["access_token_creation_date"]).total_seconds() > token_dict["expires_in"] - 60 and 
-            (current_date - token_dict["refresh_token_creation_date"]).total_seconds() > token_dict["refresh_expires_in"] - 60
-        )
+    if not token_dict or (
+        token_dict
+        and (current_date - token_dict["access_token_creation_date"]).total_seconds() > token_dict["expires_in"] - 60
+        and (current_date - token_dict["refresh_token_creation_date"]).total_seconds()
+        > token_dict["refresh_expires_in"] - 60
     ):
         if not token_dict:
-            logger.info(f"""No existing token found -> fetching a new access token """
-                        f"""from station url: {external_auth_config.token_url}""")
+            logger.info(
+                f"""No existing token found -> fetching a new access token """
+                f"""from station url: {external_auth_config.token_url}""",
+            )
         else:
-            logger.info(f"""Current access and refresh token expired -> fetching access token """
-                        f"""from station url: {external_auth_config.token_url}""")
+            logger.info(
+                f"""Current access and refresh token expired -> fetching access token """
+                f"""from station url: {external_auth_config.token_url}""",
+            )
         try:
             response = requests.post(
                 external_auth_config.token_url,
@@ -314,8 +324,8 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
             raise HTTPException(
                 status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Request to token endpoint failed: {str(e)}",
-            ) from e  
-        
+            ) from e
+
         # Check response status
         if response.status_code != HTTP_200_OK:
             logger.error(
@@ -331,7 +341,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         # Get the new token and add its creation date
         token_dict.update(response.json())
         token_dict["access_token_creation_date"] = token_dict["refresh_token_creation_date"] = datetime.datetime.now()
-        
+
         logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
         logger.info(f"----------- CREATED NEW TOKEN: {token_dict}")
         # Validate the token variable and then update the shared token
@@ -340,33 +350,33 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
     else:
         # Check that the token variable contains the mandatory elements
         validate_token_dict(token_dict, external_auth_config)
-        
-        # If the current token expires in less than one minute, create a new request to send 
+
+        # If the current token expires in less than one minute, create a new request to send
         # to the authorisation server with the refresh token given in the payload of the request
         current_date = datetime.datetime.now()
         diff_in_sec = (current_date - token_dict["access_token_creation_date"]).total_seconds()
-        
-        logger.info(f"----------- DIFF VAUT: {diff_in_sec}")   
-        if diff_in_sec > token_dict["expires_in"] - 60:        
+
+        logger.info(f"----------- DIFF VAUT: {diff_in_sec}")
+        if diff_in_sec > token_dict["expires_in"] - 60:
             logger.info(f"Current access_token is about to expire. Launching request to refresh the token...")
             data_to_send = prepare_data(external_auth_config)
-            
+
             data_to_send.update({"refresh_token": token_dict["refresh_token"]})
-            
+
             try:
                 response = requests.post(
                     external_auth_config.token_url,
                     data=data_to_send,
                     timeout=5,
                     headers=prepare_headers(external_auth_config),
-                ) 
+                )
             except requests.exceptions.RequestException as e:
                 logger.error(f"Request to token endpoint failed: {str(e)}")
                 raise HTTPException(
                     status_code=HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Request to token endpoint failed: {str(e)}",
-                ) from e  
-            
+                ) from e
+
             # Check response status
             if response.status_code != HTTP_200_OK:
                 logger.error(
@@ -378,7 +388,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
                     detail=f"Failed to get the token from the station {external_auth_config.station_id}. "
                     f"Response from the station: {response.text or ''}",
                 )
-            
+
             # Refresh the token and add the creation date of the newly created token
             token_dict.update(response.json())
             token_dict["access_token_creation_date"] = datetime.datetime.now()
@@ -388,6 +398,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
             token_var.set(token_dict)
             logger.info(f"Access token has been successfully refreshed !")
             logger.info(f"----------- REFRESHED NEW TOKEN: {token_dict}")
+
 
 def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> Dict[str, str]:
     """Prepare HTTP headers for token requests.
@@ -538,6 +549,7 @@ def load_external_auth_config_by_domain(domain: str) -> Optional[ExternalAuthent
 
     # Return an exception if there are no matching services for the given domain
     raise ServiceNotFound(f"No matching service found for domain: {domain}")
+
 
 def create_external_auth_config(
     station_id: str,

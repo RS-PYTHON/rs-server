@@ -14,16 +14,25 @@
 """RSPY Staging processor."""
 
 import asyncio  # for handling asynchronous tasks
+import multiprocessing
 import os
+import threading
 import time
 import uuid
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Union
+from typing import Any, Union
 from urllib.parse import urlparse
 
 import requests
-from dask.distributed import CancelledError, Client, LocalCluster, as_completed
+from dask.distributed import (
+    CancelledError,
+    Client,
+    LocalCluster,
+    Lock,
+    Variable,
+    as_completed,
+)
 from dask_gateway import Gateway
 from dask_gateway.auth import BasicAuth, JupyterHubAuth
 from fastapi import HTTPException
@@ -32,8 +41,9 @@ from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common.authentication.authentication_to_external import (
-    load_external_auth_config_by_domain,
     ACCESS_TK_KEY_IN_RESPONSE,
+    ExternalAuthenticationConfig,
+    load_external_auth_config_by_domain,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.settings import LOCAL_MODE
@@ -42,14 +52,16 @@ from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
-from rs_server_common.authentication.authentication_to_external import ExternalAuthenticationConfig
 
-from dask.distributed import Variable, Lock
-import threading, multiprocessing
-from typing import Any
 
-def streaming_task(product_url: str, config: ExternalAuthenticationConfig, 
-                   bucket: str, s3_file: str, token_dict: dict={}, token_lock: Lock=None):
+def streaming_task(
+    product_url: str,
+    config: ExternalAuthenticationConfig,
+    bucket: str,
+    s3_file: str,
+    token_dict: dict = {},
+    token_lock: Lock = None,
+):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
 
@@ -65,7 +77,7 @@ def streaming_task(product_url: str, config: ExternalAuthenticationConfig,
         bucket (str): Name of the destination bucket where we want to stage our data
         s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
         token_dict (dict): The authentication dictionary (including the access token) required for the download.
-        token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads 
+        token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads
         to the station
     Returns:
         str: The S3 file path where the file was uploaded.
@@ -75,17 +87,16 @@ def streaming_task(product_url: str, config: ExternalAuthenticationConfig,
     """
 
     try:
-        # Create a thread lock to synchronize access to shared resources between the threads of a 
+        # Create a thread lock to synchronize access to shared resources between the threads of a
         # given worker
-        
+
         s3_handler = S3StorageHandler(
             os.environ["S3_ACCESSKEY"],
             os.environ["S3_SECRETKEY"],
             os.environ["S3_ENDPOINT"],
             os.environ["S3_REGION"],
         )
-        s3_handler.s3_streaming_upload(product_url, config,
-                                       bucket, s3_file, token_dict, token_lock)
+        s3_handler.s3_streaming_upload(product_url, config, bucket, s3_file, token_dict, token_lock)
     except RuntimeError as e:
         raise ValueError(
             f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
@@ -183,10 +194,10 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Tasks finished
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
-        
+
         self.cluster = cluster
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
-        
+
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(
         self,
@@ -613,7 +624,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         - If no clusters are available, it attempts to create a new cluster scheduler.
 
         Args:
-            staging_station_id: identifier of the station on which we want to stage data. 
+            staging_station_id: identifier of the station on which we want to stage data.
             This variable will ve used to define the dask.distributed.Variable object used
             to create an access_token shared by all of the Dask workers (there will be as many
             shared variable as station involved in the staging process)
@@ -700,13 +711,13 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 # In cluster mode, get the identifier of the cluster whose name is equal to the cluster_name variable.
                 # Protection for the case when this cluster does not exit
                 else:
-                    
+
                     self.logger.info(f"my cluster name: {cluster_name}")
                     for cluster in clusters:
                         self.logger.info(f"Existing cluster names: {cluster.options.get('cluster_name')}")
-                        is_equal = cluster.options.get('cluster_name') == cluster_name
+                        is_equal = cluster.options.get("cluster_name") == cluster_name
                         self.logger.info(f"Is equal: {is_equal}")
-                    
+
                     cluster_id = next(
                         (
                             cluster.name
@@ -773,7 +784,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # Create a dask.distributed.Variable object which will be shared by all the workers
         self.token_info = Variable(name=f"{staging_station_id}_shared_token")
         self.token_info.set({})
-        
+
         # Create dask.distributed.Locks objects to synchronize the access to the shared resource between
         # the Dask workers (with this lock we have only 1 thread reading the shared resource at once)
         self.token_lock = Lock(name=f"{staging_station_id}_lock")
@@ -856,7 +867,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         if len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
         domain = domains[0]
-        
+
         # retrieve the token
         external_auth_config = load_external_auth_config_by_domain(domain)
 

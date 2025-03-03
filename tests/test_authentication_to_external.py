@@ -16,6 +16,7 @@
 
 # pylint: disable=too-many-lines
 
+import datetime
 import json
 import os
 import shutil
@@ -28,6 +29,8 @@ from fastapi import HTTPException
 from rs_server_common.authentication import authentication_to_external
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
+    ServiceNotFound,
+    TokenDataNotFound,
     create_external_auth_config,
     get_station_token,
     init_rs_server_config_yaml,
@@ -38,13 +41,9 @@ from rs_server_common.authentication.authentication_to_external import (
     set_eodag_auth_env,
     set_eodag_auth_token,
     validate_token_format,
-    TokenDataNotFound,
-    ServiceNotFound
 )
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
-
-import datetime
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -124,11 +123,7 @@ def test_create_rs_server_config_yaml(
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-def test_get_station_token(
-    mocker,
-    get_external_auth_config,
-    mock_variable
-):
+def test_get_station_token(mocker, get_external_auth_config, mock_variable):
     """Test retrieval of station token by station ID and service.
 
     This unit test checks the functionality of retrieving a station token using
@@ -160,15 +155,15 @@ def test_get_station_token(
         get_station_token(ext_auth_config, mock_empty_variable)
     assert f"""Mandatory attribute access_token is not defined in the token variable
                                         of the station {ext_auth_config.station_id}!""" in str(
-                                            exc.value,
-                                        )
+        exc.value,
+    )
 
     # ---------- Test valid token retrieval if we don't have any token yet
     mock_empty_variable.get.return_value = {}
     # Simulate a token response from the authentication service
     response = mock_variable.get()
-    
-    # We remove creation date because these information are not returned by the station 
+
+    # We remove creation date because these information are not returned by the station
     # but only added in addition to the station response in the get_station_token method
     response.pop("access_token_creation_date")
     response.pop("refresh_token_creation_date")
@@ -193,8 +188,8 @@ def test_get_station_token(
     with pytest.raises(HTTPException) as exc:
         get_station_token(ext_auth_config, mock_empty_variable)
     assert f"Failed to get the token from the station {ext_auth_config.station_id}" in str(exc.value)
-   
-    # ---------- Test to generate a new token using the refresh token when the current 
+
+    # ---------- Test to generate a new token using the refresh token when the current
     # access token is expired
     # Change the mock variable creation date and expiration date of the access token
     # to make it become unvalid
@@ -202,11 +197,11 @@ def test_get_station_token(
     mock_variable.get()["refresh_token_creation_date"] = datetime.datetime.now()
 
     response_new_valid_token = {
-        'access_token': 'NewFakeAccessToken', 
-        'expires_in': 3600,
-        'refresh_token': 'NewfakeRefreshToken',
-        'refresh_expires_in': 7200,
-        'token_type': 'Bearer', 
+        "access_token": "NewFakeAccessToken",
+        "expires_in": 3600,
+        "refresh_token": "NewfakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "token_type": "Bearer",
     }
     responses.add(
         responses.POST,
@@ -215,11 +210,10 @@ def test_get_station_token(
         body=json.dumps(response_new_valid_token),
     )
     get_station_token(ext_auth_config, mock_variable)
-    
+
     # Check that the old token has been replaced with the new one
     assert mock_variable.get()["access_token"] == response_new_valid_token["access_token"]
-    
-    
+
     # ---------- Test to generate a new token when both current access and refresh tokens are expired
 
     # Change the mock variable creation date and expiration date of both access and refresh tokens
@@ -228,11 +222,11 @@ def test_get_station_token(
     mock_variable.get()["refresh_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
 
     response_new_valid_token = {
-        'access_token': 'NewFakeAccessToken', 
-        'expires_in': 3600,
-        'refresh_token': 'NewfakeRefreshToken',
-        'refresh_expires_in': 7200,
-        'token_type': 'Bearer', 
+        "access_token": "NewFakeAccessToken",
+        "expires_in": 3600,
+        "refresh_token": "NewfakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "token_type": "Bearer",
     }
     responses.add(
         responses.POST,
@@ -241,10 +235,10 @@ def test_get_station_token(
         body=json.dumps(response_new_valid_token),
     )
     get_station_token(ext_auth_config, mock_variable)
-    
+
     # Check that the old token has been replaced with the new one
     assert mock_variable.get()["refresh_token"] == response_new_valid_token["refresh_token"]
-    
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
@@ -741,8 +735,9 @@ def test_load_external_auth_config_by_domain_no_matching_domain(mocker, get_exte
     with pytest.raises(ServiceNotFound) as exc:
         load_external_auth_config_by_domain(domain)
     assert f"No matching service found for domain: {domain}" in str(
-                                            exc.value,
-                                        )
+        exc.value,
+    )
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])

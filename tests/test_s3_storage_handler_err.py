@@ -22,6 +22,7 @@ import pytest
 import requests
 import responses
 from botocore.stub import Stubber
+from fastapi import HTTPException
 from moto.server import ThreadedMotoServer
 from requests.auth import HTTPBasicAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
@@ -35,7 +36,6 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
     TransferFromS3ToS3Config,
 )
-from fastapi import HTTPException
 
 # TODO: use fixture instead ? + set environment variables in monkeypatch
 from .conftest import (  # pylint: disable=no-name-in-module
@@ -315,7 +315,7 @@ when calling the DeleteObject operation"
 
 @pytest.mark.unit
 @responses.activate
-@pytest.mark.parametrize("station_id",  ["adgs", "ins"])
+@pytest.mark.parametrize("station_id", ["adgs", "ins"])
 def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variable, mock_lock):
     """Unit test to validate error handling in the `s3_streaming_upload` method when streaming a file from
     an HTTP URL to an S3 bucket fails under various conditions.
@@ -367,7 +367,7 @@ def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variabl
     # Use mock for dask.distributed.Variable and dask.distributed.Lock
     token_info = mock_variable
     token_lock = mock_lock
-    
+
     # Test with a running s3 server
     server = ThreadedMotoServer()
     server.start()
@@ -391,12 +391,12 @@ def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variabl
     with pytest.raises(RuntimeError) as exc:
         s3_handler.s3_streaming_upload(stream_url, config, bucket, None, token_info, token_lock)
     assert "Input error for streaming the file from" in str(exc.value)
-    
+
     # Simulate an exception in the token retrieval
     mock_logger = mocker.patch.object(s3_handler, "logger")
     mock_get_station_token = mocker.patch(
         "rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_station_token_with_lock",
-         side_effect=HTTPException(status_code=404, detail="Token error"),
+        side_effect=HTTPException(status_code=404, detail="Token error"),
     )
     with pytest.raises(RuntimeError) as exc:
         s3_handler.s3_streaming_upload(stream_url, config, bucket, s3_key, token_info, token_lock)
@@ -404,8 +404,7 @@ def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variabl
     mock_logger.error.assert_called_once_with(
         "Failed to retrieve the token needed to connect to the external station: 404: Token error",
     )
-    
-    
+
     # mock the rs_server_common.s3_storage_handler.wait_timeout function to speed up the test
     res = mocker.patch(
         "rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.wait_timeout",
@@ -413,9 +412,9 @@ def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variabl
     )
     mock_get_station_token = mocker.patch(
         "rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_station_token_with_lock",
-        side_effect=None
+        side_effect=None,
     )
-    
+
     # test when an exception occurs for requests.get function
     # Loop trough all possible exception raised during request.get and check if failure happen
     for possible_exception in [
@@ -433,11 +432,10 @@ def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variabl
         assert "Failed to stream the file from" in str(exc.value)
         assert res.call_count == S3_MAX_RETRIES - 1
         res.call_count = 0
-    
-    
+
     # test when an exception occurs for the upload_fileobj s3 function
     body = "some byte-array data to test the streaming of a file from http to a s3 bucket\n"
-    
+
     # Add a server response for downloading one file
     responses.add(
         responses.GET,

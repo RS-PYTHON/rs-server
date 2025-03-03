@@ -20,6 +20,7 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
+import datetime
 import json
 import os
 import os.path as osp
@@ -27,7 +28,6 @@ import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
-import datetime
 
 # We are in local mode (no cluster).
 # Do this before any other imports.
@@ -584,28 +584,30 @@ def adgs_pickup_response():
     with open(adgs_response_json, encoding="utf-8") as file:
         return json.loads(file.read())
 
+
 # Define fixtures for mock of dask.distributed.Lock and dask.distributed.Variable objects
-@pytest.fixture(name="mock_variable")  
+@pytest.fixture(name="mock_variable")
 def get_mock_variable(mocker):
     # Setup mock for Dask.distributed.variable
     mock_variable = mocker.MagicMock()
 
     mock_variable.get.return_value = {
-        'access_token': 'fakeAccessToken', 
-        'expires_in': 3600,
-        'access_token_creation_date': datetime.datetime.now(),
-        'refresh_token': 'fakeRefreshToken',
-        'refresh_expires_in': 7200,
-        'refresh_token_creation_date': datetime.datetime.now(),
-        'token_type': 'Bearer', 
+        "access_token": "fakeAccessToken",
+        "expires_in": 3600,
+        "access_token_creation_date": datetime.datetime.now(),
+        "refresh_token": "fakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "refresh_token_creation_date": datetime.datetime.now(),
+        "token_type": "Bearer",
     }
     mock_variable.set.return_value = None
     return mock_variable
-    
-@pytest.fixture(name="mock_lock")  
-def get_mock_lock(mocker):  
+
+
+@pytest.fixture(name="mock_lock")
+def get_mock_lock(mocker):
     # Setup mock for dask.distributed.lock
     mock_lock = mocker.MagicMock()
-    mock_lock.acquire.return_value = True  
-    mock_lock.release.return_value = None 
+    mock_lock.acquire.return_value = True
+    mock_lock.release.return_value = None
     return mock_lock

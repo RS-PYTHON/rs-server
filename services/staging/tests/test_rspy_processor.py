@@ -22,14 +22,16 @@ from unittest.mock import call
 
 import pytest
 import requests
+from dask.distributed import Lock, Variable
 from dask_gateway import Gateway
-from dask.distributed import Variable, Lock
 from fastapi import HTTPException
 from pygeoapi.util import JobStatus
-from rs_server_staging.processors import Staging, streaming_task
-from rs_server_common.authentication.authentication_to_external import TokenAuth, ExternalAuthenticationConfig
+from rs_server_common.authentication.authentication_to_external import (
+    ExternalAuthenticationConfig,
+    TokenAuth,
+)
+from rs_server_staging.processors import S3StorageHandler, Staging, streaming_task
 from rs_server_staging.rspy_models import FeatureCollectionModel
-from rs_server_staging.processors import S3StorageHandler
 
 # pylint: disable=undefined-variable
 # pylint: disable=no-member
@@ -90,15 +92,18 @@ class TestStreaming:
             "rs_server_staging.processors.S3StorageHandler.s3_streaming_upload",
             return_value=None,
         )
-        
-        assert streaming_task(
-            product_url="https://example.com/product.zip", 
-            config = config, 
-            bucket="bucket", 
-            s3_file=s3_key, 
-            token_dict={}, 
-            token_lock=None
-        ) == s3_key
+
+        assert (
+            streaming_task(
+                product_url="https://example.com/product.zip",
+                config=config,
+                bucket="bucket",
+                s3_file=s3_key,
+                token_dict={},
+                token_lock=None,
+            )
+            == s3_key
+        )
 
     def test_streaming_task_incorrect_env(self, mocker, config):
         """Test a error while creating s3 handler"""
@@ -109,14 +114,13 @@ class TestStreaming:
         )
         with pytest.raises(ValueError, match=r"Cannot create s3 connector object."):
             streaming_task(
-                product_url="https://example.com/product.zip", 
-                config = config, 
-                bucket="bucket", 
-                s3_file="file.zip", 
-                token_dict={}, 
-                token_lock=None
+                product_url="https://example.com/product.zip",
+                config=config,
+                bucket="bucket",
+                s3_file="file.zip",
+                token_dict={},
+                token_lock=None,
             )
-
 
     def test_streaming_task_runtime_error(self, mocker, config):
         """Test a runtimeerror while streaming-download."""
@@ -141,14 +145,13 @@ class TestStreaming:
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
             streaming_task(
-                product_url="https://example.com/product.zip", 
-                config = config, 
-                bucket="bucket", 
-                s3_file="file.zip", 
-                token_dict={}, 
-                token_lock=None
+                product_url="https://example.com/product.zip",
+                config=config,
+                bucket="bucket",
+                s3_file="file.zip",
+                token_dict={},
+                token_lock=None,
             )
-
 
 
 class TestStaging:
@@ -729,9 +732,14 @@ class TestStagingDeleteFromBucket:
 class TestStagingMainExecution:
     """Class to test Item processing"""
 
-    def test_dask_cluster_connect(self, mocker, staging_instance: Staging, 
-                                  cluster_options: str, config: ExternalAuthenticationConfig,
-                                  mock_variable):
+    def test_dask_cluster_connect(
+        self,
+        mocker,
+        staging_instance: Staging,
+        cluster_options: str,
+        config: ExternalAuthenticationConfig,
+        mock_variable,
+    ):
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -772,7 +780,7 @@ class TestStagingMainExecution:
 
         # Setup mock for Dask.distributed.variable
         mocker.patch("rs_server_staging.processors.Variable", return_value=mock_variable)
-                
+
         # Call the method under test
         client = staging_instance.dask_cluster_connect(staging_station_id=config.station_id)
 
@@ -790,8 +798,13 @@ class TestStagingMainExecution:
             f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}",
         )
 
-    def test_dask_cluster_connect_failure_no_cluster_name(self, mocker, staging_instance: Staging, 
-                                                          cluster_options, config: ExternalAuthenticationConfig):
+    def test_dask_cluster_connect_failure_no_cluster_name(
+        self,
+        mocker,
+        staging_instance: Staging,
+        cluster_options,
+        config: ExternalAuthenticationConfig,
+    ):
         """Test the bahavior in case no cluster name is found"""
         non_existent_cluster = "another-cluster-name"
         # Mock environment variables to simulate gateway mode
@@ -830,7 +843,7 @@ class TestStagingMainExecution:
         mock_variable.get.return_value = {}
         mock_variable.set.return_value = None
         mocker.patch("rs_server_staging.processors.Variable", return_value=mock_variable)
-        
+
         with pytest.raises(RuntimeError):
             staging_instance.dask_cluster_connect(staging_station_id=config.station_id)
         # Ensure logging was called as expected
@@ -839,8 +852,12 @@ class TestStagingMainExecution:
             f"Dask cluster with 'cluster_name'={non_existent_cluster!r} was not found.",
         )
 
-    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance: Staging, 
-                                                  config: ExternalAuthenticationConfig):
+    def test_dask_cluster_connect_failure_no_envs(
+        self,
+        mocker,
+        staging_instance: Staging,
+        config: ExternalAuthenticationConfig,
+    ):
         """Test to mock the connection to a dask cluster"""
         # Not all the needed env vars are mocked
         mocker.patch.dict(
@@ -849,13 +866,13 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
             },
         )
-        
+
         # Setup mock for Dask.distributed.variable
         mock_variable = mocker.MagicMock()
         mock_variable.get.return_value = {}
         mock_variable.set.return_value = None
         mocker.patch("rs_server_staging.processors.Variable", return_value=mock_variable)
-        
+
         staging_instance.cluster = None
         with pytest.raises(RuntimeError):
             staging_instance.dask_cluster_connect(staging_station_id=config.station_id)
@@ -1003,8 +1020,10 @@ class TestStagingMainExecution:
             "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mocker.Mock(),
         )
-        mocker.patch("rs_server_common.authentication.authentication_to_external.get_station_token", 
-                     return_value="mock_token")
+        mocker.patch(
+            "rs_server_common.authentication.authentication_to_external.get_station_token",
+            return_value="mock_token",
+        )
 
         # Simulate a RuntimeError during Dask cluster connection
         mocker.patch.object(
@@ -1055,13 +1074,15 @@ class TestStagingMainExecution:
             "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mock_external_auth_config,
         )
-        mocker.patch("rs_server_common.authentication.authentication_to_external.get_station_token", 
-                     return_value="mock_token")
+        mocker.patch(
+            "rs_server_common.authentication.authentication_to_external.get_station_token",
+            return_value="mock_token",
+        )
 
         # Mock Dask cluster client
         mock_dask_client = mocker.Mock()
         mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=mock_dask_client)
-        
+
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")
 
@@ -1197,9 +1218,14 @@ class TestStagingUnpublishCatalog:
 class TestStagingSubmitToDaskCluster:
     """Class to group tests for submiting tasks to dask cluster"""
 
-    def test_submit_tasks_to_dask_cluster_success(self, mocker, staging_instance: Staging, 
-                                                  config: ExternalAuthenticationConfig, 
-                                                  mock_variable, mock_lock):
+    def test_submit_tasks_to_dask_cluster_success(
+        self,
+        mocker,
+        staging_instance: Staging,
+        config: ExternalAuthenticationConfig,
+        mock_variable,
+        mock_lock,
+    ):
         """Test the submiting tasks to dask cluster function when successful"""
         # Mock the Dask client
         mock_client = mocker.Mock()
@@ -1216,11 +1242,11 @@ class TestStagingSubmitToDaskCluster:
         # Create a sample object with attributes
         staging_instance.assets_info = mock_assets_info
         staging_instance.catalog_bucket = "mock_bucket"
-        
+
         # Setup mock for Dask.distributed.variable
         mocker.patch("dask.distributed.Variable", return_value=mock_variable)
         staging_instance.token_info = Variable("test_variable")
-        
+
         # Setup mock for dask.distributed.lock
         mocker.patch("dask.distributed.Lock", return_value=mock_lock)
         staging_instance.token_lock = Lock("test_lock")
@@ -1234,33 +1260,38 @@ class TestStagingSubmitToDaskCluster:
         # Assert that tasks are submitted to the Dask client for each asset
         assert len(staging_instance.tasks) == 2  # Two tasks should be submitted
 
-        # Ensure that client.submit was called with correct arguments   
+        # Ensure that client.submit was called with correct arguments
         mock_client.submit.assert_any_call(
             mock_streaming_task,
-            "asset1", 
-            config, 
-            "mock_bucket", 
-            "path1", 
+            "asset1",
+            config,
+            "mock_bucket",
+            "path1",
             staging_instance.token_info,
-            staging_instance.token_lock
+            staging_instance.token_lock,
         )
 
         mock_client.submit.assert_any_call(
             mock_streaming_task,
-            "asset2", 
-            config, 
-            "mock_bucket", 
-            "path2", 
+            "asset2",
+            config,
+            "mock_bucket",
+            "path2",
             staging_instance.token_info,
-            staging_instance.token_lock
+            staging_instance.token_lock,
         )
 
         # Ensure tasks were added to obj.tasks
         assert len(staging_instance.tasks) == 2
 
-    def test_submit_tasks_to_dask_cluster_failure(self, mocker, staging_instance: Staging, 
-                                                  config: ExternalAuthenticationConfig, 
-                                                  mock_variable, mock_lock):
+    def test_submit_tasks_to_dask_cluster_failure(
+        self,
+        mocker,
+        staging_instance: Staging,
+        config: ExternalAuthenticationConfig,
+        mock_variable,
+        mock_lock,
+    ):
         """Test the submiting tasks to dask cluster function when fails"""
         # Mock the Dask client
         mock_client = mocker.Mock()
@@ -1285,11 +1316,11 @@ class TestStagingSubmitToDaskCluster:
         # Setup mock for Dask.distributed.variable
         mocker.patch("dask.distributed.Variable", return_value=mock_variable)
         staging_instance.token_info = Variable("test_variable")
-        
+
         # Setup mock for dask.distributed.lock
         mocker.patch("dask.distributed.Lock", return_value=mock_lock)
         staging_instance.token_lock = Lock("test_lock")
-        
+
         # Call the function under test and catch the RuntimeError
         with pytest.raises(
             RuntimeError,
