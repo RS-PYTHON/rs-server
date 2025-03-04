@@ -177,14 +177,13 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
     if settings.LOCAL_MODE:
         return
 
-    # Read the full cadip station passed in parameter: ins, mps, mti, nsg, sgs, or cadip
-    # No validation needed for landing pages.
-    if access_type != "landing_page":
-        full_station = f'{"cadip" if station_type == "cadip" else "adgs"}_{kwargs["station"]}'
-    else:
-        full_station = station_type
-
     if not kwargs.get("staging_process", False):
+        # Read the full cadip station passed in parameter: ins, mps, mti, nsg, sgs, or cadip
+        # No validation needed for landing pages.
+        if access_type != "landing_page":
+            full_station = f'{"cadip" if station_type == "cadip" else "adgs"}_{kwargs["station"]}'
+        else:
+            full_station = station_type
         requested_role = f"rs_{full_station}_{access_type}".upper()
     else:
         requested_role = f"rs_processes_staging_{access_type}_{station_type}"
