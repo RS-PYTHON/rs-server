@@ -39,6 +39,7 @@ from rs_server_common.db import Base
 from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import DontRaiseExceptions
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
 from sqlalchemy.exc import SQLAlchemyError
@@ -93,10 +94,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         return await call_next(request)
 
 
-# CORS enabled origins
-app.add_middleware(CORSMiddleware)
-
 app.add_middleware(AuthenticationMiddleware)
+app.add_middleware(DontRaiseExceptions)
 
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:
@@ -122,6 +121,9 @@ if common_settings.CLUSTER_MODE:
         prefix=AUTH_PREFIX,
         include_in_schema=True,
     )
+
+# CORS enabled origins
+app.add_middleware(CORSMiddleware)
 
 
 # Exception handlers
