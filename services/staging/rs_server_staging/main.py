@@ -34,7 +34,7 @@ from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
-from rs_server_common.authentication.oauth2 import LoginAndRedirect
+from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.db import Base
 from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils import opentelemetry
@@ -43,8 +43,10 @@ from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import (
@@ -95,6 +97,31 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
 app.add_middleware(CORSMiddleware)
 
 app.add_middleware(AuthenticationMiddleware)
+
+# In cluster mode, add the oauth2 authentication
+if common_settings.CLUSTER_MODE:
+
+    # Existing middlewares
+    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]
+
+    # Insert the SessionMiddleware (to save cookies) after the DontRaiseExceptions middleware.
+    # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
+    if app.middleware_stack:
+        raise RuntimeError("Cannot add middleware after an application has started")
+    middleare_index = middleware_names.index("DontRaiseExceptions")
+    cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
+    app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
+
+    # Get the oauth2 router
+    oauth2_router = oauth2.get_router(app)
+
+    # Add it to the FastAPI application
+    app.include_router(
+        oauth2_router,
+        tags=["Authentication"],
+        prefix=AUTH_PREFIX,
+        include_in_schema=True,
+    )
 
 
 # Exception handlers
