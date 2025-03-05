@@ -16,6 +16,7 @@
 # pylint: disable=E0401
 import os
 import pathlib
+import traceback
 from contextlib import asynccontextmanager
 from string import Template
 from time import sleep
@@ -23,7 +24,7 @@ from typing import Callable
 
 import yaml
 from dask.distributed import LocalCluster
-from fastapi import APIRouter, FastAPI, HTTPException, Path
+from fastapi import APIRouter, FastAPI, HTTPException, Path, status
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
@@ -39,7 +40,6 @@ from rs_server_common.db import Base
 from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import DontRaiseExceptions
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
 from sqlalchemy.exc import SQLAlchemyError
@@ -92,6 +92,38 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
 
         # Call the next middleware
         return await call_next(request)
+
+
+# Need to duplicate this from rs-common due to depds conflict
+class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """
+    In FastAPI we can raise HttpExceptions in the middle of the python code, instead of returning a JSONResponse.
+    But that doesn't work well in some cases. So we catch all exceptions and return a JSONResponse instead.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """
+        Middleware implementation.
+        """
+
+        try:
+            return await call_next(request)  # Call the next middleware
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+
+            # Print the error with the stacktrace in the log
+            logger.error(traceback.format_exc())
+
+            # Get the status code and content from the HTTPException
+            if isinstance(exception, StarletteHTTPException):
+                status_code = exception.status_code
+                content = exception.detail
+
+            # Else use a generic status code, and content = exception message
+            else:
+                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+                content = repr(exception)
+
+            return JSONResponse(status_code=status_code, content=content)
 
 
 app.add_middleware(AuthenticationMiddleware)
