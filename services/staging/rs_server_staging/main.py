@@ -68,6 +68,16 @@ app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
 
 
+def must_be_authenticated(route_path: str) -> bool:
+    """Return true if a user must be authenticated to use this endpoint route path."""
+
+    # Remove the /catalog prefix, if any
+    path = route_path.removeprefix("/catalog")
+
+    no_auth = (path in ["/api", "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
+    return not no_auth
+
+
 class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """
     Implement authentication verification.
@@ -78,7 +88,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         Middleware implementation.
         """
 
-        if common_settings.CLUSTER_MODE:
+        if common_settings.CLUSTER_MODE and must_be_authenticated(request.url.path):
             try:
                 # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
                 await authentication.authenticate(
