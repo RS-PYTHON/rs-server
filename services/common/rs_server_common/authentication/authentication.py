@@ -186,7 +186,7 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
             full_station = station_type
         requested_role = f"rs_{full_station}_{access_type}".upper()
     else:
-        requested_role = f"rs_processes_staging_{access_type}_{station_type}"
+        requested_role = f"rs_processes_staging_{access_type}_{station_type}".upper()
 
     logger.debug(f"Requested role: {requested_role}")
     try:
@@ -197,6 +197,5 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
     if requested_role not in auth_roles:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authorization does not include the right role to {access_type} "
-            f"from the {full_station!r} station",
+            detail="Invalid authorization role",
         )
