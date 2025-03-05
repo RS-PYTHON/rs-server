@@ -1644,26 +1644,13 @@ class TestCatalogPublishFeatureWithoutBucketTransferEndpoint:
         ENDPOINT: PUT: /catalog/collections/{user:collection}/items/{featureID}
         with collection as non existing collection
         """
-        # Change correct feature collection id to match with minimal collection and post it
+        # Change correct feature collection id to match with minimal collection
         a_correct_feature["collection"] = "fixture_collection"
-        # Post the correct feature to catalog
-        feature_post_response = client.post(
-            "/catalog/collections/fixture_owner:fixture_collection/items",
-            json=a_correct_feature,
-        )
-        assert feature_post_response.status_code == fastapi.status.HTTP_201_CREATED
-
-        # Update the feature and PUT it into catalogDB
-        updated_feature_sent = copy.deepcopy(a_correct_feature)
-        updated_feature_sent["bbox"] = [-180.0, -90.0, 180.0, 90.0]
-        del updated_feature_sent["collection"]
-        time.sleep(1)
-
-        # Update feature in non existing collection
+        # Put feature in non existing collection
         non_existing_collection = "NON_EXISTING_FIXTURE_COLLECTION"
         feature_put_response = client.put(
             f"/catalog/collections/fixture_owner:{non_existing_collection}/items/{a_correct_feature['id']}",
-            json=updated_feature_sent,
+            json=a_correct_feature,
         )
 
         assert feature_put_response.status_code == fastapi.status.HTTP_404_NOT_FOUND
