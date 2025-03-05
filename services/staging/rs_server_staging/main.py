@@ -19,6 +19,7 @@ import pathlib
 from contextlib import asynccontextmanager
 from string import Template
 from time import sleep
+from typing import Callable
 
 import yaml
 from dask.distributed import LocalCluster
@@ -27,9 +28,13 @@ from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
+from rs_server_common import settings as common_settings
+from rs_server_common.authentication import authentication, oauth2
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
+from rs_server_common.authentication.oauth2 import LoginAndRedirect
 from rs_server_common.db import Base
 from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils import opentelemetry
@@ -38,6 +43,7 @@ from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -58,14 +64,37 @@ logger = Logging.default(__name__)
 app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
 
+
+class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+    """
+    Implement authentication verification.
+    """
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """
+        Middleware implementation.
+        """
+
+        if common_settings.CLUSTER_MODE:
+            try:
+                # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
+                await authentication.authenticate(
+                    request=request,
+                    apikey_value=request.headers.get(APIKEY_HEADER, None),
+                )
+
+            # Login and redirect to the calling endpoint.
+            except LoginAndRedirect:
+                return await oauth2.login(request)
+
+        # Call the next middleware
+        return await call_next(request)
+
+
 # CORS enabled origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware)
+
+app.add_middleware(AuthenticationMiddleware)
 
 
 # Exception handlers
