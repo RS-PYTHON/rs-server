@@ -1043,7 +1043,7 @@ class TestStagingMainExecution:
         mock_manage_dask_tasks.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_success(self, mocker, staging_instance: Staging):
+    async def test_process_rspy_features_success(self, mocker, staging_instance: Staging, mock_variable, mock_lock):
         """Test case where the entire process runs successfully."""
 
         # Mock the logger
@@ -1081,6 +1081,14 @@ class TestStagingMainExecution:
         # Mock Dask cluster client
         mock_dask_client = mocker.Mock()
         mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=mock_dask_client)
+
+        # Setup mock for Dask.distributed.variable
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+
+        # Setup mock for dask.distributed.lock
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
 
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")

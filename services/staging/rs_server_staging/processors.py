@@ -230,7 +230,7 @@ class Staging(
             None: This method doesn't raise any exceptions directly but logs errors if the
                 catalog check fails.
         """
-        self.logger.debug("Executing staging processor for %s", data)
+        self.logger.debug(f"Executing staging processor for {data}")
         item_collection: FeatureCollectionModel | None = (
             FeatureCollectionModel.parse_obj(data["items"]) if "items" in data else None
         )
@@ -337,9 +337,9 @@ class Staging(
             "updated": datetime.now(),  # Update updated each time a change is made
         }
         if status == JobStatus.failed:
-            self.logger.error("Updating failed job %s: %s", self.job_id, update_data)
+            self.logger.error(f"Updating failed job {self.job_id}: {update_data}")
         else:
-            self.logger.info("Updating job %s: %s", self.job_id, update_data)
+            self.logger.info(f"Updating job {self.job_id}: {update_data}")
 
         self.db_process_manager.update_job(self.job_id, update_data)
         return self._get_execute_result()
@@ -387,7 +387,7 @@ class Staging(
                 return False
             # for debugging only
             for item in item_collection.get("features"):
-                self.logger.debug("Session %s has %d assets", item.get("id"), len(item.get("assets")))
+                self.logger.debug(f"Session {item.get('id')} has {len(item.get('assets'))} assets")
             # end of TODO
             self.create_streaming_list(features, item_collection)
             return True
@@ -436,7 +436,9 @@ class Staging(
                 not_downloaded_features = [item for item in features if item.id not in already_downloaded_ids]
                 self.stream_list = not_downloaded_features
         except KeyError as ke:
-            self.logger.exception("The 'features' field is missing in the response from the catalog service. %s", ke)
+            self.logger.exception(
+                f"The 'features' field is missing in the response from the catalog service. {ke}",
+            )
 
             raise RuntimeError(
                 "The 'features' field is missing in the response from the catalog service.",
@@ -583,7 +585,7 @@ class Staging(
                 # Update status for the job
                 self.log_job_execution(JobStatus.failed, None, f"At least one of the tasks failed: {task_e}")
                 self.delete_files_from_bucket()
-                self.logger.error("Tasks monitoring finished with error. At least one of the tasks failed: %s", task_e)
+                self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
         # Publish all the features once processed
         published_featurs_ids: list[str] = []
@@ -672,7 +674,6 @@ class Staging(
             try:
                 # get the name of the cluster
                 cluster_name = os.environ["RSPY_DASK_STAGING_CLUSTER_NAME"]
-
                 # In local mode, authenticate to the dask cluster with username/password
                 if LOCAL_MODE:
                     gateway_auth = BasicAuth(
@@ -688,7 +689,7 @@ class Staging(
                     if auth_type == "jupyterhub":
                         gateway_auth = JupyterHubAuth(api_token=os.environ["JUPYTERHUB_API_TOKEN"])
                     else:
-                        self.logger.error("Unsupported authentication type: %s", auth_type)
+                        self.logger.error(f"Unsupported authentication type: {auth_type}")
                         raise RuntimeError(f"Unsupported authentication type: {auth_type}")
 
                 gateway = Gateway(
@@ -698,7 +699,7 @@ class Staging(
 
                 # Sort the clusters by newest first
                 clusters = sorted(gateway.list_clusters(), key=lambda cluster: cluster.start_time, reverse=True)
-                self.logger.debug("Cluster list for gateway %s: %s", os.environ["DASK_GATEWAY__ADDRESS"], clusters)
+                self.logger.debug(f"Cluster list for gateway {os.environ['DASK_GATEWAY__ADDRESS']!r}: {clusters}")
 
                 # In local mode, get the first cluster from the gateway.
                 cluster_id = None
@@ -709,13 +710,13 @@ class Staging(
                 # In cluster mode, get the identifier of the cluster whose name is equal to the cluster_name variable.
                 # Protection for the case when this cluster does not exit
                 else:
-                    self.logger.info("my cluster name: %s", cluster_name)
+                    self.logger.info(f"my cluster name: {cluster_name}")
 
                     for cluster in clusters:
-                        self.logger.info("Existing cluster names: %s", cluster.options.get("cluster_name"))
+                        self.logger.info(f"Existing cluster names: {cluster.options.get('cluster_name')}")
 
                         is_equal = cluster.options.get("cluster_name") == cluster_name
-                        self.logger.info("Is equal: %s", is_equal)
+                        self.logger.info(f"Is equal: {is_equal}")
 
                     cluster_id = next(
                         (
@@ -725,26 +726,25 @@ class Staging(
                         ),
                         None,
                     )
-                    self.logger.info("Cluster id vaut: %s", cluster_id)
+                    self.logger.info(f"Cluster id vaut: {cluster_id}")
 
                 if not cluster_id:
                     raise IndexError(f"Dask cluster with 'cluster_name'={cluster_name!r} was not found.")
 
                 self.cluster = gateway.connect(cluster_id)
-                self.logger.info("Successfully connected to the %s dask cluster", cluster_name)
+                self.logger.info(f"Successfully connected to the {cluster_name} dask cluster")
 
             except KeyError as e:
                 self.logger.exception(
                     "Failed to retrieve the required connection details for "
                     "the Dask Gateway from one or more of the following environment variables: "
                     "DASK_GATEWAY__ADDRESS, RSPY_DASK_STAGING_CLUSTER_NAME, "
-                    "JUPYTERHUB_API_TOKEN, DASK_GATEWAY__AUTH__TYPE. %s",
-                    e,
+                    f"JUPYTERHUB_API_TOKEN, DASK_GATEWAY__AUTH__TYPE. {e}",
                 )
 
                 raise RuntimeError from e
             except IndexError as e:
-                self.logger.exception("Failed to find the specified dask cluster: %s", e)
+                self.logger.exception(f"Failed to find the specified dask cluster: {e}")
                 raise RuntimeError(f"No dask cluster named '{cluster_name}' was found.") from e
 
         self.logger.debug("Cluster dashboard: %s", self.cluster.dashboard_link)
@@ -770,12 +770,12 @@ class Staging(
         # This is a temporary fix for the dask cluster settings which does not create a scheduler by default
         # This code should be removed as soon as this is fixed in the kubernetes cluster
         try:
-            self.logger.debug("%s", client.get_versions(check=True))
+            self.logger.debug(f"{client.get_versions(check=True)}")
             workers = client.scheduler_info()["workers"]
-            self.logger.info("Number of running workers: %d", len(workers))
+            self.logger.info(f"Number of running workers: {len(workers)}")
 
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.exception("Dask cluster client failed: %s", e)
+            self.logger.exception(f"Dask cluster client failed: {e}")
             raise RuntimeError(f"Dask cluster client failed: {e}") from e
         if len(workers) == 0:
             self.logger.info("No workers are currently running in the Dask cluster. Scaling up to 1.")
@@ -790,7 +790,7 @@ class Staging(
         # the Dask workers (with this lock we have only 1 thread reading the shared resource at once)
         self.token_lock = Lock(name=f"{staging_station_id}_lock")  # pylint: disable=W0201
         # Check the cluster dashboard
-        self.logger.debug("Dask Client: %s | Cluster dashboard: %s", client, self.cluster.dashboard_link)
+        self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
 
         return client
 

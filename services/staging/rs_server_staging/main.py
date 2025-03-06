@@ -152,13 +152,13 @@ def init_db(pause: int = 3, timeout: int | None = None) -> PostgreSQLManager:
         try:
             # This registers the ENUM type and creates the jobs table if they do not exist
             Base.metadata.create_all(bind=engine)
-            logger.info("Reached %r", engine.url)
+            logger.info(f"Reached {engine.url!r}")
             logger.info("Database table and ENUM type created successfully.")
             break
 
         # It fails if the database is unreachable. Wait a few seconds and try again.
         except SQLAlchemyError:
-            logger.warning("Trying to reach %r", engine.url)
+            logger.warning(f"Trying to reach {engine.url!r}")
 
             # Sleep for n seconds and raise exception if timeout is reached.
             if timeout is not None:
