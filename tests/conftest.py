@@ -591,14 +591,11 @@ def adgs_pickup_response():
         return json.loads(file.read())
 
 
-# Define fixtures for mock of dask.distributed.Lock and dask.distributed.Variable objects
-@pytest.fixture(name="mock_variable")
-def get_mock_variable(mocker):
-    """Setup mock for Dask.distributed.variable"""
-    mock_variable = mocker.MagicMock()
-
-    mock_variable.get.return_value = {
-        "access_token": "fakeAccessToken",
+@pytest.fixture(name="mock_token_dict")
+def get_mock_token_dict():
+    """Setup a mock for the token dictionary"""
+    return {
+        "access_token": "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI",
         "expires_in": 3600,
         "access_token_creation_date": datetime.datetime.now(),
         "refresh_token": "fakeRefreshToken",
@@ -606,6 +603,15 @@ def get_mock_variable(mocker):
         "refresh_token_creation_date": datetime.datetime.now(),
         "token_type": "Bearer",
     }
+
+
+# Define fixtures for mock of dask.distributed.Lock and dask.distributed.Variable objects
+@pytest.fixture(name="mock_variable")
+def get_mock_variable(mocker, mock_token_dict):
+    """Setup mock for Dask.distributed.variable"""
+    mock_variable = mocker.MagicMock()
+
+    mock_variable.get.return_value = mock_token_dict
     mock_variable.set.return_value = None
     return mock_variable
 

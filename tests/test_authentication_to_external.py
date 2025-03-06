@@ -929,10 +929,7 @@ def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-async def test_set_eodag_auth_token_by_station_and_service_success(
-    mocker,
-    get_external_auth_config,
-):
+async def test_set_eodag_auth_token_by_station_and_service_success(mocker, get_external_auth_config, mock_token_dict):
     """
     Unit test for setting the EODAG authentication token using station ID and service.
 
@@ -958,13 +955,18 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
     # usage of the internal token module  for getting the token and setting it to the eodag
     mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
 
-    mocker.patch("rs_server_common.authentication.authentication_to_external.get_station_token", return_value=TOKEN)
+    mocker.patch(
+        "rs_server_common.authentication.authentication_to_external.get_station_token",
+        return_value=mock_token_dict,
+    )
 
     # Call the function
     set_eodag_auth_token(station_id=ext_auth_config.station_id, service=ext_auth_config.service_name)
 
     # Check if the correct token was set in the environment variable
-    assert os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == TOKEN
+    assert (
+        os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == mock_token_dict["access_token"]
+    )
 
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of eodag for getting the token and using it
@@ -980,10 +982,7 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-async def test_set_eodag_auth_token_by_domain_success(
-    mocker,
-    get_external_auth_config,
-):
+async def test_set_eodag_auth_token_by_domain_success(mocker, get_external_auth_config, mock_token_dict):
     """
     Unit test for setting the EODAG authentication token using the domain.
 
@@ -1009,13 +1008,18 @@ async def test_set_eodag_auth_token_by_domain_success(
     # usage of the internal token module  for getting the token and setting it to the eodag
     mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
 
-    mocker.patch("rs_server_common.authentication.authentication_to_external.get_station_token", return_value=TOKEN)
+    mocker.patch(
+        "rs_server_common.authentication.authentication_to_external.get_station_token",
+        return_value=mock_token_dict,
+    )
 
     # Call the function
     set_eodag_auth_token(domain=ext_auth_config.domain)
 
     # Check if the correct token was set in the environment variable
-    assert os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == TOKEN
+    assert (
+        os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == mock_token_dict["access_token"]
+    )
 
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of eodag for getting the token and using it

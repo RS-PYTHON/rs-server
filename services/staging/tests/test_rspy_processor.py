@@ -1002,7 +1002,13 @@ class TestStagingMainExecution:
         mock_log_job.assert_called_with(JobStatus.successful, 100, "Finished without processing any tasks")
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_dask_connection_failure(self, mocker, staging_instance: Staging):
+    async def test_process_rspy_features_dask_connection_failure(
+        self,
+        mocker,
+        staging_instance: Staging,
+        mock_variable,
+        mock_lock,
+    ):
         """Test case where connecting to the Dask cluster raises a RuntimeError."""
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
@@ -1030,6 +1036,14 @@ class TestStagingMainExecution:
             "dask_cluster_connect",
             side_effect=RuntimeError("Dask cluster client failed"),
         )
+
+        # Setup mock for Dask.distributed.variable
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+
+        # Setup mock for dask.distributed.lock
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
 
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")
