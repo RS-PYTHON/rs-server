@@ -20,17 +20,17 @@ import traceback
 from contextlib import asynccontextmanager
 from string import Template
 from time import sleep
-from typing import Callable
+from typing import Annotated, Callable
 
 import yaml
 from dask.distributed import LocalCluster
-from fastapi import APIRouter, FastAPI, HTTPException, Path, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security, status
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
 from rs_server_common.authentication import authentication, oauth2
-from rs_server_common.authentication.apikey import APIKEY_HEADER
+from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
@@ -426,6 +426,18 @@ if LOCAL_MODE:
 
 # Configure OpenTelemetry
 opentelemetry.init_traces(app, "rs.server.staging")
+
+
+async def just_for_the_lock_icon(
+    apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
+):
+    """Dummy function to add a lock icon in Swagger to enter an API key."""
+
+
+for route in app.router.routes:
+    if route.name == "execute_process":  # type: ignore
+        route.dependencies.append(Depends(just_for_the_lock_icon))  # type: ignore
+
 
 app.include_router(router)
 app.router.lifespan_context = app_lifespan
