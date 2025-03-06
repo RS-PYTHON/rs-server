@@ -508,6 +508,9 @@ async def test_app_lifespan_local_mode(
     # Mock environment to simulate local mode
     mocker.patch.dict(os.environ, {"RSPY_LOCAL_MODE": "1"})
 
+    # Mock la variable globale LOCAL_MODE
+    mocker.patch("rs_server_staging.main.LOCAL_MODE", True)
+
     mock_app = FastAPI()
 
     async with app_lifespan(mock_app):
