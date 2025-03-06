@@ -872,14 +872,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
             token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
-            self.logger.error(
-                f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
-            )
-            return self.log_job_execution(
-                JobStatus.failed,
-                0,
-                f"Failed to retrieve the token needed to connect to the external station {domain}",
-            )
+            self.logger.error(f"Exception while processing a feature, {http_exception.detail}")
+            return self.log_job_execution(JobStatus.failed, 0, http_exception.detail)
 
         # connect to the dask cluster
         try:

@@ -104,52 +104,42 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         return await call_next(request)
 
 
-# Need to duplicate this from rs-common due to depds conflict
-class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
+class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """
-    In FastAPI we can raise HttpExceptions in the middle of the python code, instead of returning a JSONResponse.
-    But that doesn't work well in some cases. So we catch all exceptions and return a JSONResponse instead.
+    Middleware to catch all exceptions and return a JSONResponse instead of raising them.
+    This is useful in FastAPI when HttpExceptions are raised within the code but need to be handled gracefully.
     """
 
     async def dispatch(self, request: Request, call_next: Callable):
-        """
-        Middleware implementation.
-        """
-
         try:
-            return await call_next(request)  # Call the next middleware
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-
-            # Print the error with the stacktrace in the log
+            return await call_next(request)
+        except StarletteHTTPException as http_exception:
+            # Log stack trace and return HTTP exception details
             logger.error(traceback.format_exc())
-
-            # Get the status code and content from the HTTPException
-            if isinstance(exception, StarletteHTTPException):
-                status_code = exception.status_code
-                content = exception.detail
-
-            # Else use a generic status code, and content = exception message
-            else:
-                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-                content = repr(exception)
-
-            return JSONResponse(status_code=status_code, content=content)
+            return JSONResponse(status_code=http_exception.status_code, content=str(http_exception.detail))
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            # Log stack trace and return generic error response
+            logger.error(traceback.format_exc())
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content=str(exception),
+            )
 
 
 app.add_middleware(AuthenticationMiddleware)
-app.add_middleware(DontRaiseExceptions)
+app.add_middleware(HandleExceptionsMiddleware)
 
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:
 
     # Existing middlewares
-    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]
+    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]  # type: ignore
 
-    # Insert the SessionMiddleware (to save cookies) after the DontRaiseExceptions middleware.
+    # Insert the SessionMiddleware (to save cookies) after the HandleExceptionsMiddleware middleware.
     # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
     if app.middleware_stack:
         raise RuntimeError("Cannot add middleware after an application has started")
-    middleare_index = middleware_names.index("DontRaiseExceptions")
+    middleare_index = middleware_names.index("HandleExceptionsMiddleware")
     cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
     app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
 
@@ -371,13 +361,13 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        _, status = await processor(
+        _, staging_status = await processor(
             req,
             data.outputs["result"].id,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
         ).execute(data.inputs.dict())
-        return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
+        return JSONResponse(status_code=HTTP_200_OK, content={"status": staging_status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 
