@@ -753,6 +753,13 @@ field is not permitted also.",
 
             # The following section handles the request to create/update an item
             elif "items" in request.scope["path"]:
+                # first check if the collection exists
+                if not await self.collection_exists(request, f"{self.request_ids['owner_id']}_{collection}"):
+                    raise HTTPException(
+                        status_code=HTTP_404_NOT_FOUND,
+                        detail=f"Collection {collection} does not exist.",
+                    )
+
                 # try to get the item if it is already part from the collection
                 item = await self.get_item_from_collection(request)
 
