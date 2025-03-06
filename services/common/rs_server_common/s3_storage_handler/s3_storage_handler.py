@@ -968,10 +968,11 @@ retried for %s times. Aborting",
                     self.logger.error(
                         f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
                     )
-                    self.log_job_execution(  # type: ignore # pylint: disable=C0301
+                    self.log_job_execution(  # type: ignore # pylint: disable=C0301, E1101
                         "failed",
                         0,
-                        message=f"Failed to retrieve the token needed to connect to the external station {config.domain}",
+                        message=f"""Failed to retrieve the token needed to connect to the external"""
+                        f"""station {config.domain}""",
                     )
                     return
                 request = requests.Request(
