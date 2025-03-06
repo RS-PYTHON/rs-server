@@ -29,7 +29,6 @@ from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
-from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
@@ -37,7 +36,7 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.db import Base
-from rs_server_common.settings import LOCAL_MODE
+from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
@@ -88,7 +87,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         Middleware implementation.
         """
 
-        if common_settings.CLUSTER_MODE and must_be_authenticated(request.url.path):
+        if CLUSTER_MODE and must_be_authenticated(request.url.path):
             try:
                 # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
                 await authentication.authenticate(
@@ -130,7 +129,7 @@ app.add_middleware(AuthenticationMiddleware)
 app.add_middleware(HandleExceptionsMiddleware)
 
 # In cluster mode, add the oauth2 authentication
-if common_settings.CLUSTER_MODE:
+if CLUSTER_MODE:
 
     # Existing middlewares
     middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]  # type: ignore
