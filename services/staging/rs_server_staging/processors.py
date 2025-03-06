@@ -32,7 +32,6 @@ from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.util import JobStatus
 from requests.auth import AuthBase
 from requests.exceptions import RequestException
-from rs_server_common.authentication.authentication import auth_validation
 from rs_server_common.authentication.authentication_to_external import (
     get_station_token,
     load_external_auth_config_by_domain,
@@ -869,7 +868,12 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     status_code=401,
                     detail="Failed to retrieve the configuration for the station token.",
                 )
-            auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
+            if not LOCAL_MODE:
+                from rs_server_common.authentication.authentication import (  # pylint: disable=import-outside-toplevel
+                    auth_validation,
+                )
+
+                auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
             token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
             self.logger.error(f"Exception while processing a feature, {http_exception.detail}")
