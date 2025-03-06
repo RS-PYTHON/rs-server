@@ -362,7 +362,6 @@ def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variabl
     config = get_external_auth_config
     secrets = {"s3endpoint": "http://localhost:5000", "accesskey": None, "secretkey": None, "region": ""}
     stream_url = "http://127.0.0.1:6000/file"
-    auth = HTTPBasicAuth("user", "pass")
 
     # Use mock for dask.distributed.Variable and dask.distributed.Lock
     token_info = mock_variable

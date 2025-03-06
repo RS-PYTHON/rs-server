@@ -293,8 +293,8 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
     validate_token_dict(token_dict, external_auth_config)
     current_date = datetime.datetime.now()
 
-    nb_secs_before_token_exp = int(os.getenv("RSPY_TIME_BEFORE_ACCESS_TOKEN_EXPIRE", 60))
-    nb_secs_before_refresh_token_exp = int(os.getenv("RSPY_TIME_BEFORE_REFRESH_TOKEN_EXPIRE", 60))
+    nb_secs_before_token_exp = int(os.getenv("RSPY_TIME_BEFORE_ACCESS_TOKEN_EXPIRE", "60"))
+    nb_secs_before_refresh_token_exp = int(os.getenv("RSPY_TIME_BEFORE_REFRESH_TOKEN_EXPIRE", "60"))
 
     # If we have no token yet or if both the access and refresh tokens are expired, we get a new token
     # using the authorisation grant
@@ -360,7 +360,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
 
         logger.info(f"----------- DIFF VAUT: {diff_in_sec}")
         if diff_in_sec > token_dict["expires_in"] - nb_secs_before_token_exp:
-            logger.info(f"Current access_token is about to expire. Launching request to refresh the token...")
+            logger.info("Current access_token is about to expire. Launching request to refresh the token...")
             data_to_send = prepare_data(external_auth_config)
 
             data_to_send.update({"refresh_token": token_dict["refresh_token"]})
@@ -397,7 +397,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
 
             # Validate the new token dictionary and update the shared token variable with this dictionary
             validate_token_dict(token_dict, external_auth_config)
-            logger.info(f"Access token has been successfully refreshed !")
+            logger.info("Access token has been successfully refreshed !")
             logger.info(f"----------- REFRESHED NEW TOKEN: {token_dict}")
     return token_dict
 

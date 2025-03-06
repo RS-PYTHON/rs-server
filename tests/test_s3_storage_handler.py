@@ -28,9 +28,9 @@ import requests
 import responses
 from botocore.stub import Stubber
 from moto.server import ThreadedMotoServer
-from requests.auth import HTTPBasicAuth
-from rs_server_common.s3_storage_handler.s3_storage_handler import (
-    S3_MAX_RETRIES,
+
+# from requests.auth import HTTPBasicAuth
+from rs_server_common.s3_storage_handler.s3_storage_handler import (  # S3_MAX_RETRIES,
     S3_RETRY_TIMEOUT,
     SLEEP_TIME,
     GetKeysFromS3Config,
