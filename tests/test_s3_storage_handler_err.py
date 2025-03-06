@@ -24,7 +24,6 @@ import responses
 from botocore.stub import Stubber
 from fastapi import HTTPException
 from moto.server import ThreadedMotoServer
-from requests.auth import HTTPBasicAuth
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     DWN_S3FILE_RETRY_TIMEOUT,
     S3_ERR_FORBIDDEN_ACCESS,

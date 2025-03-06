@@ -607,7 +607,7 @@ class Staging(
         self.log_job_execution(JobStatus.successful, 100, "Finished")
         self.logger.info("Tasks monitoring finished")
 
-    def dask_cluster_connect(self, staging_station_id: str):  # pylint: R0912, R0915
+    def dask_cluster_connect(self, staging_station_id: str):  # pylint: disable=too-many-branches, too-many-statements
         """Connects a dask cluster scheduler
         Establishes a connection to a Dask cluster, either in a local environment or via a Dask Gateway in
         a Kubernetes cluster. This method checks if the cluster is already created (for local mode) or connects
