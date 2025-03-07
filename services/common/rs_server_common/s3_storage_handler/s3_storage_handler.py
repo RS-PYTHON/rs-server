@@ -870,21 +870,6 @@ retried for %s times. Aborting",
 
         return failed_files
 
-    def get_station_token_with_lock(
-        self,
-        config: ExternalAuthenticationConfig,
-        token_info: Any,
-        token_lock: Any,
-    ):
-        """
-        Get the station token using a  dask.distributed.Lock object in order to
-        synchronize all threads
-        """
-        if not token_lock:
-            raise StagingLockNotDefined("Staging dask.distributed.lock object is None but is mandatory for the staging")
-        with token_lock:
-            token_info.set(get_station_token(config, token_info.get()))
-
     def s3_streaming_upload(  # pylint: disable=too-many-locals
         self,
         stream_url: str,
@@ -957,29 +942,38 @@ retried for %s times. Aborting",
                 self.connect_s3()
                 self.logger.info(f"Starting the streaming of {stream_url} to s3://{bucket}/{key}")
 
-                # Get/refresh the access token if necessary
-                try:
-                    # Use locks to allow only one thread from one process from one worker to
-                    # access/refresh the shared token dictionary at a time
-                    self.get_station_token_with_lock(config, token_info, token_lock)
+                if not token_lock:
+                    raise StagingLockNotDefined(
+                        "Staging dask.distributed.lock object is None but is mandatory for the staging",
+                    )
 
-                # If we get an error to retrieve the token, we directly stop the loop and raise an exception
-                except HTTPException as http_exception:
-                    self.logger.error(
-                        f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
+                # Use locks to allow only one thread from one process from one worker to
+                # access/refresh the shared token dictionary at a time
+                with token_lock:
+                    try:
+                        token_dict = token_info.get()
+                        # Get/refresh the access token if necessary
+                        token_dict = get_station_token(config, token_dict)
+                        token_info.set(token_dict)
+
+                    # If we get an error to retrieve the token, we directly stop the loop and raise an exception
+                    except HTTPException as http_exception:
+                        self.logger.error(
+                            f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
+                        )
+                        self.log_job_execution(  # type: ignore # pylint: disable=C0301, E1101
+                            "failed",
+                            0,
+                            message=f"""Failed to retrieve the token needed to connect to the external"""
+                            f"""station {config.domain}""",
+                        )
+                        raise http_exception
+
+                    request = requests.Request(
+                        method="GET",
+                        url=stream_url,
+                        auth=TokenAuth(token_info.get()["access_token"]),
                     )
-                    self.log_job_execution(  # type: ignore # pylint: disable=C0301, E1101
-                        "failed",
-                        0,
-                        message=f"""Failed to retrieve the token needed to connect to the external"""
-                        f"""station {config.domain}""",
-                    )
-                    return
-                request = requests.Request(
-                    method="GET",
-                    url=stream_url,
-                    auth=TokenAuth(token_info.get()["access_token"]),
-                )
 
                 prepared_request = session.prepare_request(request)
 
