@@ -399,6 +399,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
             validate_token_dict(token_dict, external_auth_config)
             logger.info("Access token has been successfully refreshed !")
             logger.info(f"----------- REFRESHED NEW TOKEN: {token_dict}")
+
     return token_dict
 
 

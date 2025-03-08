@@ -513,7 +513,7 @@ class S3StorageHandler:
             raise RuntimeError(f"General exception when trying to access bucket {bucket}") from error
 
     def check_s3_key_on_bucket(self, bucket, s3_key):
-        """Check if the s3 key available in the bucket.
+        """Check if the s3 key is available in the bucket.
 
         Args:
             bucket (str): The S3 bucket name.
@@ -955,7 +955,6 @@ retried for %s times. Aborting",
                         # Get/refresh the access token if necessary
                         token_dict = get_station_token(config, token_dict)
                         token_info.set(token_dict)
-
                     # If we get an error to retrieve the token, we directly stop the loop and raise an exception
                     except HTTPException as http_exception:
                         self.logger.error(
