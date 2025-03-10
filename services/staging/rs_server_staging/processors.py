@@ -34,7 +34,9 @@ from dask.distributed import (
 from dask_gateway import Gateway
 from dask_gateway.auth import BasicAuth, JupyterHubAuth
 from pygeoapi.process.base import BaseProcessor
-from pygeoapi.process.manager.postgresql import PostgreSQLManager
+from pygeoapi.process.manager.postgresql import (
+    PostgreSQLManager,  # pylint: disable=C0302
+)
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common.authentication.authentication_to_external import (
