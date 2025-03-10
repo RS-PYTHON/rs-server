@@ -787,17 +787,17 @@ class Staging(
         # Create dask.distributed.Locks objects to synchronize the access to the shared resource between
         # the Dask workers (with this lock we have only 1 thread reading the shared resource at once)
         self.token_lock = Lock(name=f"{staging_station_id}_lock")  # pylint: disable=W0201
-
         # Create a dask.distributed.Variable object which will be shared by all the workers
         self.token_info = Variable(name=f"{staging_station_id}_shared_token")  # pylint: disable=W0201
+        self.token_info.set({})
 
         # Check if the dask.distributed.Variable object is already existing and initialized in the
         # scheduler. If it is not the case, initialize it with an empty dictionary.
-        with self.token_lock:
-            try:
-                self.token_info.get(timeout=0)
-            except (TimeoutError, ValueError):
-                self.token_info.set({})
+        # with self.token_lock:
+        #     try:
+        #         self.token_info.get(timeout=0)
+        #     except (TimeoutError, ValueError):
+        #         self.token_info.set({})
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
