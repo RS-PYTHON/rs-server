@@ -554,6 +554,15 @@ def cadip_session_pickup_response():
         return json.loads(file.read())
 
 
+@pytest.fixture(name="cadip_session_response_10_items")
+@lru_cache(maxsize=1)
+def cadip_session_pickup_response_10_items():
+    """Fixture used to mock the response from CADIP data pickup-point."""
+    cadip_response_json = RESOURCES_FOLDER / "endpoints" / "cadip_session_pickup_response_10_items.json"
+    with open(cadip_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
 @pytest.fixture(name="cadip_file_response")
 @lru_cache(maxsize=1)
 def cadip_file_pickup_response():
@@ -577,5 +586,14 @@ def adgs_stac_feature():
 def adgs_pickup_response():
     """Fixture used to mock the response from ADGS data pickup-point."""
     adgs_response_json = RESOURCES_FOLDER / "endpoints" / "adgs_pickup_response.json"
+    with open(adgs_response_json, encoding="utf-8") as file:
+        return json.loads(file.read())
+
+
+@pytest.fixture(name="adgs_response_10_items")
+@lru_cache(maxsize=1)
+def adgs_pickup_response_10_items():
+    """Fixture used to mock the response from ADGS data pickup-point."""
+    adgs_response_json = RESOURCES_FOLDER / "endpoints" / "adgs_pickup_response_10_items.json"
     with open(adgs_response_json, encoding="utf-8") as file:
         return json.loads(file.read())

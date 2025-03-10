@@ -1018,8 +1018,8 @@ class TestFeatureCollectionOdataStacMapping:
         self,
         client,
         mock_token_validation,
-        adgs_response,
-        cadip_session_response,
+        adgs_response_10_items,
+        cadip_session_response_10_items,
         endpoint,
         page,
         is_last,
@@ -1045,11 +1045,16 @@ class TestFeatureCollectionOdataStacMapping:
         responses.add(
             responses.GET,
             base_cadip_uri,
-            json={"value": []} if is_last else cadip_session_response,
+            json={"value": []} if is_last else cadip_session_response_10_items,
             status=200,
         )
         responses.add(responses.GET, base_cadip_files_uri, json={"value": []}, status=200)
-        responses.add(responses.GET, base_adgs_uri, json={"value": []} if is_last else adgs_response, status=200)
+        responses.add(
+            responses.GET,
+            base_adgs_uri,
+            json={"value": []} if is_last else adgs_response_10_items,
+            status=200,
+        )
 
         response = client.get(endpoint + page)
         assert response.status_code == status.HTTP_200_OK
