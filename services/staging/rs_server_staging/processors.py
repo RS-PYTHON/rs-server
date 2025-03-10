@@ -611,7 +611,10 @@ class Staging(
         self.log_job_execution(JobStatus.successful, 100, "Finished")
         self.logger.info("Tasks monitoring finished")
 
-    def dask_cluster_connect(self, staging_station_id: str):  # pylint: disable=too-many-branches, too-many-statements
+    def dask_cluster_connect(
+        self,
+        staging_station_id: str,
+    ):  # pylint: disable=too-many-branches, too-many-statements, too-many-locals
         """Connects a dask cluster scheduler
         Establishes a connection to a Dask cluster, either in a local environment or via a Dask Gateway in
         a Kubernetes cluster. This method checks if the cluster is already created (for local mode) or connects
@@ -791,10 +794,10 @@ class Staging(
         self.token_lock = Lock(name=f"{staging_station_id}_lock")  # pylint: disable=W0201
         # Create a dask.distributed.Variable object which will be shared by all the workers
         self.token_info = Variable(name=f"{staging_station_id}_shared_token")  # pylint: disable=W0201
-        self.token_info.set({})
 
         # Check if the dask.distributed.Variable object is already existing and initialized in the
-        # scheduler. If it is not the case, initialize it with an empty dictionary.
+        # scheduler. If it is not the case, initialize it with an empty dictionary. If the initialization
+        # of this variable fails, raise an exception
         token_initialized = False
         with self.token_lock:
             try:
@@ -803,8 +806,11 @@ class Staging(
                     token_initialized = True
             except (TimeoutError, ValueError):
                 pass
-        if not token_initialized:
-            self.token_info.set({})
+            if not token_initialized:
+                try:
+                    self.token_info.set({})
+                except Exception as e:
+                    raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}")
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
