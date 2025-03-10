@@ -13,18 +13,21 @@
 # limitations under the License.
 
 """Common functions for fastapi middlewares"""
+import os
 import traceback
 from typing import Callable
 
-from fastapi import Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication import authentication, oauth2
 from rs_server_common.authentication.apikey import APIKEY_HEADER
-from rs_server_common.authentication.oauth2 import LoginAndRedirect
+from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.utils.logging import Logging
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 logger = Logging.default(__name__)
 
@@ -79,3 +82,44 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=str(exception),
             )
+
+
+def apply_middlewares(app: FastAPI):
+    """
+    Applies necessary middlewares and authentication routes to the FastAPI application.
+
+    This function ensures that:
+    1. `SessionMiddleware` is inserted after `HandleExceptionsMiddleware` to enable cookie storage.
+    2. OAuth2 authentication routes are added to the FastAPI application.
+
+    Args:
+        app (FastAPI): The FastAPI application instance.
+
+    Raises:
+        RuntimeError: If the function is called after the application has already started.
+
+    Returns:
+        FastAPI: The modified FastAPI application instance with the required middleware and authentication routes.
+    """
+    # Existing middlewares
+    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]  # type: ignore
+
+    # Insert the SessionMiddleware (to save cookies) after the HandleExceptionsMiddleware middleware.
+    # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
+    if app.middleware_stack:
+        raise RuntimeError("Cannot add middleware after an application has started")
+    middleare_index = middleware_names.index("HandleExceptionsMiddleware")
+    cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
+    app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
+
+    # Get the oauth2 router
+    oauth2_router = oauth2.get_router(app)
+
+    # Add it to the FastAPI application
+    app.include_router(
+        oauth2_router,
+        tags=["Authentication"],
+        prefix=AUTH_PREFIX,
+        include_in_schema=True,
+    )
+    return app

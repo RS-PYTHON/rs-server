@@ -36,15 +36,14 @@ from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import settings as common_settings
-from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import (
     APIKEY_AUTH_HEADER,
     APIKEY_SCHEME_NAME,
 )
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
+    apply_middlewares,
 )
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
@@ -73,7 +72,6 @@ from stac_fastapi.pgstac.transactions import BulkTransactionsClient, Transaction
 from stac_fastapi.pgstac.types.search import PgstacSearch
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.routing import Route
 
 logger = Logging.default(__name__)
@@ -321,28 +319,7 @@ app.openapi = extract_openapi_specification
 
 # In cluster mode, add the oauth2 authentication
 if common_settings.CLUSTER_MODE:
-
-    # Existing middlewares
-    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]
-
-    # Insert the SessionMiddleware (to save cookies) after the HandleExceptionsMiddleware middleware.
-    # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
-    if app.middleware_stack:
-        raise RuntimeError("Cannot add middleware after an application has started")
-    middleare_index = middleware_names.index("HandleExceptionsMiddleware")
-    cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
-    app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
-
-    # Get the oauth2 router
-    oauth2_router = oauth2.get_router(app)
-
-    # Add it to the FastAPI application
-    app.include_router(
-        oauth2_router,
-        tags=["Authentication"],
-        prefix=AUTH_PREFIX,
-        include_in_schema=True,
-    )
+    app = apply_middlewares(app)
 
 
 @asynccontextmanager

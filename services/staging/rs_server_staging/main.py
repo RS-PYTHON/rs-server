@@ -28,16 +28,15 @@ from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
-from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.db import Base
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
+    apply_middlewares,
 )
 from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
 from rs_server_common.utils.logging import Logging
@@ -45,9 +44,7 @@ from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import (
@@ -89,28 +86,7 @@ app.add_middleware(HandleExceptionsMiddleware)
 
 # In cluster mode, add the oauth2 authentication
 if CLUSTER_MODE:
-
-    # Existing middlewares
-    middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]  # type: ignore
-
-    # Insert the SessionMiddleware (to save cookies) after the HandleExceptionsMiddleware middleware.
-    # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
-    if app.middleware_stack:
-        raise RuntimeError("Cannot add middleware after an application has started")
-    middleare_index = middleware_names.index("HandleExceptionsMiddleware")
-    cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
-    app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
-
-    # Get the oauth2 router
-    oauth2_router = oauth2.get_router(app)
-
-    # Add it to the FastAPI application
-    app.include_router(
-        oauth2_router,
-        tags=["Authentication"],
-        prefix=AUTH_PREFIX,
-        include_in_schema=True,
-    )
+    app = apply_middlewares(app)
 
 # CORS enabled origins
 app.add_middleware(CORSMiddleware)
