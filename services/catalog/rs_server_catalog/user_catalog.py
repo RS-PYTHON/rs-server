@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=C0302
+
 """A BaseHTTPMiddleware to handle the user multi catalog.
 
 The stac-fastapi software doesn't handle multi catalog.

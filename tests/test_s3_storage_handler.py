@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=C0302
+
 """Docstring to be added."""
 
 # pylint: disable=R0913,R0914 # Too many arguments, Too many local variables
