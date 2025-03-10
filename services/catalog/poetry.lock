@@ -3127,7 +3127,7 @@ boto3 = ">=1.35.40"
 botocore = ">=1.35.99"
 cachetools = ">=5.5.2"
 eodag = "==v3.1.0b2"
-fastapi = "^0.115.0"
+fastapi = "^0.115.11"
 filelock = "^3.16.1"
 httpx = "^0.27.2"
 itsdangerous = "^2.2.0"
@@ -3147,7 +3147,7 @@ python-dotenv = "^1.0.0"
 python-keycloak = ">=5.3.1,<6.0"
 python-logging-loki = "^0.3.1"
 sqlalchemy = "^2.0.35"
-stac-fastapi-pgstac = "^4.0.1"
+stac-fastapi-pgstac = "^5.0.0"
 stac-pydantic = "^3.1.4"
 uvicorn = ">=0.31,<0.35"
 
@@ -3422,13 +3422,13 @@ url = ["furl (>=0.4.1)"]
 
 [[package]]
 name = "stac-fastapi-api"
-version = "5.0.3"
+version = "5.1.0"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "stac_fastapi_api-5.0.3-py3-none-any.whl", hash = "sha256:2c4fc527efd2d80a23e641fccbd47f39d8123a3bb70a8c4037db7cfc7463c5ea"},
-    {file = "stac_fastapi_api-5.0.3.tar.gz", hash = "sha256:b4d4ef5036b2c0eaaa911ca2edf91676d7ed6bac4ef4712381c2518bf924164d"},
+    {file = "stac_fastapi_api-5.1.0-py3-none-any.whl", hash = "sha256:6abbf4405cd78a82082370c5602a361593b409903704624f0ab654b16f1a936d"},
+    {file = "stac_fastapi_api-5.1.0.tar.gz", hash = "sha256:35990cb3423860080627fe87f9bcf016eac4b01d1a635a48a0123babd7b4ff6d"},
 ]
 
 [package.dependencies]
@@ -3442,13 +3442,13 @@ docs = ["mkdocs", "mkdocs-material", "pdocs"]
 
 [[package]]
 name = "stac-fastapi-extensions"
-version = "5.0.3"
+version = "5.1.0"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "stac_fastapi_extensions-5.0.3-py3-none-any.whl", hash = "sha256:0fb3b3ff97e3b525cc14fad20a557ad24ef230ee50939f150c2b885e3a2f7858"},
-    {file = "stac_fastapi_extensions-5.0.3.tar.gz", hash = "sha256:e70200e58390055178e3b0de5cc11370d8917eb55dd0ceba357aabc8bf9333bc"},
+    {file = "stac_fastapi_extensions-5.1.0-py3-none-any.whl", hash = "sha256:9a8b265707229e5502a27b823781078b8825dad16a02924d93cf68d8ab76c7ac"},
+    {file = "stac_fastapi_extensions-5.1.0.tar.gz", hash = "sha256:e0fd99319c49a1581d54684b785e02c2b1bc8aac99fbb52f11f4d943ed0fa8fa"},
 ]
 
 [package.dependencies]
@@ -3461,13 +3461,13 @@ docs = ["mkdocs", "mkdocs-material", "pdocs"]
 
 [[package]]
 name = "stac-fastapi-pgstac"
-version = "4.0.3"
+version = "5.0.0"
 description = "An implementation of STAC API based on the FastAPI framework and using the pgstac backend."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "stac_fastapi_pgstac-4.0.3-py3-none-any.whl", hash = "sha256:1e43f2c5f321c4784c619a7d75e14cef2fe6fbd92a000aca1c8bb182e814e815"},
-    {file = "stac_fastapi_pgstac-4.0.3.tar.gz", hash = "sha256:a0166b82ee1feb5b448dc034da32c32291fcc838a8269fe083f7712537f9c94e"},
+    {file = "stac_fastapi_pgstac-5.0.0-py3-none-any.whl", hash = "sha256:e3ca31c621ae31431757d96d040cdbffb1702844f7c54e34444a7f2e683aa880"},
+    {file = "stac_fastapi_pgstac-5.0.0.tar.gz", hash = "sha256:645184cd6cb65b90e334c6078a44486fcfc87e747a0fd267f980599c3779201c"},
 ]
 
 [package.dependencies]
@@ -3479,9 +3479,9 @@ orjson = "*"
 pydantic = "*"
 pygeofilter = ">=0.2"
 pypgstac = ">=0.8,<0.10"
-"stac-fastapi.api" = ">=5.0,<5.1"
-"stac-fastapi.extensions" = ">=5.0,<5.1"
-"stac-fastapi.types" = ">=5.0,<5.1"
+"stac-fastapi.api" = ">=5.1,<6.0"
+"stac-fastapi.extensions" = ">=5.1,<6.0"
+"stac-fastapi.types" = ">=5.1,<6.0"
 stac_pydantic = "==3.1.*"
 
 [package.extras]
@@ -3492,13 +3492,13 @@ server = ["uvicorn[standard] (==0.34.0)"]
 
 [[package]]
 name = "stac-fastapi-types"
-version = "5.0.3"
+version = "5.1.0"
 description = "An implementation of STAC API based on the FastAPI framework."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "stac_fastapi_types-5.0.3-py3-none-any.whl", hash = "sha256:993484316f9d9a4c8cb67cfcf7e775ad981c3dbef54b6ad58543afd00da09e8e"},
-    {file = "stac_fastapi_types-5.0.3.tar.gz", hash = "sha256:8154aec03a7ac463d1242576a282c66b89cb8a959bd0d559c1f6edaa0a56d854"},
+    {file = "stac_fastapi_types-5.1.0-py3-none-any.whl", hash = "sha256:f658da8da0dc6c6dca2ffaec147237c61daae9be5550af53f5439738bc536f1e"},
+    {file = "stac_fastapi_types-5.1.0.tar.gz", hash = "sha256:8f62b553be06e43da213bd49e91692591e98fa765f571dee10cf70b5ae724219"},
 ]
 
 [package.dependencies]
