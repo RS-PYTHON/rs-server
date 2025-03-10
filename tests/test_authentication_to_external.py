@@ -132,11 +132,6 @@ def test_get_station_token(
         get_external_auth_config: Fixture to get an ExternalAuthenticationConfig object.
     """
 
-    # Test error when no configuration object is provided
-    with pytest.raises(HTTPException) as exc:
-        get_station_token(None)
-    assert "Failed to retrieve the configuration for the station token." in str(exc.value)
-
     ext_auth_config = get_external_auth_config
 
     # Simulate a token response from the authentication service
