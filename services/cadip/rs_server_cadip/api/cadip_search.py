@@ -213,8 +213,8 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
 
     Args:
-        collection_id (str): used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
-        from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
+        collection_id (str): Used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
+                            from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
     """
 
@@ -275,7 +275,7 @@ async def get_conformance(request: Request):
 
 @router.get("/cadip/collections")
 @handle_exceptions
-async def get_allowed_cadip_collections(request: Request):
+async def get_allowed_cadip_collections(request: Request) -> dict:
     """
         Endpoint to retrieve an object containing collections and links that a user is authorized to
         access based on their API key.
@@ -483,7 +483,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     Args:
         request (Request): The request object (unused).
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        queryables: Lists of queryables applicable to search op.
+        queryables (dict): Lists of queryables applicable to search op.
         limit (int, optional): Maximum number of products to return. Greater than 0, defaults to 100.
         sortby (str): Sort by +/-fieldName (ascending/descending).
         page (int): Page number to be displayed, defaults to first one.
