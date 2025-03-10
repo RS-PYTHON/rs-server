@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 # Copyright 2024 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
