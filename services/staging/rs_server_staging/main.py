@@ -37,6 +37,7 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.db import Base
 from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
+from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
@@ -428,6 +429,9 @@ if LOCAL_MODE:
         os.environ["LOCAL_DASK_USERNAME"] = local_dask_username
         os.environ["LOCAL_DASK_PASSWORD"] = local_dask_password
 
+
+# Configure OpenTelemetry
+opentelemetry.init_traces(app, "rs.server.staging")
 
 app.include_router(router)
 app.router.lifespan_context = app_lifespan
