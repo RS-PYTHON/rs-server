@@ -37,7 +37,6 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
 from rs_server_common.db import Base
 from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
-from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
@@ -123,6 +122,12 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content=str(exception),
             )
+
+
+async def just_for_the_lock_icon(
+    apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
+):
+    """Dummy function to add a lock icon in Swagger to enter an API key."""
 
 
 app.add_middleware(AuthenticationMiddleware)
@@ -351,7 +356,7 @@ async def get_resource(resource: str):
 
 
 # Endpoint to execute the staging process and generate a job ID
-@router.post("/processes/{resource}/execution")
+@router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
 async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
@@ -422,21 +427,6 @@ if LOCAL_MODE:
         """Set dask cluster authentication, only in local mode."""
         os.environ["LOCAL_DASK_USERNAME"] = local_dask_username
         os.environ["LOCAL_DASK_PASSWORD"] = local_dask_password
-
-
-# Configure OpenTelemetry
-opentelemetry.init_traces(app, "rs.server.staging")
-
-
-async def just_for_the_lock_icon(
-    apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
-):
-    """Dummy function to add a lock icon in Swagger to enter an API key."""
-
-
-for route in app.router.routes:
-    if route.name == "execute_process":  # type: ignore
-        route.dependencies.append(Depends(just_for_the_lock_icon))  # type: ignore
 
 
 app.include_router(router)
