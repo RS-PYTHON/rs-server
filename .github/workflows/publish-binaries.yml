@@ -582,6 +582,9 @@ jobs:
         run: |
           set -x
 
+          # Copy the s3cmd config file to be able to access the "real" s3 bucket
+          echo "${{ secrets.S3CFG_ORANGE_BUCKET }}" > ~/.s3cfg
+
           # Clone the rs-demo repository
           git clone https://github.com/RS-PYTHON/rs-demo.git
 
