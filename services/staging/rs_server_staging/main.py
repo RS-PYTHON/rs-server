@@ -16,35 +16,36 @@
 # pylint: disable=E0401
 import os
 import pathlib
-import traceback
 from contextlib import asynccontextmanager
 from string import Template
 from time import sleep
-from typing import Annotated, Callable
+from typing import Annotated
 
 import yaml
 from dask.distributed import LocalCluster
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
-from rs_server_common.authentication import authentication, oauth2
-from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER, APIKEY_HEADER
+from rs_server_common.authentication import oauth2
+from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
+from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.db import Base
+from rs_server_common.middlewares import (
+    AuthenticationMiddleware,
+    HandleExceptionsMiddleware,
+)
 from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
-from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware import Middleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.requests import Request
@@ -77,61 +78,13 @@ def must_be_authenticated(route_path: str) -> bool:
     return not no_auth
 
 
-class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
-    """
-    Implement authentication verification.
-    """
-
-    async def dispatch(self, request: Request, call_next: Callable):
-        """
-        Middleware implementation.
-        """
-
-        if CLUSTER_MODE and must_be_authenticated(request.url.path):
-            try:
-                # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
-                await authentication.authenticate(
-                    request=request,
-                    apikey_value=request.headers.get(APIKEY_HEADER, None),
-                )
-
-            # Login and redirect to the calling endpoint.
-            except LoginAndRedirect:
-                return await oauth2.login(request)
-
-        # Call the next middleware
-        return await call_next(request)
-
-
-class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
-    """
-    Middleware to catch all exceptions and return a JSONResponse instead of raising them.
-    This is useful in FastAPI when HttpExceptions are raised within the code but need to be handled gracefully.
-    """
-
-    async def dispatch(self, request: Request, call_next: Callable):
-        try:
-            return await call_next(request)
-        except StarletteHTTPException as http_exception:
-            # Log stack trace and return HTTP exception details
-            logger.error(traceback.format_exc())
-            return JSONResponse(status_code=http_exception.status_code, content=str(http_exception.detail))
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            # Log stack trace and return generic error response
-            logger.error(traceback.format_exc())
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=str(exception),
-            )
-
-
 async def just_for_the_lock_icon(
     apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
 ):
     """Dummy function to add a lock icon in Swagger to enter an API key."""
 
 
-app.add_middleware(AuthenticationMiddleware)
+app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
 app.add_middleware(HandleExceptionsMiddleware)
 
 # In cluster mode, add the oauth2 authentication
@@ -431,7 +384,6 @@ if LOCAL_MODE:
 
 
 # Configure OpenTelemetry
-opentelemetry.init_traces(app, "rs.server.staging")
 
 app.include_router(router)
 app.router.lifespan_context = app_lifespan

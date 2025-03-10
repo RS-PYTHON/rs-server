@@ -14,16 +14,12 @@
 
 """This module is used to share common functions between apis endpoints"""
 
-import traceback
 from datetime import datetime
-from typing import Any, Callable, List, Union
+from typing import Any, List, Union
 
 from eodag import EOProduct
-from fastapi import HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import HTTPException, status
 from rs_server_common.utils.logging import Logging
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
 
 # pylint: disable=too-few-public-methods
 
@@ -228,34 +224,3 @@ def validate_sort_input(sortby: str):
     """
     sortby = sortby.strip("'\"").lower()
     return [(sortby[1:], "DESC" if sortby[0] == "-" else "ASC")]
-
-
-class DontRaiseExceptions(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
-    """
-    In FastAPI we can raise HttpExceptions in the middle of the python code, instead of returning a JSONResponse.
-    But that doesn't work well in some cases. So we catch all exceptions and return a JSONResponse instead.
-    """
-
-    async def dispatch(self, request: Request, call_next: Callable):
-        """
-        Middleware implementation.
-        """
-
-        try:
-            return await call_next(request)  # Call the next middleware
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-
-            # Print the error with the stacktrace in the log
-            logger.error(traceback.format_exc())
-
-            # Get the status code and content from the HTTPException
-            if isinstance(exception, StarletteHTTPException):
-                status_code = exception.status_code
-                content = exception.detail
-
-            # Else use a generic status code, and content = exception message
-            else:
-                status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-                content = repr(exception)
-
-            return JSONResponse(status_code=status_code, content=content)

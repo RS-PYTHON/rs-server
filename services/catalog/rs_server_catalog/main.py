@@ -24,11 +24,11 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from os import environ as env
-from typing import Annotated, Any, Callable, Dict
+from typing import Annotated, Any, Dict
 
 import httpx
 from brotli_asgi import BrotliMiddleware
-from fastapi import Depends, FastAPI, Request, Security
+from fastapi import Depends, FastAPI, Security
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import ORJSONResponse
 from fastapi.routing import APIRoute
@@ -36,16 +36,18 @@ from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_catalog import __version__
 from rs_server_catalog.user_catalog import UserCatalog
 from rs_server_common import settings as common_settings
-from rs_server_common.authentication import authentication, oauth2
+from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.apikey import (
     APIKEY_AUTH_HEADER,
-    APIKEY_HEADER,
     APIKEY_SCHEME_NAME,
 )
-from rs_server_common.authentication.oauth2 import AUTH_PREFIX, LoginAndRedirect
+from rs_server_common.authentication.oauth2 import AUTH_PREFIX
+from rs_server_common.middlewares import (
+    AuthenticationMiddleware,
+    HandleExceptionsMiddleware,
+)
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import DontRaiseExceptions
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import (
@@ -273,34 +275,6 @@ else:
     extensions = list(extensions_map.values())
 
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
-
-
-class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
-    """
-    Implement authentication verification.
-    """
-
-    async def dispatch(self, request: Request, call_next: Callable):
-        """
-        Middleware implementation.
-        """
-
-        if common_settings.CLUSTER_MODE and must_be_authenticated(request.url.path):
-            try:
-                # Check the api key validity, passed in HTTP header, or oauth2 autentication (keycloak)
-                await authentication.authenticate(
-                    request=request,
-                    apikey_value=request.headers.get(APIKEY_HEADER, None),
-                )
-
-            # Login and redirect to the calling endpoint.
-            except LoginAndRedirect:
-                return await oauth2.login(request)
-
-        # Call the next middleware
-        return await call_next(request)
-
-
 client = CoreCrudClient(pgstac_search_model=post_request_model)
 
 
@@ -331,8 +305,8 @@ api = StacApi(
         Middleware(UserCatalogMiddleware),
         Middleware(BrotliMiddleware),
         Middleware(ProxyHeaderMiddleware),
-        Middleware(AuthenticationMiddleware),
-        Middleware(DontRaiseExceptions),
+        Middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated),
+        Middleware(HandleExceptionsMiddleware),
         Middleware(
             CORSMiddleware,  # WARNING: must be last !
             allow_origins=common_settings.STAC_BROWSER_URLS,
@@ -351,11 +325,11 @@ if common_settings.CLUSTER_MODE:
     # Existing middlewares
     middleware_names = [middleware.cls.__name__ for middleware in app.user_middleware]
 
-    # Insert the SessionMiddleware (to save cookies) after the DontRaiseExceptions middleware.
+    # Insert the SessionMiddleware (to save cookies) after the HandleExceptionsMiddleware middleware.
     # Code copy/pasted from app.add_middleware(SessionMiddleware, secret_key=cookie_secret)
     if app.middleware_stack:
         raise RuntimeError("Cannot add middleware after an application has started")
-    middleare_index = middleware_names.index("DontRaiseExceptions")
+    middleare_index = middleware_names.index("HandleExceptionsMiddleware")
     cookie_secret = os.environ["RSPY_COOKIE_SECRET"]
     app.user_middleware.insert(middleare_index + 1, Middleware(SessionMiddleware, secret_key=cookie_secret))
 

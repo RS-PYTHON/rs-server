@@ -197,5 +197,5 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
     if requested_role not in auth_roles:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authorization role",
+            detail=f"Missing {requested_role} authorization role",
         )
