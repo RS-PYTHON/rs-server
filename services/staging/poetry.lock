@@ -3425,13 +3425,13 @@ dev = ["arrow", "dictdiffer", "jsonschema", "pytest", "pytest-cov", "requests", 
 
 [[package]]
 name = "starlette"
-version = "0.46.1"
+version = "0.45.3"
 description = "The little ASGI library that shines."
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "starlette-0.46.1-py3-none-any.whl", hash = "sha256:77c74ed9d2720138b25875133f3a2dae6d854af2ec37dceb56aef370c1d8a227"},
-    {file = "starlette-0.46.1.tar.gz", hash = "sha256:3c88d58ee4bd1bb807c0d1acb381838afc7752f9ddaec81bbe4383611d833230"},
+    {file = "starlette-0.45.3-py3-none-any.whl", hash = "sha256:dfb6d332576f136ec740296c7e8bb8c8a7125044e7c6da30744718880cdd059d"},
+    {file = "starlette-0.45.3.tar.gz", hash = "sha256:2cbcba2a75806f8a41c722141486f37c28e30a0921c5f6fe4346cb0dcee1302f"},
 ]
 
 [package.dependencies]
@@ -3832,4 +3832,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "40d56733ceb2897cdbf2968baf8e4921f7f87f49cab5a2ae83b66f1b2c86ad36"
+content-hash = "a8d39347bbcac1279edf860c0e9c5d5d28f3fd32f0228d6c23eef95ed590d78f"
