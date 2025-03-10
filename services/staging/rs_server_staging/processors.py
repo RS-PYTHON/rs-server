@@ -51,6 +51,8 @@ from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
 
+TIMEOUT_GET_TOKEN = 5
+
 
 def streaming_task(  # pylint: disable=R0913, R0917
     product_url: str,
@@ -793,11 +795,16 @@ class Staging(
 
         # Check if the dask.distributed.Variable object is already existing and initialized in the
         # scheduler. If it is not the case, initialize it with an empty dictionary.
-        # with self.token_lock:
-        #     try:
-        #         self.token_info.get(timeout=0)
-        #     except (TimeoutError, ValueError):
-        #         self.token_info.set({})
+        token_initialized = False
+        with self.token_lock:
+            try:
+                token_dict = self.token_info.get(timeout=TIMEOUT_GET_TOKEN)
+                if isinstance(token_dict, dict):
+                    token_initialized = True
+            except (TimeoutError, ValueError):
+                pass
+        if not token_initialized:
+            self.token_info.set({})
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
