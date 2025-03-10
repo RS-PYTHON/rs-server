@@ -187,18 +187,21 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         {
             "rel": "self",
             "type": "application/json",
+            "title": "This document",
             "href": "http://testserver/catalog/",
             **AUTHENT_REF,
         },
         {
             "rel": "root",
             "type": "application/json",
+            "title": "Root",
             "href": "http://testserver/catalog/",
             **AUTHENT_REF,
         },
         {
             "rel": "data",
             "type": "application/json",
+            "title": "Collections available for this Catalog",
             "href": "http://testserver/catalog/collections",
             **AUTHENT_REF,
         },
@@ -212,7 +215,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         {
             "rel": "search",
             "type": "application/geo+json",
-            "title": "STAC search",
+            "title": "STAC search [GET]",
             "href": "http://testserver/catalog/search",
             "method": "GET",
             **AUTHENT_REF,
@@ -220,7 +223,7 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         {
             "rel": "search",
             "type": "application/geo+json",
-            "title": "STAC search",
+            "title": "STAC search [POST]",
             "href": "http://testserver/catalog/search",
             "method": "POST",
             **AUTHENT_REF,
@@ -228,37 +231,9 @@ async def test_authentication_and_contents(mocker, httpx_mock: HTTPXMock, client
         {
             "rel": "http://www.opengis.net/def/rel/ogc/1.0/queryables",
             "type": "application/schema+json",
-            "title": "Queryables",
+            "title": "Queryables available for this Catalog",
             "href": "http://testserver/catalog/queryables",
             "method": "GET",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "toto_S1_L1",
-            "href": "http://testserver/catalog/collections/toto:S1_L1",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "toto_S2_L3",
-            "href": "http://testserver/catalog/collections/toto:S2_L3",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "titi_S2_L1",
-            "href": "http://testserver/catalog/collections/titi:S2_L1",
-            **AUTHENT_REF,
-        },
-        {
-            "rel": "child",
-            "type": "application/json",
-            "title": "pyteam_S1_L1",
-            "href": "http://testserver/catalog/collections/pyteam:S1_L1",
             **AUTHENT_REF,
         },
         {
