@@ -810,7 +810,7 @@ class Staging(
                 try:
                     self.token_info.set({})
                 except Exception as e:
-                    raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}")
+                    raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}") from e
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
