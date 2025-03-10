@@ -1,4 +1,4 @@
-# Copyright 2024 CS Group # pylint: disable=C0302
+# Copyright 2024 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

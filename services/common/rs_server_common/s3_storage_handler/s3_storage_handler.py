@@ -968,10 +968,12 @@ retried for %s times. Aborting",
                         )
                         raise http_exception
 
+                    if "access_token" not in token_dict:
+                        raise KeyError("Key access_token does not exist in the token dictionary")
                     request = requests.Request(
                         method="GET",
                         url=stream_url,
-                        auth=TokenAuth(token_info.get()["access_token"]),
+                        auth=TokenAuth(token_dict["access_token"]),
                     )
 
                 prepared_request = session.prepare_request(request)
