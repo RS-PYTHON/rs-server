@@ -393,7 +393,7 @@ def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variabl
     # Simulate an exception in the token retrieval
     mock_logger = mocker.patch.object(s3_handler, "logger")
     mock_get_station_token = mocker.patch(
-        "rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_station_token_with_lock",
+        "rs_server_common.s3_storage_handler.s3_storage_handler.get_station_token",
         side_effect=HTTPException(status_code=404, detail="Token error"),
     )
     with pytest.raises(RuntimeError) as exc:
@@ -409,8 +409,8 @@ def test_s3_streaming_upload_fail(mocker, get_external_auth_config, mock_variabl
         side_effect=None,
     )
     mock_get_station_token = mocker.patch(
-        "rs_server_common.s3_storage_handler.s3_storage_handler.S3StorageHandler.get_station_token_with_lock",
-        side_effect=None,
+        "rs_server_common.s3_storage_handler.s3_storage_handler.get_station_token",
+        return_value=mock_variable.get(),
     )
 
     # test when an exception occurs for requests.get function
