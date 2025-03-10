@@ -327,8 +327,7 @@ def process_product_search(  # pylint: disable=too-many-locals
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
     """
-    Performs a search for products using the ADGS provider, writes the search results to the database,
-    and generates a STAC Feature Collection from the products.
+    Performs a search for products using the ADGS provider and generates a STAC Feature Collection from the products.
 
     Args:
         station (str): Auxip station identifier.
