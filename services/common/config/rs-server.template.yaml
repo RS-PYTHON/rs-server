@@ -30,7 +30,7 @@ template:
 
 external_data_sources:
   adgs:
-    domain: mockup-station-adgs-svc.processing.svc.cluster.local
+    domain: mockup-station-adgs.processing.svc.cluster.local
     service:
       name: auxip
       url: http://127.0.0.1:5000
@@ -39,7 +39,7 @@ external_data_sources:
       authorization: Basic test
 
   adgs2:
-    domain: mockup-station-adgs2-svc.processing.svc.cluster.local
+    domain: mockup-station-adgs2.processing.svc.cluster.local
     service:
       name: auxip
       url: http://127.0.0.1:5001
@@ -50,25 +50,25 @@ external_data_sources:
   # CADIP stations. MPS has Authorization but no scope. MTI has scope but no Authorization
   # the following one is for tests onlys
   cadip:
-    domain: mockup-station-cadip-cadip-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-cadip.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5000
     authentication:
-      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
+      #token_url: http://mockup-station-cadip-ins.processing.svc.cluster.local:8080/oauth2/token
       token_url: http://127.0.0.1:5000/oauth2/token
       scope: sss
   ins:
-    domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-ins.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5002
     authentication:
-      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
+      #token_url: http://mockup-station-cadip-ins.processing.svc.cluster.local:8080/oauth2/token
       token_url: http://127.0.0.1:5002/oauth2/token
       scope: sss
   mps:
-    domain: mockup-station-cadip-mps-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-mps.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5003
@@ -76,7 +76,7 @@ external_data_sources:
       token_url: http://127.0.0.1:5004/oauth2/token
       authorization: Basic test
   mti:
-    domain: mockup-station-cadip-mti-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-mti.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5004
@@ -84,14 +84,14 @@ external_data_sources:
       token_url: http://127.0.0.1:5004/oauth2/token
       scope: openid
   nsg:
-    domain: mockup-station-cadip-nsg-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-nsg.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5005
     authentication:
       token_url: http://127.0.0.1:5005/oauth2/token
   sgs:
-    domain: mockup-station-cadip-sgs-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-sgs.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5006
@@ -101,26 +101,26 @@ external_data_sources:
   # CADIP stations for sessions. MPS has Authorization but no scope. MTI has scope but no Authorization
   # the following one is for tests onlys
   cadip_session:
-    domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-ins.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5000
     authentication:
-      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
+      #token_url: http://mockup-station-cadip-ins.processing.svc.cluster.local:8080/oauth2/token
       token_url: http://127.0.0.1:5000/oauth2/token
       scope: sss
 
   ins_session:
-    domain: mockup-station-cadip-ins-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-ins.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5001
     authentication:
-      #token_url: http://mockup-station-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token
+      #token_url: http://mockup-station-cadip-ins.processing.svc.cluster.local:8080/oauth2/token
       token_url: http://127.0.0.1:5001/oauth2/token
       scope: sss
   mps_session:
-    domain: mockup-station-cadip-mps-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-mps.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5002
@@ -128,7 +128,7 @@ external_data_sources:
       token_url: http://127.0.0.1:5002/oauth2/token
       authorization: Basic test
   mti_session:
-    domain: mockup-station-cadip-mti-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-mti.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5003
@@ -136,14 +136,14 @@ external_data_sources:
       token_url: http://127.0.0.1:5003/oauth2/token
       scope: openid
   nsg_session:
-    domain: mockup-station-cadip-nsg-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-nsg.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5004
     authentication:
       token_url: http://127.0.0.1:5004/oauth2/token
   sgs_session:
-    domain: mockup-station-cadip-sgs-svc.processing.svc.cluster.local
+    domain: mockup-station-cadip-sgs.processing.svc.cluster.local
     service:
       name: cadip
       url: http://127.0.0.1:5005
@@ -152,7 +152,7 @@ external_data_sources:
 
   # LTA
   lta:
-    domain: mockup-lta-lta-svc.processing.svc.cluster.local
+    domain: mockup-lta-lta.processing.svc.cluster.local
     service:
       name: lta
       url: http://127.0.0.1:5006
@@ -162,7 +162,7 @@ external_data_sources:
 
   # PRIP (Production Services)
   s1a:
-    domain: mockup-prip-s1a-svc.processing.svc.cluster.local
+    domain: mockup-prip-s1a.processing.svc.cluster.local
     service:
       name: prip
       url: http://127.0.0.1:5007
@@ -170,7 +170,7 @@ external_data_sources:
       token_url: http://127.0.0.1:5007/oauth2/token
       authorization: Basic test
   s2a:
-    domain: mockup-prip-s2a-svc.processing.svc.cluster.local
+    domain: mockup-prip-s2a.processing.svc.cluster.local
     service:
       name: prip
       url: http://127.0.0.1:5008
