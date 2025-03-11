@@ -129,7 +129,7 @@ yaml.add_representer(LiteralStr, represent_literal_str)
 
 # Replace local urls like http(s)://(127.0.0.1|localhost):5xxx
 REGEX_URL = re.compile(r"(https?://)(127.0.0.1|localhost):5\d+")
-REGEX_DOMAIN = re.compile(r"mockup-.+-svc.processing.svc.cluster.local")
+REGEX_DOMAIN = re.compile(r"mockup-.+.processing.svc.cluster.local")
 
 # Replace k8s values
 REGEX_RANGE_START = r"({{-?\s*range\s.*-?}})"
@@ -560,25 +560,25 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
             if station.adgs:
                 return re.sub(
                     REGEX_URL,
-                    rf"\g<1>mockup-station-{station.value}-svc.processing.svc.cluster.local:8080",
+                    rf"\g<1>mockup-station-{station.value}.processing.svc.cluster.local:8080",
                     input_value,
                 )
             if station.cadip:
                 return re.sub(
                     REGEX_URL,
-                    rf"\g<1>mockup-station-cadip-{station.value}-svc.processing.svc.cluster.local:8080",
+                    rf"\g<1>mockup-station-cadip-{station.value}.processing.svc.cluster.local:8080",
                     input_value,
                 )
             if station.lta:
                 return re.sub(
                     REGEX_URL,
-                    rf"\g<1>mockup-lta-{station.value}-svc.processing.svc.cluster.local:8080",
+                    rf"\g<1>mockup-lta-{station.value}.processing.svc.cluster.local:8080",
                     input_value,
                 )
             if station.prip:
                 return re.sub(
                     REGEX_URL,
-                    rf"\g<1>mockup-prip-{station.value}-svc.processing.svc.cluster.local:8080",
+                    rf"\g<1>mockup-prip-{station.value}.processing.svc.cluster.local:8080",
                     input_value,
                 )
             # No modification
