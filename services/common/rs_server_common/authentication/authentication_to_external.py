@@ -32,7 +32,6 @@ from rs_server_common.utils.logging import Logging
 from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
-    HTTP_401_UNAUTHORIZED,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
@@ -186,11 +185,6 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
         HTTPException: If the external authentication configuration cannot be retrieved,
                        if the token request fails, or if the token format is invalid.
     """
-    if not external_auth_config:
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Failed to retrieve the configuration for the station token.",
-        )
 
     headers = prepare_headers(external_auth_config)
     data_to_send = prepare_data(external_auth_config)

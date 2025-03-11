@@ -45,6 +45,7 @@ from starlette.requests import Request
 from .rspy_models import Feature, FeatureCollectionModel
 
 
+# pylint: disable=too-many-lines
 # Custom authentication class
 class TokenAuth(AuthBase):
     """Custom authentication class
@@ -181,6 +182,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         """
         #################
         # Locals
+        self.request = credentials
         self.headers: Headers = credentials.headers
         self.stream_list: list[Feature] = []
         #################
@@ -853,7 +855,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         # Determine the domain(s)
         domains = list({urlparse(asset[0]).hostname for asset in self.assets_info})
-        self.logger.info("Staging from domain(s) {domains}")
+        self.logger.info(f"Staging from domain(s) {domains}")
         if len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
         domain = domains[0]
@@ -861,16 +863,21 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # retrieve the token
         try:
             external_auth_config = load_external_auth_config_by_domain(domain)
+            if not external_auth_config:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Failed to retrieve the configuration for the station token.",
+                )
+            if not LOCAL_MODE:
+                from rs_server_common.authentication.authentication import (  # pylint: disable=import-outside-toplevel
+                    auth_validation,
+                )
+
+                auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
             token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
-            self.logger.error(
-                f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
-            )
-            return self.log_job_execution(
-                JobStatus.failed,
-                0,
-                f"Failed to retrieve the token needed to connect to the external station {domain}",
-            )
+            self.logger.error(f"Exception while processing a feature, {http_exception.detail}")
+            return self.log_job_execution(JobStatus.failed, 0, http_exception.detail)
 
         # connect to the dask cluster
         try:

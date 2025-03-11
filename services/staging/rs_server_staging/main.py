@@ -19,19 +19,26 @@ import pathlib
 from contextlib import asynccontextmanager
 from string import Template
 from time import sleep
+from typing import Annotated
 
 import yaml
 from dask.distributed import LocalCluster
-from fastapi import APIRouter, FastAPI, HTTPException, Path
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
+from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
 from rs_server_common.db import Base
-from rs_server_common.settings import LOCAL_MODE
+from rs_server_common.middlewares import (
+    AuthenticationMiddleware,
+    HandleExceptionsMiddleware,
+    apply_middlewares,
+)
+from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
@@ -58,14 +65,32 @@ logger = Logging.default(__name__)
 app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
 
+
+def must_be_authenticated(route_path: str) -> bool:
+    """Return true if a user must be authenticated to use this endpoint route path."""
+
+    # Remove the /catalog prefix, if any
+    path = route_path.removeprefix("/catalog")
+
+    no_auth = (path in ["/api", "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
+    return not no_auth
+
+
+async def just_for_the_lock_icon(
+    apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
+):
+    """Dummy function to add a lock icon in Swagger to enter an API key."""
+
+
+app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
+app.add_middleware(HandleExceptionsMiddleware)
+
+# In cluster mode, add the oauth2 authentication
+if CLUSTER_MODE:
+    app = apply_middlewares(app)
+
 # CORS enabled origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware)
 
 
 # Exception handlers
@@ -262,7 +287,7 @@ async def get_resource(resource: str):
 
 
 # Endpoint to execute the staging process and generate a job ID
-@router.post("/processes/{resource}/execution")
+@router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
 async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
@@ -271,13 +296,13 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
-        _, status = await processor(
+        _, staging_status = await processor(
             req,
             data.outputs["result"].id,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
         ).execute(data.inputs.dict())
-        return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
+        return JSONResponse(status_code=HTTP_200_OK, content={"status": staging_status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 
