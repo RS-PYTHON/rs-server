@@ -76,7 +76,8 @@ def streaming_task(  # pylint: disable=R0913, R0917
         allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
         bucket (str): Name of the destination bucket where we want to stage our data
         s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
-        token_dict (dict): The authentication dictionary (including the access token) required for the download.
+        token_dict (dask.distributed.Variable): Dask shared variable containing authentication
+        (including the access token) required for the download.
         token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads
         to the station
     Returns:

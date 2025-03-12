@@ -896,7 +896,8 @@ retried for %s times. Aborting",
             allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
-            token_dict (dict): The authentication dictionary (including the access token) required for the download.
+            token_dict (dask.distributed.Variable): Dask shared variable containing authentication information
+            (including the access token) required for the download.
             token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads
             to the station
             max_retries (int, optional): The maximum number of retry attempts if an error occurs
