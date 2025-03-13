@@ -21,13 +21,16 @@ from string import Template
 from time import sleep
 from typing import Annotated
 
+import httpx
 import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
+from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
+from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
@@ -231,7 +234,8 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     init_rs_server_config_yaml()
     # Create jobs table
     process_manager = init_db()
-
+    if CLUSTER_MODE:
+        common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
     # In local mode, if the gateway is not defined, create a dask LocalCluster
     cluster = None
     if LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
