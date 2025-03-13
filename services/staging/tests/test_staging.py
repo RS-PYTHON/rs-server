@@ -504,10 +504,6 @@ async def test_app_lifespan_local_mode(
     staging_client,  # pylint: disable=unused-argument
 ):
     """Test app_lifespan when running in local mode (no Dask Gateway connection)."""
-
-    # Mock environment to simulate local mode
-    mocker.patch.dict(os.environ, {"RSPY_LOCAL_MODE": "1"})
-
     mock_app = FastAPI()
 
     async with app_lifespan(mock_app):
