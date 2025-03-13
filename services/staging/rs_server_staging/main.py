@@ -293,6 +293,8 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
+    ### TODO: call the function unmarshalrequest to validate the staging body sent to the server
+
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
@@ -302,6 +304,8 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             app.extra["process_manager"],
             app.extra["dask_cluster"],
         ).execute(data.inputs.dict())
+
+        ### TODO: call a function to validate the response that will be sent back to the client
         return JSONResponse(status_code=HTTP_200_OK, content={"status": staging_status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")

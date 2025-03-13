@@ -1,0 +1,52 @@
+{
+   "version":"0.2.0",
+   "id":"staging",
+   "title":{
+      "en":"Staging"
+   },
+   "description":{
+      "en":"A process that takes an external STAC ItemCollection, asynchronously download its assets into the RS catalog bucket and creates the corresponding STAC items in the RS catalog."
+   },
+   "jobControlOptions":[
+      "async-execute"
+   ],
+   "keywords":[
+      "stac",
+      "staging"
+   ],
+   "links":[
+      {
+         "type":"text/html",
+         "rel":"about",
+         "title":"documentation",
+         "href":"https://home.rs-python.eu/rs-documentation/rs-server/docs/doc/users/functionalities/#staging",
+         "hreflang":"en-US"
+      }
+   ],
+   "inputs":{
+      "collection":{
+         "title":"Target collection",
+         "description":"The target collection identifier in the RS catalog",
+         "id":"",
+         "schema":{
+            "type":"string"
+         },
+         "minOccurs":1,
+         "maxOccurs":1
+      },
+      "items":{
+
+      },
+      "provider":"cadip"
+   },
+   "outputs":{
+      "result":{
+         "title":"Output STAC items",
+         "id":"some_output_id",
+         "description":"The staged STAC ItemCollection",
+         "schema":"false",
+         "minOccurs":1,
+         "maxOccurs":1
+      }
+   }
+}
