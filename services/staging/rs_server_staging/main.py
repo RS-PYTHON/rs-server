@@ -43,6 +43,10 @@ from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
+from rs_server_staging.staging_endpoints_validation import (
+    validate_and_unmarshal_request,
+    validate_and_unmarshal_response,
+)
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -292,6 +296,9 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
+
+    # Validate request payload
+    validate_and_unmarshal_request(req)
 
     ### TODO: call the function unmarshalrequest to validate the staging body sent to the server
 
