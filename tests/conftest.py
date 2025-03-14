@@ -43,6 +43,7 @@ import pytest
 import responses
 import yaml
 from dotenv import load_dotenv
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
@@ -215,7 +216,7 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
 
 
 @pytest.fixture(name="client")
-def client_(fastapi_app):
+def client_(fastapi_app: FastAPI):
     """Test the FastAPI application, opens the database session."""
     with TestClient(fastapi_app) as client:
         yield client
@@ -229,7 +230,7 @@ def create_tables(client):  # pylint: disable=unused-argument
 
 
 @pytest.fixture(scope="function", autouse=True)
-def session_override(client, fastapi_app):  # pylint: disable=unused-argument
+def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-argument
     """Override the default database session"""
 
     # pylint: disable=duplicate-code
