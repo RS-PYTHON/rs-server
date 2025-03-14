@@ -13,9 +13,12 @@
 # limitations under the License.
 
 """rs server staging main module."""
+import asyncio
+
 # pylint: disable=E0401
 import os
 import pathlib
+import threading
 from contextlib import asynccontextmanager
 from string import Template
 from time import sleep
@@ -28,6 +31,7 @@ from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
 from rs_server_common.authentication.authentication_to_external import (
+    get_station_token,
     init_rs_server_config_yaml,
 )
 from rs_server_common.db import Base
@@ -219,6 +223,13 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     fastapi_app.extra["process_manager"] = process_manager
     # fastapi_app.extra["db_table"] = db.table("jobs")
     fastapi_app.extra["dask_cluster"] = cluster
+    # token refereshment logic
+    fastapi_app.extra["auth_list"] = []
+    fastapi_app.extra["auth_list_lock"] = threading.Lock()
+    fastapi_app.extra["new_task_event"] = asyncio.Event()
+    fastapi_app.extra["shutdown_event"] = asyncio.Event()
+    # Run the refresh loop in the background
+    fastapi_app.extra["refresh_task"] = asyncio.create_task(refresh_auth_tokens(timeout=20))
 
     # Yield control back to the application (this is where the app will run)
     yield
@@ -228,6 +239,87 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     if LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
+    fastapi_app.extra["shutdown_event"].set()  # Signal shutdown
+    # Cancel the refresh task and wait for it to exit cleanly
+    refresh_task = fastapi_app.extra.get("refresh_task")
+    if refresh_task:
+        refresh_task.cancel()
+        try:
+            await refresh_task  # Ensure the task exits
+        except asyncio.CancelledError:
+            pass  # Ignore the cancellation exception
+    logger.info("Application gracefully stopped...")
+
+
+async def refresh_token(auth_refresh_token):
+    """Handles token refresh asynchronously without threads."""
+    try:
+        if auth_refresh_token.followers == 0:
+            logger.debug(f"No followers for {auth_refresh_token.token_info.name}. EXIT refresh_token")
+            return
+        if not auth_refresh_token.token_lock.client.scheduler:
+            logger.debug(f"No scheduler connected for {auth_refresh_token.token_info.name}. EXIT refresh_token")
+            return
+        logger.debug("ENTER refresh_token ")
+        with auth_refresh_token.token_lock:
+            logger.debug("LOCK acquired ")
+            try:
+                token_dict = auth_refresh_token.token_info.get()
+                logger.debug(f"Refreshing token {auth_refresh_token.token_info.name}: {token_dict}")
+                # Get/refresh the access token if necessary
+                token_dict = get_station_token(auth_refresh_token.config, token_dict)
+                auth_refresh_token.token_info.set(token_dict)
+            # If we get an error to retrieve the token, print a message
+            except HTTPException as http_exception:
+                logger.exception(
+                    f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
+                )
+                # should a re-try be started?
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.exception(f"Caught exception  refresh_token : {e}")
+    logger.debug("EXIT refresh_token ")
+
+
+async def refresh_auth_tokens(timeout: int = 60):
+    """Background thread to refresh tokens when needed."""
+    logger.info("Starting the background thread to refresh tokens")
+    while True:
+        try:
+            # Wait for either a new task submits to dask cluster even or a shutdown event, with a timeout
+            await asyncio.wait(
+                {
+                    asyncio.create_task(app.extra["new_task_event"].wait()),
+                    asyncio.create_task(app.extra["shutdown_event"].wait()),
+                },
+                timeout=timeout,  # Wait up to `timeout` seconds before waking up
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
+                logger.info("Finishing the background thread to refresh tokens")
+                break
+
+            # If the event triggered was new_task_event, reset it
+            if app.extra["new_task_event"].is_set():
+                app.extra["new_task_event"].clear()
+            logger.debug("Refreshing tokens")
+
+            # Refresh tokens concurrently for all items in the list
+            tmp_list = []
+            with app.extra["auth_list_lock"]:
+                tmp_list = app.extra["auth_list"].copy()
+            await asyncio.gather(
+                *[refresh_token(auth) for auth in tmp_list],
+            )
+            logger.debug("await asyncio.gather finished")
+        except asyncio.CancelledError:
+            # Handle cancellation properly (for example when FastAPI shuts down)
+            # logger.exception(f"Handle cancellation: {e}")
+            break
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception(f"Handle cancellation: {e}")
+            break
+    logger.info("Exiting from the tokens refreshment thread !")
 
 
 # Health check route
@@ -278,6 +370,9 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             data.outputs["result"].id,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
+            app.extra["auth_list"],
+            app.extra["auth_list_lock"],
+            app.extra["new_task_event"],
         ).execute(data.inputs.dict())
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
@@ -300,7 +395,7 @@ async def get_jobs_endpoint():
     """Returns the status of all jobs."""
     try:
         return app.extra["process_manager"].get_jobs()
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         # Handle exceptions and return an appropriate error message
         raise HTTPException(status_code=HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 

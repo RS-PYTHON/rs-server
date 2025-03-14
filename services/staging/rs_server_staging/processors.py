@@ -15,6 +15,7 @@
 
 import asyncio  # for handling asynchronous tasks
 import os
+import threading
 import time
 import uuid
 from datetime import datetime
@@ -41,9 +42,14 @@ from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
+    TokenAuth,
     load_external_auth_config_by_domain,
 )
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3_MAX_RETRIES,
+    S3_RETRY_TIMEOUT,
+    S3StorageHandler,
+)
 from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import Headers
@@ -59,7 +65,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
     config: ExternalAuthenticationConfig,
     bucket: str,
     s3_file: str,
-    token_dict: Any,
+    token_info: Any,
     token_lock: Any,
 ):
     """
@@ -76,7 +82,8 @@ def streaming_task(  # pylint: disable=R0913, R0917
         allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
         bucket (str): Name of the destination bucket where we want to stage our data
         s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
-        token_dict (dict): The authentication dictionary (including the access token) required for the download.
+        token_info (dask.distributed.Variable): The authentication dask variable (with a dictionary inside)
+                shared by all of the Dask workers
         token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads
         to the station
     Returns:
@@ -84,26 +91,91 @@ def streaming_task(  # pylint: disable=R0913, R0917
 
     Raises:
         ValueError: If the streaming process fails, raises a ValueError with details of the failure.
+
+    Retry Mechanism:
+        - Retries occur for network-related errors (`RequestException`) or S3 client errors
+        (`ClientError`, `BotoCoreError`).
+        - The function waits before retrying, with the delay time increasing exponentially
+        (based on the `backoff_factor`).
+        - The backoff formula is `backoff_factor * (2 ** (attempt - 1))`, allowing progressively
+        longer wait times between retries.
     """
 
-    try:
-        # Create a thread lock to synchronize access to shared resources between the threads of a
-        # given worker
+    # Create a thread lock to synchronize access to shared resources between the threads of a
+    # given worker
+    s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))
+    attempt = 0
+    max_retries = int(os.environ.get("S3_MAX_RETRIES", S3_MAX_RETRIES))
+    while attempt < max_retries:
+        # this token_lock may not be used when fetching the vale from the dask Variable
+        # this is at least my understanding from the documentation I read and src code :
+        # - dask Variable uses a centralized, atomic update mechanism, ensuring that .get() always
+        #    returns a fully stored value (this is done by the dask scheduler). the usage of client.sync() function
+        #    leaded me to this idea
+        # - locks are not needed for reading because .get() never returns a partially written state.
+        # - only writes need a lock to prevent multiple updates from conflicting. this should be discussed because
+        #    normally only the thread from the processors.py should write it
+        auth = None
+        try:
+            with token_lock:
+                # fetch the access_token from the shared dask variable
+                token_dict = token_info.get()
+                if "access_token" not in token_dict:
+                    raise KeyError("Key access_token does not exist in the token dictionary")
+                auth = TokenAuth(token_dict["access_token"])
 
-        s3_handler = S3StorageHandler(
-            os.environ["S3_ACCESSKEY"],
-            os.environ["S3_SECRETKEY"],
-            os.environ["S3_ENDPOINT"],
-            os.environ["S3_REGION"],
-        )
-        s3_handler.s3_streaming_upload(product_url, config, bucket, s3_file, token_dict, token_lock)
-    except RuntimeError as e:
-        raise ValueError(
-            f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
-        ) from e
-    except KeyError as exc:
-        raise ValueError(f"Cannot create s3 connector object. Reason: {exc}") from exc
+                s3_handler = S3StorageHandler(
+                    os.environ["S3_ACCESSKEY"],
+                    os.environ["S3_SECRETKEY"],
+                    os.environ["S3_ENDPOINT"],
+                    os.environ["S3_REGION"],
+                )
+                # DEBUG ONLY !
+                # product_url = product_url.replace("adgs-station:5000", "127.0.0.1:5001")
+                # end of DEBUG ONLY !
+                s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
+                s3_handler.disconnect_s3()
+                break
+        except ConnectionError as e:
+            attempt += 1
+            if attempt < max_retries:
+                # keep retrying
+                s3_handler.disconnect_s3()
+                print(f"S3 level failed to stream. Retrying in {s3_retry_timeout} seconds.")
+                s3_handler.wait_timeout(s3_retry_timeout)
+                continue
+            print(f"S3 level failed to stream. Tried for {max_retries} times, giving up")
+            raise ValueError(
+                f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
+            ) from e
+        except KeyError as exc:
+            raise ValueError(f"Cannot create s3 connector object. Reason: {exc}") from exc
+        except RuntimeError as e:
+            raise ValueError(
+                f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
+            ) from e
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Unhandled exception in streaming_task : {e}")
+
     return s3_file
+
+
+class RefreshTokenData:  # pylint: disable=too-few-public-methods
+    """
+    Class that has info for refreshing an external station token
+    """
+
+    def __init__(
+        self,
+        config: ExternalAuthenticationConfig,
+        token_lock: Lock,
+        token_info: Variable,
+        followers: int,
+    ):
+        self.config = config
+        self.token_lock = token_lock
+        self.token_info = token_info
+        self.followers = followers
 
 
 class Staging(
@@ -141,6 +213,9 @@ class Staging(
         item: str,
         db_process_manager: PostgreSQLManager,
         cluster: LocalCluster,
+        auth_list: list[RefreshTokenData],
+        auth_list_lock: threading.Lock,
+        new_task_event: asyncio.Event,
     ):  # pylint: disable=super-init-not-called
         """
         Initialize the Staging processor with credentials, input collection, catalog details,
@@ -196,9 +271,11 @@ class Staging(
         # Tasks finished
         self.tasks_finished = 0
         self.logger = Logging.default(__name__)
-
         self.cluster = cluster
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
+        self.auth_list = auth_list
+        self.auth_list_lock = auth_list_lock
+        self.new_task_event = new_task_event
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(
@@ -545,6 +622,27 @@ class Staging(
         except KeyError as exc:
             self.logger.error("Cannot connect to s3 storage, %s", exc)
 
+    def decrease_followers_for_token(self):
+        """
+        Method used to decrease the number of followers from RefreshTokenData.
+
+        As job are completed, progress is dynamically incremented and monitored into DB.
+        If a single tasks fails:
+            - handle_task_failure() is called
+            - processor waits (RSPY_STAGING_TIMEOUT or 600 seconds) untill running tasks are finished
+            - the execution of future tasks is canceled.
+            - When all streaming tasks are finished, processor removes all files streamed in s3 bucket.
+
+        Args:
+            client (Client): Dask client.
+            catalog_collection (str): Name of the catalog collection.
+        """
+        with self.auth_list_lock:
+            for auth in self.auth_list:
+                if auth.token_info.name == self.token_info.name:
+                    auth.followers -= 1
+                    break
+
     def manage_dask_tasks_results(self, client: Client, catalog_collection: str):
         """
         Method used to manage dask tasks.
@@ -587,6 +685,7 @@ class Staging(
                     time.sleep(1)
                     timeout -= 1
                 # Update status for the job
+                self.decrease_followers_for_token()
                 self.log_job_execution(JobStatus.failed, None, f"At least one of the tasks failed: {task_e}")
                 self.delete_files_from_bucket()
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
@@ -601,6 +700,7 @@ class Staging(
                     None,
                     f"The item {feature.id} couldn't be published in the catalog. Cleaning up",
                 )
+                self.decrease_followers_for_token()
                 # delete the files
                 self.delete_files_from_bucket()
                 # delete the published items
@@ -609,6 +709,8 @@ class Staging(
             published_featurs_ids.append(feature.id)
         # Update status once all features are processed
         self.log_job_execution(JobStatus.successful, 100, "Finished")
+        # Update the followers for token refreshment
+        self.decrease_followers_for_token()
         self.logger.info("Tasks monitoring finished")
 
     def dask_cluster_connect(
@@ -887,7 +989,7 @@ class Staging(
 
         # Determine the domain(s)
         domains = list({urlparse(asset[0]).hostname for asset in self.assets_info})
-        self.logger.info("Staging from domain(s) {domains}")
+        self.logger.info(f"Staging from domain(s) {domains}")
         if len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
         domain = domains[0]
@@ -898,6 +1000,32 @@ class Staging(
         # connect to the dask cluster
         try:
             dask_client = self.dask_cluster_connect(external_auth_config.station_id)
+            # insert the necessary info for token refreshment in the auth_list.
+            # if there is already a dask.distributed Lock/Variable created, use it
+            # NOTE: The external_auth_config is supposed to not change !
+            # verify if the dask Lock / Variable already in the auth_list of main app
+            found = False
+            with self.auth_list_lock:
+                for idx, auth in enumerate(self.auth_list):
+                    if self.token_info.name == auth.token_info.name:
+                        # check if this is a disconnected one
+                        if not auth.token_lock.client.scheduler:
+                            # replace it
+                            self.auth_list[idx] = RefreshTokenData(
+                                external_auth_config,
+                                self.token_lock,
+                                self.token_info,
+                                1,
+                            )
+                        else:
+                            # just increase the number of readers
+                            auth.followers += 1
+                        found = True
+                        break
+                if not found:
+                    self.auth_list.append(RefreshTokenData(external_auth_config, self.token_lock, self.token_info, 1))
+            # wake the refresh tokens thread
+            self.new_task_event.set()
             self.submit_tasks_to_dask_cluster(external_auth_config, dask_client)
 
         except RuntimeError as re:

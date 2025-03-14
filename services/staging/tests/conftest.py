@@ -164,6 +164,9 @@ def staging(mocker):
     mock_item = "test_item"
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
+    mock_auth_list = mocker.Mock()
+    mocker_auth_list_lock = mocker.Mock()
+    mocker_new_task_event = mocker.Mock()
 
     mocker.patch.dict(
         os.environ,
@@ -178,6 +181,9 @@ def staging(mocker):
         item=mock_item,
         db_process_manager=mock_db,
         cluster=mock_cluster,
+        auth_list=mock_auth_list,
+        auth_list_lock=mocker_auth_list_lock,
+        new_task_event=mocker_new_task_event,
     )
     yield staging_instance
 
