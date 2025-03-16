@@ -59,6 +59,7 @@ jsonpatch = "^1.33"
 dask-gateway = "2024.1.0"
 # same dask version as in the cluster i.e. same as eopf
 dask = {extras = ["distributed"], version = "2024.5.2"}
+openapi-core = "^0.19.4"
 
 # TEMP: because of the pydantic conflict
 # we also need the rs-server-common dependencies. We duplicate them here
