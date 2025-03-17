@@ -173,6 +173,7 @@ class Staging(
         """
         #################
         # Locals
+        self.request = credentials
         self.headers: Headers = credentials.headers
         self.stream_list: list[Feature] = []
         #################
@@ -888,7 +889,7 @@ class Staging(
 
         # Determine the domain(s)
         domains = list({urlparse(asset[0]).hostname for asset in self.assets_info})
-        self.logger.info("Staging from domain(s) {domains}")
+        self.logger.info(f"Staging from domain(s) {domains}")
         if len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
         domain = domains[0]

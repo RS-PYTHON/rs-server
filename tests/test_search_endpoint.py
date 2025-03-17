@@ -23,6 +23,8 @@ import requests
 import responses
 import yaml
 from fastapi import HTTPException, status
+from fastapi.testclient import TestClient
+from httpx import Response
 from pydantic import ValidationError
 from rs_server_adgs import adgs_utils
 from rs_server_adgs.adgs_utils import auxip_map_mission
@@ -139,7 +141,7 @@ class TestLandingPagesEndpoints:
         [(ROUTER_PREFIX_CADIP, "/cadip", "/cadip/collections"), (ROUTER_PREFIX_AUXIP, "/auxip", "/auxip/collections")],
         indirect=["fastapi_app"],
     )
-    def test_local_landing_pages(self, client, endpoint, collection_link):
+    def test_local_landing_pages(self, client: TestClient, endpoint, collection_link):
         """
         Unit test for checking the structure and links of the landing page.
 
@@ -405,7 +407,7 @@ class TestFeatureOdataStacMapping:
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
     def test_cadip_feature_mapping(
         self,
-        client,
+        client: TestClient,
         mock_token_validation,
         cadip_feature,
         cadip_session_response,
@@ -430,9 +432,10 @@ class TestFeatureOdataStacMapping:
             json=cadip_file_response,
             status=200,
         )
-        response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312").json()
+        response: Response = client.get("/cadip/collections/cadip_session_by_id/items/S1A_20200105072204051312")
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == cadip_feature, "Features don't match"
+        assert response.json() == cadip_feature, "Features don't match"
+        assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
     @responses.activate
@@ -456,7 +459,7 @@ class TestFeatureOdataStacMapping:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
-    def test_adgs_feature_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
+    def test_adgs_feature_mapping(self, client: TestClient, mock_token_validation, adgs_feature, adgs_response):
         """Test mapping of an adgs reponse with expanded attributes"""
         mock_token_validation()
         responses.add(
@@ -468,11 +471,12 @@ class TestFeatureOdataStacMapping:
             json=adgs_response,
             status=200,
         )
-        response = client.get(
+        response: Response = client.get(
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
-        ).json()
+        )
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response == adgs_feature, "Features don't match"
+        assert response.json() == adgs_feature, "Features don't match"
+        assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
     @responses.activate
@@ -598,7 +602,7 @@ class TestFeatureCollectionOdataStacMapping:
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
     def test_cadip_feature_collection_mapping(
         self,
-        client,
+        client: TestClient,
         mock_token_validation,
         cadip_feature,
         cadip_file_response,
@@ -623,15 +627,23 @@ class TestFeatureCollectionOdataStacMapping:
             json=cadip_file_response,
             status=200,
         )
-        response = client.get("/cadip/collections/cadip_session_by_id/items").json()
+        response: Response = client.get("/cadip/collections/cadip_session_by_id/items")
+        items = response.json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response["type"] == "FeatureCollection", "Type doesn't match"
-        assert response["features"] == [cadip_feature], "Features don't match"
+        assert items["type"] == "FeatureCollection", "Type doesn't match"
+        assert items["features"] == [cadip_feature], "Features don't match"
+        assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
-    def test_adgs_feature_collection_mapping(self, client, mock_token_validation, adgs_feature, adgs_response):
+    def test_adgs_feature_collection_mapping(
+        self,
+        client: TestClient,
+        mock_token_validation,
+        adgs_feature,
+        adgs_response,
+    ):
         """Test mapping of an adgs reponse with expanded attributes"""
         mock_token_validation()
         responses.add(
@@ -642,10 +654,12 @@ class TestFeatureCollectionOdataStacMapping:
             json=adgs_response,
             status=200,
         )
-        response = client.get("/auxip/collections/s2_adgs2_AUX_OBMEMC/items").json()
+        response: Response = client.get("/auxip/collections/s2_adgs2_AUX_OBMEMC/items")
+        items = response.json()
         # Assert that receive odata response is correctly mapped to stac feature.
-        assert response["type"] == "FeatureCollection", "Type doesn't match"
-        assert response["features"] == [adgs_feature], "Features don't match"
+        assert items["type"] == "FeatureCollection", "Type doesn't match"
+        assert items["features"] == [adgs_feature], "Features don't match"
+        assert response.headers.get("Content-Type") == "application/geo+json"
 
     @pytest.mark.unit
     @responses.activate
@@ -811,10 +825,10 @@ class TestFeatureCollectionOdataStacMapping:
             "/cadip/collections/cadip_session_by_id/items?limit=0",
         ],
     )
-    def test_invalid_limit_values(self, client, endpoint):
+    def test_invalid_limit_values(self, client: TestClient, endpoint: str):
         """Test endpoint call with invalid limits (str, negative, 0)"""
         response = client.get(endpoint)
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"][0]["msg"] in (
             "Input should be a valid integer, unable to parse string as an integer",
             "Input should be greater than 0",

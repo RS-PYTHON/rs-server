@@ -44,6 +44,7 @@ import pytest
 import responses
 import yaml
 from dotenv import load_dotenv
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
@@ -216,7 +217,7 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
 
 
 @pytest.fixture(name="client")
-def client_(fastapi_app):
+def client_(fastapi_app: FastAPI):
     """Test the FastAPI application, opens the database session."""
     with TestClient(fastapi_app) as client:
         yield client
@@ -230,7 +231,7 @@ def create_tables(client):  # pylint: disable=unused-argument
 
 
 @pytest.fixture(scope="function", autouse=True)
-def session_override(client, fastapi_app):  # pylint: disable=unused-argument
+def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-argument
     """Override the default database session"""
 
     # pylint: disable=duplicate-code
@@ -363,9 +364,9 @@ def set_token_env_var_fixture(monkeypatch):
         "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__ID": "client_id",
         "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
         "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__TOKEN__URL": "\
-http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
-        "RSPY__TOKEN__AUXIP__ADGS__SERVICE__URL": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
-        "RSPY__TOKEN__AUXIP__ADGS__DOMAIN": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
+http://mockup-auxip-adgs.processing.svc.cluster.local:8080/oauth2/token",
+        "RSPY__TOKEN__AUXIP__ADGS__SERVICE__URL": "http://mockup-auxip-adgs.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__AUXIP__ADGS__DOMAIN": "mockup-auxip-adgs.processing.svc.cluster.local",
         "RSPY__TOKEN__AUXIP__ADGS__SERVICE__NAME": "auxip",
         "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__AUTH__TYPE": "oauth2",
         "RSPY__TOKEN__AUXIP__ADGS__AUTHENTICATION__GRANT__TYPE": "password",
@@ -377,9 +378,9 @@ http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
         "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__ID": "client_id",
         "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
         "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__TOKEN__URL": "\
-http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
-        "RSPY__TOKEN__CADIP__INS__SERVICE__URL": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
-        "RSPY__TOKEN__CADIP__INS__DOMAIN": "mockup-cadip-ins-svc.processing.svc.cluster.local",
+http://mockup-cadip-ins.processing.svc.cluster.local:8080/oauth2/token",
+        "RSPY__TOKEN__CADIP__INS__SERVICE__URL": "http://mockup-cadip-ins.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__CADIP__INS__DOMAIN": "mockup-cadip-ins.processing.svc.cluster.local",
         "RSPY__TOKEN__CADIP__INS__SERVICE__NAME": "cadip",
         "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__AUTH__TYPE": "oauth2",
         "RSPY__TOKEN__CADIP__INS__AUTHENTICATION__GRANT__TYPE": "password",
@@ -390,9 +391,9 @@ http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
         "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__ID": "client_id",
         "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__CLIENT__SECRET": TOKEN_CLIENT_SECRET,
         "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__TOKEN__URL": "\
-http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
-        "RSPY__TOKEN__CADIP__MPS__SERVICE__URL": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
-        "RSPY__TOKEN__CADIP__MPS__DOMAIN": "mockup-cadip-mps-svc.processing.svc.cluster.local",
+http://http://mockup-cadip-mps.processing.svc.cluster.local:8080/oauth2/token",
+        "RSPY__TOKEN__CADIP__MPS__SERVICE__URL": "http://mockup-cadip-mps.processing.svc.cluster.local:8080",
+        "RSPY__TOKEN__CADIP__MPS__DOMAIN": "mockup-cadip-mps.processing.svc.cluster.local",
         "RSPY__TOKEN__CADIP__MPS__SERVICE__NAME": "cadip",
         "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__AUTH__TYPE": "oauth2",
         "RSPY__TOKEN__CADIP__MPS__AUTHENTICATION__GRANT__TYPE": "password",
@@ -428,13 +429,13 @@ def expected_config_token_file_fixture() -> dict:
                     "grant_type": "password",
                     "password": TOKEN_PASSWORD,
                     "scope": "",
-                    "token_url": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080/oauth2/token",
+                    "token_url": "http://mockup-auxip-adgs.processing.svc.cluster.local:8080/oauth2/token",
                     "username": TOKEN_USERNAME,
                 },
-                "domain": "mockup-auxip-adgs-svc.processing.svc.cluster.local",
+                "domain": "mockup-auxip-adgs.processing.svc.cluster.local",
                 "service": {
                     "name": "auxip",
-                    "url": "http://mockup-auxip-adgs-svc.processing.svc.cluster.local:8080",
+                    "url": "http://mockup-auxip-adgs.processing.svc.cluster.local:8080",
                 },
                 "trusteddomains": [
                     "trusted.domain1.eu",
@@ -450,13 +451,13 @@ def expected_config_token_file_fixture() -> dict:
                     "grant_type": "password",
                     "password": TOKEN_PASSWORD,
                     "scope": "",
-                    "token_url": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080/oauth2/token",
+                    "token_url": "http://mockup-cadip-ins.processing.svc.cluster.local:8080/oauth2/token",
                     "username": TOKEN_USERNAME,
                 },
-                "domain": "mockup-cadip-ins-svc.processing.svc.cluster.local",
+                "domain": "mockup-cadip-ins.processing.svc.cluster.local",
                 "service": {
                     "name": "cadip",
-                    "url": "http://mockup-cadip-ins-svc.processing.svc.cluster.local:8080",
+                    "url": "http://mockup-cadip-ins.processing.svc.cluster.local:8080",
                 },
             },
             "mps": {
@@ -468,13 +469,13 @@ def expected_config_token_file_fixture() -> dict:
                     "grant_type": "password",
                     "password": TOKEN_PASSWORD,
                     "scope": "",
-                    "token_url": "http://http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080/oauth2/token",
+                    "token_url": "http://http://mockup-cadip-mps.processing.svc.cluster.local:8080/oauth2/token",
                     "username": TOKEN_USERNAME,
                 },
-                "domain": "mockup-cadip-mps-svc.processing.svc.cluster.local",
+                "domain": "mockup-cadip-mps.processing.svc.cluster.local",
                 "service": {
                     "name": "cadip",
-                    "url": "http://mockup-cadip-mps-svc.processing.svc.cluster.local:8080",
+                    "url": "http://mockup-cadip-mps.processing.svc.cluster.local:8080",
                 },
             },
         },
@@ -499,7 +500,7 @@ def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig
     # Return a configured ExternalAuthenticationConfig object
     return ExternalAuthenticationConfig(
         station_id=station_id,
-        domain=f"mockup-{service}-{station_id}-svc.processing.svc.cluster.local",
+        domain=f"mockup-{service}-{station_id}.processing.svc.cluster.local",
         service_name=service,
         service_url="http://127.0.0.1:6001",
         auth_type="oauth2",

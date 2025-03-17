@@ -177,14 +177,17 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
     if settings.LOCAL_MODE:
         return
 
-    # Read the full cadip station passed in parameter: ins, mps, mti, nsg, sgs, or cadip
-    # No validation needed for landing pages.
-    if access_type != "landing_page":
-        full_station = f'{"cadip" if station_type == "cadip" else "adgs"}_{kwargs["station"]}'
+    if not kwargs.get("staging_process", False):
+        # Read the full cadip station passed in parameter: ins, mps, mti, nsg, sgs, or cadip
+        # No validation needed for landing pages.
+        if access_type != "landing_page":
+            full_station = f'{"cadip" if station_type == "cadip" else "adgs"}_{kwargs["station"]}'
+        else:
+            full_station = station_type
+        requested_role = f"rs_{full_station}_{access_type}".upper()
     else:
-        full_station = station_type
+        requested_role = f"rs_processes_staging_{access_type}_{station_type}".upper()
 
-    requested_role = f"rs_{full_station}_{access_type}".upper()
     logger.debug(f"Requested role: {requested_role}")
     try:
         auth_roles = [role.upper() for role in kwargs["request"].state.auth_roles]
@@ -194,6 +197,5 @@ def auth_validation(station_type, access_type, *args, **kwargs):  # pylint: disa
     if requested_role not in auth_roles:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authorization does not include the right role to {access_type} "
-            f"from the {full_station!r} station",
+            detail=f"Missing {requested_role} authorization role",
         )
