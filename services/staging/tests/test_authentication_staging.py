@@ -60,7 +60,10 @@ async def init_test(
     """init mocker for tests."""
 
     # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
+    mocker.patch("rs_server_staging.main.CLUSTER_MODE", new=True, autospec=False)
+    mocker.patch("rs_server_staging.main.LOCAL_MODE", new=False, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
+    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
 
     # Clear oauth2 cookies
     client.cookies.clear()
