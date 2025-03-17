@@ -277,7 +277,7 @@ def authentication_config():
         token_url="http://127.0.0.1:5000/oauth2/token",
         grant_type="password",
         username="test",
-        password="test",
+        password="DUMMY_PASSWORD",
         client_id="client_id",
         client_secret="client_secret",
     )
