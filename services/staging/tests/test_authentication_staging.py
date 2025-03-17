@@ -14,29 +14,21 @@
 
 """Unit tests for the authentication."""
 
-import json
-import os
-
 import pytest
-import requests
-import yaml
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
 from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
-from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.pytest_utils import mock_oauth2
 from rs_server_staging.main import app, must_be_authenticated
 from starlette.status import (
     HTTP_200_OK,
-    HTTP_201_CREATED,
-    HTTP_302_FOUND,
-    HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
 )
+
+from .resources.sample_data import sample_process_metadata_model
 
 logger = Logging.default(__name__)
 
@@ -136,18 +128,20 @@ async def test_error_when_not_authenticated(mocker, staging_client, httpx_mock: 
             continue
         for method in methods.keys():
 
+            # JSON data for POST endpoitns
+            json_data = {}
+            if path == "/processes/{resource}/execution":
+                json_data = sample_process_metadata_model
+
+            # Format the endpoint values
             endpoint = path.format(resource="staging", job_id="job_id")
             logger.debug(f"Test the {endpoint!r} [{method}] authentication")
-
-            from rs_server_staging.rspy_models import ProcessMetadataModel
-
-            bp = 0
 
             # With a valid apikey or oauth2 authentication, we should have a status code != 401 or 403.
             # We have other errors on many endpoints because we didn't give the right arguments,
             # but it's OK it is not what we are testing here.
             if test_apikey or test_oauth2:
-                response = staging_client.request(method, endpoint, json={1: 2}, **header)
+                response = staging_client.request(method, endpoint, json=json_data, **header)
                 logger.debug(response)
                 assert response.status_code not in (
                     HTTP_401_UNAUTHORIZED,
@@ -169,14 +163,15 @@ async def test_error_when_not_authenticated(mocker, staging_client, httpx_mock: 
 
 def test_authenticated_endpoints():
     """Test that the catalog endpoints need authentication."""
-    for route_path in ["/_mgmt/ping", "/catalog/api", "/catalog/api.html", "/auth/", "/health"]:
+    for route_path in ["/api", "/api.html", "/health", "/_mgmt/ping"]:
         assert not must_be_authenticated(route_path)
     for route_path in [
-        "/catalog",
-        "/catalog/",
-        "/catalog/conformance",
-        "/catalog/collections",
-        "/catalog/search",
-        "/catalog/queryables",
+        "/processes",
+        "/processes/{resource}",
+        "/processes/{resource}/execution",
+        "/jobs/{job_id}",
+        "/jobs",
+        "/jobs/{job_id}/results",
+        "/staging/dask/auth",
     ]:
         assert must_be_authenticated(route_path)

@@ -68,11 +68,8 @@ app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
 
 
-def must_be_authenticated(route_path: str) -> bool:
+def must_be_authenticated(path: str) -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
-
-    # Remove the /catalog prefix, if any
-    path = route_path.removeprefix("/catalog")
 
     no_auth = (path in ["/api", "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
     return not no_auth
