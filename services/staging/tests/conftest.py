@@ -21,6 +21,8 @@
 
 import asyncio
 import os
+
+os.environ["RSPY_LOCAL_MODE"] = "1"
 import os.path as osp
 from datetime import datetime
 from pathlib import Path
@@ -32,10 +34,8 @@ from fastapi.testclient import TestClient
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
 )
-from rs_server_staging.processors import RefreshTokenData
-
-os.environ["RSPY_LOCAL_MODE"] = "1"
 from rs_server_staging.processors import Staging  # pylint: disable=import-error
+from rs_server_staging.processors import RefreshTokenData
 
 TEST_DETAIL = "Test detail"
 
