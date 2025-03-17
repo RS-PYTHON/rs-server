@@ -121,7 +121,7 @@ class CustomSessionRedirect(requests.Session):
         super().__init__()
         self.trusted_domains: list[str] = trusted_domains or []  # List of allowed hosts for redirection
 
-    def should_strip_auth(self, old_url, new_url):
+    def should_strip_auth(self, old_url, new_url) -> bool:
         """
         Override the default behavior of stripping Authorization headers during redirection.
 
@@ -508,7 +508,7 @@ class S3StorageHandler:
 
         Raises:
             RuntimeError: If an error occurs during the bucket access check or if
-            the s3_key is not available.
+                the s3_key is not available.
         """
         try:
             self.connect_s3()
@@ -881,32 +881,32 @@ retried for %s times. Aborting",
             bucket (str): The name of the target S3 bucket.
             key (str): The S3 object key (file path) to store the streamed file.
             max_retries (int, optional): The maximum number of retry attempts if an error occurs
-            (default is `S3_MAX_RETRIES`).
+                (default is `S3_MAX_RETRIES`).
 
         Raises:
             RuntimeError: If there is a failure during the streaming upload process, either due to the HTTP request
-            or the S3 upload, after exhausting all retries.
+                or the S3 upload, after exhausting all retries.
 
         Process:
             1. The function attempts to download the file from `stream_url` using streaming and upload it to S3.
             2. It redirects the url request by overriding the default should_strip_auth, see CustomSessionRedirect
             3. If an error occurs (e.g., connection error, S3 client error), it retries the operation with exponential
-            backoff.
+                backoff.
             4. The default chunk size for streaming is set to 64KB, and multipart upload configuration is used for
             large files.
             5. After `max_retries` attempts, if the upload is unsuccessful, a `RuntimeError` is raised.
 
         Retry Mechanism:
             - Retries occur for network-related errors (`RequestException`) or S3 client errors
-            (`ClientError`, `BotoCoreError`).
+                (`ClientError`, `BotoCoreError`).
             - The function waits before retrying, with the delay time increasing exponentially
-            (based on the `backoff_factor`).
+                (based on the `backoff_factor`).
             - The backoff formula is `backoff_factor * (2 ** (attempt - 1))`, allowing progressively
-            longer wait times between retries.
+                longer wait times between retries.
 
         Exception Handling:
             - HTTP errors such as timeouts or bad responses (4xx, 5xx) are handled using
-            `requests.exceptions.RequestException`.
+                `requests.exceptions.RequestException`.
             - S3 client errors such as `ClientError` and `BotoCoreError` are captured, logged, and retried.
             - Any other unexpected errors are caught and re-raised as `RuntimeError`.
         """
