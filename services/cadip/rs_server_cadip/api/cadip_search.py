@@ -71,6 +71,7 @@ from rs_server_common.utils.utils import (
     validate_sort_input,
     validate_str_list,
 )
+from stac_fastapi.api.models import GeoJSONResponse
 
 # pylint: disable=duplicate-code # with adgs_search
 
@@ -352,7 +353,7 @@ async def get_cadip_collection(
     return await request.app.state.pgstac_client.get_collection(collection_id, request)
 
 
-@router.get("/cadip/collections/{collection_id}/items")
+@router.get(path="/cadip/collections/{collection_id}/items", response_class=GeoJSONResponse)
 @handle_exceptions
 async def get_cadip_collection_items(
     request: Request,
@@ -404,7 +405,7 @@ async def get_cadip_collection_items(
     )
 
 
-@router.get("/cadip/collections/{collection_id}/items/{session_id}")
+@router.get(path="/cadip/collections/{collection_id}/items/{session_id}", response_class=GeoJSONResponse)
 @handle_exceptions
 async def get_cadip_collection_item_details(
     request: Request,

@@ -37,7 +37,8 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.115.0"
+fastapi = "^0.115.11"
+starlette = ">=0.45.3,<0.46"
 boto3 = ">=1.35.40"
 botocore = ">=1.35.99"
 sqlalchemy = "^2.0.35"
@@ -58,17 +59,17 @@ orjson = [ # we need the same markers and versions as in eodag: https://github.c
     {version = "<3.10.0", markers = "python_version>='3.12' and platform_system=='Windows'"},
     {version = "^3.10", markers = "python_version<'3.12' or platform_system!='Windows'"},
 ]
-opentelemetry-distro = "^0.51b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-instrumentation-aws-lambda = "^0.51b0"
-opentelemetry-test-utils = "^0.51b0"
-opentelemetry-exporter-otlp = "^1.30.0"
+opentelemetry-distro = "^0.52b0" # then run 'poetry run opentelemetry-bootstrap -a install'
+opentelemetry-instrumentation-aws-lambda = "^0.52b0"
+opentelemetry-test-utils = "^0.52b0"
+opentelemetry-exporter-otlp = "^1.31.0"
 python-logging-loki = "^0.3.1"
 stac-pydantic = "^3.1.4"
 authlib = "^1.5.0"
 python-keycloak = ">=5.3.1,<6.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
-stac-fastapi-pgstac = "^4.0.1"
+stac-fastapi-pgstac = "^5.0.0"
 
 [tool.poetry.group.dev]
 optional = true

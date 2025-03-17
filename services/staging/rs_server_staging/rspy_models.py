@@ -47,7 +47,7 @@ class Feature(BaseModel):
 
     type: str
     geometry: Optional[dict] = None
-    properties: Dict[str, str]
+    properties: Dict[str, Optional[str]]
     bbox: Optional[List[Union[int, float]]] = None
     id: str
     stac_version: str

@@ -133,6 +133,7 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         get_external_auth_config: Fixture to get an ExternalAuthenticationConfig object.
     """
     mock_empty_variable = mocker.MagicMock()
+
     ext_auth_config = get_external_auth_config
 
     # ---------- Test error when no configuration object is provided
@@ -355,7 +356,7 @@ def test_load_external_authentication_by_station_service_config_valid(mocker, ge
     mock_yaml_content = f"""
     external_data_sources:
       {ext_auth_config.station_id}:
-        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}-svc.processing.svc.cluster.local
+        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local
         service:
           name: {ext_auth_config.service_name}
           url: "http://test_url:6000"
@@ -377,7 +378,7 @@ def test_load_external_authentication_by_station_service_config_valid(mocker, ge
     assert result.service_name == ext_auth_config.service_name
     assert (
         result.domain
-        == f"mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}-svc.processing.svc.cluster.local"
+        == f"mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local"
     )
 
 
@@ -487,7 +488,7 @@ def test_load_external_auth_config_by_station_service_no_matching_service(mocker
     mock_yaml_content = f"""
     external_data_sources:
       {ext_auth_config.station_id}:
-        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}-svc.processing.svc.cluster.local
+        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local
         service:
           name: {ext_auth_config.service_name}
           url: "http://test_url:6000"
@@ -533,7 +534,7 @@ def test_load_external_auth_config_by_station_service_no_matching_station(mocker
     mock_yaml_content = """
     external_data_sources:
       known_station:
-        domain: mockup-known_service-known_station-svc.processing.svc.cluster.local
+        domain: mockup-known_service-known_station.processing.svc.cluster.local
         service:
           name: known_service}
           url: "http://test_url:6000"
@@ -583,7 +584,7 @@ def test_load_external_authentication_by_domain_config_valid(mocker, get_externa
     mock_yaml_content = f"""
     external_data_sources:
       {ext_auth_config.station_id}:
-        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}-svc.processing.svc.cluster.local
+        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local
         service:
           name: {ext_auth_config.service_name}
           url: "http://test_url:6000"
@@ -610,7 +611,7 @@ def test_load_external_authentication_by_domain_config_valid(mocker, get_externa
     assert result.service_name == ext_auth_config.service_name
     assert (
         result.domain
-        == f"mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}-svc.processing.svc.cluster.local"
+        == f"mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local"
     )
 
 
@@ -712,7 +713,7 @@ def test_load_external_auth_config_by_domain_no_matching_domain(mocker, get_exte
     mock_yaml_content = f"""
     external_data_sources:
       {ext_auth_config.station_id}:
-        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}-svc.processing.svc.cluster.local
+        domain: mockup-{ext_auth_config.service_name}-{ext_auth_config.station_id}.processing.svc.cluster.local
         service:
           name: {ext_auth_config.service_name}
           url: "http://test_url:6000"

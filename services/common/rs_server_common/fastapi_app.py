@@ -33,11 +33,12 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.db.database import sessionmanager
+from rs_server_common.middlewares import HandleExceptionsMiddleware
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.utils import DontRaiseExceptions
 from stac_fastapi.api.app import StacApi
+from stac_fastapi.api.errors import add_exception_handlers
 from stac_fastapi.api.middleware import ProxyHeaderMiddleware
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.api.routes import add_route_dependencies
@@ -76,7 +77,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     pause: int = 3,
     timeout: int = None,
     router_prefix: str = "",
-):  # pylint: disable=too-many-arguments
+) -> FastAPI:  # pylint: disable=too-many-arguments
     """
     Init the FastAPI application.
     See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
@@ -207,6 +208,10 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     service = router_prefix.strip("/").title()
     app.state.pgstac_client.title = f"RS-PYTHON {service} collections"
     app.state.pgstac_client.description = f"{service} collections of Copernicus Reference System Python"
+    # By default FastAPI will return 422 status codes for invalid requests
+    # But the STAC api spec suggests returning a 400 in this case
+    # TODO remove this also
+    add_exception_handlers(app, {})
 
     dependencies = []
     if settings.CLUSTER_MODE:
@@ -238,7 +243,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app.include_router(technical_router)
 
     # Catch all exceptions and return a JSONResponse
-    app.add_middleware(DontRaiseExceptions)
+    app.add_middleware(HandleExceptionsMiddleware)
 
     # This middleware allows to have consistant http/https protocol in stac links
     app.add_middleware(ProxyHeaderMiddleware)

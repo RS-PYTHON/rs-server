@@ -43,6 +43,7 @@ from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
+    ServiceNotFound,
     TokenAuth,
     get_station_token,
     load_external_auth_config_by_domain,
@@ -366,6 +367,7 @@ class Staging(
         """
         #################
         # Locals
+        self.request = credentials
         self.headers: Headers = credentials.headers
         self.stream_list: list[Feature] = []
         #################
@@ -1070,7 +1072,10 @@ class Staging(
             self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
             raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
 
-    async def process_rspy_features(self, catalog_collection: str) -> tuple[str, dict]:
+    async def process_rspy_features(  # pylint: disable=too-many-return-statements
+        self,
+        catalog_collection: str,
+    ) -> tuple[str, dict]:
         """
         Method used to trigger dask distributed streaming process.
         It creates dask client object, gets the external data sources access token
@@ -1103,8 +1108,17 @@ class Staging(
         domain = domains[0]
 
         # retrieve the token
-        external_auth_config = load_external_auth_config_by_domain(domain)
+        try:
+            external_auth_config = load_external_auth_config_by_domain(domain)
+            if not LOCAL_MODE:
+                from rs_server_common.authentication.authentication import (  # pylint: disable=import-outside-toplevel
+                    auth_validation,
+                )
 
+                auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
+        except ServiceNotFound as e:
+            self.logger.error(f"Exception while processing a feature, {e}")
+            return self.log_job_execution(JobStatus.failed, 0, e)
         # connect to the dask cluster
         try:
             dask_client = self.dask_cluster_connect(external_auth_config.station_id)

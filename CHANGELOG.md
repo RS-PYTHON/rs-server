@@ -24,6 +24,35 @@ Changed
 
 None
 
+[0.2a11] - Sprint 21 - 2025-03-12
+================================
+
+## Added
+
+- RSPY-404: Update RS-Client to STAC for AUXIP/CADIP
+- RSPY-564: Limiting the search of large number of CADIP sessions
+- RSPY-566: Handle CADIP sessions without PublicationDate
+- RSPY-581: OVH: deployment of rs-infra-core
+- RSPY-582: Remove CADIP/AUXIP deprecated code
+- RSPY-583: OVH: deployment of rs-infra-monitoring
+- RSPY-585: OVH: deployment of rs-workflow-env (rs-workflow-env-deployment repository )
+- RSPY-586: OVH: deployment of rs-server (rs-server-deployment repository)
+- RSPY-602: Update stac-fastapi / stac-fastapi-pgstac / pgstac to 5.0.x / 4.0.x / 0.9.x
+- RSPY-614: Add describedby links to CADIP/AUXIP collections
+- RSPY-350: Implement download UAC in the Staging process
+- RSPY-584: OVH: deployment of rs-infra-security
+- RSPY-607: Update S1L0 processing Prefect flow with real S1L0Processor 0.9.0
+
+## Fixed
+
+- RSPY-439: [Catalog] Issue while adding items to a non existing collection
+- RSPY-499: Pagination with the Stac-fastapi-pgstac object
+- RSPY-513: Timestamps extension missing in AUXIP response
+- RSPY-542: STAC: Link[service-desc] must return 200
+- RSPY-600: CADIP: Pydantic serializer warnings (datetime vs. string)
+- RSPY-630: Resolve pytests after update of stac-fastapi
+- RSPY-416: [Security] Cannot connect to Wazuh GUI with SSO
+
 [0.2a10] - Sprint 20 - 2025-02-12
 ================================
 
