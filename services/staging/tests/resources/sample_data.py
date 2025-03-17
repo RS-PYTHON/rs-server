@@ -13,10 +13,10 @@
 # limitations under the License.
 
 """Sample data for tests."""
-true = True
 
 # Sample dataProcessMetadataModel instance copy/pasted from the swagger page
 # for the '/processes/{resource}/execution' endpoint.
+# Replace true by True.
 sample_process_metadata_model = {
     "version": "string",
     "id": "string",
@@ -118,7 +118,7 @@ sample_process_metadata_model = {
             "title": "string",
             "id": "string",
             "description": "string",
-            "schema": true,
+            "schema": True,
             "minOccurs": 0,
             "maxOccurs": 0,
         },
@@ -126,7 +126,7 @@ sample_process_metadata_model = {
             "title": "string",
             "id": "string",
             "description": "string",
-            "schema": true,
+            "schema": True,
             "minOccurs": 0,
             "maxOccurs": 0,
         },
@@ -134,7 +134,7 @@ sample_process_metadata_model = {
             "title": "string",
             "id": "string",
             "description": "string",
-            "schema": true,
+            "schema": True,
             "minOccurs": 0,
             "maxOccurs": 0,
         },

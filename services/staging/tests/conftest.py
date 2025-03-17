@@ -29,27 +29,16 @@ from pathlib import Path
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from rs_server_common.utils.pytest.pytest_authentication_utils import (
+    init_app_cluster_mode,
+)
 
-RSPY_UAC_HOMEPAGE = "http://RSPY_UAC_HOMEPAGE"
-RSPY_UAC_CHECK_URL = "http://RSPY_UAC_CHECK_URL"
-OIDC_ENDPOINT = "http://OIDC_ENDPOINT"
-OIDC_REALM = "OIDC_REALM"
-
-# Init the FastAPI application with all the cluster mode features (local mode=0).
+# Init the FastAPI application with all the cluster mode features (local mode=0)
 # Do this before any other imports.
 # We'll restore the local mode by default a few lines below.
 # pylint: disable=wrong-import-position
-# flake8: noqa
-os.environ["RSPY_LOCAL_MODE"] = "0"
-os.environ["RSPY_LOCAL_CATALOG_MODE"] = "1"
-os.environ["RSPY_CATALOG_BUCKET"] = "catalog-bucket"
-os.environ["RSPY_UAC_HOMEPAGE"] = RSPY_UAC_HOMEPAGE
-os.environ["RSPY_UAC_CHECK_URL"] = RSPY_UAC_CHECK_URL
-os.environ["OIDC_ENDPOINT"] = OIDC_ENDPOINT
-os.environ["OIDC_REALM"] = OIDC_REALM
-os.environ["OIDC_CLIENT_ID"] = "OIDC_CLIENT_ID"
-os.environ["OIDC_CLIENT_SECRET"] = "OIDC_CLIENT_SECRET"  # nosec
-os.environ["RSPY_COOKIE_SECRET"] = "RSPY_COOKIE_SECRET"  # nosec
+init_app_cluster_mode()
+
 
 # These env vars are mandatory before importing the staging main module
 for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB":

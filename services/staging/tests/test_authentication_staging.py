@@ -15,14 +15,15 @@
 """Unit tests for the authentication."""
 
 import pytest
-from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
-from rs_server_common.authentication.apikey import APIKEY_HEADER, ttl_cache
 from rs_server_common.utils.logging import Logging
-from rs_server_common.utils.pytest_utils import mock_oauth2
+from rs_server_common.utils.pytest.pytest_authentication_utils import (
+    VALID_APIKEY_HEADER,
+    WRONG_APIKEY_HEADER,
+    init_test,
+)
 from rs_server_staging.main import app, must_be_authenticated
 from starlette.status import (
-    HTTP_200_OK,
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_422_UNPROCESSABLE_ENTITY,
@@ -31,75 +32,6 @@ from starlette.status import (
 from .resources.sample_data import sample_process_metadata_model
 
 logger = Logging.default(__name__)
-
-# Dummy api key values
-VALID_APIKEY = "VALID_API_KEY"
-WRONG_APIKEY = "WRONG_APIKEY"
-
-# Pass the api key in HTTP header
-VALID_APIKEY_HEADER = {"headers": {APIKEY_HEADER: VALID_APIKEY}}
-WRONG_APIKEY_HEADER = {"headers": {APIKEY_HEADER: WRONG_APIKEY}}
-
-OAUTH2_AUTHORIZATION_ENDPOINT = "http://OAUTH2_AUTHORIZATION_ENDPOINT"
-OAUTH2_TOKEN_ENDPOINT = "http://OAUTH2_TOKEN_ENDPOINT"  # nosec
-
-RSPY_UAC_CHECK_URL = "http://RSPY_UAC_CHECK_URL"
-# os.environ["RSPY_UAC_CHECK_URL"] = RSPY_UAC_CHECK_URL
-
-
-async def init_test(
-    mocker,
-    httpx_mock: HTTPXMock,
-    client: TestClient,
-    test_apikey: bool,
-    test_oauth2: bool,
-    iam_roles: list[str],
-    mock_wrong_apikey: bool = False,
-    user_login="pyteam",
-):
-    """init mocker for tests."""
-
-    # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866
-    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-    # Clear oauth2 cookies
-    client.cookies.clear()
-
-    if test_apikey:
-        # With a valid api key in headers, the uac manager will give access to the endpoint
-        ttl_cache.clear()  # clear the cached response
-        httpx_mock.add_response(
-            url=RSPY_UAC_CHECK_URL,
-            match_headers={APIKEY_HEADER: VALID_APIKEY},
-            status_code=HTTP_200_OK,
-            json={
-                "name": "test_apikey",
-                "user_login": user_login,
-                "is_active": True,
-                "never_expire": True,
-                "expiration_date": "2024-04-10T13:57:28.475052",
-                "total_queries": 0,
-                "latest_sync_date": "2024-03-26T13:57:28.475058",
-                "iam_roles": iam_roles,
-                "config": {},
-                "allowed_referers": ["toto"],
-            },
-        )
-
-        # With a wrong api key, it returns 403
-        if mock_wrong_apikey:
-            httpx_mock.add_response(
-                url=RSPY_UAC_CHECK_URL,
-                match_headers={APIKEY_HEADER: WRONG_APIKEY},
-                status_code=HTTP_403_FORBIDDEN,
-            )
-
-    # If we test the oauth2 authentication, we login the user.
-    # His authentication information is saved in the client session cookies.
-    # Note: we use the "login from console" because we need the client to follow redirections,
-    # and they are disabled in these tests.
-    if test_oauth2:
-        await mock_oauth2(mocker, client, "/auth/login_from_console", "oauth2_user_id", user_login, iam_roles)
 
 
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
