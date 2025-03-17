@@ -276,7 +276,7 @@ async def get_processes():
 async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
     # rs_processes_{resource}_read role needed to access this endpoint.
-    auth_validation(resource, "read", request=request, staging_process=True)
+    auth_validation("read", resource, request=request, staging_process=True)
     if resource_info := next(
         (
             api.config["resources"][defined_resource]
@@ -294,7 +294,7 @@ async def get_resource(request: Request, resource: str):
 async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
     """Used to execute processing jobs."""
     # rs_processes_{resource}_execute role needed to access this endpoint.
-    auth_validation(resource, "execute", request=req, staging_process=True)
+    auth_validation("execute", resource, request=req, staging_process=True)
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
@@ -318,7 +318,7 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
     """Used to get status of processing job."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
-        auth_validation(job["process_id"], "read", request=request, staging_process=True)
+        auth_validation("read", job["process_id"], request=request, staging_process=True)
         return job
     except JobNotFoundError as error:
         # Handle case when job_id is not found
@@ -340,7 +340,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
     """Deletes a specific job from the database."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
-        auth_validation(job["process_id"], "dismiss", request=request, staging_process=True)
+        auth_validation("dismiss", job["process_id"], request=request, staging_process=True)
         app.extra["process_manager"].delete_job(job_id)
         return {"message": f"Job {job_id} deleted successfully"}
     except JobNotFoundError as error:
@@ -354,7 +354,7 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
     try:
         # Query the database to find the job by job_id
         job = app.extra["process_manager"].get_job(job_id)
-        auth_validation(job["process_id"], "read", request=request, staging_process=True)
+        auth_validation("read", job["process_id"], request=request, staging_process=True)
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
     except JobNotFoundError as error:
         # Handle case when job_id is not found
