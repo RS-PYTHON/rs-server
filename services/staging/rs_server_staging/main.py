@@ -65,6 +65,7 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
+REFRESH_TOKENS_TIMEOUT = 60
 # flake8: noqa: F401
 # pylint: disable=W0611
 from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
@@ -259,7 +260,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     fastapi_app.extra["auth_list_lock"] = threading.Lock()
     fastapi_app.extra["shutdown_event"] = asyncio.Event()
     # Run the refresh loop in the background
-    fastapi_app.extra["refresh_task"] = asyncio.create_task(refresh_auth_tokens(timeout=20))
+    fastapi_app.extra["refresh_task"] = asyncio.create_task(refresh_auth_tokens(timeout=REFRESH_TOKENS_TIMEOUT))
 
     # Yield control back to the application (this is where the app will run)
     yield

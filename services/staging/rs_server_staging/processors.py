@@ -109,6 +109,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
     s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))
     attempt = 0
     max_retries = int(os.environ.get("S3_MAX_RETRIES", S3_MAX_RETRIES))
+    print(f"streaming_task started: {s3_file}")
     while attempt < max_retries:
         # this token_lock may not be used when fetching the vale from the dask Variable
         # this is at least my understanding from the documentation I read and src code :
@@ -150,17 +151,19 @@ def streaming_task(  # pylint: disable=R0913, R0917
                 f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
             ) from e
         except KeyError as exc:
+            print(f"KeyError exception in streaming_task for {s3_file}: {e}")
             raise ValueError(f"Cannot create s3 connector object. Reason: {exc}") from exc
         except RuntimeError as e:
+            print(f"RuntimeError exception in streaming_task for {s3_file} : {e}")
             raise ValueError(
                 f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
             ) from e
         except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"Unhandled exception in streaming_task : {e}")
+            print(f"Unhandled exception in streaming_task for {s3_file} : {e}")
             raise ValueError(
                 f"Unhandled exception in streaming_task : {e}",
             ) from e
-
+    print(f"streaming_task finished: {s3_file}")
     return s3_file
 
 
