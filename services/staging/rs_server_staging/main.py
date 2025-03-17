@@ -13,6 +13,8 @@
 # limitations under the License.
 
 """rs server staging main module."""
+import json
+
 # pylint: disable=E0401
 import os
 import pathlib
@@ -21,6 +23,7 @@ from string import Template
 from time import sleep
 from typing import Annotated
 
+import requests
 import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
@@ -298,9 +301,15 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
     # Validate request payload
-    validate_and_unmarshal_request(req)
+    body = await req.body()
+    request = requests.Request(  # pylint: disable=W0612 # noqa: F841
+        method=req.method,
+        url=req.url,
+        json=json.loads(body),  # Corps de la requête en JSON
+    ).prepare()
+    validate_and_unmarshal_request(request)
 
-    ### TODO: call the function unmarshalrequest to validate the staging body sent to the server
+    ### TODO: call the function unmarshal_request to validate the staging body sent to the server
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:

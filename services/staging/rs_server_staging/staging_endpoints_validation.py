@@ -43,7 +43,7 @@ class StagingValidationException(Exception):
     """
 
 
-def validate_and_unmarshal_request(self, request: PreparedRequest) -> Any:
+def validate_and_unmarshal_request(request: PreparedRequest) -> Any:
     """Validate an endpoint request according to the ogc specifications
 
     Args:
@@ -76,7 +76,7 @@ def validate_and_unmarshal_request(self, request: PreparedRequest) -> Any:
     return result.body
 
 
-def validate_and_unmarshal_response(self, response: Response) -> Any:
+def validate_and_unmarshal_response(response: Response) -> Any:
     """
     Validate an endpoint response according to the ogc specifications
     (described as yaml schemas)
