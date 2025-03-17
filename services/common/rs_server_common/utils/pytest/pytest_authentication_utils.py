@@ -67,8 +67,8 @@ async def init_test(
     """init mocker for tests."""
 
     # Needs init_app_cluster_mode()
-    from rs_server_common.utils.pytest.pytest_utils import (
-        mock_oauth2,  # pylint: disable=import-outside-toplevel
+    from rs_server_common.utils.pytest.pytest_utils import (  # pylint: disable=import-outside-toplevel
+        mock_oauth2,
     )
 
     # Mock cluster mode to enable authentication. See: https://stackoverflow.com/a/69685866

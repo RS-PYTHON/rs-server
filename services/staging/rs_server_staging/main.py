@@ -41,7 +41,6 @@ from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
     apply_middlewares,
 )
-from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
@@ -86,7 +85,7 @@ app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authe
 app.add_middleware(HandleExceptionsMiddleware)
 
 # In cluster mode, add the oauth2 authentication
-if CLUSTER_MODE:
+if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
 # CORS enabled origins
@@ -231,11 +230,9 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     init_rs_server_config_yaml()
     # Create jobs table
     process_manager = init_db()
-    if CLUSTER_MODE:
-        common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
     # In local mode, if the gateway is not defined, create a dask LocalCluster
     cluster = None
-    if LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
+    if common_settings.LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
         # Create the LocalCluster only in local mode
         cluster = LocalCluster()
         logger.info("Local Dask cluster created at startup.")
@@ -251,7 +248,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
 
     # Shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    if LOCAL_MODE and cluster:
+    if common_settings.LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
 
@@ -354,7 +351,7 @@ async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
-if LOCAL_MODE:
+if common_settings.LOCAL_MODE:
 
     @router.post("/staging/dask/auth")
     async def dask_auth(local_dask_username: str, local_dask_password: str):
