@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """Test staging module."""
+import asyncio
 import os
+import threading
 from datetime import datetime
 
 import pytest
@@ -162,60 +164,80 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     """
     # Simulate mock data in the postgres table
 
-    mock_jobs = [
-        {
-            "identifier": "job_1",
-            "status": "successful",
-            "progress": 100.0,
-            "message": "Test detail",
-            "created": str(datetime(2024, 1, 1, 12, 0, 0)),
-            "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
-        },
-        {
-            "identifier": "job_2",
-            "status": "running",
-            "progress": 90.25,
-            "message": "Test detail",
-            "created": str(datetime(2024, 1, 2, 12, 0, 0)),
-            "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
-        },
-    ]
-
-    # Mock app.extra to ensure 'db_table' exists
+    # Mock database manager
     mock_db_table = mocker.MagicMock()
-    # Simulate postgres returning jobs
-    mock_db_table.get_jobs.return_value = {"jobs": list(mock_jobs), "numberMatched": 2}
+    mock_db_table.get_jobs.return_value = {
+        "jobs": [
+            {
+                "identifier": "job_1",
+                "status": "successful",
+                "progress": 100.0,
+                "message": "Test detail",
+                "created": str(datetime(2024, 1, 1, 12, 0, 0)),
+                "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
+            },
+            {
+                "identifier": "job_2",
+                "status": "running",
+                "progress": 90.25,
+                "message": "Test detail",
+                "created": str(datetime(2024, 1, 2, 12, 0, 0)),
+                "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
+            },
+        ],
+        "numberMatched": 2,
+    }
 
-    # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    # Mock asyncio.Event
+    mock_shutdown_event = mocker.Mock(spec=asyncio.Event)
+
+    # Mock refresh task as an actual asyncio task
+    async def fake_refresh():
+        while True:
+            await asyncio.sleep(1)  # Simulated token refresh
+
+    # Create a task using the test's event loop
+    mock_refresh_task = asyncio.create_task(fake_refresh())
+
+    # Ensure app.extra contains all necessary attributes at once
+    mocker.patch.object(
+        staging_client.app,
+        "extra",
+        {
+            "process_manager": mock_db_table,
+            "auth_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "auth_list_lock": mocker.Mock(spec=threading.Lock),
+            "shutdown_event": mock_shutdown_event,
+            "refresh_task": mock_refresh_task,
+        },
+    )
 
     # Call the API
     response = staging_client.get("/jobs")
-    # Assert the correct response is returned
-    assert response.status_code == HTTP_200_OK
-    # Check if the returned data matches the mocked jobs
-    assert response.json() == {"jobs": list(mock_jobs), "numberMatched": 2}
 
-    # Mock with an empty db, should return 404 since there are no jobs.
+    # Assertions
+    assert response.status_code == HTTP_200_OK
+    assert response.json() == {"jobs": mock_db_table.get_jobs.return_value["jobs"], "numberMatched": 2}
+
+    # Case: No jobs exist
     mock_db_table.get_jobs.return_value = {"jobs": [], "numberMatched": 0}
 
-    # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
-
     response = staging_client.get("/jobs")
-
     assert response.status_code == HTTP_200_OK
-    # Check if the returned data matches 0 jobs
     assert response.json() == {"jobs": [], "numberMatched": 0}
 
-    # Simulate an exception
+    # Case: Simulate an exception
     mock_db_table.get_jobs.side_effect = Exception("get_jobs failed")
-    # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
-    # Call the API
+
     response = staging_client.get("/jobs")
     assert response.status_code == HTTP_503_SERVICE_UNAVAILABLE
     assert response.json() == {"message": "get_jobs failed"}
+    # Proper cleanup
+    mock_refresh_task.cancel()
+    try:
+        await mock_refresh_task  # Ensure it exits properly
+    except asyncio.CancelledError:
+        pass  # Expected, ignore the cancellation
 
 
 @pytest.mark.asyncio
@@ -272,8 +294,29 @@ async def test_get_job(
             job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
         )
 
-    # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    # Mock asyncio.Event
+    mock_shutdown_event = mocker.Mock(spec=asyncio.Event)
+
+    # Mock refresh task as an actual asyncio task
+    async def fake_refresh():
+        while True:
+            await asyncio.sleep(1)  # Simulated token refresh
+
+    # Create a task using the test's event loop
+    mock_refresh_task = asyncio.create_task(fake_refresh())
+
+    # Ensure app.extra contains all necessary attributes at once
+    mocker.patch.object(
+        staging_client.app,
+        "extra",
+        {
+            "process_manager": mock_db_table,
+            "auth_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "auth_list_lock": mocker.Mock(spec=threading.Lock),
+            "shutdown_event": mock_shutdown_event,
+            "refresh_task": mock_refresh_task,
+        },
+    )
 
     # Call the API
     response = staging_client.get(f"/jobs/{expected_job['identifier']}")
@@ -281,6 +324,13 @@ async def test_get_job(
     # Assert response status code and content
     assert response.status_code == expected_status
     assert response.json() == expected_response
+
+    # Proper cleanup
+    mock_refresh_task.cancel()
+    try:
+        await mock_refresh_task  # Ensure it exits properly
+    except asyncio.CancelledError:
+        pass  # Expected, ignore the cancellation
 
 
 @pytest.mark.asyncio
@@ -337,8 +387,29 @@ async def test_get_job_result(
             job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
         )
 
-    # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    # Mock asyncio.Event
+    mock_shutdown_event = mocker.Mock(spec=asyncio.Event)
+
+    # Mock refresh task as an actual asyncio task
+    async def fake_refresh():
+        while True:
+            await asyncio.sleep(1)  # Simulated token refresh
+
+    # Create a task using the test's event loop
+    mock_refresh_task = asyncio.create_task(fake_refresh())
+
+    # Ensure app.extra contains all necessary attributes at once
+    mocker.patch.object(
+        staging_client.app,
+        "extra",
+        {
+            "process_manager": mock_db_table,
+            "auth_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "auth_list_lock": mocker.Mock(spec=threading.Lock),
+            "shutdown_event": mock_shutdown_event,
+            "refresh_task": mock_refresh_task,
+        },
+    )
 
     # Call the API
     job_id = expected_job.get("identifier")
@@ -347,6 +418,13 @@ async def test_get_job_result(
     # Assert response status code and content
     assert response.status_code == expected_status
     assert response.json() == expected_response
+
+    # Proper cleanup
+    mock_refresh_task.cancel()
+    try:
+        await mock_refresh_task  # Ensure it exits properly
+    except asyncio.CancelledError:
+        pass  # Expected, ignore the cancellation
 
 
 @pytest.mark.asyncio
@@ -406,8 +484,29 @@ async def test_delete_job_endpoint(
             job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
         )
 
-    # Patch app.extra with the mock db_table
-    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    # Mock asyncio.Event
+    mock_shutdown_event = mocker.Mock(spec=asyncio.Event)
+
+    # Mock refresh task as an actual asyncio task
+    async def fake_refresh():
+        while True:
+            await asyncio.sleep(1)  # Simulated token refresh
+
+    # Create a task using the test's event loop
+    mock_refresh_task = asyncio.create_task(fake_refresh())
+
+    # Ensure app.extra contains all necessary attributes at once
+    mocker.patch.object(
+        staging_client.app,
+        "extra",
+        {
+            "process_manager": mock_db_table,
+            "auth_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "auth_list_lock": mocker.Mock(spec=threading.Lock),
+            "shutdown_event": mock_shutdown_event,
+            "refresh_task": mock_refresh_task,
+        },
+    )
 
     # Call the API
     response = staging_client.delete(f"/jobs/{expected_job['identifier']}")
@@ -415,6 +514,13 @@ async def test_delete_job_endpoint(
     # Assert response status code and content
     assert response.status_code == expected_status
     assert response.json() == expected_response
+
+    # Proper cleanup
+    mock_refresh_task.cancel()
+    try:
+        await mock_refresh_task  # Ensure it exits properly
+    except asyncio.CancelledError:
+        pass  # Expected, ignore the cancellation
 
 
 @pytest.mark.asyncio

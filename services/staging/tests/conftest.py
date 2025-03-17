@@ -27,10 +27,12 @@ from pathlib import Path
 
 import pytest
 import yaml
+from distributed import Lock, Variable
 from fastapi.testclient import TestClient
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
 )
+from rs_server_staging.processors import RefreshTokenData
 
 os.environ["RSPY_LOCAL_MODE"] = "1"
 from rs_server_staging.processors import Staging  # pylint: disable=import-error
@@ -164,9 +166,32 @@ def staging(mocker):
     mock_item = "test_item"
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
-    mock_auth_list = mocker.Mock()
-    mocker_auth_list_lock = mocker.Mock()
-    mocker_new_task_event = mocker.Mock()
+    # Mock auth_list as an iterable
+    # Create mock dask locks and variables
+    mock_token_lock1 = mocker.MagicMock(spec=Lock)
+    mock_token_info1 = mocker.MagicMock(spec=Variable)
+
+    mock_token_lock2 = mocker.MagicMock(spec=Lock)
+    mock_token_info2 = mocker.MagicMock(spec=Variable)
+
+    # Mock RefreshTokenData objects
+    mock_refresh_token1 = mocker.MagicMock(spec=RefreshTokenData)
+    mock_refresh_token1.station_id = "station_1"
+    mock_refresh_token1.token_list = [(mock_token_lock1, mock_token_info1)]
+    mock_refresh_token1.get_first_subscriber = mocker.Mock(return_value=(mock_token_lock1, mock_token_info1))
+
+    mock_refresh_token2 = mocker.MagicMock(spec=RefreshTokenData)
+    mock_refresh_token2.station_id = "station_2"
+    mock_refresh_token2.token_list = [(mock_token_lock2, mock_token_info2)]
+    mock_refresh_token2.get_first_subscriber = mocker.Mock(return_value=(mock_token_lock2, mock_token_info2))
+
+    # Mock auth_list as a list of RefreshTokenData instances
+    mock_auth_list = [mock_refresh_token1, mock_refresh_token2]
+
+    # Fix: Explicitly define __enter__ and __exit__ on mocker.Mock()
+    mock_auth_list_lock = mocker.Mock()
+    mock_auth_list_lock.__enter__ = mocker.Mock(return_value=mock_auth_list_lock)
+    mock_auth_list_lock.__exit__ = mocker.Mock(return_value=None)
 
     mocker.patch.dict(
         os.environ,
@@ -182,8 +207,7 @@ def staging(mocker):
         db_process_manager=mock_db,
         cluster=mock_cluster,
         auth_list=mock_auth_list,
-        auth_list_lock=mocker_auth_list_lock,
-        new_task_event=mocker_new_task_event,
+        auth_list_lock=mock_auth_list_lock,
     )
     yield staging_instance
 

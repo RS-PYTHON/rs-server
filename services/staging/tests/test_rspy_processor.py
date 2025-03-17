@@ -70,10 +70,10 @@ class TestTokenAuth:
 class TestStreaming:
     """Test class for Staging processor"""
 
-    def test_streaming_task(self, mocker, config):
-        """Test a error while creating s3 handler"""
-        # mock init of s3 handler without S3_ACCESSKEY, should raise an error while creating s3 handler
-        # Mock S3StorageHandler and its delete_file_from_s3 method
+    def test_streaming_task(self, mocker, config, mock_variable, mock_lock):
+        """Test successful streaming task execution"""
+
+        # Mock environment variables
         mocker.patch.dict(
             os.environ,
             {
@@ -83,14 +83,13 @@ class TestStreaming:
                 "S3_REGION": "fake_region",
             },
         )
+
+        # Mock S3StorageHandler instance
         mock_s3_handler = mocker.Mock()
         mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
 
+        mock_variable.get.return_value = {"access_token": "fake_token"}
         s3_key = "s3_path/file.zip"
-        mocker.patch(
-            "rs_server_staging.processors.S3StorageHandler.s3_streaming_upload",
-            return_value=None,
-        )
 
         assert (
             streaming_task(
@@ -98,33 +97,55 @@ class TestStreaming:
                 config=config,
                 bucket="bucket",
                 s3_file=s3_key,
-                token_dict={},
-                token_lock=None,
+                token_info=mock_variable,
+                token_lock=mock_lock,
             )
             == s3_key
         )
 
-    def test_streaming_task_incorrect_env(self, mocker, config):
-        """Test a error while creating s3 handler"""
-        # mock init of s3 handler without S3_ACCESSKEY, should raise an error while creating s3 handler
-        mocker.patch.dict(
-            "os.environ",
-            {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
-        )
-        with pytest.raises(ValueError, match=r"Cannot create s3 connector object."):
+        # Ensure token was accessed
+        mock_variable.get.assert_called_once()
+        mock_lock.__enter__.assert_called_once()  # Ensures the lock was acquired
+
+    def test_streaming_task_missing_access_token(self, config, mock_variable, mock_lock):
+        """Test when token_info does not contain 'access_token'"""
+
+        with pytest.raises(ValueError, match="Cannot create s3 connector object."):
             streaming_task(
                 product_url="https://example.com/product.zip",
                 config=config,
                 bucket="bucket",
                 s3_file="file.zip",
-                token_dict={},
-                token_lock=None,
+                token_info=mock_variable,
+                token_lock=mock_lock,
             )
 
-    def test_streaming_task_runtime_error(self, mocker, config):
-        """Test a runtimeerror while streaming-download."""
+    def test_streaming_task_incorrect_env(self, mocker, config, mock_variable, mock_lock):
+        """Test an error when creating S3 handler due to missing env variables"""
+
+        # Patch environment to remove S3_ACCESSKEY
         mocker.patch.dict(
-            "os.environ",
+            os.environ,
+            {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
+        )
+
+        mock_variable.get.return_value = {"access_token": "fake_token"}
+
+        with pytest.raises(ValueError, match="Cannot create s3 connector object."):
+            streaming_task(
+                product_url="https://example.com/product.zip",
+                config=config,
+                bucket="bucket",
+                s3_file="file.zip",
+                token_info=mock_variable,
+                token_lock=mock_lock,
+            )
+
+    def test_streaming_task_runtime_error(self, mocker, config, mock_variable, mock_lock):
+        """Test a runtime error during streaming"""
+
+        mocker.patch.dict(
+            os.environ,
             {
                 "S3_ACCESSKEY": "fake_access_key",
                 "S3_SECRETKEY": "fake_secret_key",
@@ -132,13 +153,13 @@ class TestStreaming:
                 "S3_REGION": "fake_region",
             },
         )
-
-        # mock inner s3_handler.streaming to raise
+        mock_variable.get.return_value = {"access_token": "fake_token"}
+        # Mock streaming upload to raise RuntimeError
         mocker.patch(
             "rs_server_staging.processors.S3StorageHandler.s3_streaming_upload",
             side_effect=RuntimeError("Streaming failed"),
         )
-        # If s3-streaming raise runtime error, we forward value error? to be checked
+
         with pytest.raises(
             ValueError,
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
@@ -148,9 +169,45 @@ class TestStreaming:
                 config=config,
                 bucket="bucket",
                 s3_file="file.zip",
-                token_dict={},
-                token_lock=None,
+                token_info=mock_variable,
+                token_lock=mock_lock,
             )
+
+    def test_streaming_task_connection_retry(self, mocker, config, mock_variable, mock_lock):
+        """Test retry mechanism for ConnectionError"""
+
+        mocker.patch.dict(
+            os.environ,
+            {
+                "S3_ACCESSKEY": "fake_access_key",
+                "S3_SECRETKEY": "fake_secret_key",
+                "S3_ENDPOINT": "fake_endpoint",
+                "S3_REGION": "fake_region",
+                "S3_RETRY_TIMEOUT": "1",
+                "S3_MAX_RETRIES": "3",
+            },
+        )
+
+        # Mock streaming upload to fail multiple times
+        mock_s3_handler = mocker.Mock()
+        mock_s3_handler.s3_streaming_upload.side_effect = ConnectionError("Streaming failed")
+        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+        mock_variable.get.return_value = {"access_token": "fake_token"}
+        with pytest.raises(
+            ValueError,
+            match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
+        ):
+            streaming_task(
+                product_url="https://example.com/product.zip",
+                config=config,
+                bucket="bucket",
+                s3_file="file.zip",
+                token_info=mock_variable,
+                token_lock=mock_lock,
+            )
+
+        # Ensure retries happened
+        assert mock_s3_handler.s3_streaming_upload.call_count == 3
 
 
 class TestStaging:
@@ -856,6 +913,7 @@ class TestStagingMainExecution:
         mocker,
         staging_instance: Staging,
         config: ExternalAuthenticationConfig,
+        mock_variable,
     ):
         """Test to mock the connection to a dask cluster"""
         # Not all the needed env vars are mocked
@@ -866,17 +924,13 @@ class TestStagingMainExecution:
             },
         )
 
-        # Setup mock for Dask.distributed.variable
-        mock_variable = mocker.MagicMock()
-        mock_variable.get.return_value = {}
-        mock_variable.set.return_value = None
         mocker.patch("rs_server_staging.processors.Variable", return_value=mock_variable)
 
         staging_instance.cluster = None
         with pytest.raises(RuntimeError):
             staging_instance.dask_cluster_connect(staging_station_id=config.station_id)
 
-    def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance: Staging):
+    def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance: Staging, mock_variable, mock_lock):
         """Test to mock managing of successul tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
@@ -888,6 +942,13 @@ class TestStagingMainExecution:
         task2.key = "task2"
         # mock dask client
         client = mocker.Mock(return_value=True)
+        # Setup mock for Dask.distributed.variable
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+
+        # Setup mock for dask.distributed.lock
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
         staging_instance.tasks = [task1, task2]  # Set tasks
         staging_instance.stream_list = [task1, task2]  # set streaming list
         # mock distributed as_completed
@@ -904,12 +965,19 @@ class TestStagingMainExecution:
         # Check that feature publish method was called.
         mock_publish_feature.assert_called()
 
-    def test_manage_dask_tasks_results_failure(self, mocker, staging_instance: Staging):
+    def test_manage_dask_tasks_results_failure(self, mocker, staging_instance: Staging, mock_variable, mock_lock):
         """Test handling callbacks when error on one task"""
         task1 = mocker.Mock()
         task1.result = mocker.Mock(return_value=None, side_effect=Exception)  # Simulate a exception in task
         task1.key = "task1"
         client = mocker.Mock(return_value=True)
+        # Setup mock for Dask.distributed.variable
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+
+        # Setup mock for dask.distributed.lock
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
         staging_instance.tasks = [task1]
         # Create mock for task, and distributed.as_completed func
         mocker.patch("rs_server_staging.processors.as_completed", return_value=[task1])
@@ -930,7 +998,7 @@ class TestStagingMainExecution:
         # Features are not published here.
         mock_publish_feature.assert_not_called()
 
-    def test_manage_dask_tasks_failed_to_publish(self, mocker, staging_instance: Staging):
+    def test_manage_dask_tasks_failed_to_publish(self, mocker, staging_instance: Staging, mock_variable, mock_lock):
         """Test to mock managing of successul tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
@@ -942,6 +1010,13 @@ class TestStagingMainExecution:
         task2.key = "task2"
         # mock dask client
         client = mocker.Mock(return_value=True)
+        # Setup mock for Dask.distributed.variable
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+
+        # Setup mock for dask.distributed.lock
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
         staging_instance.tasks = [task1, task2]  # Set tasks
         staging_instance.stream_list = [task1, task2]  # set streaming list
         # mock distributed as_completed
@@ -960,9 +1035,16 @@ class TestStagingMainExecution:
         )
         mock_delete_file_from_bucket.assert_called()
 
-    def test_manage_dask_tasks_no_dask_client(self, mocker, staging_instance: Staging):
+    def test_manage_dask_tasks_no_dask_client(self, mocker, staging_instance: Staging, mock_variable, mock_lock):
         """Test the manage_dask_tasks when no valid dask client is received"""
         mock_logger = mocker.patch.object(staging_instance, "logger")
+        # Setup mock for Dask.distributed.variable
+        mocker.patch("dask.distributed.Variable", return_value=mock_variable)
+        staging_instance.token_info = Variable("test_variable")
+
+        # Setup mock for dask.distributed.lock
+        mocker.patch("dask.distributed.Lock", return_value=mock_lock)
+        staging_instance.token_lock = Lock("test_lock")
         staging_instance.manage_dask_tasks_results(None, "test_collection")
         mock_logger.error.assert_called_once_with("The dask cluster client object is not created. Exiting")
 
@@ -1057,9 +1139,24 @@ class TestStagingMainExecution:
         mock_manage_dask_tasks.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_success(self, mocker, staging_instance: Staging, mock_variable, mock_lock):
+    async def test_process_rspy_features_success(
+        self,
+        mocker,
+        staging_instance: Staging,
+        cluster_options: str,
+        mock_variable,
+        mock_lock,
+    ):
         """Test case where the entire process runs successfully."""
-
+        mocker.patch.dict(
+            os.environ,
+            {
+                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
+                "JUPYTERHUB_API_TOKEN": "mock_api_token",
+                "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],  # type: ignore
+            },
+        )
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
         mocker.patch.object(staging_instance, "log_job_execution")
@@ -1087,8 +1184,9 @@ class TestStagingMainExecution:
             "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mock_external_auth_config,
         )
+
         mocker.patch(
-            "rs_server_common.authentication.authentication_to_external.get_station_token",
+            "rs_server_staging.processors.refresh_token",
             return_value="mock_token",
         )
 
@@ -1098,11 +1196,11 @@ class TestStagingMainExecution:
 
         # Setup mock for Dask.distributed.variable
         mocker.patch("dask.distributed.Variable", return_value=mock_variable)
-        staging_instance.token_info = Variable("test_variable")
+        staging_instance.token_info = Variable("station_1")
 
         # Setup mock for dask.distributed.lock
         mocker.patch("dask.distributed.Lock", return_value=mock_lock)
-        staging_instance.token_lock = Lock("test_lock")
+        staging_instance.token_lock = Lock("station_1")
 
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")

@@ -31,7 +31,6 @@ from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
 from rs_server_common.authentication.authentication_to_external import (
-    get_station_token,
     init_rs_server_config_yaml,
 )
 from rs_server_common.db import Base
@@ -39,7 +38,10 @@ from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
-from rs_server_staging.processors import processors
+from rs_server_staging.processors import (
+    processors,
+    refresh_token,
+)
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import (
     HTTPException as StarletteHTTPException,  # pylint: disable=C0411
@@ -226,7 +228,6 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     # token refereshment logic
     fastapi_app.extra["auth_list"] = []
     fastapi_app.extra["auth_list_lock"] = threading.Lock()
-    fastapi_app.extra["new_task_event"] = asyncio.Event()
     fastapi_app.extra["shutdown_event"] = asyncio.Event()
     # Run the refresh loop in the background
     fastapi_app.extra["refresh_task"] = asyncio.create_task(refresh_auth_tokens(timeout=20))
@@ -251,35 +252,6 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     logger.info("Application gracefully stopped...")
 
 
-async def refresh_token(auth_refresh_token):
-    """Handles token refresh asynchronously without threads."""
-    try:
-        if auth_refresh_token.followers == 0:
-            logger.debug(f"No followers for {auth_refresh_token.token_info.name}. EXIT refresh_token")
-            return
-        if not auth_refresh_token.token_lock.client.scheduler:
-            logger.debug(f"No scheduler connected for {auth_refresh_token.token_info.name}. EXIT refresh_token")
-            return
-        logger.debug("ENTER refresh_token ")
-        with auth_refresh_token.token_lock:
-            logger.debug("LOCK acquired ")
-            try:
-                token_dict = auth_refresh_token.token_info.get()
-                logger.debug(f"Refreshing token {auth_refresh_token.token_info.name}: {token_dict}")
-                # Get/refresh the access token if necessary
-                token_dict = get_station_token(auth_refresh_token.config, token_dict)
-                auth_refresh_token.token_info.set(token_dict)
-            # If we get an error to retrieve the token, print a message
-            except HTTPException as http_exception:
-                logger.exception(
-                    f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
-                )
-                # should a re-try be started?
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"Caught exception  refresh_token : {e}")
-    logger.debug("EXIT refresh_token ")
-
-
 async def refresh_auth_tokens(timeout: int = 60):
     """Background thread to refresh tokens when needed."""
     logger.info("Starting the background thread to refresh tokens")
@@ -288,7 +260,6 @@ async def refresh_auth_tokens(timeout: int = 60):
             # Wait for either a new task submits to dask cluster even or a shutdown event, with a timeout
             await asyncio.wait(
                 {
-                    asyncio.create_task(app.extra["new_task_event"].wait()),
                     asyncio.create_task(app.extra["shutdown_event"].wait()),
                 },
                 timeout=timeout,  # Wait up to `timeout` seconds before waking up
@@ -299,9 +270,6 @@ async def refresh_auth_tokens(timeout: int = 60):
                 logger.info("Finishing the background thread to refresh tokens")
                 break
 
-            # If the event triggered was new_task_event, reset it
-            if app.extra["new_task_event"].is_set():
-                app.extra["new_task_event"].clear()
             logger.debug("Refreshing tokens")
 
             # Refresh tokens concurrently for all items in the list
@@ -309,7 +277,7 @@ async def refresh_auth_tokens(timeout: int = 60):
             with app.extra["auth_list_lock"]:
                 tmp_list = app.extra["auth_list"].copy()
             await asyncio.gather(
-                *[refresh_token(auth) for auth in tmp_list],
+                *[refresh_token(auth, logger) for auth in tmp_list],
             )
             logger.debug("await asyncio.gather finished")
         except asyncio.CancelledError:
@@ -372,7 +340,6 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             app.extra["dask_cluster"],
             app.extra["auth_list"],
             app.extra["auth_list_lock"],
-            app.extra["new_task_event"],
         ).execute(data.inputs.dict())
         return JSONResponse(status_code=HTTP_200_OK, content={"status": status})
 
