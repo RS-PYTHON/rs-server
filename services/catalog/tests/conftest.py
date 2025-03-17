@@ -29,6 +29,7 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 # pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
 init_app_cluster_mode()
 
+# flake8: noqa: E402
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator, Union
