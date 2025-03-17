@@ -25,14 +25,17 @@ import os.path as osp
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Request
 import pytest
 import yaml
+from fastapi import Request
 from fastapi.testclient import TestClient
-
-os.environ["RSPY_LOCAL_MODE"] = "1"
-from rs_server_staging.processors import Staging  # pylint: disable=import-error
 from starlette.middleware.sessions import SessionMiddleware
+
+# Ensure environment variable is set before using rs_server_staging
+os.environ["RSPY_LOCAL_MODE"] = "1"
+
+# Local application import
+from rs_server_staging.processors import Staging  # pylint: disable=import-error
 
 TEST_DETAIL = "Test detail"
 
@@ -40,7 +43,7 @@ TEST_DETAIL = "Test detail"
 # These env vars are mandatory before importing the staging main module
 for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB":
     os.environ[envvar] = ""
-from rs_server_staging.main import app  # pylint: disable=import-error
+from rs_server_staging.main import app
 
 
 @pytest.fixture(name="set_db_env_var")
@@ -80,6 +83,7 @@ def client_(mocker):
     with TestClient(app) as client:
         yield client
 
+
 @pytest.fixture(name="staging_client_auth")
 def auth_client_(mocker):
     """init fastapi client app with auth component."""
@@ -91,11 +95,15 @@ def auth_client_(mocker):
     mocker.patch("rs_server_common.authentication.oauth2.get_user_info", return_value=mocker.Mock())
 
     if not any(isinstance(m, SessionMiddleware) for m in app.user_middleware):
-        app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
+        app.add_middleware(SessionMiddleware, secret_key=None)
 
     @app.middleware("http")
     async def set_auth_roles(request: Request, call_next):
-        request.state.auth_roles = ["RS_PROCESSES_STAGING_READ", "RS_PROCESSES_STAGING_EXECUTE", "RS_PROCESSES_STAGING_DISMISS"]
+        request.state.auth_roles = [
+            "RS_PROCESSES_STAGING_READ",
+            "RS_PROCESSES_STAGING_EXECUTE",
+            "RS_PROCESSES_STAGING_DISMISS",
+        ]
         response = await call_next(request)
         return response
 
