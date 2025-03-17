@@ -522,7 +522,7 @@ async def test_app_lifespan_gateway_error(
     """Test app_lifespan when there is an error in connecting to the Dask Gateway."""
 
     # Mock environment variables to simulate gateway mode
-    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
+    mocker.patch("rs_server_staging.main.LOCAL_MODE", new=False, autospec=False)
 
     # Mock FastAPI app
     mock_app = FastAPI()

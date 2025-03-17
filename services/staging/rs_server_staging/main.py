@@ -230,7 +230,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     init_rs_server_config_yaml()
     # Create jobs table
     process_manager = init_db()
-    if common_settings.CLUSTER_MODE:
+    if CLUSTER_MODE:
         common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
     # In local mode, if the gateway is not defined, create a dask LocalCluster
     cluster = None
