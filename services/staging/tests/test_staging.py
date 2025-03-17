@@ -144,7 +144,12 @@ class TestInitDb:
 
 
 @pytest.mark.asyncio
-async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pylint: disable=unused-argument
+async def test_get_jobs_endpoint(
+    mocker,
+    set_db_env_var,
+    staging_client,
+    mock_db_table,  # pylint: disable=unused-argument
+):
     """
     Test the GET /jobs endpoint for retrieving job listings.
 
@@ -163,30 +168,6 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
           in the database.
     """
     # Simulate mock data in the postgres table
-
-    # Mock database manager
-    mock_db_table = mocker.MagicMock()
-    mock_db_table.get_jobs.return_value = {
-        "jobs": [
-            {
-                "identifier": "job_1",
-                "status": "successful",
-                "progress": 100.0,
-                "message": "Test detail",
-                "created": str(datetime(2024, 1, 1, 12, 0, 0)),
-                "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
-            },
-            {
-                "identifier": "job_2",
-                "status": "running",
-                "progress": 90.25,
-                "message": "Test detail",
-                "created": str(datetime(2024, 1, 2, 12, 0, 0)),
-                "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
-            },
-        ],
-        "numberMatched": 2,
-    }
 
     # Mock asyncio.Event
     mock_shutdown_event = mocker.Mock(spec=asyncio.Event)

@@ -308,7 +308,7 @@ async def refresh_auth_tokens(timeout: int = 60):
             await asyncio.gather(
                 *[refresh_token(auth, logger) for auth in tmp_list],
             )
-            logger.debug("await asyncio.gather finished")
+            logger.debug("Refreshing tokens finished")
         except asyncio.CancelledError:
             # Handle cancellation properly (for example when FastAPI shuts down)
             # logger.exception(f"Handle cancellation: {e}")

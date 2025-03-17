@@ -804,7 +804,9 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
-                "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],  # type: ignore
+                "RSPY_DASK_STAGING_CLUSTER_NAME": str(
+                    cluster_options.get("cluster_name", "default_cluster"),
+                ),  # type: ignore
             },
         )
         # Mock the cluster mode
@@ -1154,7 +1156,9 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
-                "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],  # type: ignore
+                "RSPY_DASK_STAGING_CLUSTER_NAME": str(
+                    cluster_options.get("cluster_name", "default_cluster"),
+                ),  # type: ignore
             },
         )
         # Mock the logger

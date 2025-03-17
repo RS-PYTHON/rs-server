@@ -81,6 +81,7 @@ def client_(mocker):
     mocker.patch("rs_server_staging.main.init_db", return_value=None)
     mocker.patch("rs_server_staging.main.PostgreSQLManager", return_value=mocker.Mock())
     with TestClient(app) as client:
+
         yield client
 
 
@@ -305,3 +306,33 @@ def get_mock_lock(mocker):
     mock_lock.acquire.return_value = True
     mock_lock.release.return_value = None
     return mock_lock
+
+
+@pytest.fixture(name="mock_db_table")
+def get_mock_db_table(mocker):
+    """
+    Mock database manager
+    """
+    mock_db_table = mocker.MagicMock()
+    mock_db_table.get_jobs.return_value = {
+        "jobs": [
+            {
+                "identifier": "job_1",
+                "status": "successful",
+                "progress": 100.0,
+                "message": "Test detail",
+                "created": str(datetime(2024, 1, 1, 12, 0, 0)),
+                "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
+            },
+            {
+                "identifier": "job_2",
+                "status": "running",
+                "progress": 90.25,
+                "message": "Test detail",
+                "created": str(datetime(2024, 1, 2, 12, 0, 0)),
+                "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
+            },
+        ],
+        "numberMatched": 2,
+    }
+    return mock_db_table
