@@ -98,7 +98,12 @@ EOF
 
     cat "$dockerfile"
 
-    # Build and publish the image
+    # Build the docker image
     docker build --progress plain -f "$dockerfile" -t "$target" "$dockerdir"
-    docker push "$target"
+
+    # Push the docker iamge to the registry, if the --push option is specified.
+    if [[ " $@ " == *" --push "* ]]; then
+        docker login https://ghcr.io/v2/rs-python
+        docker push "$target"
+    fi
 done
