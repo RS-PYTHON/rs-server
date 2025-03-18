@@ -65,11 +65,12 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
-REFRESH_TOKENS_TIMEOUT = 60
 # flake8: noqa: F401
 # pylint: disable=W0611
 from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
 from .rspy_models import ProcessMetadataModel
+
+REFRESH_TOKENS_TIMEOUT = 40
 
 logger = Logging.default(__name__)
 
@@ -300,15 +301,21 @@ async def refresh_auth_tokens(timeout: int = 60):
                 logger.info("Finishing the background thread to refresh tokens")
                 break
 
-            logger.debug("Refreshing tokens")
-
             # Refresh tokens concurrently for all items in the list
             tmp_list = []
             with app.extra["auth_list_lock"]:
-                tmp_list = app.extra["auth_list"].copy()
-            await asyncio.gather(
-                *[refresh_token(auth, logger) for auth in tmp_list],
-            )
+                # tmp_list = app.extra["auth_list"].copy()
+                logger.debug("Refreshing tokens")
+                for auth in app.extra["auth_list"]:
+                    if not await refresh_token(auth, logger):
+                        token_lock, token_info = auth.get_first_subscriber(logger)
+                        token_info.delete()
+                        auth.unsubscribe(token_lock, token_info, logger)
+
+            # logger.debug("Refreshing tokens")
+            # await asyncio.gather(
+            #     *[refresh_token(auth, logger) for auth in tmp_list],
+            # )
             logger.debug("Refreshing tokens finished")
         except asyncio.CancelledError:
             # Handle cancellation properly (for example when FastAPI shuts down)
