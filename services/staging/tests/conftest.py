@@ -16,7 +16,7 @@
 
 # Ignore not-at-top level import errors
 
-# pylint: disable=C0413
+# pylint: disable=C0413, ungrouped-imports
 # flake8: noqa: F402
 
 import asyncio
@@ -30,10 +30,10 @@ import pytest
 import yaml
 from fastapi import Request
 from fastapi.testclient import TestClient
-from starlette.middleware.sessions import SessionMiddleware
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
+from starlette.middleware.sessions import SessionMiddleware
 
 # Init the FastAPI application with all the cluster mode features (local mode=0)
 # Do this before any other imports.

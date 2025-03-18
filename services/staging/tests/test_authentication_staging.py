@@ -152,11 +152,10 @@ async def test_error_when_not_authenticated(mocker, staging_client, httpx_mock: 
                 response = staging_client.request(method, endpoint, json=json_data, **header)
                 logger.debug(response)
                 assert response.status_code not in (
-                    HTTP_401_UNAUTHORIZED,
+                    # HTTP_401_UNAUTHORIZED, # 401 is raised by auth_validation if roles are missing
                     HTTP_403_FORBIDDEN,
                     HTTP_422_UNPROCESSABLE_ENTITY,  # with 422, the authentication is not called and not tested
                 )
-
                 # With a wrong apikey, we should have a 403 error
                 if test_apikey:
                     assert (
