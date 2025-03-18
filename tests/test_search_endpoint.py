@@ -823,10 +823,10 @@ class TestFeatureCollectionOdataStacMapping:
             "/cadip/collections/cadip_session_by_id/items?limit=0",
         ],
     )
-    def test_invalid_limit_values(self, client, endpoint):
+    def test_invalid_limit_values(self, client: TestClient, endpoint: str):
         """Test endpoint call with invalid limits (str, negative, 0)"""
         response = client.get(endpoint)
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json()["detail"][0]["msg"] in (
             "Input should be a valid integer, unable to parse string as an integer",
             "Input should be greater than 0",

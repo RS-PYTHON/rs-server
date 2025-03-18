@@ -23,6 +23,7 @@ import asyncio
 import os
 import os.path as osp
 from datetime import datetime
+from importlib import reload
 from pathlib import Path
 
 import pytest
@@ -30,20 +31,30 @@ import yaml
 from fastapi import Request
 from fastapi.testclient import TestClient
 from starlette.middleware.sessions import SessionMiddleware
+from rs_server_common.utils.pytest.pytest_authentication_utils import (
+    init_app_cluster_mode,
+)
 
-# Ensure environment variable is set before using rs_server_staging
-os.environ["RSPY_LOCAL_MODE"] = "1"
-
-# Local application import
-from rs_server_staging.processors import Staging  # pylint: disable=import-error
-
-TEST_DETAIL = "Test detail"
+# Init the FastAPI application with all the cluster mode features (local mode=0)
+# Do this before any other imports.
+# We'll restore the local mode by default a few lines below.
+# pylint: disable=wrong-import-position
+init_app_cluster_mode()
 
 
 # These env vars are mandatory before importing the staging main module
 for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB":
     os.environ[envvar] = ""
-from rs_server_staging.main import app
+from rs_server_common import settings as common_settings
+from rs_server_staging.main import app  # pylint: disable=import-error
+
+# Restore the local mode by default
+os.environ["RSPY_LOCAL_MODE"] = "1"
+reload(common_settings)
+
+from rs_server_staging.processors import Staging  # pylint: disable=import-error
+
+TEST_DETAIL = "Test detail"
 
 
 @pytest.fixture(name="set_db_env_var")

@@ -16,7 +16,7 @@
 
 import os
 
-from fastapi import Request
+from fastapi import FastAPI, Request
 from rs_server_adgs.api.adgs_search import MockPgstacAdgs
 from rs_server_adgs.fastapi.adgs_routers import adgs_routers
 from rs_server_cadip.api.cadip_search import MockPgstacCadip
@@ -42,10 +42,10 @@ class MockPgstacTest(MockPgstac):
         raise RuntimeError(f"Invalid router_prefix or endpoint: {router_prefix!r} / {endpoint!r}")
 
 
-def init_app(router_prefix: str = ""):
+def init_app(router_prefix: str = "") -> FastAPI:
     """Run all routers for the tests."""
     routers = adgs_routers + cadip_routers
-    app = init_app_with_args(
+    app: FastAPI = init_app_with_args(
         api_version="test",
         routers=routers,
         init_db=True,
