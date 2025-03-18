@@ -1,4 +1,3 @@
-
 # Copyright 2024 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,11 +15,10 @@
 """Test staging endpoint authentication."""
 
 import pytest
-from starlette.status import (
-    HTTP_401_UNAUTHORIZED,
-)
+from starlette.status import HTTP_401_UNAUTHORIZED
 
 from .resources.sample_data import sample_process_metadata_model
+
 
 @pytest.mark.unit
 def test_auth_roles(mocker, staging_client_auth):
@@ -74,7 +72,8 @@ def test_auth_roles(mocker, staging_client_auth):
     }
 
     unauthorized_execute_jobs_response = staging_client_auth.post(
-        f"/processes/{resource}/execution", json=sample_process_metadata_model,
+        f"/processes/{resource}/execution",
+        json=sample_process_metadata_model,
     )
     assert unauthorized_execute_jobs_response.status_code == HTTP_401_UNAUTHORIZED
     assert unauthorized_execute_jobs_response.json() == {
