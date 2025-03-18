@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test staging endpoint authentication."""
+"""Unit tests for the authentication."""
 
 import pytest
 from pytest_httpx import HTTPXMock
