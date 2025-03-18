@@ -61,9 +61,10 @@ def test_auth_roles(mocker, staging_client_auth):
     """
     resource = "staging"
     assert staging_client_auth.get(f"/processes/{resource}").status_code != HTTP_401_UNAUTHORIZED
-
-    # Use json body here, to be updated
-    # assert staging_client_auth.post(f"/processes/{resource}/execution").status_code != HTTP_401_UNAUTHORIZED
+    assert (
+        staging_client_auth.post(f"/processes/{resource}/execution", json=sample_process_metadata_model).status_code
+        != HTTP_401_UNAUTHORIZED
+    )
 
     mock_db_table = mocker.MagicMock()
     # Mock the job databse to allocate staging resource for this job-id
@@ -82,8 +83,13 @@ def test_auth_roles(mocker, staging_client_auth):
         "message": "Missing RS_PROCESSES_OTHER_STAGING_READ authorization role",
     }
 
-    # Use json body here, to be updated
-    # assert staging_client_auth.post(f"/processes/{resource}/execution").status_code == HTTP_401_UNAUTHORIZED
+    unauthorized_execute_jobs_response = staging_client_auth.post(
+        f"/processes/{resource}/execution", json=sample_process_metadata_model,
+    )
+    assert unauthorized_execute_jobs_response.status_code == HTTP_401_UNAUTHORIZED
+    assert unauthorized_execute_jobs_response.json() == {
+        "message": "Missing RS_PROCESSES_OTHER_STAGING_EXECUTE authorization role",
+    }
 
     # Mock the jobs db, to allocate current job-id to other_staging resource.
     mock_db_table.get_job.return_value = {"process_id": resource}
