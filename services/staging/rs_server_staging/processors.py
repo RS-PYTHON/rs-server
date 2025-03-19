@@ -78,7 +78,7 @@ async def acquire_lock_with_timeout(token_lock, timeout=5):
 
 
 def dbg_write_to_file(msg):
-    with open("/home/dask", "a+") as f:
+    with open("/home/dask/worker.log", "a+") as f:
         f.write(msg)
 
 
