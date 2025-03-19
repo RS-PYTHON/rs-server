@@ -261,7 +261,9 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     fastapi_app.extra["auth_list_lock"] = threading.Lock()
     fastapi_app.extra["shutdown_event"] = asyncio.Event()
     # Run the refresh loop in the background
-    fastapi_app.extra["refresh_task"] = asyncio.create_task(refresh_auth_tokens(timeout=REFRESH_TOKENS_TIMEOUT))
+    fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
+        refresh_auth_tokens(timeout=REFRESH_TOKENS_TIMEOUT),
+    )
 
     # Yield control back to the application (this is where the app will run)
     yield
@@ -302,14 +304,12 @@ async def refresh_auth_tokens(timeout: int = 60):
                 break
 
             # Refresh tokens concurrently for all items in the list
-            tmp_list = []
             with app.extra["auth_list_lock"]:
                 # tmp_list = app.extra["auth_list"].copy()
                 logger.debug("Refreshing tokens")
                 for auth in app.extra["auth_list"]:
                     if not await refresh_token(auth, logger):
                         token_lock, token_info = auth.get_first_subscriber(logger)
-                        token_info.delete()
                         auth.unsubscribe(token_lock, token_info, logger)
 
             # logger.debug("Refreshing tokens")

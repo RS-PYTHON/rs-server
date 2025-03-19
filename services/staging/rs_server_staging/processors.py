@@ -61,7 +61,7 @@ from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
 
-TIMEOUT_GET_TOKEN = 5
+TIMEOUT_GET_TOKEN = "5s"
 TASK_TIMEOUT_VALUE = int(os.environ.get("TASK_TIMEOUT", 120))  # Set a per-task timeout
 
 
@@ -75,6 +75,11 @@ async def acquire_lock_with_timeout(token_lock, timeout=5):
     except asyncio.TimeoutError:
         print(f"Timeout: Could not acquire lock {token_lock.name} within {timeout} seconds.")
         return False
+
+
+def dbg_write_to_file(msg):
+    with open("/home/dask", "a+") as f:
+        f.write(msg)
 
 
 def streaming_task(  # pylint: disable=R0913, R0917
@@ -120,12 +125,14 @@ def streaming_task(  # pylint: disable=R0913, R0917
 
     logger_dask = logging.getLogger(__name__)
     logger_dask.info("This is a log message from the worker.")
+    dbg_write_to_file(f"{s3_file}: This is a log message from the worker.\n")
     # Create a thread lock to synchronize access to shared resources between the threads of a
     # given worker
     s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))
     attempt = 0
     max_retries = int(os.environ.get("S3_MAX_RETRIES", S3_MAX_RETRIES))
     print(f"streaming_task started: {s3_file}")
+    dbg_write_to_file(f"{s3_file}: streaming_task started\n")
     while attempt < max_retries:
         # this token_lock may not be used when fetching the vale from the dask Variable
         # this is at least my understanding from the documentation I read and src code :
@@ -138,6 +145,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
         auth = None
         try:
             logger_dask.info(f"Trying to get dask lock: {s3_file}")
+            dbg_write_to_file(f"{s3_file}: Trying to get dask lock\n")
             # if token_lock.acquire(timeout=10):
             #    print(f"Dask lock acquired: {s3_file}")
             # fetch the access_token from the shared dask variable
@@ -151,32 +159,35 @@ def streaming_task(  # pylint: disable=R0913, R0917
             try:
                 token_dict = token_info.get(timeout=TIMEOUT_GET_TOKEN)
                 if not isinstance(token_dict, dict):
+                    dbg_write_to_file(f"{s3_file}: Retrieved value for the token is not a dictionary\n")
                     raise KeyError("Retrieved value for the token is not a dictionary")
             except (TimeoutError, ValueError) as e:
+                dbg_write_to_file(
+                    f"{s3_file}: Key access_token could not be retrieved from the shared dask variable: {e}\n",
+                )
                 raise KeyError(f"Key access_token could not be retrieved from the shared dask variable: {e}") from e
+            except Exception as e:
+                dbg_write_to_file(f"{s3_file}: Unknown exception: {e}\n")
+                raise KeyError(f"Unknown exception: {e}") from e
             if "access_token" not in token_dict:
+                dbg_write_to_file(f"{s3_file}: Key access_token does not exist in the token dictionary\n")
                 raise KeyError("Key access_token does not exist in the token dictionary")
             auth = TokenAuth(token_dict["access_token"])
             # else:
             #    print(f"Could not acquire the dask lock: {s3_file}")
             #    break
             logger_dask.info(f"dask lock released: {s3_file}")
+            dbg_write_to_file(f"{s3_file}: dask lock released\n")
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
                 os.environ["S3_SECRETKEY"],
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
             )
-            # DEBUG ONLY !
-            # s3_handler = S3StorageHandler(
-            #     "minio",
-            #     "Strong#Pass#1234",
-            #     "http://minio:9000",
-            #     "sbg",
-            # )
-            # product_url = product_url.replace("cadip-station:5000", "127.0.0.1:5002")
-            # end of DEBUG ONLY !
+
+            dbg_write_to_file(f"{s3_file}: UPLOADING !\n")
             s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
+            dbg_write_to_file(f"{s3_file}: UPLOADED !\n")
             s3_handler.disconnect_s3()
             break
         except ConnectionError as e:
@@ -184,88 +195,35 @@ def streaming_task(  # pylint: disable=R0913, R0917
             if attempt < max_retries:
                 # keep retrying
                 s3_handler.disconnect_s3()
+                dbg_write_to_file(f"{s3_file}: S3 level failed to stream. Retrying in {s3_retry_timeout} seconds\n")
                 print(f"S3 level failed to stream. Retrying in {s3_retry_timeout} seconds.")
                 s3_handler.wait_timeout(s3_retry_timeout)
                 continue
             logger_dask.info(f"S3 level failed to stream. Tried for {max_retries} times, giving up")
+            dbg_write_to_file(f"{s3_file}: S3 level failed to stream. Tried for {max_retries} times, giving up\n")
             raise ValueError(
                 f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
             ) from e
         except KeyError as key_exc:
             logger_dask.info(f"KeyError exception in streaming_task for {s3_file}: {key_exc}")
+            dbg_write_to_file(f"{s3_file}: KeyError exception in streaming_task for {s3_file}: {key_exc}\n")
             raise ValueError(f"Cannot create s3 connector object. Reason: {key_exc}") from key_exc
         except RuntimeError as e:
             logger_dask.info(f"RuntimeError exception in streaming_task for {s3_file} : {e}")
+            dbg_write_to_file(f"{s3_file}: RuntimeError exception in streaming_task for {s3_file} : {e}\n")
             raise ValueError(
                 f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
             ) from e
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger_dask.info(f"Unhandled exception in streaming_task for {s3_file} : {e}")
+            dbg_write_to_file(f"{s3_file}: Unhandled exception in streaming_task for {s3_file} : {e}\n")
             raise ValueError(
                 f"Unhandled exception in streaming_task : {e}",
             ) from e
     logger_dask.info(f"streaming_task finished: {s3_file}")
+    dbg_write_to_file(f"{s3_file}: streaming_task finished. returning !\n")
+
     return s3_file
-
-
-async def refresh_token(auth_refresh_token, logger):
-    """
-    Refreshes the authentication token for an external station.
-
-    This function retrieves the current authentication token from a dask shared variable,
-    refreshes it if necessary, and updates the token information for all registered subscribers.
-
-    Args:
-        auth_refresh_token (RefreshTokenData): The authentication token data, including the dask lock and
-            dask token info.
-        logger (logging.Logger): Logger instance for logging events.
-
-    Returns:
-        bool: `True` if the token was successfully refreshed, `False` if an error occurred.
-
-    Raises:
-        RuntimeError: If an unexpected error occurs during token retrieval or update.
-    """
-    try:
-        (token_lock, token_info) = auth_refresh_token.get_first_subscriber(logger)
-        if not token_lock or not token_info:
-            logger.debug(f"No subscribers for {auth_refresh_token.station_id}. EXIT refresh_token")
-            return True
-        if not token_lock.client.scheduler or not token_info.client.scheduler:
-            logger.debug(
-                f"The dask client for {auth_refresh_token.station_id} is running, but the "
-                "dask scheduler does not exit . EXIT refresh_token",
-            )
-            return False
-
-        logger.debug(f"Refreshing token for {auth_refresh_token.station_id}")
-        # Try to acquire the lock with a timeout
-        # acquired = await acquire_lock_with_timeout(token_lock, timeout=5)
-        # if not acquired:
-        #     logger.error(f"Failed to acquire lock for {auth_refresh_token.station_id}. Skipping refresh.")
-        #     return False
-        try:
-            token_dict = await asyncio.wait_for(asyncio.to_thread(token_info.get), 5)
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout: Could not retrieve variable {token_info.name} within {5} seconds.")
-            return False
-        token_dict = token_info.get(timeout=5)
-        logger.debug(f"Refreshing token {token_info.name}: {token_dict}")
-        # Get/refresh the access token if necessary
-        token_dict = get_station_token(auth_refresh_token.config, token_dict)
-        token_info.set(token_dict)
-
-    except HTTPException as http_exception:
-        logger.exception(
-            f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
-        )
-        return False
-
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"Caught exception refresh_token. Removing subscribers : {e}")
-        return False
-    logger.debug("Refreshing token finished.")
-    return True
 
 
 class RefreshTokenData:  # pylint: disable=too-few-public-methods
@@ -328,6 +286,9 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
         """
         try:
             self.token_list.remove((token_lock, token_info))
+            if len(self.token_list) == 0:
+                logger.debug(f"Deleting {token_info.name} from dask !")
+                token_info.delete()
             logger.debug(f"Unsubscribe from dask var {self.station_id}. Dask tokens: {len(self.token_list)} ")
         except ValueError:
             logger.debug(
@@ -349,6 +310,74 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
             return self.token_list[0]
         logger.debug("get_first_subscriber: return None None")
         return (None, None)
+
+
+async def refresh_token(auth_refresh_token: RefreshTokenData, logger: logging.Logger):
+    """
+    Refreshes the authentication token for an external station.
+
+    This function retrieves the current authentication token from a dask shared variable,
+    refreshes it if necessary, and updates the token information for all registered subscribers.
+
+    Args:
+        auth_refresh_token (RefreshTokenData): The authentication token data, including the dask lock and
+            dask token info.
+        logger (logging.Logger): Logger instance for logging events.
+
+    Returns:
+        bool: `True` if the token was successfully refreshed, `False` if an error occurred.
+
+    Raises:
+        RuntimeError: If an unexpected error occurs during token retrieval or update.
+    """
+    try:
+        (token_lock, token_info) = auth_refresh_token.get_first_subscriber(logger)
+        if not token_lock or not token_info:
+            logger.debug(f"No subscribers for {auth_refresh_token.station_id}. EXIT refresh_token")
+            return True
+        if not token_lock.client.scheduler or not token_info.client.scheduler:
+            logger.debug(
+                f"The dask client for {auth_refresh_token.station_id} is running, but the "
+                "dask scheduler does not exit . EXIT refresh_token",
+            )
+            return False
+
+        logger.debug(f"Refreshing token for {auth_refresh_token.station_id}")
+        # Try to acquire the lock with a timeout
+        # acquired = await acquire_lock_with_timeout(token_lock, timeout=5)
+        # if not acquired:
+        #     logger.error(f"Failed to acquire lock for {auth_refresh_token.station_id}. Skipping refresh.")
+        #     return False
+        # try:
+        #     logger.debug("Before asyncio")
+        #     token_dict = await asyncio.wait_for(asyncio.to_thread(token_info.get), 5)
+        #     logger.debug("After asyncio")
+        # except asyncio.TimeoutError:
+        #     logger.error(f"Timeout: Could not retrieve variable {token_info.name} within {5} seconds.")
+        #     return False
+        # except Exception as e:
+        #     logger.exception(f"Error fetching Dask variable {token_info.name}: {e}")
+        #     return False  # Handle failure gracefully
+
+        token_dict = token_info.get(timeout=TIMEOUT_GET_TOKEN)
+        logger.debug(f"Refreshing token {token_info.name}: {token_dict}")
+        # Get/refresh the access token if necessary
+        token_dict = get_station_token(auth_refresh_token.config, token_dict)
+        token_info.set(token_dict)
+    except (TimeoutError, ValueError) as e:
+        logger.exception(f"Key access_token could not be retrieved from the shared dask variable: {e}")
+        return False
+    except HTTPException as http_exception:
+        logger.exception(
+            f"Failed to retrieve the token needed to connect to the external station: {http_exception}",
+        )
+        return False
+
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.exception(f"Caught exception refresh_token. Removing subscribers : {e}")
+        return False
+    logger.debug("Refreshing token finished.")
+    return True
 
 
 class Staging(
@@ -803,11 +832,6 @@ class Staging(
             for idx, auth in enumerate(self.auth_list):
                 if auth.station_id == self.token_info.name:
                     auth.unsubscribe(self.token_lock, self.token_info, self.logger)
-                    if len(auth.token_list) <= 0:
-                        self.logger.debug(f"Deleting {self.token_info.name} from dask !")
-                        self.token_info.delete()
-                        self.logger.debug(f"Removing {auth.station_id} from token list !")
-                        del self.auth_list[idx]
                     break
 
     def manage_dask_tasks_results(self, client: Client, catalog_collection: str):
@@ -1071,19 +1095,28 @@ class Staging(
         # Check if the dask.distributed.Variable object is already existing and initialized in the
         # scheduler. If it is not the case, initialize it with an empty dictionary. If the initialization
         # of this variable fails, raise an exception
-        token_initialized = False
-        with self.token_lock:
-            try:
-                token_dict = self.token_info.get(timeout=TIMEOUT_GET_TOKEN)
-                if isinstance(token_dict, dict):
-                    token_initialized = True
-            except (TimeoutError, ValueError):
-                pass
-            if not token_initialized:
-                try:
-                    self.token_info.set({})
-                except Exception as e:
-                    raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}") from e
+        # token_initialized = False
+        # with self.token_lock:
+        #     try:
+        #         token_dict = self.token_info.get(timeout=TIMEOUT_GET_TOKEN)
+        #         if isinstance(token_dict, dict):
+        #             token_initialized = True
+        #     except (TimeoutError, ValueError):
+        #         pass
+        #     if not token_initialized:
+        #         try:
+        #             self.token_info.set({})
+        #         except Exception as e:
+        #             raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}") from e
+        try:
+            token_dict = self.token_info.get(timeout=TIMEOUT_GET_TOKEN)
+            if not isinstance(token_dict, dict):
+                self.token_info.set({})
+        except (TimeoutError, ValueError):
+            self.token_info.set({})
+            pass
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}") from e
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
@@ -1206,7 +1239,6 @@ class Staging(
                     self.auth_list.append(auth)
                 # load or referesh the token
                 if not await refresh_token(auth, self.logger):
-                    self.token_info.delete()
                     auth.unsubscribe(self.token_lock, self.token_info, self.logger)
                     self.logger.error(
                         "Could not retrieve or refresh the station token. The staging process will not start",
