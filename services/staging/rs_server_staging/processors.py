@@ -125,7 +125,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
 
     logger_dask = logging.getLogger(__name__)
     logger_dask.info("This is a log message from the worker.")
-    time.sleep(5)
+    time.sleep(1)
     dbg_write_to_file(f"{s3_file}: This is a log message from the worker.\n")
     # Create a thread lock to synchronize access to shared resources between the threads of a
     # given worker
@@ -854,7 +854,10 @@ class Staging(
         if not client:
             self.logger.error("The dask cluster client object is not created. Exiting")
             return
-
+        dict_token = self.token_info.get()
+        self.logger.debug(f"Tasks monitoring: {dict_token}")
+        for task in self.tasks:
+            self.logger.debug(f"task: {task}")
         for task in as_completed(self.tasks):
             try:
                 self.logger.debug("First")
