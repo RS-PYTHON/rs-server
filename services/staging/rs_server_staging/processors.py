@@ -244,11 +244,12 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             None: This method doesn't raise any exceptions directly but logs errors if the
                 catalog check fails.
         """
-        self.logger.debug(f"Executing staging processor for {data}")
+        # self.logger.debug(f"Executing staging processor for {data}")
         item_collection: FeatureCollectionModel | None = (
             FeatureCollectionModel.parse_obj(data["items"]) if "items" in data else None
         )
         catalog_collection: str = data["collection"]["id"]
+
         # Check for the proper input
         # Check if item collection is provided
         if not item_collection or not hasattr(item_collection, "features"):
@@ -311,8 +312,8 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         """
         job_metadata = {
-            "identifier": self.job_id,
-            "process_id": "staging",
+            "jobID": self.job_id,
+            "processId": "staging",
             "status": self.status.value,
             "progress": self.progress,
             "message": self.message,
