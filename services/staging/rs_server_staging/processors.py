@@ -125,6 +125,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
 
     logger_dask = logging.getLogger(__name__)
     logger_dask.info("This is a log message from the worker.")
+    time.sleep(5)
     dbg_write_to_file(f"{s3_file}: This is a log message from the worker.\n")
     # Create a thread lock to synchronize access to shared resources between the threads of a
     # given worker
@@ -1248,14 +1249,13 @@ class Staging(
                         0,
                         "Could not retrieve or refresh the station token",
                     )
+            # Set the status to running for the job
+            self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             self.submit_tasks_to_dask_cluster(external_auth_config, dask_client)
 
         except RuntimeError as re:
             self.logger.error("Failed to start the staging process")
             return self.log_job_execution(JobStatus.failed, 0, f"{re}")
-
-        # Set the status to running for the job
-        self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
 
         # starting another thread for managing the dask callbacks
         self.logger.debug("Starting tasks monitoring thread")
