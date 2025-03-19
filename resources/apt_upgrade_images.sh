@@ -68,7 +68,7 @@ EOF
 
         DASK_TAG=2024.5.2
         DASK_GATEWAY_TAG=2024.1.0
-        PREFECT_TAG=3.1.4
+        PREFECT_TAG=3.2.13
         PREFECT_DASK_TAG=0.3.3
 
         cat << EOF >> "$dockerfile"
