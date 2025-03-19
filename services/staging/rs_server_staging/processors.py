@@ -79,7 +79,7 @@ async def acquire_lock_with_timeout(token_lock, timeout=5):
 
 def dbg_write_to_file(msg):
     with open("/home/dask/worker.log", "a+") as f:
-        f.write(msg)
+        f.write(f"{datetime.datetime.now()}: {msg}")
 
 
 def streaming_task(  # pylint: disable=R0913, R0917
