@@ -17,8 +17,10 @@ import json
 
 # pylint: disable=E0401
 import os
+import os.path as osp
 import pathlib
 from contextlib import asynccontextmanager
+from datetime import datetime
 from string import Template
 from time import sleep
 from typing import Annotated
@@ -49,8 +51,8 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
 from rs_server_staging.staging_endpoints_validation import (
-    validate_and_unmarshal_request,
-    validate_and_unmarshal_response,
+    validate_request,
+    validate_response,
 )
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -60,6 +62,7 @@ from starlette.responses import JSONResponse
 from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
@@ -73,6 +76,9 @@ logger = Logging.default(__name__)
 # Initialize a FastAPI application
 app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
+
+JOB_ATTRS_MAPPING = {"identifier": "jobID"}
+OGC_UNCOMPLIANT_JOB_ATTRS = ["_sa_instance_state", "location", "mimetype"]
 
 
 def must_be_authenticated(path: str) -> bool:
@@ -295,36 +301,94 @@ async def get_resource(resource: str):
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
-async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
+async def execute_process(req: Request, resource: str):  ### data: ProcessMetadataModel
     """Used to execute processing jobs."""
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
     # Validate request payload
-    body = await req.body()
-    request = requests.Request(  # pylint: disable=W0612 # noqa: F841
-        method=req.method,
-        url=req.url,
-        json=json.loads(body),  # Corps de la requête en JSON
-    ).prepare()
-    validate_and_unmarshal_request(request)
-
-    ### TODO: call the function unmarshal_request to validate the staging body sent to the server
+    # valid_body = await validate_request(req) ###new_request
+    valid_body_json = await req.body()
+    try:
+        valid_body = json.loads(valid_body_json)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
         _, staging_status = await processor(
             req,
-            data.outputs["result"].id,
+            valid_body["outputs"]["result"]["id"],
             app.extra["process_manager"],
             app.extra["dask_cluster"],
-        ).execute(data.inputs.dict())
+        ).execute(valid_body["inputs"])
 
         ### TODO: call a function to validate the response that will be sent back to the client
         return JSONResponse(status_code=HTTP_200_OK, content={"status": staging_status})
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
+
+
+def validate_jobs_data(request: Request, jobs_data: dict):
+    """
+    Method validate information on all existing jobs
+
+    Args:
+        request (Request): input request
+        jobs_data: information on all existing jobs
+    Result:
+        reformatted and validated jobs_data variable to put in the response
+    """
+    # Add "links" mandatory field to the response
+    jobs_data.update(
+        {
+            "links": [
+                {
+                    "href": "string",
+                    "rel": "service",
+                    "type": "application/json",
+                    "hreflang": "en",
+                    "title": "List of jobs",
+                },
+            ],
+        },
+    )
+    # Create a new Starlette request object with the url /jobs/{jobID} instead of /jobs
+    # This request url is then used by openapi_core to use the right yaml file to validate data
+    scope = dict(request.scope)
+    scope["path"] = osp.join(str(request.url.path), "{job_id}")
+    job_request = Request(scope, request.receive)
+    # Remove SQLAlchemy _sa_instance_state objects and convert datetime
+    for job_data in jobs_data["jobs"]:
+        job_data = validate_job_data(job_request, job_data)
+    return jobs_data
+
+
+def validate_job_data(request: Request, job_data: dict):
+    """
+    Method to apply reformatting on job data to make it compliant with OGC (process) standards
+    Args:
+        request (Request): input request
+        job_data: information on a specific job to validate
+    Result:
+        reformatted and validated job_data variable to put in the response
+    """
+    # Rename attribute "identifier" to be compliant with OGC standards
+    job_data[JOB_ATTRS_MAPPING["identifier"]] = job_data.pop("identifier")
+    # Remove attributes which should not be part of the response
+    for attr in OGC_UNCOMPLIANT_JOB_ATTRS:
+        if attr in job_data:
+            job_data.pop(attr)
+    for key, value in job_data.items():
+        # Reformat datetime object to string
+        if isinstance(value, datetime):
+            job_data[key] = value.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Remove "finished" attribute if its value is None
+    if job_data.get("finished") is None:
+        job_data.pop("finished")
+    validate_response(request, job_data)
+    return job_data
 
 
 # Endpoint to get the status of a job by job_id
@@ -339,13 +403,14 @@ async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the j
 
 
 @router.get("/jobs")
-async def get_jobs_endpoint():
+async def get_jobs_endpoint(request: Request):
     """Returns the status of all jobs."""
     try:
-        return app.extra["process_manager"].get_jobs()
+        # Generate an output conform to OGC process specifications
+        return validate_jobs_data(request, app.extra["process_manager"].get_jobs())
     except Exception as e:
         # Handle exceptions and return an appropriate error message
-        raise HTTPException(status_code=HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.delete("/jobs/{job_id}")
