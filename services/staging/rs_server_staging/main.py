@@ -23,14 +23,17 @@ from string import Template
 from time import sleep
 from typing import Annotated
 
+import httpx
 import requests
 import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
+from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
+from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
@@ -41,7 +44,6 @@ from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
     apply_middlewares,
 )
-from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
@@ -73,11 +75,8 @@ app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
 
 
-def must_be_authenticated(route_path: str) -> bool:
+def must_be_authenticated(path: str) -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
-
-    # Remove the /catalog prefix, if any
-    path = route_path.removeprefix("/catalog")
 
     no_auth = (path in ["/api", "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
     return not no_auth
@@ -93,7 +92,7 @@ app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authe
 app.add_middleware(HandleExceptionsMiddleware)
 
 # In cluster mode, add the oauth2 authentication
-if CLUSTER_MODE:
+if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
 # CORS enabled origins
@@ -238,10 +237,9 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     init_rs_server_config_yaml()
     # Create jobs table
     process_manager = init_db()
-
     # In local mode, if the gateway is not defined, create a dask LocalCluster
     cluster = None
-    if LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
+    if common_settings.LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
         # Create the LocalCluster only in local mode
         cluster = LocalCluster()
         logger.info("Local Dask cluster created at startup.")
@@ -250,12 +248,14 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     # fastapi_app.extra["db_table"] = db.table("jobs")
     fastapi_app.extra["dask_cluster"] = cluster
 
+    common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
+
     # Yield control back to the application (this is where the app will run)
     yield
 
     # Shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    if LOCAL_MODE and cluster:
+    if common_settings.LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
 
@@ -371,7 +371,7 @@ async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
-if LOCAL_MODE:
+if common_settings.LOCAL_MODE:
 
     @router.post("/staging/dask/auth")
     async def dask_auth(local_dask_username: str, local_dask_password: str):

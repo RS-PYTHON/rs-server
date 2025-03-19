@@ -109,7 +109,7 @@ def validate_inputs_format(
 
     Raises:
         HTTPException: If `raise_errors` is True and the input is invalid, an HTTP 400 or 422
-        error is raised.
+            error is raised.
 
     Note:
         - The input interval should use the ISO 8601 format for dates and times.

@@ -499,15 +499,10 @@ async def test_specific_process(
 
 @pytest.mark.asyncio
 async def test_app_lifespan_local_mode(
-    mocker,
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,  # pylint: disable=unused-argument
 ):
     """Test app_lifespan when running in local mode (no Dask Gateway connection)."""
-
-    # Mock environment to simulate local mode
-    mocker.patch.dict(os.environ, {"RSPY_LOCAL_MODE": "1"})
-
     mock_app = FastAPI()
 
     async with app_lifespan(mock_app):
@@ -526,7 +521,8 @@ async def test_app_lifespan_gateway_error(
     """Test app_lifespan when there is an error in connecting to the Dask Gateway."""
 
     # Mock environment variables to simulate gateway mode
-    mocker.patch("rs_server_staging.main.LOCAL_MODE", new=False, autospec=False)
+    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
     # Mock FastAPI app
     mock_app = FastAPI()

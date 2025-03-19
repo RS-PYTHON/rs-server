@@ -214,8 +214,8 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     Check if the user KeyCloak roles contain the right for this specific CADIP collection and access type.
 
     Args:
-        collection_id (str): used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
-        from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
+        collection_id (str): Used to find the CADIP station ("CADIP", "INS", "MPS", "MTI", "NSG", "SGS")
+                            from the RSPY_CADIP_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
     """
 
@@ -276,7 +276,7 @@ async def get_conformance(request: Request):
 
 @router.get("/cadip/collections")
 @handle_exceptions
-async def get_allowed_cadip_collections(request: Request):
+async def get_allowed_cadip_collections(request: Request) -> dict:
     """
         Endpoint to retrieve an object containing collections and links that a user is authorized to
         access based on their API key.
@@ -484,7 +484,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     Args:
         request (Request): The request object (unused).
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        queryables: Lists of queryables applicable to search op.
+        queryables (dict): Lists of queryables applicable to search op.
         limit (int, optional): Maximum number of products to return. Greater than 0, defaults to 100.
         sortby (str): Sort by +/-fieldName (ascending/descending).
         page (int): Page number to be displayed, defaults to first one.
@@ -546,24 +546,26 @@ def process_files_search(  # pylint: disable=too-many-locals
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.
-    This function validates the input 'datetime' format, performs a search for products using the CADIP provider,
-    writes the search results to the database, and generates a STAC Feature Collection from the products.
+    Performs a search for products using the CADIP providerand generates a STAC Feature Collection from the products.
     Args:
-        request (Request): The request object (unused).
-        datetime (str): Time interval in ISO 8601 format.
         station (str): CADIP station identifier (e.g., MTI, SGS, MPU, INU).
-        session_id (str): Session from which file belong.
-        limit (int, optional): Maximum number of products to return. Defaults to 1000.
-        sortby (str, optional): Sort by +/-fieldName (ascending/descending). Defaults to "-datetime".
+        queryables (dict): Query parameters for filtering results.
+        limit (int, optional): Maximum number of products to return. Defaults to `DEFAULT_FILES_LIMIT`.
+        **kwargs: Additional search parameters such as `sortby` and `page`.
+
     Returns:
-        list[dict] | dict: A list of STAC Feature Collections or an error message.
-                           If no products are found in the specified time range, returns an empty list.
+        list[dict] | dict:
+            - A STAC-compliant Feature Collection of the search results.
+            - If `map_to_session=True`, returns a list of product properties.
+            - If no products are found, returns an empty list.
+
     Raises:
-        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
-        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
-        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
-        HTTPException (fastapi.exceptions): If there is a connection error to the station.
-        HTTPException (fastapi.exceptions): If there is a general failure during the process.
+        HTTPException: If required search parameters (`PublicationDate` or `SessionId`) are missing.
+        HTTPException: If the pagination limit is less than 1.
+        HTTPException: If an invalid station identifier is provided (`CreateProviderFailed`).
+        HTTPException: If a database connection error occurs (`sqlalchemy.exc.OperationalError`).
+        HTTPException: If there is a connection error with the station (`requests.exceptions.ConnectionError`).
+        HTTPException: If a general failure occurs during the process.
     """
     query_datetime = queryables.get("PublicationDate")
 
