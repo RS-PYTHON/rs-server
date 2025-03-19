@@ -312,7 +312,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         """
         job_metadata = {
-            "jobID": self.job_id,
+            "identifier": self.job_id,
             "processId": "staging",
             "status": self.status.value,
             "progress": self.progress,

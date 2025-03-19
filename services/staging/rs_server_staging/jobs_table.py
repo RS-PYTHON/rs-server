@@ -48,7 +48,7 @@ class JobsTable(Base):  # pylint: disable=too-few-public-methods
     __tablename__ = "jobs"
 
     type = Column(Enum(JobType), nullable=False, server_default=JobType.process.value)
-    jobID = Column(String, primary_key=True, unique=True, index=True)
+    identifier = Column(String, primary_key=True, unique=True, index=True)
     processID = Column(String, nullable=False)
     status = Column(Enum(JobStatus), nullable=False)
     progress = Column(Integer, server_default="0", nullable=False)
