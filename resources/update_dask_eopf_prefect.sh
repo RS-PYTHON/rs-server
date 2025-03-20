@@ -150,39 +150,40 @@ Instructions:
   - Run all rs-demo notebooks, check that they are OK:
       cd $(_realpath rs-demo/local-mode)
       docker compose pull
-      ./$0 # re-run this script because docker compose pull has overriden the images built from this script
+      # Re-run this script because docker compose pull has overriden the images built from this script
+      GITLAB_EOPF_TOKEN=*** $0
       docker compose up
       # In another terminal, check the dependency versions
       for c in prefect-server dask-staging dask-eopf jupyter; do
-        docker compose exec $c pip list | grep -i -e dask -e eopf -e l0 -e prefect
+        docker compose exec \$c pip list | grep -i -e dask -e eopf -e l0 -e prefect
       done
       # Run all notebooks
       ./run-notebooks.sh
+      # Also open Jupyter and run manually the notebooks that were ignored by the previous command
+      docker compose logs jupyter
 
-
-  - Create a new git branch (from develop) with the same name for:
+  - Create a new git branch (from develop) with the same name for the git repositories that were modified:
     + $(_realpath rs-client-libraries)
     + $(_realpath rs-demo)
     + $(_realpath rs-infra-core)
     + $(_realpath rs-server)
 
-  - Commit and push the changes made by this script.
+  - Commit and push the changes. Create Pull Requests in github.
 
-  - Create Pull Requests in github.
+  - Build these local Docker images and push them into the Docker registry.
+    WARNING: this may impact other branches in the ci/cd, but this may be necessary for your ci/cd to pass.
+    Do this only when you are ready to merge your Pull Requests.
+    NOTE: other Docker images are built from the ci/cd.
+      $a --push && \\
+      $b --push && \\
+      $g --push
 
-  - Check in the github ci/cd actions that the new docker images were built for:
-    + rs-client-libraries
-    + rs-infra-core
-    + rs-server
+  - Check that the ci/cd is OK for your Pull Requests. Merge them.
 
-  - Run the scripts locally:
-      $a
-      $b
-      $e
+  - Run manually the infra ci/cd to build the cluster Docker images, then redeploy them on the cluster.
 
-  - After the docker images are built from the ci/cd and local scripts, test them locally with:
-      cd $(_realpath rs-demo)/local-mode
-      # test your branch name, without special characters
-      ./test-docker-tag.sh $(git rev-parse --abbrev-ref HEAD | sed "s/[^a-zA-Z0-9]/-/g")
-      #
+  - Run command 'pip list | grep -i -e dask -e eopf -e l0 -e prefect' on the Dask, Prefect and Jupyter pods to check \
+the dependency versions.
+
+  - Run all notebooks on the cluster JupyterHub, check that they are OK.
 "
