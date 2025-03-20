@@ -61,6 +61,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.status import (
     HTTP_200_OK,
+    HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_503_SERVICE_UNAVAILABLE,
@@ -69,7 +70,6 @@ from starlette.status import (
 # flake8: noqa: F401
 # pylint: disable=W0611
 from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
-from .rspy_models import ProcessMetadataModel
 
 logger = Logging.default(__name__)
 
@@ -274,19 +274,37 @@ async def ping():
 
 
 @router.get("/processes")
-async def get_processes():
+async def get_processes(request: Request):
     """Returns list of all available processes from config."""
-    if processes := [
-        {"name": resource, "processor": api.config["resources"][resource]["processor"]["name"]}
-        for resource in api.config["resources"]
-    ]:
-        return JSONResponse(status_code=HTTP_200_OK, content={"processes": processes})
-    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content="No processes found")
+    # if processes := [
+    #     {"name": resource, "processor": api.config["resources"][resource]["processor"]["name"]}
+    #     for resource in api.config["resources"]
+    # ]:
+    try:
+        validate_request(request)
+        processes = {
+            "processes": [],
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json", "title": "List of processes"},
+            ],
+        }
+        for resource in api.config["resources"]:
+            processes["processes"].append(
+                {
+                    "id": api.config["resources"][resource]["processor"]["name"],
+                    "version": "1.0.0",
+                },
+            )
+        return validate_response(request, processes)
+
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.get("/processes/{resource}")
-async def get_resource(resource: str):
+async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
+    validate_request(request)
     if resource_info := next(
         (
             api.config["resources"][defined_resource]
@@ -295,42 +313,42 @@ async def get_resource(resource: str):
         ),
         None,
     ):
-        return JSONResponse(status_code=HTTP_200_OK, content=resource_info)
-    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"detail": "Resource not found"})
+        try:
+            process = {
+                "id": api.config["resources"][resource]["processor"]["name"],
+                "version": "1.0.0",
+            }
+            return validate_response(request, process)
+        except Exception as e:
+            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"detail": f"Resource {resource} not found"})
 
 
-# Endpoint to execute the staging process and generate a job ID
-@router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
-async def execute_process(req: Request, resource: str):  ### data: ProcessMetadataModel
-    """Used to execute processing jobs."""
-    if resource not in api.config["resources"]:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
-
-    # Validate request payload
-    # valid_body = await validate_request(req) ###new_request
-    valid_body_json = await req.body()
-    try:
-        valid_body = json.loads(valid_body_json)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format")
-
-    processor_name = api.config["resources"][resource]["processor"]["name"]
-    if processor_name in processors:
-        processor = processors[processor_name]
-        _, staging_status = await processor(
-            req,
-            valid_body["outputs"]["result"]["id"],
-            app.extra["process_manager"],
-            app.extra["dask_cluster"],
-        ).execute(valid_body["inputs"])
-
-        ### TODO: call a function to validate the response that will be sent back to the client
-        return JSONResponse(status_code=HTTP_200_OK, content={"status": staging_status})
-
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
+def format_job_data(job_data: dict):
+    """
+    Method to apply reformatting on job data to make it compliant with OGC (process) standards
+    Args:
+        job_data: information on a specific job to validate
+    Result:
+        reformatted and validated job_data variable to put in the response
+    """
+    # Rename attribute "identifier" to be compliant with OGC standards
+    job_data[JOB_ATTRS_MAPPING["identifier"]] = job_data.pop("identifier")
+    # Remove attributes which should not be part of the response
+    for attr in OGC_UNCOMPLIANT_JOB_ATTRS:
+        if attr in job_data:
+            job_data.pop(attr)
+    for key, value in job_data.items():
+        # Reformat datetime object to string
+        if isinstance(value, datetime):
+            job_data[key] = value.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Remove "finished" attribute if its value is None
+    if job_data.get("finished") is None:
+        job_data.pop("finished")
+    return job_data
 
 
-def validate_jobs_data(request: Request, jobs_data: dict):
+def format_jobs_data(jobs_data: dict):
     """
     Method validate information on all existing jobs
 
@@ -354,49 +372,54 @@ def validate_jobs_data(request: Request, jobs_data: dict):
             ],
         },
     )
-    # Create a new Starlette request object with the url /jobs/{jobID} instead of /jobs
-    # This request url is then used by openapi_core to use the right yaml file to validate data
-    scope = dict(request.scope)
-    scope["path"] = osp.join(str(request.url.path), "{job_id}")
-    job_request = Request(scope, request.receive)
     # Remove SQLAlchemy _sa_instance_state objects and convert datetime
     for job_data in jobs_data["jobs"]:
-        job_data = validate_job_data(job_request, job_data)
+        job_data = format_job_data(job_data)
     return jobs_data
 
 
-def validate_job_data(request: Request, job_data: dict):
-    """
-    Method to apply reformatting on job data to make it compliant with OGC (process) standards
-    Args:
-        request (Request): input request
-        job_data: information on a specific job to validate
-    Result:
-        reformatted and validated job_data variable to put in the response
-    """
-    # Rename attribute "identifier" to be compliant with OGC standards
-    job_data[JOB_ATTRS_MAPPING["identifier"]] = job_data.pop("identifier")
-    # Remove attributes which should not be part of the response
-    for attr in OGC_UNCOMPLIANT_JOB_ATTRS:
-        if attr in job_data:
-            job_data.pop(attr)
-    for key, value in job_data.items():
-        # Reformat datetime object to string
-        if isinstance(value, datetime):
-            job_data[key] = value.strftime("%Y-%m-%dT%H:%M:%SZ")
-    # Remove "finished" attribute if its value is None
-    if job_data.get("finished") is None:
-        job_data.pop("finished")
-    validate_response(request, job_data)
-    return job_data
+# Endpoint to execute the staging process and generate a job ID
+@router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
+async def execute_process(request: Request, resource: str):
+    """Used to execute processing jobs."""
+
+    # Validate request payload
+    valid_body_json = await validate_request(request)  ###new_request
+    # valid_body_json = await request.body()
+
+    if resource not in api.config["resources"]:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
+
+    try:
+        valid_body = json.loads(valid_body_json)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
+
+    processor_name = api.config["resources"][resource]["processor"]["name"]
+    if processor_name in processors:
+        processor = processors[processor_name]
+        _, staging_status = await processor(
+            request,
+            valid_body["outputs"]["result"]["id"],
+            app.extra["process_manager"],
+            app.extra["dask_cluster"],
+        ).execute(valid_body["inputs"])
+
+        app.extra["process_manager"].get_job(staging_status["running"])
+        formatted_job_data = format_job_data(app.extra["process_manager"].get_job(staging_status["running"]))
+        return validate_response(request, formatted_job_data, HTTP_201_CREATED)
+
+    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 
 
 # Endpoint to get the status of a job by job_id
 @router.get("/jobs/{job_id}")
-async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the job")):
+async def get_job_status_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
     try:
-        return app.extra["process_manager"].get_job(job_id)
+        validate_request(request)
+        formatted_job_data = format_job_data(app.extra["process_manager"].get_job(job_id))
+        return validate_response(request, formatted_job_data)
     except JobNotFoundError as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
@@ -406,31 +429,39 @@ async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the j
 async def get_jobs_endpoint(request: Request):
     """Returns the status of all jobs."""
     try:
+        validate_request(request)
         # Generate an output conform to OGC process specifications
-        return validate_jobs_data(request, app.extra["process_manager"].get_jobs())
+        formatted_jobs_data = format_jobs_data(app.extra["process_manager"].get_jobs())
+        return validate_response(request, formatted_jobs_data)
     except Exception as e:
         # Handle exceptions and return an appropriate error message
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.delete("/jobs/{job_id}")
-async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job to delete")):
+async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
     try:
+        validate_request(request)
+        job_info = app.extra["process_manager"].get_job(job_id)
+        # Delete the job
         app.extra["process_manager"].delete_job(job_id)
-        return {"message": f"Job {job_id} deleted successfully"}
+        # Create job response with a status message to confirm the job deletion
+        job_info["message"] = f"Job {job_id} deleted successfully"
+        formatted_job_data = format_job_data(job_info)
+        return validate_response(request, formatted_job_data)
     except JobNotFoundError as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
 @router.get("/jobs/{job_id}/results")
-async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID of the job")):
+async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
     try:
+        validate_request(request)
         # Query the database to find the job by job_id
-        job = app.extra["process_manager"].get_job(job_id)
-        return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
+        return validate_response(request, app.extra["process_manager"].get_job(job_id)["status"])
     except JobNotFoundError as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error

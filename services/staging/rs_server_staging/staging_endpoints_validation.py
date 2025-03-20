@@ -32,6 +32,7 @@ from requests import Response
 from requests.models import PreparedRequest
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from starlette.status import HTTP_200_OK
 
 PATH_TO_YAML_OPENAPI = osp.join(
     osp.realpath(osp.dirname(__file__)),
@@ -53,7 +54,7 @@ class StagingValidationException(Exception):
     """
 
 
-async def validate_request(request: PreparedRequest) -> Any:  ###Request
+async def validate_request(request: Request) -> Any:
     """Validate an endpoint request according to the ogc specifications
 
     Args:
@@ -69,7 +70,8 @@ async def validate_request(request: PreparedRequest) -> Any:  ###Request
     body = await request.body()
     openapi_request = StarletteOpenAPIRequest(request, body)
     OPENAPI.validate_request(openapi_request)
-    return json.loads(body)
+    return body
+    # return json.loads(body)
 
     # #result = openapi.unmarshal_request(openapi_request)
     # if result.errors:
@@ -86,7 +88,7 @@ async def validate_request(request: PreparedRequest) -> Any:  ###Request
     # return result.body
 
 
-def validate_response(request: Request, data: dict) -> Any:
+def validate_response(request: Request, data: dict, status_code=HTTP_200_OK) -> Any:
     """
     Validate an endpoint response according to the ogc specifications
     (described as yaml schemas)
@@ -97,7 +99,7 @@ def validate_response(request: Request, data: dict) -> Any:
     Returns:
         json_response: return the content of the response as a json string
     """
-    json_response = JSONResponse(status_code=200, content=data)
+    json_response = JSONResponse(status_code=HTTP_200_OK, content=data)
     openapi_request = StarletteOpenAPIRequest(request)
     openapi_response = StarletteOpenAPIResponse(json_response)
     OPENAPI.validate_response(openapi_request, openapi_response)
