@@ -19,14 +19,14 @@ set -euo pipefail
 set -x
 
 images=\
-"python:3.11.7-slim-bookworm "\
+"python:3.12.8-slim-bookworm "\
 "jupyter/minimal-notebook:latest "\
-"quay.io/jupyter/base-notebook:hub-4.1.5"\
+"quay.io/jupyter/base-notebook:hub-5.2.1"\
 
 # Target images will be:
-# ghcr.io/rs-python/python:3.11.7-slim-bookworm
+# ghcr.io/rs-python/python:3.12.8-slim-bookworm
 # ghcr.io/rs-python/jupyter/minimal-notebook:latest
-# ghcr.io/rs-python/quay.io/jupyter/base-notebook:hub-4.1.5
+# ghcr.io/rs-python/quay.io/jupyter/base-notebook:hub-5.2.1
 
 dockerdir="/tmp/dockerfile"
 dockerfile="$dockerdir/Dockerfile"
@@ -73,9 +73,9 @@ EOF
 
         cat << EOF >> "$dockerfile"
 
-# Install python 3.11.7 using conda then prefect and dask and other packages.
+# Install python 3.12.8 using conda then prefect and dask and other packages.
 # The versions must be the same than the cluster images.
-RUN conda install --yes conda-forge::python="3.11.7"
+RUN conda install --yes conda-forge::python="3.12.8"
 
 # Note: put s3fs before boto3 to have a recent version
 RUN pip install \
