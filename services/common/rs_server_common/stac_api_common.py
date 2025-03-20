@@ -58,6 +58,8 @@ from rs_server_common.utils.utils import (
 )
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
+from stac_fastapi.types.search import str2bbox
+from stac_pydantic.shared import BBox
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
@@ -73,6 +75,10 @@ SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
 # Type hints
 CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
+BBoxType = Annotated[
+    Optional[str],
+    Query(description="Bounding box (geospatial footprint or extent, four or six comma-separated numbers)."),
+]
 DateTimeType = Annotated[
     Optional[str],
     Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"'),
@@ -519,6 +525,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             stac_params["platform"] = mission
 
         # Discard these search parameters
+        params.pop("bbox", None)
         params.pop("conf", None)
         params.pop("filter-lang", None)
 
@@ -965,3 +972,16 @@ def check_datetime_input(input_value: Any) -> bool:
         return True
     except ValueError:
         return False
+
+
+def check_bbox_input(input_value: str | None) -> BBox | None:
+    """validate bbox for STAC API compliance"""
+    if input_value:
+        try:
+            bbox = str2bbox(input_value)
+            if len(bbox) not in [4, 6]:
+                raise log_http_exception(status.HTTP_400_BAD_REQUEST, f"Invalid bbox: {bbox}")
+            return bbox
+        except Exception as e:
+            raise log_http_exception(status.HTTP_400_BAD_REQUEST, str(e)) from e
+    return None
