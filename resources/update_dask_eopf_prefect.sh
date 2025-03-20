@@ -168,7 +168,8 @@ Instructions:
     + $(_realpath rs-infra-core)
     + $(_realpath rs-server)
 
-  - Commit and push the changes. Create Pull Requests in github.
+  - Commit and push the changes. Create Pull Requests in github. Check that the ci/cd runs are OK \
+(warning: may need the next step).
 
   - Build these local Docker images and push them into the Docker registry.
     WARNING: this may impact other branches in the ci/cd, but this may be necessary for your ci/cd to pass.
@@ -178,7 +179,8 @@ Instructions:
       $b --push && \\
       $g --push
 
-  - Check that the ci/cd is OK for your Pull Requests. Merge them.
+  - After pushing the Docker images (previous step), run again the demos from one of your branch ci/cd. \
+Check that it is OK. Merge your Pull Requests.
 
   - Run manually the infra ci/cd to build the cluster Docker images, then redeploy them on the cluster.
 
