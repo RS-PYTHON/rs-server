@@ -15,7 +15,6 @@
 # We will add rs-server-staging to the dask-gateway-server image for local mode
 ARG DASK_GATEWAY_TAG=2024.1.0
 FROM ghcr.io/rs-python/dask-gateway-server/base/local:${DASK_GATEWAY_TAG}
-ARG DASK_GATEWAY_TAG=2024.1.0
 
 # Default user from parent image
 ARG USER=dask:dask
