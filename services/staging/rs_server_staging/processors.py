@@ -147,7 +147,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
     def __init__(
         self,
         credentials: Request,
-        item: str,
         db_process_manager: PostgreSQLManager,
         cluster: LocalCluster,
     ):  # pylint: disable=super-init-not-called
@@ -157,7 +156,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         Args:
             credentials (Headers): Authentication headers used for requests.
-            item (str): The specific item to process within the collection.
             db_process_manager (PostgreSQLManager): The pygeoapi Postgresql Manager used to track job execution
                 status and metadata.
             cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
@@ -201,7 +199,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         self.create_job_execution()
         #################
         # Inputs section
-        self.catalog_item_name: str = item
         self.assets_info: list = []
         self.tasks: list = []
         # Tasks finished
@@ -214,7 +211,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
     async def execute(
         self,
         data: dict,
-        outputs: dict | None = None,  # pylint: disable=unused-argument
     ) -> tuple[str, dict]:
         """
         Asynchronously execute the RSPY staging process, starting with a catalog check and
@@ -230,7 +226,6 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
         Args:
             data (dict): input data that the process needs in order to execute
-            outputs (dict | list): not used
 
         Returns:
             tuple: tuple of MIME type and process response (dictionary containing the job ID and a
@@ -246,9 +241,11 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         """
         # self.logger.debug(f"Executing staging processor for {data}")
         item_collection: FeatureCollectionModel | None = (
-            FeatureCollectionModel.parse_obj(data["items"]) if "items" in data else None
+            FeatureCollectionModel.parse_obj(data["items"]["value"])
+            if "items" in data and "value" in data["items"]
+            else None
         )
-        catalog_collection: str = data["collection"]["id"]
+        catalog_collection: str = data["collection"]
 
         # Check for the proper input
         # Check if item collection is provided

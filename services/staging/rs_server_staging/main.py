@@ -276,10 +276,6 @@ async def ping():
 @router.get("/processes")
 async def get_processes(request: Request):
     """Returns list of all available processes from config."""
-    # if processes := [
-    #     {"name": resource, "processor": api.config["resources"][resource]["processor"]["name"]}
-    #     for resource in api.config["resources"]
-    # ]:
     try:
         validate_request(request)
         processes = {
@@ -304,7 +300,6 @@ async def get_processes(request: Request):
 @router.get("/processes/{resource}")
 async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
-    validate_request(request)
     if resource_info := next(
         (
             api.config["resources"][defined_resource]
@@ -314,6 +309,7 @@ async def get_resource(request: Request, resource: str):
         None,
     ):
         try:
+            validate_request(request)
             process = {
                 "id": api.config["resources"][resource]["processor"]["name"],
                 "version": "1.0.0",
@@ -343,7 +339,7 @@ def format_job_data(job_data: dict):
         if isinstance(value, datetime):
             job_data[key] = value.strftime("%Y-%m-%dT%H:%M:%SZ")
     # Remove "finished" attribute if its value is None
-    if job_data.get("finished") is None:
+    if "finished" in job_data and job_data.get("finished") is None:
         job_data.pop("finished")
     return job_data
 
@@ -384,9 +380,11 @@ async def execute_process(request: Request, resource: str):
     """Used to execute processing jobs."""
 
     # Validate request payload
-    valid_body_json = await validate_request(request)  ###new_request
-    # valid_body_json = await request.body()
-
+    try:
+        valid_body_json = await validate_request(request)
+    except Exception as e:
+        # Handle exceptions and return an appropriate error message
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
@@ -400,7 +398,6 @@ async def execute_process(request: Request, resource: str):
         processor = processors[processor_name]
         _, staging_status = await processor(
             request,
-            valid_body["outputs"]["result"]["id"],
             app.extra["process_manager"],
             app.extra["dask_cluster"],
         ).execute(valid_body["inputs"])

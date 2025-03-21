@@ -204,7 +204,7 @@ class TestStaging:
         mocker.patch.object(asyncio_loop, "is_running", return_value=True)
 
         # Call the async execute method
-        result = await staging_instance.execute(data={"collection": {"id": "test_collection"}})
+        result = await staging_instance.execute(data={"collection": "test_collection"})
 
         # Assertions
         spy_log_job.assert_called_once_with(
@@ -242,7 +242,7 @@ class TestStaging:
         mock_db_process_manager.add_job.assert_called_once_with(
             {
                 "identifier": "12345",
-                "process_id": "staging",
+                "processID": "staging",
                 "status": JobStatus.accepted.value,
                 "progress": 0,
                 "message": "Job is starting.",
@@ -318,8 +318,8 @@ class TestStagingCatalog:
 
     def _call_check_catalog(self, staging_instance: Staging, staging_inputs: dict):
         return staging_instance.check_catalog(
-            staging_inputs["collection"]["id"],
-            FeatureCollectionModel.parse_obj(staging_inputs["items"]).features,
+            staging_inputs["collection"],
+            FeatureCollectionModel.parse_obj(staging_inputs["items"]["value"]).features,
         )
 
     @pytest.mark.asyncio

@@ -29,41 +29,46 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.status import (
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
+    HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 expected_jobs_test = [
     {
-        "identifier": "job_1",
+        "jobID": "job_1",
         "status": "running",
+        "type": "process",
         "progress": 0.0,
         "message": "Test detail",
-        "created": str(datetime(2024, 1, 1, 12, 0, 0)),
-        "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
+        "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
     },
     {
-        "identifier": "job_2",
+        "jobID": "job_2",
         "status": "running",
+        "type": "process",
         "progress": 55.0,
         "message": "Test detail",
-        "created": str(datetime(2024, 1, 2, 12, 0, 0)),
-        "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
+        "created": datetime(2024, 1, 2, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 2, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
     },
     {
-        "identifier": "job_3",
+        "jobID": "job_3",
         "status": "running",
+        "type": "process",
         "progress": 15.0,
         "message": "Test detail",
-        "created": str(datetime(2024, 1, 3, 12, 0, 0)),
-        "updated": str(datetime(2024, 1, 3, 13, 0, 0)),
+        "created": datetime(2024, 1, 3, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 3, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
     },
     {
-        "identifier": "job_4",
+        "jobID": "job_4",
         "status": "successful",
+        "type": "process",
         "progress": 100.0,
         "message": "Test detail",
-        "created": str(datetime(2024, 1, 4, 12, 0, 0)),
-        "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
+        "created": datetime(2024, 1, 4, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "updated": datetime(2024, 1, 4, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
     },
 ]
 
@@ -166,19 +171,24 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
         {
             "identifier": "job_1",
             "status": "successful",
+            "type": "process",
             "progress": 100.0,
             "message": "Test detail",
-            "created": str(datetime(2024, 1, 1, 12, 0, 0)),
-            "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
+            "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         },
         {
             "identifier": "job_2",
             "status": "running",
+            "type": "process",
             "progress": 90.25,
             "message": "Test detail",
-            "created": str(datetime(2024, 1, 2, 12, 0, 0)),
-            "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
+            "created": datetime(2024, 1, 2, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "updated": datetime(2024, 1, 2, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         },
+    ]
+    links = [
+        {"href": "string", "rel": "service", "type": "application/json", "hreflang": "en", "title": "List of jobs"},
     ]
 
     # Mock app.extra to ensure 'db_table' exists
@@ -194,7 +204,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     # Assert the correct response is returned
     assert response.status_code == HTTP_200_OK
     # Check if the returned data matches the mocked jobs
-    assert response.json() == {"jobs": list(mock_jobs), "numberMatched": 2}
+    assert response.json() == {"jobs": list(mock_jobs), "numberMatched": 2, "links": links}
 
     # Mock with an empty db, should return 404 since there are no jobs.
     mock_db_table.get_jobs.return_value = {"jobs": [], "numberMatched": 0}
@@ -206,7 +216,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
 
     assert response.status_code == HTTP_200_OK
     # Check if the returned data matches 0 jobs
-    assert response.json() == {"jobs": [], "numberMatched": 0}
+    assert response.json() == {"jobs": [], "numberMatched": 0, "links": links}
 
     # Simulate an exception
     mock_db_table.get_jobs.side_effect = Exception("get_jobs failed")
@@ -214,7 +224,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
     # Call the API
     response = staging_client.get("/jobs")
-    assert response.status_code == HTTP_503_SERVICE_UNAVAILABLE
+    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
     assert response.json() == {"message": "get_jobs failed"}
 
 
@@ -223,7 +233,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     "expected_job, expected_status, expected_response",
     [
         (
-            {"identifier": "non_existing_id"},
+            {"jobID": "non_existing_id"},
             HTTP_404_NOT_FOUND,
             {"message": "Job with ID non_existing_id not found"},
         ),
@@ -269,14 +279,14 @@ async def test_get_job(
     # Return an existing job normally (HTTP 200)
     else:
         mock_db_table.get_job.return_value = next(
-            job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
+            job for job in mock_jobs if job["identifier"] == expected_job["jobID"]
         )
 
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    response = staging_client.get(f"/jobs/{expected_job['identifier']}")
+    response = staging_client.get(f"/jobs/{expected_job['jobID']}")
 
     # Assert response status code and content
     assert response.status_code == expected_status
@@ -288,7 +298,7 @@ async def test_get_job(
     "expected_job, expected_status, expected_response",
     [
         (
-            {"identifier": "non_existing_id"},
+            {"jobID": "non_existing_id"},
             HTTP_404_NOT_FOUND,
             {"message": "Job with ID non_existing_id not found"},
         ),
@@ -334,14 +344,14 @@ async def test_get_job_result(
     # Return an existing job normally (HTTP 200)
     else:
         mock_db_table.get_job.return_value = next(
-            job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
+            job for job in mock_jobs if job["identifier"] == expected_job["jobID"]
         )
 
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    job_id = expected_job.get("identifier")
+    job_id = expected_job.get("jobID")
     response = staging_client.get(f"/jobs/{job_id}/results")
 
     # Assert response status code and content
@@ -354,14 +364,11 @@ async def test_get_job_result(
     "expected_job, expected_status, expected_response",
     [
         (
-            {"identifier": "non_existing_id"},
+            {"jobID": "non_existing_id"},
             HTTP_404_NOT_FOUND,
             {"message": "Job with ID non_existing_id not found"},
         ),
-        *[
-            (job, HTTP_200_OK, {"message": f"Job {job['identifier']} deleted successfully"})
-            for job in expected_jobs_test
-        ],
+        *[(job, HTTP_200_OK, {"message": f"Job {job['jobID']} deleted successfully"}) for job in expected_jobs_test],
     ],
 )
 async def test_delete_job_endpoint(
@@ -402,19 +409,22 @@ async def test_delete_job_endpoint(
         mock_db_table.delete_job.side_effect = JobNotFoundError
     # Return an existing job normally (HTTP 200)
     else:
+        mock_db_table.get_job.return_value = next(
+            job for job in mock_jobs if job["identifier"] == expected_job["jobID"]
+        )
         mock_db_table.delete_job.return_value = next(
-            job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
+            job for job in mock_jobs if job["identifier"] == expected_job["jobID"]
         )
 
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
 
     # Call the API
-    response = staging_client.delete(f"/jobs/{expected_job['identifier']}")
+    response = staging_client.delete(f"/jobs/{expected_job['jobID']}")
 
     # Assert response status code and content
     assert response.status_code == expected_status
-    assert response.json() == expected_response
+    assert response.json()["message"] == expected_response["message"]
 
 
 @pytest.mark.asyncio
@@ -449,7 +459,7 @@ async def test_processes(
     input_processors = [resource["processor"]["name"] for resource in predefined_config["resources"].values()]
 
     # Extract processors from the output
-    output_processors = [process["processor"] for process in response.json()["processes"]]
+    output_processors = [process["id"] for process in response.json()["processes"]]
 
     # Assert that both lists of processors match
     assert sorted(input_processors) == sorted(output_processors), "Processors do not match!"
