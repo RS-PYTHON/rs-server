@@ -42,6 +42,7 @@ expected_jobs_test = [
         "message": "Test detail",
         "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
     },
     {
         "jobID": "job_2",
@@ -51,6 +52,7 @@ expected_jobs_test = [
         "message": "Test detail",
         "created": datetime(2024, 1, 2, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "updated": datetime(2024, 1, 2, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
     },
     {
         "jobID": "job_3",
@@ -60,6 +62,7 @@ expected_jobs_test = [
         "message": "Test detail",
         "created": datetime(2024, 1, 3, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "updated": datetime(2024, 1, 3, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
     },
     {
         "jobID": "job_4",
@@ -69,6 +72,7 @@ expected_jobs_test = [
         "message": "Test detail",
         "created": datetime(2024, 1, 4, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "updated": datetime(2024, 1, 4, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "processID": "staging",
     },
 ]
 
@@ -279,7 +283,7 @@ async def test_get_job(
     # Return an existing job normally (HTTP 200)
     else:
         mock_db_table.get_job.return_value = next(
-            job for job in mock_jobs if job["identifier"] == expected_job["jobID"]
+            job | {"processID": "staging"} for job in mock_jobs if job["identifier"] == expected_job["jobID"]
         )
 
     # Patch app.extra with the mock db_table

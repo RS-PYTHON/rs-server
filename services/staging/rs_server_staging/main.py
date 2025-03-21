@@ -37,6 +37,7 @@ from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
+from rs_server_common.authentication.authentication import auth_validation
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
@@ -273,7 +274,7 @@ async def ping():
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-@router.get("/processes")
+@router.get("/processes", dependencies=[Depends(just_for_the_lock_icon)])
 async def get_processes(request: Request):
     """Returns list of all available processes from config."""
     try:
@@ -297,9 +298,11 @@ async def get_processes(request: Request):
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
-@router.get("/processes/{resource}")
+@router.get("/processes/{resource}", dependencies=[Depends(just_for_the_lock_icon)])
 async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
+    # rs_processes_{resource}_read role needed to access this endpoint.
+    auth_validation("read", resource, request=request, staging_process=True)
     if resource_info := next(
         (
             api.config["resources"][defined_resource]
@@ -379,12 +382,16 @@ def format_jobs_data(jobs_data: dict):
 async def execute_process(request: Request, resource: str):
     """Used to execute processing jobs."""
 
+    # rs_processes_{resource}_execute role needed to access this endpoint.
+    auth_validation("execute", resource, request=request, staging_process=True)
+
     # Validate request payload
     try:
         valid_body_json = await validate_request(request)
     except Exception as e:
         # Handle exceptions and return an appropriate error message
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
@@ -410,19 +417,21 @@ async def execute_process(request: Request, resource: str):
 
 
 # Endpoint to get the status of a job by job_id
-@router.get("/jobs/{job_id}")
+@router.get("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon)])
 async def get_job_status_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
     try:
+        job = app.extra["process_manager"].get_job(job_id)
+        auth_validation("read", job["processID"], request=request, staging_process=True)
         validate_request(request)
-        formatted_job_data = format_job_data(app.extra["process_manager"].get_job(job_id))
+        formatted_job_data = format_job_data(job)
         return validate_response(request, formatted_job_data)
     except JobNotFoundError as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
-@router.get("/jobs")
+@router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon)])
 async def get_jobs_endpoint(request: Request):
     """Returns the status of all jobs."""
     try:
@@ -435,17 +444,17 @@ async def get_jobs_endpoint(request: Request):
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
-@router.delete("/jobs/{job_id}")
+@router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon)])
 async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
     try:
+        job = app.extra["process_manager"].get_job(job_id)
+        auth_validation("dismiss", job["processID"], request=request, staging_process=True)
         validate_request(request)
-        job_info = app.extra["process_manager"].get_job(job_id)
-        # Delete the job
         app.extra["process_manager"].delete_job(job_id)
         # Create job response with a status message to confirm the job deletion
-        job_info["message"] = f"Job {job_id} deleted successfully"
-        formatted_job_data = format_job_data(job_info)
+        job["message"] = f"Job {job_id} deleted successfully"
+        formatted_job_data = format_job_data(job)
         return validate_response(request, formatted_job_data)
     except JobNotFoundError as error:
         # Handle case when job_id is not found
@@ -456,9 +465,11 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
 async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
     try:
-        validate_request(request)
         # Query the database to find the job by job_id
-        return validate_response(request, app.extra["process_manager"].get_job(job_id)["status"])
+        job = app.extra["process_manager"].get_job(job_id)
+        auth_validation("read", job["processID"], request=request, staging_process=True)
+        validate_request(request)
+        return validate_response(request, job["status"])
     except JobNotFoundError as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
