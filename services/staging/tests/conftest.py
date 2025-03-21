@@ -28,12 +28,10 @@ from pathlib import Path
 
 import pytest
 import yaml
-from fastapi import Request
 from fastapi.testclient import TestClient
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
-from starlette.middleware.sessions import SessionMiddleware
 
 # Init the FastAPI application with all the cluster mode features (local mode=0)
 # Do this before any other imports.
@@ -93,34 +91,6 @@ def client_(mocker):
     mocker.patch("rs_server_staging.main.PostgreSQLManager", return_value=mocker.Mock())
     with TestClient(app) as client:
         yield client
-
-
-@pytest.fixture(name="staging_client_auth")
-def auth_client_(mocker):
-    """init fastapi client app with auth component."""
-    # Test the FastAPI application, opens the database session
-    mocker.patch("rs_server_staging.main.init_db", return_value=None)
-    mocker.patch("rs_server_staging.main.PostgreSQLManager", return_value=mocker.Mock())
-    # Turn on cluster mode
-    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
-    mocker.patch("rs_server_common.authentication.oauth2.get_user_info", return_value=mocker.Mock())
-
-    if not any(isinstance(m, SessionMiddleware) for m in app.user_middleware):
-        app.add_middleware(SessionMiddleware, secret_key=None)
-
-    @app.middleware("http")
-    async def set_auth_roles(request: Request, call_next):
-        request.state.auth_roles = [
-            "RS_PROCESSES_STAGING_READ",
-            "RS_PROCESSES_STAGING_EXECUTE",
-            "RS_PROCESSES_STAGING_DISMISS",
-        ]
-        response = await call_next(request)
-        return response
-
-    # Create the TestClient after middleware is added
-    with TestClient(app) as client:
-        yield client  # Yield the client to the test
 
 
 @pytest.fixture(name="geoapi_cfg")
