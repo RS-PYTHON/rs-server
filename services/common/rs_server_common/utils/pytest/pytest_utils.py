@@ -46,7 +46,7 @@ async def mock_oauth2(  # pylint: disable=too-many-arguments
         assert_success: is the login process expected to success ?
     """
 
-    # Clear the cookies, except for the logout endpoint which do it itself
+    # Clear the cookies, except for the logout endpoint which does it itself
     logout = endpoint.endswith("/logout")
     if logout:
         assert "session" in dict(client.cookies)  # nosec
