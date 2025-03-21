@@ -28,12 +28,10 @@ from pathlib import Path
 
 import pytest
 import yaml
-from fastapi import Request
 from fastapi.testclient import TestClient
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
-from starlette.middleware.sessions import SessionMiddleware
 
 # Init the FastAPI application with all the cluster mode features (local mode=0)
 # Do this before any other imports.

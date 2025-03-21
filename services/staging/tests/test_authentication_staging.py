@@ -38,7 +38,7 @@ logger = Logging.default(__name__)
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 @pytest.mark.parametrize("test_apikey", [True, False], ids=["test_apikey", "no_apikey"])
 @pytest.mark.parametrize("test_oauth2", [True, False], ids=["test_oauth2", "no_oauth2"])
-async def test_error_when_not_authenticated(
+async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     mocker,
     staging_client,
     staging_instance: Staging,
@@ -50,6 +50,7 @@ async def test_error_when_not_authenticated(
     Test that all the http endpoints are protected and return 401 or 403 if not authenticated.
     """
     owner_id = "pyteam"
+    # pylint: disable=duplicate-code
     await init_test(
         mocker,
         httpx_mock,

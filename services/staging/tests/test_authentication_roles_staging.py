@@ -56,6 +56,7 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):
     owner_id = "pyteam"
     test_apikey = False
     test_oauth2 = True  # test only with the oauth2 cookie
+    # pylint: disable=duplicate-code
     await init_test(
         mocker,
         httpx_mock,
