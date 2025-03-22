@@ -21,6 +21,8 @@ from fastapi import FastAPI
 from pygeoapi.process.base import JobNotFoundError
 from rs_server_staging.main import (
     app_lifespan,
+    format_job_data,
+    format_jobs_data,
     get_config_contents,
     init_db,
     init_pygeoapi,
@@ -171,15 +173,15 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     """
     # Simulate mock data in the postgres table
 
-    mock_jobs = [
+    mock_db_jobs = [
         {
             "identifier": "job_1",
             "status": "successful",
             "type": "process",
             "progress": 100.0,
             "message": "Test detail",
-            "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "created": datetime(2024, 1, 1, 12, 0, 0),
+            "updated": datetime(2024, 1, 1, 13, 0, 0),
         },
         {
             "identifier": "job_2",
@@ -187,42 +189,49 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
             "type": "process",
             "progress": 90.25,
             "message": "Test detail",
-            "created": datetime(2024, 1, 2, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "updated": datetime(2024, 1, 2, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "created": datetime(2024, 1, 2, 12, 0, 0),
+            "updated": datetime(2024, 1, 2, 13, 0, 0),
         },
     ]
+    mock_jobs_result = [format_job_data(x) for x in mock_db_jobs]
     links = [
         {"href": "string", "rel": "service", "type": "application/json", "hreflang": "en", "title": "List of jobs"},
     ]
-
-    # Mock app.extra to ensure 'db_table' exists
+    # ----- Mock app.extra with some jobs from the database mock to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
-    # Simulate postgres returning jobs
-    mock_db_table.get_jobs.return_value = {"jobs": list(mock_jobs), "numberMatched": 2}
 
+    # Simulate postgres returning jobs
+    mock_db_table.get_jobs.return_value = {"jobs": mock_db_jobs, "numberMatched": 2}
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
-
     # Call the API
     response = staging_client.get("/jobs")
     # Assert the correct response is returned
     assert response.status_code == HTTP_200_OK
     # Check if the returned data matches the mocked jobs
-    assert response.json() == {"jobs": list(mock_jobs), "numberMatched": 2, "links": links}
+    assert response.json() == {"jobs": list(mock_jobs_result), "numberMatched": 2, "links": links}
 
-    # Mock with an empty db, should return 404 since there are no jobs.
+    # ----- Mock with an empty db
     mock_db_table.get_jobs.return_value = {"jobs": [], "numberMatched": 0}
-
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
-
     response = staging_client.get("/jobs")
-
     assert response.status_code == HTTP_200_OK
     # Check if the returned data matches 0 jobs
     assert response.json() == {"jobs": [], "numberMatched": 0, "links": links}
 
-    # Simulate an exception
+    # ----- Check that a validation exception is returned if the jobs from the database are
+    # not OGC compliant
+    wrong_ogc_mock_jobs = mock_db_jobs.copy()
+    # Remove required ogc attribute "type"
+    wrong_ogc_mock_jobs[0].pop("type")
+    mock_db_table.get_jobs.return_value = {"jobs": list(wrong_ogc_mock_jobs), "numberMatched": 2}
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    response = staging_client.get("/jobs")
+    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert "'type' is a required property" in response.json()["message"]
+
+    # ----- Simulate an exception
     mock_db_table.get_jobs.side_effect = Exception("get_jobs failed")
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """rs server staging main module."""
+import copy
 import json
 
 # pylint: disable=E0401
@@ -323,7 +324,7 @@ async def get_resource(request: Request, resource: str):
     return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"detail": f"Resource {resource} not found"})
 
 
-def format_job_data(job_data: dict):
+def format_job_data(job: dict):
     """
     Method to apply reformatting on job data to make it compliant with OGC (process) standards
     Args:
@@ -331,6 +332,7 @@ def format_job_data(job_data: dict):
     Result:
         reformatted and validated job_data variable to put in the response
     """
+    job_data = copy.deepcopy(job)
     # Rename attribute "identifier" to be compliant with OGC standards
     job_data[JOB_ATTRS_MAPPING["identifier"]] = job_data.pop("identifier")
     # Remove attributes which should not be part of the response
@@ -347,7 +349,7 @@ def format_job_data(job_data: dict):
     return job_data
 
 
-def format_jobs_data(jobs_data: dict):
+def format_jobs_data(jobs: dict):
     """
     Method validate information on all existing jobs
 
@@ -357,6 +359,7 @@ def format_jobs_data(jobs_data: dict):
     Result:
         reformatted and validated jobs_data variable to put in the response
     """
+    jobs_data = copy.deepcopy(jobs)
     # Add "links" mandatory field to the response
     jobs_data.update(
         {
@@ -372,8 +375,8 @@ def format_jobs_data(jobs_data: dict):
         },
     )
     # Remove SQLAlchemy _sa_instance_state objects and convert datetime
-    for job_data in jobs_data["jobs"]:
-        job_data = format_job_data(job_data)
+    for i, job_data in enumerate(jobs_data["jobs"]):
+        jobs_data["jobs"][i] = format_job_data(job_data)
     return jobs_data
 
 
