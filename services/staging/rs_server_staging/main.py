@@ -425,13 +425,16 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
     """Used to get status of processing job."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
+    except JobNotFoundError as error:
+        # Handle case when job_id is not found
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    try:
         auth_validation("read", job["processID"], request=request, staging_process=True)
         validate_request(request)
         formatted_job_data = format_job_data(job)
         return validate_response(request, formatted_job_data)
-    except JobNotFoundError as error:
-        # Handle case when job_id is not found
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon)])
@@ -455,13 +458,16 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         auth_validation("dismiss", job["processID"], request=request, staging_process=True)
         validate_request(request)
         app.extra["process_manager"].delete_job(job_id)
+    # Handle case when job_id is not found
+    except Exception as error:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    try:
         # Create job response with a status message to confirm the job deletion
         job["message"] = f"Job {job_id} deleted successfully"
         formatted_job_data = format_job_data(job)
         return validate_response(request, formatted_job_data)
-    except JobNotFoundError as error:
-        # Handle case when job_id is not found
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.get("/jobs/{job_id}/results")
@@ -470,12 +476,14 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
     try:
         # Query the database to find the job by job_id
         job = app.extra["process_manager"].get_job(job_id)
+    except JobNotFoundError as error:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    try:
         auth_validation("read", job["processID"], request=request, staging_process=True)
         validate_request(request)
         return validate_response(request, job["status"])
-    except JobNotFoundError as error:
-        # Handle case when job_id is not found
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 if common_settings.LOCAL_MODE:

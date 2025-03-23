@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test staging module."""
+import copy
 import os
 from datetime import datetime
 
@@ -173,7 +174,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     """
     # Simulate mock data in the postgres table
 
-    mock_db_jobs = [
+    mock_jobs = [
         {
             "identifier": "job_1",
             "status": "successful",
@@ -182,6 +183,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
             "message": "Test detail",
             "created": datetime(2024, 1, 1, 12, 0, 0),
             "updated": datetime(2024, 1, 1, 13, 0, 0),
+            "processID": "staging",
         },
         {
             "identifier": "job_2",
@@ -191,9 +193,10 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
             "message": "Test detail",
             "created": datetime(2024, 1, 2, 12, 0, 0),
             "updated": datetime(2024, 1, 2, 13, 0, 0),
+            "processID": "staging",
         },
     ]
-    mock_jobs_result = [format_job_data(x) for x in mock_db_jobs]
+    mock_jobs_result = [format_job_data(x) for x in mock_jobs]
     links = [
         {"href": "string", "rel": "service", "type": "application/json", "hreflang": "en", "title": "List of jobs"},
     ]
@@ -201,7 +204,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     mock_db_table = mocker.MagicMock()
 
     # Simulate postgres returning jobs
-    mock_db_table.get_jobs.return_value = {"jobs": mock_db_jobs, "numberMatched": 2}
+    mock_db_table.get_jobs.return_value = {"jobs": mock_jobs, "numberMatched": 2}
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
     # Call the API
@@ -220,9 +223,9 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     # Check if the returned data matches 0 jobs
     assert response.json() == {"jobs": [], "numberMatched": 0, "links": links}
 
-    # ----- Check that a validation exception is returned if the jobs from the database are
-    # not OGC compliant
-    wrong_ogc_mock_jobs = mock_db_jobs.copy()
+    # ----- Check that a validation exception is returned if one of the job from the response doesn't have
+    # the required "type" property (and thus is not ogc compliant)
+    wrong_ogc_mock_jobs = copy.deepcopy(mock_jobs)
     # Remove required ogc attribute "type"
     wrong_ogc_mock_jobs[0].pop("type")
     mock_db_table.get_jobs.return_value = {"jobs": list(wrong_ogc_mock_jobs), "numberMatched": 2}
@@ -230,6 +233,16 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
     response = staging_client.get("/jobs")
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
     assert "'type' is a required property" in response.json()["message"]
+
+    # ----- Check that a validation exception is returned if the response doesn't have the required "links" property
+    # (and thus is not ogc compliant)
+    mock_formatted_jobs = format_jobs_data({"jobs": mock_jobs, "numberMatched": 2})
+    mock_formatted_jobs.pop("links")
+    mocker.patch("rs_server_staging.main.format_jobs_data", return_value=mock_formatted_jobs)
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
+    response = staging_client.get("/jobs")
+    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert "'links' is a required property" in response.json()["message"]
 
     # ----- Simulate an exception
     mock_db_table.get_jobs.side_effect = Exception("get_jobs failed")
@@ -250,6 +263,7 @@ async def test_get_jobs_endpoint(mocker, set_db_env_var, staging_client):  # pyl
             HTTP_404_NOT_FOUND,
             {"message": "Job with ID non_existing_id not found"},
         ),
+        (expected_jobs_test[0], HTTP_500_INTERNAL_SERVER_ERROR, {"message": "'type' is a required property"}),
         *[(job, HTTP_200_OK, job) for job in expected_jobs_test],
     ],
 )
@@ -286,24 +300,38 @@ async def test_get_job(
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
 
-    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
+    # ----- Simulate JobNotFoundError for non-existing jobs (HTTP 404)
     if expected_status == HTTP_404_NOT_FOUND:
         mock_db_table.get_job.side_effect = JobNotFoundError
+
+    # ----- Check that a validation exception is returned if the jobs from the database are
+    # not OGC compliant
+    elif expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
+        wrong_ogc_mock_jobs = copy.deepcopy(mock_jobs)
+        # Remove required ogc attribute "type" from all jobs of the get_job output mock
+        for job in wrong_ogc_mock_jobs:
+            job.pop("type")
+        # Remove required ogc attribute "type"
+        mock_db_table.get_job.return_value = next(
+            job for job in wrong_ogc_mock_jobs if job["identifier"] == expected_job["jobID"]
+        )
     # Return an existing job normally (HTTP 200)
     else:
         mock_db_table.get_job.return_value = next(
-            job | {"processID": "staging"} for job in mock_jobs if job["identifier"] == expected_job["jobID"]
+            job for job in mock_jobs if job["identifier"] == expected_job["jobID"]
         )
-
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table})
-
     # Call the API
     response = staging_client.get(f"/jobs/{expected_job['jobID']}")
 
     # Assert response status code and content
     assert response.status_code == expected_status
-    assert response.json() == expected_response
+
+    if expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
+        assert expected_response["message"] in response.json()["message"]
+    else:
+        assert response.json() == expected_response
 
 
 @pytest.mark.asyncio
@@ -314,6 +342,11 @@ async def test_get_job(
             {"jobID": "non_existing_id"},
             HTTP_404_NOT_FOUND,
             {"message": "Job with ID non_existing_id not found"},
+        ),
+        (
+            expected_jobs_test[0],
+            HTTP_500_INTERNAL_SERVER_ERROR,
+            {"message": "{'status': 'format'} is not valid under any of the given schemas"},
         ),
         *[(job, HTTP_200_OK, job["status"]) for job in expected_jobs_test],
     ],
@@ -344,16 +377,27 @@ async def test_get_job_result(
         expected_response: response body (JSON object)
 
     Assertions:
-        - Asserts that the response status code is 200 and the returned job result
+        - (
+            {"jobID": "non_existing_id"},
+            HTTP_404_NOT_FOUND,
+            {"message": "Job with ID non_existing_id not found"},
+        ), Asserts that the response status code is 200 and the returned job result
           matches the expected job status when the job exists.
         - Asserts that the response status code is 404 when the job does not exist.
     """
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
 
-    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
+    # ----- Simulate JobNotFoundError for non-existing jobs (HTTP 404)
     if expected_status == HTTP_404_NOT_FOUND:
         mock_db_table.get_job.side_effect = JobNotFoundError
+    # ----- Check that a validation exception is returned if the jobs from the database are
+    # not OGC compliant
+    elif expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
+        wrong_ogc_mock_job = copy.deepcopy(mock_jobs[0])
+        wrong_ogc_mock_job["status"] = {"wrong": {"status": "format"}}
+        # Remove required ogc attribute "type"
+        mock_db_table.get_job.return_value = wrong_ogc_mock_job
     # Return an existing job normally (HTTP 200)
     else:
         mock_db_table.get_job.return_value = next(
@@ -369,7 +413,10 @@ async def test_get_job_result(
 
     # Assert response status code and content
     assert response.status_code == expected_status
-    assert response.json() == expected_response
+    if expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
+        assert expected_response["message"] in response.json()["message"]
+    else:
+        assert response.json() == expected_response
 
 
 @pytest.mark.asyncio
@@ -379,9 +426,10 @@ async def test_get_job_result(
         (
             {"jobID": "non_existing_id"},
             HTTP_404_NOT_FOUND,
-            {"message": "Job with ID non_existing_id not found"},
+            "Job with ID non_existing_id not found",
         ),
-        *[(job, HTTP_200_OK, {"message": f"Job {job['jobID']} deleted successfully"}) for job in expected_jobs_test],
+        (expected_jobs_test[0], HTTP_500_INTERNAL_SERVER_ERROR, "'type' is a required property"),
+        *[(job, HTTP_200_OK, f"Job {job['jobID']} deleted successfully") for job in expected_jobs_test],
     ],
 )
 async def test_delete_job_endpoint(
@@ -417,10 +465,23 @@ async def test_delete_job_endpoint(
     # Mock app.extra to ensure 'db_table' exists
     mock_db_table = mocker.MagicMock()
 
-    # Simulate JobNotFoundError for non-existing jobs (HTTP 404)
+    # ----- Simulate JobNotFoundError for non-existing jobs (HTTP 404)
     if expected_status == HTTP_404_NOT_FOUND:
-        mock_db_table.delete_job.side_effect = JobNotFoundError
-    # Return an existing job normally (HTTP 200)
+        mock_db_table.get_job.side_effect = JobNotFoundError
+
+    # ----- Check that a validation exception is returned if the jobs from the database are
+    # not OGC compliant
+    elif expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
+        wrong_ogc_mock_jobs = copy.deepcopy(mock_jobs)
+        # Remove required ogc attribute "type" from all jobs of the get_job output mock
+        for job in wrong_ogc_mock_jobs:
+            job.pop("type")
+        # Remove required ogc attribute "type"
+        mock_db_table.get_job.return_value = next(
+            job for job in wrong_ogc_mock_jobs if job["identifier"] == expected_job["jobID"]
+        )
+
+    # ----- Return an existing job normally (HTTP 200)
     else:
         mock_db_table.get_job.return_value = next(
             job for job in mock_jobs if job["identifier"] == expected_job["jobID"]
@@ -437,7 +498,10 @@ async def test_delete_job_endpoint(
 
     # Assert response status code and content
     assert response.status_code == expected_status
-    assert response.json()["message"] == expected_response["message"]
+    if expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
+        assert expected_response in response.json()["message"]
+    else:
+        assert response.json()["message"] == expected_response
 
 
 @pytest.mark.asyncio
@@ -518,6 +582,37 @@ async def test_specific_process(
     assert (
         response.status_code == HTTP_200_OK and response.json()["processor"]["name"] == processor_name
     ) or response.status_code == HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_execute_staging(mocker, mock_jobs, staging_client):
+    """Test to run the /processes/{resource}/execution endpoint"""
+    resource_name = "staging"
+    # ----- Test case where we have a staging body uncompliant with ogc
+    wrong_staging_body = {
+        "inputs": {
+            "collection": {"title": "Target collection", "title": "test target collection"},
+            "items": {"value": {}},
+        },
+    }
+    response = staging_client.post(f"/processes/{resource_name}/execution", json=wrong_staging_body)
+    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert "Request body validation error" in response.json()["message"]
+
+    # ----- Test case where both staging body and response are compliant with ogc
+    mock_db_table = mocker.MagicMock()
+    mocker.patch("rs_server_staging.processors.Staging.execute", return_value=(None, {"running": "mock_job_id"}))
+    mock_db_table.get_job.return_value = next(
+        job for job in mock_jobs if job["identifier"] == expected_jobs_test[0]["jobID"]
+    )
+    # Patch app.extra with the mock db_table
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table, "dask_cluster": None})
+    valid_staging_body = {"inputs": {"collection": "my_target_collection", "items": {"value": {}}}}
+    response = staging_client.post(f"/processes/{resource_name}/execution", json=valid_staging_body)
+    assert response.status_code == HTTP_200_OK
+    assert response.json() == expected_jobs_test[0]
+
+    # ----- Test case where we have a staging response which is uncompliant with ogc
 
 
 @pytest.mark.asyncio
