@@ -304,13 +304,14 @@ async def refresh_auth_tokens(timeout: int = 60):
                 break
 
             # Refresh tokens concurrently for all items in the list
-            with app.extra["auth_list_lock"]:
-                # tmp_list = app.extra["auth_list"].copy()
-                logger.debug("Refreshing tokens")
-                for auth in app.extra["auth_list"]:
-                    if not await refresh_token(auth, logger):
-                        token_lock, token_info = auth.get_first_subscriber(logger)
-                        auth.unsubscribe(token_lock, token_info, logger)
+            # with app.extra["auth_list_lock"]:
+            # tmp_list = app.extra["auth_list"].copy()
+            logger.debug("Refreshing tokens")
+            for auth in app.extra["auth_list"]:
+                if not await refresh_token(auth, logger):
+                    # token_lock, token_info = auth.get_first_subscriber(logger)
+                    # auth.unsubscribe(token_lock, token_info, logger)
+                    logger.debug(f"Could not refresh tokens for {auth.station_id}")
 
             # logger.debug("Refreshing tokens")
             # await asyncio.gather(
