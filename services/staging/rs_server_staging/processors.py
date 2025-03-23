@@ -82,13 +82,156 @@ def dbg_write_to_file(msg):
         f.write(f"{datetime.now()}: {msg}")
 
 
+# def streaming_task(  # pylint: disable=R0913, R0917
+#     product_url: str,
+#     config: ExternalAuthenticationConfig,
+#     bucket: str,
+#     s3_file: str,
+#     token_info: Variable,
+#     token_lock: Lock,
+# ):
+#     """
+#     Streams a file from a product URL and uploads it to an S3-compatible storage.
+
+#     This function downloads a file from the specified `product_url` using provided
+#     authentication and uploads it to an S3 bucket using a streaming mechanism.
+#     If no S3 handler is provided, it initializes a default `S3StorageHandler` using
+#     environment variables for credentials.
+
+#     Args:
+#         product_url (str): The URL of the product to download.
+#         config (ExternalAuthenticationConfig): Authentification configuration containing the list of
+#         allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
+#         bucket (str): Name of the destination bucket where we want to stage our data
+#         s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
+#         token_info (dask.distributed.Variable): The authentication dask variable (with a dictionary inside)
+#                 shared by all of the Dask workers
+#         token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads
+#         to the station
+#     Returns:
+#         str: The S3 file path where the file was uploaded.
+
+#     Raises:
+#         ValueError: If the streaming process fails, raises a ValueError with details of the failure.
+
+#     Retry Mechanism:
+#         - Retries occur for network-related errors (`RequestException`) or S3 client errors
+#         (`ClientError`, `BotoCoreError`).
+#         - The function waits before retrying, with the delay time increasing exponentially
+#         (based on the `backoff_factor`).
+#         - The backoff formula is `backoff_factor * (2 ** (attempt - 1))`, allowing progressively
+#         longer wait times between retries.
+#     """
+
+#     logger_dask = logging.getLogger(__name__)
+#     logger_dask.info("This is a log message from the worker.")
+#     time.sleep(1)
+#     dbg_write_to_file(f"{s3_file}: This is a log message from the worker.\n")
+#     # Create a thread lock to synchronize access to shared resources between the threads of a
+#     # given worker
+#     s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))
+#     attempt = 0
+#     max_retries = int(os.environ.get("S3_MAX_RETRIES", S3_MAX_RETRIES))
+#     print(f"streaming_task started: {s3_file}")
+#     dbg_write_to_file(f"{s3_file}: streaming_task started\n")
+#     while attempt < max_retries:
+#         # this token_lock may not be used when fetching the vale from the dask Variable
+#         # this is at least my understanding from the documentation I read and src code :
+#         # - dask Variable uses a centralized, atomic update mechanism, ensuring that .get() always
+#         #    returns a fully stored value (this is done by the dask scheduler). the usage of client.sync() function
+#         #    leaded me to this idea
+#         # - locks are not needed for reading because .get() never returns a partially written state.
+#         # - only writes need a lock to prevent multiple updates from conflicting. this should be discussed because
+#         #    normally only the thread from the processors.py should write it
+#         auth = None
+#         try:
+#             logger_dask.info(f"Trying to get dask lock: {s3_file}")
+#             dbg_write_to_file(f"{s3_file}: Trying to get dask lock\n")
+#             # if token_lock.acquire(timeout=10):
+#             #    print(f"Dask lock acquired: {s3_file}")
+#             # fetch the access_token from the shared dask variable
+#             # if not token_info.client.status == "running":
+#             #     print("Dask scheduler is unavailable. Skipping streaming file.")
+#             #     raise ValueError(
+#             #         f"Dask scheduler is unavailable. Skipping streaming"
+#             #         "file from {product_url} to s3://{bucket}/{s3_file}",
+#             #     )
+
+#             try:
+#                 token_dict = token_info.get(timeout=TIMEOUT_GET_TOKEN)
+#                 if not isinstance(token_dict, dict):
+#                     dbg_write_to_file(f"{s3_file}: Retrieved value for the token is not a dictionary\n")
+#                     raise KeyError("Retrieved value for the token is not a dictionary")
+#             except (TimeoutError, ValueError) as e:
+#                 dbg_write_to_file(
+#                     f"{s3_file}: Key access_token could not be retrieved from the shared dask variable: {e}\n",
+#                 )
+#                 raise KeyError(f"Key access_token could not be retrieved from the shared dask variable: {e}") from e
+#             except Exception as e:
+#                 dbg_write_to_file(f"{s3_file}: Unknown exception: {e}\n")
+#                 raise KeyError(f"Unknown exception: {e}") from e
+#             if "access_token" not in token_dict:
+#                 dbg_write_to_file(f"{s3_file}: Key access_token does not exist in the token dictionary\n")
+#                 raise KeyError("Key access_token does not exist in the token dictionary")
+#             auth = TokenAuth(token_dict["access_token"])
+#             # else:
+#             #    print(f"Could not acquire the dask lock: {s3_file}")
+#             #    break
+#             logger_dask.info(f"dask lock released: {s3_file}")
+#             dbg_write_to_file(f"{s3_file}: dask lock released\n")
+#             s3_handler = S3StorageHandler(
+#                 os.environ["S3_ACCESSKEY"],
+#                 os.environ["S3_SECRETKEY"],
+#                 os.environ["S3_ENDPOINT"],
+#                 os.environ["S3_REGION"],
+#             )
+
+#             dbg_write_to_file(f"{s3_file}: UPLOADING !\n")
+#             s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
+#             dbg_write_to_file(f"{s3_file}: UPLOADED !\n")
+#             s3_handler.disconnect_s3()
+#             break
+#         except ConnectionError as e:
+#             attempt += 1
+#             if attempt < max_retries:
+#                 # keep retrying
+#                 s3_handler.disconnect_s3()
+#                 dbg_write_to_file(f"{s3_file}: S3 level failed to stream. Retrying in {s3_retry_timeout} seconds\n")
+#                 print(f"S3 level failed to stream. Retrying in {s3_retry_timeout} seconds.")
+#                 s3_handler.wait_timeout(s3_retry_timeout)
+#                 continue
+#             logger_dask.info(f"S3 level failed to stream. Tried for {max_retries} times, giving up")
+#             dbg_write_to_file(f"{s3_file}: S3 level failed to stream. Tried for {max_retries} times, giving up\n")
+#             raise ValueError(
+#                 f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
+#             ) from e
+#         except KeyError as key_exc:
+#             logger_dask.info(f"KeyError exception in streaming_task for {s3_file}: {key_exc}")
+#             dbg_write_to_file(f"{s3_file}: KeyError exception in streaming_task for {s3_file}: {key_exc}\n")
+#             raise ValueError(f"Cannot create s3 connector object. Reason: {key_exc}") from key_exc
+#         except RuntimeError as e:
+#             logger_dask.info(f"RuntimeError exception in streaming_task for {s3_file} : {e}")
+#             dbg_write_to_file(f"{s3_file}: RuntimeError exception in streaming_task for {s3_file} : {e}\n")
+#             raise ValueError(
+#                 f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
+#             ) from e
+#         except Exception as e:  # pylint: disable=broad-exception-caught
+#             logger_dask.info(f"Unhandled exception in streaming_task for {s3_file} : {e}")
+#             dbg_write_to_file(f"{s3_file}: Unhandled exception in streaming_task for {s3_file} : {e}\n")
+#             raise ValueError(
+#                 f"Unhandled exception in streaming_task : {e}",
+#             ) from e
+#     logger_dask.info(f"streaming_task finished: {s3_file}")
+#     dbg_write_to_file(f"{s3_file}: streaming_task finished. returning !\n")
+
+
+#     return s3_file
 def streaming_task(  # pylint: disable=R0913, R0917
     product_url: str,
     config: ExternalAuthenticationConfig,
     bucket: str,
     s3_file: str,
-    token_info: Variable,
-    token_lock: Lock,
+    auth: str,
 ):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
@@ -125,7 +268,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
 
     logger_dask = logging.getLogger(__name__)
     logger_dask.info("This is a log message from the worker.")
-    time.sleep(1)
+    # time.sleep(1)
     dbg_write_to_file(f"{s3_file}: This is a log message from the worker.\n")
     # Create a thread lock to synchronize access to shared resources between the threads of a
     # given worker
@@ -143,10 +286,10 @@ def streaming_task(  # pylint: disable=R0913, R0917
         # - locks are not needed for reading because .get() never returns a partially written state.
         # - only writes need a lock to prevent multiple updates from conflicting. this should be discussed because
         #    normally only the thread from the processors.py should write it
-        auth = None
+
         try:
             logger_dask.info(f"Trying to get dask lock: {s3_file}")
-            dbg_write_to_file(f"{s3_file}: Trying to get dask lock\n")
+            # dbg_write_to_file(f"{s3_file}: Trying to get dask lock\n")
             # if token_lock.acquire(timeout=10):
             #    print(f"Dask lock acquired: {s3_file}")
             # fetch the access_token from the shared dask variable
@@ -157,35 +300,26 @@ def streaming_task(  # pylint: disable=R0913, R0917
             #         "file from {product_url} to s3://{bucket}/{s3_file}",
             #     )
 
-            try:
-                token_dict = token_info.get(timeout=TIMEOUT_GET_TOKEN)
-                if not isinstance(token_dict, dict):
-                    dbg_write_to_file(f"{s3_file}: Retrieved value for the token is not a dictionary\n")
-                    raise KeyError("Retrieved value for the token is not a dictionary")
-            except (TimeoutError, ValueError) as e:
-                dbg_write_to_file(
-                    f"{s3_file}: Key access_token could not be retrieved from the shared dask variable: {e}\n",
-                )
-                raise KeyError(f"Key access_token could not be retrieved from the shared dask variable: {e}") from e
-            except Exception as e:
-                dbg_write_to_file(f"{s3_file}: Unknown exception: {e}\n")
-                raise KeyError(f"Unknown exception: {e}") from e
-            if "access_token" not in token_dict:
-                dbg_write_to_file(f"{s3_file}: Key access_token does not exist in the token dictionary\n")
-                raise KeyError("Key access_token does not exist in the token dictionary")
-            auth = TokenAuth(token_dict["access_token"])
             # else:
             #    print(f"Could not acquire the dask lock: {s3_file}")
             #    break
             logger_dask.info(f"dask lock released: {s3_file}")
-            dbg_write_to_file(f"{s3_file}: dask lock released\n")
+            # dbg_write_to_file(f"{s3_file}: dask lock released\n")
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
                 os.environ["S3_SECRETKEY"],
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
             )
-
+            # DEBUG ONLY !
+            # s3_handler = S3StorageHandler(
+            #     "minio",
+            #     "Strong#Pass#1234",
+            #     "http://minio:9000",
+            #     "sbg",
+            # )
+            # product_url = product_url.replace("cadip-station:5000", "127.0.0.1:5002")
+            # end of DEBUG ONLY !
             dbg_write_to_file(f"{s3_file}: UPLOADING !\n")
             s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
             dbg_write_to_file(f"{s3_file}: UPLOADED !\n")
@@ -854,8 +988,8 @@ class Staging(
         if not client:
             self.logger.error("The dask cluster client object is not created. Exiting")
             return
-        dict_token = self.token_info.get()
-        self.logger.debug(f"Tasks monitoring: {dict_token}")
+        # dict_token = self.token_info.get()
+        # self.logger.debug(f"Tasks monitoring: {dict_token}")
         for task in self.tasks:
             self.logger.debug(f"task: {task}")
         for task in as_completed(self.tasks):
@@ -884,7 +1018,7 @@ class Staging(
                     time.sleep(1)
                     timeout -= 1
                 # Update status for the job
-                self.decrease_subscribers_for_token()
+                # self.decrease_subscribers_for_token()
                 self.log_job_execution(JobStatus.failed, None, f"At least one of the tasks failed: {task_e}")
                 self.delete_files_from_bucket()
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
@@ -899,7 +1033,7 @@ class Staging(
                     None,
                     f"The item {feature.id} couldn't be published in the catalog. Cleaning up",
                 )
-                self.decrease_subscribers_for_token()
+                # self.decrease_subscribers_for_token()
                 # delete the files
                 self.delete_files_from_bucket()
                 # delete the published items
@@ -909,7 +1043,7 @@ class Staging(
         # Update status once all features are processed
         self.log_job_execution(JobStatus.successful, 100, "Finished")
         # Update the subscribers for token refreshment
-        self.decrease_subscribers_for_token()
+        # self.decrease_subscribers_for_token()
         self.logger.info("Tasks monitoring finished")
 
     def dask_cluster_connect(
@@ -1092,9 +1226,9 @@ class Staging(
 
         # Create dask.distributed.Locks objects to synchronize the access to the shared resource between
         # the Dask workers (with this lock we have only 1 thread reading the shared resource at once)
-        self.token_lock = Lock(name=f"{staging_station_id}_lock", client=client)  # pylint: disable=W0201
+        # self.token_lock = Lock(name=f"{staging_station_id}_lock", client=client)  # pylint: disable=W0201
         # Create a dask.distributed.Variable object which will be shared by all the workers
-        self.token_info = Variable(name=f"{staging_station_id}_shared_token", client=client)  # pylint: disable=W0201
+        # self.token_info = Variable(name=f"{staging_station_id}_shared_token", client=client)  # pylint: disable=W0201
 
         # Check if the dask.distributed.Variable object is already existing and initialized in the
         # scheduler. If it is not the case, initialize it with an empty dictionary. If the initialization
@@ -1112,15 +1246,15 @@ class Staging(
         #             self.token_info.set({})
         #         except Exception as e:
         #             raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}") from e
-        try:
-            token_dict = self.token_info.get(timeout=TIMEOUT_GET_TOKEN)
-            if not isinstance(token_dict, dict):
-                self.token_info.set({})
-        except (TimeoutError, ValueError):
-            self.token_info.set({})
-            pass
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}") from e
+        # try:
+        #     token_dict = self.token_info.get(timeout=TIMEOUT_GET_TOKEN)
+        #     if not isinstance(token_dict, dict):
+        #         self.token_info.set({})
+        # except (TimeoutError, ValueError):
+        #     self.token_info.set({})
+        #     pass
+        # except Exception as e:
+        #     raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}") from e
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
@@ -1153,7 +1287,19 @@ class Staging(
         # empty the list
         self.tasks = []
         # Submit tasks
-
+        #### TO BE REMOVED
+        try:
+            token_dict = get_station_token(config, {})
+            if not isinstance(token_dict, dict):
+                raise KeyError("Retrieved value for the token is not a dictionary")
+        except (TimeoutError, ValueError) as e:
+            raise KeyError(f"Key access_token could not be retrieved from the shared dask variable: {e}") from e
+        except Exception as e:
+            raise KeyError(f"Unknown exception: {e}") from e
+        if "access_token" not in token_dict:
+            raise KeyError("Key access_token does not exist in the token dictionary")
+        auth = TokenAuth(token_dict["access_token"])
+        ### end of TO BE REMOVED
         try:
             for asset_info in self.assets_info:
                 self.tasks.append(
@@ -1163,8 +1309,7 @@ class Staging(
                         config,
                         self.catalog_bucket,
                         asset_info[1],
-                        self.token_info,
-                        self.token_lock,
+                        auth,
                     ),
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -1226,32 +1371,32 @@ class Staging(
             # NOTE: The external_auth_config is supposed to not change !
             # verify if the dask Lock / Variable already in the auth_list of main app
             found = False
-            with self.auth_list_lock:
-                for auth in self.auth_list:
-                    if self.token_info.name == auth.station_id:
-                        # add the lock and token_info with a valid client.scheduler
-                        auth.subscribe(self.token_lock, self.token_info, self.logger)
-                        found = True
-                        break
-                if not found:
-                    auth = RefreshTokenData(
-                        self.token_info.name,
-                        external_auth_config,
-                        self.token_lock,
-                        self.token_info,
-                    )
-                    self.auth_list.append(auth)
-                # load or referesh the token
-                if not await refresh_token(auth, self.logger):
-                    auth.unsubscribe(self.token_lock, self.token_info, self.logger)
-                    self.logger.error(
-                        "Could not retrieve or refresh the station token. The staging process will not start",
-                    )
-                    return self.log_job_execution(
-                        JobStatus.failed,
-                        0,
-                        "Could not retrieve or refresh the station token",
-                    )
+            # with self.auth_list_lock:
+            #     for auth in self.auth_list:
+            #         if self.token_info.name == auth.station_id:
+            #             # add the lock and token_info with a valid client.scheduler
+            #             auth.subscribe(self.token_lock, self.token_info, self.logger)
+            #             found = True
+            #             break
+            #     if not found:
+            #         auth = RefreshTokenData(
+            #             self.token_info.name,
+            #             external_auth_config,
+            #             self.token_lock,
+            #             self.token_info,
+            #         )
+            #         self.auth_list.append(auth)
+            #     # load or referesh the token
+            #     if not await refresh_token(auth, self.logger):
+            #         auth.unsubscribe(self.token_lock, self.token_info, self.logger)
+            #         self.logger.error(
+            #             "Could not retrieve or refresh the station token. The staging process will not start",
+            #         )
+            #         return self.log_job_execution(
+            #             JobStatus.failed,
+            #             0,
+            #             "Could not retrieve or refresh the station token",
+            #         )
             # Set the status to running for the job
             self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
             self.submit_tasks_to_dask_cluster(external_auth_config, dask_client)
