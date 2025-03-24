@@ -30,8 +30,6 @@ from dask.distributed import (
     CancelledError,
     Client,
     LocalCluster,
-    Lock,
-    Variable,
     as_completed,
 )
 from dask_gateway import Gateway
@@ -68,19 +66,18 @@ TASK_TIMEOUT_VALUE = int(os.environ.get("TASK_TIMEOUT", 120))  # Set a per-task 
 
 
 def dbg_write_to_file(msg):
-    # print(f"{datetime.now()}: {msg}")
-    # return
+    print(f"{datetime.now()}: {msg}")
+    return
     with open("/home/dask/worker.log", "a+") as f:
         f.write(f"{datetime.now()}: {msg}")
 
 
 def streaming_task(  # pylint: disable=R0913, R0917
     product_url: str,
+    s3_file: str,
     config: ExternalAuthenticationConfig,
     bucket: str,
-    s3_file: str,
-    token_info: Variable,
-    token_lock: Lock,
+    auth: str,
 ):
     """
     Streams a file from a product URL and uploads it to an S3-compatible storage.
@@ -93,13 +90,8 @@ def streaming_task(  # pylint: disable=R0913, R0917
     Args:
         product_url (str): The URL of the product to download.
         config (ExternalAuthenticationConfig): Authentification configuration containing the list of
-        allowed hosts for redirection in case of change of protocol (HTTP <> HTTPS).
         bucket (str): Name of the destination bucket where we want to stage our data
         s3_file (str): The destination path/key in the S3 bucket where the file will be uploaded.
-        token_info (dask.distributed.Variable): The authentication dask variable (with a dictionary inside)
-                shared by all of the Dask workers
-        token_lock (dask.distributed.Lock): Lock to synchronize token requests made by different workers/threads
-        to the station
     Returns:
         str: The S3 file path where the file was uploaded.
 
@@ -117,7 +109,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
 
     logger_dask = logging.getLogger(__name__)
     logger_dask.info("This is a log message from the worker.")
-    # time.sleep(1)
+    # time.sleep(5)
     # dbg_write_to_file(f"{s3_file}: This is a log message from the worker.\n")
     # Create a thread lock to synchronize access to shared resources between the threads of a
     # given worker
@@ -135,41 +127,11 @@ def streaming_task(  # pylint: disable=R0913, R0917
         # - locks are not needed for reading because .get() never returns a partially written state.
         # - only writes need a lock to prevent multiple updates from conflicting. this should be discussed because
         #    normally only the thread from the processors.py should write it
-        auth = None
+
         try:
-            logger_dask.info(f"Trying to get dask lock: {s3_file}")
-            dbg_write_to_file(f"{s3_file}: Trying to get dask lock\n")
 
-            if token_lock.acquire(timeout=TIMEOUT_DASK_TOKEN):
-                try:
-                    token_dict = token_info.get(timeout=TIMEOUT_DASK_TOKEN)
-                    token_lock.release()
-                    if not isinstance(token_dict, dict):
-                        dbg_write_to_file(f"{s3_file}: Retrieved value for the token is not a dictionary\n")
-                        token_lock.release()
-                        raise KeyError("Retrieved value for the token is not a dictionary")
-                except (TimeoutError, ValueError) as e:
-                    dbg_write_to_file(
-                        f"{s3_file}: Key access_token could not be retrieved from the shared dask variable: {e}\n",
-                    )
-                    token_lock.release()
-                    raise BlockingIOError(f"Could not get the value from the dask shared variable: {e}") from e
-                except Exception as e:
-                    dbg_write_to_file(f"{s3_file}: Unknown exception when trying to acquire the lock: {e}\n")
-                    token_lock.release()
-                    raise RuntimeError(f"Unknown exception: {e}") from e
-                if "access_token" not in token_dict:
-                    dbg_write_to_file(f"{s3_file}: Key access_token does not exist in the token dictionary\n")
-                    token_lock.release()
-                    raise KeyError("Key access_token does not exist in the token dictionary")
-                auth = TokenAuth(token_dict["access_token"])
-            else:
-                print(f"Could not acquire the dask lock: {s3_file}")
-                dbg_write_to_file(f"{s3_file}: Could not acquire the dask lock:\n")
-                raise BlockingIOError(f"{s3_file}: Could not acquire the dask lock")
-
-            logger_dask.info(f"dask lock released: {s3_file}")
-            dbg_write_to_file(f"{s3_file}: dask lock released\n")
+            dbg_write_to_file(f"{s3_file}: Creating s3_handler\n")
+            logger_dask.debug(f"{s3_file}: Creating s3_handler")
             s3_handler = S3StorageHandler(
                 os.environ["S3_ACCESSKEY"],
                 os.environ["S3_SECRETKEY"],
@@ -183,33 +145,13 @@ def streaming_task(  # pylint: disable=R0913, R0917
             #     "http://minio:9000",
             #     "sbg",
             # )
-            # product_url = product_url.replace("cadip-station:5000", "127.0.0.1:5002")
+            product_url = product_url.replace("cadip-station:5000", "127.0.0.1:5002")
             # end of DEBUG ONLY !
             dbg_write_to_file(f"{s3_file}: UPLOADING !\n")
             s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
             dbg_write_to_file(f"{s3_file}: UPLOADED !\n")
             s3_handler.disconnect_s3()
             break
-        except BlockingIOError as e:
-            attempt += 1
-            if attempt < max_retries:
-                # keep retrying
-                dbg_write_to_file(
-                    f"{s3_file}: Could not access token lock or info from dask"
-                    f" retrying in  {s3_retry_timeout} seconds\n",
-                )
-                time_cnt = 0.0
-                while time_cnt < s3_retry_timeout:
-                    time.sleep(0.2)
-                    time_cnt += 0.2
-                continue
-            logger_dask.info(f"Retreiving values from dask level failed. Tried for {max_retries} times, giving up")
-            dbg_write_to_file(
-                f"{s3_file}: Retreiving values from dask level failed. Tried for {max_retries} times, giving up\n",
-            )
-            raise ValueError(
-                f"Dask task failed to stream file from {product_url} to s3://{bucket}/{s3_file}. Reason: {e}",
-            ) from e
         except ConnectionError as e:
             attempt += 1
             if attempt < max_retries:
@@ -262,7 +204,6 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
 
     def __init__(
         self,
-        station_id: str,
         config: ExternalAuthenticationConfig,
     ):
         """
@@ -272,16 +213,20 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
             station_id (str): Unique identifier for the station.
             config (ExternalAuthenticationConfig): Authentication configuration.
             token_lock (Lock): A dask lock for synchronizing access to the token.
-            token_info (Variable): A dask shared variable containing the token value.
         """
         # NOTE: station_id has to be unique !
-        self.station_id = station_id
         self.config = config
         self.padlock = threading.Lock()
-        self.token_dict = {}
+        self.token_dict: dict = {}
         self.token_list = []
 
-    def subscribe(self, token_lock: Lock, token_info: Variable, logger):
+    def station_id(self):
+        """
+        Returns station_id
+        """
+        return self.config.station_id
+
+    def subscribe(self, unique_name: str, logger):
         """
         Adds a new subscriber to the token list, enabling shared token management.
 
@@ -290,15 +235,16 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
             token_info (Variable): A dask shared variable containing the token value.
 
         """
-        self.token_list.append((token_lock, token_info))
-        logger.debug(f"Subscribe to dask var {self.station_id}. Dask tokens len : {len(self.token_list)}")
+        self.token_list.append(unique_name)
+        logger.debug(f"Subscribe {unique_name} to {self.station_id()}. Subscribers len : {len(self.token_list)}")
+        # TO BE REMOVED
         str_debug = ""
-        for _, token_info in self.token_list:
-            str_debug = str_debug + "|" + token_info.name
+        for name in self.token_list:
+            str_debug = str_debug + "|" + name
         if str_debug:
             logger.debug(f"{str_debug}.")
 
-    def unsubscribe(self, token_lock: Lock, token_info: Variable, logger):
+    def unsubscribe(self, unique_name: str, logger):
         """
         Removes a subscriber from the token list.
 
@@ -310,18 +256,20 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
             ValueError: If the specified dask token lock and dask info pair is not found in the list.
         """
         try:
-            self.token_list.remove((token_lock, token_info))
-            token_info.delete()
-            logger.debug(f"Unsubscribe from dask var {self.station_id}. Dask tokens len : {len(self.token_list)} ")
+            self.token_list.remove(unique_name)
+
+            logger.debug(
+                f"Unsubscribe {unique_name} from {self.station_id()}. Subscribers len : {len(self.token_list)} ",
+            )
+            # TO BE REMOVED
             str_debug = ""
-            for _, token_info in self.token_list:
-                str_debug = str_debug + "|" + token_info.name
+            for name in self.token_list:
+                str_debug = str_debug + "|" + name
             if str_debug:
                 logger.debug(f"{str_debug}.")
-        except ValueError:
+        except ValueError as e:
             logger.debug(
-                f"ValueError exception when removing a subscriber "
-                f"from {self.station_id}. Dask tokens: {len(self.token_list)} ",
+                f"ValueError exception when removing a subscriber " f"from {self.station_id()}: {e} ",
             )
 
     def update_dict_token(self, new_dict_token, logger):
@@ -330,22 +278,6 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
         """
         logger.debug(f"Updating dictionary token with: {new_dict_token}")
         self.token_dict = new_dict_token
-        to_remove = []
-        for token_lock, token_info in self.token_list:
-            try:
-                if token_lock.acquire(timeout=TIMEOUT_DASK_TOKEN):
-                    token_info.set(new_dict_token)
-                    token_lock.release()
-                else:
-                    logger.debug("Could not acquire dask lock !")
-                    to_remove.append((token_lock, token_info))
-            except Exception as e:
-                raise RuntimeError(f"Failed to initialize the dask.distributed.Variable token_info: {e}") from e
-        for token_lock, token_info in to_remove:
-            self.unsubscribe(token_lock, token_info, logger)
-            logger.debug(f"REMOVED THE IDX {token_info.name} from the list !")
-        if len(self.token_list) == 0:
-            logger.debug("LIST EMPTY!")
 
 
 async def refresh_token(auth_refresh_token: RefreshTokenData, logger: logging.Logger):
@@ -368,9 +300,9 @@ async def refresh_token(auth_refresh_token: RefreshTokenData, logger: logging.Lo
     """
     try:
         if not auth_refresh_token.token_list:
-            logger.debug(f"No subscribers for {auth_refresh_token.station_id}. EXIT refresh_token")
+            logger.debug(f"No subscribers for {auth_refresh_token.station_id()}. EXIT refresh_token")
             return True
-        logger.debug(f"Refreshing token for {auth_refresh_token.station_id}")
+        logger.debug(f"Refreshing token for {auth_refresh_token.station_id()}")
         with auth_refresh_token.padlock:
             token_dict = copy.deepcopy(auth_refresh_token.token_dict)
             logger.debug(f"Refreshing token {token_dict}")
@@ -388,7 +320,7 @@ async def refresh_token(auth_refresh_token: RefreshTokenData, logger: logging.Lo
         return False
 
     except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.exception(f"Caught exception refresh_token: {e}")
+        logger.exception(f"Unhandled exception in refresh_token: {e}")
         return False
     logger.debug("Refreshing token finished.")
     return True
@@ -452,9 +384,8 @@ class Staging(
             message (str): Status message describing the current state of the processing unit.
             progress (int): Integer tracking the progress of the current job.
             catalog_item_name (str): Name of the specific item in the catalog being processed.
-            assets_info (list): Holds information about assets associated with the processing.
-            tasks (list): List of tasks to be executed for processing.
-            tasks_finished (int): Tracks the number of tasks completed.
+            assets_info (list): Holds information about assets associated with the processing. Dask tasks are
+                created from this
             logger (Logger): Logger instance for capturing log output.
             cluster (LocalCluster): Dask LocalCluster instance managing computation resources, used in local mode
                 If this is None, it means we are in cluster mode, and we should dynamically connect
@@ -483,14 +414,13 @@ class Staging(
         # Inputs section
         self.catalog_item_name: str = item
         self.assets_info: list = []
-        self.tasks: list = []
-        # Tasks finished
-        self.tasks_finished = 0
+
         self.logger = Logging.default(__name__)
         self.cluster = cluster
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
         self.auth_list = auth_list
         self.auth_list_lock = auth_list_lock
+        self.unique_name = ""
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
     async def execute(
@@ -765,28 +695,28 @@ class Staging(
             feature.assets[asset_name] = asset_content
         return True
 
-    def handle_task_failure(self, error):
-        """Handle failures during task processing, including cancelling tasks and cleaning up S3 objects.
+    # def handle_task_failure(self, error):
+    #     """Handle failures during task processing, including cancelling tasks and cleaning up S3 objects.
 
-        Args:
-            error (Exception): The exception that occurred.
-        """
+    #     Args:
+    #         error (Exception): The exception that occurred.
+    #     """
 
-        self.logger.error(
-            "Error during staging. Canceling all the remaining tasks. "
-            "The assets already copied to the bucket will be deleted."
-            "The error: %s",
-            error,
-        )
+    #     self.logger.error(
+    #         "Error during staging. Canceling all the remaining tasks. "
+    #         "The assets already copied to the bucket will be deleted."
+    #         "The error: %s",
+    #         error,
+    #     )
 
-        # Cancel remaining tasks
-        for task in self.tasks:
-            try:
-                if not task.done():
-                    self.logger.info("Canceling task %s status %s", task.key, task.status)
-                    task.cancel()
-            except CancelledError as e:
-                self.logger.error("Task was already cancelled: %s", e)
+    #     # Cancel remaining tasks
+    #     for task in self.tasks:
+    #         try:
+    #             if not task.done():
+    #                 self.logger.info("Canceling task %s status %s", task.key, task.status)
+    #                 task.cancel()
+    #         except CancelledError as e:
+    #             self.logger.error("Task was already cancelled: %s", e)
 
     def delete_files_from_bucket(self):
         """
@@ -837,18 +767,18 @@ class Staging(
         except KeyError as exc:
             self.logger.error("Cannot connect to s3 storage, %s", exc)
 
-    def decrease_subscribers_for_token(self, station_id):
-        """
-        Method used to decrease the number of subscribers from RefreshTokenData.
-        """
+    # def decrease_subscribers_for_token(self, station_id):
+    #     """
+    #     Method used to decrease the number of subscribers from RefreshTokenData.
+    #     """
 
-        for auth in self.auth_list:
-            if auth.station_id == station_id:
-                with auth.padlock:
-                    auth.unsubscribe(self.token_lock, self.token_info, self.logger)
-                break
+    #     for auth in self.auth_list:
+    #         if auth.station_id == station_id:
+    #             with auth.padlock:
+    #                 auth.unsubscribe(self.unique_name)
+    #             break
 
-    def manage_dask_tasks_results(self, client: Client, catalog_collection: str, station_id: str):
+    def manage_dask_tasks_results(self, client: Client, catalog_collection: str, auth: RefreshTokenData):
         """
         Method used to manage dask tasks.
 
@@ -863,28 +793,88 @@ class Staging(
             client (Client): Dask client.
             catalog_collection (str): Name of the catalog collection.
         """
-        self.logger.info("Tasks monitoring started")
+        self.logger.info("Tasks monitoring started. Submiting")
+        # Get the maximum number of tasks that can run in parallel
+        max_parallel_tasks = sum(client.nthreads().values())
+        self.logger.info(f"Maximum number of tasks that can run in parallel: {max_parallel_tasks}")
+        # Initial dataset
+        # Convert to iterator for dynamic updates
+        assets_info = copy.deepcopy(self.assets_info)
+        data_iter = iter(assets_info)
+        # empty the list
+        # self.tasks = []
+        # Submit tasks
+
         if not client:
             self.logger.error("The dask cluster client object is not created. Exiting")
             return
-        # for task in self.tasks:
-        #     self.logger.debug(f"task: {task}")
-        for task in as_completed(self.tasks):
+        try:
+            with auth.padlock:
+                if "access_token" not in auth.token_dict:
+                    self.log_job_execution(
+                        JobStatus.failed,
+                        None,
+                        "Submitting task to dask cluster failed. Reason: "
+                        "Key access_token does not exist in the token dictionary",
+                    )
+                    with auth.padlock:
+                        auth.unsubscribe(self.unique_name, self.logger)
+                    return
+
+                initial_batch_tasks = {
+                    client.submit(
+                        streaming_task,
+                        *next(data_iter),
+                        auth.config,
+                        self.catalog_bucket,
+                        TokenAuth(auth.token_dict["access_token"]),
+                    )
+                    for _ in range(max_parallel_tasks)
+                }
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
+            self.log_job_execution(JobStatus.failed, None, f"Submitting task to dask cluster failed. Reason: {e}")
+            with auth.padlock:
+                auth.unsubscribe(self.unique_name, self.logger)
+            return
+        # counter to be used for percentage
+        completed_tasks = 0
+        # flag to detect failures
+
+        tasks = as_completed(initial_batch_tasks)
+        for task in tasks:
             try:
                 # self.logger.debug("First")
                 res = task.result()  # This will raise the exception from the task if it failed
                 self.logger.debug(f"Task result = {res}")
-                # self.logger.debug("Second")
-                self.tasks_finished += 1
+                completed_tasks += 1
                 self.log_job_execution(
                     JobStatus.running,
-                    round(self.tasks_finished * 100 / len(self.tasks)),
+                    round(completed_tasks * 100 / len(self.assets_info)),
                     "In progress",
                 )
                 self.logger.debug("%s Task streaming completed", task.key)
+                # Remove completed future
+                # tasks.remove(task)
+                # Submit a new task if available and no errors occurred
+                try:
+                    with auth.padlock:
+                        access_token = TokenAuth(auth.token_dict["access_token"])
+                    new_task = next(data_iter)
+                    new_future = client.submit(
+                        streaming_task,
+                        *new_task,
+                        auth.config,
+                        self.catalog_bucket,
+                        access_token,
+                    )
+                    tasks.add(new_future)
+                except StopIteration:
+                    pass  # No more data to process
             except Exception as task_e:  # pylint: disable=broad-exception-caught
                 self.logger.error("Task failed with exception: %s", task_e)
-                self.handle_task_failure(task_e)
+                # self.handle_task_failure(task_e)
+                client.cancel(tasks)
                 # Wait for all the current running tasks to complete.
                 timeout = int(os.environ.get("RSPY_STAGING_TIMEOUT", 600))
                 while timeout > 0:
@@ -898,7 +888,8 @@ class Staging(
 
                 self.log_job_execution(JobStatus.failed, None, f"At least one of the tasks failed: {task_e}")
                 self.delete_files_from_bucket()
-                self.decrease_subscribers_for_token(station_id)
+                with auth.padlock:
+                    auth.unsubscribe(self.unique_name, self.logger)
                 self.logger.error(f"Tasks monitoring finished with error. At least one of the tasks failed: {task_e}")
                 return
         # Publish all the features once processed
@@ -916,13 +907,15 @@ class Staging(
                 self.delete_files_from_bucket()
                 # delete the published items
                 self.unpublish_rspy_features(catalog_collection, published_featurs_ids)
-                self.decrease_subscribers_for_token(station_id)
+                with auth.padlock:
+                    auth.unsubscribe(self.unique_name, self.logger)
                 return
             published_featurs_ids.append(feature.id)
         # Update status once all features are processed
         self.log_job_execution(JobStatus.successful, 100, "Finished")
         # Update the subscribers for token refreshment
-        self.decrease_subscribers_for_token(station_id)
+        with auth.padlock:
+            auth.unsubscribe(self.unique_name, self.logger)
         self.logger.info("Tasks monitoring finished")
 
     def dask_cluster_connect(
@@ -1095,61 +1088,11 @@ class Staging(
             self.logger.info("No workers are currently running in the Dask cluster. Scaling up to 1.")
             self.cluster.scale(1)
         # end of TODO
-        unique_name = f"{int(time.time() * 1000)}"  # Unique name based on current timestamp
-        # Create dask.distributed.Locks objects to synchronize the access to the shared resource between
-        # the Dask workers (with this lock we have only 1 thread reading the shared resource at once)
-        self.token_lock = Lock(name=f"{unique_name}_lock", client=client)  # pylint: disable=W0201
-        # Create a dask.distributed.Variable object which will be shared by all the workers
-        self.token_info = Variable(name=f"{unique_name}_shared_token", client=client)  # pylint: disable=W0201
 
         # Check the cluster dashboard
         self.logger.debug(f"Dask Client: {client} | Cluster dashboard: {self.cluster.dashboard_link}")
 
         return client
-
-    def submit_tasks_to_dask_cluster(self, config: ExternalAuthenticationConfig, client: Client):
-        """Submits multiple tasks to a Dask cluster for asynchronous processing.
-
-        Each task involves downloading a file stream (using `streaming_task`) and uploading it to an S3 bucket
-        or similar storage, authenticated using the provided token.
-
-        The function iterates through a list of assets (created previously after checking the catalog), represented by
-        `self.assets_info`, and submits a Dask task for each asset to the cluster. Tasks are appended to `self.tasks`
-        for later monitoring.
-
-        Args:
-            config (ExternalAuthenticationConfig): authentification configuration
-            client (Client): The dask cluster client created in the dask_cluster_connect function
-
-        Raises:
-            None directly (all exceptions are caught and logged).
-
-        Returns:
-            None
-
-        Exceptions:
-            - **Generic Exception**: Catches all exceptions during task submission
-        """
-        # empty the list
-        self.tasks = []
-        # Submit tasks
-
-        try:
-            for asset_info in self.assets_info:
-                self.tasks.append(
-                    client.submit(
-                        streaming_task,
-                        asset_info[0],
-                        config,
-                        self.catalog_bucket,
-                        asset_info[1],
-                        self.token_info,
-                        self.token_lock,
-                    ),
-                )
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self.logger.exception(f"Submitting task to dask cluster failed. Reason: {e}")
-            raise RuntimeError(f"Submitting task to dask cluster failed. Reason: {e}") from e
 
     async def process_rspy_features(  # pylint: disable=too-many-return-statements
         self,
@@ -1201,24 +1144,24 @@ class Staging(
         # connect to the dask cluster
         try:
             dask_client = self.dask_cluster_connect()
+
             # insert the necessary info for token refreshment in the auth_list.
             # if there is already a dask.distributed Lock/Variable created, subscribe to it
             # NOTE: The external_auth_config is supposed to not change !
             # verify if the dask Lock / Variable already in the auth_list of main app
             found = False
             for auth in self.auth_list:
-                if auth.station_id == external_auth_config.station_id:
+                if auth.station_id() == external_auth_config.station_id:
                     found = True
                     break
             if not found:
-                auth = RefreshTokenData(
-                    external_auth_config.station_id,
-                    external_auth_config,
-                )
-            auth.subscribe(self.token_lock, self.token_info, self.logger)
+                auth = RefreshTokenData(external_auth_config)
+            self.unique_name = f"{int(time.time() * 1000)}"  # Unique name based on current timestamp
+            with auth.padlock:
+                auth.subscribe(self.unique_name, self.logger)
             # load or referesh the token
             if not await refresh_token(auth, self.logger):
-                auth.unsubscribe(self.token_lock, self.token_info, self.logger)
+                auth.unsubscribe(self.unique_name, self.logger)
                 self.logger.error(
                     "Could not retrieve or refresh the station token. The staging process will not start",
                 )
@@ -1228,10 +1171,10 @@ class Staging(
                     "Could not retrieve or refresh the station token",
                 )
             if not found:
-                self.auth_list.append(auth)
+                with self.auth_list_lock:
+                    self.auth_list.append(auth)
             # Set the status to running for the job
             self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
-            self.submit_tasks_to_dask_cluster(external_auth_config, dask_client)
 
         except RuntimeError as re:
             self.logger.error("Failed to start the staging process")
@@ -1244,7 +1187,7 @@ class Staging(
                 self.manage_dask_tasks_results,
                 dask_client,
                 catalog_collection,
-                external_auth_config.station_id,
+                auth,
             )
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.log_job_execution(JobStatus.failed, 0, f"Error from tasks monitoring thread: {e}")
