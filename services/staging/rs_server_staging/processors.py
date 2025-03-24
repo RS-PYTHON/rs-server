@@ -32,12 +32,12 @@ from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.util import JobStatus
 from requests.auth import AuthBase
 from requests.exceptions import RequestException
+from rs_server_common import settings as common_settings
 from rs_server_common.authentication.authentication_to_external import (
     get_station_token,
     load_external_auth_config_by_domain,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import S3StorageHandler
-from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils.logging import Logging
 from starlette.datastructures import Headers
 from starlette.requests import Request
@@ -682,7 +682,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                 cluster_name = os.environ["RSPY_DASK_STAGING_CLUSTER_NAME"]
 
                 # In local mode, authenticate to the dask cluster with username/password
-                if LOCAL_MODE:
+                if common_settings.LOCAL_MODE:
                     gateway_auth = BasicAuth(
                         os.environ["LOCAL_DASK_USERNAME"],
                         os.environ["LOCAL_DASK_PASSWORD"],
@@ -710,7 +710,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
                 # In local mode, get the first cluster from the gateway.
                 cluster_id = None
-                if LOCAL_MODE:
+                if common_settings.LOCAL_MODE:
                     if clusters:
                         cluster_id = clusters[0].name
 
@@ -868,12 +868,17 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
                     status_code=401,
                     detail="Failed to retrieve the configuration for the station token.",
                 )
-            if not LOCAL_MODE:
+            if not common_settings.LOCAL_MODE:
                 from rs_server_common.authentication.authentication import (  # pylint: disable=import-outside-toplevel
                     auth_validation,
                 )
 
-                auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
+                auth_validation(
+                    external_auth_config.station_id,
+                    "staging_download",
+                    request=self.request,
+                    staging_process=True,
+                )
             token = get_station_token(external_auth_config)
         except HTTPException as http_exception:
             self.logger.error(f"Exception while processing a feature, {http_exception.detail}")

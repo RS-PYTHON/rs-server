@@ -38,6 +38,7 @@ expected_jobs_test = [
         "status": "running",
         "progress": 0.0,
         "message": "Test detail",
+        "process_id": "staging",
         "created": str(datetime(2024, 1, 1, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
     },
@@ -46,6 +47,7 @@ expected_jobs_test = [
         "status": "running",
         "progress": 55.0,
         "message": "Test detail",
+        "process_id": "staging",
         "created": str(datetime(2024, 1, 2, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
     },
@@ -54,6 +56,7 @@ expected_jobs_test = [
         "status": "running",
         "progress": 15.0,
         "message": "Test detail",
+        "process_id": "staging",
         "created": str(datetime(2024, 1, 3, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 3, 13, 0, 0)),
     },
@@ -62,6 +65,7 @@ expected_jobs_test = [
         "status": "successful",
         "progress": 100.0,
         "message": "Test detail",
+        "process_id": "staging",
         "created": str(datetime(2024, 1, 4, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
     },
@@ -269,7 +273,7 @@ async def test_get_job(
     # Return an existing job normally (HTTP 200)
     else:
         mock_db_table.get_job.return_value = next(
-            job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
+            job | {"process_id": "staging"} for job in mock_jobs if job["identifier"] == expected_job["identifier"]
         )
 
     # Patch app.extra with the mock db_table

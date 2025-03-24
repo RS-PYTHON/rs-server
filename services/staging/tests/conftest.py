@@ -16,7 +16,7 @@
 
 # Ignore not-at-top level import errors
 
-# pylint: disable=C0413
+# pylint: disable=C0413, ungrouped-imports
 # flake8: noqa: F402
 
 import asyncio
@@ -115,6 +115,7 @@ def dbj_():
             "status": "running",
             "progress": 0.0,
             "message": TEST_DETAIL,
+            "process_id": "staging",
             "created": str(datetime(2024, 1, 1, 12, 0, 0)),
             "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
         },
@@ -123,6 +124,7 @@ def dbj_():
             "status": "running",
             "progress": 55.0,
             "message": TEST_DETAIL,
+            "process_id": "staging",
             "created": str(datetime(2024, 1, 2, 12, 0, 0)),
             "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
         },
@@ -131,6 +133,7 @@ def dbj_():
             "status": "running",
             "progress": 15.0,
             "message": TEST_DETAIL,
+            "process_id": "staging",
             "created": str(datetime(2024, 1, 3, 12, 0, 0)),
             "updated": str(datetime(2024, 1, 3, 13, 0, 0)),
         },
@@ -139,6 +142,7 @@ def dbj_():
             "status": "successful",
             "progress": 100.0,
             "message": TEST_DETAIL,
+            "process_id": "staging",
             "created": str(datetime(2024, 1, 4, 12, 0, 0)),
             "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
         },

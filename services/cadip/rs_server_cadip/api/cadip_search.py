@@ -54,6 +54,7 @@ from rs_server_common.authentication.authentication_to_external import (
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.rspy_models import Item
 from rs_server_common.stac_api_common import (
+    BBoxType,
     CollectionType,
     DateTimeType,
     FilterLangType,
@@ -62,6 +63,7 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     PageType,
     SortByType,
+    check_bbox_input,
     create_stac_collection,
     handle_exceptions,
 )
@@ -359,6 +361,7 @@ async def get_cadip_collection_items(
     request: Request,
     collection_id: CollectionType,
     # stac search parameters
+    bbox: BBoxType = None,
     datetime: DateTimeType = None,
     filter_: FilterType = None,
     filter_lang: FilterLangType = "cql2-text",
@@ -396,6 +399,7 @@ async def get_cadip_collection_items(
     return await request.app.state.pgstac_client.item_collection(
         collection_id,
         request,
+        bbox=check_bbox_input(bbox),
         datetime=datetime,
         filter=filter_,
         filter_lang=filter_lang,

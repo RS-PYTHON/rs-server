@@ -716,7 +716,7 @@ class TestStagingMainExecution:
             },
         )
         # Mock the cluster mode
-        mocker.patch("rs_server_staging.processors.LOCAL_MODE", new=False, autospec=False)
+        mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
         staging_instance.cluster = None
@@ -773,7 +773,7 @@ class TestStagingMainExecution:
             },
         )
         # Mock the cluster mode
-        mocker.patch("rs_server_staging.processors.LOCAL_MODE", new=False, autospec=False)
+        mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
         staging_instance.cluster = None
