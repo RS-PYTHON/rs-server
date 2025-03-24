@@ -556,8 +556,6 @@ jobs:
           docker_tag: ${{ needs.set-env.outputs.docker_tag }}
           branch_name: ${{ needs.set-env.outputs.branch_name }}
           debug_mode: false
-          build_args: |
-            DASK_GATEWAY_TAG=2024.1.0
 
   ###########
   # TESTING #
