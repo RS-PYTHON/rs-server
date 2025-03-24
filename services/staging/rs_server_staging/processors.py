@@ -797,6 +797,8 @@ class Staging(
         # Initial dataset
         # Convert to iterator for dynamic updates
         assets_info = copy.deepcopy(self.assets_info)
+        max_parallel_tasks = min(max_parallel_tasks, len(assets_info))
+        self.logger.info(f"Number of tasks asigned to the initial batch: {max_parallel_tasks}")
         data_iter = iter(assets_info)
         # empty the list
         # self.tasks = []
