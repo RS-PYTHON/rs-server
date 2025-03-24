@@ -83,6 +83,14 @@ JOB_ATTRS_MAPPING = {"identifier": "jobID"}
 OGC_UNCOMPLIANT_JOB_ATTRS = ["_sa_instance_state", "location", "mimetype"]
 
 
+class DatabaseJobFormatError(Exception):
+    """Exception raised when an error occurred during the init of a provider."""
+
+
+class JobsFormatError(Exception):
+    """Exception raised when an error occurred during the init of a provider."""
+
+
 def must_be_authenticated(path: str) -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
 
@@ -333,6 +341,12 @@ def format_job_data(job: dict):
     Result:
         reformatted and validated job_data variable to put in the response
     """
+    # Check that the input job have the same struture as the jobs contained in the PostgreSQL database
+    if "identifier" not in job:
+        raise DatabaseJobFormatError(
+            f"""Input job must have the same structure than the jobs stored in the """
+            f"""PostgreSql database: attribute 'identifier' is missing""",
+        )
     job_data = copy.deepcopy(job)
     # Rename attribute "identifier" to be compliant with OGC standards
     job_data[JOB_ATTRS_MAPPING["identifier"]] = job_data.pop("identifier")
@@ -360,6 +374,10 @@ def format_jobs_data(jobs: dict):
     Result:
         reformatted and validated jobs_data variable to put in the response
     """
+    if not isinstance(jobs, dict):
+        raise JobsFormatError("Expected a dictionary as input")
+    if "jobs" not in jobs:
+        raise JobsFormatError("Invalid format for input jobs: missing 'jobs' key")
     jobs_data = copy.deepcopy(jobs)
     # Add "links" mandatory field to the response
     jobs_data.update(
@@ -429,8 +447,8 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
     except JobNotFoundError as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
-        auth_validation("read", job["processID"], request=request, staging_process=True)
         validate_request(request)
         formatted_job_data = format_job_data(job)
         return validate_response(request, formatted_job_data)
@@ -456,8 +474,15 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
     """Deletes a specific job from the database."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
-        auth_validation("dismiss", job["processID"], request=request, staging_process=True)
+    # Handle case when job_id is not found
+    except Exception as error:
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    auth_validation("dismiss", job["processID"], request=request, staging_process=True)
+    try:
         validate_request(request)
+    except Exception as e:
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+    try:
         app.extra["process_manager"].delete_job(job_id)
     # Handle case when job_id is not found
     except Exception as error:
@@ -479,8 +504,8 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
         job = app.extra["process_manager"].get_job(job_id)
     except JobNotFoundError as error:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
-        auth_validation("read", job["processID"], request=request, staging_process=True)
         validate_request(request)
         return validate_response(request, job["status"])
     except Exception as e:

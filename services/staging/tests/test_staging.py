@@ -159,8 +159,63 @@ def test_format_job_data(mock_jobs):
     Check the behavior of the method that format the output of the job information returned by
     the PostgresSQL database
     """
-    for job in mock_jobs:
-        format_job_data(mock_jobs)
+    # ----- Check that the right exception is raised if the input job data
+    # doesn't have the right format
+    wrong_mock_job = copy.deepcopy(mock_jobs[0])
+    wrong_mock_job["wrong_attribute"] = wrong_mock_job.pop("identifier")
+    with pytest.raises(Exception) as excinfo:
+        format_job_data(wrong_mock_job)
+    assert "attribute 'identifier' is missing" in str(excinfo.value)
+
+    # ----- Check that the input job is well formatted
+    mock_job = copy.deepcopy(mock_jobs[0])
+    expected_response = expected_jobs_test[0]
+    assert format_job_data(mock_job) == expected_response
+
+
+def test_format_jobs_data(mock_jobs):
+    """
+    Check the behavior of the method that format the output of the job information returned by
+    the PostgresSQL database
+    """
+    expected_response = {
+        "jobs": expected_jobs_test,
+        "links": [
+            {
+                "href": "string",
+                "rel": "service",
+                "type": "application/json",
+                "hreflang": "en",
+                "title": "List of jobs",
+            },
+        ],
+    }
+    # ----- Check that the right exception is raised if the input jobs is something else than a dictionary
+    wrong_mock_jobs = "wrong_data"
+    with pytest.raises(Exception) as excinfo:
+        format_jobs_data(wrong_mock_jobs)
+    assert "Expected a dictionary as input" in str(excinfo.value)
+
+    # ----- Check that the right exception is raised if the input job doesn't have the required 'jobs' attributes
+    wrong_mock_jobs = {"attr1": "val1", "attr2": "val2"}
+    with pytest.raises(Exception) as excinfo:
+        format_jobs_data(wrong_mock_jobs)
+    assert "Invalid format for input jobs: missing 'jobs' key" in str(excinfo.value)
+
+    # ----- Check that the input job is well formatted if the input has the correct format
+    mock_jobs = {
+        "jobs": copy.deepcopy(mock_jobs),
+        "links": [
+            {
+                "href": "string",
+                "rel": "service",
+                "type": "application/json",
+                "hreflang": "en",
+                "title": "List of jobs",
+            },
+        ],
+    }
+    assert format_jobs_data(mock_jobs) == expected_response
 
 
 @pytest.mark.asyncio
