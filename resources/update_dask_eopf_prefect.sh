@@ -175,17 +175,18 @@ Instructions:
     WARNING: this may impact other branches in the ci/cd, but this may be necessary for your ci/cd to pass.
     Do this only when you are ready to merge your Pull Requests.
     NOTE: other Docker images are built from the ci/cd.
+      export GITLAB_EOPF_TOKEN=***
       $a --push && \\
       $b --push && \\
       $g --push
 
-  - After pushing the Docker images (previous step), run again the demos from one of your branch ci/cd. \
-Check that it is OK. Merge your Pull Requests.
+  - After pushing the Docker images (previous step), run again the ci/cd for all your branches. \
+Check that they are OK. Merge your Pull Requests.
 
-  - Run manually the infra ci/cd to build the cluster Docker images, then redeploy them on the cluster.
+  - Run the infra ci/cd to build the cluster Docker images, then redeploy them on the cluster.
 
-  - Run command 'pip list | grep -i -e dask -e eopf -e l0 -e prefect' on the Dask, Prefect and Jupyter pods to check \
-the dependency versions.
+  - Run command 'pip list | grep -i -e dask -e eopf -e l0 -e prefect' on the cluster Dask, Prefect and Jupyter pods \
+to check the dependency versions.
 
   - Run all notebooks on the cluster JupyterHub, check that they are OK.
 "
