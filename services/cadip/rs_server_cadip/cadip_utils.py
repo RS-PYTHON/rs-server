@@ -25,7 +25,6 @@ import re
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import List, Tuple, Union
 
 import eodag
 import yaml
@@ -43,7 +42,7 @@ search_yaml = CADIP_CONFIG / "cadip_search_config.yaml"
 logger = Logging.default(__name__)
 
 
-@lru_cache()
+@lru_cache
 def read_conf():
     """Used each time to read RSPY_CADIP_SEARCH_CONFIG config yaml."""
     cadip_search_config = os.environ.get("RSPY_CADIP_SEARCH_CONFIG", str(search_yaml.absolute()))
@@ -52,7 +51,7 @@ def read_conf():
     return config  # WARNING: if the caller wants to modify this cached object, he must deepcopy it first
 
 
-@lru_cache()
+@lru_cache
 def cadip_stac_mapper():
     """Used each time to read the cadip_stac_mapper config yaml."""
     with open(CADIP_CONFIG / "cadip_stac_mapper.json", encoding="utf-8") as mapper:
@@ -103,7 +102,7 @@ def map_dag_file_to_asset(mapper: dict, product: eodag.EOProduct, href: str) -> 
     return Asset(href=href, roles=["cadu"], title=product.properties["Name"], **asset)
 
 
-def from_session_expand_to_dag_serializer(input_sessions: List[eodag.EOProduct]) -> List[eodag.EOProduct]:
+def from_session_expand_to_dag_serializer(input_sessions: list[eodag.EOProduct]) -> list[eodag.EOProduct]:
     """
     Convert a list of sessions containing expanded files metadata into a list of files for serialization into the DB.
     """
@@ -159,8 +158,8 @@ def cadip_map_mission(platform: str, constellation: str):
     Input: constellation = sentinel-1   Output: A, B, C
     """
     data: dict = map_stac_platform()
-    satellite: Union[None, str] = None
-    satellites: Union[None, str] = None
+    satellite: None | str = None
+    satellites: None | str = None
     try:
         if platform:
             config = next(sat[platform] for sat in data["satellites"] if platform in sat)
@@ -187,7 +186,7 @@ def cadip_map_mission(platform: str, constellation: str):
     return satellite or satellites
 
 
-def cadip_reverse_map_mission(platform: Union[str, None]) -> Tuple[Union[str, None], Union[str, None]]:
+def cadip_reverse_map_mission(platform: str | None) -> tuple[str | None, str | None]:
     """Function used to re-map platform and constellation based on satellite value."""
     if not platform:
         return None, None

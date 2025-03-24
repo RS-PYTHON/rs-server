@@ -14,27 +14,29 @@
 
 default_language_version:
     python: python3
-default_stages: [commit]
+default_stages: [pre-commit]
 repos:
 
 # Basic verifications
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
     -   id: check-merge-conflict
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
     -   id: check-toml
+    -   id: check-yaml
+        exclude: services/frontend/tests/resources/tools/invalid.yml
 
 # Format (black)
 -   repo: https://github.com/psf/black
-    rev: 24.3.0
+    rev: 25.1.0
     hooks:
     -   id: black
 
 # Format (isort)
 -   repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
+    rev: 6.0.1
     hooks:
     -   id: isort
         args: ["--profile", "black"]
@@ -44,6 +46,12 @@ repos:
     rev: v3.1.0
     hooks:
     -   id: add-trailing-comma
+
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v3.19.1
+    hooks:
+    -   id: pyupgrade
+        args: [--py311-plus]
 
 # Remarks:
 #   - don't run flake8, pylint and mypy because they are already run in the CI.

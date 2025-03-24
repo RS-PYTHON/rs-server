@@ -100,9 +100,9 @@ class Frontend:
         """
         openapi_location = os.getenv("RSPY_OPENAPI_FILE", "")
         try:
-            with open(openapi_location, "r", encoding="utf-8") as file:
+            with open(openapi_location, encoding="utf-8") as file:
                 return json.load(file)
-        except (FileNotFoundError, IOError) as e:
+        except (FileNotFoundError, OSError) as e:
             raise type(e)(
                 f"openapi spec was not found at {openapi_location!r}. "
                 "Is the 'RSPY_OPENAPI_FILE' environment variable correctly set ?",

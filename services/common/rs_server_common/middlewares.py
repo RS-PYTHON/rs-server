@@ -15,7 +15,8 @@
 """Common functions for fastapi middlewares"""
 import os
 import traceback
-from typing import Callable, TypedDict
+from collections.abc import Callable
+from typing import TypedDict
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse

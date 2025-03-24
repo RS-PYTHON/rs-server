@@ -19,7 +19,6 @@ import time
 import uuid
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Union
 from urllib.parse import urlparse
 
 import requests
@@ -321,9 +320,9 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
 
     def log_job_execution(
         self,
-        status: Union[JobStatus, None] = None,
-        progress: Union[int, None] = None,
-        message: Union[str, None] = None,
+        status: JobStatus | None = None,
+        progress: int | None = None,
+        message: str | None = None,
     ) -> tuple[str, dict]:
         """
         Method used to log progress into db.

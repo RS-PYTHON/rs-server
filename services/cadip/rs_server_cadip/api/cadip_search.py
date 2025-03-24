@@ -24,7 +24,7 @@ import traceback
 
 # pylint: disable=redefined-builtin
 from collections import defaultdict
-from typing import Annotated, Literal, Union
+from typing import Annotated, Literal
 
 import requests
 import sqlalchemy
@@ -475,10 +475,10 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     queryables,
     sortby: str,
     limit: Annotated[
-        Union[int, None],
+        int | None,
         Query(gt=0, default=100, description="Pagination Limit"),
     ],
-    page: Union[int, None] = 1,
+    page: int | None = 1,
 ) -> stac_pydantic.ItemCollection:
     """Function to process and to retrieve a list of sessions from any CADIP station.
 
@@ -546,7 +546,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
 def process_files_search(  # pylint: disable=too-many-locals
     station: str,
     queryables,
-    limit: Union[int, None] = DEFAULT_FILES_LIMIT,
+    limit: int | None = DEFAULT_FILES_LIMIT,
     **kwargs,
 ) -> list[dict] | dict:
     """Endpoint to retrieve a list of products from the CADU system for a specified station.

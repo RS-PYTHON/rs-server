@@ -29,10 +29,12 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 # pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
 init_app_cluster_mode()
 
+from collections.abc import Iterator
+
 # flake8: noqa: E402
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator, Union
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -121,7 +123,7 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
 class Collection:
     """A collection for test purpose."""
 
-    user: Union[str, None]
+    user: str | None
     name: str
 
     @property
@@ -168,7 +170,7 @@ class Collection:
         return properites
 
 
-def a_collection(user: Union[str, None], name: str) -> Collection:
+def a_collection(user: str | None, name: str) -> Collection:
     """Create a collection for test purpose.
 
     The collection is built from a prototype.

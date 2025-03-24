@@ -16,7 +16,7 @@
 
 import datetime
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -24,9 +24,9 @@ ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 def set_updated_expires_timestamp(
     item: dict,
     operation: Literal["update", "insertion", "creation"],
-    expiration: Optional[datetime.datetime] = None,
-    original_published: Optional[str] = None,
-    original_expires: Optional[str] = None,
+    expiration: datetime.datetime | None = None,
+    original_published: str | None = None,
+    original_expires: str | None = None,
 ) -> dict:
     """This function set the timestamps for an item.
     If we want to insert a new item, it will update

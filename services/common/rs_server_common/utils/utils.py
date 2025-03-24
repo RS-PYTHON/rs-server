@@ -15,7 +15,7 @@
 """This module is used to share common functions between apis endpoints"""
 
 from datetime import datetime
-from typing import Any, List, Union
+from typing import Any
 
 from eodag import EOProduct
 from fastapi import HTTPException, status
@@ -51,7 +51,7 @@ def is_valid_date_format(date: str) -> bool:
     return False
 
 
-def validate_str_list(parameter: str) -> Union[List, str]:
+def validate_str_list(parameter: str) -> list | str:
     """
     Validates and parses a parameter that can be either a string or a comma-separated list of strings.
 
@@ -136,7 +136,7 @@ def validate_inputs_format(
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing start/stop")
             return None, None, None
 
-    def to_dt(dates) -> List[Any]:
+    def to_dt(dates) -> list[Any]:
         """Converts a list of date strings to datetime objects or None if the conversion fails."""
         return [datetime.fromisoformat(date) if is_valid_date(date) else None for date in dates]
 

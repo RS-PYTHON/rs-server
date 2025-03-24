@@ -55,7 +55,7 @@ def services_conf_file(tools_test_path) -> Path:
 @pytest.fixture(scope="module")
 def services_conf(services_conf_file) -> ServicesConfiguration:
 
-    with open(services_conf_file, "r", encoding="utf-8") as file:
+    with open(services_conf_file, encoding="utf-8") as file:
         return ServicesConfiguration(config=yaml.safe_load(file).get("services"), file=services_conf_file)
 
 
@@ -366,7 +366,7 @@ class TestTheMergedOpenapi:
         output_file = tmp_path / "output.json"
         build_aggregated_openapi(services_conf.file, output_file)
 
-        with open(output_file, "r", encoding="utf-8") as file:
+        with open(output_file, encoding="utf-8") as file:
             return json.load(file)
 
     @responses.activate

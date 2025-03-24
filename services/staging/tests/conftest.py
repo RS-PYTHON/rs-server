@@ -102,7 +102,7 @@ def geoapi_cfg_() -> Path:
 @pytest.fixture(name="predefined_config")
 def config_(geoapi_cfg):
     """Fixture for pygeoapi yaml config"""
-    with open(geoapi_cfg, "r", encoding="utf-8") as yaml_file:
+    with open(geoapi_cfg, encoding="utf-8") as yaml_file:
         return yaml.safe_load(yaml_file)
 
 

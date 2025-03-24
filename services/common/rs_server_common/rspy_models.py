@@ -16,10 +16,11 @@
 Module used to overwrite stac_pydantic with RSPY types.
 """
 
+from collections.abc import Sequence
 from datetime import datetime
 
 # mypy: ignore-errors
-from typing import Any, Optional, Sequence
+from typing import Any
 
 import stac_pydantic
 from geojson_pydantic import FeatureCollection
@@ -35,11 +36,11 @@ class WrapStacCommonMetadata(StacCommonMetadata):
     Datetime only use microseconds ".512000Z", so this model is updated to store a more flexible date type.
     """
 
-    datetime: Optional[str] = Field(...)
-    created: Optional[str] = None
-    updated: Optional[str] = None
-    start_datetime: Optional[str] = None
-    end_datetime: Optional[str] = None
+    datetime: str | None = Field(...)
+    created: str | None = None
+    updated: str | None = None
+    start_datetime: str | None = None
+    end_datetime: str | None = None
 
 
 class ItemProperties(WrapStacCommonMetadata):
@@ -74,4 +75,4 @@ class ItemCollection(FeatureCollection, StacBaseModel):
     """
 
     features: Sequence[Item]
-    links: Optional[Links] = None
+    links: Links | None = None
