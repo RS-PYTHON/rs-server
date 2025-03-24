@@ -27,7 +27,6 @@ from urllib.parse import urlparse
 
 import requests
 from dask.distributed import (
-    CancelledError,
     Client,
     LocalCluster,
     as_completed,
@@ -66,8 +65,6 @@ TASK_TIMEOUT_VALUE = int(os.environ.get("TASK_TIMEOUT", 120))  # Set a per-task 
 
 
 def dbg_write_to_file(msg):
-    print(f"{datetime.now()}: {msg}")
-    return
     with open("/home/dask/worker.log", "a+") as f:
         f.write(f"{datetime.now()}: {msg}")
 
@@ -145,7 +142,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
             #     "http://minio:9000",
             #     "sbg",
             # )
-            product_url = product_url.replace("cadip-station:5000", "127.0.0.1:5002")
+            # product_url = product_url.replace("cadip-station:5000", "127.0.0.1:5002")
             # end of DEBUG ONLY !
             dbg_write_to_file(f"{s3_file}: UPLOADING !\n")
             s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
