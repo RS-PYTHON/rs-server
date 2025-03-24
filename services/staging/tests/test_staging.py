@@ -186,8 +186,8 @@ async def test_get_jobs_endpoint(
         "extra",
         {
             "process_manager": mock_db_table,
-            "auth_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "auth_list_lock": mocker.Mock(spec=threading.Lock),
+            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
             "shutdown_event": mock_shutdown_event,
             "refresh_task": mock_refresh_task,
         },
@@ -292,8 +292,8 @@ async def test_get_job(
         "extra",
         {
             "process_manager": mock_db_table,
-            "auth_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "auth_list_lock": mocker.Mock(spec=threading.Lock),
+            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
             "shutdown_event": mock_shutdown_event,
             "refresh_task": mock_refresh_task,
         },
@@ -385,8 +385,8 @@ async def test_get_job_result(
         "extra",
         {
             "process_manager": mock_db_table,
-            "auth_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "auth_list_lock": mocker.Mock(spec=threading.Lock),
+            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
             "shutdown_event": mock_shutdown_event,
             "refresh_task": mock_refresh_task,
         },
@@ -482,8 +482,8 @@ async def test_delete_job_endpoint(
         "extra",
         {
             "process_manager": mock_db_table,
-            "auth_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "auth_list_lock": mocker.Mock(spec=threading.Lock),
+            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
             "shutdown_event": mock_shutdown_event,
             "refresh_task": mock_refresh_task,
         },

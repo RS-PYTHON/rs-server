@@ -167,7 +167,7 @@ def staging(mocker):
     mock_item = "test_item"
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
-    # Mock auth_list as an iterable
+    # Mock station_token_list as an iterable
     # Create mock dask locks and variables
     mock_token_lock1 = mocker.MagicMock(spec=Lock)
     mock_token_info1 = mocker.MagicMock(spec=Variable)
@@ -186,13 +186,13 @@ def staging(mocker):
     mock_refresh_token2.token_list = [(mock_token_lock2, mock_token_info2)]
     mock_refresh_token2.get_first_subscriber = mocker.Mock(return_value=(mock_token_lock2, mock_token_info2))
 
-    # Mock auth_list as a list of RefreshTokenData instances
-    mock_auth_list = [mock_refresh_token1, mock_refresh_token2]
+    # Mock station_token_list as a list of RefreshTokenData instances
+    mock_station_token_list = [mock_refresh_token1, mock_refresh_token2]
 
     # Fix: Explicitly define __enter__ and __exit__ on mocker.Mock()
-    mock_auth_list_lock = mocker.Mock()
-    mock_auth_list_lock.__enter__ = mocker.Mock(return_value=mock_auth_list_lock)
-    mock_auth_list_lock.__exit__ = mocker.Mock(return_value=None)
+    mock_station_token_list_lock = mocker.Mock()
+    mock_station_token_list_lock.__enter__ = mocker.Mock(return_value=mock_station_token_list_lock)
+    mock_station_token_list_lock.__exit__ = mocker.Mock(return_value=None)
 
     mocker.patch.dict(
         os.environ,
@@ -207,8 +207,8 @@ def staging(mocker):
         item=mock_item,
         db_process_manager=mock_db,
         cluster=mock_cluster,
-        auth_list=mock_auth_list,
-        auth_list_lock=mock_auth_list_lock,
+        station_token_list=mock_station_token_list,
+        station_token_list_lock=mock_station_token_list_lock,
     )
     yield staging_instance
 

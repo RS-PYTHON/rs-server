@@ -958,7 +958,7 @@ class TestStagingMainExecution:
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
         mock_publish_feature = mocker.patch.object(staging_instance, "publish_rspy_feature")
 
-        staging_instance.manage_dask_tasks_results(client, "test_collection")
+        staging_instance.manage_dask_tasks(client, "test_collection")
 
         # mock_log_job.assert_any_call(JobStatus.running, None, 'In progress')
         # Check that status was updated 3 times during execution, 1 time for each task, and 1 time with FINISH
@@ -991,7 +991,7 @@ class TestStagingMainExecution:
         # Set timeout to 0, in order to skip that while loop
         mocker.patch.dict("os.environ", {"RSPY_STAGING_TIMEOUT": "0"})
 
-        staging_instance.manage_dask_tasks_results(client, "test_collection")
+        staging_instance.manage_dask_tasks(client, "test_collection")
 
         mock_task_failure.assert_called()  # handle_task_failure called once
         mock_delete_file_from_bucket.assert_called()  # Bucket removal called once
@@ -1028,7 +1028,7 @@ class TestStagingMainExecution:
         mocker.patch.object(staging_instance, "publish_rspy_feature", return_value=False)
         mock_delete_file_from_bucket = mocker.patch.object(staging_instance, "delete_files_from_bucket")
 
-        staging_instance.manage_dask_tasks_results(client, "test_collection")
+        staging_instance.manage_dask_tasks(client, "test_collection")
 
         mock_log_job.assert_any_call(
             JobStatus.failed,
@@ -1047,7 +1047,7 @@ class TestStagingMainExecution:
         # Setup mock for dask.distributed.lock
         mocker.patch("dask.distributed.Lock", return_value=mock_lock)
         staging_instance.token_lock = Lock("test_lock")
-        staging_instance.manage_dask_tasks_results(None, "test_collection")
+        staging_instance.manage_dask_tasks(None, "test_collection")
         mock_logger.error.assert_called_once_with("The dask cluster client object is not created. Exiting")
 
     @pytest.mark.asyncio
@@ -1103,7 +1103,7 @@ class TestStagingMainExecution:
 
         # Mock the called methods
         mock_submit_tasks = mocker.patch.object(staging_instance, "submit_tasks_to_dask_cluster")
-        mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks_results")
+        mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks")
         # Mock token retrieval
         mocker.patch(
             "rs_server_staging.processors.load_external_auth_config_by_domain",
@@ -1170,7 +1170,7 @@ class TestStagingMainExecution:
 
         # Mock the called methods
         # mock_submit_tasks = mocker.patch.object(staging_instance, "submit_tasks_to_dask_cluster")
-        mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks_results")
+        mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks")
         # Mock token retrieval
         mocker.patch(
             "rs_server_staging.processors.load_external_auth_config_by_domain",
@@ -1190,7 +1190,7 @@ class TestStagingMainExecution:
         )
 
         mocker.patch(
-            "rs_server_staging.processors.refresh_token",
+            "rs_server_staging.processors.update_station_token",
             return_value="mock_token",
         )
 

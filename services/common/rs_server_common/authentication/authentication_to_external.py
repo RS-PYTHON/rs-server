@@ -16,6 +16,7 @@
 Authentication to external stations module.
 """
 
+import copy
 import datetime
 import os
 import re
@@ -259,7 +260,7 @@ def validate_token_dict(token_dict: Any, config: ExternalAuthenticationConfig):
                 )
 
 
-def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_dict: dict) -> dict:
+def get_station_token(external_auth_config: ExternalAuthenticationConfig, original_token_dict: dict) -> dict:
     """
     Retrieve and validate an authentication token for a specific station and service.
     Thee are two main use cases:
@@ -288,6 +289,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Failed to retrieve the configuration for the station token.",
         )
+    token_dict = copy.deepcopy(original_token_dict)
     # If no tokens are yet registered, we ask the authorisation server to generate one by providing
     # an "authorisation grant" to the authorisation server
     validate_token_dict(token_dict, external_auth_config)
@@ -346,7 +348,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         token_dict["access_token_creation_date"] = token_dict["refresh_token_creation_date"] = datetime.datetime.now()
 
         logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
-        logger.info(f"--------- CREATED NEW TOKEN: {token_dict}")
+        # logger.debug(f"--------- CREATED NEW TOKEN: {token_dict}")
         # Validate the token variable and then update the shared token
         validate_token_dict(token_dict, external_auth_config)
     else:
@@ -358,7 +360,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
         current_date = datetime.datetime.now()
         diff_in_sec = (current_date - token_dict["access_token_creation_date"]).total_seconds()
 
-        logger.info(f"----------- DIFF VAUT: {diff_in_sec}")
+        # logger.debug(f"----------- DIFF VAUT: {diff_in_sec}")
         if diff_in_sec > token_dict["expires_in"] - nb_secs_before_token_exp:
             logger.info("Current access_token is about to expire. Launching request to refresh the token...")
             data_to_send = prepare_data(external_auth_config)
@@ -398,7 +400,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, token_
             # Validate the new token dictionary and update the shared token variable with this dictionary
             validate_token_dict(token_dict, external_auth_config)
             logger.info("Access token has been successfully refreshed !")
-            logger.info(f"----------- REFRESHED NEW TOKEN: {token_dict}")
+            # logger.debug(f"----------- REFRESHED NEW TOKEN: {token_dict}")
     return token_dict
 
 
