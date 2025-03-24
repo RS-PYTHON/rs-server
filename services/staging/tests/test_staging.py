@@ -31,6 +31,7 @@ from rs_server_staging.main import (
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.status import (
     HTTP_200_OK,
+    HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
     HTTP_503_SERVICE_UNAVAILABLE,
@@ -151,6 +152,15 @@ class TestInitDb:
         # Act & Assert: Check that a RuntimeError is raised
         with pytest.raises(RuntimeError, match="Error reading the manager definition for pygeoapi PostgreSQL Manager"):
             init_db()
+
+
+def test_format_job_data(mock_jobs):
+    """
+    Check the behavior of the method that format the output of the job information returned by
+    the PostgresSQL database
+    """
+    for job in mock_jobs:
+        format_job_data(mock_jobs)
 
 
 @pytest.mark.asyncio
@@ -528,18 +538,34 @@ async def test_processes(
         - Asserts that the list of processors returned from the API matches
           the list defined in the predefined configuration.
     """
-
+    # ----- Check the behaviour of a response with a correct ogc format
     mocker.patch("rs_server_staging.main.get_config_path", return_value=geoapi_cfg)
     mocker.patch("rs_server_staging.main.api", init_pygeoapi())
 
     response = staging_client.get("/processes")
+    assert response.status_code == HTTP_200_OK
     input_processors = [resource["processor"]["name"] for resource in predefined_config["resources"].values()]
-
     # Extract processors from the output
     output_processors = [process["id"] for process in response.json()["processes"]]
-
     # Assert that both lists of processors match
     assert sorted(input_processors) == sorted(output_processors), "Processors do not match!"
+
+    # ----- Mock api.config to send a list of resources with an incorrect format, check that the right
+    # validation exception is raised
+    mock_resources = {
+        "mock_resource_1": {
+            "type": "process",
+            "processor": {"name": {"wrong_processor_name_format": "wrong_processor_name_format"}},
+        },
+        "mock_resource_2": {
+            "type": "process",
+            "processor": {"name": {"wrong_processor_name_format": "wrong_processor_name_format"}},
+        },
+    }
+    mocker.patch.dict("rs_server_staging.main.api.config", {"resources": mock_resources})
+    response = staging_client.get("/processes")
+    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert "is not of type 'string'" in response.json()["message"]
 
 
 @pytest.mark.asyncio
@@ -599,9 +625,10 @@ async def test_execute_staging(mocker, mock_jobs, staging_client):
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
     assert "Request body validation error" in response.json()["message"]
 
-    # ----- Test case where both staging body and response are compliant with ogc
     mock_db_table = mocker.MagicMock()
     mocker.patch("rs_server_staging.processors.Staging.execute", return_value=(None, {"running": "mock_job_id"}))
+
+    # ----- Test case where both staging body and response are compliant with ogc
     mock_db_table.get_job.return_value = next(
         job for job in mock_jobs if job["identifier"] == expected_jobs_test[0]["jobID"]
     )
@@ -609,10 +636,23 @@ async def test_execute_staging(mocker, mock_jobs, staging_client):
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table, "dask_cluster": None})
     valid_staging_body = {"inputs": {"collection": "my_target_collection", "items": {"value": {}}}}
     response = staging_client.post(f"/processes/{resource_name}/execution", json=valid_staging_body)
-    assert response.status_code == HTTP_200_OK
+    assert response.status_code == HTTP_201_CREATED
     assert response.json() == expected_jobs_test[0]
 
     # ----- Test case where we have a staging response which is uncompliant with ogc
+    wrong_ogc_mock_jobs = copy.deepcopy(mock_jobs)
+    # Remove required ogc attribute "type" from all jobs of the get_job output mock
+    for job in wrong_ogc_mock_jobs:
+        job.pop("type")
+    # Remove required ogc attribute "type"
+    mock_db_table.get_job.return_value = next(
+        job for job in wrong_ogc_mock_jobs if job["identifier"] == expected_jobs_test[0]["jobID"]
+    )
+    mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table, "dask_cluster": None})
+    valid_staging_body = {"inputs": {"collection": "my_target_collection", "items": {"value": {}}}}
+    response = staging_client.post(f"/processes/{resource_name}/execution", json=valid_staging_body)
+    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
+    assert "'type' is a required property" in response.json()
 
 
 @pytest.mark.asyncio

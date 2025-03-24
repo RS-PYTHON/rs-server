@@ -328,7 +328,8 @@ def format_job_data(job: dict):
     """
     Method to apply reformatting on job data to make it compliant with OGC (process) standards
     Args:
-        job_data: information on a specific job to validate
+        job: information on a specific job to fromat: the job must have the same attributes
+        than the columns from the PostgreSql database
     Result:
         reformatted and validated job_data variable to put in the response
     """
