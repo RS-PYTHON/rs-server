@@ -119,69 +119,6 @@ def test_update_stac_catalog_metadata(client):
     assert resp_dict["description"] == description_txt
 
 
-class TestCatalogCollectionSearchEndpoint:  # pylint: disable=too-few-public-methods
-    """This class contains integration tests for the endpoit '/catalog/collections/{owner_id}:{collection_id}/search'"""
-
-    def test_get_search_in_toto_s1_l1_collection(self, client):  # pylint: disable=missing-function-docstring
-        test_params = {"filter": "width=2500"}
-
-        response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
-        assert response.status_code == fastapi.status.HTTP_200_OK
-        content = json.loads(response.content)
-        assert len(content["features"]) == 2
-
-        test_params = {"filter": "width=300"}
-
-        response = client.get("/catalog/collections/toto:S1_L1/search", params=test_params)
-        assert response.status_code == fastapi.status.HTTP_200_OK
-        content = json.loads(response.content)
-        assert len(content["features"]) == 0
-
-    def test_post_search_in_toto_s1_l1_collection(self, client):  # pylint: disable=missing-function-docstring
-        cql2_json_query = {
-            "filter-lang": "cql2-json",
-            "filter": {
-                "op": "and",
-                "args": [
-                    {"op": "=", "args": [{"property": "height"}, 2500]},
-                    {"op": "=", "args": [{"property": "width"}, 2500]},
-                ],
-            },
-        }
-
-        response = client.post("/catalog/collections/toto:S1_L1/search", json=cql2_json_query)
-        assert response.status_code == fastapi.status.HTTP_200_OK
-        content = json.loads(response.content)
-        assert len(content["features"]) == 2
-
-    def test_search_in_unexisting_collection(self, client):
-        """Test that if the collection does not exist, an HTTP 404 error is returned."""
-
-        # Test for GET /catalog/collections/{owner_id}:{collection_id}/search
-        test_params = {"filter": "width=2500"}
-        response = client.get("/catalog/collections/tata:S1_L1/search", params=test_params)
-        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting owner_id
-        response = client.get("/catalog/collections/toto:notfound/Search", params=test_params)
-        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting collection_id
-
-        # Test for POST /catalog/collections/{owner_id}:{collection_id}/search
-        cql2_json_query = {
-            "filter-lang": "cql2-json",
-            "filter": {
-                "op": "and",
-                "args": [
-                    {"op": "=", "args": [{"property": "height"}, 2500]},
-                    {"op": "=", "args": [{"property": "width"}, 2500]},
-                ],
-            },
-        }
-
-        response = client.post("/catalog/collections/tata:S1_L1/search", json=cql2_json_query)
-        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting owner_id
-        response = client.post("/catalog/collections/toto:notfound/search", json=cql2_json_query)
-        assert response.status_code == fastapi.status.HTTP_404_NOT_FOUND  # Checking with unexisting collection_id
-
-
 class TestCatalogSearchEndpoint:
     """This class contains integration tests for the endpoint '/catalog/search'."""
 
