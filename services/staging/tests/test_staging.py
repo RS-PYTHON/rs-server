@@ -666,16 +666,40 @@ async def test_specific_process(
 
 
 @pytest.mark.asyncio
-async def test_execute_staging(mocker, mock_jobs, staging_client):
+@pytest.mark.parametrize(
+    "valid_staging_body, wrong_staging_body",
+    [
+        (
+            {"inputs": {"collection": "Target collection", "items": {"value": {}}}},
+            {
+                "inputs": {
+                    "collection": {
+                        "id": "this dict shouldn't exist",
+                    },
+                    "items": {"value": {}},
+                },
+            },
+        ),
+        (
+            {
+                "inputs": {
+                    "collection": "Target collection",
+                    "href": "http://localhost:8002/cadip/search?ids=S1A_20231120061537234567&collections=cadip_sentinel1",
+                },
+            },
+            {
+                "inputs": {
+                    "collection": "Target collection",
+                    "href": {"id": "this dict shouldn't exist"},
+                },
+            },
+        ),
+    ],
+)
+async def test_execute_staging(mocker, mock_jobs, staging_client, valid_staging_body, wrong_staging_body):
     """Test to run the /processes/{resource}/execution endpoint"""
     resource_name = "staging"
     # ----- Test case where we have a staging body uncompliant with ogc
-    wrong_staging_body = {
-        "inputs": {
-            "collection": {"title": "Target collection", "title": "test target collection"},
-            "items": {"value": {}},
-        },
-    }
     response = staging_client.post(f"/processes/{resource_name}/execution", json=wrong_staging_body)
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
     assert "Request body validation error" in response.json()["message"]
@@ -689,7 +713,6 @@ async def test_execute_staging(mocker, mock_jobs, staging_client):
     )
     # Patch app.extra with the mock db_table
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table, "dask_cluster": None})
-    valid_staging_body = {"inputs": {"collection": "my_target_collection", "items": {"value": {}}}}
     response = staging_client.post(f"/processes/{resource_name}/execution", json=valid_staging_body)
     assert response.status_code == HTTP_201_CREATED
     assert response.json() == expected_jobs_test[0]
@@ -704,7 +727,6 @@ async def test_execute_staging(mocker, mock_jobs, staging_client):
         job for job in wrong_ogc_mock_jobs if job["identifier"] == expected_jobs_test[0]["jobID"]
     )
     mocker.patch.object(staging_client.app, "extra", {"process_manager": mock_db_table, "dask_cluster": None})
-    valid_staging_body = {"inputs": {"collection": "my_target_collection", "items": {"value": {}}}}
     response = staging_client.post(f"/processes/{resource_name}/execution", json=valid_staging_body)
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
     assert "'type' is a required property" in response.json()

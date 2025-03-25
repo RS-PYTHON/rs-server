@@ -1,0 +1,72 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import json
+
+import pytest
+from openapi_core.contrib.starlette.requests import StarletteOpenAPIRequest
+from rs_server_staging.staging_endpoints_validation import validate_request
+from starlette.requests import Request
+
+
+async def mock_receive(valid_staging_body):
+    """Simulate an ASGI reception canal for Starlette"""
+    return {
+        "type": "http.request",
+        "body": json.dumps(valid_staging_body).encode("utf-8"),
+        "more_body": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_validate_request(mocker, staging_client, mock_jobs):
+    """Test the method to validate that the request body is ogc compliant"""
+
+    # ----- Check that a Starlette request with a body which is compliant with ogc (each endpoint
+    # has its own input schema to follow) returns the valid body
+    request_scope = {
+        "type": "http",
+        "method": "POST",
+        "path": " http://rs-server-staging:8000/processes/staging/execution",
+        "headers": [(b"content-type", b"application/json")],
+        "query_string": b"",
+    }
+    valid_staging_body = {
+        "inputs": {
+            "collection": "Target collection",
+            "href": "http://localhost:8002/cadip/search?ids=S1A_20231120061537234567&collections=cadip_sentinel1",
+        },
+    }
+    # Create a Starlette request to validate
+    mock_request = Request(scope=request_scope, receive=lambda: mock_receive(valid_staging_body))
+    result = await validate_request(mock_request)
+    assert result == valid_staging_body
+
+    # ----- Check that a Starlette request with a body which is not compliant with ogc raise
+    # the appropriate validation exception
+    wrong_staging_body = {
+        "inputs": {
+            "collection": "Target collection",
+            "href": {"wrong": "format"},
+        },
+    }
+    mock_request = Request(scope=request_scope, receive=lambda: mock_receive(wrong_staging_body))
+    with pytest.raises(Exception) as excinfo:
+        await validate_request(mock_request)
+    assert "Request body validation error" in str(excinfo.value)
+
+
+async def test_validate_response():
+    """Test the method to validate that the response content is ogc compliant"""
+    pass

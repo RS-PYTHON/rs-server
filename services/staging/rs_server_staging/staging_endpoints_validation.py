@@ -14,6 +14,7 @@
 
 """Openapi_core methods for OGC validation of the staging endpoints"""
 
+import json
 import os
 import os.path as osp
 from typing import Any
@@ -39,13 +40,6 @@ if not os.path.isfile(PATH_TO_YAML_OPENAPI):
 OPENAPI = OpenAPI.from_file_path(PATH_TO_YAML_OPENAPI)
 
 
-class StagingValidationException(Exception):
-    """
-    Exception raised when an error occurs during the OGC validation
-    of the staging endpoints
-    """
-
-
 async def validate_request(request: Request) -> Any:
     """Validate an endpoint request according to the ogc specifications
 
@@ -62,7 +56,10 @@ async def validate_request(request: Request) -> Any:
     body = await request.body()
     openapi_request = StarletteOpenAPIRequest(request, body)
     OPENAPI.validate_request(openapi_request)
-    return body
+    try:
+        return json.loads(body)
+    except:
+        return None
 
 
 def validate_response(request: Request, data: dict, status_code=HTTP_200_OK) -> Any:

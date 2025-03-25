@@ -239,6 +239,18 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
             None: This method doesn't raise any exceptions directly but logs errors if the
                 catalog check fails.
         """
+        # If the content of the staging body is a link STAC itemCollection
+        # (and has no 'value' field containing a STAC ItemCollection)
+        # we launch a request to the corresponding service to load the STAC itemCollection
+        if "items" in data and "href" in data["items"] and not "value" in data["items"]:
+            response = requests.get(
+                data["items"]["href"],
+                headers={"cookie": self.headers.get("cookie", None)},
+                timeout=5,
+            )
+            response.raise_for_status()
+            data["items"]["value"] = response.json()
+
         # self.logger.debug(f"Executing staging processor for {data}")
         item_collection: FeatureCollectionModel | None = (
             FeatureCollectionModel.parse_obj(data["items"]["value"])
