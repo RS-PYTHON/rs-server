@@ -409,18 +409,13 @@ async def execute_process(request: Request, resource: str):
 
     # Validate request payload
     try:
-        valid_body_json = await validate_request(request)
+        valid_body = await validate_request(request)
     except Exception as e:
         # Handle exceptions and return an appropriate error message
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
-
-    try:
-        valid_body = json.loads(valid_body_json)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format")
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:

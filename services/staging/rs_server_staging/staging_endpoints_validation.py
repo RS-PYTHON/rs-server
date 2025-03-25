@@ -23,9 +23,10 @@ from typing import Any
 from openapi_core import OpenAPI  # Spec, validate_request, validate_response
 from openapi_core.contrib.starlette.requests import StarletteOpenAPIRequest
 from openapi_core.contrib.starlette.responses import StarletteOpenAPIResponse
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.status import HTTP_200_OK
+from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 PATH_TO_YAML_OPENAPI = osp.join(
     osp.realpath(osp.dirname(__file__)),
@@ -40,15 +41,15 @@ if not os.path.isfile(PATH_TO_YAML_OPENAPI):
 OPENAPI = OpenAPI.from_file_path(PATH_TO_YAML_OPENAPI)
 
 
-async def validate_request(request: Request) -> Any:
+async def validate_request(request: Request) -> dict:
     """Validate an endpoint request according to the ogc specifications
 
     Args:
         request (Request): endpoint request
 
     Returns:
-        ResponseUnmarshalResult.data: data validated by the openapi_core
-        unmarshal_response method
+        (dict) dictionary corresponding to the valid staging body
+
     """
     if not os.path.isfile(PATH_TO_YAML_OPENAPI):
         raise FileNotFoundError(f"The following file path was not found: {PATH_TO_YAML_OPENAPI}")
@@ -58,8 +59,8 @@ async def validate_request(request: Request) -> Any:
     OPENAPI.validate_request(openapi_request)
     try:
         return json.loads(body)
-    except:
-        return None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON format")
 
 
 def validate_response(request: Request, data: dict, status_code=HTTP_200_OK) -> Any:
@@ -71,7 +72,7 @@ def validate_response(request: Request, data: dict, status_code=HTTP_200_OK) -> 
         request (Request): input request
         data (dict): data to send in the endpoint response
     Returns:
-        json_response: return the content of the response as a json string
+        (str): return the content of the response as a json string
     """
     json_response = JSONResponse(status_code=status_code, content=data)
     openapi_request = StarletteOpenAPIRequest(request)
