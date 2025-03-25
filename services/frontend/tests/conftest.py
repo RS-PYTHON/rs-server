@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-""""Common fixtures."""
+"""Common fixtures."""
 
 import json
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from rs_server_frontend.main import Frontend
@@ -44,7 +44,7 @@ def invalid_openapi_spec_file(resources_test_path) -> Path:  # pylint: disable=r
 @pytest.fixture(scope="session")
 def expected_openapi_spec(openapi_spec_file) -> dict:  # pylint: disable=redefined-outer-name
     """The nominal openapi."""
-    with open(openapi_spec_file, "r", encoding="utf-8") as file:
+    with open(openapi_spec_file, encoding="utf-8") as file:
         return json.load(file)
 
 

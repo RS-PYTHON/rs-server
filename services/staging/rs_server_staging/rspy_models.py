@@ -13,7 +13,6 @@
 # limitations under the License.
 """Module used to type-check input of rs-staging."""
 
-from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
 from stac_pydantic.shared import Asset  # Importing directly for clarity
@@ -46,14 +45,14 @@ class Feature(BaseModel):
     """
 
     type: str
-    geometry: Optional[dict] = None
-    properties: Dict[str, Optional[str]]
-    bbox: Optional[List[Union[int, float]]] = None
+    geometry: dict | None = None
+    properties: dict[str, str | None]
+    bbox: list[int | float] | None = None
     id: str
     stac_version: str
-    assets: Dict[str, Asset]
-    links: Optional[List[Dict[str, str]]] = None
-    stac_extensions: List[str]
+    assets: dict[str, Asset]
+    links: list[dict[str, str]] | None = None
+    stac_extensions: list[str]
 
 
 class CollectionModel(BaseModel):
@@ -76,7 +75,7 @@ class CollectionModel(BaseModel):
     title: str
     description: str
     id: str
-    schema_: Dict[str, str] = Field(..., alias="schema")
+    schema_: dict[str, str] = Field(..., alias="schema")
     minOccurs: int
     maxOccurs: int
 
@@ -92,7 +91,7 @@ class FeatureCollectionModel(BaseModel):
     """
 
     type: str
-    features: List[Feature]
+    features: list[Feature]
 
 
 class InputModel(BaseModel):
@@ -130,7 +129,7 @@ class OutputModel(BaseModel):
     title: str
     id: str
     description: str
-    schema_: Union[bool, Dict[str, str]] = Field(..., alias="schema")
+    schema_: bool | dict[str, str] = Field(..., alias="schema")
     minOccurs: int
     maxOccurs: int
 
@@ -160,10 +159,10 @@ class ProcessMetadataModel(BaseModel):
 
     version: str
     id: str
-    title: Dict[str, str]
-    description: Dict[str, str]
-    jobControlOptions: Union[List[str], str]
-    keywords: List[str]
-    links: List[Dict[str, str]]
+    title: dict[str, str]
+    description: dict[str, str]
+    jobControlOptions: list[str] | str
+    keywords: list[str]
+    links: list[dict[str, str]]
     inputs: InputModel
-    outputs: Dict[str, OutputModel]
+    outputs: dict[str, OutputModel]
