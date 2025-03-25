@@ -190,15 +190,13 @@ def test_format_jobs_data(mock_jobs):
         ],
     }
     # ----- Check that the right exception is raised if the input jobs is something else than a dictionary
-    wrong_mock_jobs = "wrong_data"
     with pytest.raises(Exception) as excinfo:
-        format_jobs_data(wrong_mock_jobs)
+        format_jobs_data("wrong_data")
     assert "Expected a dictionary as input" in str(excinfo.value)
 
     # ----- Check that the right exception is raised if the input job doesn't have the required 'jobs' attributes
-    wrong_mock_jobs = {"attr1": "val1", "attr2": "val2"}
     with pytest.raises(Exception) as excinfo:
-        format_jobs_data(wrong_mock_jobs)
+        format_jobs_data({"attr1": "val1", "attr2": "val2"})
     assert "Invalid format for input jobs: missing 'jobs' key" in str(excinfo.value)
 
     # ----- Check that the input job is well formatted if the input has the correct format
