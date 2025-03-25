@@ -22,11 +22,11 @@ import functools
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Annotated, Any
 
 from fastapi import HTTPException
 from filelock import FileLock
-from typing_extensions import Annotated, Doc
+from typing_extensions import Doc
 
 
 @dataclass
@@ -63,7 +63,7 @@ def log_http_exception(
         ),
     ] = None,
     headers: Annotated[
-        Optional[Dict[str, str]],
+        dict[str, str] | None,
         Doc(
             """
                 Any headers to send to the client in the response.

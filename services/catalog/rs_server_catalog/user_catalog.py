@@ -31,7 +31,7 @@ import getpass
 import json
 import os
 import re
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import botocore
@@ -649,7 +649,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
         Returns:
             Response: The updated response.
         """
-        filters: Optional[Node] = None
+        filters: Node | None = None
         if request.method == "GET":
             query = parse_qs(request.url.query)
             if "filter" in query:

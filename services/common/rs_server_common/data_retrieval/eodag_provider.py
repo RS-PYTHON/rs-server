@@ -20,7 +20,6 @@ import tempfile
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
-from typing import Dict, List, Union
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
@@ -114,7 +113,7 @@ class EodagProvider(Provider):
         # we need to update its configuration from the latest env vars, if they have changed
         self.client.override_config_from_env()
 
-    def _specific_search(self, **kwargs) -> Union[SearchResult, List]:
+    def _specific_search(self, **kwargs) -> SearchResult | list:
         """
         Conducts a search for products using the specified OData arguments.
 
@@ -142,7 +141,7 @@ class EodagProvider(Provider):
             - Logs encountered errors and provides detailed messages in case of failures.
         """
 
-        mapped_search_args: Dict[str, Union[str, None]] = {}
+        mapped_search_args: dict[str, str | None] = {}
         if session_id := kwargs.pop("SessionId", None):
             # Map session_id to the appropriate eodag parameter
             session_id = session_id[0] if len(session_id) == 1 else session_id
@@ -161,7 +160,7 @@ class EodagProvider(Provider):
 
         if date_time := kwargs.pop("PublicationDate", False):
             # Since now both for files and sessions, time interval is optional, map it if provided.
-            fixed, start, end = [str(date) if date else None for date in date_time]
+            fixed, start, end = (str(date) if date else None for date in date_time)
             mapped_search_args.update(
                 {
                     "PublicationDate": fixed,
@@ -258,7 +257,7 @@ class EodagProvider(Provider):
 
         """
         try:
-            with open(self.config_file, "r", encoding="utf-8") as f:
+            with open(self.config_file, encoding="utf-8") as f:
                 base_uri = yaml.safe_load(f)[self.provider.lower()]["download"]["base_uri"]
             return EOProduct(
                 self.provider,

@@ -108,7 +108,7 @@ def test_get_s3_client_and_disconnect(endpoint: str):
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "s3cfg_file",
-    [(("./USER/credentials_location/.s3cfg")), (("/path/to/none/.s3cfg"))],
+    [("./USER/credentials_location/.s3cfg"), ("/path/to/none/.s3cfg")],
 )
 def test_get_secrets_from_file(s3cfg_file: str):
     """Test the get_secrets_from_file method of the S3StorageHandler class."""
@@ -140,8 +140,8 @@ def test_get_secrets_from_file(s3cfg_file: str):
 @pytest.mark.parametrize(
     "s3_url",
     [
-        (("s3://test_bucket/test_prefix/test_file.tst")),
-        (("/no/path/_to#none_file")),
+        ("s3://test_bucket/test_prefix/test_file.tst"),
+        ("/no/path/_to#none_file"),
     ],
 )
 def test_s3_path_parser(s3_url: str):
@@ -1176,7 +1176,7 @@ def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
         assert False, "s3_handler.get_keys_from_s3 raised exception!"
 
     assert not failed
-    with open(os.path.join(local_path, s3_key), "r", encoding="utf-8") as f:
+    with open(os.path.join(local_path, s3_key), encoding="utf-8") as f:
         assert body == f.read()
 
     shutil.rmtree(local_path)

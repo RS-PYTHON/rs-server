@@ -19,6 +19,7 @@ import threading
 import traceback
 import urllib.parse
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime as dt
@@ -27,15 +28,9 @@ from pathlib import Path
 from typing import (
     Annotated,
     Any,
-    AsyncIterator,
-    Callable,
-    Dict,
-    List,
     Literal,
     Optional,
     Self,
-    Sequence,
-    Type,
 )
 
 import stac_pydantic
@@ -135,10 +130,10 @@ class QueryableField(BaseModel):
 
     type: str
     title: str
-    format: Optional[str] = None
-    pattern: Optional[str] = None
-    description: Optional[str] = None
-    enum: Optional[List[str]] = None
+    format: str | None = None
+    pattern: str | None = None
+    description: str | None = None
+    enum: list[str] | None = None
 
 
 @dataclass
@@ -184,7 +179,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """Used to mock the readpool function."""
 
         # Outer MockPgstac class type
-        outer_cls: Type["MockPgstac"]
+        outer_cls: type["MockPgstac"]
 
         @asynccontextmanager
         async def acquire(self) -> AsyncIterator["MockPgstac"]:
@@ -546,7 +541,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Only keep the authorized collections
         allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
-        allowed_ids = set(collection["id"] for collection in allowed)
+        allowed_ids = {collection["id"] for collection in allowed}
         if not collection_ids:
             collection_ids = list(allowed_ids)
         else:
@@ -581,7 +576,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         data = ItemCollection(features=list(all_items.values()), type="FeatureCollection")
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
-            dict_data: Dict[str, Any] = self.paginate(data)
+            dict_data: dict[str, Any] = self.paginate(data)
         else:
             dict_data = data.model_dump()
 
@@ -599,7 +594,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return dict_data
 
-    def paginate(self, item_collection: ItemCollection) -> Dict[str, Any]:
+    def paginate(self, item_collection: ItemCollection) -> dict[str, Any]:
         """Method used to apply pagination options after /search result were aggregated."""
 
         paginated_item_collection: ItemCollection = sort_feature_collection(item_collection, self.sortby)
@@ -874,7 +869,7 @@ def get_adgs_queryables() -> dict:
 
 
 def create_stac_collection(
-    products: List[Any],
+    products: list[Any],
     feature_template: dict,
     stac_mapper: dict,
 ) -> ItemCollection:

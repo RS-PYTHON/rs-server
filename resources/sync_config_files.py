@@ -24,9 +24,10 @@ import numbers
 import os
 import re
 import shutil
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 import yaml
 from rs_server_common.utils.logging import Logging
@@ -153,7 +154,7 @@ if not rs_infra_dir.is_dir():
 
 # Extract the copyright header from this current file. It will be added to yaml files modified from a template.
 COPYRIGHT_HEADER = ""
-with open(__file__, "r", encoding="utf-8") as this_script:
+with open(__file__, encoding="utf-8") as this_script:
     for line in this_script:
         line = line.strip()
         if not line:

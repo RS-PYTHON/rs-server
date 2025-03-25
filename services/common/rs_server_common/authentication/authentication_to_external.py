@@ -21,7 +21,7 @@ import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import requests
 import yaml
@@ -76,7 +76,7 @@ def init_rs_server_config_yaml():
     # RSPY__TOKEN__<service>__<station>__<section_name>__<rest of the info for key>
     # Regular expression to match the pattern RSPY__TOKEN__<service>__<station>__<section>__<rest_of_the_key>
     pattern = r"^RSPY__TOKEN__([^__]+)__([^__]+)__([^__]+)(__.*)?$"
-    config_data: Dict[str, Any] = {}
+    config_data: dict[str, Any] = {}
 
     # Iterate over all environment variables
     for var, value in os.environ.items():
@@ -126,7 +126,7 @@ def init_rs_server_config_yaml():
             f"The configuration for the external stations token module was successfully \
 written to {CONFIG_PATH_AUTH_TO_EXTERNAL}",
         )
-    except (OSError, IOError) as e:
+    except OSError as e:
         logger.exception(f"Failed to write configuration to {CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}")
         raise RuntimeError(f"Failed to write configuration to {CONFIG_PATH_AUTH_TO_EXTERNAL}: {e}") from e
 
@@ -228,7 +228,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig) -> str
     return token.get(ACCESS_TK_KEY_IN_RESPONSE)
 
 
-def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> Dict[str, str]:
+def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> dict[str, str]:
     """Prepare HTTP headers for token requests.
 
     Args:
@@ -244,7 +244,7 @@ def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> Dict[
     return headers
 
 
-def prepare_data(external_auth_config: ExternalAuthenticationConfig) -> Dict[str, str]:
+def prepare_data(external_auth_config: ExternalAuthenticationConfig) -> dict[str, str]:
     """Prepare data for token requests based on authentication configuration.
 
     Args:
@@ -325,8 +325,8 @@ def read_config_file():
 
 def load_external_auth_config_by_station_service(
     station_id: str,
-    service: Union[str, None] = None,
-) -> Optional[ExternalAuthenticationConfig]:
+    service: str | None = None,
+) -> ExternalAuthenticationConfig | None:
     """
     Load the external authentication configuration for a given station and service from a YAML file.
 
@@ -357,7 +357,7 @@ def load_external_auth_config_by_station_service(
     return create_external_auth_config(station_id, station_dict, service_dict)
 
 
-def load_external_auth_config_by_domain(domain: str) -> Optional[ExternalAuthenticationConfig]:
+def load_external_auth_config_by_domain(domain: str) -> ExternalAuthenticationConfig | None:
     """
     Load the external authentication configuration based on the domain from a YAML file.
 
@@ -381,9 +381,9 @@ def load_external_auth_config_by_domain(domain: str) -> Optional[ExternalAuthent
 
 def create_external_auth_config(
     station_id: str,
-    station_dict: Dict[str, Any],
-    service_dict: Dict[str, Any],
-) -> Optional[ExternalAuthenticationConfig]:
+    station_dict: dict[str, Any],
+    service_dict: dict[str, Any],
+) -> ExternalAuthenticationConfig | None:
     """
     Create an ExternalAuthenticationConfig object based on the provided station and service dictionaries.
 

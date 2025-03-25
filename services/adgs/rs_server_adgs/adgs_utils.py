@@ -22,7 +22,6 @@ import os.path as osp
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Tuple, Union
 
 import stac_pydantic
 import yaml
@@ -33,7 +32,7 @@ ADGS_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config"
 search_yaml = ADGS_CONFIG / "adgs_search_config.yaml"
 
 
-@lru_cache()
+@lru_cache
 def read_conf():
     """Used each time to read RSPY_ADGS_SEARCH_CONFIG config yaml."""
     adgs_search_config = os.environ.get("RSPY_ADGS_SEARCH_CONFIG", str(search_yaml.absolute()))
@@ -122,8 +121,8 @@ def auxip_map_mission(platform: str, constellation: str):
     Input: constellation = sentinel-1   Output: sentinel-1, None
     """
     data = map_stac_platform()
-    platform_short_name: Union[str, None] = None
-    platform_serial_identifier: Union[str, None] = None
+    platform_short_name: str | None = None
+    platform_serial_identifier: str | None = None
     try:
         if platform:
             config = next(satellite[platform] for satellite in data["satellites"] if platform in satellite)
@@ -153,9 +152,9 @@ def auxip_map_mission(platform: str, constellation: str):
 
 
 def adgs_reverse_map_mission(
-    platform: Union[str, None],
-    constellation: Union[str, None],
-) -> Tuple[Union[str, None], Union[str, None]]:
+    platform: str | None,
+    constellation: str | None,
+) -> tuple[str | None, str | None]:
     """Function used to re-map platform and constellation based on satellite value."""
     if not (constellation or platform):
         return None, None

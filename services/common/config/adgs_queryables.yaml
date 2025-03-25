@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-product:type:
-  type: string
-  title: product:type
-  format: string
-  description: string
 platform:
   type: string
   title: platform

@@ -17,7 +17,6 @@ import asyncio
 import os
 from concurrent.futures import CancelledError
 from datetime import datetime
-from typing import Dict
 from unittest.mock import call
 
 import pytest
@@ -737,7 +736,7 @@ class TestStagingMainExecution:
         mock_connect.return_value = mock_cluster
 
         # Setup client mock
-        mock_scheduler_info: Dict[str, Dict] = {"workers": {"worker-1": {}, "worker-2": {}}}
+        mock_scheduler_info: dict[str, dict] = {"workers": {"worker-1": {}, "worker-2": {}}}
         mock_client_instance = mocker.Mock()
         mock_client_instance.scheduler_info.return_value = mock_scheduler_info
         mock_client.return_value = mock_client_instance
