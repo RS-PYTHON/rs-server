@@ -17,54 +17,69 @@
 ARG BASE=xxx
 FROM ${BASE}
 
+ENV PATH=/home/jovyan/.local/bin:${PATH}
+
 ARG DASK_TAG=xxx
 ARG DASK_GATEWAY_TAG=xxx
 ARG PREFECT_TAG=xxx
 ARG PREFECT_DASK_TAG=xxx
 
+COPY ./layer-cleanup.sh /usr/local/bin/
+
 USER root
-RUN apt update && apt upgrade -y
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+RUN apt update && apt upgrade -y && layer-cleanup.sh
 USER jovyan
 
 # Upgrade pip version
-RUN pip install -U pip
+RUN pip install -U pip && layer-cleanup.sh
 
 # Additional python kernel to install to run the notebooks
 ARG PYTHON_VERSION=3.11.7
 ARG KERNEL_NAME=py3.11.7
 
 # Install additional python kernel
-USER root
-RUN conda create -y -n "$KERNEL_NAME" python="$PYTHON_VERSION"
-RUN source activate "$KERNEL_NAME" && \
+RUN conda create -y -n "$KERNEL_NAME" python="$PYTHON_VERSION" && \
+    source activate "$KERNEL_NAME" && \
     python -V && \
     pip install -U pip && \
     pip install ipykernel && \
-    python -m ipykernel install --name "$KERNEL_NAME" --display-name "Python ($PYTHON_VERSION)"
-# Set default kernel... does not seem to work
-RUN jupyter notebook --generate-config
-RUN echo "c.MappingKernelManager.default_kernel_name='$KERNEL_NAME'" >> /home/jovyan/.jupyter/jupyter_notebook_config.py
+    layer-cleanup.sh
+USER root
+RUN source activate "$KERNEL_NAME" && \
+    python -m ipykernel install --name "$KERNEL_NAME" --display-name "$KERNEL_NAME" && \
+    layer-cleanup.sh
 USER jovyan
 
+# Set default kernel... does not seem to work
+RUN jupyter notebook --generate-config && \
+    layer-cleanup.sh && \
+    echo "c.MappingKernelManager.default_kernel_name='$KERNEL_NAME'" >> /home/jovyan/.jupyter/jupyter_notebook_config.py
+
 # Note: put s3fs before boto3 to have a recent version
-RUN source activate "$KERNEL_NAME" && pip install \
-    dask[complete]=="${DASK_TAG}" \
-    distributed=="${DASK_TAG}" \
-    dask-gateway=="${DASK_GATEWAY_TAG}" \
-    prefect[aws]=="${PREFECT_TAG}" \
-    prefect-dask=="${PREFECT_DASK_TAG}" \
-    ipywidgets \
-    s3fs \
-    boto3
+RUN source activate "$KERNEL_NAME" && \
+    pip install \
+        dask[complete]=="${DASK_TAG}" \
+        distributed=="${DASK_TAG}" \
+        dask-gateway=="${DASK_GATEWAY_TAG}" \
+        prefect[aws]=="${PREFECT_TAG}" \
+        prefect-dask=="${PREFECT_DASK_TAG}" \
+        ipywidgets \
+        s3fs \
+        boto3 && \
+    layer-cleanup.sh
 
 # Install dot and clean conda
 USER root
-RUN apt install -y python3-pydot graphviz
-RUN conda clean --all --yes
+RUN apt update && apt install -y python3-pydot graphviz && layer-cleanup.sh
 USER jovyan
 
-# Note: don't remove cache so the child images that use this one as a base will build faster
-# RUN rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
+# Use default python version from bash session
+RUN echo -e "\nsource activate $KERNEL_NAME" >> /home/jovyan/.bashrc
+
+USER root
+RUN chown -R jovyan /home/jovyan
+USER jovyan
 
 # Set labels based on the Open Containers Initiative (OCI):
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
