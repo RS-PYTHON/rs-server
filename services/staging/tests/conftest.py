@@ -29,7 +29,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-from distributed import Lock, Variable
 from fastapi.testclient import TestClient
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
@@ -159,7 +158,7 @@ def staging_inputs():
 
 
 @pytest.fixture(name="staging_instance")
-def staging(mocker):
+def staging(mocker, config):
     """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
     mock_credentials = mocker.Mock()
@@ -168,26 +167,25 @@ def staging(mocker):
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
     # Mock station_token_list as an iterable
-    # Create mock dask locks and variables
-    mock_token_lock1 = mocker.MagicMock(spec=Lock)
-    mock_token_info1 = mocker.MagicMock(spec=Variable)
-
-    mock_token_lock2 = mocker.MagicMock(spec=Lock)
-    mock_token_info2 = mocker.MagicMock(spec=Variable)
 
     # Mock RefreshTokenData objects
     mock_refresh_token1 = mocker.MagicMock(spec=RefreshTokenData)
-    mock_refresh_token1.station_id = "station_1"
-    mock_refresh_token1.token_list = [(mock_token_lock1, mock_token_info1)]
-    mock_refresh_token1.get_first_subscriber = mocker.Mock(return_value=(mock_token_lock1, mock_token_info1))
+    mock_refresh_token1.config = config
+    mock_refresh_token1.token_dict = {
+        "access_token": "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI",
+        "expires_in": 3600,
+        "access_token_creation_date": datetime.now(),
+        "refresh_token": "fakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "refresh_token_creation_date": datetime.now(),
+        "token_type": "Bearer",
+    }
 
-    mock_refresh_token2 = mocker.MagicMock(spec=RefreshTokenData)
-    mock_refresh_token2.station_id = "station_2"
-    mock_refresh_token2.token_list = [(mock_token_lock2, mock_token_info2)]
-    mock_refresh_token2.get_first_subscriber = mocker.Mock(return_value=(mock_token_lock2, mock_token_info2))
+    mock_refresh_token1.subscribers = 1
+    mock_refresh_token1.station_id = mocker.Mock(return_value=config.station_id)
 
     # Mock station_token_list as a list of RefreshTokenData instances
-    mock_station_token_list = [mock_refresh_token1, mock_refresh_token2]
+    mock_station_token_list = [mock_refresh_token1]
 
     # Fix: Explicitly define __enter__ and __exit__ on mocker.Mock()
     mock_station_token_list_lock = mocker.Mock()
@@ -210,6 +208,13 @@ def staging(mocker):
         station_token_list=mock_station_token_list,
         station_token_list_lock=mock_station_token_list_lock,
     )
+    # mock streaming list
+    staging_instance.stream_list = [mocker.Mock(id=1), mocker.Mock(id=2)]
+    # mock assets_info
+    staging_instance.assets_info = [
+        ("https://cadip/some_asset_1", "some_asset_1"),
+        ("https://cadip/some_asset_2", "some_asset_2"),
+    ]
     yield staging_instance
 
 
@@ -227,10 +232,59 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(name="cluster_options")
-def cluster_options():
-    """Fixture to get a cluster options"""
-    return {
+@pytest.fixture(name="config")
+def authentication_config():
+    """Return an example of external authentication configuration"""
+    return ExternalAuthenticationConfig(
+        station_id="cadip",
+        domain="https://127.0.0.1:5000",
+        service_name="cadip",
+        service_url="https://127.0.0.1:5000/oauth2/token",
+        auth_type="oauth2",
+        token_url="https://127.0.0.1:5000/oauth2/token",
+        grant_type="password",
+        username="test",
+        # nosec B106
+        password="DUMMY_PASSWORD",
+        client_id="client_id",
+        client_secret="client_secret",  # nosec B106
+    )
+
+
+@pytest.fixture(name="mock_db_table")
+def get_mock_db_table(mocker):
+    """
+    Mock the database manager
+    """
+    mock_db_table = mocker.MagicMock()
+    mock_db_table.get_jobs.return_value = {
+        "jobs": [
+            {
+                "identifier": "job_1",
+                "status": "successful",
+                "progress": 100.0,
+                "message": "Test detail",
+                "created": str(datetime(2024, 1, 1, 12, 0, 0)),
+                "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
+            },
+            {
+                "identifier": "job_2",
+                "status": "running",
+                "progress": 90.25,
+                "message": "Test detail",
+                "created": str(datetime(2024, 1, 2, 12, 0, 0)),
+                "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
+            },
+        ],
+        "numberMatched": 2,
+    }
+    return mock_db_table
+
+
+@pytest.fixture(name="cluster")
+def cluster_with_options(mocker):
+    """Fixture to get a cluster with options"""
+    cluster_options = {
         "cluster_max_cores": 4,
         "cluster_max_memory": 17179869184,
         "cluster_max_workers": 5,
@@ -264,75 +318,25 @@ def cluster_options():
         },
         "worker_memory": 2,
     }
+    # Mock the Security object
+    mock_security = mocker.patch("dask.distributed.Security")
+    # Mock the cluster with the required attributes for Client
+    mock_cluster = mocker.Mock()
+    mock_cluster.name = "dask-gateway-id"
+    mock_cluster.options = cluster_options
+    mock_cluster.dashboard_link = "https://mock-dashboard"
+    mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
+    mock_cluster.security = mock_security  # Add mocked security attribute
+    return mock_cluster
 
 
-@pytest.fixture(name="config")
-def authentication_config():
-    """Return an example of external authentication configuration"""
-    return ExternalAuthenticationConfig(
-        station_id="cadip",
-        domain="http://127.0.0.1:5000",
-        service_name="cadip",
-        service_url="http://127.0.0.1:5000/oauth2/token",
-        auth_type="oauth2",
-        token_url="http://127.0.0.1:5000/oauth2/token",
-        grant_type="password",
-        username="test",
-        password="DUMMY_PASSWORD",
-        client_id="client_id",
-        client_secret="client_secret",
-    )
-
-
-# Define fixtures for mock of dask.distributed.Lock and dask.distributed.Variable objects
-@pytest.fixture(name="mock_variable")
-def get_mock_variable(mocker):
-    """Mock for the shared Variable (dask.distributed.Variable) containing the token information"""
-    # Setup mock for Dask.distributed.variable
-    mock_variable = mocker.MagicMock()
-    mock_variable.get.return_value = {}
-    mock_variable.set.return_value = None
-    return mock_variable
-
-
-@pytest.fixture(name="mock_lock")
-def get_mock_lock(mocker):
+@pytest.fixture(name="client")
+def dask_client(mocker, cluster):
     """
-    Mock for the lock (dask.distributed.Lock) used to synchronize the access to the token variable
-    between the different threads of the dask workers
+    Mock the dask client
     """
-    # Setup mock for dask.distributed.lock
-    mock_lock = mocker.MagicMock()
-    mock_lock.acquire.return_value = True
-    mock_lock.release.return_value = None
-    return mock_lock
-
-
-@pytest.fixture(name="mock_db_table")
-def get_mock_db_table(mocker):
-    """
-    Mock database manager
-    """
-    mock_db_table = mocker.MagicMock()
-    mock_db_table.get_jobs.return_value = {
-        "jobs": [
-            {
-                "identifier": "job_1",
-                "status": "successful",
-                "progress": 100.0,
-                "message": "Test detail",
-                "created": str(datetime(2024, 1, 1, 12, 0, 0)),
-                "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
-            },
-            {
-                "identifier": "job_2",
-                "status": "running",
-                "progress": 90.25,
-                "message": "Test detail",
-                "created": str(datetime(2024, 1, 2, 12, 0, 0)),
-                "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
-            },
-        ],
-        "numberMatched": 2,
-    }
-    return mock_db_table
+    client = mocker.Mock(return_value=True)
+    client.cluster = cluster
+    client.nthreads = mocker.Mock(return_value={0: 1, 1: 1})  # Simulate 2 threads
+    client.submit = mocker.Mock(return_value=mocker.Mock())  # Simulating a Dask future
+    return client

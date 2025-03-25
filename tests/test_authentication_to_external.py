@@ -174,7 +174,8 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         status=HTTP_200_OK,
         body=json.dumps(response),
     )
-    mock_empty_variable.set(get_station_token(ext_auth_config, mock_empty_variable.get()))
+
+    mock_empty_variable.get.return_value = get_station_token(ext_auth_config, mock_empty_variable.get())
     assert mock_empty_variable.get()["access_token"] == mock_variable.get()["access_token"]
 
     # ---------- Test error when station responds with an error
@@ -210,7 +211,7 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         status=HTTP_200_OK,
         body=json.dumps(response_new_valid_token),
     )
-    mock_variable.set(get_station_token(ext_auth_config, mock_variable.get()))
+    mock_variable.get.return_value = get_station_token(ext_auth_config, mock_variable.get())
 
     # Check that the old token has been replaced with the new one
     assert mock_variable.get()["access_token"] == response_new_valid_token["access_token"]
@@ -235,8 +236,7 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         status=HTTP_200_OK,
         body=json.dumps(response_new_valid_token),
     )
-    mock_variable.set(get_station_token(ext_auth_config, mock_variable.get()))
-
+    mock_variable.get.return_value = get_station_token(ext_auth_config, mock_variable.get())
     # Check that the old token has been replaced with the new one
     assert mock_variable.get()["refresh_token"] == response_new_valid_token["refresh_token"]
 

@@ -146,7 +146,7 @@ class TestInitDb:
 @pytest.mark.asyncio
 async def test_get_jobs_endpoint(
     mocker,
-    set_db_env_var,
+    set_db_env_var,  # pylint: disable=unused-argument
     staging_client,
     mock_db_table,  # pylint: disable=unused-argument
 ):
