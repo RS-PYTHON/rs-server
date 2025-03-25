@@ -34,7 +34,6 @@ from starlette.status import (
     HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 expected_jobs_test = [
@@ -684,7 +683,9 @@ async def test_specific_process(
             {
                 "inputs": {
                     "collection": "Target collection",
-                    "href": "http://localhost:8002/cadip/search?ids=S1A_20231120061537234567&collections=cadip_sentinel1",
+                    "href": (
+                        "http://localhost:8002/cadip/search?" "ids=S1A_20231120061537234567&collections=cadip_sentinel1"
+                    ),
                 },
             },
             {

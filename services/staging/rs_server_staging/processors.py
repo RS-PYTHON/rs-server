@@ -241,7 +241,7 @@ class Staging(BaseProcessor):  # (metaclass=MethodWrapperMeta): - meta for stopp
         # If the content of the staging body is a link STAC itemCollection
         # (and has no 'value' field containing a STAC ItemCollection)
         # we launch a request to the corresponding service to load the STAC itemCollection
-        if "items" in data and "href" in data["items"] and not "value" in data["items"]:
+        if "items" in data and "href" in data["items"] and "value" not in data["items"]:
             response = requests.get(
                 data["items"]["href"],
                 headers={"cookie": self.headers.get("cookie", None)},

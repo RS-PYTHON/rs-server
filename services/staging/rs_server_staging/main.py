@@ -14,11 +14,9 @@
 
 """rs server staging main module."""
 import copy
-import json
 
 # pylint: disable=E0401
 import os
-import os.path as osp
 import pathlib
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -27,7 +25,6 @@ from time import sleep
 from typing import Annotated
 
 import httpx
-import requests
 import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
@@ -66,7 +63,6 @@ from starlette.status import (
     HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
     HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 # flake8: noqa: F401
@@ -312,7 +308,7 @@ async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
     # rs_processes_{resource}_read role needed to access this endpoint.
     auth_validation("read", resource, request=request, staging_process=True)
-    if resource_info := next(
+    if resource_info := next(  # pylint: disable=W0612
         (
             api.config["resources"][defined_resource]
             for defined_resource in api.config["resources"]
@@ -344,8 +340,8 @@ def format_job_data(job: dict):
     # Check that the input job have the same struture as the jobs contained in the PostgreSQL database
     if "identifier" not in job:
         raise DatabaseJobFormatError(
-            f"""Input job must have the same structure than the jobs stored in the """
-            f"""PostgreSql database: attribute 'identifier' is missing""",
+            """Input job must have the same structure than the jobs stored in the """
+            """PostgreSql database: attribute 'identifier' is missing""",
         )
     job_data = copy.deepcopy(job)
     # Rename attribute "identifier" to be compliant with OGC standards

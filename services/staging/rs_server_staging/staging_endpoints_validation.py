@@ -59,8 +59,8 @@ async def validate_request(request: Request) -> dict:
     OPENAPI.validate_request(openapi_request)
     try:
         return json.loads(body)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON format")
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON format") from exc
 
 
 def validate_response(request: Request, data: dict, status_code=HTTP_200_OK) -> Any:

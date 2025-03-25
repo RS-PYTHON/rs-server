@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""OGC openapi_core request and response validation functions"""
 
 import json
 
 import pytest
-from openapi_core.contrib.starlette.requests import StarletteOpenAPIRequest
 from rs_server_staging.staging_endpoints_validation import validate_request
 from starlette.requests import Request
 
@@ -30,7 +30,7 @@ async def mock_receive(valid_staging_body):
 
 
 @pytest.mark.asyncio
-async def test_validate_request(mocker, staging_client, mock_jobs):
+async def test_validate_request():
     """Test the method to validate that the request body is ogc compliant"""
 
     # ----- Check that a Starlette request with a body which is compliant with ogc (each endpoint
@@ -69,4 +69,3 @@ async def test_validate_request(mocker, staging_client, mock_jobs):
 
 async def test_validate_response():
     """Test the method to validate that the response content is ogc compliant"""
-    pass
