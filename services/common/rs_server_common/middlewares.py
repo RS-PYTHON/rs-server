@@ -15,7 +15,8 @@
 """Common functions for fastapi middlewares"""
 import os
 import traceback
-from typing import Callable
+from collections.abc import Callable
+from typing import TypedDict
 
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
@@ -30,6 +31,21 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 logger = Logging.default(__name__)
+
+
+class ErrorResponse(TypedDict):
+    """A JSON error response returned by the API.
+
+    The STAC API spec expects that `code` and `description` are both present in
+    the payload.
+
+    Attributes:
+        code: A code representing the error, semantics are up to implementor.
+        description: A description of the error.
+    """
+
+    code: str
+    description: str
 
 
 class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
@@ -78,10 +94,20 @@ class HandleExceptionsMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         except Exception as exception:  # pylint: disable=broad-exception-caught
             # Log stack trace and return generic error response
             logger.error(traceback.format_exc())
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=str(exception),
+            return (
+                JSONResponse(
+                    content=ErrorResponse(code=exception.__class__.__name__, description=str(exception)),
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+                if self.is_bad_request(request, exception)
+                else JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(exception))
             )
+
+    def is_bad_request(self, request: Request, e: Exception) -> bool:
+        """Determines if the request that raised this exception shall be considered as a bad request"""
+        return "bbox" in request.query_params and (
+            str(e).endswith(" must have 4 or 6 values.") or str(e).startswith("could not convert string to float: ")
+        )
 
 
 def apply_middlewares(app: FastAPI):

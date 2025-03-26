@@ -24,7 +24,7 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from os import environ as env
-from typing import Annotated, Any, Dict
+from typing import Annotated, Any
 
 import httpx
 from brotli_asgi import BrotliMiddleware
@@ -204,7 +204,7 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. GET METHOD
     # We copy the parameters from the original /catalog/search endpoint and we add new parameters.
     search_parameters = copy.deepcopy(openapi_spec["paths"]["/catalog/search"]["get"]["parameters"])
-    catalog_collection_search: Dict[str, Any] = {
+    catalog_collection_search: dict[str, Any] = {
         "summary": "search endpoint to search only inside a specific collection.",
         "description": "Endpoint.",
         "operationId": "Get_search_collection",
@@ -232,7 +232,7 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
     catalog_collection_search_path = "/catalog/collections/{owner_id}:{collection_id}/search"
 
     # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. POST METHOD
-    catalog_collection_search_post: Dict[str, Any] = {
+    catalog_collection_search_post: dict[str, Any] = {
         "summary": "search endpoint to search only inside a specific collection.",
         "description": "Endpoint.",
         "operationId": "Post_search_collection",

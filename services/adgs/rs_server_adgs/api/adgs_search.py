@@ -46,6 +46,7 @@ from rs_server_common.authentication.authentication_to_external import (
 )
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.stac_api_common import (
+    BBoxType,
     CollectionType,
     DateTimeType,
     FilterLangType,
@@ -54,6 +55,7 @@ from rs_server_common.stac_api_common import (
     MockPgstac,
     PageType,
     SortByType,
+    check_bbox_input,
     create_stac_collection,
     handle_exceptions,
 )
@@ -122,8 +124,8 @@ def auth_validation(request: Request, collection_id: str, access_type: str):
     Check if the user KeyCloak roles contain the right for this specific AUXIP collection and access type.
 
     Args:
-        collection_id (str): used to find the AUXIP station ("ADGS1, ADGS2")
-        from the RSPY_ADGS_SEARCH_CONFIG config yaml file.
+        collection_id (str): Used to find the AUXIP station ("ADGS1, ADGS2")
+                            from the RSPY_ADGS_SEARCH_CONFIG config yaml file.
         access_type (str): The type of access, such as "download" or "read".
     """
 
@@ -195,7 +197,7 @@ async def get_allowed_adgs_collections(request: Request):
 @handle_exceptions
 async def get_adgs_collection(
     request: Request,
-    collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
+    collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", description="E.G. ")],
 ) -> list[dict] | dict | stac_pydantic.Collection:
     """Return a specific ADGS collection."""
     logger.info(f"Starting {request.url.path}")
@@ -209,6 +211,7 @@ async def get_adgs_collection_items(
     request: Request,
     collection_id: CollectionType,
     # stac search parameters
+    bbox: BBoxType = None,
     datetime: DateTimeType = None,
     filter_: FilterType = None,
     filter_lang: FilterLangType = "cql2-text",
@@ -225,7 +228,7 @@ async def get_adgs_collection_items(
 
     Args:
         collection_id (str): AUXIP collection ID. Must be a valid collection identifier
-                             (e.g., 'ins_s1'). Maximum length of 100 characters.
+                             (e.g., 'ins_s1').
 
     Returns:
         list[dict]: A FeatureCollection of items belonging to the specified collection, or an
@@ -240,6 +243,7 @@ async def get_adgs_collection_items(
     return await request.app.state.pgstac_client.item_collection(
         collection_id,
         request,
+        bbox=check_bbox_input(bbox),
         datetime=datetime,
         filter=filter_,
         filter_lang=filter_lang,
@@ -253,12 +257,11 @@ async def get_adgs_collection_items(
 @handle_exceptions
 async def get_adgs_collection_specific_item(
     request: Request,
-    collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", max_length=100, description="E.G. ")],
+    collection_id: Annotated[str, FPath(title="AUXIP{} collection ID.", description="E.G. ")],
     item_id: Annotated[
         str,
         FPath(
             title="AUXIP Id",
-            max_length=100,
             description="E.G. S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
         ),
     ],
@@ -272,10 +275,9 @@ async def get_adgs_collection_specific_item(
 
     Args:
     - collection_id (str): AUXIP collection ID. Must be a valid collection identifier
-            (e.g., 'ins_s1'). Maximum length of 100 characters.
+            (e.g., 'ins_s1').
     - item_id (str): AUXIP item ID. Must be a valid item identifier
             (e.g., 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF').
-            Maximum length of 100 characters.
 
     Returns:
     - dict: A JSON object containing details of the specified item, or an error
@@ -328,25 +330,24 @@ def process_product_search(  # pylint: disable=too-many-locals
     **kwargs,
 ) -> stac_pydantic.ItemCollection:
     """
-    This function validates the input 'datetime' format, performs a search for products using the ADGS provider,
-    writes the search results to the database, and generates a STAC Feature Collection from the products.
+    Performs a search for products using the ADGS provider and generates a STAC Feature Collection from the products.
 
     Args:
         station (str): Auxip station identifier.
-        datetime (str): Time interval in ISO 8601 format.
-        limit (int, optional): Maximum number of products to return. Defaults to 1000.
-        sortby (str): Sort by +/-fieldName (ascending/descending).
+        queryables (dict): Query parameters for filtering results.
+        limit (int): Maximum number of products to return.
+        sortby (str): Sorting field with +/- prefix for ascending/descending order.
+        page (int, optional): Page number for pagination. Defaults to 1.
+        **kwargs: Additional search parameters.
 
     Returns:
-        list[dict] | dict: A list of STAC Feature Collections or an error message.
-                           If no products are found in the specified time range, returns an empty list.
+        stac_pydantic.ItemCollection: A STAC-compliant Feature Collection containing the search results.
 
     Raises:
-        HTTPException (fastapi.exceptions): If the pagination limit is less than 1.
-        HTTPException (fastapi.exceptions): If there is a bad station identifier (CreateProviderFailed).
-        HTTPException (fastapi.exceptions): If there is a database connection error (sqlalchemy.exc.OperationalError).
-        HTTPException (fastapi.exceptions): If there is a connection error to the station.
-        HTTPException (fastapi.exceptions): If there is a general failure during the process.
+        HTTPException: If the pagination limit is less than 1.
+        HTTPException: If an invalid station identifier is provided (`CreateProviderFailed`).
+        HTTPException: If there is a connection error with the station (`requests.exceptions.ConnectionError`).
+        HTTPException: If there is a general failure during the process.
     """
     set_eodag_auth_token(station, "auxip")
     try:

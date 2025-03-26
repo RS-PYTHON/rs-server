@@ -2675,13 +2675,13 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "pygments
 
 [[package]]
 name = "pytest-asyncio"
-version = "0.25.3"
+version = "0.26.0"
 description = "Pytest support for asyncio"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "pytest_asyncio-0.25.3-py3-none-any.whl", hash = "sha256:9e89518e0f9bd08928f97a3482fdc4e244df17529460bc038291ccaf8f85c7c3"},
-    {file = "pytest_asyncio-0.25.3.tar.gz", hash = "sha256:fc1da2cf9f125ada7e710b4ddad05518d4cee187ae9412e9ac9271003497f07a"},
+    {file = "pytest_asyncio-0.26.0-py3-none-any.whl", hash = "sha256:7b51ed894f4fbea1340262bdae5135797ebbe21d8638978e35d31c6d19f72fb0"},
+    {file = "pytest_asyncio-0.26.0.tar.gz", hash = "sha256:c4df2a697648241ff39e7f0e4a73050b03f123f760673956cf0d72a4990e312f"},
 ]
 
 [package.dependencies]
@@ -3117,10 +3117,10 @@ filelock = "^3.16.1"
 httpx = "^0.27.2"
 itsdangerous = "^2.2.0"
 markdown = "^3.6"
-opentelemetry-distro = "^0.52b0"
-opentelemetry-exporter-otlp = "^1.31.0"
-opentelemetry-instrumentation-aws-lambda = "^0.52b0"
-opentelemetry-test-utils = "^0.52b0"
+opentelemetry-distro = "^0.52b1"
+opentelemetry-exporter-otlp = "^1.31.1"
+opentelemetry-instrumentation-aws-lambda = "^0.52b1"
+opentelemetry-test-utils = "^0.52b1"
 orjson = [
     {version = "<3.10.0", markers = "python_version >= \"3.12\" and platform_system == \"Windows\""},
     {version = ">=3.10,<4.0", markers = "python_version < \"3.12\" or platform_system != \"Windows\""},
@@ -3838,4 +3838,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "18628a9116ecb9571e6bae219b6b4b0b6c92faccc7a0e7bf2901e36ce510b102"
+content-hash = "88456f83fb5941207090f24a8be904f3709fe55c02fc2a6647a9923e6a1454f0"

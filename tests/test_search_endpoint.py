@@ -815,6 +815,118 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
+        "endpoint, odata",
+        [
+            (
+                "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?bbox=100.0,0.0,105.0,1.0",
+                "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
+                "'productType' and att/OData.CSC.StringAttribute/Value eq 'AUX_OBMEMC')&$orderby=PublicationDate "
+                "desc&$top=10&$skip=0&$expand=Attributes",
+            ),
+            (
+                "/cadip/collections/cadip_session_by_id/items?bbox=100.0,0.0,105.0,1.0",
+                "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312'&$orderby="
+                "PublicationDate desc&$top=10&$skip=0",
+            ),
+        ],
+    )
+    @responses.activate
+    def test_valid_bbox_values_items(self, client: TestClient, endpoint: str, odata: str):
+        """Test endpoint call with valid bbox (4 or 6 coordinates without brackets)"""
+        responses.add(responses.GET, odata, json={"value": []}, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_200_OK
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint, odata",
+        [
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&bbox=100.0,0.0,105.0,1.0",
+                "http://127.0.0.1:5000/Products?$orderby=PublicationDate%20desc&$top=10&$skip=0&$expand=Attributes",
+            ),
+            (
+                ROUTER_PREFIX_CADIP,
+                "/cadip/search?collections=cadip_session_by_id&bbox=100.0,0.0,105.0,1.0",
+                "http://127.0.0.1:5000/Sessions?$filter=SessionId%20eq%20'S1A_20200105072204051312'"
+                "&$orderby=PublicationDate desc&$top=10&$skip=0",
+            ),
+        ],
+        indirect=["fastapi_app"],
+    )
+    @responses.activate
+    def test_valid_bbox_values_search(self, client: TestClient, endpoint: str, odata: str):
+        """Test endpoint call with valid bbox (4 or 6 coordinates without brackets)"""
+        responses.add(responses.GET, odata, json={"value": []}, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_200_OK
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "endpoint",
+        [
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?bbox=[100.0, 0.0, 105.0, 1.0]",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?bbox=0",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?bbox=0,0",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?bbox=0,0,0",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?bbox=0,0,0,1,1",
+            "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?bbox=0,0,0,1,1,1,1",
+            "/cadip/collections/cadip_session_by_id/items?bbox=[100.0, 0.0, 105.0, 1.0]",
+            "/cadip/collections/cadip_session_by_id/items?bbox=0",
+            "/cadip/collections/cadip_session_by_id/items?bbox=0,0",
+            "/cadip/collections/cadip_session_by_id/items?bbox=0,0,0",
+            "/cadip/collections/cadip_session_by_id/items?bbox=0,0,0,1,1",
+            "/cadip/collections/cadip_session_by_id/items?bbox=0,0,0,1,1,1,1",
+        ],
+    )
+    def test_invalid_bbox_values_items(self, client: TestClient, endpoint: str):
+        """Test endpoint call with invalid bbox (brackets, wrong coordinates count)"""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json()["detail"] in (
+            "could not convert string to float: '[100.0'",
+            "BBox '0' must have 4 or 6 values.",
+            "BBox '0,0' must have 4 or 6 values.",
+            "BBox '0,0,0' must have 4 or 6 values.",
+            "BBox '0,0,0,1,1' must have 4 or 6 values.",
+            "BBox '0,0,0,1,1,1,1' must have 4 or 6 values.",
+        ), response.json()["detail"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
+        "fastapi_app, endpoint",
+        [
+            (ROUTER_PREFIX_AUXIP, "/auxip/search?bbox=[100.0, 0.0, 105.0, 1.0]"),
+            (ROUTER_PREFIX_AUXIP, "/auxip/search?bbox=0"),
+            (ROUTER_PREFIX_AUXIP, "/auxip/search?bbox=0,0"),
+            (ROUTER_PREFIX_AUXIP, "/auxip/search?bbox=0,0,0"),
+            (ROUTER_PREFIX_AUXIP, "/auxip/search?bbox=0,0,0,1,1"),
+            (ROUTER_PREFIX_AUXIP, "/auxip/search?bbox=0,0,0,1,1,1,1"),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?bbox=[100.0, 0.0, 105.0, 1.0]"),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?bbox=0"),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?bbox=0,0"),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?bbox=0,0,0"),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?bbox=0,0,0,1,1"),
+            (ROUTER_PREFIX_CADIP, "/cadip/search?bbox=0,0,0,1,1,1,1"),
+        ],
+        indirect=["fastapi_app"],
+    )
+    def test_invalid_bbox_values_search(self, client: TestClient, endpoint: str):
+        """Test endpoint call with invalid bbox (brackets, wrong coordinates count)"""
+        response = client.get(endpoint)
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.json()["description"] in (
+            "could not convert string to float: '[100.0'",
+            "BBox '0' must have 4 or 6 values.",
+            "BBox '0,0' must have 4 or 6 values.",
+            "BBox '0,0,0' must have 4 or 6 values.",
+            "BBox '0,0,0,1,1' must have 4 or 6 values.",
+            "BBox '0,0,0,1,1,1,1' must have 4 or 6 values.",
+        ), response.json()["description"]
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
         "endpoint",
         [
             "/auxip/collections/s2_adgs2_AUX_OBMEMC/items?limit='invalid_value'",

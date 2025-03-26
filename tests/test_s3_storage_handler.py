@@ -1169,7 +1169,7 @@ def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
         assert False, "s3_handler.get_keys_from_s3 raised exception!"
 
     assert not failed
-    with open(os.path.join(local_path, s3_key), "r", encoding="utf-8") as f:
+    with open(os.path.join(local_path, s3_key), encoding="utf-8") as f:
         assert body == f.read()
 
     shutil.rmtree(local_path)

@@ -19,6 +19,7 @@ import threading
 import traceback
 import urllib.parse
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import datetime as dt
@@ -27,15 +28,9 @@ from pathlib import Path
 from typing import (
     Annotated,
     Any,
-    AsyncIterator,
-    Callable,
-    Dict,
-    List,
     Literal,
     Optional,
     Self,
-    Sequence,
-    Type,
 )
 
 import stac_pydantic
@@ -58,6 +53,8 @@ from rs_server_common.utils.utils import (
 )
 from stac_fastapi.api.models import Limit
 from stac_fastapi.extensions.core.filter.request import FilterLang
+from stac_fastapi.types.search import str2bbox
+from stac_pydantic.shared import BBox
 
 # pylint: disable=attribute-defined-outside-init
 logger = Logging.default(__name__)
@@ -73,6 +70,10 @@ SEARCH_LIMIT = 10000  # max number of products returned by eodag
 
 # Type hints
 CollectionType = Annotated[str, FPath(description="Collection ID", max_length=100)]
+BBoxType = Annotated[
+    Optional[str],
+    Query(description="Bounding box (geospatial footprint or extent, four or six comma-separated numbers)."),
+]
 DateTimeType = Annotated[
     Optional[str],
     Query(description='Time interval e.g "2024-01-01T00:00:00Z/2024-01-02T23:59:59Z"'),
@@ -129,10 +130,10 @@ class QueryableField(BaseModel):
 
     type: str
     title: str
-    format: Optional[str] = None
-    pattern: Optional[str] = None
-    description: Optional[str] = None
-    enum: Optional[List[str]] = None
+    format: str | None = None
+    pattern: str | None = None
+    description: str | None = None
+    enum: list[str] | None = None
 
 
 @dataclass
@@ -178,7 +179,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         """Used to mock the readpool function."""
 
         # Outer MockPgstac class type
-        outer_cls: Type["MockPgstac"]
+        outer_cls: type["MockPgstac"]
 
         @asynccontextmanager
         async def acquire(self) -> AsyncIterator["MockPgstac"]:
@@ -519,6 +520,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             stac_params["platform"] = mission
 
         # Discard these search parameters
+        params.pop("bbox", None)
         params.pop("conf", None)
         params.pop("filter-lang", None)
 
@@ -539,7 +541,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         # Only keep the authorized collections
         allowed = filter_allowed_collections(self.all_collections(), self.service, self.request)
-        allowed_ids = set(collection["id"] for collection in allowed)
+        allowed_ids = {collection["id"] for collection in allowed}
         if not collection_ids:
             collection_ids = list(allowed_ids)
         else:
@@ -574,7 +576,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         data = ItemCollection(features=list(all_items.values()), type="FeatureCollection")
         if "/search" in self.request.url.path:
             # Do the custom pagination only for search endpoints, for others let eodag handle on station side.
-            dict_data: Dict[str, Any] = self.paginate(data)
+            dict_data: dict[str, Any] = self.paginate(data)
         else:
             dict_data = data.model_dump()
 
@@ -592,7 +594,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         return dict_data
 
-    def paginate(self, item_collection: ItemCollection) -> Dict[str, Any]:
+    def paginate(self, item_collection: ItemCollection) -> dict[str, Any]:
         """Method used to apply pagination options after /search result were aggregated."""
 
         paginated_item_collection: ItemCollection = sort_feature_collection(item_collection, self.sortby)
@@ -867,7 +869,7 @@ def get_adgs_queryables() -> dict:
 
 
 def create_stac_collection(
-    products: List[Any],
+    products: list[Any],
     feature_template: dict,
     stac_mapper: dict,
 ) -> ItemCollection:
@@ -965,3 +967,16 @@ def check_datetime_input(input_value: Any) -> bool:
         return True
     except ValueError:
         return False
+
+
+def check_bbox_input(input_value: str | None) -> BBox | None:
+    """validate bbox for STAC API compliance"""
+    if input_value:
+        try:
+            bbox = str2bbox(input_value)
+            if len(bbox) not in [4, 6]:
+                raise log_http_exception(status.HTTP_400_BAD_REQUEST, f"Invalid bbox: {bbox}")
+            return bbox
+        except Exception as e:
+            raise log_http_exception(status.HTTP_400_BAD_REQUEST, str(e)) from e
+    return None

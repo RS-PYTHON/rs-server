@@ -21,7 +21,7 @@ import time
 import uuid
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Optional, Union
+from typing import Optional
 from urllib.parse import urlparse
 
 import requests
@@ -39,6 +39,7 @@ from pygeoapi.process.manager.postgresql import (
 )
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
+from rs_server_common import settings as common_settings
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     ServiceNotFound,
@@ -486,9 +487,9 @@ class Staging(
 
     def log_job_execution(
         self,
-        status: Union[JobStatus, None] = None,
-        progress: Union[int, None] = None,
-        message: Union[str, None] = None,
+        status: JobStatus | None = None,
+        progress: int | None = None,
+        message: str | None = None,
     ) -> tuple[str, dict]:
         """
         Method used to log progress into db.
@@ -911,7 +912,7 @@ class Staging(
                 # get the name of the cluster
                 cluster_name = os.environ["RSPY_DASK_STAGING_CLUSTER_NAME"]
                 # In local mode, authenticate to the dask cluster with username/password
-                if LOCAL_MODE:
+                if common_settings.LOCAL_MODE:
                     gateway_auth = BasicAuth(
                         os.environ["LOCAL_DASK_USERNAME"],
                         os.environ["LOCAL_DASK_PASSWORD"],
@@ -939,7 +940,7 @@ class Staging(
 
                 # In local mode, get the first cluster from the gateway.
                 cluster_id = None
-                if LOCAL_MODE:
+                if common_settings.LOCAL_MODE:
                     if clusters:
                         cluster_id = clusters[0].name
 
@@ -1023,7 +1024,7 @@ class Staging(
 
         return client
 
-    def get_refresh_token(self, domain) -> Optional[RefreshTokenData]:
+    def get_refresh_token(self, domain) -> RefreshTokenData | None:
         """Handles authentication token retrieval and refresh."""
         try:
             external_auth_config = load_external_auth_config_by_domain(domain)

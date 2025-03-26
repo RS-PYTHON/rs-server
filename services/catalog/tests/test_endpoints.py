@@ -26,7 +26,7 @@ import pathlib
 # pylint: disable=unused-argument
 import time
 from datetime import datetime, timedelta
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import AsyncMock
 
 import fastapi
@@ -64,7 +64,7 @@ def export_aws_credentials():
     Raises:
         None
     """
-    with open(RESOURCES_FOLDER / "s3" / "s3.yml", "r", encoding="utf-8") as f:
+    with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)
         os.environ.update(s3_config["s3"])
         os.environ.update(s3_config["boto"])
@@ -72,7 +72,7 @@ def export_aws_credentials():
 
 def clear_aws_credentials():
     """Clear AWS credentials from environment variables."""
-    with open(RESOURCES_FOLDER / "s3" / "s3.yml", "r", encoding="utf-8") as f:
+    with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
         s3_config = yaml.safe_load(f)
         for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
             del os.environ[env_var]
@@ -341,7 +341,7 @@ class TestCatalogSearchEndpoint:
     def test_search_using_several_collections(self, client, method):
         """Test a search request involving several collections (with both POST and GET method)"""
         # Search items on several collections without using implicit naming feature
-        test_json: Dict[str, Any] = {}
+        test_json: dict[str, Any] = {}
         test_params = {}
 
         if method == "POST":
@@ -1116,9 +1116,10 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
 
             catalog_files = s3_handler.list_s3_files_obj(self.catalog_bucket, "")
             assert len(catalog_files) == 2
-            assert set(catalog_files) == set(
-                ["S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip", "S1SIWOCN_20220412T054447_0024_S139_T902.nc"],
-            )
+            assert set(catalog_files) == {
+                "S1SIWOCN_20220412T054447_0024_S139_T420.cog.zip",
+                "S1SIWOCN_20220412T054447_0024_S139_T902.nc",
+            }
             # try to change the path / physical file for an asset, it should not work
             content["assets"]["S1SIWOCN_20220412T054447_0024_S139_T902.nc"] = {
                 "href": "s3://temp-bucket/some/other/path/S1SIWOCN_20220412T054447_0024_S139_T902.nc",

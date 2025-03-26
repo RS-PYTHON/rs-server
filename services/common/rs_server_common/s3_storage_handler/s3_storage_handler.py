@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=C0302
-
 """TODO Docstring to be added."""
 
 import logging
@@ -22,7 +20,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, List, Tuple
+from typing import Any
 from urllib.parse import urlparse
 
 import boto3
@@ -123,7 +121,7 @@ class CustomSessionRedirect(requests.Session):
         super().__init__()
         self.trusted_domains: list[str] = trusted_domains or []  # List of allowed hosts for redirection
 
-    def should_strip_auth(self, old_url, new_url):
+    def should_strip_auth(self, old_url, new_url) -> bool:
         """
         Override the default behavior of stripping Authorization headers during redirection.
 
@@ -303,7 +301,7 @@ class S3StorageHandler:
             secret_file (str): Path to the file containing secrets.
         """
         dict_filled = 0
-        with open(secret_file, "r", encoding="utf-8") as aws_credentials_file:
+        with open(secret_file, encoding="utf-8") as aws_credentials_file:
             lines = aws_credentials_file.readlines()
             for line in lines:
                 if not secrets["s3endpoint"] and "host_bucket" in line:
@@ -370,7 +368,7 @@ class S3StorageHandler:
             list_with_files (list): List of tuples (local_prefix, full_s3_key_path).
         """
         # declaration of the list
-        list_with_files: List[Any] = []
+        list_with_files: list[Any] = []
         # for each key, identify it as a file or a folder
         # in the case of a folder, the files will be recursively gathered
         for key in paths:
@@ -487,10 +485,10 @@ class S3StorageHandler:
             # If it was a 404 error, then the bucket does not exist.
             error_code = error.response["Error"]["Code"]
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
-                self.logger.exception((f"{bucket} is a private bucket. Forbidden access!"))
+                self.logger.exception(f"{bucket} is a private bucket. Forbidden access!")
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
             if error_code == S3_ERR_NOT_FOUND:
-                self.logger.exception((f"{bucket} bucket does not exist!"))
+                self.logger.exception(f"{bucket} bucket does not exist!")
                 raise RuntimeError(f"{bucket} bucket does not exist!") from error
             self.logger.exception(f"Exception when checking the access to {bucket} bucket: {error}")
             raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
@@ -510,7 +508,7 @@ class S3StorageHandler:
 
         Raises:
             RuntimeError: If an error occurs during the bucket access check or if
-            the s3_key is not available.
+                the s3_key is not available.
         """
         try:
             self.connect_s3()
@@ -521,10 +519,10 @@ class S3StorageHandler:
             # If it was a 404 error, then the bucket does not exist.
             error_code = error.response["Error"]["Code"]
             if error_code == S3_ERR_FORBIDDEN_ACCESS:
-                self.logger.exception((f"{bucket} is a private bucket. Forbidden access!"))
+                self.logger.exception(f"{bucket} is a private bucket. Forbidden access!")
                 raise RuntimeError(f"{bucket} is a private bucket. Forbidden access!") from error
             if error_code == S3_ERR_NOT_FOUND:
-                self.logger.exception((f"The key s3://{bucket}/{s3_key} does not exist!"))
+                self.logger.exception(f"The key s3://{bucket}/{s3_key} does not exist!")
                 return False
             self.logger.exception(f"Exception when checking the access to key s3://{bucket}/{s3_key}: {error}")
             raise RuntimeError(f"Exception when checking the access to {bucket} bucket") from error
@@ -888,13 +886,13 @@ retried for %s times. Aborting",
 
         Exception Handling:
             - HTTP errors such as timeouts or bad responses (4xx, 5xx) are handled using
-            `requests.exceptions.RequestException`.
+                `requests.exceptions.RequestException`.
             - S3 client errors such as `ClientError` and `BotoCoreError` are captured, logged, and retried.
             - Any other unexpected errors are caught and re-raised as `RuntimeError`.
         """
         if bucket is None or key is None:
             raise RuntimeError(f"Input error for streaming the file from {stream_url} to s3://{bucket}/{key}")
-        timeout: Tuple[int, int] = (HTTP_CONNECTION_TIMEOUT, HTTP_READ_TIMEOUT)
+        timeout: tuple[int, int] = (HTTP_CONNECTION_TIMEOUT, HTTP_READ_TIMEOUT)
 
         try:
             # Prepare the request

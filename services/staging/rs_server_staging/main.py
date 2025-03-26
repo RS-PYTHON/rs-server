@@ -33,6 +33,7 @@ from pygeoapi.process.manager.postgresql import PostgreSQLManager
 from pygeoapi.provider.postgresql import get_engine
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
+from rs_server_common.authentication.authentication import auth_validation
 from rs_server_common.authentication.authentication_to_external import (
     init_rs_server_config_yaml,
 )
@@ -42,7 +43,6 @@ from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
     apply_middlewares,
 )
-from rs_server_common.settings import CLUSTER_MODE, LOCAL_MODE
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
@@ -76,11 +76,8 @@ app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
 
 
-def must_be_authenticated(route_path: str) -> bool:
+def must_be_authenticated(path: str) -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
-
-    # Remove the /catalog prefix, if any
-    path = route_path.removeprefix("/catalog")
 
     no_auth = (path in ["/api", "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
     return not no_auth
@@ -96,7 +93,7 @@ app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authe
 app.add_middleware(HandleExceptionsMiddleware)
 
 # In cluster mode, add the oauth2 authentication
-if CLUSTER_MODE:
+if common_settings.CLUSTER_MODE:
     app = apply_middlewares(app)
 
 # CORS enabled origins
@@ -241,11 +238,9 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     init_rs_server_config_yaml()
     # Create jobs table
     process_manager = init_db()
-    if CLUSTER_MODE:
-        common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
     # In local mode, if the gateway is not defined, create a dask LocalCluster
     cluster = None
-    if LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
+    if common_settings.LOCAL_MODE and ("RSPY_DASK_STAGING_CLUSTER_NAME" not in os.environ):
         # Create the LocalCluster only in local mode
         cluster = LocalCluster()
         logger.info("Local Dask cluster created at startup.")
@@ -257,12 +252,14 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     fastapi_app.extra["station_token_list"] = []
     fastapi_app.extra["station_token_list_lock"] = threading.Lock()
 
+    common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
+
     # Yield control back to the application (this is where the app will run)
     yield
 
     # Shutdown logic (cleanup)
     logger.info("Shutting down the application...")
-    if LOCAL_MODE and cluster:
+    if common_settings.LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
     logger.info("Application gracefully stopped...")
@@ -275,7 +272,7 @@ async def ping():
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-@router.get("/processes")
+@router.get("/processes", dependencies=[Depends(just_for_the_lock_icon)])
 async def get_processes():
     """Returns list of all available processes from config."""
     if processes := [
@@ -286,9 +283,11 @@ async def get_processes():
     return JSONResponse(status_code=HTTP_404_NOT_FOUND, content="No processes found")
 
 
-@router.get("/processes/{resource}")
-async def get_resource(resource: str):
+@router.get("/processes/{resource}", dependencies=[Depends(just_for_the_lock_icon)])
+async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
+    # rs_processes_{resource}_read role needed to access this endpoint.
+    auth_validation("read", resource, request=request, staging_process=True)
     if resource_info := next(
         (
             api.config["resources"][defined_resource]
@@ -305,6 +304,8 @@ async def get_resource(resource: str):
 @router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
 async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
     """Used to execute processing jobs."""
+    # rs_processes_{resource}_execute role needed to access this endpoint.
+    auth_validation("execute", resource, request=req, staging_process=True)
     if resource not in api.config["resources"]:
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
 
@@ -325,17 +326,19 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
 
 
 # Endpoint to get the status of a job by job_id
-@router.get("/jobs/{job_id}")
-async def get_job_status_endpoint(job_id: str = Path(..., title="The ID of the job")):
+@router.get("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon)])
+async def get_job_status_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
     try:
-        return app.extra["process_manager"].get_job(job_id)
+        job = app.extra["process_manager"].get_job(job_id)
+        auth_validation("read", job["process_id"], request=request, staging_process=True)
+        return job
     except JobNotFoundError as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
-@router.get("/jobs")
+@router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon)])
 async def get_jobs_endpoint():
     """Returns the status of all jobs."""
     try:
@@ -345,10 +348,12 @@ async def get_jobs_endpoint():
         raise HTTPException(status_code=HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
 
-@router.delete("/jobs/{job_id}")
-async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job to delete")):
+@router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon)])
+async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
     try:
+        job = app.extra["process_manager"].get_job(job_id)
+        auth_validation("dismiss", job["process_id"], request=request, staging_process=True)
         app.extra["process_manager"].delete_job(job_id)
         return {"message": f"Job {job_id} deleted successfully"}
     except JobNotFoundError as error:
@@ -357,18 +362,19 @@ async def delete_job_endpoint(job_id: str = Path(..., title="The ID of the job t
 
 
 @router.get("/jobs/{job_id}/results")
-async def get_specific_job_result_endpoint(job_id: str = Path(..., title="The ID of the job")):
+async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
     try:
         # Query the database to find the job by job_id
         job = app.extra["process_manager"].get_job(job_id)
+        auth_validation("read", job["process_id"], request=request, staging_process=True)
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
     except JobNotFoundError as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
 
 
-if LOCAL_MODE:
+if common_settings.LOCAL_MODE:
 
     @router.post("/staging/dask/auth")
     async def dask_auth(local_dask_username: str, local_dask_password: str):

@@ -178,12 +178,12 @@ def build_aggregated_openapi(services_file: Path, to_path: Path):
 
         # Read the input configuration file
         try:
-            with open(services_file, "r", encoding="utf-8") as file:
+            with open(services_file, encoding="utf-8") as file:
                 conf_contents = yaml.safe_load(file)
-        except IOError as e:
-            raise IOError(f"File {services_file} was not found.") from e
+        except OSError as e:
+            raise OSError(f"File {services_file} was not found.") from e
         except ValueError as e:
-            raise IOError(f"File {services_file} content is invalid.") from e
+            raise OSError(f"File {services_file} content is invalid.") from e
 
         services = ServiceConf.load_service_conf(conf_contents.get("services", {}))
         aggregated = AggregatedOpenapi(conf_contents.get("info", {}), services).build_openapi()
@@ -192,8 +192,8 @@ def build_aggregated_openapi(services_file: Path, to_path: Path):
             with open(to_path, "w", encoding="utf-8") as file:
                 json.dump(aggregated, file, indent=2)
                 file.write("\n")
-        except IOError as e:
-            raise IOError(f"Unable to write the aggregated openapi into {to_path}.") from e
+        except OSError as e:
+            raise OSError(f"Unable to write the aggregated openapi into {to_path}.") from e
     except BaseException as e:
         raise BuildOpenapiFailed() from e
 

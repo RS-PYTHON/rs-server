@@ -25,6 +25,8 @@ repos:
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
     -   id: check-toml
+    -   id: check-yaml
+        exclude: services/frontend/tests/resources/tools/invalid.yml
 
 # Format (black)
 -   repo: https://github.com/psf/black
@@ -44,6 +46,12 @@ repos:
     rev: v3.1.0
     hooks:
     -   id: add-trailing-comma
+
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v3.19.1
+    hooks:
+    -   id: pyupgrade
+        args: [--py311-plus]
 
 # Remarks:
 #   - don't run flake8, pylint and mypy because they are already run in the CI.

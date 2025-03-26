@@ -16,33 +16,49 @@
 
 # Ignore not-at-top level import errors
 
-# pylint: disable=C0413
+# pylint: disable=C0413, ungrouped-imports
 # flake8: noqa: F402
 
 import asyncio
 import os
-
-os.environ["RSPY_LOCAL_MODE"] = "1"
 import os.path as osp
 from datetime import datetime
+from importlib import reload
 from pathlib import Path
 
 import pytest
 import yaml
 from fastapi.testclient import TestClient
-from rs_server_common.authentication.authentication_to_external import (
-    ExternalAuthenticationConfig,
+from rs_server_common.utils.pytest.pytest_authentication_utils import (
+    init_app_cluster_mode,
 )
-from rs_server_staging.processors import Staging  # pylint: disable=import-error
-from rs_server_staging.processors import RefreshTokenData
 
-TEST_DETAIL = "Test detail"
+# Init the FastAPI application with all the cluster mode features (local mode=0)
+# Do this before any other imports.
+# We'll restore the local mode by default a few lines below.
+# pylint: disable=wrong-import-position
+init_app_cluster_mode()
 
 
 # These env vars are mandatory before importing the staging main module
 for envvar in "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB":
     os.environ[envvar] = ""
+from rs_server_common import settings as common_settings
 from rs_server_staging.main import app  # pylint: disable=import-error
+
+# Restore the local mode by default
+os.environ["RSPY_LOCAL_MODE"] = "1"
+reload(common_settings)
+
+from rs_server_common.authentication.authentication_to_external import (  # pylint: disable=import-error
+    ExternalAuthenticationConfig,
+)
+from rs_server_staging.processors import (  # pylint: disable=import-error
+    RefreshTokenData,
+    Staging,
+)
+
+TEST_DETAIL = "Test detail"
 
 
 @pytest.fixture(name="set_db_env_var")
@@ -93,7 +109,7 @@ def geoapi_cfg_() -> Path:
 @pytest.fixture(name="predefined_config")
 def config_(geoapi_cfg):
     """Fixture for pygeoapi yaml config"""
-    with open(geoapi_cfg, "r", encoding="utf-8") as yaml_file:
+    with open(geoapi_cfg, encoding="utf-8") as yaml_file:
         return yaml.safe_load(yaml_file)
 
 
@@ -106,6 +122,7 @@ def dbj_():
             "status": "running",
             "progress": 0.0,
             "message": TEST_DETAIL,
+            "process_id": "staging",
             "created": str(datetime(2024, 1, 1, 12, 0, 0)),
             "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
         },
@@ -114,6 +131,7 @@ def dbj_():
             "status": "running",
             "progress": 55.0,
             "message": TEST_DETAIL,
+            "process_id": "staging",
             "created": str(datetime(2024, 1, 2, 12, 0, 0)),
             "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
         },
@@ -122,6 +140,7 @@ def dbj_():
             "status": "running",
             "progress": 15.0,
             "message": TEST_DETAIL,
+            "process_id": "staging",
             "created": str(datetime(2024, 1, 3, 12, 0, 0)),
             "updated": str(datetime(2024, 1, 3, 13, 0, 0)),
         },
@@ -130,6 +149,7 @@ def dbj_():
             "status": "successful",
             "progress": 100.0,
             "message": TEST_DETAIL,
+            "process_id": "staging",
             "created": str(datetime(2024, 1, 4, 12, 0, 0)),
             "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
         },

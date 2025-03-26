@@ -39,6 +39,7 @@ expected_jobs_test = [
         "status": "running",
         "progress": 0.0,
         "message": "Test detail",
+        "process_id": "staging",
         "created": str(datetime(2024, 1, 1, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
     },
@@ -47,6 +48,7 @@ expected_jobs_test = [
         "status": "running",
         "progress": 55.0,
         "message": "Test detail",
+        "process_id": "staging",
         "created": str(datetime(2024, 1, 2, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
     },
@@ -55,6 +57,7 @@ expected_jobs_test = [
         "status": "running",
         "progress": 15.0,
         "message": "Test detail",
+        "process_id": "staging",
         "created": str(datetime(2024, 1, 3, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 3, 13, 0, 0)),
     },
@@ -63,6 +66,7 @@ expected_jobs_test = [
         "status": "successful",
         "progress": 100.0,
         "message": "Test detail",
+        "process_id": "staging",
         "created": str(datetime(2024, 1, 4, 12, 0, 0)),
         "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
     },
@@ -251,7 +255,7 @@ async def test_get_job(
     # Return an existing job normally (HTTP 200)
     else:
         mock_db_table.get_job.return_value = next(
-            job for job in mock_jobs if job["identifier"] == expected_job["identifier"]
+            job | {"process_id": "staging"} for job in mock_jobs if job["identifier"] == expected_job["identifier"]
         )
 
     # Ensure app.extra contains all necessary attributes at once
@@ -505,18 +509,10 @@ async def test_specific_process(
 
 @pytest.mark.asyncio
 async def test_app_lifespan_local_mode(
-    mocker,
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,  # pylint: disable=unused-argument
 ):
     """Test app_lifespan when running in local mode (no Dask Gateway connection)."""
-
-    # Mock environment to simulate local mode
-    mocker.patch.dict(os.environ, {"RSPY_LOCAL_MODE": "1"})
-
-    # Mock la variable globale LOCAL_MODE
-    mocker.patch("rs_server_staging.main.LOCAL_MODE", True)
-
     mock_app = FastAPI()
 
     async with app_lifespan(mock_app):
@@ -535,7 +531,8 @@ async def test_app_lifespan_gateway_error(
     """Test app_lifespan when there is an error in connecting to the Dask Gateway."""
 
     # Mock environment variables to simulate gateway mode
-    mocker.patch("rs_server_staging.main.LOCAL_MODE", new=False, autospec=False)
+    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
+    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
 
     # Mock FastAPI app
     mock_app = FastAPI()
