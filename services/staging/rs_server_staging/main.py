@@ -365,10 +365,9 @@ def format_jobs_data(jobs: dict):
     Method validate information on all existing jobs
 
     Args:
-        request (Request): input request
-        jobs_data: information on all existing jobs
+        jobs: information on all existing jobs
     Result:
-        reformatted and validated jobs_data variable to put in the response
+        reformatted and validated jobs_data variable to provide to the response
     """
     if not isinstance(jobs, dict):
         raise JobsFormatError("Expected a dictionary as input")
