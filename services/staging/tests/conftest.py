@@ -95,9 +95,13 @@ def client_(mocker):
     # Test the FastAPI application, opens the database session
     mocker.patch("rs_server_staging.main.init_db", return_value=None)
     mocker.patch("rs_server_staging.main.PostgreSQLManager", return_value=mocker.Mock())
+    print(f"####################{os.environ['RSPY_LOCAL_MODE']}")
     with TestClient(app) as client:
 
         yield client
+
+        os.environ["RSPY_LOCAL_MODE"] = "1"
+        reload(common_settings)
 
 
 @pytest.fixture(name="geoapi_cfg")
