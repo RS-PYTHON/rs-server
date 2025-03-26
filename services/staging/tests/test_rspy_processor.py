@@ -365,8 +365,7 @@ class TestStagingCatalog:
             params=expected_filter_object,
             timeout=5,
         )
-        mock_create_streaming_list.called_once()
-        mock_log_job_execution.called_once()
+        mock_create_streaming_list.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_check_catalog_get_wrong_response(self, mocker, staging_instance: Staging, staging_inputs: dict):
