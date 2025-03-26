@@ -60,6 +60,9 @@ paths:
           application/json:
             schema:
               $ref: './execute.yaml'
+            examples:
+              example1:
+                $ref: '#/components/examples/AsyncExecuteBodyExample'
       responses:
         '200':
           description:  Result of synchronous execution
@@ -132,3 +135,94 @@ paths:
             application/json:
               schema:
                 $ref: './results.yaml'
+components:
+  examples:
+    AsyncExecuteBodyExample:
+      summary: Example of an execution request
+      value:
+        inputs:
+          collection: "my_test_collection"
+          items:
+            value:
+              type: "FeatureCollection"
+              features:
+                - id: "CADU1.raw"
+                  type: "Feature"
+                  links:
+                    - rel: "collection"
+                      type: "application/json"
+                      href: "http://127.0.0.1:8003/collections/TestUser_s1_chunk"
+                    - rel: "parent"
+                      type: "application/json"
+                      href: "http://127.0.0.1:8003/collections/TestUser_s1_chunk"
+                    - rel: "root"
+                      type: "application/json"
+                      href: "http://127.0.0.1:8003/"
+                    - rel: "self"
+                      type: "application/geo+json"
+                      href: "http://127.0.0.1:8003/collections/TestUser_s1_chunk/items/CADU1.raw"
+                  assets:
+                    CADU1.raw:
+                      href: "https://rs-server/catalog/TestUser/collections/s1_chunk/items/CADU1.raw/download/file"
+                      alternate:
+                        s3:
+                          href: "s3://rs-cluster-catalog/stations/CADIP/CADU1.raw"
+                      file:size: 58
+                  geometry:
+                    type: "Polygon"
+                    coordinates:
+                      - [[180, -90], [180, 90], [-180, 90], [-180, -90], [180, -90]]
+                  bbox: [-180.0, -90.0, 180.0, 90.0]
+                  collection: "TestUser_s1_chunk"
+                  properties:
+                    owner: "TestUser"
+                    created: "2020-01-05T18:52:56.165Z"
+                    cadip:id: "d52278c7-75e5-4cb5-b8e4-0a75b83e9a2d"
+                    datetime: "1970-01-01T12:00:00.000Z"
+                    cadip:channel: 1
+                    cadip:session_id: "S1A_20200105072204051312"
+                    cadip:block_number: 1
+                  stac_version: "1.0.0"
+                  stac_extensions:
+                    - "https://stac-extensions.github.io/file/v2.1.0/schema.json"
+                    - "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
+                - id: "CADU2.raw"
+                  type: "Feature"
+                  links:
+                    - rel: "collection"
+                      type: "application/json"
+                      href: "http://127.0.0.1:8003/collections/TestUser_s1_chunk"
+                    - rel: "parent"
+                      type: "application/json"
+                      href: "http://127.0.0.1:8003/collections/TestUser_s1_chunk"
+                    - rel: "root"
+                      type: "application/json"
+                      href: "http://127.0.0.1:8003/"
+                    - rel: "self"
+                      type: "application/geo+json"
+                      href: "http://127.0.0.1:8003/collections/TestUser_s1_chunk/items/CADU2.raw"
+                  assets:
+                    CADU2.raw:
+                      href: "https://rs-server/catalog/TestUser/collections/s1_chunk/items/CADU2.raw/download/file"
+                      alternate:
+                        s3:
+                          href: "s3://rs-cluster-catalog/stations/CADIP/CADU2.raw"
+                      file:size: 58
+                  geometry:
+                    type: "Polygon"
+                    coordinates:
+                      - [[180, -90], [180, 90], [-180, 90], [-180, -90], [180, -90]]
+                  bbox: [-180.0, -90.0, 180.0, 90.0]
+                  collection: "TestUser_s1_chunk"
+                  properties:
+                    owner: "TestUser"
+                    created: "2020-01-06T18:52:56.165Z"
+                    cadip:id: "d52278c7-75e5-4cb5-b8e4-0a75b83e9a2d"
+                    datetime: "1970-01-01T12:00:00.000Z"
+                    cadip:channel: 1
+                    cadip:session_id: "S1A_20200105072204051313"
+                    cadip:block_number: 2
+                  stac_version: "1.0.0"
+                  stac_extensions:
+                    - "https://stac-extensions.github.io/file/v2.1.0/schema.json"
+                    - "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
