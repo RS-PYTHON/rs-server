@@ -114,9 +114,7 @@ def streaming_task(  # pylint: disable=R0913, R0917
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
             )
-            # DEBUG ONLY !
-            product_url = product_url.replace("cadip-station:5000", "127.0.0.1:5002")
-            # end of DEBUG ONLY !
+
             s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
             s3_handler.disconnect_s3()
             break
@@ -1040,7 +1038,10 @@ class Staging(
                 )
 
                 auth_validation(
-                    external_auth_config.station_id, "staging_download", request=self.request, staging_process=True,
+                    external_auth_config.station_id,
+                    "staging_download",
+                    request=self.request,
+                    staging_process=True,
                 )
 
         except (ServiceNotFound, HTTPException) as e:
