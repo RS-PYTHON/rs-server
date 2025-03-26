@@ -21,7 +21,6 @@ import time
 import uuid
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Optional
 from urllib.parse import urlparse
 
 import requests
@@ -115,7 +114,9 @@ def streaming_task(  # pylint: disable=R0913, R0917
                 os.environ["S3_ENDPOINT"],
                 os.environ["S3_REGION"],
             )
-
+            # DEBUG ONLY !
+            product_url = product_url.replace("cadip-station:5000", "127.0.0.1:5002")
+            # end of DEBUG ONLY !
             s3_handler.s3_streaming_upload(product_url, config.trusted_domains, auth, bucket, s3_file)
             s3_handler.disconnect_s3()
             break
@@ -176,7 +177,7 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
         self.config = config
         self.padlock = threading.Lock()
         self.token_dict: dict = {}
-        self.subscribers = 0
+        self.subscribers = 1
 
     def station_id(self):
         """
@@ -211,7 +212,7 @@ class RefreshTokenData:  # pylint: disable=too-few-public-methods
         """
         with self.padlock:
             self.subscribers -= 1
-            logger.debug(f"Unsubscribe from {self.station_id()}. Number of subscribers : {self.subscribers}")
+            logger.debug(f"Unsubscribe from station {self.station_id()}. Number of subscribers : {self.subscribers}")
 
     def update_dict_token(self, new_dict_token, logger):
         """
@@ -1024,10 +1025,15 @@ class Staging(
 
         return client
 
-    def get_refresh_token(self, domain) -> RefreshTokenData | None:
+    def get_refresh_token(self, domain) -> RefreshTokenData:
         """Handles authentication token retrieval and refresh."""
         try:
             external_auth_config = load_external_auth_config_by_domain(domain)
+            if not external_auth_config:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Failed to retrieve the configuration for the station token.",
+                )
             if not LOCAL_MODE:
                 from rs_server_common.authentication.authentication import (  # pylint: disable=import-outside-toplevel
                     auth_validation,
@@ -1035,25 +1041,24 @@ class Staging(
 
                 auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
 
-        except ServiceNotFound as e:
-            self.logger.error(f"Exception while processing a feature: {e}")
-            return None
+        except (ServiceNotFound, HTTPException) as e:
+            self.logger.exception(f"{e}")
+            raise RuntimeError(f"{e}") from e
 
         # Find or create a token
-        for refresh_token in self.station_token_list:
-            if refresh_token.station_id() == external_auth_config.station_id:
-                break
-        else:
-            refresh_token = RefreshTokenData(external_auth_config)
-            with self.station_token_list_lock:
+        with self.station_token_list_lock:
+            for refresh_token in self.station_token_list:
+                if refresh_token.station_id() == external_auth_config.station_id:
+                    refresh_token.subscribe(self.logger)
+                    break
+            else:
+                refresh_token = RefreshTokenData(external_auth_config)
                 self.station_token_list.append(refresh_token)
-
-        refresh_token.subscribe(self.logger)
 
         if not update_station_token(refresh_token, self.logger):
             refresh_token.unsubscribe(self.logger)
             self.logger.error("Could not retrieve or refresh the station token.")
-            return None
+            raise RuntimeError("Could not retrieve or refresh the station token.")
 
         return refresh_token
 
@@ -1098,15 +1103,17 @@ class Staging(
         # to the external station if the connection to the dask cluster fails
         try:
             dask_client = self.dask_cluster_connect()
-            self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
         except RuntimeError as re:
             self.logger.error("Failed to start the staging process")
             return self.log_job_execution(JobStatus.failed, 0, str(re))
 
         # Step 4: Retrieve the authentication token (only if dask connection succeeded)
-        refresh_token = self.get_refresh_token(domain)
-        if refresh_token is None:
-            return self.log_job_execution(JobStatus.failed, 0, "Could not retrieve or refresh the station token")
+        try:
+            refresh_token = self.get_refresh_token(domain)
+            self.log_job_execution(JobStatus.running, 0, "Sending tasks to the dask cluster")
+        except RuntimeError as re:
+            self.logger.error("Failed to start the staging process")
+            return self.log_job_execution(JobStatus.failed, 0, f"Loading station token service failed: {re}")
 
         # Step 5: Manage dask tasks in a separate thread
         # starting a thread for managing the dask callbacks
