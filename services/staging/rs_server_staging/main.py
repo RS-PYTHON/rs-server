@@ -13,8 +13,6 @@
 # limitations under the License.
 
 """rs server staging main module."""
-import asyncio
-
 # pylint: disable=E0401
 import os
 import pathlib
@@ -50,7 +48,6 @@ from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import (
     processors,
-    update_station_token,
 )
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import (
@@ -259,12 +256,6 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     # token refereshment logic
     fastapi_app.extra["station_token_list"] = []
     fastapi_app.extra["station_token_list_lock"] = threading.Lock()
-    fastapi_app.extra["shutdown_event"] = asyncio.Event()
-    # Run the refresh loop in the background. Uncomment to use it, and comment
-    # the usage of the update_station_token in manage_dask_tasks from processors.py
-    # fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
-    #     refresh_auth_tokens(timeout=REFRESH_TOKENS_TIMEOUT),
-    # )
 
     # Yield control back to the application (this is where the app will run)
     yield
@@ -274,60 +265,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     if LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
-    # fastapi_app.extra["shutdown_event"].set()  # Signal shutdown
-    # Cancel the refresh task and wait for it to exit cleanly
-    # refresh_task = fastapi_app.extra.get("refresh_task")
-    # if refresh_task:
-    #     refresh_task.cancel()
-    #     try:
-    #         await refresh_task  # Ensure the task exits
-    #     except asyncio.CancelledError:
-    #         pass  # Ignore the cancellation exception
     logger.info("Application gracefully stopped...")
-
-
-async def refresh_auth_tokens(timeout: int = 60):
-    """Background thread to refresh tokens when needed."""
-    logger.info("Starting the background thread to refresh tokens")
-    while True:
-        try:
-            # Wait for either the shutdown event or the timeout before starting the refresh process
-            # for existing station tokens.
-            # This thread may not be necessary, as token refreshment could be triggered each time a new
-            # task is submitted to the Dask cluster using the multithreaded shared list
-            # object (app.extra["station_token_list"]), in manage_dask_tasks. However, this approach provides
-            # a centralized method for updating tokens, preventing redundant calls to
-            # get_station_token whenever a new task is submitted. While get_station_token will often
-            # exit early due to the "not_expired" condition, avoiding unnecessary calls remains beneficial.
-
-            await asyncio.wait(
-                {
-                    asyncio.create_task(app.extra["shutdown_event"].wait()),
-                },
-                timeout=timeout,  # Wait up to timeout seconds before waking up
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-
-            if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
-                logger.info("Finishing the background thread to refresh tokens")
-                break
-
-            logger.debug("Starting the tokens refreshment")
-            with app.extra["station_token_list_lock"]:
-                # for auth in app.extra["station_token_list"]:
-                #     if not await update_station_token(auth, logger):
-                #         logger.error(f"Could not refresh station token for {auth.station_id}")
-                # Refresh tokens concurrently for all items in the list
-                await asyncio.gather(
-                    *[update_station_token(auth, logger) for auth in app.extra["station_token_list"]],
-                )
-            logger.debug("Refreshing tokens finished")
-
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            # Handle cancellation properly even for asyncio.CancelledError (for example when FastAPI shuts down)
-            logger.exception(f"Handle cancellation: {e}")
-            break
-    logger.info("Exiting from the tokens refreshment thread !")
 
 
 # Health check route
