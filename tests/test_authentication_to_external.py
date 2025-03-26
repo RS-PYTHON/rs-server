@@ -132,13 +132,12 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
     Args:
         get_external_auth_config: Fixture to get an ExternalAuthenticationConfig object.
     """
-    mock_empty_dict = {}
 
     ext_auth_config = get_external_auth_config
 
     # ---------- Test error when no configuration object is provided
     with pytest.raises(HTTPException) as exc:
-        get_station_token(None, mock_empty_dict)
+        get_station_token(None, {})
     assert "Failed to retrieve the configuration for the station token." in str(exc.value)
 
     # ---------- Test error when the token variable doesn't have all mandatory attributes
@@ -151,7 +150,7 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
         body=json.dumps(response),
     )
     with pytest.raises(TokenDataNotFound) as exc:
-        get_station_token(ext_auth_config, mock_empty_dict)
+        get_station_token(ext_auth_config, {})
     assert f"""Mandatory attribute access_token is not defined in the token variable
                                         of the station {ext_auth_config.station_id}!""" in str(
         exc.value,
@@ -172,7 +171,7 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
         body=json.dumps(response),
     )
 
-    new_token = get_station_token(ext_auth_config, mock_empty_dict)
+    new_token = get_station_token(ext_auth_config, {})
     assert new_token["access_token"] == mock_token_dict["access_token"]
 
     # ---------- Test error when station responds with an error
@@ -184,7 +183,7 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
         body=json.dumps({"detail": "forbidden"}),
     )
     with pytest.raises(HTTPException) as exc:
-        get_station_token(ext_auth_config, mock_empty_dict)
+        get_station_token(ext_auth_config, {})
     assert f"Failed to get the token from the station {ext_auth_config.station_id}" in str(exc.value)
 
     # ---------- Test to generate a new token using the refresh token when the current
