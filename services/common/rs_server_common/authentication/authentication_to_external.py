@@ -253,10 +253,10 @@ def validate_token_dict(token_dict: Any, config: ExternalAuthenticationConfig):
                 )
             if not token_dict[attr]:
                 logger.error(
-                    f"""Token variable attribute {attr} of the station """ f"""{config.station_id} is None !""",
+                    f"""Token variable attribute {attr} of the station {config.station_id} is None !""",
                 )
                 raise TokenDataNotFound(
-                    f"""Token variable attribute {attr} of the station""" f"""{config.station_id} is None !""",
+                    f"""Token variable attribute {attr} of the station {config.station_id} is None !""",
                 )
 
 
