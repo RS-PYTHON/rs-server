@@ -123,7 +123,7 @@ def test_create_rs_server_config_yaml(
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-def test_get_station_token(mocker, get_external_auth_config, mock_variable):
+def test_get_station_token(get_external_auth_config, mock_token_dict):
     """Test retrieval of station token by station ID and service.
 
     This unit test checks the functionality of retrieving a station token using
@@ -132,19 +132,17 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
     Args:
         get_external_auth_config: Fixture to get an ExternalAuthenticationConfig object.
     """
-    mock_empty_variable = mocker.MagicMock()
+    mock_empty_dict = {}
 
     ext_auth_config = get_external_auth_config
 
     # ---------- Test error when no configuration object is provided
-    mock_empty_variable.get.return_value = {}
     with pytest.raises(HTTPException) as exc:
-        get_station_token(None, mock_empty_variable.get())
+        get_station_token(None, mock_empty_dict)
     assert "Failed to retrieve the configuration for the station token." in str(exc.value)
 
     # ---------- Test error when the token variable doesn't have all mandatory attributes
     # Simulate an invalid format of the token response from the authentication service
-    mock_empty_variable.get.return_value = {}
     response = {"unexpected_field": TOKEN, "token_type": "Bearer", "expires_in": 3600}
     responses.add(
         responses.POST,
@@ -153,16 +151,15 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         body=json.dumps(response),
     )
     with pytest.raises(TokenDataNotFound) as exc:
-        get_station_token(ext_auth_config, mock_empty_variable.get())
+        get_station_token(ext_auth_config, mock_empty_dict)
     assert f"""Mandatory attribute access_token is not defined in the token variable
                                         of the station {ext_auth_config.station_id}!""" in str(
         exc.value,
     )
 
     # ---------- Test valid token retrieval if we don't have any token yet
-    mock_empty_variable.get.return_value = {}
     # Simulate a token response from the authentication service
-    response = mock_variable.get()
+    response = mock_token_dict
 
     # We remove creation date because these information are not returned by the station
     # but only added in addition to the station response in the get_station_token method
@@ -175,12 +172,11 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         body=json.dumps(response),
     )
 
-    mock_empty_variable.get.return_value = get_station_token(ext_auth_config, mock_empty_variable.get())
-    assert mock_empty_variable.get()["access_token"] == mock_variable.get()["access_token"]
+    new_token = get_station_token(ext_auth_config, mock_empty_dict)
+    assert new_token["access_token"] == mock_token_dict["access_token"]
 
     # ---------- Test error when station responds with an error
     # Simulate a forbidden response from the station
-    mock_empty_variable.get.return_value = {}
     responses.add(
         responses.POST,
         url=ext_auth_config.token_url,
@@ -188,15 +184,15 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         body=json.dumps({"detail": "forbidden"}),
     )
     with pytest.raises(HTTPException) as exc:
-        get_station_token(ext_auth_config, mock_empty_variable.get())
+        get_station_token(ext_auth_config, mock_empty_dict)
     assert f"Failed to get the token from the station {ext_auth_config.station_id}" in str(exc.value)
 
     # ---------- Test to generate a new token using the refresh token when the current
     # access token is expired
     # Change the mock variable creation date and expiration date of the access token
     # to make it become unvalid
-    mock_variable.get()["access_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
-    mock_variable.get()["refresh_token_creation_date"] = datetime.datetime.now()
+    mock_token_dict["access_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
+    mock_token_dict["refresh_token_creation_date"] = datetime.datetime.now()
 
     response_new_valid_token = {
         "access_token": "NewFakeAccessToken",
@@ -211,17 +207,17 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         status=HTTP_200_OK,
         body=json.dumps(response_new_valid_token),
     )
-    mock_variable.get.return_value = get_station_token(ext_auth_config, mock_variable.get())
+    new_token = get_station_token(ext_auth_config, mock_token_dict)
 
     # Check that the old token has been replaced with the new one
-    assert mock_variable.get()["access_token"] == response_new_valid_token["access_token"]
+    assert new_token["access_token"] == response_new_valid_token["access_token"]
 
     # ---------- Test to generate a new token when both current access and refresh tokens are expired
 
     # Change the mock variable creation date and expiration date of both access and refresh tokens
     # to make them become unvalid
-    mock_variable.get()["access_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
-    mock_variable.get()["refresh_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
+    mock_token_dict["access_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
+    mock_token_dict["refresh_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
 
     response_new_valid_token = {
         "access_token": "NewFakeAccessToken",
@@ -236,9 +232,9 @@ def test_get_station_token(mocker, get_external_auth_config, mock_variable):
         status=HTTP_200_OK,
         body=json.dumps(response_new_valid_token),
     )
-    mock_variable.get.return_value = get_station_token(ext_auth_config, mock_variable.get())
+    new_token = get_station_token(ext_auth_config, mock_token_dict)
     # Check that the old token has been replaced with the new one
-    assert mock_variable.get()["refresh_token"] == response_new_valid_token["refresh_token"]
+    assert new_token["refresh_token"] == response_new_valid_token["refresh_token"]
 
 
 @pytest.mark.unit
