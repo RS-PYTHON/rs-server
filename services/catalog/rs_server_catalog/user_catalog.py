@@ -495,8 +495,9 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     res = ecql_ast.rhs
             elif left := self.find_owner_id(ecql_ast.lhs):
                 res = left
-            elif right := self.find_owner_id(ecql_ast.rhs):
-                res = right
+            elif hasattr(ecql_ast, "rhs"):
+                if right := self.find_owner_id(ecql_ast.rhs):
+                    res = right
         return res
 
     async def collection_exists(self, request: Request, collection_id: str) -> bool:
@@ -550,14 +551,6 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     "filter": stac_filter,
                 }  # The "filter_lang" field has to be placed BEFORE the filter.
 
-            # ----- Call /catalog/collections/{owner_id}:{collection_id}/search endpoint.
-            if request.scope["path"] != "/search":
-                # Reroute url to /search and update the request body
-                content = await request.json()
-                content = {"collections": self.request_ids["collection_ids"], **content}
-                request._body = json.dumps(content).encode("utf-8")  # pylint: disable=protected-access
-                request.scope["path"] = "/search"
-
             # ----- Call /catalog/search with POST method endpoint
             if "collections" in content:
                 # Check if each collection exist with their raw name, if not concatenate owner_id to the collection name
@@ -585,24 +578,6 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     or query_params_dict.get("owner")
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )
-
-            # ----- Catch endpoint /catalog/collections/{owner_id}:{collection_id}/search
-            # This endpoint doesn't exist in stac-fastapi so we convert it to a /search endpoint
-            # and we transform path parameters into query parameters
-            if request.scope["path"] != "/search":
-                if len(self.request_ids["collection_ids"]) == 0:
-                    raise HTTPException(
-                        status_code=500,
-                        detail="No collection have been specified",
-                    )
-                collections = ",".join(self.request_ids["collection_ids"])
-                new_query = {
-                    "collections": collections,
-                    "filter-lang": "cql2-text",
-                }
-                query_params_dict.update(new_query)
-                request.scope["query_string"] = urlencode(query_params_dict, doseq=True).encode("utf-8")
-                request.scope["path"] = "/search"
 
             # ----- Catch endpoint catalog/search + query parameters (e.g. /search?ids=S3_OLC&collections=titi)
             if "collections" in query_params_dict:
