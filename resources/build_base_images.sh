@@ -24,8 +24,7 @@ BUILD_DIR="$(realpath $SCRIPT_DIR/build_base_images)"
 # For each dockerfile and associated docker image name, separated by a ;
 for params in \
     "Dockerfile.python;python:3.11.7-slim-bookworm" \
-    "Dockerfile.jupyter.local;jupyter/minimal-notebook:latest" \
-    "Dockerfile.jupyter.k8s;quay.io/jupyter/base-notebook:hub-5.2.1"
+    "Dockerfile.jupyter;quay.io/jupyter/base-notebook:hub-5.2.1"
 do
     dockerfile=$(echo $params | cut -d ";" -f 1)
     base=$(echo $params | cut -d ";" -f 2)

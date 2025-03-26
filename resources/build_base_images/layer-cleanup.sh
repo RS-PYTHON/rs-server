@@ -29,6 +29,6 @@ rm -rf /usr/local/share/.cache/*
 
 rm -rf /tmp/* /var/tmp/*
 
-conda clean --all --yes || true
+conda clean --all --yes
 
 exit 0
