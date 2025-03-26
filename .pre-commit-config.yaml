@@ -39,7 +39,7 @@ repos:
     rev: 6.0.1
     hooks:
     -   id: isort
-        args: ["--profile", "black", '--order-by-type']
+        args: ["--profile", "black"]
 
 # Format (add trailing commas)
 -   repo: https://github.com/asottile/add-trailing-comma

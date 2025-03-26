@@ -348,7 +348,6 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
         token_dict["access_token_creation_date"] = token_dict["refresh_token_creation_date"] = datetime.datetime.now()
 
         logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
-        # logger.debug(f"--------- CREATED NEW TOKEN: {token_dict}")
         # Validate the token variable and then update the shared token
         validate_token_dict(token_dict, external_auth_config)
     else:
@@ -360,7 +359,6 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
         current_date = datetime.datetime.now()
         diff_in_sec = (current_date - token_dict["access_token_creation_date"]).total_seconds()
 
-        # logger.debug(f"----------- DIFF VAUT: {diff_in_sec}")
         if diff_in_sec > token_dict["expires_in"] - nb_secs_before_token_exp:
             logger.info("Current access_token is about to expire. Launching request to refresh the token...")
             data_to_send = prepare_data(external_auth_config)
@@ -400,7 +398,6 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
             # Validate the new token dictionary and update the shared token variable with this dictionary
             validate_token_dict(token_dict, external_auth_config)
             logger.info("Access token has been successfully refreshed !")
-            # logger.debug(f"----------- REFRESHED NEW TOKEN: {token_dict}")
     return token_dict
 
 

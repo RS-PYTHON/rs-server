@@ -240,12 +240,12 @@ def update_station_token(auth_refresh_token: RefreshTokenData, logger: logging.L
     """
     Refreshes the authentication token for an external station.
 
-    This function retrieves the current authentication token from a dask shared variable,
-    refreshes it if necessary, and updates the token information for all registered subscribers.
+    This function retrieves the current authentication token from the shared variable,
+    and refreshes it if necessary.
 
     Args:
-        auth_refresh_token (RefreshTokenData): The authentication token data, including the dask lock and
-            dask token info.
+        auth_refresh_token (RefreshTokenData): The authentication token data, with the dictionary that keeps the
+            token.
         logger (logging.Logger): Logger instance for logging events.
 
     Returns:
