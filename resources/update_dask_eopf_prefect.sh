@@ -63,7 +63,7 @@ all_files+=($e $f)
 
 # [local mode] [cluster mode] [jupyter base image]
 # [ghcr.io/rs-python/jupyter/minimal-notebook] [ghcr.io/rs-python/quay.io/jupyter/base-notebook]
-g=$(_realpath rs-server/resources/apt_upgrade_images.sh) # + re-run with --push
+g=$(_realpath rs-server/resources/build_base_images.sh) # + re-run with --push
 all_files+=($g)
 
 # [local mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/jupyter/rs-client-libraries/local]

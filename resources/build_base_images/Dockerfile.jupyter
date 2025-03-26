@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Copyright 2025 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# quay.io/jupyter/base-notebook:<tag>
+ARG BASE=xxx
+FROM ${BASE}
+
+ENV PATH=/home/jovyan/.local/bin:${PATH}
+
+ARG DASK_TAG=xxx
+ARG DASK_GATEWAY_TAG=xxx
+ARG PREFECT_TAG=xxx
+ARG PREFECT_DASK_TAG=xxx
+
+COPY ./layer-cleanup.sh /usr/local/bin/
+
+USER root
+RUN chmod 755 /usr/local/bin/layer-cleanup.sh
+RUN apt update && apt upgrade -y && layer-cleanup.sh
+USER jovyan
+
+# Upgrade pip version
+RUN pip install -U pip && layer-cleanup.sh
+
+# Additional python kernel to install to run the notebooks
+ARG PYTHON_VERSION=3.11.7
+ARG KERNEL_NAME=py3.11.7
+
+# Install additional python kernel
+RUN conda create -y -n "$KERNEL_NAME" python="$PYTHON_VERSION" && \
+    source activate "$KERNEL_NAME" && \
+    python -V && \
+    pip install -U pip && \
+    pip install ipykernel && \
+    layer-cleanup.sh
+USER root
+RUN source activate "$KERNEL_NAME" && \
+    python -m ipykernel install --name "$KERNEL_NAME" --display-name "$KERNEL_NAME" && \
+    layer-cleanup.sh
+USER jovyan
+
+# Set default kernel... does not seem to work
+RUN jupyter notebook --generate-config && \
+    layer-cleanup.sh && \
+    echo "c.MappingKernelManager.default_kernel_name='$KERNEL_NAME'" >> /home/jovyan/.jupyter/jupyter_notebook_config.py
+
+# Note: put s3fs before boto3 to have a recent version
+RUN source activate "$KERNEL_NAME" && \
+    pip install \
+        dask[complete]=="${DASK_TAG}" \
+        distributed=="${DASK_TAG}" \
+        dask-gateway=="${DASK_GATEWAY_TAG}" \
+        prefect[aws]=="${PREFECT_TAG}" \
+        prefect-dask=="${PREFECT_DASK_TAG}" \
+        ipywidgets \
+        s3fs \
+        boto3 && \
+    layer-cleanup.sh
+
+# Install dot and clean conda
+USER root
+RUN apt update && apt install -y python3-pydot graphviz && layer-cleanup.sh
+USER jovyan
+
+# Use default python version from bash session
+RUN echo -e "\nsource activate $KERNEL_NAME" >> /home/jovyan/.bashrc
+
+USER root
+RUN chown -R jovyan /home/jovyan
+USER jovyan
+
+# Set labels based on the Open Containers Initiative (OCI):
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
+#
+LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/rs-server"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/quay.io/jupyter/base-notebook:hub-5.2.1"
+LABEL dockerfile.url="https://github.com/RS-PYTHON/rs-server/blob/develop/resources/build_base_images/Dockerfile.jupyter.k8s"
