@@ -42,6 +42,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     mocker,
     staging_client,
     staging_instance: Staging,
+    client,
     httpx_mock: HTTPXMock,
     test_apikey,
     test_oauth2,
@@ -108,11 +109,13 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     collection = "test_collection"
     station_id = "station_id"
     role = f"RS_PROCESSES_STAGING_DOWNLOAD_{station_id}"
-    error_auth = f"Missing {role.upper()} authorization role"
+    error_auth = f"Loading station token service failed: 401: Missing {role.upper()} authorization role"
     mocker.patch.object(staging_instance, "assets_info", new="some_asset")
     mock_load = mocker.Mock()
     mock_load.station_id = station_id
     mocker.patch("rs_server_staging.processors.load_external_auth_config_by_domain", return_value=mock_load)
+    mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
+    mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=client)
     mock_request = mocker.Mock()
     mocker.patch.object(staging_instance, "request", new=mock_request)
     spy_log_job = mocker.spy(staging_instance, "log_job_execution")
@@ -121,7 +124,6 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
     mock_request.state.auth_roles = []
     await staging_instance.process_rspy_features(collection)
     assert spy_log_job.call_args[0][2] == error_auth
-
     # With the righ role, it should fail for whatever other reason
     # (because we didn't mock the right values, but it's OK it is not what we are testing here)
     spy_log_job.reset_mock()

@@ -1039,7 +1039,9 @@ class Staging(
                     auth_validation,
                 )
 
-                auth_validation(external_auth_config.station_id, "download", request=self.request, staging_process=True)
+                auth_validation(
+                    external_auth_config.station_id, "staging_download", request=self.request, staging_process=True,
+                )
 
         except (ServiceNotFound, HTTPException) as e:
             self.logger.exception(f"{e}")
