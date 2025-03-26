@@ -3749,7 +3749,7 @@ name = "rs-server-adgs"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
-python-versions = "^3.11"
+python-versions = ">=3.11,<4"
 groups = ["main"]
 files = []
 develop = true
@@ -3766,7 +3766,7 @@ name = "rs-server-cadip"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
-python-versions = "^3.11"
+python-versions = ">=3.11,<4"
 groups = ["main"]
 files = []
 develop = true
@@ -3783,7 +3783,7 @@ name = "rs-server-catalog"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
-python-versions = "^3.11"
+python-versions = ">=3.11,<4"
 groups = ["main"]
 files = []
 develop = true
@@ -3801,7 +3801,7 @@ name = "rs-server-common"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
-python-versions = "^3.11"
+python-versions = ">=3.11,<4"
 groups = ["main"]
 files = []
 develop = true
@@ -3847,7 +3847,7 @@ name = "rs-server-frontend"
 version = "0.0.0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
-python-versions = "^3.11"
+python-versions = ">=3.11,<4"
 groups = ["main"]
 files = []
 develop = true
@@ -4991,5 +4991,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "^3.11"
-content-hash = "5f20d5e975b3e79053eb9a7f9c8b0ca71c4a12cbdedc62b8d3fc91e78d95c42a"
+python-versions = ">=3.11,<4"
+content-hash = "009ef14b4789137c03a299a84bf39befbc36102766b4904f2dd9c05c69d5a238"
