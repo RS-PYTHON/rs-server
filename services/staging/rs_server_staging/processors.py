@@ -978,7 +978,9 @@ class Staging(
                     f"JUPYTERHUB_API_TOKEN, DASK_GATEWAY__AUTH__TYPE. {e}",
                 )
 
-                raise RuntimeError from e
+                raise RuntimeError(
+                    "Failed to retrieve the required " f"connection details for Dask Gateway. Missing key:{e}",
+                ) from e
             except IndexError as e:
                 self.logger.exception(f"Failed to find the specified dask cluster: {e}")
                 raise RuntimeError(f"No dask cluster named '{cluster_name}' was found.") from e
