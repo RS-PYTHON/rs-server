@@ -318,14 +318,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.37.22"
+version = "1.37.21"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "botocore-1.37.22-py3-none-any.whl", hash = "sha256:184db7c9314d13002bc827f511a5140574b5da1acda342d51e093dad6317de98"},
-    {file = "botocore-1.37.22.tar.gz", hash = "sha256:b3b26f1a90236bcd17d4092f8c85a256b44e9955a16b633319a2f5678d605e9f"},
+    {file = "botocore-1.37.21-py3-none-any.whl", hash = "sha256:2cd6016bff3877bea32c5257ab34f92210400293745ac95f291d6620fea1662a"},
+    {file = "botocore-1.37.21.tar.gz", hash = "sha256:b4b08daa9b4b2c379ef978a75a48907d72ac5b3b9247280488109eb41c19be36"},
 ]
 
 [package.dependencies]
@@ -2554,14 +2554,14 @@ email = ["email-validator (>=1.0.3)"]
 
 [[package]]
 name = "pygeoapi"
-version = "0.19.0"
+version = "0.20.0"
 description = "pygeoapi provides an API to geospatial data"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "pygeoapi-0.19.0-py2.py3-none-any.whl", hash = "sha256:38098520615f6ac2e4308cb102e58238ef746fde6b85f8b58dec660ef10832b4"},
-    {file = "pygeoapi-0.19.0.tar.gz", hash = "sha256:b9a2cd68f4c288f24ed27ad532310967df83cff9f9fc4276fd7bf67f568c8e31"},
+    {file = "pygeoapi-0.20.0-py2.py3-none-any.whl", hash = "sha256:9c27c2cdb1234a7ecc450bb4537ec51a1df27c528aa01e2cd24f933a76b56cd4"},
+    {file = "pygeoapi-0.20.0.tar.gz", hash = "sha256:222613a43b1fe9855188d127953aee2bdf1423d8b3c507f050f4bd28397f2c94"},
 ]
 
 [package.dependencies]
@@ -4015,4 +4015,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "31b1d250e4fa4cb256b8b83d4264190e130fd84b6a883a7674670f369d18592b"
+content-hash = "984a369e547b650e961185279a23d0402fb63ef8df06575de59d31225160a03a"
