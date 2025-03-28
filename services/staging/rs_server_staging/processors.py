@@ -979,7 +979,7 @@ class Staging(
                 )
 
                 raise RuntimeError(
-                    "Failed to retrieve the required " f"connection details for Dask Gateway. Missing key:{e}",
+                    f"Failed to retrieve the required connection details for Dask Gateway. Missing key:{e}",
                 ) from e
             except IndexError as e:
                 self.logger.exception(f"Failed to find the specified dask cluster: {e}")
