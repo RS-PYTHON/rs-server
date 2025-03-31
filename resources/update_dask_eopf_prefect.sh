@@ -23,13 +23,14 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 
 # Hardcode here the versions to use, with the same variable names as in the files below
+PYTHON_VERSION=3.12.9
 DASK_TAG=2024.5.2
 DASK_GATEWAY_TAG=2024.1.0
 PREFECT_TAG=3.2.13
 PREFECT_DASK_TAG=0.3.3
 eopf=2.4.4
 l0=0.9.0
-all_variables=(DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_DASK_TAG eopf l0) # var names
+all_variables=(PYTHON_VERSION DASK_TAG DASK_GATEWAY_TAG PREFECT_TAG PREFECT_DASK_TAG eopf l0) # var names
 
 #
 # Bash scripts, dockerfiles and github action workflows to update,
@@ -43,41 +44,42 @@ _realpath(){
 }
 
 # [local mode] [dask base image] [ghcr.io/rs-python/dask-gateway-server/base/local]
-a=$(_realpath rs-demo/local-mode/docker/build.dask-base-local.sh) # + re-run with --push
-all_files+=($a)
+_a1_=$(_realpath rs-demo/local-mode/docker/build.dask-base-local.sh) # + re-run with --push
+_a2_=$(_realpath rs-demo/local-mode/docker/Dockerfile.dask-base-local)
+all_files+=($_a1_ $_a2_)
 
 # [local mode] [dask eopf] [ghcr.io/rs-python/dask-gateway-server/eopf/local]
-b=$(_realpath rs-demo/local-mode/docker/build.dask-eopf-local.sh) # + re-run with --push
-c=$(_realpath rs-demo/local-mode/docker/requirements.dask-eopf-local.txt)
-all_files+=($b $c)
+_b1_=$(_realpath rs-demo/local-mode/docker/build.dask-eopf-local.sh) # + re-run with --push
+_b2_=$(_realpath rs-demo/local-mode/docker/requirements.dask-eopf-local.txt)
+all_files+=($_b1_ $_b2_)
 
 # [local mode] [dask staging] [ghcr.io/rs-python/dask-gateway-server/staging/local]
-d=$(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging-local) # + run rs-server ci/cd
-all_files+=($d)
+_c_=$(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging-local) # + run rs-server ci/cd
+all_files+=($_c_)
 
 # [cluster mode] [dask eopf] [dask staging]
 # [ghcr.io/rs-python/rs-infra-core-dask-staging] [ghcr.io/rs-python/rs-infra-core-dask-eopf]
-e=$(_realpath rs-infra-core/.github/dask-gateway/Dockerfile) # + run rs-infra-core ci/cd
-f=$(_realpath rs-infra-core/.github/common/resources/requirements-dask-eopf.txt)
-all_files+=($e $f)
+_e_=$(_realpath rs-infra-core/.github/dask-gateway/Dockerfile) # + run rs-infra-core ci/cd
+_f_=$(_realpath rs-infra-core/.github/common/resources/requirements-dask-eopf.txt)
+all_files+=($_e_ $_f_)
 
 # [local mode] [cluster mode] [jupyter base image]
 # [ghcr.io/rs-python/jupyter/minimal-notebook] [ghcr.io/rs-python/quay.io/jupyter/base-notebook]
-g=$(_realpath rs-server/resources/build_base_images.sh) # + re-run with --push
-all_files+=($g)
+_g_=$(_realpath rs-server/resources/build_base_images.sh) # + re-run with --push
+all_files+=($_g_)
 
 # [local mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/jupyter/rs-client-libraries/local]
-h=$(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.jupyter) # + run rs-client-libraries ci/cd
-all_files+=($h)
+_h_=$(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.jupyter) # + run rs-client-libraries ci/cd
+all_files+=($_h_)
 
 # [local mode] [cluster mode] [prefect with rs-client-libraries]
 # [ghcr.io/rs-python/prefect/rs-client-libraries/local] [ghcr.io/rs-python/prefect/rs-client-libraries/k8s]
-i=$(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.prefect) # + run rs-client-libraries ci/cd
-all_files+=($i)
+_i_=$(_realpath rs-client-libraries/.github/dockerfiles/Dockerfile.prefect) # + run rs-client-libraries ci/cd
+all_files+=($_i_)
 
 # [cluster mode] [jupyter with rs-client-libraries] [ghcr.io/rs-python/rs-infra-core-jupyter]
-j=$(_realpath rs-infra-core/.github/jupyter/Dockerfile) # + run rs-infra-core ci/cd
-all_files+=($j)
+_j_=$(_realpath rs-infra-core/.github/jupyter/Dockerfile) # + run rs-infra-core ci/cd
+all_files+=($_j_)
 
 #
 # Update files
@@ -130,16 +132,16 @@ fi
 set -x
 
 # Run bash scripts
-$a
-$b
-$g
+$_a1_
+$_b1_
+$_g_
 
 # Build docker images
-docker build -f $d --progress=plain \
+docker build -f $_c_ --progress=plain \
   -t ghcr.io/rs-python/dask-gateway-server/staging/local:latest $whl_dir
-docker build -f $h --progress=plain \
+docker build -f $_h_ --progress=plain \
   -t ghcr.io/rs-python/jupyter/rs-client-libraries/local:latest $whl_dir
-docker build -f $i --progress=plain \
+docker build -f $_i_ --progress=plain \
   -t ghcr.io/rs-python/prefect/rs-client-libraries/local:latest --build-arg K8S_IMAGE= $whl_dir
 set +x
 
@@ -176,9 +178,9 @@ Instructions:
     Do this only when you are ready to merge your Pull Requests.
     NOTE: other Docker images are built from the ci/cd.
       export GITLAB_EOPF_TOKEN=***
-      $a --push && \\
-      $b --push && \\
-      $g --push
+      $_a1_ --push && \\
+      $_b1_ --push && \\
+      $_g_ --push
 
   - After pushing the Docker images (previous step), run again the ci/cd for all your branches. \
 Check that they are OK. Merge your Pull Requests.

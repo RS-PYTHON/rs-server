@@ -21,9 +21,11 @@ set -euo pipefail
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BUILD_DIR="$(realpath $SCRIPT_DIR/build_base_images)"
 
+PYTHON_VERSION=3.12.9
+
 # For each dockerfile and associated docker image name, separated by a ;
 for params in \
-    "Dockerfile.python;python:3.11.7-slim-bookworm" \
+    "Dockerfile.python;python:${PYTHON_VERSION}-slim-bookworm" \
     "Dockerfile.jupyter;quay.io/jupyter/base-notebook:hub-5.2.1"
 do
     dockerfile=$(echo $params | cut -d ";" -f 1)
