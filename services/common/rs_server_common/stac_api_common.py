@@ -429,7 +429,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
         def read_property(prop: str, value: Any):
             """Read a query or CQL filter property"""
-            nonlocal stac_params
+            nonlocal stac_params  # noqa: F824
             if prop not in allowed_properties:
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
