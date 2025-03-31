@@ -20,6 +20,7 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
+import datetime
 import json
 import os
 import os.path as osp
@@ -589,6 +590,20 @@ def adgs_pickup_response():
     adgs_response_json = RESOURCES_FOLDER / "endpoints" / "adgs_pickup_response.json"
     with open(adgs_response_json, encoding="utf-8") as file:
         return json.loads(file.read())
+
+
+@pytest.fixture(name="mock_token_dict")
+def get_mock_token_dict():
+    """Setup a mock for the token dictionary"""
+    return {
+        "access_token": "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI",
+        "expires_in": 3600,
+        "access_token_creation_date": datetime.datetime.now(),
+        "refresh_token": "fakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "refresh_token_creation_date": datetime.datetime.now(),
+        "token_type": "Bearer",
+    }
 
 
 @pytest.fixture(name="adgs_response_10_items")

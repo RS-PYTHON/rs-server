@@ -16,6 +16,7 @@
 # pylint: disable=E0401
 import os
 import pathlib
+import threading
 from contextlib import asynccontextmanager
 from string import Template
 from time import sleep
@@ -45,13 +46,17 @@ from rs_server_common.middlewares import (
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
-from rs_server_staging.processors import processors
+from rs_server_staging.processors import (
+    processors,
+)
 from sqlalchemy.exc import SQLAlchemyError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.status import (
+from starlette.exceptions import (
+    HTTPException as StarletteHTTPException,  # pylint: disable=C0411
+)
+from starlette.middleware.cors import CORSMiddleware  # pylint: disable=C0411
+from starlette.requests import Request  # pylint: disable=C0411
+from starlette.responses import JSONResponse  # pylint: disable=C0411
+from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
     HTTP_404_NOT_FOUND,
     HTTP_503_SERVICE_UNAVAILABLE,
@@ -61,6 +66,8 @@ from starlette.status import (
 # pylint: disable=W0611
 from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
 from .rspy_models import ProcessMetadataModel
+
+REFRESH_TOKENS_TIMEOUT = 40
 
 logger = Logging.default(__name__)
 
@@ -241,6 +248,9 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     fastapi_app.extra["process_manager"] = process_manager
     # fastapi_app.extra["db_table"] = db.table("jobs")
     fastapi_app.extra["dask_cluster"] = cluster
+    # token refereshment logic
+    fastapi_app.extra["station_token_list"] = []
+    fastapi_app.extra["station_token_list_lock"] = threading.Lock()
 
     common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
@@ -252,6 +262,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     if common_settings.LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
+    logger.info("Application gracefully stopped...")
 
 
 # Health check route
@@ -306,6 +317,8 @@ async def execute_process(req: Request, resource: str, data: ProcessMetadataMode
             data.outputs["result"].id,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
+            app.extra["station_token_list"],
+            app.extra["station_token_list_lock"],
         ).execute(data.inputs.dict())
         return JSONResponse(status_code=HTTP_200_OK, content={"status": staging_status})
 
@@ -330,7 +343,7 @@ async def get_jobs_endpoint():
     """Returns the status of all jobs."""
     try:
         return app.extra["process_manager"].get_jobs()
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         # Handle exceptions and return an appropriate error message
         raise HTTPException(status_code=HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 

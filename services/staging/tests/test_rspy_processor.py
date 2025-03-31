@@ -11,20 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# pylint: disable=too-many-lines
 """Test module for Staging processor."""
 import asyncio
 import os
-from concurrent.futures import CancelledError
 from datetime import datetime
 from unittest.mock import call
 
 import pytest
 import requests
 from dask_gateway import Gateway
-from fastapi import HTTPException
 from pygeoapi.util import JobStatus
-from rs_server_staging.processors import Staging, TokenAuth, streaming_task
+from rs_server_common.authentication.authentication_to_external import (
+    TokenAuth,
+)
+from rs_server_staging.processors import (
+    Staging,
+    streaming_task,
+)
 from rs_server_staging.rspy_models import FeatureCollectionModel
 
 # pylint: disable=undefined-variable
@@ -65,10 +69,14 @@ class TestTokenAuth:
 class TestStreaming:
     """Test class for Staging processor"""
 
-    def test_streaming_task(self, mocker):
-        """Test a error while creating s3 handler"""
-        # mock init of s3 handler without S3_ACCESSKEY, should raise an error while creating s3 handler
-        # Mock S3StorageHandler and its delete_file_from_s3 method
+    def test_streaming_task(
+        self,
+        mocker,
+        config,
+    ):
+        """Test successful streaming task execution"""
+
+        # Mock environment variables
         mocker.patch.dict(
             os.environ,
             {
@@ -78,31 +86,51 @@ class TestStreaming:
                 "S3_REGION": "fake_region",
             },
         )
+        s3_key = "s3_path/file.zip"
+
+        # Mock S3StorageHandler instance
         mock_s3_handler = mocker.Mock()
+        mock_s3_handler.s3_streaming_upload.side_effect = s3_key
         mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
 
-        s3_key = "s3_path/file.zip"
-        mocker.patch(
-            "rs_server_staging.processors.S3StorageHandler.s3_streaming_upload",
-            return_value=None,
+        assert (
+            streaming_task(
+                product_url="https://example.com/product.zip",
+                s3_file=s3_key,
+                config=config,
+                bucket="bucket",
+                auth=TokenAuth("fake_token"),
+            )
+            == s3_key
         )
 
-        assert streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", s3_key) == s3_key
+        # Ensure token was accessed
 
-    def test_streaming_task_incorrect_env(self, mocker):
-        """Test a error while creating s3 handler"""
-        # mock init of s3 handler without S3_ACCESSKEY, should raise an error while creating s3 handler
+        mock_s3_handler.s3_streaming_upload.assert_called_once()
+
+    def test_streaming_task_incorrect_env(self, mocker, config):
+        """Test an error when creating S3 handler due to missing env variables"""
+
+        # Patch environment to remove S3_ACCESSKEY
         mocker.patch.dict(
-            "os.environ",
+            os.environ,
             {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
         )
-        with pytest.raises(ValueError, match=r"Cannot create s3 connector object."):
-            streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", "file.zip")
 
-    def test_streaming_task_runtime_error(self, mocker):
-        """Test a runtimeerror while streaming-download."""
+        with pytest.raises(ValueError, match="Cannot create s3 connector object."):
+            streaming_task(
+                product_url="https://example.com/product.zip",
+                s3_file="file.zip",
+                config=config,
+                bucket="bucket",
+                auth=TokenAuth("fake_token"),
+            )
+
+    def test_streaming_task_runtime_error(self, mocker, config):
+        """Test a runtime error during streaming"""
+
         mocker.patch.dict(
-            "os.environ",
+            os.environ,
             {
                 "S3_ACCESSKEY": "fake_access_key",
                 "S3_SECRETKEY": "fake_secret_key",
@@ -110,18 +138,57 @@ class TestStreaming:
                 "S3_REGION": "fake_region",
             },
         )
-
-        # mock inner s3_handler.streaming to raise
-        mocker.patch(
-            "rs_server_staging.processors.S3StorageHandler.s3_streaming_upload",
-            side_effect=RuntimeError("Streaming failed"),
-        )
-        # If s3-streaming raise runtime error, we forward value error? to be checked
+        # Mock the s3 handler
+        mock_s3_handler = mocker.Mock()
+        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+        # Mock streaming upload to raise RuntimeError
+        mock_s3_handler.s3_streaming_upload.side_effect = RuntimeError("Streaming failed")
         with pytest.raises(
             ValueError,
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
-            streaming_task("https://example.com/product.zip", [], "Bearer token", "bucket", "file.zip")
+            streaming_task(
+                product_url="https://example.com/product.zip",
+                s3_file="file.zip",
+                config=config,
+                bucket="bucket",
+                auth=TokenAuth("fake_token"),
+            )
+
+    def test_streaming_task_connection_retry(self, mocker, config):
+        """Test retry mechanism for ConnectionError"""
+        s3_max_retries_env_var = 3
+        mocker.patch.dict(
+            os.environ,
+            {
+                "S3_ACCESSKEY": "fake_access_key",
+                "S3_SECRETKEY": "fake_secret_key",
+                "S3_ENDPOINT": "fake_endpoint",
+                "S3_REGION": "fake_region",
+                "S3_RETRY_TIMEOUT": "1",
+                "S3_MAX_RETRIES": str(s3_max_retries_env_var),
+            },
+        )
+
+        # Mock streaming upload to fail multiple times
+        mock_s3_handler = mocker.Mock()
+        mock_s3_handler.s3_streaming_upload.side_effect = ConnectionError("Streaming failed")
+        mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
+
+        with pytest.raises(
+            ValueError,
+            match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
+        ):
+            streaming_task(
+                product_url="https://example.com/product.zip",
+                s3_file="file.zip",
+                config=config,
+                bucket="bucket",
+                auth=TokenAuth("fake_token"),
+            )
+
+        # Ensure retries happened
+        assert mock_s3_handler.s3_streaming_upload.call_count == s3_max_retries_env_var
 
 
 class TestStaging:
@@ -505,6 +572,8 @@ class TestPrepareStreaming:
 
     def test_prepare_streaming_tasks_all_valid(self, mocker, staging_instance: Staging):
         """Test prepare_streaming_tasks when all assets are valid."""
+        # clean the already mocked assets
+        staging_instance.assets_info = []
         catalog_collection = "test_collection"
         feature = mocker.Mock()
         feature.id = "feature_id"
@@ -539,84 +608,6 @@ class TestPrepareStreaming:
 
         # Assert that the method returns False
         assert result is False
-
-
-class TestStagingTaskFailure:  # pylint: disable=too-few-public-methods
-    """Class to group tests that handle dask task failure"""
-
-    def test_handle_task_failure_all_tasks_canceled(self, mocker, staging_instance: Staging):
-        """Test handle_task_failure when all tasks are successfully canceled."""
-        # Create mock tasks
-        task_1 = mocker.Mock()
-        task_1.done.return_value = False
-        task_1.key = "task_1_key"
-        task_1.status = "pending"
-
-        task_2 = mocker.Mock()
-        task_2.done.return_value = False
-        task_2.key = "task_2_key"
-        task_2.status = "pending"
-
-        staging_instance.tasks = [task_1, task_2]
-
-        # Call the handle_task_failure method with a sample exception
-        error = Exception()
-        staging_instance.handle_task_failure(error)
-
-        # both tasks were canceled
-        task_1.cancel.assert_called_once()
-        task_2.cancel.assert_called_once()
-
-    def test_handle_task_failure_with_canceled_error(self, mocker, staging_instance: Staging):
-        """Test handle_task_failure when one task raises CanceledError"""
-        # Mock task objects
-        mock_task1 = mocker.Mock()
-        mock_task1.done.return_value = False  # Simulate an incomplete task
-        mock_task1.key = "task1"
-        mock_task1.status = "pending"
-
-        mock_task2 = mocker.Mock()
-        mock_task2.done.return_value = True  # Simulate a completed task
-        mock_task2.key = "task2"
-        mock_task2.status = "successful"
-
-        # Mock the CancelledError
-        mock_cancelled_error = CancelledError("Task already cancelled")
-
-        # Create a sample object with attributes
-        staging_instance.tasks = [mock_task1, mock_task2]
-        mock_logger = mocker.patch.object(staging_instance, "logger")
-
-        # Mock the error passed to the function
-        sample_error = Exception("Test error")
-
-        # Call the function under test
-        staging_instance.handle_task_failure(sample_error)
-
-        # Assertions for logger calls
-        mock_logger.error.assert_any_call(
-            "Error during staging. Canceling all the remaining tasks. "
-            "The assets already copied to the bucket will be deleted."
-            "The error: %s",
-            sample_error,
-        )
-
-        mock_logger.info.assert_called_once_with("Canceling task %s status %s", "task1", "pending")
-
-        # Ensure task1 is cancelled
-        mock_task1.cancel.assert_called_once()
-
-        # Ensure task2 is not cancelled because it's already done
-        mock_task2.cancel.assert_not_called()
-
-        # Simulate catching a CancelledError and logging it
-        mock_task1.cancel.side_effect = mock_cancelled_error
-
-        # Run the function again to trigger the CancelledError
-        staging_instance.handle_task_failure(sample_error)
-
-        # Ensure that the CancelledError is logged
-        mock_logger.error.assert_any_call("Task was already cancelled: %s", mock_cancelled_error)
 
 
 class TestStagingDeleteFromBucket:
@@ -705,7 +696,12 @@ class TestStagingDeleteFromBucket:
 class TestStagingMainExecution:
     """Class to test Item processing"""
 
-    def test_dask_cluster_connect(self, mocker, staging_instance: Staging, cluster_options):
+    def test_dask_cluster_connect(
+        self,
+        mocker,
+        staging_instance: Staging,
+        cluster,
+    ):  # pylint: disable=R0913, R0917
         """Test to mock the connection to a dask cluster"""
         # Mock environment variables to simulate gateway mode
         mocker.patch.dict(
@@ -714,7 +710,9 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
                 "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
                 "JUPYTERHUB_API_TOKEN": "mock_api_token",
-                "RSPY_DASK_STAGING_CLUSTER_NAME": cluster_options["cluster_name"],
+                "RSPY_DASK_STAGING_CLUSTER_NAME": str(
+                    cluster.options.get("cluster_name", "default_cluster"),
+                ),  # type: ignore
             },
         )
         # Mock the cluster mode
@@ -726,17 +724,9 @@ class TestStagingMainExecution:
         mock_list_clusters = mocker.patch.object(Gateway, "list_clusters")
         mock_connect = mocker.patch.object(Gateway, "connect")
         mock_client = mocker.patch("rs_server_staging.processors.Client", autospec=True, return_value=None)
-        # Mock the Security object
-        mock_security = mocker.patch("dask.distributed.Security")
-        # Mock the cluster with the required attributes for Client
-        mock_cluster = mocker.Mock()
-        mock_cluster.name = "dask-gateway-id"
-        mock_cluster.options = cluster_options
-        mock_cluster.dashboard_link = "https://mock-dashboard"
-        mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
-        mock_cluster.security = mock_security  # Add mocked security attribute
-        mock_list_clusters.return_value = [mock_cluster]
-        mock_connect.return_value = mock_cluster
+
+        mock_list_clusters.return_value = [cluster]
+        mock_connect.return_value = cluster
 
         # Setup client mock
         mock_scheduler_info: dict[str, dict] = {"workers": {"worker-1": {}, "worker-2": {}}}
@@ -761,7 +751,12 @@ class TestStagingMainExecution:
             f"Dask Client: {client} | Cluster dashboard: {mock_connect.return_value.dashboard_link}",
         )
 
-    def test_dask_cluster_connect_failure_no_cluster_name(self, mocker, staging_instance: Staging, cluster_options):
+    def test_dask_cluster_connect_failure_no_cluster_name(
+        self,
+        mocker,
+        staging_instance: Staging,
+        cluster,
+    ):
         """Test the bahavior in case no cluster name is found"""
         non_existent_cluster = "another-cluster-name"
         # Mock environment variables to simulate gateway mode
@@ -783,17 +778,8 @@ class TestStagingMainExecution:
         mock_list_clusters = mocker.patch.object(Gateway, "list_clusters")
         mock_connect = mocker.patch.object(Gateway, "connect")
 
-        # Mock the Security object
-        mock_security = mocker.patch("dask.distributed.Security")
-        # Mock the cluster with the required attributes for Client
-        mock_cluster = mocker.Mock()
-        mock_cluster.name = "dask-gateway-id"
-        mock_cluster.options = cluster_options
-        mock_cluster.dashboard_link = "https://mock-dashboard"
-        mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
-        mock_cluster.security = mock_security  # Add mocked security attribute
-        mock_list_clusters.return_value = [mock_cluster]
-        mock_connect.return_value = mock_cluster
+        mock_list_clusters.return_value = [cluster]
+        mock_connect.return_value = cluster
 
         with pytest.raises(RuntimeError):
             staging_instance.dask_cluster_connect()
@@ -803,7 +789,11 @@ class TestStagingMainExecution:
             f"Dask cluster with 'cluster_name'={non_existent_cluster!r} was not found.",
         )
 
-    def test_dask_cluster_connect_failure_no_envs(self, mocker, staging_instance: Staging):
+    def test_dask_cluster_connect_failure_no_envs(
+        self,
+        mocker,
+        staging_instance: Staging,
+    ):
         """Test to mock the connection to a dask cluster"""
         # Not all the needed env vars are mocked
         mocker.patch.dict(
@@ -812,30 +802,28 @@ class TestStagingMainExecution:
                 "DASK_GATEWAY__ADDRESS": "gateway-address",
             },
         )
+
         staging_instance.cluster = None
         with pytest.raises(RuntimeError):
             staging_instance.dask_cluster_connect()
 
-    def test_manage_dask_tasks_results_succesfull(self, mocker, staging_instance: Staging):
+    def test_manage_dask_tasks_succesfull(self, mocker, staging_instance: Staging, client):
         """Test to mock managing of successul tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
-        task1.result = mocker.Mock(return_value=None)  # Simulate a successful task
+        task1.result = mocker.Mock(return_value="simultated_filename_1")  # Simulate a successful task
         task1.key = "task1"
 
         task2 = mocker.Mock()
-        task2.result = mocker.Mock(return_value=None)  # Simulate another successful task
+        task2.result = mocker.Mock(return_value="simultated_filename_2")  # Simulate another successful task
         task2.key = "task2"
-        # mock dask client
-        client = mocker.Mock(return_value=True)
-        staging_instance.tasks = [task1, task2]  # Set tasks
-        staging_instance.stream_list = [task1, task2]  # set streaming list
+
         # mock distributed as_completed
-        mocker.patch("rs_server_staging.processors.as_completed", return_value=[task1, task2])
+        mocker.patch("rs_server_staging.processors.as_completed", return_value=iter([task1, task2]))
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
         mock_publish_feature = mocker.patch.object(staging_instance, "publish_rspy_feature")
 
-        staging_instance.manage_dask_tasks_results(client, "test_collection")
+        staging_instance.manage_dask_tasks(client, "test_collection", staging_instance.station_token_list[0])
 
         # mock_log_job.assert_any_call(JobStatus.running, None, 'In progress')
         # Check that status was updated 3 times during execution, 1 time for each task, and 1 time with FINISH
@@ -844,54 +832,57 @@ class TestStagingMainExecution:
         # Check that feature publish method was called.
         mock_publish_feature.assert_called()
 
-    def test_manage_dask_tasks_results_failure(self, mocker, staging_instance: Staging):
+    def test_manage_dask_tasks_failure(self, mocker, staging_instance: Staging, client):
         """Test handling callbacks when error on one task"""
         task1 = mocker.Mock()
-        task1.result = mocker.Mock(return_value=None, side_effect=Exception)  # Simulate a exception in task
+        # Simulate a exception in task
+        task1.result = mocker.Mock(return_value=None, side_effect=Exception("Fake exception"))
         task1.key = "task1"
-        client = mocker.Mock(return_value=True)
-        staging_instance.tasks = [task1]
+        task2 = mocker.Mock()
+        # Simulate another successful task
+        task2.result = mocker.Mock(return_value="simultated_filename_2")
+        task2.key = "task2"
+
         # Create mock for task, and distributed.as_completed func
-        mocker.patch("rs_server_staging.processors.as_completed", return_value=[task1])
+        mocker.patch("rs_server_staging.processors.as_completed", return_value=iter([task1, task2]))
         # Create mock for handle_task_failure, publish_rspy_feature, delete_files_from_bucket, log_job_execution methods
-        mock_task_failure = mocker.patch.object(staging_instance, "handle_task_failure")
         mock_publish_feature = mocker.patch.object(staging_instance, "publish_rspy_feature")
         mock_delete_file_from_bucket = mocker.patch.object(staging_instance, "delete_files_from_bucket")
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
-        # Set timeout to 0, in order to skip that while loop
-        mocker.patch.dict("os.environ", {"RSPY_STAGING_TIMEOUT": "0"})
+        # Mock the cancel and call_stack function from dask client
+        client.cancel = mocker.Mock(return_value=None)
+        client.call_stack = mocker.Mock(return_value=None)
+        # Set timeout to 1, thus the waiting logic for dask client call_stack will loop once only
+        mocker.patch.dict("os.environ", {"RSPY_STAGING_TIMEOUT": "1"})
 
-        staging_instance.manage_dask_tasks_results(client, "test_collection")
+        staging_instance.manage_dask_tasks(client, "test_collection", staging_instance.station_token_list[0])
 
-        mock_task_failure.assert_called()  # handle_task_failure called once
         mock_delete_file_from_bucket.assert_called()  # Bucket removal called once
         # logger set status to failed
-        mock_log_job.assert_called_once_with(JobStatus.failed, None, "At least one of the tasks failed: ")
+        mock_log_job.assert_called_once_with(JobStatus.failed, None, "At least one of the tasks failed: Fake exception")
         # Features are not published here.
         mock_publish_feature.assert_not_called()
 
-    def test_manage_dask_tasks_failed_to_publish(self, mocker, staging_instance: Staging):
+    def test_manage_dask_tasks_failed_to_publish(self, mocker, staging_instance: Staging, client):
         """Test to mock managing of successul tasks"""
         # Mock tasks that will succeed
         task1 = mocker.Mock()
-        task1.result = mocker.Mock(return_value=None)  # Simulate a successful task
+        task1.result = mocker.Mock(return_value="simultated_filename_1")  # Simulate a successful task
         task1.key = "task1"
 
         task2 = mocker.Mock()
-        task2.result = mocker.Mock(return_value=None)  # Simulate another successful task
+        task2.result = mocker.Mock(return_value="simultated_filename_2")  # Simulate another successful task
         task2.key = "task2"
-        # mock dask client
-        client = mocker.Mock(return_value=True)
-        staging_instance.tasks = [task1, task2]  # Set tasks
+
         staging_instance.stream_list = [task1, task2]  # set streaming list
         # mock distributed as_completed
-        mocker.patch("rs_server_staging.processors.as_completed", return_value=[task1, task2])
+        mocker.patch("rs_server_staging.processors.as_completed", return_value=iter([task1, task2]))
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
 
         mocker.patch.object(staging_instance, "publish_rspy_feature", return_value=False)
         mock_delete_file_from_bucket = mocker.patch.object(staging_instance, "delete_files_from_bucket")
 
-        staging_instance.manage_dask_tasks_results(client, "test_collection")
+        staging_instance.manage_dask_tasks(client, "test_collection", staging_instance.station_token_list[0])
 
         mock_log_job.assert_any_call(
             JobStatus.failed,
@@ -903,8 +894,15 @@ class TestStagingMainExecution:
     def test_manage_dask_tasks_no_dask_client(self, mocker, staging_instance: Staging):
         """Test the manage_dask_tasks when no valid dask client is received"""
         mock_logger = mocker.patch.object(staging_instance, "logger")
-        staging_instance.manage_dask_tasks_results(None, "test_collection")
+        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
+
+        staging_instance.manage_dask_tasks(None, "test_collection", staging_instance.station_token_list[0])
         mock_logger.error.assert_called_once_with("The dask cluster client object is not created. Exiting")
+        mock_log_job.assert_any_call(
+            JobStatus.failed,
+            None,
+            "Submitting task to dask cluster failed. Dask cluster client object is not created",
+        )
 
     @pytest.mark.asyncio
     async def test_process_rspy_features_empty_assets(self, mocker, staging_instance: Staging):
@@ -932,8 +930,8 @@ class TestStagingMainExecution:
         mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
         mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
 
-        # Set the stream_list to an empty list (no features to process)
-        staging_instance.stream_list = []
+        # Set the assets_info to an empty list (no features to process)
+        staging_instance.assets_info = []
 
         # Call the method
         await staging_instance.process_rspy_features("test_collection")
@@ -942,45 +940,11 @@ class TestStagingMainExecution:
         mock_log_job.assert_called_with(JobStatus.successful, 100, "Finished without processing any tasks")
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_token_failure(self, mocker, staging_instance: Staging):
-        """Test case where retrieving the token raises an exception."""
-        # Mock the logger
-        mock_logger = mocker.patch.object(staging_instance, "logger")
-        mock_log_job = mocker.patch.object(staging_instance, "log_job_execution")
-
-        # Simulate successful task preparation
-        mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
-        mock_dask_cluster_connect = mocker.patch.object(staging_instance, "dask_cluster_connect")
-        staging_instance.assets_info = [("https://cadip/some_asset", "some_asset")]
-
-        # Simulate an exception in the token retrieval
-        mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_domain",
-            return_value=mocker.Mock(),
-        )
-        mocker.patch(
-            "rs_server_staging.processors.get_station_token",
-            side_effect=HTTPException(status_code=404, detail="Token error"),
-        )
-
-        # Call the async function
-        await staging_instance.process_rspy_features("test_collection")
-
-        # Verify logger and log_job_execution are called with the error details
-        mock_logger.error.assert_called_once_with(
-            "Exception while processing a feature, Token error",
-        )
-        mock_log_job.assert_called_once_with(
-            JobStatus.failed,
-            0,
-            "Token error",
-        )
-
-        # Verify the function returns early without proceeding to Dask cluster connection
-        mock_dask_cluster_connect.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_process_rspy_features_dask_connection_failure(self, mocker, staging_instance: Staging):
+    async def test_process_rspy_features_dask_connection_failure(
+        self,
+        mocker,
+        staging_instance: Staging,
+    ):
         """Test case where connecting to the Dask cluster raises a RuntimeError."""
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
@@ -989,15 +953,15 @@ class TestStagingMainExecution:
         mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
         staging_instance.assets_info = ["some_asset"]
 
-        # Mock the called methods
-        mock_submit_tasks = mocker.patch.object(staging_instance, "submit_tasks_to_dask_cluster")
-        mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks_results")
         # Mock token retrieval
         mocker.patch(
             "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mocker.Mock(),
         )
-        mocker.patch("rs_server_staging.processors.get_station_token", return_value="mock_token")
+        mocker.patch(
+            "rs_server_common.authentication.authentication_to_external.get_station_token",
+            return_value="mock_token",
+        )
 
         # Simulate a RuntimeError during Dask cluster connection
         mocker.patch.object(
@@ -1005,6 +969,8 @@ class TestStagingMainExecution:
             "dask_cluster_connect",
             side_effect=RuntimeError("Dask cluster client failed"),
         )
+        # Mock manage_dask_tasks
+        mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks")
 
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")
@@ -1013,63 +979,73 @@ class TestStagingMainExecution:
         mock_log_job.assert_called_once_with(JobStatus.failed, 0, "Dask cluster client failed")
         mock_logger.error.assert_called_once_with("Failed to start the staging process")
 
-        # Verify that the task submission and monitoring thread are not executed
-        mock_submit_tasks.assert_not_called()
+        # Verify that the monitoring thread is not executed
         mock_manage_dask_tasks.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_process_rspy_features_success(self, mocker, staging_instance: Staging):
+    async def test_process_rspy_features_success(
+        self,
+        mocker,
+        staging_instance: Staging,
+        client,
+        config,
+    ):
         """Test case where the entire process runs successfully."""
-
+        mocker.patch.dict(
+            os.environ,
+            {
+                "DASK_GATEWAY__ADDRESS": "gateway-address",
+                "DASK_GATEWAY__AUTH__TYPE": "jupyterhub",
+                "JUPYTERHUB_API_TOKEN": "mock_api_token",
+                "RSPY_DASK_STAGING_CLUSTER_NAME": str(
+                    client.cluster.options.get("cluster_name", "default_cluster"),
+                ),  # type: ignore
+            },
+        )
         # Mock the logger
         mock_logger = mocker.patch.object(staging_instance, "logger")
         mocker.patch.object(staging_instance, "log_job_execution")
         # Simulate successful task preparation
         mocker.patch.object(staging_instance, "prepare_streaming_tasks", return_value=True)
-        staging_instance.assets_info = ["some_asset"]
 
-        # Mock the called methods
-        mock_submit_tasks = mocker.patch.object(staging_instance, "submit_tasks_to_dask_cluster")
-        mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks_results")
         # Mock token retrieval
         mocker.patch(
             "rs_server_staging.processors.load_external_auth_config_by_domain",
             return_value=mocker.Mock(),
         )
 
-        mocker.patch(
-            "rs_server_staging.processors.load_external_auth_config_by_domain",
-            return_value="mock_external_auth_config",
-        )
         # Mock the external auth configuration
-        mock_external_auth_config = mocker.Mock()
-        mock_external_auth_config.trusted_domains = ["test_trusted.example"]  # Set the trusted_domains member
+        config.trusted_domains = ["test_trusted.example"]  # Set the trusted_domains member
         mocker.patch(
             "rs_server_staging.processors.load_external_auth_config_by_domain",
-            return_value=mock_external_auth_config,
+            return_value=config,
         )
-        mocker.patch("rs_server_staging.processors.get_station_token", return_value="mock_token")
 
         # Mock Dask cluster client
-        mock_dask_client = mocker.Mock()
-        mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=mock_dask_client)
+        mocker.patch.object(staging_instance, "dask_cluster_connect", return_value=client)
+
+        # Mock update_station_token
+        mocker.patch(
+            "rs_server_staging.processors.update_station_token",
+            return_value=True,
+        )
+
+        # Mock manage_dask_tasks
+        mock_manage_dask_tasks = mocker.patch.object(staging_instance, "manage_dask_tasks")
 
         # Call the async function
         await staging_instance.process_rspy_features("test_collection")
 
-        # Verify the function proceeds to Dask task submission
-        mock_submit_tasks.assert_called_once_with(
-            "mock_token",
-            mock_external_auth_config.trusted_domains,
-            mock_dask_client,
-        )
-
         # Verify the task monitoring thread is started
         mock_logger.debug.assert_any_call("Starting tasks monitoring thread")
-        mock_manage_dask_tasks.assert_called_once_with(mock_dask_client, "test_collection")
+        mock_manage_dask_tasks.assert_called_once_with(
+            client,
+            "test_collection",
+            staging_instance.station_token_list[0],
+        )
 
         # Ensure the Dask client is closed after the tasks are processed
-        mock_dask_client.close.assert_called_once()
+        client.close.assert_called_once()
 
         # Verify assets_info is cleared after processing
         assert staging_instance.assets_info == []
@@ -1191,96 +1167,6 @@ class TestStagingUnpublishCatalog:
     def test_repr(self, staging_instance: Staging):
         """Test repr method for coverage"""
         assert repr(staging_instance) == "RSPY Staging OGC API Processor"
-
-
-class TestStagingSubmitToDaskCluster:
-    """Class to group tests for submiting tasks to dask cluster"""
-
-    def test_submit_tasks_to_dask_cluster_success(self, mocker, staging_instance: Staging):
-        """Test the submiting tasks to dask cluster function when successful"""
-        # Mock the Dask client
-        mock_client = mocker.Mock()
-
-        # Mock the streaming_task function
-        mock_streaming_task = mocker.Mock()
-
-        # Patch the TokenAuth to return a mock object
-        mock_token_auth = mocker.patch("rs_server_staging.processors.TokenAuth")
-
-        # Mock assets_info (list of tuples)
-        mock_assets_info = [("asset1", "path1"), ("asset2", "path2")]
-
-        # Create a sample object with attributes
-
-        staging_instance.assets_info = mock_assets_info
-        staging_instance.catalog_bucket = "mock_bucket"
-
-        # Patch the streaming_task function within the object under test
-        mocker.patch("rs_server_staging.processors.streaming_task", mock_streaming_task)
-
-        # Call the function under test
-        staging_instance.submit_tasks_to_dask_cluster("mock_token", [], mock_client)
-
-        # Assert that tasks are submitted to the Dask client for each asset
-        assert len(staging_instance.tasks) == 2  # Two tasks should be submitted
-
-        # Ensure that client.submit was called with correct arguments
-        mock_client.submit.assert_any_call(
-            mock_streaming_task,
-            "asset1",
-            [],
-            mock_token_auth.return_value,
-            "mock_bucket",
-            "path1",
-        )
-        mock_client.submit.assert_any_call(
-            mock_streaming_task,
-            "asset2",
-            [],
-            mock_token_auth.return_value,
-            "mock_bucket",
-            "path2",
-        )
-
-        # Ensure tasks were added to obj.tasks
-        assert len(staging_instance.tasks) == 2
-
-    def test_submit_tasks_to_dask_cluster_failure(self, mocker, staging_instance: Staging):
-        """Test the submiting tasks to dask cluster function when fails"""
-        # Mock the Dask client
-        mock_client = mocker.Mock()
-
-        # Mock the streaming_task function
-        mock_streaming_task = mocker.Mock()
-
-        # Mock assets_info (list of tuples)
-        mock_assets_info = [("asset1", "path1")]
-
-        # Create a sample object with attributes
-        staging_instance.assets_info = mock_assets_info
-        staging_instance.catalog_bucket = "mock_bucket"
-        mock_logger = mocker.patch.object(staging_instance, "logger")
-
-        # Patch the streaming_task function within the object under test
-        mocker.patch("rs_server_staging.processors.streaming_task", mock_streaming_task)
-
-        # Simulate client.submit raising an exception
-        mock_client.submit.side_effect = Exception("Mock submission failure")
-
-        # Call the function under test and catch the RuntimeError
-        with pytest.raises(
-            RuntimeError,
-            match="Submitting task to dask cluster failed. Reason: Mock submission failure",
-        ):
-            staging_instance.submit_tasks_to_dask_cluster("mock_token", [], mock_client)
-
-        # Ensure the logger catches the exception
-        mock_logger.exception.assert_called_once_with(
-            "Submitting task to dask cluster failed. Reason: Mock submission failure",
-        )
-
-        # Ensure no tasks were added
-        assert len(staging_instance.tasks) == 0
 
 
 # Disabled for moment

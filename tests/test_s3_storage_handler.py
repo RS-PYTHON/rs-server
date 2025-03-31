@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 # Copyright 2024 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +51,6 @@ FULL_FOLDER = RESOURCES_FOLDER / "s3" / "full_s3_storage_handler_test"
 SHORT_FOLDER = RESOURCES_FOLDER / "s3" / "short_s3_storage_handler_test"
 
 
-# pylint: disable=too-many-lines
 @pytest.mark.unit
 @pytest.mark.parametrize(
     "endpoint",
@@ -1067,7 +1068,7 @@ def test_check_s3_key_on_bucket_success(mocker):
 
 @pytest.mark.unit
 @responses.activate
-def test_s3_streaming_upload(mocker):
+def test_s3_streaming_upload():
     """Unit test for testing the streaming of a file from an HTTP URL to an
     S3 bucket using byte-streaming.
 
@@ -1092,12 +1093,7 @@ def test_s3_streaming_upload(mocker):
         - It also checks that the downloaded file from S3 matches the content that was streamed (using
         temporary local storage).
 
-    4. **Retry Handling**:
-        - It patches the `time.sleep` method to speed up the retry process for testing purposes.
-        - It uses `Stubber` to simulate S3 client errors during the upload process and asserts that the
-        retry mechanism works as expected.
-
-    5. **Clean-up**:
+    4. **Clean-up**:
         - The test removes the streamed file from the S3 bucket and performs necessary cleanup of temporary
         local directories.
 
@@ -1119,9 +1115,6 @@ def test_s3_streaming_upload(mocker):
 
     # Check that the file was uploaded successfully
     streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
-
-    # Test retry behavior with stubbed S3 client errors
-    streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body)
 
     server.stop()
 
@@ -1186,31 +1179,6 @@ def streaming_verify_s3_file(s3_handler, bucket, s3_key, body):
         s3_handler.delete_file_from_s3(bucket, s3_key)
     except RuntimeError:
         assert False, "s3_handler.delete_file_from_s3 raised exception!"
-
-
-def streaming_retry_logic(mocker, s3_handler, stream_url, auth, bucket, s3_key, body):
-    """Test S3 retry behavior using Stubber to simulate errors."""
-    # Patch time.sleep to speed up retries
-    res = mocker.patch("time.sleep", side_effect=None)
-
-    # Stub S3 client errors to test retry logic
-    boto_mocker = Stubber(s3_handler.s3_client)
-    boto_mocker.add_client_error("upload_fileobj", service_error_code="botocore.exceptions.BotoCoreError")
-    boto_mocker.activate()
-
-    try:
-        s3_handler.s3_streaming_upload(stream_url, [], auth, bucket, s3_key)
-    except RuntimeError:
-        boto_mocker.deactivate()
-        assert False, "s3_handler.s3_streaming_upload raised exception!"
-
-    # Check if retries were attempted
-    assert res.call_count == int(S3_RETRY_TIMEOUT / SLEEP_TIME)
-
-    # Verify file after retry logic
-    streaming_verify_s3_file(s3_handler, bucket, s3_key, body)
-
-    boto_mocker.deactivate()
 
 
 # end of the helper functions
