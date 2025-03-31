@@ -486,7 +486,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
-@router.get("/jobs/{job_id}/results")
+@router.get("/jobs/{job_id}/results", dependencies=[Depends(just_for_the_lock_icon)])
 async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
     try:
