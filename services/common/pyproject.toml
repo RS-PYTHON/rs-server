@@ -69,7 +69,7 @@ authlib = "^1.5.0"
 python-keycloak = ">=5.3.1,<6.0"
 itsdangerous = "^2.2.0"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
-stac-fastapi-pgstac = "^5.0.0"
+stac-fastapi-pgstac = "^5.0.1"
 
 [tool.poetry.group.dev]
 optional = true

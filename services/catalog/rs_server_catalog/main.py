@@ -19,12 +19,11 @@ the ENABLED_EXTENSIONS environment variable (e.g. `transactions,sort,query`).
 If the variable is not set, enables all extensions.
 """
 import asyncio
-import copy
 import os
 import sys
 from contextlib import asynccontextmanager
 from os import environ as env
-from typing import Annotated, Any
+from typing import Annotated
 
 import httpx
 from brotli_asgi import BrotliMiddleware
@@ -197,57 +196,8 @@ def extract_openapi_specification():  # pylint: disable=too-many-locals
                         method["description"] = (
                             "Endpoint /catalog/search. The filter-lang parameter is cql2-text by default."
                         )
-    # Create the endpoint /catalog/catalogs/owner_id
-    owner_id = "Owner ID"
-    collection_id = "Collection ID"
 
-    # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. GET METHOD
-    # We copy the parameters from the original /catalog/search endpoint and we add new parameters.
-    search_parameters = copy.deepcopy(openapi_spec["paths"]["/catalog/search"]["get"]["parameters"])
-    catalog_collection_search: dict[str, Any] = {
-        "summary": "search endpoint to search only inside a specific collection.",
-        "description": "Endpoint.",
-        "operationId": "Get_search_collection",
-        "responses": {
-            "200": {"description": "Successful Response", "content": {"application/geo+json": {"schema": {}}}},
-        },
-        "parameters": [
-            {
-                "description": owner_id,
-                "required": True,
-                "schema": {"type": "string", "title": owner_id, "description": owner_id},
-                "name": "owner_id",
-                "in": "path",
-            },
-            {
-                "description": collection_id,
-                "required": True,
-                "schema": {"type": "string", "title": collection_id, "description": collection_id},
-                "name": "collection_id",
-                "in": "path",
-            },
-        ],
-    }
-    catalog_collection_search["parameters"].extend(search_parameters)
-    catalog_collection_search_path = "/catalog/collections/{owner_id}:{collection_id}/search"
-
-    # Create the endpoint /catalog/collections/{owner_id}:{collection_id}/search. POST METHOD
-    catalog_collection_search_post: dict[str, Any] = {
-        "summary": "search endpoint to search only inside a specific collection.",
-        "description": "Endpoint.",
-        "operationId": "Post_search_collection",
-        "responses": {
-            "200": {"description": "Successful Response", "content": {"application/geo+json": {"schema": {}}}},
-        },
-    }
-
-    # Add security parameters.
-    if common_settings.CLUSTER_MODE:
-        catalog_collection_search["security"] = [{APIKEY_SCHEME_NAME: []}]
-        catalog_collection_search_post["security"] = [{APIKEY_SCHEME_NAME: []}]
     # Add all previous created endpoints.
-    openapi_spec["paths"][catalog_collection_search_path] = {"get": catalog_collection_search}
-    openapi_spec["paths"][catalog_collection_search_path]["post"] = catalog_collection_search_post
     app.openapi_schema = openapi_spec
     return app.openapi_schema
 

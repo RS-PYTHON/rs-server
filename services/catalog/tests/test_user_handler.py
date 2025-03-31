@@ -293,41 +293,6 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         reroute_url(request, request_ids)
         assert request.scope["path"] == expected
 
-    def test_search_collection(self, request_ids):
-        request = Request(
-            scope={
-                "type": "http",
-                "method": "GET",
-                "path": "/catalog/collections/toto:S1_L1/search",
-                "query_string": "",
-                "user": "",
-                "headers": {},
-            },
-        )
-        reroute_url(request, request_ids)
-        assert request.scope["path"] == "/collections/toto:S1_L1/search"
-        # Check that the valid dictionary is a subset of the output dictionary
-        valid_request_ids = {
-            "owner_id": "toto",
-            "collection_ids": ["toto_S1_L1"],
-            "item_id": "",
-        }
-        assert all(request_ids.get(key, None) == val for key, val in valid_request_ids.items())
-
-    def test_search_collection_with_implicit_owner(self, request_ids):
-        request = Request(
-            scope={
-                "type": "http",
-                "method": "GET",
-                "path": "/catalog/collections/S1_L1/search",
-                "query_string": "",
-                "user": "",
-                "headers": {},
-            },
-        )
-        reroute_url(request, request_ids)
-        assert request.scope["path"] == "/collections/S1_L1/search"
-
     def test_reroute_collections_queryables(self, request_ids):
         request = Request(
             scope={

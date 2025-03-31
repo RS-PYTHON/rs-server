@@ -419,12 +419,15 @@ class TestStagingCatalog:
         assert result is True
 
         # Construct the expected filter string
-        expected_filter_string = "id IN ('1', '2')"
-        expected_filter_object = {"filter-lang": "cql2-text", "filter": expected_filter_string, "limit": "2"}
-        collection = "test_collection"
+        expected_filter_object = {
+            "collections": "test_collection",
+            "filter-lang": "cql2-text",
+            "filter": "id IN ('1', '2')",
+            "limit": "2",
+        }
         # Assert that requests.get was called with the correct parameters
         requests.get.assert_called_once_with(  # type: ignore
-            f"{staging_instance.catalog_url}/catalog/collections/{collection}/search",
+            f"{staging_instance.catalog_url}/catalog/search",
             headers={"cookie": "fake-cookie"},
             params=expected_filter_object,
             timeout=5,

@@ -536,20 +536,15 @@ class Staging(
         """
         # Set the filter containing the item ids to be inserted
         # Get each feature id and create /catalog/search argument
-        ids = [feature.id for feature in features]
-        stry = []
-        for id_ in ids:
-            stry.append(f"'{id_}'")
-        # Creating the filter string
-        filter_string = f"id IN ({', '.join(stry)})"
+        ids = [f"'{feature.id}'" for feature in features]
+        filter_object = {
+            "collections": catalog_collection,
+            "filter-lang": "cql2-text",
+            "filter": f"id IN ({', '.join(ids)})",
+            "limit": str(len(ids)),
+        }
 
-        # Final filter object
-        filter_object = {"filter-lang": "cql2-text", "filter": filter_string, "limit": str(len(ids))}
-
-        search_url = f"{self.catalog_url}/catalog/collections/{catalog_collection}/search"
-
-        # Another method is to get all the items and loop with them to match item ids
-        # search_url = f"{self.catalog_url}/catalog/collections/{catalog_collection}/items"
+        search_url = f"{self.catalog_url}/catalog/search"
 
         try:
             response = requests.get(
