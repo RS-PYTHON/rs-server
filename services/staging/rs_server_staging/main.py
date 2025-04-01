@@ -68,9 +68,8 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
-from . import (
-    jobs_table,  # pylint: disable=unused-import; DON'T REMOVE (needed for SQLAlchemy)
-)
+# DON'T REMOVE (needed for SQLAlchemy)
+from . import jobs_table  # pylint: disable=unused-import
 
 # flake8: noqa: F401
 # pylint: disable=W0611
