@@ -68,7 +68,9 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
-from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
+from . import (
+    jobs_table,  # DON'T REMOVE (needed for SQLAlchemy) # pylint: disable=unused-argument
+)
 
 # flake8: noqa: F401
 # pylint: disable=W0611
@@ -407,7 +409,11 @@ def format_jobs_data(jobs: dict):
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
-async def execute_process(request: Request, resource: str, data: ProcessMetadataModel):
+async def execute_process(
+    request: Request,
+    resource: str,
+    data: ProcessMetadataModel,
+):  # pylint: disable=unused-argument
     """Used to execute processing jobs."""
 
     # rs_processes_{resource}_execute role needed to access this endpoint.

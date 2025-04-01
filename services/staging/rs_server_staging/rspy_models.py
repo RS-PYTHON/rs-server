@@ -13,9 +13,6 @@
 # limitations under the License.
 """Module used to type-check input of rs-staging."""
 
-
-from typing import Any, Optional, Union
-
 from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
 from stac_pydantic.shared import Asset  # Importing directly for clarity
 

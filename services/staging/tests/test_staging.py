@@ -15,7 +15,6 @@
 """Test staging module."""
 import copy
 import os
-import threading
 from datetime import datetime
 
 import pytest
