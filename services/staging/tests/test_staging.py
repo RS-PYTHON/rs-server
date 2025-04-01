@@ -274,15 +274,7 @@ async def test_get_jobs_endpoint(
     mock_db_table.get_jobs.return_value = {"jobs": mock_jobs, "numberMatched": 2}
     # Patch app.extra with the mock db_table
     # Ensure app.extra contains all necessary attributes at once
-    mocker.patch.object(
-        staging_client.app,
-        "extra",
-        {
-            "process_manager": mock_db_table,
-            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
-        },
-    )
+    staging_client.app.extra["process_manager"] = mock_db_table
 
     # Call the API
     response = staging_client.get("/jobs")
@@ -344,6 +336,7 @@ async def test_get_jobs_endpoint(
 )
 async def test_get_job(
     mocker,
+    mock_app,  # pylint: disable=unused-argument
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,
     mock_jobs,
@@ -397,15 +390,7 @@ async def test_get_job(
         )
 
     # Ensure app.extra contains all necessary attributes at once
-    mocker.patch.object(
-        staging_client.app,
-        "extra",
-        {
-            "process_manager": mock_db_table,
-            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
-        },
-    )
+    staging_client.app.extra["process_manager"] = mock_db_table
 
     # Call the API
     response = staging_client.get(f"/jobs/{expected_job['jobID']}")
@@ -438,6 +423,7 @@ async def test_get_job(
 )
 async def test_get_job_result(
     mocker,
+    mock_app,  # pylint: disable=unused-argument
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,
     mock_jobs,
@@ -490,15 +476,7 @@ async def test_get_job_result(
         )
 
     # Ensure app.extra contains all necessary attributes at once
-    mocker.patch.object(
-        staging_client.app,
-        "extra",
-        {
-            "process_manager": mock_db_table,
-            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
-        },
-    )
+    staging_client.app.extra["process_manager"] = mock_db_table
 
     # Call the API
     job_id = expected_job.get("jobID")
@@ -527,6 +505,7 @@ async def test_get_job_result(
 )
 async def test_delete_job_endpoint(
     mocker,
+    mock_app,  # pylint: disable=unused-argument
     set_db_env_var,  # pylint: disable=unused-argument
     staging_client,
     mock_jobs,
@@ -584,15 +563,7 @@ async def test_delete_job_endpoint(
         )
 
     # Ensure app.extra contains all necessary attributes at once
-    mocker.patch.object(
-        staging_client.app,
-        "extra",
-        {
-            "process_manager": mock_db_table,
-            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
-            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
-        },
-    )
+    staging_client.app.extra["process_manager"] = mock_db_table
 
     # Call the API
     response = staging_client.delete(f"/jobs/{expected_job['jobID']}")
@@ -742,7 +713,14 @@ async def test_specific_process(
         ),
     ],
 )
-async def test_execute_staging(mocker, mock_app, mock_jobs, staging_client, valid_staging_body, wrong_staging_body):
+async def test_execute_staging(
+    mocker,
+    mock_app,  # pylint: disable=unused-argument
+    mock_jobs,
+    staging_client,
+    valid_staging_body,
+    wrong_staging_body,
+):
     """Test to run the /processes/{resource}/execution endpoint"""
     resource_name = "staging"
     # ----- Test case where we have a staging body uncompliant with ogc
