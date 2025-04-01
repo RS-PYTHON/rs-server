@@ -58,7 +58,7 @@ async def validate_request(request: Request) -> dict:
     openapi_request = StarletteOpenAPIRequest(request, body)
     OPENAPI.validate_request(openapi_request)
     try:
-        return json.loads(body)
+        return json.loads(body) if body else None
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON format") from exc
 
