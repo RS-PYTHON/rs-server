@@ -37,9 +37,6 @@ RUN cd /tmp/whl && pip install -U --no-cache-dir rs_server_staging-*.whl
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install
 
-# Install complete dask subsets
-RUN pip install dask[complete]
-
 # Remove dependencies for compilation
 USER root
 RUN apt autoremove -y gcc

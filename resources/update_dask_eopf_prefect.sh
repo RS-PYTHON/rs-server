@@ -23,8 +23,8 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 ROOT_DIR="$(realpath $SCRIPT_DIR/..)"
 
 # Hardcode here the versions to use, with the same variable names as in the files below
-PYTHON_VERSION=3.12.9
-DASK_TAG=2024.5.2
+PYTHON_VERSION=3.13.2
+DASK_TAG=2025.3.0
 DASK_GATEWAY_TAG=2024.1.0
 PREFECT_TAG=3.2.13
 PREFECT_DASK_TAG=0.3.3
@@ -50,8 +50,9 @@ all_files+=($_a1_ $_a2_)
 
 # [local mode] [dask eopf] [ghcr.io/rs-python/dask-gateway-server/eopf/local]
 _b1_=$(_realpath rs-demo/local-mode/docker/build.dask-eopf-local.sh) # + re-run with --push
-_b2_=$(_realpath rs-demo/local-mode/docker/requirements.dask-eopf-local.txt)
-all_files+=($_b1_ $_b2_)
+_b2_=$(_realpath rs-demo/local-mode/docker/Dockerfile.dask-eopf-local)
+_b3_=$(_realpath rs-demo/local-mode/docker/requirements.dask-eopf-local.txt)
+all_files+=($_b1_ $_b2_ $_b3_)
 
 # [local mode] [dask staging] [ghcr.io/rs-python/dask-gateway-server/staging/local]
 _c_=$(_realpath rs-server/services/staging/.github/Dockerfile.dask-staging-local) # + run rs-server ci/cd
@@ -94,6 +95,8 @@ for file in "${all_files[@]}"; do
     sed -i "/\\$/! s/${var_name}\(=\+\)[^[:space:]]\+/${var_name}\1${!var_name}/g" "$file"
   done
 done
+
+exit
 
 #
 # Build everything locally to test the local mode

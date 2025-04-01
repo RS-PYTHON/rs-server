@@ -21,7 +21,7 @@ set -euo pipefail
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BUILD_DIR="$(realpath $SCRIPT_DIR/build_base_images)"
 
-PYTHON_VERSION=3.12.9
+PYTHON_VERSION=3.13.2
 
 # For each dockerfile and associated docker image name, separated by a ;
 for params in \
@@ -37,7 +37,7 @@ do
     # Build the docker image
     docker build \
         --build-arg BASE=${base} \
-        --build-arg DASK_TAG=2024.5.2 \
+        --build-arg DASK_TAG=2025.3.0 \
         --build-arg DASK_GATEWAY_TAG=2024.1.0 \
         --build-arg PREFECT_TAG=3.2.13 \
         --build-arg PREFECT_DASK_TAG=0.3.3 \
