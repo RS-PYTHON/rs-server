@@ -37,7 +37,6 @@
             "cadip:final_block": false,
             "cadip:block_number": 1,
             "cadip:channel": 1,
-            "cadip:session_id": "S1A_20200105072204051312",
             "created": "2020-01-05T18:52:29.165Z",
             "eviction_datetime": "2020-01-05T18:52:29.165Z",
             "file:size": 42
@@ -53,7 +52,6 @@
             "cadip:final_block": false,
             "cadip:block_number": 1,
             "cadip:channel": 1,
-            "cadip:session_id": "S1A_20200105072204051312",
             "created": "2020-01-05T18:52:32.165Z",
             "eviction_datetime": "2020-01-05T18:52:32.165Z",
             "file:size": 51
@@ -82,6 +80,7 @@
         }
     ],
     "stac_extensions": [
+        "https://rs-python.github.io/cadip-stac-extension/v1.0.0/schema.json",
         "https://stac-extensions.github.io/file/v2.1.0/schema.json",
         "https://stac-extensions.github.io/timestamps/v1.1.0/schema.json"
     ],
