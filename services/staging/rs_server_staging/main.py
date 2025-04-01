@@ -18,6 +18,7 @@ import copy
 # pylint: disable=E0401
 import os
 import pathlib
+import threading
 from contextlib import asynccontextmanager
 from datetime import datetime
 from string import Template
@@ -54,11 +55,13 @@ from rs_server_staging.staging_endpoints_validation import (
     validate_response,
 )
 from sqlalchemy.exc import SQLAlchemyError
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.status import (
+from starlette.exceptions import (
+    HTTPException as StarletteHTTPException,  # pylint: disable=C0411
+)
+from starlette.middleware.cors import CORSMiddleware  # pylint: disable=C0411
+from starlette.requests import Request  # pylint: disable=C0411
+from starlette.responses import JSONResponse  # pylint: disable=C0411
+from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
     HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
@@ -70,6 +73,8 @@ from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
 # flake8: noqa: F401
 # pylint: disable=W0611
 from .rspy_models import ProcessMetadataModel
+
+REFRESH_TOKENS_TIMEOUT = 40
 
 logger = Logging.default(__name__)
 
@@ -261,6 +266,9 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     fastapi_app.extra["process_manager"] = process_manager
     # fastapi_app.extra["db_table"] = db.table("jobs")
     fastapi_app.extra["dask_cluster"] = cluster
+    # token refereshment logic
+    fastapi_app.extra["station_token_list"] = []
+    fastapi_app.extra["station_token_list_lock"] = threading.Lock()
 
     common_settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
 
@@ -272,6 +280,7 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
     if common_settings.LOCAL_MODE and cluster:
         cluster.close()
         logger.info("Local Dask cluster shut down.")
+    logger.info("Application gracefully stopped...")
 
 
 # Health check route
@@ -421,6 +430,8 @@ async def execute_process(request: Request, resource: str, data: ProcessMetadata
             request,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
+            app.extra["station_token_list"],
+            app.extra["station_token_list_lock"],
         ).execute(valid_body["inputs"])
 
         app.extra["process_manager"].get_job(staging_status["running"])

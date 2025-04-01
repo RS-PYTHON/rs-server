@@ -22,6 +22,7 @@
 import asyncio
 import os
 import os.path as osp
+import threading
 from datetime import datetime
 from importlib import reload
 from pathlib import Path
@@ -50,7 +51,13 @@ from rs_server_staging.main import app  # pylint: disable=import-error
 os.environ["RSPY_LOCAL_MODE"] = "1"
 reload(common_settings)
 
-from rs_server_staging.processors import Staging  # pylint: disable=import-error
+from rs_server_common.authentication.authentication_to_external import (  # pylint: disable=import-error
+    ExternalAuthenticationConfig,
+)
+from rs_server_staging.processors import (  # pylint: disable=import-error
+    RefreshTokenData,
+    Staging,
+)
 
 TEST_DETAIL = "Test detail"
 
@@ -90,7 +97,11 @@ def client_(mocker):
     mocker.patch("rs_server_staging.main.init_db", return_value=None)
     mocker.patch("rs_server_staging.main.PostgreSQLManager", return_value=mocker.Mock())
     with TestClient(app) as client:
+
         yield client
+
+        os.environ["RSPY_LOCAL_MODE"] = "1"
+        reload(common_settings)
 
 
 @pytest.fixture(name="geoapi_cfg")
@@ -175,13 +186,38 @@ def staging_inputs():
 
 
 @pytest.fixture(name="staging_instance")
-def staging(mocker):
+def staging(mocker, config):
     """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
     mock_credentials = mocker.Mock()
     mock_credentials.headers = {"cookie": "fake-cookie", "host": "fake-host"}
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
+    # Mock station_token_list as an iterable
+
+    # Mock RefreshTokenData objects
+    mock_refresh_token1 = mocker.MagicMock(spec=RefreshTokenData)
+    mock_refresh_token1.config = config
+    mock_refresh_token1.token_dict = {
+        "access_token": "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI",
+        "expires_in": 3600,
+        "access_token_creation_date": datetime.now(),
+        "refresh_token": "fakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "refresh_token_creation_date": datetime.now(),
+        "token_type": "Bearer",
+    }
+
+    mock_refresh_token1.subscribers = 1
+    mock_refresh_token1.station_id = mocker.Mock(return_value=config.station_id)
+
+    # Mock station_token_list as a list of RefreshTokenData instances
+    mock_station_token_list = [mock_refresh_token1]
+
+    # Fix: Explicitly define __enter__ and __exit__ on mocker.Mock()
+    mock_station_token_list_lock = mocker.Mock()
+    mock_station_token_list_lock.__enter__ = mocker.Mock(return_value=mock_station_token_list_lock)
+    mock_station_token_list_lock.__exit__ = mocker.Mock(return_value=None)
 
     mocker.patch.dict(
         os.environ,
@@ -195,7 +231,16 @@ def staging(mocker):
         credentials=mock_credentials,
         db_process_manager=mock_db,
         cluster=mock_cluster,
+        station_token_list=mock_station_token_list,
+        station_token_list_lock=mock_station_token_list_lock,
     )
+    # mock streaming list
+    staging_instance.stream_list = [mocker.Mock(id=1), mocker.Mock(id=2)]
+    # mock assets_info
+    staging_instance.assets_info = [
+        ("https://cadip/some_asset_1", "some_asset_1"),
+        ("https://cadip/some_asset_2", "some_asset_2"),
+    ]
     yield staging_instance
 
 
@@ -213,10 +258,76 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(name="cluster_options")
-def cluster_options():
-    """Fixture to get a cluster options"""
-    return {
+@pytest.fixture(name="config")
+def authentication_config():
+    """Return an example of external authentication configuration"""
+    return ExternalAuthenticationConfig(
+        station_id="cadip",
+        domain="https://127.0.0.1:5000",
+        service_name="cadip",
+        service_url="https://127.0.0.1:5000/oauth2/token",
+        auth_type="oauth2",
+        token_url="https://127.0.0.1:5000/oauth2/token",
+        grant_type="password",
+        username="test",
+        # nosec B106
+        password="DUMMY_PASSWORD",
+        client_id="client_id",
+        client_secret="client_secret",  # nosec B106
+    )
+
+
+@pytest.fixture(name="mock_app")
+def get_mock_app(mocker, staging_client):
+    mock_app = mocker.patch.object(
+        staging_client.app,
+        "extra",
+        {
+            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
+        },
+    )
+    return mock_app
+
+
+@pytest.fixture(name="mock_db_table")
+def get_mock_db_table(mocker):
+    """
+    Mock the database manager
+    """
+    mock_db_table = mocker.MagicMock()
+    mock_db_table.get_jobs.return_value = {
+        "jobs": [
+            {
+                "identifier": "job_1",
+                "status": "successful",
+                "type": "process",
+                "progress": 100.0,
+                "message": TEST_DETAIL,
+                "created": datetime(2024, 1, 1, 12, 0, 0),
+                "updated": datetime(2024, 1, 1, 13, 0, 0),
+                "processID": "staging",
+            },
+            {
+                "identifier": "job_2",
+                "status": "running",
+                "type": "process",
+                "progress": 90.25,
+                "message": TEST_DETAIL,
+                "created": datetime(2024, 1, 2, 12, 0, 0),
+                "updated": datetime(2024, 1, 2, 13, 0, 0),
+                "processID": "staging",
+            },
+        ],
+        "numberMatched": 2,
+    }
+    return mock_db_table
+
+
+@pytest.fixture(name="cluster")
+def cluster_with_options(mocker):
+    """Fixture to get a cluster with options"""
+    cluster_options = {
         "cluster_max_cores": 4,
         "cluster_max_memory": 17179869184,
         "cluster_max_workers": 5,
@@ -250,3 +361,25 @@ def cluster_options():
         },
         "worker_memory": 2,
     }
+    # Mock the Security object
+    mock_security = mocker.patch("dask.distributed.Security")
+    # Mock the cluster with the required attributes for Client
+    mock_cluster = mocker.Mock()
+    mock_cluster.name = "dask-gateway-id"
+    mock_cluster.options = cluster_options
+    mock_cluster.dashboard_link = "https://mock-dashboard"
+    mock_cluster.scheduler_address = "tcp://mock-scheduler-address"  # Set a valid scheduler address
+    mock_cluster.security = mock_security  # Add mocked security attribute
+    return mock_cluster
+
+
+@pytest.fixture(name="client")
+def dask_client(mocker, cluster):
+    """
+    Mock the dask client
+    """
+    client = mocker.Mock(return_value=True)
+    client.cluster = cluster
+    client.nthreads = mocker.Mock(return_value={0: 1, 1: 1})  # Simulate 2 threads
+    client.submit = mocker.Mock(return_value=mocker.Mock())  # Simulating a Dask future
+    return client

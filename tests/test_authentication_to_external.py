@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 # Copyright 2024 CS Group
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +16,7 @@
 
 """Unit tests for the authentication."""
 
-# pylint: disable=too-many-lines
-
+import datetime
 import json
 import os
 import shutil
@@ -28,6 +29,8 @@ from fastapi import HTTPException
 from rs_server_common.authentication import authentication_to_external
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
+    ServiceNotFound,
+    TokenDataNotFound,
     create_external_auth_config,
     get_station_token,
     init_rs_server_config_yaml,
@@ -120,9 +123,7 @@ def test_create_rs_server_config_yaml(
 @pytest.mark.unit
 @responses.activate
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-def test_get_station_token(
-    get_external_auth_config,
-):
+def test_get_station_token(get_external_auth_config, mock_token_dict):
     """Test retrieval of station token by station ID and service.
 
     This unit test checks the functionality of retrieving a station token using
@@ -134,29 +135,12 @@ def test_get_station_token(
 
     ext_auth_config = get_external_auth_config
 
-    # Simulate a token response from the authentication service
-    response = {"access_token": TOKEN, "token_type": "Bearer", "expires_in": 3600}
-    responses.add(
-        responses.POST,
-        url=ext_auth_config.token_url,
-        status=HTTP_200_OK,
-        body=json.dumps(response),
-    )
-    # Test valid token retrieval
-    assert get_station_token(ext_auth_config) == TOKEN
-
-    # Simulate a forbidden response from the station
-    responses.add(
-        responses.POST,
-        url=ext_auth_config.token_url,
-        status=HTTP_403_FORBIDDEN,
-        body=json.dumps({"detail": "forbidden"}),
-    )
-    # Test error when station responds with an error
+    # ---------- Test error when no configuration object is provided
     with pytest.raises(HTTPException) as exc:
-        get_station_token(ext_auth_config)
-    assert f"Failed to get the token from the station {ext_auth_config.station_id}" in str(exc.value)
+        get_station_token(None, {})
+    assert "Failed to retrieve the configuration for the station token." in str(exc.value)
 
+    # ---------- Test error when the token variable doesn't have all mandatory attributes
     # Simulate an invalid format of the token response from the authentication service
     response = {"unexpected_field": TOKEN, "token_type": "Bearer", "expires_in": 3600}
     responses.add(
@@ -165,11 +149,91 @@ def test_get_station_token(
         status=HTTP_200_OK,
         body=json.dumps(response),
     )
-    with pytest.raises(HTTPException) as exc:
-        get_station_token(ext_auth_config)
-    assert f"The token field was not found in the response from the station {ext_auth_config.station_id}" in str(
+    with pytest.raises(TokenDataNotFound) as exc:
+        get_station_token(ext_auth_config, {})
+    assert f"""Mandatory attribute access_token is not defined in the token variable
+                                        of the station {ext_auth_config.station_id}!""" in str(
         exc.value,
     )
+
+    # ---------- Test valid token retrieval if we don't have any token yet
+    # Simulate a token response from the authentication service
+    response = mock_token_dict
+
+    # We remove creation date because these information are not returned by the station
+    # but only added in addition to the station response in the get_station_token method
+    response.pop("access_token_creation_date")
+    response.pop("refresh_token_creation_date")
+    responses.add(
+        responses.POST,
+        url=ext_auth_config.token_url,
+        status=HTTP_200_OK,
+        body=json.dumps(response),
+    )
+
+    new_token = get_station_token(ext_auth_config, {})
+    assert new_token["access_token"] == mock_token_dict["access_token"]
+
+    # ---------- Test error when station responds with an error
+    # Simulate a forbidden response from the station
+    responses.add(
+        responses.POST,
+        url=ext_auth_config.token_url,
+        status=HTTP_403_FORBIDDEN,
+        body=json.dumps({"detail": "forbidden"}),
+    )
+    with pytest.raises(HTTPException) as exc:
+        get_station_token(ext_auth_config, {})
+    assert f"Failed to get the token from the station {ext_auth_config.station_id}" in str(exc.value)
+
+    # ---------- Test to generate a new token using the refresh token when the current
+    # access token is expired
+    # Change the mock variable creation date and expiration date of the access token
+    # to make it become unvalid
+    mock_token_dict["access_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
+    mock_token_dict["refresh_token_creation_date"] = datetime.datetime.now()
+
+    response_new_valid_token = {
+        "access_token": "NewFakeAccessToken",
+        "expires_in": 3600,
+        "refresh_token": "NewfakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "token_type": "Bearer",
+    }
+    responses.add(
+        responses.POST,
+        url=ext_auth_config.token_url,
+        status=HTTP_200_OK,
+        body=json.dumps(response_new_valid_token),
+    )
+    new_token = get_station_token(ext_auth_config, mock_token_dict)
+
+    # Check that the old token has been replaced with the new one
+    assert new_token["access_token"] == response_new_valid_token["access_token"]
+
+    # ---------- Test to generate a new token when both current access and refresh tokens are expired
+
+    # Change the mock variable creation date and expiration date of both access and refresh tokens
+    # to make them become unvalid
+    mock_token_dict["access_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
+    mock_token_dict["refresh_token_creation_date"] = datetime.datetime(2023, 8, 15, 14, 30, 45)
+
+    response_new_valid_token = {
+        "access_token": "NewFakeAccessToken",
+        "expires_in": 3600,
+        "refresh_token": "NewfakeRefreshToken",
+        "refresh_expires_in": 7200,
+        "token_type": "Bearer",
+    }
+    responses.add(
+        responses.POST,
+        url=ext_auth_config.token_url,
+        status=HTTP_200_OK,
+        body=json.dumps(response_new_valid_token),
+    )
+    new_token = get_station_token(ext_auth_config, mock_token_dict)
+    # Check that the old token has been replaced with the new one
+    assert new_token["refresh_token"] == response_new_valid_token["refresh_token"]
 
 
 @pytest.mark.unit
@@ -663,8 +727,12 @@ def test_load_external_auth_config_by_domain_no_matching_domain(mocker, get_exte
         "yaml.safe_load",
         return_value=yaml.safe_load(mock_yaml_content),
     )
-    result = load_external_auth_config_by_domain("unknwon_domain")
-    assert result is None
+    domain = "unknwon_domain"
+    with pytest.raises(ServiceNotFound) as exc:
+        load_external_auth_config_by_domain(domain)
+    assert f"No matching service found for domain: {domain}" in str(
+        exc.value,
+    )
 
 
 @pytest.mark.unit
@@ -857,10 +925,7 @@ def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-async def test_set_eodag_auth_token_by_station_and_service_success(
-    mocker,
-    get_external_auth_config,
-):
+async def test_set_eodag_auth_token_by_station_and_service_success(mocker, get_external_auth_config, mock_token_dict):
     """
     Unit test for setting the EODAG authentication token using station ID and service.
 
@@ -886,13 +951,18 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
     # usage of the internal token module  for getting the token and setting it to the eodag
     mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
 
-    mocker.patch("rs_server_common.authentication.authentication_to_external.get_station_token", return_value=TOKEN)
+    mocker.patch(
+        "rs_server_common.authentication.authentication_to_external.get_station_token",
+        return_value=mock_token_dict,
+    )
 
     # Call the function
     set_eodag_auth_token(station_id=ext_auth_config.station_id, service=ext_auth_config.service_name)
 
     # Check if the correct token was set in the environment variable
-    assert os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == TOKEN
+    assert (
+        os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == mock_token_dict["access_token"]
+    )
 
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of eodag for getting the token and using it
@@ -908,10 +978,7 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-async def test_set_eodag_auth_token_by_domain_success(
-    mocker,
-    get_external_auth_config,
-):
+async def test_set_eodag_auth_token_by_domain_success(mocker, get_external_auth_config, mock_token_dict):
     """
     Unit test for setting the EODAG authentication token using the domain.
 
@@ -937,13 +1004,18 @@ async def test_set_eodag_auth_token_by_domain_success(
     # usage of the internal token module  for getting the token and setting it to the eodag
     mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
 
-    mocker.patch("rs_server_common.authentication.authentication_to_external.get_station_token", return_value=TOKEN)
+    mocker.patch(
+        "rs_server_common.authentication.authentication_to_external.get_station_token",
+        return_value=mock_token_dict,
+    )
 
     # Call the function
     set_eodag_auth_token(domain=ext_auth_config.domain)
 
     # Check if the correct token was set in the environment variable
-    assert os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == TOKEN
+    assert (
+        os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == mock_token_dict["access_token"]
+    )
 
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of eodag for getting the token and using it

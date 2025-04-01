@@ -14,6 +14,8 @@
 """Module used to type-check input of rs-staging."""
 
 
+from typing import Any, Optional, Union
+
 from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
 from stac_pydantic.shared import Asset  # Importing directly for clarity
 
@@ -92,6 +94,14 @@ class FeatureCollectionModel(BaseModel):
 
     type: str
     features: list[Feature]
+    links: list[Any]
+
+
+class ItemsModel(BaseModel):
+    """Model for items containing either a value corresponding to a FeatureCollectionModel or a link"""
+
+    href: str | None = None
+    value: FeatureCollectionModel | None = None
 
 
 class InputModel(BaseModel):
@@ -102,11 +112,11 @@ class InputModel(BaseModel):
 
     Attributes:
         collection (CollectionModel): The collection of metadata for the input.
-        items (FeatureCollectionModel): A collection of features related to the input.
+        items (FeatureCollectionModel or link): A collection of features (or a link) related to the input.
     """
 
-    collection: CollectionModel
-    items: FeatureCollectionModel
+    collection: str
+    items: ItemsModel
 
 
 class OutputModel(BaseModel):
@@ -157,12 +167,4 @@ class ProcessMetadataModel(BaseModel):
             objects.
     """
 
-    version: str
-    id: str
-    title: dict[str, str]
-    description: dict[str, str]
-    jobControlOptions: list[str] | str
-    keywords: list[str]
-    links: list[dict[str, str]]
     inputs: InputModel
-    outputs: dict[str, OutputModel]
