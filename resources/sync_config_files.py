@@ -14,7 +14,7 @@
 
 """
 Create rs-server configuration files from templates.
-Copy them to rs-demo, rs-helm and rs-infrastructure repositories.
+Copy them to rs-demo, rs-helm and rs-server-deployment repositories.
 """
 
 import collections.abc
@@ -71,7 +71,7 @@ class Stations:  # pylint: disable=too-few-public-methods
 @dataclass
 class HelmOrInfraParams:
     """
-    Parameters to copy a single configuration file to rs-helm or rs-infrastructure.
+    Parameters to copy a single configuration file to rs-helm or rs-server-deployment.
 
     Attributes:
         input_path_relative: input configuration file path, relative to the rs-server root dir
@@ -139,18 +139,18 @@ REGEX_RANGE_END = r"({{-?\s*end\s.*-?}})"
 DCB_OPEN = "DOUBLE_CURLY_BRACES_OPEN"
 DCB_CLOSE = "DOUBLE_CURLY_BRACES_CLOSE"
 
-# The config files will be copied in rs-demo and rs-helm if these projects
+# The config files will be copied in rs-demo, rs-helm and rs-server-deployment if these projects
 # are checkout under the same directory than rs-server.
 rs_server_dir = Path(__file__).parent.parent
 rs_demo_dir = rs_server_dir.parent / "rs-demo"
 rs_helm_dir = rs_server_dir.parent / "rs-helm"
-rs_infra_dir = rs_server_dir.parent / "rs-infrastructure"
+rs_infra_dir = rs_server_dir.parent / "rs-server-deployment"
 if not rs_demo_dir.is_dir():
     logger.warning(f"No 'rs-demo' repository found under: '{rs_demo_dir!s}'")
 if not rs_helm_dir.is_dir():
     logger.warning(f"No 'rs-helm' repository found under: '{rs_helm_dir!s}'")
 if not rs_infra_dir.is_dir():
-    logger.warning(f"No 'rs-infrastructure' repository found under: '{rs_infra_dir!s}'")
+    logger.warning(f"No 'rs-server-deployment' repository found under: '{rs_infra_dir!s}'")
 
 # Extract the copyright header from this current file. It will be added to yaml files modified from a template.
 COPYRIGHT_HEADER = ""
@@ -368,7 +368,7 @@ def copy_to_demo(input_path_relative: str):
 
 
 #
-# rs-helm and rs-infrastructure
+# rs-helm and rs-server-deployment
 
 
 def copy_to_helm_or_infra(
@@ -376,7 +376,7 @@ def copy_to_helm_or_infra(
     output_path: Path,
 ):
     """
-    Copy and update a configuration file from rs-server to rs-helm or rs-infrastructure.
+    Copy and update a configuration file from rs-server to rs-helm or rs-server-deployment.
 
     Args:
         all_params: parameters to copy each configuration file
@@ -501,7 +501,7 @@ def copy_to_helm_or_infra_single_doc(  # pylint: disable=too-many-statements
     output_config: dict,
 ):
     """
-    Copy and update a single yaml document from rs-server to rs-helm or rs-infrastructure.
+    Copy and update a single yaml document from rs-server to rs-helm or rs-server-deployment.
 
     Args:
         params parameters to copy a single configuration file
@@ -675,7 +675,7 @@ if __name__ == "__main__":
         copy_to_demo(config_path_relative)
 
     #
-    # Copy resulting files to rs-helm and rs-infrastructure
+    # Copy resulting files to rs-helm and rs-server-deployment
 
     def remove_session_stations(output_config: dict):
         """For this file, don't copy the cadip "_session" stations."""
@@ -691,7 +691,7 @@ if __name__ == "__main__":
         remove_session_stations,
     )
     copy_to_helm_or_infra([station_params], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
-    copy_to_helm_or_infra([station_params], rs_infra_dir / "rs-server/rs-server-station-secrets/values.yaml")
+    copy_to_helm_or_infra([station_params], rs_infra_dir / "apps/01-rs-server-station-secrets/values.yaml")
 
     copy_to_helm_or_infra(
         [
