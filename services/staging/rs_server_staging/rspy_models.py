@@ -94,7 +94,6 @@ class FeatureCollectionModel(BaseModel):
 
     type: str
     features: list[Feature]
-    links: list[Any]
 
 
 class ItemsModel(BaseModel):
