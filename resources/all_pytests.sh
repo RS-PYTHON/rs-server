@@ -45,10 +45,12 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     echo "Test '$tests_dir'"
 
     # Install dependencies
-    (set -x
-        cd "$proj_dir" && poetry -q install --with dev
-        poetry -q run opentelemetry-bootstrap -a install || true
-    )
+    if [[ " $@ " == *" --install "* ]]; then
+        (set -x
+            cd "$proj_dir" && poetry -q install --with dev
+            poetry -q run opentelemetry-bootstrap -a install || true
+        )
+    fi
 
     # Increment junit reports index
     junit=$((junit+1))
