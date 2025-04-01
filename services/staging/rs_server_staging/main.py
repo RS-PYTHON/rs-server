@@ -69,7 +69,7 @@ from starlette.status import (  # pylint: disable=C0411
 )
 
 from . import (
-    jobs_table,  # DON'T REMOVE (needed for SQLAlchemy) # pylint: disable=unused-argument
+    jobs_table,  # DON'T REMOVE (needed for SQLAlchemy) # pylint: disable=unused-import
 )
 
 # flake8: noqa: F401

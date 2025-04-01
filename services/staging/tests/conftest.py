@@ -279,6 +279,9 @@ def authentication_config():
 
 @pytest.fixture(name="mock_app")
 def get_mock_app(mocker, staging_client):
+    """
+    Mock the FastAPI application variable
+    """
     mock_app = mocker.patch.object(
         staging_client.app,
         "extra",
