@@ -192,7 +192,7 @@ def test_format_jobs_data(mock_jobs):
     }
     # ----- Check that the right exception is raised if the input jobs is something else than a dictionary
     with pytest.raises(Exception) as excinfo:
-        format_jobs_data("wrong_data")
+        format_jobs_data("wrong_data")  # type: ignore
     assert "Expected a dictionary as input" in str(excinfo.value)
 
     # ----- Check that the right exception is raised if the input job doesn't have the required 'jobs' attributes

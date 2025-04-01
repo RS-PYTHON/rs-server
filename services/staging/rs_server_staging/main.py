@@ -296,7 +296,7 @@ async def ping():
 async def get_processes(request: Request):
     """Returns list of all available processes from config."""
     try:
-        validate_request(request)
+        await validate_request(request)
         processes = {
             "processes": [],
             "links": [
@@ -330,7 +330,7 @@ async def get_resource(request: Request, resource: str):
         None,
     ):
         try:
-            validate_request(request)
+            await validate_request(request)
             process = {
                 "id": api.config["resources"][resource]["processor"]["name"],
                 "version": "1.0.0",
@@ -458,7 +458,7 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
-        validate_request(request)
+        await validate_request(request)
         formatted_job_data = format_job_data(job)
         return validate_response(request, formatted_job_data)
     except Exception as e:
@@ -469,7 +469,7 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
 async def get_jobs_endpoint(request: Request):
     """Returns the status of all jobs."""
     try:
-        validate_request(request)
+        await validate_request(request)
         # Generate an output conform to OGC process specifications
         formatted_jobs_data = format_jobs_data(app.extra["process_manager"].get_jobs())
         return validate_response(request, formatted_jobs_data)
@@ -488,7 +488,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
     auth_validation("dismiss", job["processID"], request=request, staging_process=True)
     try:
-        validate_request(request)
+        await validate_request(request)
     except Exception as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
     try:
@@ -515,7 +515,7 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
-        validate_request(request)
+        await validate_request(request)
         return validate_response(request, job["status"])
     except Exception as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
