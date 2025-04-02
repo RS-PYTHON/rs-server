@@ -432,6 +432,9 @@ class Staging(
                 0,
                 "No valid items were provided in the input for staging",
             )
+        # Handle the case where we have an empty ItemCollection
+        if len(item_collection.features) == 0:
+            return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
         # Filter out features with no assets
         item_collection.features = [feature for feature in item_collection.features if feature.assets]
