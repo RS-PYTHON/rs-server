@@ -42,7 +42,6 @@ GET /cadip/station123/cadu/search?datetime=2023-01-01T00:00:00Z/2023-01-02T23:59
         "cadip:final_block": true,
         "cadip:block_number": 1,
         "cadip:channel": 2,
-        "cadip:session_id": "S1A_20170501121534062343",
     },
     "links": [],
     "assets": {

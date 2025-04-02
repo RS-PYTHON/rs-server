@@ -429,10 +429,13 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
                     status_code=HTTP_400_BAD_REQUEST,
                 ) from exc
 
-        # 3 - include new stac extension if not present
-        new_stac_extension = "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json"
-        if new_stac_extension not in content["stac_extensions"]:
-            content["stac_extensions"].append(new_stac_extension)
+        # 3 - include new stac extensions if not present
+        for new_stac_extension in [
+            "https://rs-python.github.io/ownership-stac-extension/v1.0.0/schema.json",
+            "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json",
+        ]:
+            if new_stac_extension not in content["stac_extensions"]:
+                content["stac_extensions"].append(new_stac_extension)
 
         # 4 - bucket handling
         self.s3_bucket_handling(files_s3_key, item, request)

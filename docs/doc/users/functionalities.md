@@ -59,7 +59,6 @@ search files comming from multiple acquisition sessions.
             "cadip:final_block": true,
             "cadip:block_number": 1,
             "cadip:channel": 2,
-            "cadip:session_id": "S1A_20170501121534062343",
         },
         "links": [],
         "assets": {
