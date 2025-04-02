@@ -83,10 +83,17 @@ def must_be_authenticated(path: str) -> bool:
     return not no_auth
 
 
-async def just_for_the_lock_icon(
-    apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
-):
-    """Dummy function to add a lock icon in Swagger to enter an API key."""
+if common_settings.CLUSTER_MODE:
+
+    async def just_for_the_lock_icon(
+        apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
+    ):
+        """Dummy function to add a lock icon in Swagger to enter an API key."""
+
+else:
+
+    async def just_for_the_lock_icon():
+        """In local mode it does nothing."""
 
 
 app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
@@ -376,7 +383,7 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
 
 if common_settings.LOCAL_MODE:
 
-    @router.post("/staging/dask/auth")
+    @router.post("/staging/dask/auth", include_in_schema=False)
     async def dask_auth(local_dask_username: str, local_dask_password: str):
         """Set dask cluster authentication, only in local mode."""
         os.environ["LOCAL_DASK_USERNAME"] = local_dask_username
