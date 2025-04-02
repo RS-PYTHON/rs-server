@@ -108,6 +108,11 @@ async def just_for_the_lock_icon(
     """Dummy function to add a lock icon in Swagger to enter an API key."""
 
 
+async def validate_request_dependency(request: Request):
+    """Dependency to validate the body of the input request"""
+    await validate_request(request)
+
+
 app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
 app.add_middleware(HandleExceptionsMiddleware)
 
@@ -291,11 +296,10 @@ async def ping():
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-@router.get("/processes", dependencies=[Depends(just_for_the_lock_icon)])
+@router.get("/processes", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_processes(request: Request):
     """Returns list of all available processes from config."""
     try:
-        await validate_request(request)
         processes = {
             "processes": [],
             "links": [
@@ -315,7 +319,10 @@ async def get_processes(request: Request):
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
-@router.get("/processes/{resource}", dependencies=[Depends(just_for_the_lock_icon)])
+@router.get(
+    "/processes/{resource}",
+    dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)],
+)
 async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
     # rs_processes_{resource}_read role needed to access this endpoint.
@@ -329,7 +336,6 @@ async def get_resource(request: Request, resource: str):
         None,
     ):
         try:
-            await validate_request(request)
             process = {
                 "id": api.config["resources"][resource]["processor"]["name"],
                 "version": "1.0.0",
@@ -456,7 +462,7 @@ async def execute_process(
 
 
 # Endpoint to get the status of a job by job_id
-@router.get("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon)])
+@router.get("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_job_status_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
     try:
@@ -466,18 +472,16 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
-        await validate_request(request)
         formatted_job_data = format_job_data(job)
         return validate_response(request, formatted_job_data)
     except Exception as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
-@router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon)])
+@router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_jobs_endpoint(request: Request):
     """Returns the status of all jobs."""
     try:
-        await validate_request(request)
         # Generate an output conform to OGC process specifications
         formatted_jobs_data = format_jobs_data(app.extra["process_manager"].get_jobs())
         return validate_response(request, formatted_jobs_data)
@@ -486,7 +490,7 @@ async def get_jobs_endpoint(request: Request):
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
-@router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon)])
+@router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
     try:
@@ -496,15 +500,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
     auth_validation("dismiss", job["processID"], request=request, staging_process=True)
     try:
-        await validate_request(request)
-    except Exception as e:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
-    try:
         app.extra["process_manager"].delete_job(job_id)
-    # Handle case when job_id is not found
-    except Exception as error:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
-    try:
         # Create job response with a status message to confirm the job deletion
         job["message"] = f"Job {job_id} deleted successfully"
         formatted_job_data = format_job_data(job)
@@ -513,7 +509,10 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
-@router.get("/jobs/{job_id}/results", dependencies=[Depends(just_for_the_lock_icon)])
+@router.get(
+    "/jobs/{job_id}/results",
+    dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)],
+)
 async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
     try:
@@ -523,7 +522,6 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
-        await validate_request(request)
         return validate_response(request, job["status"])
     except Exception as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e

@@ -53,14 +53,14 @@ async def validate_request(request: Request) -> dict[Any, Any]:
     """
     if not os.path.isfile(PATH_TO_YAML_OPENAPI):
         raise FileNotFoundError(f"The following file path was not found: {PATH_TO_YAML_OPENAPI}")
-
-    body = await request.body()
-    openapi_request = StarletteOpenAPIRequest(request, body)
-    OPENAPI.validate_request(openapi_request)
     try:
+        body = await request.body()
+        openapi_request = StarletteOpenAPIRequest(request, body)
+        OPENAPI.validate_request(openapi_request)
         return json.loads(body) if body else None  # type: ignore
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid JSON format") from exc
+    except Exception as e:
+        # Handle exceptions and return an appropriate error message
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Request body validation failed: {e}") from e
 
 
 def validate_response(request: Request, data: dict, status_code=HTTP_200_OK) -> Any:
