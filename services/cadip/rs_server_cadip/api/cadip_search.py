@@ -403,7 +403,7 @@ async def get_cadip_collection_items(
         datetime=datetime,
         filter=filter_,
         filter_lang=filter_lang,
-        sortby=sortby,
+        sortby=[sortby] if sortby else None,
         limit=limit,
         page=page,
     )

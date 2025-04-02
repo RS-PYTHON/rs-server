@@ -917,11 +917,15 @@ def sort_feature_collection(item_collection: ItemCollection, sortby: str) -> Ite
     sortby = sortby.strip("'\"")
     direction, attribute = sortby[:1], sortby[1:]
 
+    # From STAC API Sort extension:
+    # Implementers may choose to require fields in Item Properties to be prefixed with properties. or not,
+    # or support use of both the prefixed and non-prefixed name, e.g., properties.datetime or datetime
+
     # Try to sort by 'properties' first, then fallback to the 'feature' itself
     def get_sort_key(item):
         # Check if the attribute exists in properties, else use item directly
-        if hasattr(item.properties, attribute):
-            return getattr(item.properties, attribute)
+        if hasattr(item.properties, attribute.replace("properties.", "")):
+            return getattr(item.properties, attribute.replace("properties.", ""))
         if hasattr(item, attribute):
             return getattr(item, attribute)
         # Otherwise, check if the attribute exists in any asset
