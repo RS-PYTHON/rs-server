@@ -295,17 +295,17 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.37.24"
+version = "1.37.25"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "boto3-1.37.24-py3-none-any.whl", hash = "sha256:2f2b8f82a5d7f89283973bf2cab771b90c09348799e78b2a25c60cd22c443514"},
-    {file = "boto3-1.37.24.tar.gz", hash = "sha256:1d3c6fc63a9efba0af8b531ec6b7f7c6b0ef197bf3dcd875f03c9097ac68b58f"},
+    {file = "boto3-1.37.25-py3-none-any.whl", hash = "sha256:00a025c621198508dc20c45224baaa7bd2a695323d999cce08b0d4deab5ada6f"},
+    {file = "boto3-1.37.25.tar.gz", hash = "sha256:23e9cbad028ef3723567f4556411ee8d0f732594316b4c78c174a03ba3ca3159"},
 ]
 
 [package.dependencies]
-botocore = ">=1.37.24,<1.38.0"
+botocore = ">=1.37.25,<1.38.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.11.0,<0.12.0"
 
@@ -314,13 +314,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.37.24"
+version = "1.37.25"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.37.24-py3-none-any.whl", hash = "sha256:f1a55332cca85a6556af8941cccdaf5d2d00336647d9e89f31174f2361ffb4f2"},
-    {file = "botocore-1.37.24.tar.gz", hash = "sha256:a0bcc3c376a371f2c11afcbcc9917010c1c0a701d0e45d1ea3ec3bddeb06a8ff"},
+    {file = "botocore-1.37.25-py3-none-any.whl", hash = "sha256:e35f10df0c3bcf42f4680439148462073fe6445d8938679f0576eb189fb034d7"},
+    {file = "botocore-1.37.25.tar.gz", hash = "sha256:6f8cefd769df170809816d66bde2e12c43f557ca6cf18c807922003319b52991"},
 ]
 
 [package.dependencies]
@@ -846,17 +846,6 @@ fasttext = ["fasttext (>=0.9.1)", "numpy (>=1.19.3,<2)"]
 langdetect = ["langdetect (>=1.0.0)"]
 
 [[package]]
-name = "decorator"
-version = "5.2.1"
-description = "Decorators for Humans"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "decorator-5.2.1-py3-none-any.whl", hash = "sha256:d316bb415a2d9e2d2b3abcc4084c6502fc09240e292cd76a76afc106a1c8e04a"},
-    {file = "decorator-5.2.1.tar.gz", hash = "sha256:65f266143752f734b0a7cc83c46f4618af75b8c5911b00ccb61d0ac9b6da0360"},
-]
-
-[[package]]
 name = "deprecated"
 version = "1.2.18"
 description = "Python @deprecated decorator to deprecate old python classes, functions or methods."
@@ -946,13 +935,13 @@ poetry = ["poetry"]
 
 [[package]]
 name = "eodag"
-version = "3.1.0b2"
+version = "3.2.0"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "eodag-3.1.0b2-py3-none-any.whl", hash = "sha256:6ffb8ba2dad4f717808190dbeb7c85c24ae80522b5b48034a21c7c07360a10fb"},
-    {file = "eodag-3.1.0b2.tar.gz", hash = "sha256:943ebe5bd8ed8c78c7bdc0e1ca301939301560f283063e12548abebcff1ec5f5"},
+    {file = "eodag-3.2.0-py3-none-any.whl", hash = "sha256:7a02b59d2472d4b4f82d2d96359ce13eba01ecbec45a6ceddc0d926c6d9af57b"},
+    {file = "eodag-3.2.0.tar.gz", hash = "sha256:57ccbcf6a6c68109eb223271d5db1d109c792e3f5ec5b525900cc908d89f9132"},
 ]
 
 [package.dependencies]
@@ -961,12 +950,9 @@ boto3 = "*"
 botocore = "*"
 click = "*"
 geojson = "*"
-jsonpath-ng = "<1.6.0"
+jsonpath-ng = "*"
 lxml = "*"
-orjson = [
-    {version = "<3.10.0", markers = "python_version >= \"3.12\" and platform_system == \"Windows\""},
-    {version = "*", markers = "python_version < \"3.12\" or platform_system != \"Windows\""},
-]
+orjson = "*"
 pydantic = ">=2.1.0,<2.10.0 || >2.10.0"
 pydantic_core = "*"
 PyJWT = {version = ">=2.5.0", extras = ["crypto"]}
@@ -988,13 +974,13 @@ Whoosh = "*"
 all = ["eodag[all-providers,csw,server,tutorials]"]
 all-providers = ["eodag[ecmwf,usgs]"]
 csw = ["OWSLib (>=0.27.1)"]
-dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto (>=5)", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (<3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (<0.24.0)", "stdlib-list", "tox", "tox-uv", "twine", "wheel"]
+dev = ["eodag[all-providers,csw,server,stubs]", "faker", "fastapi[all]", "flake8", "moto (>=5)", "mypy", "pre-commit", "py (>=1.8.2)", "pytest", "pytest-cov", "pytest-html (!=3.2.0)", "pytest-instafail", "pytest-socket", "pytest-xdist", "responses (!=0.24.0)", "stdlib-list", "tox", "tox-uv", "twine", "wheel"]
 docs = ["eodag[all,stubs]", "nbsphinx", "sphinx", "sphinx-book-theme (>=1.0.0)", "sphinx-copybutton", "sphinx-tabs", "sphinx_autodoc_typehints", "sphinxemoji"]
 ecmwf = ["ecmwf-api-client"]
 notebook = ["tqdm[notebook]"]
 server = ["cachetools", "fastapi (>=0.93.0)", "pydantic-settings", "pygeofilter", "starlette", "uvicorn[standard]"]
-stubs = ["boto3-stubs[essential]", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-tqdm", "types-urllib3"]
-tutorials = ["cartopy", "eodag-cube (>=0.6.0b1)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
+stubs = ["boto3-stubs[essential]", "types-PyYAML", "types-cachetools", "types-lxml", "types-python-dateutil", "types-requests", "types-setuptools", "types-tqdm", "types-urllib3"]
+tutorials = ["cartopy", "eodag-cube (>=0.6.0b2)", "eodag[ecmwf,notebook]", "folium", "imageio", "ipyleaflet (>=0.10.0)", "ipywidgets", "jupyter", "matplotlib", "netcdf4", "rasterio"]
 usgs = ["usgs (>=0.3.1)"]
 
 [[package]]
@@ -1619,20 +1605,18 @@ files = [
 
 [[package]]
 name = "jsonpath-ng"
-version = "1.5.3"
+version = "1.7.0"
 description = "A final implementation of JSONPath for Python that aims to be standard compliant, including arithmetic and binary comparison operators and providing clear AST for metaprogramming."
 optional = false
 python-versions = "*"
 files = [
-    {file = "jsonpath-ng-1.5.3.tar.gz", hash = "sha256:a273b182a82c1256daab86a313b937059261b5c5f8c4fa3fc38b882b344dd567"},
-    {file = "jsonpath_ng-1.5.3-py2-none-any.whl", hash = "sha256:f75b95dbecb8a0f3b86fd2ead21c2b022c3f5770957492b9b6196ecccfeb10aa"},
-    {file = "jsonpath_ng-1.5.3-py3-none-any.whl", hash = "sha256:292a93569d74029ba75ac2dc3d3630fc0e17b2df26119a165fa1d498ca47bf65"},
+    {file = "jsonpath-ng-1.7.0.tar.gz", hash = "sha256:f6f5f7fd4e5ff79c785f1573b394043b39849fb2bb47bcead935d12b00beab3c"},
+    {file = "jsonpath_ng-1.7.0-py2-none-any.whl", hash = "sha256:898c93fc173f0c336784a3fa63d7434297544b7198124a68f9a3ef9597b0ae6e"},
+    {file = "jsonpath_ng-1.7.0-py3-none-any.whl", hash = "sha256:f3d7f9e848cba1b6da28c55b1c26ff915dc9e0b1ba7e752a53d6da8d5cbd00b6"},
 ]
 
 [package.dependencies]
-decorator = "*"
 ply = "*"
-six = "*"
 
 [[package]]
 name = "jwcrypto"
@@ -3659,7 +3643,7 @@ authlib = "^1.5.0"
 boto3 = ">=1.35.40"
 botocore = ">=1.35.99"
 cachetools = ">=5.5.2"
-eodag = "==v3.1.0b2"
+eodag = "==v3.2.0"
 fastapi = "^0.115.11"
 filelock = "^3.16.1"
 httpx = "^0.27.2"
@@ -4433,13 +4417,13 @@ dev = ["coverage (>=6.2)", "mypy (>=0.971)", "pytest (>=7.0.1)", "pytest-cov (>=
 
 [[package]]
 name = "tenacity"
-version = "9.0.0"
+version = "9.1.2"
 description = "Retry code until it succeeds"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 files = [
-    {file = "tenacity-9.0.0-py3-none-any.whl", hash = "sha256:93de0c98785b27fcf659856aa9f54bfbd399e29969b0621bc7f762bd441b4539"},
-    {file = "tenacity-9.0.0.tar.gz", hash = "sha256:807f37ca97d62aa361264d497b0e31e92b8027044942bfa756160d908320d73b"},
+    {file = "tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138"},
+    {file = "tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb"},
 ]
 
 [package.extras]
