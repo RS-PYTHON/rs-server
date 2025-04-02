@@ -439,8 +439,17 @@ async def execute_process(
             app.extra["station_token_list_lock"],
         ).execute(valid_body["inputs"])
 
-        app.extra["process_manager"].get_job(staging_status["running"])
-        formatted_job_data = format_job_data(app.extra["process_manager"].get_job(staging_status["running"]))
+        # Handle the case where the launch of the staging job failed
+        if any(status in staging_status for status in ["failed", "dismissed"]):
+            raise HTTPException(
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Staging job {staging_status['failed']} has failed",
+            )
+
+        # Get identifier of the current job
+        working_status_list = ["accepted", "running", "successful"]
+        id_key = [status for status in working_status_list if status in staging_status][0]
+        formatted_job_data = format_job_data(app.extra["process_manager"].get_job(staging_status[id_key]))
         return validate_response(request, formatted_job_data, HTTP_201_CREATED)
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
