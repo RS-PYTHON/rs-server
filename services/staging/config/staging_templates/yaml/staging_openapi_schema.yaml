@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+# -------------- CAUTON: the same schema is defined in rs-client-libraries repo
+# (/config/staging_templates/yaml/staging_openapi_schema.yaml) - if the current
+# file is updated, don't forget to update this file too
+
 openapi: 3.0.0
 info:
   title: RS Staging API
