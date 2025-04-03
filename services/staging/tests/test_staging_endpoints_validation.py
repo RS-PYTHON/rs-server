@@ -103,8 +103,10 @@ async def test_validate_response():
     }
     # Create a Starlette request to validate
     mock_request = Request(scope=request_scope, receive=lambda: mock_receive(valid_staging_body))
-    response = validate_response(mock_request, valid_response)
-    assert json.loads(response.body) == valid_response
+
+    # ----- Check that the validation method doesn't raise any error if the respons
+    # has a valid format
+    validate_response(mock_request, valid_response)
 
     # ----- Check that a Starlette response which is not compliant with ogc raises
     # the appropriate validation exception
@@ -112,5 +114,5 @@ async def test_validate_response():
     wrong_response.pop("jobID")  # Remove a required ogc attribute
 
     with pytest.raises(Exception) as excinfo:
-        response = validate_response(mock_request, wrong_response)
+        validate_response(mock_request, wrong_response)
     assert "'jobID' is a required property" in str(excinfo.value)

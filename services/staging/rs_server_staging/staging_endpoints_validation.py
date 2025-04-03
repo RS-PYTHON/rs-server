@@ -29,8 +29,8 @@ from starlette.responses import JSONResponse
 from starlette.status import HTTP_200_OK, HTTP_400_BAD_REQUEST
 
 PATH_TO_YAML_OPENAPI = osp.join(
-    osp.realpath(osp.dirname(__file__)),
-    "../config",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)),
+    "config",
     "staging_templates",
     "yaml",
     "staging_openapi_schema.yaml",
@@ -63,20 +63,17 @@ async def validate_request(request: Request) -> dict[Any, Any]:
         raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail=f"Request body validation failed: {e}") from e
 
 
-def validate_response(request: Request, data: dict, status_code=HTTP_200_OK) -> Any:
+def validate_response(request: Request, data: dict, status_code=HTTP_200_OK):
     """
     Validate an endpoint response according to the ogc specifications
-    (described as yaml schemas)
+    (described as yaml schemas) - Raises an exception if the response
+    has an unvalid format
 
     Args:
         request (Request): input request
         data (dict): data to send in the endpoint response
-    Returns:
-        (str): return the content of the response as a json string
     """
     json_response = JSONResponse(status_code=status_code, content=data)
     openapi_request = StarletteOpenAPIRequest(request)
     openapi_response = StarletteOpenAPIResponse(json_response)
     OPENAPI.validate_response(openapi_request, openapi_response)
-
-    return json_response

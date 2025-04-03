@@ -29,6 +29,7 @@ import httpx
 import yaml
 from dask.distributed import LocalCluster
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
+from fastapi.responses import JSONResponse
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
@@ -313,7 +314,8 @@ async def get_processes(request: Request):
                     "version": "1.0.0",
                 },
             )
-        return validate_response(request, processes)
+        validate_response(request, processes)
+        return JSONResponse(status_code=HTTP_200_OK, content=processes)
 
     except Exception as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
@@ -340,7 +342,9 @@ async def get_resource(request: Request, resource: str):
                 "id": api.config["resources"][resource]["processor"]["name"],
                 "version": "1.0.0",
             }
-            return validate_response(request, process)
+            validate_response(request, process)
+            return JSONResponse(status_code=HTTP_200_OK, content=process)
+
         except Exception as e:
             raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
     return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"detail": f"Resource {resource} not found"})
@@ -445,18 +449,18 @@ async def execute_process(
             app.extra["station_token_list_lock"],
         ).execute(valid_body["inputs"])
 
-        # Handle the case where the launch of the staging job failed
-        if any(status in staging_status for status in ["failed", "dismissed"]):
-            raise HTTPException(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Staging job {staging_status['failed']} has failed",
-            )
-
         # Get identifier of the current job
-        working_status_list = ["accepted", "running", "successful"]
-        id_key = [status for status in working_status_list if status in staging_status][0]
+        status_dict = {
+            "accepted": HTTP_201_CREATED,
+            "running": HTTP_201_CREATED,
+            "successful": HTTP_201_CREATED,
+            "failed": HTTP_500_INTERNAL_SERVER_ERROR,
+            "dismissed": HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+        id_key = [status for status in status_dict if status in staging_status][0]
         formatted_job_data = format_job_data(app.extra["process_manager"].get_job(staging_status[id_key]))
-        return validate_response(request, formatted_job_data, HTTP_201_CREATED)
+        validate_response(request, formatted_job_data, HTTP_201_CREATED)
+        return JSONResponse(status_code=HTTP_201_CREATED, content=formatted_job_data)
 
     raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
 
@@ -467,13 +471,14 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
     """Used to get status of processing job."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
-    except JobNotFoundError as error:
+    except Exception as error:
         # Handle case when job_id is not found
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
         formatted_job_data = format_job_data(job)
-        return validate_response(request, formatted_job_data)
+        validate_response(request, formatted_job_data)
+        return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
     except Exception as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
@@ -484,7 +489,8 @@ async def get_jobs_endpoint(request: Request):
     try:
         # Generate an output conform to OGC process specifications
         formatted_jobs_data = format_jobs_data(app.extra["process_manager"].get_jobs())
-        return validate_response(request, formatted_jobs_data)
+        validate_response(request, formatted_jobs_data)
+        return JSONResponse(status_code=HTTP_200_OK, content=formatted_jobs_data)
     except Exception as e:
         # Handle exceptions and return an appropriate error message
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
@@ -504,7 +510,8 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         # Create job response with a status message to confirm the job deletion
         job["message"] = f"Job {job_id} deleted successfully"
         formatted_job_data = format_job_data(job)
-        return validate_response(request, formatted_job_data)
+        validate_response(request, formatted_job_data)
+        return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
     except Exception as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
@@ -522,7 +529,8 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
         raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
-        return validate_response(request, job["status"])
+        validate_response(request, job["status"])
+        return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
     except Exception as e:
         raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
