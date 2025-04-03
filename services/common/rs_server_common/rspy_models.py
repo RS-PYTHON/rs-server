@@ -25,6 +25,7 @@ from typing import Any
 import stac_pydantic
 from geojson_pydantic import FeatureCollection
 from pydantic import ConfigDict, Field
+from rs_server_common.utils.utils import strftime_millis
 from stac_pydantic.links import Links
 from stac_pydantic.shared import StacBaseModel, StacCommonMetadata
 
@@ -52,10 +53,7 @@ class ItemProperties(WrapStacCommonMetadata):
 
     def __init__(self, **data: Any):
         """Force convert datetime to str if any in init."""
-        data = {
-            key: (value.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z" if isinstance(value, datetime) else value)
-            for key, value in data.items()
-        }
+        data = {key: (strftime_millis(value) if isinstance(value, datetime) else value) for key, value in data.items()}
 
         # Call the parent class's initializer
         super().__init__(**data)

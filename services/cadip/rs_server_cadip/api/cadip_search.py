@@ -105,6 +105,8 @@ class MockPgstacCadip(MockPgstac):
             select_config=select_config,
             stac_to_odata=stac_to_odata,
             map_mission=cadip_map_mission,
+            # impossible to define a temporal OData mapping that would be
+            # {"start_datetime": "DownlinkStart", "end_datetime": "max(Files.PublicationDate)"}
         )
 
         # Default sortby value

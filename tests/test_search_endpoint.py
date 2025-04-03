@@ -1117,6 +1117,190 @@ class TestFeatureCollectionOdataStacMapping:
 
     @pytest.mark.unit
     @pytest.mark.parametrize(
+        "fastapi_app, endpoint, odata, expected_code",
+        [
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_BEFORE(start_datetime, '2025-04-01T00:00:00Z')"
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start lt 2025-04-01T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_AFTER(start_datetime, '2025-04-01T00:00:00Z')"
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start gt 2025-04-01T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_MEETS(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/End eq 2025-04-01T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_METBY(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start eq 2025-04-02T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_OVERLAPS(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start lt 2025-04-01T00:00:00.000Z and 2025-04-01T00:00:00.000Z lt ContentDate/End and ContentDate/End lt 2025-04-02T00:00:00.000Z)"  # noqa: E501 # pylint: disable=line-too-long
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_OVERLAPPEDBY(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(2025-04-01T00:00:00.000Z lt ContentDate/Start and ContentDate/Start lt 2025-04-02T00:00:00.000Z and ContentDate/End gt 2025-04-02T00:00:00.000Z)"  # noqa: E501 # pylint: disable=line-too-long
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            # TODO enable these tests when pygeofilter supports these operators
+            # (
+            #    ROUTER_PREFIX_AUXIP,
+            #    "/auxip/search?collections=adgs&filter="
+            #    "T_STARTS(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+            #    "&sortby=-properties.created&limit=1",
+            #    "http://127.0.0.1:5000/Products?$filter="
+            #    "(ContentDate/Start eq 2025-04-01T00:00:00.000Z and ContentDate/End lt 2025-04-02T00:00:00.000Z)"
+            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    status.HTTP_200_OK,
+            # ),
+            # (
+            #    ROUTER_PREFIX_AUXIP,
+            #    "/auxip/search?collections=adgs&filter="
+            #    "T_STARTEDBY(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+            #    "&sortby=-properties.created&limit=1",
+            #    "http://127.0.0.1:5000/Products?$filter="
+            #    "(ContentDate/Start eq 2025-04-01T00:00:00.000Z and ContentDate/End gt 2025-04-02T00:00:00.000Z)"
+            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    status.HTTP_200_OK,
+            # ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_DURING(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start gt 2025-04-01T00:00:00.000Z and ContentDate/End lt 2025-04-02T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_CONTAINS(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start lt 2025-04-01T00:00:00.000Z and ContentDate/End gt 2025-04-02T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            # TODO enable these tests when pygeofilter supports these operators
+            # (
+            #    ROUTER_PREFIX_AUXIP,
+            #    "/auxip/search?collections=adgs&filter="
+            #    "T_FINISHES(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+            #    "&sortby=-properties.created&limit=1",
+            #    "http://127.0.0.1:5000/Products?$filter="
+            #    "(ContentDate/Start gt 2025-04-01T00:00:00.000Z and ContentDate/End eq 2025-04-02T00:00:00.000Z)"
+            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    status.HTTP_200_OK,
+            # ),
+            # (
+            #    ROUTER_PREFIX_AUXIP,
+            #    "/auxip/search?collections=adgs&filter="
+            #    "T_FINISHEDBY(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+            #    "&sortby=-properties.created&limit=1",
+            #    "http://127.0.0.1:5000/Products?$filter="
+            #    "(ContentDate/Start lt 2025-04-01T00:00:00.000Z and ContentDate/End eq 2025-04-02T00:00:00.000Z)"
+            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    status.HTTP_200_OK,
+            # ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_EQUALS(INTERVAL(start_datetime, end_datetime), INTERVAL('2025-04-01T00:00:00Z', '2025-04-02T00:00:00Z'))"  # noqa: E501 # pylint: disable=line-too-long
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start eq 2025-04-01T00:00:00.000Z and ContentDate/End eq 2025-04-02T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+            # TODO enable these tests when pygeofilter supports these operators
+            # (
+            #    ROUTER_PREFIX_AUXIP,
+            #    "/auxip/search?collections=adgs&filter="
+            #    "T_DISJOINT(start_datetime, '2025-04-01T00:00:00Z')"
+            #    "&sortby=-properties.created&limit=1",
+            #    "http://127.0.0.1:5000/Products?$filter="
+            #    "not (ContentDate/Start lte 2025-04-02T00:00:00.000Z and ContentDate/End gte 2025-04-01T00:00:00.000Z)"
+            #    "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+            #    status.HTTP_200_OK,
+            # ),
+            (
+                ROUTER_PREFIX_AUXIP,
+                "/auxip/search?collections=adgs&filter="
+                "T_INTERSECTS(start_datetime, '2025-04-01T00:00:00Z')"
+                "&sortby=-properties.created&limit=1",
+                "http://127.0.0.1:5000/Products?$filter="
+                "(ContentDate/Start lte 2025-04-01T00:00:00.000Z and ContentDate/Start gte 2025-04-01T00:00:00.000Z)"
+                "&$orderby=PublicationDate desc&$top=1&$skip=0&$expand=Attributes",
+                status.HTTP_200_OK,
+            ),
+        ],
+        indirect=["fastapi_app"],
+        ids=[
+            "t_before",
+            "t_after",
+            "t_meets",
+            "t_metby",
+            "t_overlaps",
+            "t_overlappedby",
+            # "t_starts",
+            # "t_startedby",
+            "t_during",
+            "t_contains",
+            # "t_finishes",
+            # "t_finishedby",
+            "t_equals",
+            # "t_disjoint",
+            "t_intersects",
+        ],
+    )
+    @responses.activate
+    def test_temporal_operators(self, client, endpoint, odata, expected_code):
+        """Test used to group tests au temporal operators used to retrieve auxiliary data with DPR CQL2 filters."""
+        responses.add(responses.GET, odata, json={"value": []}, status=200)
+        response = client.get(endpoint)
+        assert response.status_code == expected_code
+
+    @pytest.mark.unit
+    @pytest.mark.parametrize(
         "endpoint, page, is_last",
         [
             ("/auxip/collections/s2_adgs2_AUX_OBMEMC/items?token=next:page=", "3", True),
