@@ -597,6 +597,7 @@ def set_eodag_auth_env(ext_auth_config: ExternalAuthenticationConfig):
     """Set the authorization env vars for eodag"""
     # mandatory keys
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__auth_uri"] = ext_auth_config.token_url
+    os.environ[f"EODAG__{ext_auth_config.station_id}__auth__refresh_uri"] = ext_auth_config.token_url
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__client_id"] = ext_auth_config.client_id
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__client_secret"] = ext_auth_config.client_secret
     os.environ[f"EODAG__{ext_auth_config.station_id}__auth__req_data__username"] = ext_auth_config.username

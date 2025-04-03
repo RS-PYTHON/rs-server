@@ -21,9 +21,9 @@
 cadip:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5000/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -127,9 +127,9 @@ cadip:
 ins:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5100/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -233,9 +233,9 @@ ins:
 mps:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5101/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -339,9 +339,9 @@ mps:
 mti:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5102/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -445,9 +445,9 @@ mti:
 nsg:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5103/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -551,9 +551,9 @@ nsg:
 sgs:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5104/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -657,9 +657,9 @@ sgs:
 cadip_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5000/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -836,9 +836,9 @@ cadip_session:
 ins_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5100/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1015,9 +1015,9 @@ ins_session:
 mps_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5101/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1194,9 +1194,9 @@ mps_session:
 mti_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5102/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1373,9 +1373,9 @@ mti_session:
 nsg_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5103/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1552,9 +1552,9 @@ nsg_session:
 sgs_session:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5104/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER

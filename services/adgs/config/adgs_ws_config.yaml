@@ -20,9 +20,9 @@
 adgs:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5000/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -163,9 +163,9 @@ adgs:
 adgs2:
   auth:
     type: TokenAuth
-    auth_uri: http://127.0.0.1:5001/oauth2/token
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
