@@ -401,7 +401,7 @@ async def get_cadip_collection_items(
         request,
         bbox=check_bbox_input(bbox),
         datetime=datetime,
-        filter=filter_,
+        filter_expr=filter_,
         filter_lang=filter_lang,
         sortby=[sortby] if sortby else None,
         limit=limit,
