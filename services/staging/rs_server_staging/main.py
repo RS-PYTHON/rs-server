@@ -88,6 +88,16 @@ JOB_ATTRS_MAPPING = {"identifier": "jobID"}
 OGC_UNCOMPLIANT_JOB_ATTRS = ["_sa_instance_state", "location", "mimetype"]
 
 
+def ogc_error_response(status_code: int, detail: str):
+    """Generate an OGC-compliant error response"""
+    error_response = {
+        "type": f"https://developer.mozilla.org/en/docs/Web/HTTP/Reference/Status/{status_code}",
+        "status": status_code,
+        "detail": detail,
+    }
+    return JSONResponse(status_code=status_code, content=error_response)
+
+
 class DatabaseJobFormatError(Exception):
     """Exception raised when an error occurred during the init of a provider."""
 
@@ -318,7 +328,7 @@ async def get_processes(request: Request):
         return JSONResponse(status_code=HTTP_200_OK, content=processes)
 
     except Exception as e:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
 @router.get(
@@ -346,8 +356,8 @@ async def get_resource(request: Request, resource: str):
             return JSONResponse(status_code=HTTP_200_OK, content=process)
 
         except Exception as e:
-            raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
-    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"detail": f"Resource {resource} not found"})
+            return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+    return ogc_error_response(HTTP_404_NOT_FOUND, {"detail": f"Resource {resource} not found"})
 
 
 def format_job_data(job: dict):
@@ -433,10 +443,10 @@ async def execute_process(
         valid_body = await validate_request(request)
     except Exception as e:
         # Handle exceptions and return an appropriate error message
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
     if resource not in api.config["resources"]:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Process resource '{resource}' not found")
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
@@ -461,8 +471,7 @@ async def execute_process(
         formatted_job_data = format_job_data(app.extra["process_manager"].get_job(staging_status[id_key]))
         validate_response(request, formatted_job_data, HTTP_201_CREATED)
         return JSONResponse(status_code=HTTP_201_CREATED, content=formatted_job_data)
-
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
+    return ogc_error_response(HTTP_404_NOT_FOUND, f"Processor '{processor_name}' not found")
 
 
 # Endpoint to get the status of a job by job_id
@@ -473,14 +482,15 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
         job = app.extra["process_manager"].get_job(job_id)
     except Exception as error:
         # Handle case when job_id is not found
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
+
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
         formatted_job_data = format_job_data(job)
         validate_response(request, formatted_job_data)
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
     except Exception as e:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
 @router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
@@ -493,7 +503,7 @@ async def get_jobs_endpoint(request: Request):
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_jobs_data)
     except Exception as e:
         # Handle exceptions and return an appropriate error message
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
 @router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
@@ -503,7 +513,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         job = app.extra["process_manager"].get_job(job_id)
     # Handle case when job_id is not found
     except Exception as error:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
     auth_validation("dismiss", job["processID"], request=request, staging_process=True)
     try:
         app.extra["process_manager"].delete_job(job_id)
@@ -513,7 +523,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         validate_response(request, formatted_job_data)
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
     except Exception as e:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
 @router.get(
@@ -526,13 +536,13 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
         # Query the database to find the job by job_id
         job = app.extra["process_manager"].get_job(job_id)
     except JobNotFoundError as error:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
         validate_response(request, job["status"])
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
     except Exception as e:
-        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
 if common_settings.LOCAL_MODE:

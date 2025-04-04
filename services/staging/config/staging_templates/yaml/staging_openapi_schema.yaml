@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# -------------- CAUTON: the same schema is defined in rs-client-libraries repo
-# (/config/staging_templates/yaml/staging_openapi_schema.yaml) - if the current
-# file is updated, don't forget to update this file too
+# -------------- CAUTON: this schema is defined both in rs-server and rs-client-libraries
+# repos (/config/staging_templates/yaml/staging_openapi_schema.yaml) - if the current file
+# is updated, don't forget to update the file from the other repository
 
 openapi: 3.0.0
 info:
@@ -48,6 +47,15 @@ paths:
             application/json:
               schema:
                 $ref: './process.yaml'
+        '404':
+          description: The requested URI was not found.
+          content:
+            application/json:
+              schema:
+                $ref: './exception.yaml'
+            text/html:
+              schema:
+                type: string
   /processes/{process_id}/execution:
     post:
       summary: Execute a process
@@ -101,6 +109,15 @@ paths:
             application/json:
               schema:
                 $ref: './jobList.yaml'
+        '404':
+          description: The requested URI was not found.
+          content:
+            application/json:
+              schema:
+                $ref: './exception.yaml'
+            text/html:
+              schema:
+                type: string
   /jobs/{job-id}:
     get:
       summary: Returns the status of a job.
@@ -118,6 +135,24 @@ paths:
             application/json:
               schema:
                 $ref: 'statusInfo.yaml'
+        '404':
+          description: The requested URI was not found.
+          content:
+            application/json:
+              schema:
+                $ref: './exception.yaml'
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: A server error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: './exception.yaml'
+            text/html:
+              schema:
+                type: string
     delete:
       summary: Deletes a specific job.
       parameters:
@@ -134,6 +169,24 @@ paths:
             application/json:
               schema:
                 $ref: './statusInfo.yaml'
+        '404':
+          description: The requested URI was not found.
+          content:
+            application/json:
+              schema:
+                $ref: './exception.yaml'
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: A server error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: './exception.yaml'
+            text/html:
+              schema:
+                type: string
   /jobs/{job-id}/results:
     get:
       summary: Returns the results of a given job
@@ -150,3 +203,21 @@ paths:
             application/json:
               schema:
                 $ref: './results.yaml'
+        '404':
+          description: The requested URI was not found.
+          content:
+            application/json:
+              schema:
+                $ref: './exception.yaml'
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: A server error occurred.
+          content:
+            application/json:
+              schema:
+                $ref: './exception.yaml'
+            text/html:
+              schema:
+                type: string
