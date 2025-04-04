@@ -81,6 +81,7 @@ DateTimeType = Annotated[
 FilterType = Annotated[
     Optional[str],
     Query(
+        alias="filter",
         description="""A CQL filter expression for filtering items.\n
 Supports `CQL-JSON` as defined in https://portal.ogc.org/files/96288\n
 Remember to URL encode the CQL-JSON if using GET""",
