@@ -431,7 +431,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
 
         # 3 - include new stac extensions if not present
         for new_stac_extension in [
-            "https://rs-python.github.io/ownership-stac-extension/v1.0.0/schema.json",
+            "https://home.rs-python.eu/ownership-stac-extension/v1.1.0/schema.json",
             "https://stac-extensions.github.io/alternate-assets/v1.1.0/schema.json",
         ]:
             if new_stac_extension not in content["stac_extensions"]:
