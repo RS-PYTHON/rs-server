@@ -45,7 +45,8 @@ def __read_configuration() -> dict:
     """
     Reads and loads the rs-server configuration file for authentication to extenal stations.
 
-    In local mode, we read an existing local file, either customized by the user or released with the source code.
+    In local mode, we read an existing rs-server.yaml local file, either customized by the user
+    or released with the source code.
 
     In cluster mode, we read the environment variables with the pattern:
     RSPY__TOKEN__<service>__<station>__<section_name>__<rest_of_the_info_for_key>
@@ -138,7 +139,7 @@ def __read_configuration() -> dict:
 
 
 # Read the configuration only once
-CONFIGURATION = __read_configuration()
+CONFIGURATION: dict = __read_configuration()
 
 
 def load_external_auth_config_by_station_service(
@@ -215,7 +216,6 @@ def load_external_auth_config(
         ValueError: If the station_id is None or an empty string.
         Exception: If token retrieval fails for any reason, a general exception will be logged.
     """
-    session = ""
     if station_id and service:
         ext_auth_config = load_external_auth_config_by_station_service(station_id.lower(), service)
     elif domain:

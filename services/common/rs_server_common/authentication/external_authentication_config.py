@@ -29,6 +29,8 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     A configuration class for storing external authentication details, such as those used for
     API requiring token-based authentication.
 
+    Values are read either from the rs-server.yaml (in local mode) or RSPY__TOKEN__ env vars (in cluster mode).
+
     Attributes:
         station_id (str): The unique identifier for the station requesting the token.
         domain (str): The domain for the external service.

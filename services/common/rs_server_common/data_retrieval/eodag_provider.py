@@ -93,6 +93,7 @@ class EodagProvider(Provider):
         Args:
             config_file: the path to the eodag configuration file
             provider: the name of the eodag provider
+            auth_config: configuration values for authentication to external stations
         """
         self.provider: str = provider
         self.config_file = config_file.resolve().as_posix()
