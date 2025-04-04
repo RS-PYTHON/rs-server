@@ -41,9 +41,6 @@ from rs_server_adgs.adgs_utils import (
     stac_to_odata,
 )
 from rs_server_common.authentication import authentication
-from rs_server_common.authentication.authentication_to_external import (
-    set_eodag_auth_token,
-)
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.stac_api_common import (
     BBoxType,
@@ -349,10 +346,8 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException: If there is a connection error with the station (`requests.exceptions.ConnectionError`).
         HTTPException: If there is a general failure during the process.
     """
-    set_eodag_auth_token(station, "auxip")
     try:
-        provider = init_adgs_provider(station)
-        products = provider.search(
+        products = init_adgs_provider(station).search(
             **validate(queryables),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),

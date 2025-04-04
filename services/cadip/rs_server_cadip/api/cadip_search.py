@@ -48,9 +48,6 @@ from rs_server_cadip.cadip_utils import (
     validate_products,
 )
 from rs_server_common.authentication import authentication
-from rs_server_common.authentication.authentication_to_external import (
-    set_eodag_auth_token,
-)
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.rspy_models import Item
 from rs_server_common.stac_api_common import (
@@ -501,8 +498,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
     try:
-        set_eodag_auth_token(f"{station.lower()}_session", "cadip")
-        products = (init_cadip_provider(f"{station}_session")).search(
+        products = init_cadip_provider(f"{station}_session").search(
             **validate(queryables),
             sessions_search=True,
             items_per_page=limit,
@@ -584,8 +580,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
-        set_eodag_auth_token(station.lower(), "cadip")
-        products = (init_cadip_provider(station)).search(
+        products = init_cadip_provider(station).search(
             **validate(queryables),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,

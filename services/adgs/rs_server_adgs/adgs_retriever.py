@@ -18,6 +18,9 @@ import os
 import os.path as osp
 from pathlib import Path
 
+from rs_server_common.authentication.authentication_to_external import (
+    load_external_auth_config,
+)
 from rs_server_common.data_retrieval.eodag_provider import EodagProvider
 from rs_server_common.data_retrieval.provider import CreateProviderFailed
 from rs_server_common.settings import env_bool
@@ -47,9 +50,11 @@ def init_adgs_provider(station: str) -> EodagProvider:
          the EodagProvider initialized
 
     """
+    station = station.lower()
     try:
         # Check if the config file path is overriden in the environment variables
         eodag_config = Path(os.environ.get("EODAG_ADGS_CONFIG", DEFAULT_EODAG_CONFIG))
-        return EodagProvider(eodag_config, station.lower())  # default to eodag, default station "adgs"
+        ext_auth_config = load_external_auth_config(station, "auxip")
+        return EodagProvider(eodag_config, station, ext_auth_config)  # default to eodag, default station "adgs"
     except Exception as exception:
         raise CreateProviderFailed("Failed to setup eodag") from exception

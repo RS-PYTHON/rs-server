@@ -16,6 +16,11 @@
 ExternalAuthenticationConfig implementation.
 """
 from dataclasses import dataclass
+from typing import Any
+
+from rs_server_common.utils.logging import Logging
+
+logger = Logging.default(__name__)
 
 
 @dataclass
@@ -55,3 +60,44 @@ class ExternalAuthenticationConfig:  # pylint: disable=too-many-instance-attribu
     scope: str | None = None
     authorization: str | None = None
     trusted_domains: list[str] | None = None
+
+
+def create_external_auth_config(
+    station_id: str,
+    station_dict: dict[str, Any],
+    service_dict: dict[str, Any],
+) -> ExternalAuthenticationConfig | None:
+    """
+    Create an ExternalAuthenticationConfig object based on the provided station and service dictionaries.
+
+    Args:
+        station_id (str): The unique identifier for the station.
+        station_dict (Dict[str, Any]): Dictionary containing station-specific configuration details.
+        service_dict (Dict[str, Any]): Dictionary containing service-specific configuration details.
+
+    Returns:
+        ExternalAuthenticationConfig: An object representing the external authentication configuration.
+
+    Raises:
+        KeyError: If any required keys are missing in the configuration dictionaries.
+    """
+    try:
+        return ExternalAuthenticationConfig(
+            station_id=station_id,
+            domain=station_dict["domain"],
+            service_name=service_dict["name"],
+            service_url=service_dict["url"],
+            auth_type=station_dict.get("authentication", {}).get("auth_type"),
+            token_url=station_dict.get("authentication", {}).get("token_url"),
+            grant_type=station_dict.get("authentication", {}).get("grant_type"),
+            username=station_dict.get("authentication", {}).get("username"),
+            password=station_dict.get("authentication", {}).get("password"),
+            client_id=station_dict.get("authentication", {}).get("client_id"),
+            client_secret=station_dict.get("authentication", {}).get("client_secret"),
+            scope=station_dict.get("authentication", {}).get("scope"),
+            authorization=station_dict.get("authentication", {}).get("authorization"),
+            trusted_domains=station_dict.get("trusteddomains", None),
+        )
+    except KeyError as e:
+        logger.error(f"Error loading configuration, couldn't find a key: {e}")
+    return None

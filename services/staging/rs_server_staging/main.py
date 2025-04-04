@@ -34,9 +34,6 @@ from pygeoapi.provider.postgresql import get_engine
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication import auth_validation
-from rs_server_common.authentication.authentication_to_external import (
-    init_rs_server_config_yaml,
-)
 from rs_server_common.db import Base
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
@@ -241,8 +238,6 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
         KeyError: If no clusters are found during an attempt to connect via the `Gateway`.
     """
     logger.info("Starting up the application...")
-    # Init the rs-server configuration file for authentication to the external stations
-    init_rs_server_config_yaml()
     # Create jobs table
     process_manager = init_db()
     # In local mode, if the gateway is not defined, create a dask LocalCluster

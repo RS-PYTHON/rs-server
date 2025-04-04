@@ -28,9 +28,6 @@ from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
-from rs_server_common.authentication.authentication_to_external import (
-    init_rs_server_config_yaml,
-)
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.middlewares import HandleExceptionsMiddleware
@@ -101,9 +98,6 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         ###########
         # STARTUP #
         ###########
-
-        # Init the rs-server configuration file for authentication to extenal stations
-        init_rs_server_config_yaml()
 
         # Open database session. Loop until the connection works.
         if app.state.init_db:

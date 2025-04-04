@@ -23,7 +23,6 @@ from threading import Lock
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
-from eodag.api.core import override_config_from_env
 from eodag.utils.exceptions import (
     AuthenticationError,
     MisconfiguredError,
@@ -31,6 +30,11 @@ from eodag.utils.exceptions import (
     ValidationError,
 )
 from fastapi import HTTPException, status
+from rs_server_common.authentication.external_authentication_config import (
+    ExternalAuthenticationConfig,
+)
+from rs_server_common.authentication.token_auth import get_station_token
+from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed
@@ -76,16 +80,6 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 
-    def override_config_from_env(self):
-        """
-        Update the eodag conf from the latest EODAG__<provider>__auth__... env vars
-        that are set in authentication_to_external.py, if they have changed
-        """
-        with self.lock:  # safer to use a thread lock before calling eodag and modifying a global var
-            if (new_environ := dict(os.environ)) != self.old_environ:
-                self.old_environ = new_environ
-                override_config_from_env(self.providers_config)
-
 
 class EodagProvider(Provider):
     """An EODAG provider.
@@ -93,7 +87,7 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    def __init__(self, config_file: Path, provider: str):  # type: ignore
+    def __init__(self, config_file: Path, provider: str, auth_config: ExternalAuthenticationConfig):  # type: ignore
         """Create a EODAG provider.
 
         Args:
@@ -109,9 +103,37 @@ class EodagProvider(Provider):
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
 
-        # If the eodag object was already existing and retrieved from the lru_cache,
-        # we need to update its configuration from the latest env vars, if they have changed
-        self.client.override_config_from_env()
+        # Set the authentication to external stations
+        provider_config = self.client.providers_config[provider]
+        if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
+            provider_config.update(
+                {"auth": {"credentials": {"token": get_station_token(auth_config, {})["access_token"]}}},
+            )
+        else:
+            # mandatory keys
+            provider_config.update(
+                {
+                    "auth": {
+                        "auth_uri": auth_config.token_url,
+                        "refresh_uri": auth_config.token_url,
+                        "req_data": {
+                            "client_id": auth_config.client_id,
+                            "client_secret": auth_config.client_secret,
+                            "username": auth_config.username,
+                            "password": auth_config.password,
+                            "grant_type": auth_config.grant_type,
+                        },
+                    },
+                },
+            )
+
+            # Used to set the authorization for token retrieval
+            if auth_config.authorization is not None:
+                provider_config.update({"auth": {"credentials": {"auth_for_token": auth_config.authorization}}})
+
+            # optional keys
+            if auth_config.scope:
+                provider_config.update({"auth": {"req_data": {"scope": auth_config.scope}}})
 
     def _specific_search(self, **kwargs) -> SearchResult | list:
         """
