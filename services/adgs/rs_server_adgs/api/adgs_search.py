@@ -351,7 +351,8 @@ def process_product_search(  # pylint: disable=too-many-locals
     """
     set_eodag_auth_token(station, "auxip")
     try:
-        products = (init_adgs_provider(station)).search(
+        provider = init_adgs_provider(station)
+        products = provider.search(
             **validate(queryables),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),

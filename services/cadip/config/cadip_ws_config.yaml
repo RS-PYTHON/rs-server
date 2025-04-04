@@ -21,6 +21,8 @@
 cadip:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -127,6 +129,8 @@ cadip:
 ins:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -233,6 +237,8 @@ ins:
 mps:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -339,6 +345,8 @@ mps:
 mti:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -445,6 +453,8 @@ mti:
 nsg:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -551,6 +561,8 @@ nsg:
 sgs:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -657,6 +669,8 @@ sgs:
 cadip_session:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -836,6 +850,8 @@ cadip_session:
 ins_session:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -1015,6 +1031,8 @@ ins_session:
 mps_session:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -1194,6 +1212,8 @@ mps_session:
 mti_session:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -1373,6 +1393,8 @@ mti_session:
 nsg_session:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
@@ -1552,6 +1574,8 @@ nsg_session:
 sgs_session:
   auth:
     type: TokenAuth
+    auth_uri: PLACEHOLDER
+    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
