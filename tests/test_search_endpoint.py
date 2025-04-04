@@ -686,8 +686,8 @@ class TestFeatureCollectionOdataStacMapping:
             # set filter with id AND datetime, check that odata is updated, now with SessionId, Satellite and PB date.
             (
                 ROUTER_PREFIX_CADIP,
-                "/cadip/collections/cadip_session_by_satellite/items?filter=id=S1A_20200105072204051312 AND datetime="
-                "2020-02-16T12:00:00.000Z",
+                "/cadip/collections/cadip_session_by_satellite/items?filter=id='S1A_20200105072204051312' AND datetime="
+                "'2020-02-16T12:00:00.000Z'",
                 "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312' and Satellite eq 'S1A'"
                 " and PublicationDate eq 2020-02-16T12:00:00.000Z&$orderby=PublicationDate desc&$top=10&$skip=0",
                 status.HTTP_200_OK,
@@ -715,7 +715,7 @@ class TestFeatureCollectionOdataStacMapping:
             # By setting filter with a invalid value (not withing queryables), should result in a 422
             (
                 ROUTER_PREFIX_CADIP,
-                "/cadip/collections/cadip_session_by_satellite/items?filter=invalid=x",
+                "/cadip/collections/cadip_session_by_satellite/items?filter=invalid='x'",
                 "No odata for this",
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
             ),
@@ -738,7 +738,7 @@ class TestFeatureCollectionOdataStacMapping:
             (
                 ROUTER_PREFIX_AUXIP,
                 "/auxip/collections/adgs_by_platform/items?filter=Name=AUX_PPA AND published="
-                "2020-02-16T12:00:00.000Z",
+                "'2020-02-16T12:00:00.000Z'",
                 "http://127.0.0.1:5000/Products?$filter=contains(Name, 'AUX_PPA') and PublicationDate eq "
                 "2020-02-16T12:00:00.000Z and Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
                 "'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1')"
@@ -747,7 +747,7 @@ class TestFeatureCollectionOdataStacMapping:
             ),
             (
                 ROUTER_PREFIX_AUXIP,
-                "/auxip/collections/adgs_by_platform/items?filter=processing:facility=PDMC",
+                "/auxip/collections/adgs_by_platform/items?filter=processing:facility='PDMC'",
                 "http://127.0.0.1:5000/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name"
                 " eq 'platformShortName' and att/OData.CSC.StringAttribute/Value eq 'SENTINEL-1') and "
                 "Attributes/OData.CSC.StringAttribute/any(att:att/Name eq 'processingCenter' and "
@@ -757,7 +757,7 @@ class TestFeatureCollectionOdataStacMapping:
             ),
             (
                 ROUTER_PREFIX_AUXIP,
-                "/auxip/collections/adgs_by_platform/items?filter=invalid=x",
+                "/auxip/collections/adgs_by_platform/items?filter=invalid='x'",
                 "No odata",
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
             ),
