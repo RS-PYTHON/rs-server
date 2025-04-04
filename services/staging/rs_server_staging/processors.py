@@ -417,7 +417,11 @@ class Staging(
                 response.raise_for_status()
                 data["items"]["value"] = response.json()
         except (RequestException, JSONDecodeError, RuntimeError) as exc:
-            return self.log_job_execution(JobStatus.failed, 0, f"Failed to search catalog: {exc}")
+            return self.log_job_execution(
+                JobStatus.failed,
+                0,
+                f"Failed to retrieve the ItemCollection from the input link: {exc}",
+            )
 
         # self.logger.debug(f"Executing staging processor for {data}")
         item_collection: FeatureCollectionModel | None = (

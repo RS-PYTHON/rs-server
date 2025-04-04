@@ -357,7 +357,7 @@ async def get_resource(request: Request, resource: str):
 
         except Exception as e:
             return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
-    return ogc_error_response(HTTP_404_NOT_FOUND, {"detail": f"Resource {resource} not found"})
+    return ogc_error_response(HTTP_404_NOT_FOUND, f"Resource {resource} not found")
 
 
 def format_job_data(job: dict):
