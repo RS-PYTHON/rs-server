@@ -32,7 +32,6 @@ PATH_TO_YAML_OPENAPI = osp.join(
     os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)),
     "config",
     "staging_templates",
-    "yaml",
     "staging_openapi_schema.yaml",
 )
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # -------------- CAUTON: this schema is defined both in rs-server and rs-client-libraries
-# repos (/config/staging_templates/yaml/staging_openapi_schema.yaml) - if the current file
+# repos (/config/staging_templates/staging_openapi_schema.yaml) - if the current file
 # is updated, don't forget to update the file from the other repository
 
 openapi: 3.0.0

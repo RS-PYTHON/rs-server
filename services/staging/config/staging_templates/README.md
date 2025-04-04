@@ -2,8 +2,7 @@
 # What are the .yml templates in rs-client staging wrappers used for ?
 
 <p>
-In order to validate the  format of the inputs and outputs of the different endpoint wrappers contained in
-the StagingClient class, we used OGC standards: the OGC process documentation (https://ogcapi.ogc.org/processes) precisely describes what should be the formats of these endpoints inputs and outputs thanks to yaml schemas.
+In order to validate the  format of the inputs and outputs of the different endpoints of the staging, we used OGC standards: the OGC process documentation (https://ogcapi.ogc.org/processes) precisely describes what should be the input and output formats of these endpoints thanks to yaml schemas.
 
 All yaml schemas have been downloaded from this link:
 https://github.com/opengeospatial/ogcapi-processes/tree/1.0-draft.6.metanorma/core/openapi/schemas
@@ -12,6 +11,6 @@ You can also find some examples of valid data samples to provide for each endpoi
 https://developer.ogc.org/api/processes/index.html#tag/Capabilities/operation/getLandingPage
 
 
-# staging_body.json
+# CAUTION
 
-This json file is the base structure to create the body of the staging /execute endpoint.
+Yaml schemas can be updated regularly: check the repo (https://github.com/opengeospatial/ogcapi-processes) regularly to see if new versions of these templates have been released.
