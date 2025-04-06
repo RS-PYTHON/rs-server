@@ -92,6 +92,7 @@ pytest-docker = "^3.1.0"
 pytest-error-for-skips = "^2.0.2"
 pytest-httpx = ">=0.32,<0.35"
 pytest-mock = "^3.14.0"
+responses = "^0.25.3"
 
 [tool.black]
 line-length = 120

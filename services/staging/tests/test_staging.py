@@ -13,11 +13,13 @@
 # limitations under the License.
 
 """Test staging module."""
+import asyncio
 import copy
 import os
 from datetime import datetime
 
 import pytest
+import responses
 from fastapi import FastAPI
 from pygeoapi.process.base import JobNotFoundError
 from rs_server_staging.main import (
@@ -35,6 +37,7 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
+    HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 expected_jobs_test = [
@@ -300,8 +303,8 @@ async def test_get_jobs_endpoint(
     mock_db_table.get_jobs.return_value = {"jobs": list(wrong_ogc_mock_jobs), "numberMatched": 2}
     staging_client.app.extra["process_manager"] = mock_db_table
     response = staging_client.get("/jobs")
-    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert "'type' is a required property" in response.json()["message"]
+    assert response.status_code == HTTP_404_NOT_FOUND
+    assert "'type' is a required property" in response.json()["detail"]
 
     # ----- Check that a validation exception is returned if the response doesn't have the required "links" property
     # (and thus is not ogc compliant)
@@ -310,14 +313,20 @@ async def test_get_jobs_endpoint(
     mocker.patch("rs_server_staging.main.format_jobs_data", return_value=mock_formatted_jobs)
     staging_client.app.extra["process_manager"] = mock_db_table
     response = staging_client.get("/jobs")
-    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert "'links' is a required property" in response.json()["message"]
+    assert response.status_code == HTTP_404_NOT_FOUND
+    assert "'links' is a required property" in response.json()["detail"]
 
-    # ----- Simulate an exception
-    mock_db_table.get_jobs.side_effect = Exception("get_jobs failed")
+    # ----- Simulate an error response compliant with ogc
+    ogc_error_example = {
+        "type": "https://developer.mozilla.org/en/docs/Web/HTTP/Reference/Status/404",
+        "status": 404,
+        "detail": "get_jobs failed",
+    }
+
+    mocker.patch("rs_server_staging.main.format_jobs_data", side_effect=Exception("get_jobs failed"))
     response = staging_client.get("/jobs")
-    assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert response.json() == {"message": "get_jobs failed"}
+    assert response.status_code == HTTP_404_NOT_FOUND
+    assert response.json() == ogc_error_example
 
 
 @pytest.mark.asyncio
@@ -327,9 +336,9 @@ async def test_get_jobs_endpoint(
         (
             {"jobID": "non_existing_id"},
             HTTP_404_NOT_FOUND,
-            {"message": "Job with ID non_existing_id not found"},
+            "Job with ID non_existing_id not found",
         ),
-        (expected_jobs_test[0], HTTP_500_INTERNAL_SERVER_ERROR, {"message": "'type' is a required property"}),
+        (expected_jobs_test[0], HTTP_500_INTERNAL_SERVER_ERROR, "'type' is a required property"),
         *[(job, HTTP_200_OK, job) for job in expected_jobs_test],
     ],
 )
@@ -397,8 +406,8 @@ async def test_get_job(
     # Assert response status code and content
     assert response.status_code == expected_status
 
-    if expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
-        assert expected_response["message"] in response.json()["message"]
+    if expected_status != HTTP_200_OK:
+        assert expected_response in response.json()["detail"]
     else:
         assert response.json() == expected_response
 
@@ -410,12 +419,12 @@ async def test_get_job(
         (
             {"jobID": "non_existing_id"},
             HTTP_404_NOT_FOUND,
-            {"message": "Job with ID non_existing_id not found"},
+            "Job with ID non_existing_id not found",
         ),
         (
             expected_jobs_test[0],
             HTTP_500_INTERNAL_SERVER_ERROR,
-            {"message": "{'status': 'format'} is not valid under any of the given schemas"},
+            "{'status': 'format'} is not valid under any of the given schemas",
         ),
         *[(job, HTTP_200_OK, job["status"]) for job in expected_jobs_test],
     ],
@@ -450,7 +459,7 @@ async def test_get_job_result(
         - (
             {"jobID": "non_existing_id"},
             HTTP_404_NOT_FOUND,
-            {"message": "Job with ID non_existing_id not found"},
+            {"detail": "Job with ID non_existing_id not found"},
         ), Asserts that the response status code is 200 and the returned job result
           matches the expected job status when the job exists.
         - Asserts that the response status code is 404 when the job does not exist.
@@ -483,8 +492,8 @@ async def test_get_job_result(
 
     # Assert response status code and content
     assert response.status_code == expected_status
-    if expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
-        assert expected_response["message"] in response.json()["message"]
+    if expected_status != HTTP_200_OK:
+        assert expected_response in response.json()["detail"]
     else:
         assert response.json() == expected_response
 
@@ -493,11 +502,7 @@ async def test_get_job_result(
 @pytest.mark.parametrize(
     "expected_job, expected_status, expected_response",
     [
-        (
-            {"jobID": "non_existing_id"},
-            HTTP_404_NOT_FOUND,
-            "Job with ID non_existing_id not found",
-        ),
+        ({"jobID": "non_existing_id"}, HTTP_404_NOT_FOUND, "Job with ID non_existing_id not found"),
         (expected_jobs_test[0], HTTP_500_INTERNAL_SERVER_ERROR, "'type' is a required property"),
         *[(job, HTTP_200_OK, f"Job {job['jobID']} deleted successfully") for job in expected_jobs_test],
     ],
@@ -569,8 +574,8 @@ async def test_delete_job_endpoint(
 
     # Assert response status code and content
     assert response.status_code == expected_status
-    if expected_status == HTTP_500_INTERNAL_SERVER_ERROR:
-        assert expected_response in response.json()["message"]
+    if expected_status != HTTP_200_OK:
+        assert expected_response in response.json()["detail"]
     else:
         assert response.json()["message"] == expected_response
 
@@ -626,7 +631,7 @@ async def test_processes(
     mocker.patch.dict("rs_server_staging.main.api.config", {"resources": mock_resources})
     response = staging_client.get("/processes")
     assert response.status_code == HTTP_500_INTERNAL_SERVER_ERROR
-    assert "is not of type 'string'" in response.json()["message"]
+    assert "is not of type 'string'" in response.json()["detail"]
 
 
 @pytest.mark.asyncio

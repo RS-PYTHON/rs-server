@@ -503,7 +503,7 @@ async def get_jobs_endpoint(request: Request):
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_jobs_data)
     except Exception as e:
         # Handle exceptions and return an appropriate error message
-        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+        return ogc_error_response(HTTP_404_NOT_FOUND, str(e))
 
 
 @router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
