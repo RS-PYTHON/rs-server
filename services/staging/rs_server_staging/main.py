@@ -28,8 +28,7 @@ from typing import Annotated
 import httpx
 import yaml
 from dask.distributed import LocalCluster
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, FastAPI, Path, Security
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
@@ -327,7 +326,7 @@ async def get_processes(request: Request):
         validate_response(request, processes)
         return JSONResponse(status_code=HTTP_200_OK, content=processes)
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0718
         return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
@@ -355,7 +354,7 @@ async def get_resource(request: Request, resource: str):
             validate_response(request, process)
             return JSONResponse(status_code=HTTP_200_OK, content=process)
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=W0718
             return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
     return ogc_error_response(HTTP_404_NOT_FOUND, f"Resource {resource} not found")
 
@@ -441,7 +440,7 @@ async def execute_process(
     # Validate request payload
     try:
         valid_body = await validate_request(request)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0718
         # Handle exceptions and return an appropriate error message
         return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
@@ -480,7 +479,7 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
     """Used to get status of processing job."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
-    except Exception as error:
+    except Exception:  # pylint: disable=W0718
         # Handle case when job_id is not found
         return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
 
@@ -489,7 +488,7 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
         formatted_job_data = format_job_data(job)
         validate_response(request, formatted_job_data)
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0718
         return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
@@ -501,7 +500,7 @@ async def get_jobs_endpoint(request: Request):
         formatted_jobs_data = format_jobs_data(app.extra["process_manager"].get_jobs())
         validate_response(request, formatted_jobs_data)
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_jobs_data)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0718
         # Handle exceptions and return an appropriate error message
         return ogc_error_response(HTTP_404_NOT_FOUND, str(e))
 
@@ -512,7 +511,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
     try:
         job = app.extra["process_manager"].get_job(job_id)
     # Handle case when job_id is not found
-    except Exception as error:
+    except Exception:  # pylint: disable=W0718
         return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
     auth_validation("dismiss", job["processID"], request=request, staging_process=True)
     try:
@@ -522,7 +521,7 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
         formatted_job_data = format_job_data(job)
         validate_response(request, formatted_job_data)
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0718
         return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
@@ -535,13 +534,13 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
     try:
         # Query the database to find the job by job_id
         job = app.extra["process_manager"].get_job(job_id)
-    except JobNotFoundError as error:
+    except JobNotFoundError:
         return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
     auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
         validate_response(request, job["status"])
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
-    except Exception as e:
+    except Exception as e:  # pylint: disable=W0718
         return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 

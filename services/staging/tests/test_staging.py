@@ -13,13 +13,11 @@
 # limitations under the License.
 
 """Test staging module."""
-import asyncio
 import copy
 import os
 from datetime import datetime
 
 import pytest
-import responses
 from fastapi import FastAPI
 from pygeoapi.process.base import JobNotFoundError
 from rs_server_staging.main import (
@@ -37,7 +35,6 @@ from starlette.status import (
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
     HTTP_500_INTERNAL_SERVER_ERROR,
-    HTTP_503_SERVICE_UNAVAILABLE,
 )
 
 expected_jobs_test = [
