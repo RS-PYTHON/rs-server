@@ -19,7 +19,6 @@ template:
   auth:
     type: TokenAuth
     auth_uri: PLACEHOLDER
-    refresh_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
