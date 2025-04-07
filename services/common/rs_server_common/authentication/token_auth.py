@@ -183,7 +183,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
         try:
             response = requests.post(
                 external_auth_config.token_url,
-                data=prepare_data(external_auth_config),
+                data=prepare_data(external_auth_config, call_refresh=False),
                 timeout=5,
                 headers=prepare_headers(external_auth_config),
             )
@@ -224,7 +224,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
 
         if diff_in_sec > token_dict["expires_in"] - nb_secs_before_token_exp:
             logger.info("Current access_token is about to expire. Launching request to refresh the token...")
-            data_to_send = prepare_data(external_auth_config)
+            data_to_send = prepare_data(external_auth_config, call_refresh=True)
 
             data_to_send.update({"refresh_token": token_dict["refresh_token"]})
 
@@ -280,7 +280,7 @@ def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> dict[
     return headers
 
 
-def prepare_data(external_auth_config: ExternalAuthenticationConfig) -> dict[str, str]:
+def prepare_data(external_auth_config: ExternalAuthenticationConfig, call_refresh: bool) -> dict[str, str]:
     """Prepare data for token requests based on authentication configuration.
 
     Args:
@@ -289,15 +289,20 @@ def prepare_data(external_auth_config: ExternalAuthenticationConfig) -> dict[str
     Returns:
         Dict[str, str]: Dictionary containing the prepared data for the request.
     """
-    data_to_send = {
-        "client_id": external_auth_config.client_id,
-        "client_secret": external_auth_config.client_secret,
-        "grant_type": external_auth_config.grant_type,
-        "username": external_auth_config.username,
-        "password": external_auth_config.password,
-    }
-    if external_auth_config.scope:
-        data_to_send["scope"] = external_auth_config.scope
+    data_to_send = {"client_id": external_auth_config.client_id, "client_secret": external_auth_config.client_secret}
+    if call_refresh:
+        data_to_send["grant_type"] = "refresh_token"
+    else:
+        data_to_send.update(
+            {
+                "grant_type": external_auth_config.grant_type,
+                "username": external_auth_config.username,
+                "password": external_auth_config.password,
+            },
+        )
+        if external_auth_config.scope:
+            data_to_send["scope"] = external_auth_config.scope
+
     return data_to_send
 
 

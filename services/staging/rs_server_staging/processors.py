@@ -42,10 +42,12 @@ from rs_server_common import settings as common_settings
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     ServiceNotFound,
+    load_external_auth_config_by_domain,
+)
+from rs_server_common.authentication.token_auth import (
     TokenAuth,
     TokenDataNotFound,
     get_station_token,
-    load_external_auth_config_by_domain,
 )
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3_MAX_RETRIES,
