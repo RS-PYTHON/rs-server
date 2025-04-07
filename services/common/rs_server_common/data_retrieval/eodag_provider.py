@@ -54,6 +54,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Constructor"""
 
         self.lock = Lock()
+        self.all_auth_providers = []
 
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
@@ -80,6 +81,47 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 
+    def auth_provider(self, auth_config, provider):
+        """Set the authentication for a provider (=station)"""
+
+        # In a lock, call this function only once by provider, to avoid changing the config
+        # and using it (when calling a search) at the same time.
+        with self.lock:
+            if provider in self.all_auth_providers:
+                return
+            self.all_auth_providers.append(provider)
+
+            provider_config = self.providers_config[provider]
+            if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
+                provider_config.update(
+                    {"auth": {"credentials": {"token": get_station_token(auth_config, {})["access_token"]}}},
+                )
+            else:
+                # mandatory keys
+                provider_config.update(
+                    {
+                        "auth": {
+                            "auth_uri": auth_config.token_url,
+                            "refresh_uri": auth_config.token_url,
+                            "req_data": {
+                                "client_id": auth_config.client_id,
+                                "client_secret": auth_config.client_secret,
+                                "username": auth_config.username,
+                                "password": auth_config.password,
+                                "grant_type": auth_config.grant_type,
+                            },
+                        },
+                    },
+                )
+
+                # Used to set the authorization for token retrieval
+                if auth_config.authorization is not None:
+                    provider_config.update({"auth": {"credentials": {"auth_for_token": auth_config.authorization}}})
+
+                # optional keys
+                if auth_config.scope:
+                    provider_config.update({"auth": {"req_data": {"scope": auth_config.scope}}})
+
 
 class EodagProvider(Provider):
     """An EODAG provider.
@@ -91,9 +133,9 @@ class EodagProvider(Provider):
         """Create a EODAG provider.
 
         Args:
-            config_file: the path to the eodag configuration file
-            provider: the name of the eodag provider
-            auth_config: configuration values for authentication to external stations
+            config_file: path to the eodag configuration file (adgs_ws_config.yaml or cadip_ws_config.yaml)
+            provider: the name of the eodag provider (=station name)
+            auth_config: provider (=station) authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
         """
         self.provider: str = provider
         self.config_file = config_file.resolve().as_posix()
@@ -103,38 +145,7 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
-
-        # Set the authentication to external stations
-        provider_config = self.client.providers_config[provider]
-        if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
-            provider_config.update(
-                {"auth": {"credentials": {"token": get_station_token(auth_config, {})["access_token"]}}},
-            )
-        else:
-            # mandatory keys
-            provider_config.update(
-                {
-                    "auth": {
-                        "auth_uri": auth_config.token_url,
-                        "refresh_uri": auth_config.token_url,
-                        "req_data": {
-                            "client_id": auth_config.client_id,
-                            "client_secret": auth_config.client_secret,
-                            "username": auth_config.username,
-                            "password": auth_config.password,
-                            "grant_type": auth_config.grant_type,
-                        },
-                    },
-                },
-            )
-
-            # Used to set the authorization for token retrieval
-            if auth_config.authorization is not None:
-                provider_config.update({"auth": {"credentials": {"auth_for_token": auth_config.authorization}}})
-
-            # optional keys
-            if auth_config.scope:
-                provider_config.update({"auth": {"req_data": {"scope": auth_config.scope}}})
+        self.client.auth_provider(auth_config, self.provider)
 
     def _specific_search(self, **kwargs) -> SearchResult | list:
         """

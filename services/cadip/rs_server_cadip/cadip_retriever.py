@@ -51,10 +51,15 @@ def init_cadip_provider(station: str) -> EodagProvider:
     """
     station = station.lower()
     try:
+        # Get the cadip_ws_config.yaml file path for eodag.
         # Check if the config file path is overriden in the environment variables
         eodag_config = Path(os.environ.get("EODAG_CADIP_CONFIG", DEFAULT_EODAG_CONFIG))
+
+        # Read the station authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
         ext_auth_config = load_external_auth_config(station, "cadip")
+
         # default to eodag, stations may be ins, mps, mti, nsg, sgs, cadip(?)
         return EodagProvider(eodag_config, station, ext_auth_config)
+
     except Exception as exception:
         raise CreateProviderFailed("Failed to setup eodag") from exception
