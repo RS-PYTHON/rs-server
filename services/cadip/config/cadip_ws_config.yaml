@@ -26,6 +26,7 @@ cadip:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -134,6 +135,7 @@ ins:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -242,6 +244,7 @@ mps:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -350,6 +353,7 @@ mti:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -458,6 +462,7 @@ nsg:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -566,6 +571,7 @@ sgs:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -674,6 +680,7 @@ cadip_session:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -855,6 +862,7 @@ ins_session:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1036,6 +1044,7 @@ mps_session:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1217,6 +1226,7 @@ mti_session:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1398,6 +1408,7 @@ nsg_session:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -1579,6 +1590,7 @@ sgs_session:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER

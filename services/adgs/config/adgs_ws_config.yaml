@@ -25,6 +25,7 @@ adgs:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -170,6 +171,7 @@ adgs2:
     token_type: json
     token_key: access_token
     refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
