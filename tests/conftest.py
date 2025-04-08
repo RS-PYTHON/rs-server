@@ -29,6 +29,9 @@ from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
 
+from rs_server_adgs import adgs_retriever
+from rs_server_cadip import cadip_retriever
+
 # We are in local mode (no cluster).
 # Do this before any other imports.
 # pylint: disable=wrong-import-position
@@ -78,13 +81,6 @@ def before_and_after(session_mocker):
     ####################
     # Before all tests #
     ####################
-
-    # Use this default value for the configuration file for authentication to external stations.
-    session_mocker.patch(
-        "rs_server_common.authentication.authentication_to_external.CONFIG_PATH_AUTH_TO_EXTERNAL",
-        new=str((Path(__file__).parent.parent / "services/common/config/rs-server.yaml").resolve()),
-        autospec=False,
-    )
 
     # Avoid errors:
     # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in 1s
@@ -204,9 +200,6 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
         monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
         monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
         monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
-        # In cluster mode, deactivate the creation of the configuration file for authentication to extenal stations.
-        # All the tests that need it should create a mocked version in a temporary directory.
-        mocker.patch("rs_server_common.fastapi_app.init_rs_server_config_yaml", side_effect=None)
 
         # Reload the oauth2 module with the cluster info
         reload(oauth2)
@@ -249,6 +242,24 @@ def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-ar
 ##################
 # OTHER FIXTURES #
 ##################
+
+
+@pytest.fixture(scope="function")
+def use_module_for_station_token(monkeypatch):
+    """
+    Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
+    usage of the internal token module  for getting the token and setting it to the eodag
+    """
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
+    reload(adgs_retriever)
+    reload(cadip_retriever)
+
+    yield
+
+    # Restore default value = False at the end of the test function
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
+    reload(adgs_retriever)
+    reload(cadip_retriever)
 
 
 @pytest.fixture(scope="module", name="a_product")

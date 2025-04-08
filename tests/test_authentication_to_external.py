@@ -19,27 +19,26 @@
 import datetime
 import json
 import os
-import shutil
-import tempfile
+from importlib import reload
 
 import pytest
 import responses
 import yaml
 from fastapi import HTTPException
-from rs_server_common.authentication import authentication_to_external
+from rs_server_adgs import adgs_retriever
+from rs_server_cadip import cadip_retriever
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     ServiceNotFound,
-    TokenDataNotFound,
     create_external_auth_config,
-    get_station_token,
-    init_rs_server_config_yaml,
     load_external_auth_config_by_domain,
     load_external_auth_config_by_station_service,
+)
+from rs_server_common.authentication.token_auth import (
+    TokenDataNotFound,
+    get_station_token,
     prepare_data,
     prepare_headers,
-    set_eodag_auth_env,
-    set_eodag_auth_token,
     validate_token_format,
 )
 from rs_server_common.utils.logging import Logging
@@ -59,65 +58,6 @@ CLUSTER_MODE = {"RSPY_LOCAL_MODE": False}
 TOKEN = os.getenv("RSPY_TOKEN", "P4JSuo3gfQxKo0gfbQTb7nDn5OkzWP3umdGvy7G3CcI")
 
 logger = Logging.default(__name__)
-
-
-@pytest.fixture(scope="function", autouse=True)
-def clear_config_cache():
-    """Clear the station configuration cache before each pytest."""
-    authentication_to_external.read_config_file.cache_clear()
-
-
-@pytest.mark.unit
-def test_create_rs_server_config_yaml(
-    mocker,
-    set_token_env_var,  # pylint: disable=unused-argument
-    expected_config_token_file,
-):
-    """Test the creation in cluster mode of the rs-server config YAML file with both valid and invalid paths.
-
-    Args:
-        mocker: Mocking utility for patching methods.
-        set_env_var_token: Fixture to set environment variables for testing.
-        expected_config_token_file: The expected YAML config structure.
-    """
-
-    # Mock the cluster mode
-    mocker.patch("rs_server_common.settings.LOCAL_MODE", new=False, autospec=False)
-    mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=True, autospec=False)
-
-    # Set environment variables by fixture set_token_env_var. In the production environment,
-    # these variables are set through mounting of the secrets.
-
-    # Test with a proper file path
-    tmp_path = tempfile.mkdtemp()
-    tmp_config_file = f"{tmp_path.rstrip('/')}/rs-server.yaml"
-    # Patch the default config path to point to the temporary file
-    mocker.patch(
-        "rs_server_common.authentication.authentication_to_external.DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL",
-        new=tmp_config_file,
-        autospec=False,
-    )
-    # Call the function to create the config file
-    init_rs_server_config_yaml()
-    # Assert the config file was created
-    assert os.path.isfile(tmp_config_file)
-    # Verify the contents of the config file match the expected YAML structure
-    with open(tmp_config_file, encoding="utf-8") as f:
-        assert yaml.safe_load(f) == expected_config_token_file
-    # Clean up the temporary directory
-    shutil.rmtree(tmp_path)
-
-    # test with a file that can't be created
-    mocker.patch(
-        "rs_server_common.authentication.authentication_to_external.DEFAULT_CONFIG_PATH_AUTH_TO_EXTERNAL",
-        new="/path/that/doesnt/exist/rs-server.yaml",
-        autospec=False,
-    )
-    # Ensure the appropriate exception is raised when the file can't be created
-    with pytest.raises(RuntimeError) as exc:
-        init_rs_server_config_yaml()
-    # Check the raised exception contains the expected error message
-    assert "Failed to write configuration" in str(exc.value)
 
 
 @pytest.mark.unit
@@ -262,7 +202,8 @@ def test_prepare_headers(get_external_auth_config):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-def test_prepare_data(get_external_auth_config):
+@pytest.mark.parametrize("call_refresh", [True, False])
+def test_prepare_data(get_external_auth_config, call_refresh):
     """Test preparation of data for authentication.
 
     This unit test checks the correct preparation of the data to be sent for retrieving a token
@@ -273,24 +214,32 @@ def test_prepare_data(get_external_auth_config):
     """
     ext_auth_config = get_external_auth_config
     # Expected data with the scope
-    data = {
-        "client_id": "client_id",
-        "client_secret": "client_secret",
-        "grant_type": "password",
-        "username": "test",
-        "password": "test",
-        "scope": "openid",
-    }
+    if call_refresh:
+        data = {
+            "client_id": "client_id",
+            "client_secret": "client_secret",
+            "grant_type": "refresh_token",
+        }
+    else:
+        data = {
+            "client_id": "client_id",
+            "client_secret": "client_secret",
+            "grant_type": "password",
+            "username": "test",
+            "password": "test",
+            "scope": "openid",
+        }
 
     # Test the prepare_data function with initial configuration
-    assert prepare_data(ext_auth_config) == data
+    assert prepare_data(ext_auth_config, call_refresh) == data
 
     # Update scope to None in the external authentication config and test again
-    ext_auth_config.scope = None
-    del data["scope"]
+    if not call_refresh:
+        ext_auth_config.scope = None
+        del data["scope"]
 
-    # Test the prepare_data function after adding the scope
-    assert prepare_data(ext_auth_config) == data
+        # Test the prepare_data function after adding the scope
+        assert prepare_data(ext_auth_config, call_refresh) == data
 
 
 @pytest.mark.unit
@@ -925,7 +874,12 @@ def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-async def test_set_eodag_auth_token_by_station_and_service_success(mocker, get_external_auth_config, mock_token_dict):
+async def test_set_eodag_auth_token_by_station_and_service_success(
+    mocker,
+    monkeypatch,
+    get_external_auth_config,
+    mock_token_dict,
+):
     """
     Unit test for setting the EODAG authentication token using station ID and service.
 
@@ -947,9 +901,12 @@ async def test_set_eodag_auth_token_by_station_and_service_success(mocker, get_e
         "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
         return_value=ext_auth_config,
     )
+
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of the internal token module  for getting the token and setting it to the eodag
-    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
+    reload(adgs_retriever)
+    reload(cadip_retriever)
 
     mocker.patch(
         "rs_server_common.authentication.authentication_to_external.get_station_token",
@@ -964,9 +921,10 @@ async def test_set_eodag_auth_token_by_station_and_service_success(mocker, get_e
         os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == mock_token_dict["access_token"]
     )
 
-    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-    # usage of eodag for getting the token and using it
-    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=False)
+    # Restore default value
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
+    reload(adgs_retriever)
+    reload(cadip_retriever)
 
     mock_set_env = mocker.patch("rs_server_common.authentication.authentication_to_external.set_eodag_auth_env")
     # Call the function
@@ -978,7 +936,7 @@ async def test_set_eodag_auth_token_by_station_and_service_success(mocker, get_e
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-async def test_set_eodag_auth_token_by_domain_success(mocker, get_external_auth_config, mock_token_dict):
+async def test_set_eodag_auth_token_by_domain_success(mocker, monkeypatch, get_external_auth_config, mock_token_dict):
     """
     Unit test for setting the EODAG authentication token using the domain.
 
@@ -1000,9 +958,12 @@ async def test_set_eodag_auth_token_by_domain_success(mocker, get_external_auth_
         "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_domain",
         return_value=ext_auth_config,
     )
+
     # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
     # usage of the internal token module  for getting the token and setting it to the eodag
-    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
+    reload(adgs_retriever)
+    reload(cadip_retriever)
 
     mocker.patch(
         "rs_server_common.authentication.authentication_to_external.get_station_token",
@@ -1017,9 +978,10 @@ async def test_set_eodag_auth_token_by_domain_success(mocker, get_external_auth_
         os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == mock_token_dict["access_token"]
     )
 
-    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-    # usage of eodag for getting the token and using it
-    mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=False)
+    # Restore default value
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
+    reload(adgs_retriever)
+    reload(cadip_retriever)
 
     mock_set_env = mocker.patch("rs_server_common.authentication.authentication_to_external.set_eodag_auth_env")
     # Call the function

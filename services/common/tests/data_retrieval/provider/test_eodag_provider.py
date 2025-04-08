@@ -55,14 +55,14 @@ def mock_cadip_download(product_id: str, with_content: dict | None = None):
 class TestAEodagProvider:
     """Class used to test the functionality of the EodagProvider class."""
 
-    async def test_is_a_provider(self, cadip_config):
+    async def test_is_a_provider(self, cadip_config, mocker):
         """
         Verifies that EodagProvider is an instance of the Provider class.
 
         This test checks if an instance of EodagProvider is also an instance of the Provider class.
 
         """
-        provider = EodagProvider(cadip_config.file, cadip_config.provider)
+        provider = EodagProvider(cadip_config.file, cadip_config.provider, mocker.Mock())
         assert isinstance(provider, Provider)
 
     async def test_is_initialised_with_the_given_config(self, cadip_config):

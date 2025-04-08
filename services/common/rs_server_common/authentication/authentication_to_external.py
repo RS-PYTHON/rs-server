@@ -41,7 +41,7 @@ class ServiceNotFound(Exception):
     """Raised if there are no existing service matching the provided domain"""
 
 
-def __read_configuration() -> dict:
+def __read_configuration() -> dict:  # pylint: disable=too-many-locals
     """
     Reads and loads the rs-server configuration file for authentication to extenal stations.
 
