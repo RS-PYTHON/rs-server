@@ -242,9 +242,9 @@ async def get_adgs_collection_items(
         request,
         bbox=check_bbox_input(bbox),
         datetime=datetime,
-        filter=filter_,
+        filter_expr=filter_,
         filter_lang=filter_lang,
-        sortby=sortby,
+        sortby=[sortby] if sortby else None,
         limit=limit,
         page=page,
     )
