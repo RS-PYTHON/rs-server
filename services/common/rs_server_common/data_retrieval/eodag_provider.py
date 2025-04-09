@@ -54,7 +54,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Constructor"""
 
         self.lock = Lock()
-        self.all_auth_providers = []
+        self.all_auth_providers = []  # all authenticated providers
 
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
@@ -81,8 +81,14 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 
-    def auth_provider(self, auth_config, provider):
-        """Set the authentication for a provider (=station)"""
+    def authenticate_provider(self, provider: str, auth_config: ExternalAuthenticationConfig):
+        """
+        Set the authentication for a provider (=station).
+
+        Args:
+            provider: the name of the eodag provider (=station name)
+            auth_config: provider (=station) authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
+        """
 
         # In a lock, call this function only once by provider, to avoid changing the config
         # and using it (when calling a search) at the same time.
@@ -145,7 +151,7 @@ class EodagProvider(Provider):
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
-        self.client.auth_provider(auth_config, self.provider)
+        self.client.authenticate_provider(self.provider, auth_config)
 
     def _specific_search(self, **kwargs) -> SearchResult | list:
         """

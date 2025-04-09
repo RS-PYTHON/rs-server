@@ -57,7 +57,6 @@ class TestOperatorDefinedCollections:
         client,
         mocker,
         mock_token_validation,
-        use_module_for_station_token,  # pylint: disable=unused-argument,
         endpoint,
         code,
     ):
