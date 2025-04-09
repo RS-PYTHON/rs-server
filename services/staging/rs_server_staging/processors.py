@@ -354,6 +354,14 @@ class Staging(
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
+        self.cadip_url = os.environ.get(
+            "RSPY_HOST_CADIP",
+            "http://127.0.0.1:8002",
+        )  # get cadip href, loopback else
+        self.adgs_url = os.environ.get(
+            "RSPY_HOST_ADGS",
+            "http://127.0.0.1:8001",
+        )  # get adgs href, loopback else
         #################
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
@@ -409,13 +417,31 @@ class Staging(
         # we launch a request to the corresponding service to load the STAC itemCollection
         try:
             if "items" in data and "href" in data["items"] and "value" not in data["items"]:
+
+                # Check if the given url is either the cadip or the
+                # auxip - we don't want to send our apikey to any url
+                if not any(href in data["items"]["href"] for href in [self.cadip_url, self.adgs_url]):
+                    return self.log_job_execution(
+                        JobStatus.failed,
+                        0,
+                        f"The domain name specified in the input link must correspond to an existing server",
+                    )
                 response = requests.get(
                     data["items"]["href"],
-                    headers={"cookie": self.headers.get("cookie", None)},
+                    headers={
+                        "cookie": self.headers.get("cookie", None),
+                        "x-api-key": self.headers.get("x-api-key", None),
+                    },
                     timeout=5,
                 )
                 response.raise_for_status()
-                data["items"]["value"] = response.json()
+                response_dict = response.json()
+                if not "type" in response_dict or response_dict["type"] != "FeatureCollection":
+                    raise RequestException(
+                        f"The input link must point to a FeatureCollection: invalid response {response_dict}",
+                    )
+
+                data["items"]["value"] = response_dict
         except (RequestException, JSONDecodeError, RuntimeError) as exc:
             return self.log_job_execution(
                 JobStatus.failed,
@@ -569,7 +595,7 @@ class Staging(
         try:
             response = requests.get(
                 search_url,
-                headers={"cookie": self.headers.get("cookie", None)},
+                headers={"cookie": self.headers.get("cookie", None), "x-api-key": self.headers.get("x-api-key", None)},
                 params=filter_object,
                 timeout=5,
             )
