@@ -39,9 +39,6 @@ from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed
 
-# from fastapi import HTTPException
-
-
 logger = Logging.default(__name__)
 
 global_lock = Lock()
@@ -81,13 +78,13 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 
-    def authenticate_provider(self, provider: str, auth_config: ExternalAuthenticationConfig):
+    def authenticate_provider(self, provider: str, external_config: ExternalAuthenticationConfig):
         """
-        Set the authentication for a provider (=station).
+        Set the authentication for an external provider (=station).
 
         Args:
             provider: the name of the eodag provider (=station name)
-            auth_config: provider (=station) authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
+            external_config: external provider (=station) authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
         """
 
         # In a lock, call this function only once by provider, to avoid changing the config
@@ -100,33 +97,33 @@ class CustomEODataAccessGateway(EODataAccessGateway):
             provider_config = self.providers_config[provider]
             if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
                 provider_config.update(
-                    {"auth": {"credentials": {"token": get_station_token(auth_config, {})["access_token"]}}},
+                    {"auth": {"credentials": {"token": get_station_token(external_config, {})["access_token"]}}},
                 )
             else:
                 # mandatory keys
                 provider_config.update(
                     {
                         "auth": {
-                            "auth_uri": auth_config.token_url,
-                            "refresh_uri": auth_config.token_url,
+                            "auth_uri": external_config.token_url,
+                            "refresh_uri": external_config.token_url,
                             "req_data": {
-                                "client_id": auth_config.client_id,
-                                "client_secret": auth_config.client_secret,
-                                "username": auth_config.username,
-                                "password": auth_config.password,
-                                "grant_type": auth_config.grant_type,
+                                "client_id": external_config.client_id,
+                                "client_secret": external_config.client_secret,
+                                "username": external_config.username,
+                                "password": external_config.password,
+                                "grant_type": external_config.grant_type,
                             },
                         },
                     },
                 )
 
                 # Used to set the authorization for token retrieval
-                if auth_config.authorization is not None:
-                    provider_config.update({"auth": {"credentials": {"auth_for_token": auth_config.authorization}}})
+                if external_config.authorization is not None:
+                    provider_config.update({"auth": {"credentials": {"auth_for_token": external_config.authorization}}})
 
                 # optional keys
-                if auth_config.scope:
-                    provider_config.update({"auth": {"req_data": {"scope": auth_config.scope}}})
+                if external_config.scope:
+                    provider_config.update({"auth": {"req_data": {"scope": external_config.scope}}})
 
 
 class EodagProvider(Provider):
@@ -135,23 +132,24 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    def __init__(self, config_file: Path, provider: str, auth_config: ExternalAuthenticationConfig):  # type: ignore
+    def __init__(self, external_config: ExternalAuthenticationConfig, eodag_config_path: Path, provider: str):
         """Create a EODAG provider.
 
         Args:
-            config_file: path to the eodag configuration file (adgs_ws_config.yaml or cadip_ws_config.yaml)
+            external_config: external provider (=station) authentication from rs-server.yaml file
+            or RSPY__TOKEN__xxx env vars. Override values from the eodag config file (below).
+            eodag_config_path: path to the eodag configuration file (adgs_ws_config.yaml or cadip_ws_config.yaml)
             provider: the name of the eodag provider (=station name)
-            auth_config: provider (=station) authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
         """
         self.provider: str = provider
-        self.config_file = config_file.resolve().as_posix()
+        self.eodag_config_path = eodag_config_path.resolve().as_posix()
         try:
             with global_lock:  # use a thread lock before calling the lru_cache
-                self.client = CustomEODataAccessGateway.create(self.config_file)
+                self.client = CustomEODataAccessGateway.create(self.eodag_config_path)
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
-        self.client.authenticate_provider(self.provider, auth_config)
+        self.client.authenticate_provider(self.provider, external_config)
 
     def _specific_search(self, **kwargs) -> SearchResult | list:
         """
@@ -297,7 +295,7 @@ class EodagProvider(Provider):
 
         """
         try:
-            with open(self.config_file, encoding="utf-8") as f:
+            with open(self.eodag_config_path, encoding="utf-8") as f:
                 base_uri = yaml.safe_load(f)[self.provider.lower()]["download"]["base_uri"]
             return EOProduct(
                 self.provider,

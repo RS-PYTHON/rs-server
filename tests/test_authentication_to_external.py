@@ -42,7 +42,6 @@ from rs_server_common.authentication.token_auth import (
     prepare_headers,
     validate_token_format,
 )
-from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 

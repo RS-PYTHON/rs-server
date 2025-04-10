@@ -55,7 +55,6 @@ class TestOperatorDefinedCollections:
     def test_invalid_defined_collections(
         self,
         client,
-        mocker,
         endpoint,
         code,
     ):
@@ -1676,7 +1675,6 @@ def test_search_parameters(
 def test_search_all_collections(
     mocker,
     client,
-    service,
     adgs_response,
 ):
     """Test searching all collections at the same time."""

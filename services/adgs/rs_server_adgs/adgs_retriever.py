@@ -60,7 +60,7 @@ def init_adgs_provider(station: str) -> EodagProvider:
         ext_auth_config = load_external_auth_config(station, "auxip")
 
         # default to eodag, default station "adgs"
-        return EodagProvider(eodag_config, station, ext_auth_config)
+        return EodagProvider(ext_auth_config, eodag_config, station)
 
     except Exception as exception:
         raise CreateProviderFailed("Failed to setup eodag") from exception

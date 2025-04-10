@@ -21,12 +21,13 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 """
 
 import os
+import os.path as osp
 from importlib import reload
 
 # We are in local mode (no cluster).
 # Do this before any other imports.
-# pylint: disable=wrong-import-position
 # flake8: noqa
+# pylint: disable=wrong-import-order,wrong-import-position
 os.environ["RSPY_LOCAL_MODE"] = "1"
 from rs_server_common import settings
 
@@ -34,14 +35,12 @@ reload(settings)
 
 import datetime
 import json
-import os.path as osp
 import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
 
 import pytest
-import responses
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI
