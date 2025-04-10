@@ -957,7 +957,7 @@ class TestStagingMainExecution:
             return_value=mocker.Mock(),
         )
         mocker.patch(
-            "rs_server_common.authentication.authentication_to_external.get_station_token",
+            "rs_server_common.authentication.token_auth.get_station_token",
             return_value="mock_token",
         )
 
