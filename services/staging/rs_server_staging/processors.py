@@ -350,18 +350,21 @@ class Staging(
         self.stream_list: list[Feature] = []
         #################
         # Env section
+
+        # Set a list containing all possibles server url
+        self.server_url = [
+            os.getenv(server_var, None)
+            for server_var in os.environ
+            if server_var.startswith("RSPY__TOKEN__") and server_var.endswith("__SERVICE__URL")
+        ]
+        # Default values for the list of server urls which are used in local mode (without docker-compose)
+        if len(self.server_url) == 0:
+            self.server_url = ["http://127.0.0.1:8001", "http://127.0.0.1:8001"]
+
         self.catalog_url: str = os.environ.get(
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
         )  # get catalog href, loopback else
-        self.cadip_url = os.environ.get(
-            "RSPY_HOST_CADIP",
-            "http://127.0.0.1:8002",
-        )  # get cadip href, loopback else
-        self.adgs_url = os.environ.get(
-            "RSPY_HOST_ADGS",
-            "http://127.0.0.1:8001",
-        )  # get adgs href, loopback else
         #################
         # Database section
         self.job_id: str = str(uuid.uuid4())  # Generate a unique job ID
@@ -420,7 +423,7 @@ class Staging(
 
                 # Check if the given url is either the cadip or the
                 # auxip - we don't want to send our apikey to any url
-                if not any(href in data["items"]["href"] for href in [self.cadip_url, self.adgs_url]):
+                if not any(href in data["items"]["href"] for href in self.server_url):
                     return self.log_job_execution(
                         JobStatus.failed,
                         0,
