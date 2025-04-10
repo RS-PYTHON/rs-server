@@ -337,7 +337,6 @@ async def get_processes(request: Request):
 async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
     # rs_processes_{resource}_read role needed to access this endpoint.
-    auth_validation("read", resource, request=request, staging_process=True)
     if resource_info := next(  # pylint: disable=W0612
         (
             api.config["resources"][defined_resource]
@@ -347,6 +346,7 @@ async def get_resource(request: Request, resource: str):
         None,
     ):
         try:
+            auth_validation("read", resource, request=request, staging_process=True)
             process = {
                 "id": api.config["resources"][resource]["processor"]["name"],
                 "version": "1.0.0",
@@ -434,18 +434,18 @@ async def execute_process(
 ):  # pylint: disable=unused-argument
     """Used to execute processing jobs."""
 
-    # rs_processes_{resource}_execute role needed to access this endpoint.
-    auth_validation("execute", resource, request=request, staging_process=True)
+    # check if the input resource exists
+    if resource not in api.config["resources"]:
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Process resource '{resource}' not found")
 
     # Validate request payload
     try:
         valid_body = await validate_request(request)
+        # rs_processes_{resource}_execute role needed to access this endpoint.
+        auth_validation("execute", resource, request=request, staging_process=True)
     except Exception as e:  # pylint: disable=W0718
         # Handle exceptions and return an appropriate error message
         return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
-
-    if resource not in api.config["resources"]:
-        return ogc_error_response(HTTP_404_NOT_FOUND, f"Process resource '{resource}' not found")
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
@@ -479,12 +479,12 @@ async def get_job_status_endpoint(request: Request, job_id: str = Path(..., titl
     """Used to get status of processing job."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
-    except Exception:  # pylint: disable=W0718
+    except JobNotFoundError:  # pylint: disable=W0718
         # Handle case when job_id is not found
         return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
 
-    auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
+        auth_validation("read", job["processID"], request=request, staging_process=True)
         formatted_job_data = format_job_data(job)
         validate_response(request, formatted_job_data)
         return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
@@ -511,10 +511,10 @@ async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="T
     try:
         job = app.extra["process_manager"].get_job(job_id)
     # Handle case when job_id is not found
-    except Exception:  # pylint: disable=W0718
+    except JobNotFoundError:  # pylint: disable=W0718
         return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
-    auth_validation("dismiss", job["processID"], request=request, staging_process=True)
     try:
+        auth_validation("dismiss", job["processID"], request=request, staging_process=True)
         app.extra["process_manager"].delete_job(job_id)
         # Create job response with a status message to confirm the job deletion
         job["message"] = f"Job {job_id} deleted successfully"
@@ -536,8 +536,8 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
         job = app.extra["process_manager"].get_job(job_id)
     except JobNotFoundError:
         return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
-    auth_validation("read", job["processID"], request=request, staging_process=True)
     try:
+        auth_validation("read", job["processID"], request=request, staging_process=True)
         validate_response(request, job["status"])
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
     except Exception as e:  # pylint: disable=W0718
