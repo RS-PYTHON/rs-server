@@ -428,7 +428,7 @@ class TestStagingCatalog:
         # Assert that requests.get was called with the correct parameters
         requests.get.assert_called_once_with(  # type: ignore
             f"{staging_instance.catalog_url}/catalog/search",
-            headers={"cookie": "fake-cookie"},
+            headers={"cookie": "fake-cookie", "x-api-key": None},
             params=expected_filter_object,
             timeout=5,
         )

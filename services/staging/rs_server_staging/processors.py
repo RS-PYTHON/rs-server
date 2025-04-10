@@ -427,7 +427,7 @@ class Staging(
                     return self.log_job_execution(
                         JobStatus.failed,
                         0,
-                        f"The domain name specified in the input link must correspond to an existing server",
+                        "The domain name specified in the input link must correspond to an existing server",
                     )
                 response = requests.get(
                     data["items"]["href"],
@@ -439,7 +439,7 @@ class Staging(
                 )
                 response.raise_for_status()
                 response_dict = response.json()
-                if not "type" in response_dict or response_dict["type"] != "FeatureCollection":
+                if "type" not in response_dict or response_dict["type"] != "FeatureCollection":
                     raise RequestException(
                         f"The input link must point to a FeatureCollection: invalid response {response_dict}",
                     )
