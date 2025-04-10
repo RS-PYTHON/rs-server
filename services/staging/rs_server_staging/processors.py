@@ -360,6 +360,7 @@ class Staging(
         # Default values for the list of server urls which are used in local mode (without docker-compose)
         if len(self.server_url) == 0:
             self.server_url = ["http://127.0.0.1:8001", "http://127.0.0.1:8001"]
+        self.logger.info(f"---------- SERVER URL LIST VAUT: {self.server_url}")
 
         self.catalog_url: str = os.environ.get(
             "RSPY_HOST_CATALOG",
