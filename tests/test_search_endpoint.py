@@ -1667,8 +1667,8 @@ def test_search_parameters(
 
 
 @pytest.mark.parametrize(
-    "fastapi_app, service",
-    [(ROUTER_PREFIX_AUXIP, "adgs")],
+    "fastapi_app",
+    [ROUTER_PREFIX_AUXIP],
     ids=["adgs"],
     indirect=["fastapi_app"],
 )
