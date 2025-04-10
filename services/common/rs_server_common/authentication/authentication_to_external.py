@@ -151,7 +151,7 @@ def load_external_auth_config_by_station_service(
 
     Args:
         station_id (str): The ID of the station for which the authentication config is being loaded.
-        service (str): The name of the service to load the authentication configuration for.
+        service (str): The name of the service ("auxip" or "cadip") to load the authentication configuration for.
 
     Returns:
         Optional[ExternalAuthenticationConfig]: An object representing the external authentication configuration,
@@ -209,7 +209,7 @@ def load_external_auth_config(
     Load the external authentication configuration from a given station and service or from a domain.
     Args:
         station_id (Optional[str]): The ID of the station for which the authorization token is set.
-        service (Optional[str]): The service name used to retrieve the token.
+        service (Optional[str]): The service name ("auxip" or "cadip") used to retrieve the token.
         domain (Optional[str]): The domain related to the station for the token.
 
     Raises:

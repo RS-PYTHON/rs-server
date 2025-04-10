@@ -30,8 +30,8 @@ from rs_server_cadip import cadip_retriever
 from rs_server_common.authentication import authentication_to_external
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
-    ServiceNotFound,
     create_external_auth_config,
+    load_external_auth_config,
     load_external_auth_config_by_domain,
     load_external_auth_config_by_station_service,
 )
@@ -42,6 +42,7 @@ from rs_server_common.authentication.token_auth import (
     prepare_headers,
     validate_token_format,
 )
+from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
 
@@ -676,7 +677,7 @@ def test_load_external_auth_config_by_domain_no_matching_domain(mocker, get_exte
         return_value=yaml.safe_load(mock_yaml_content),
     )
     domain = "unknwon_domain"
-    with pytest.raises(ServiceNotFound) as exc:
+    with pytest.raises(authentication_to_external.ServiceNotFound) as exc:
         load_external_auth_config_by_domain(domain)
     assert f"No matching service found for domain: {domain}" in str(
         exc.value,
@@ -769,7 +770,7 @@ def test_create_external_auth_config_missing_keys(mocker):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("station_id", ["adgs"])
+@pytest.mark.parametrize("station_id", ["adgs", "ins"])
 def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id):
     """
     Unit test for setting the EODAG environment with a valid authentication configuration.
@@ -789,7 +790,12 @@ def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id
         "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
         return_value=get_external_auth_config,
     )
-    eodag_provider = adgs_retriever.init_adgs_provider(station_id)
+    CustomEODataAccessGateway.create.cache_clear()
+    eodag_provider = (
+        adgs_retriever.init_adgs_provider(station_id)
+        if "adgs" in station_id
+        else cadip_retriever.init_cadip_provider(station_id)
+    )
     config = eodag_provider.client.providers_config[station_id]
 
     assert config.auth.auth_uri == get_external_auth_config.token_url
@@ -802,7 +808,7 @@ def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("station_id", ["adgs"])
+@pytest.mark.parametrize("station_id", ["adgs", "ins"])
 def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config, station_id):
     """
     Unit test for setting the EODAG environment without a scope in the configuration.
@@ -825,7 +831,12 @@ def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config, station_i
         "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
         return_value=get_external_auth_config,
     )
-    eodag_provider = adgs_retriever.init_adgs_provider(station_id)
+    CustomEODataAccessGateway.create.cache_clear()
+    eodag_provider = (
+        adgs_retriever.init_adgs_provider(station_id)
+        if "adgs" in station_id
+        else cadip_retriever.init_cadip_provider(station_id)
+    )
     config = eodag_provider.client.providers_config[station_id]
 
     assert config.auth.auth_uri == get_external_auth_config.token_url
@@ -839,7 +850,7 @@ def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config, station_i
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("station_id", ["adgs"])
+@pytest.mark.parametrize("station_id", ["adgs", "ins"])
 async def test_set_eodag_auth_token_by_station_and_service_success(
     mocker,
     monkeypatch,
@@ -877,15 +888,16 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
             "rs_server_common.data_retrieval.eodag_provider.get_station_token",
             return_value=mock_token_dict,
         )
-        eodag_provider = adgs_retriever.init_adgs_provider(station_id)
+        CustomEODataAccessGateway.create.cache_clear()
+        eodag_provider = (
+            adgs_retriever.init_adgs_provider(station_id)
+            if "adgs" in station_id
+            else cadip_retriever.init_cadip_provider(station_id)
+        )
         config = eodag_provider.client.providers_config[station_id]
 
         # Check if the correct token was set in the environment
-        assert config.auth.auth_uri == get_external_auth_config.token_url
-        assert (
-            os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"]
-            == mock_token_dict["access_token"]
-        )
+        assert config.auth.credentials["token"] == mock_token_dict["access_token"]
 
     finally:
         # Restore default value
@@ -893,91 +905,41 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
         reload(adgs_retriever)
         reload(cadip_retriever)
 
-        mock_set_env = mocker.patch("rs_server_common.authentication.authentication_to_external.set_eodag_auth_env")
         # Call the function
-        set_eodag_auth_token(station_id=ext_auth_config.station_id, service=ext_auth_config.service_name)
+        mock_set_env = mocker.patch(
+            "rs_server_common.data_retrieval.eodag_provider.CustomEODataAccessGateway.authenticate_provider",
+        )
+        CustomEODataAccessGateway.create.cache_clear()
+        eodag_provider = (
+            adgs_retriever.init_adgs_provider(station_id)
+            if "adgs" in station_id
+            else cadip_retriever.init_cadip_provider(station_id)
+        )
 
-        # Check if the correct values were set for the EODAG environment variables
-        mock_set_env.assert_called_once_with(ext_auth_config)
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("station_id", ["adgs", "ins"])
-async def test_set_eodag_auth_token_by_domain_success(mocker, monkeypatch, get_external_auth_config, mock_token_dict):
-    """
-    Unit test for setting the EODAG authentication token using the domain.
-
-    This test simulates the retrieval of an authentication token based on the domain and checks if
-    the environment variables are properly set when using an external authentication configuration.
-
-    Args:
-        mocker: Pytest fixture for patching and mocking.
-        get_external_auth_config: Fixture that provides an ExternalAuthenticationConfig object.
-
-    The test checks:
-    - The correct token is set in the environment variable when using the internal token module.
-    - The EODAG environment variables are set correctly for authentication when the internal token
-      module is disabled.
-    """
-    ext_auth_config = get_external_auth_config
-    # Mock the external authentication config loading function
-    mocker.patch(
-        "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_domain",
-        return_value=ext_auth_config,
-    )
-
-    # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-    # usage of the internal token module  for getting the token and setting it to the eodag
-    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
-    reload(adgs_retriever)
-    reload(cadip_retriever)
-
-    mocker.patch(
-        "rs_server_common.authentication.authentication_to_external.get_station_token",
-        return_value=mock_token_dict,
-    )
-
-    # Call the function
-    set_eodag_auth_token(domain=ext_auth_config.domain)
-
-    # Check if the correct token was set in the environment variable
-    assert (
-        os.environ[f"EODAG__{ext_auth_config.station_id}__auth__credentials__token"] == mock_token_dict["access_token"]
-    )
-
-    # Restore default value
-    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
-    reload(adgs_retriever)
-    reload(cadip_retriever)
-
-    mock_set_env = mocker.patch("rs_server_common.authentication.authentication_to_external.set_eodag_auth_env")
-    # Call the function
-    set_eodag_auth_token(domain=ext_auth_config.domain)
-
-    # Check if the correct values were set for the EODAG environment variables
-    mock_set_env.assert_called_once_with(ext_auth_config)
+        # Check if the correct values were set for the EODAG environment
+        mock_set_env.assert_called_once_with(station_id, get_external_auth_config)
 
 
 def test_set_eodag_auth_token_no_station_or_domain():
     """
-    Unit test for error handling in set_eodag_auth_token when neither station_id nor domain is provided.
+    Unit test for error handling when neither station_id nor domain is provided.
 
-    This test verifies that the function raises a ValueError when neither station_id/service nor domain
-    is provided as input parameters.
+    This test verifies that the load_external_auth_config function raises a ValueError when neither
+    station_id/service nor domain is provided as input parameters.
 
     The test expects:
     - A ValueError is raised with a message indicating that either station_id/service or domain must be
       provided.
     """
     with pytest.raises(ValueError, match="Either station_id and service or domain must be provided."):
-        set_eodag_auth_token(station_id=None, service=None, domain=None)
+        load_external_auth_config(station_id=None, service=None, domain=None)
 
 
 def test_set_eodag_auth_token_config_not_found(mocker):
     """
     Unit test for handling the case where no external authentication configuration is found.
 
-    This test checks if the set_eodag_auth_token function correctly raises an HTTPException
+    This test checks if the load_external_auth_config function correctly raises an HTTPException
     when the configuration for the station token cannot be retrieved.
 
     Args:
@@ -993,7 +955,7 @@ def test_set_eodag_auth_token_config_not_found(mocker):
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        set_eodag_auth_token(station_id="adgs", service="auxip")
+        load_external_auth_config(station_id="adgs", service="auxip")
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Failed to retrieve the configuration for the station token."
