@@ -27,7 +27,7 @@ from .resources.sample_data import sample_process_metadata_model
 
 @pytest.mark.unit
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):
+async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):  # pylint: disable=too-many-locals
     """
     Validate role-based access control for the 'staging' resource.
 
@@ -93,7 +93,8 @@ async def test_auth_roles(mocker, staging_client, httpx_mock: HTTPXMock):
     assert staging_client.delete(f"/jobs/{job_id}", **header).status_code != HTTP_401_UNAUTHORIZED
     assert staging_client.get(f"/jobs/{job_id}/results", **header).status_code != HTTP_401_UNAUTHORIZED
 
-    # When setting resource to other value (corresponding to an existing resource), check that UAC does not allow since roles are not updated.
+    # When setting resource to other value (corresponding to an existing resource),
+    #  check that UAC does not allow since roles are not updated.
     resource = "other_staging"
     mock_resources = {
         "staging": {
