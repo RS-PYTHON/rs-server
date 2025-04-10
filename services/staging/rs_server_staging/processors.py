@@ -345,6 +345,7 @@ class Staging(
         """
         #################
         # Locals
+        self.logger = Logging.default(__name__)
         self.request = credentials
         self.headers: Headers = credentials.headers
         self.stream_list: list[Feature] = []
@@ -378,7 +379,6 @@ class Staging(
         # Inputs section
         self.assets_info: list = []
 
-        self.logger = Logging.default(__name__)
         self.cluster = cluster
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
         self.station_token_list = station_token_list
