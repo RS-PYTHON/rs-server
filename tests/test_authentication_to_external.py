@@ -790,7 +790,6 @@ def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id
         "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
         return_value=get_external_auth_config,
     )
-    CustomEODataAccessGateway.create.cache_clear()
     eodag_provider = (
         adgs_retriever.init_adgs_provider(station_id)
         if "adgs" in station_id
@@ -831,7 +830,6 @@ def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config, station_i
         "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
         return_value=get_external_auth_config,
     )
-    CustomEODataAccessGateway.create.cache_clear()
     eodag_provider = (
         adgs_retriever.init_adgs_provider(station_id)
         if "adgs" in station_id
@@ -888,7 +886,6 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
             "rs_server_common.data_retrieval.eodag_provider.get_station_token",
             return_value=mock_token_dict,
         )
-        CustomEODataAccessGateway.create.cache_clear()
         eodag_provider = (
             adgs_retriever.init_adgs_provider(station_id)
             if "adgs" in station_id
@@ -909,7 +906,6 @@ async def test_set_eodag_auth_token_by_station_and_service_success(
         mock_set_env = mocker.patch(
             "rs_server_common.data_retrieval.eodag_provider.CustomEODataAccessGateway.authenticate_provider",
         )
-        CustomEODataAccessGateway.create.cache_clear()
         eodag_provider = (
             adgs_retriever.init_adgs_provider(station_id)
             if "adgs" in station_id

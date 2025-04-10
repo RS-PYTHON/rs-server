@@ -20,28 +20,25 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
-import datetime
-import json
 import os
-import os.path as osp
-import subprocess  # nosec ignore security issue
-from contextlib import ExitStack
-from functools import lru_cache
-from pathlib import Path
-
-from rs_server_adgs import adgs_retriever
-from rs_server_cadip import cadip_retriever
+from importlib import reload
 
 # We are in local mode (no cluster).
 # Do this before any other imports.
 # pylint: disable=wrong-import-position
 # flake8: noqa
 os.environ["RSPY_LOCAL_MODE"] = "1"
-from importlib import reload
-
 from rs_server_common import settings
 
 reload(settings)
+
+import datetime
+import json
+import os.path as osp
+import subprocess  # nosec ignore security issue
+from contextlib import ExitStack
+from functools import lru_cache
+from pathlib import Path
 
 import pytest
 import responses
@@ -49,10 +46,13 @@ import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from rs_server_adgs import adgs_retriever
+from rs_server_cadip import cadip_retriever
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
 )
+from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
@@ -242,6 +242,13 @@ def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-ar
 ##################
 # OTHER FIXTURES #
 ##################
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clear_caches():
+    """Clear caches at the end of each test"""
+    yield
+    CustomEODataAccessGateway.create.cache_clear()
 
 
 @pytest.fixture(scope="function")
@@ -524,29 +531,6 @@ def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig
         scope="openid",
         authorization="Basic test",
     )
-
-
-@pytest.fixture(name="mock_token_validation")
-def validate_token(mocker):
-    """Fixture used to mock rs server service that authorize eodag ops."""
-
-    def _validate_token(service: str | None = None):
-        if not service:
-            # If not defined, mock both adgs and cadip
-            mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-            mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
-        else:
-            # If defined, custom path mock
-            mocker.patch(f"rs_server_{service}.api.{service}_search.set_eodag_auth_token", side_effect=None)
-        responses.add(
-            responses.POST,
-            TOKEN_URL,
-            json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-            status=200,
-        )
-        return service  # If needed, return the value to be used later in the test
-
-    return _validate_token
 
 
 @pytest.fixture(name="cadip_feature")
