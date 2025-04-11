@@ -351,17 +351,11 @@ class Staging(
         self.stream_list: list[Feature] = []
         #################
         # Env section
-
         # Set a list containing all possibles server url
         self.server_url = [
-            os.getenv(server_var, None)
-            for server_var in os.environ
-            if server_var.startswith("RSPY__TOKEN__") and server_var.endswith("__SERVICE__URL")
+            os.getenv("RSPY_HOST_CADIP", "http://127.0.0.1:8002"),
+            os.getenv("RSPY_HOST_ADGS", "http://127.0.0.1:8001"),
         ]
-        # Default values for the list of server urls which are used in local mode (without docker-compose)
-        if len(self.server_url) == 0:
-            self.server_url = ["http://127.0.0.1:8001", "http://127.0.0.1:8001"]
-        self.logger.info(f"---------- SERVER URL LIST VAUT: {self.server_url}")
 
         self.catalog_url: str = os.environ.get(
             "RSPY_HOST_CATALOG",
