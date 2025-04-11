@@ -43,7 +43,7 @@ class ServiceNotFound(Exception):
 
 def __read_configuration() -> dict:  # pylint: disable=too-many-locals
     """
-    Reads and loads the rs-server configuration file for authentication to extenal stations.
+    Read the rs-server configuration for authentication to extenal stations.
 
     In local mode, we read an existing rs-server.yaml local file, either customized by the user
     or released with the source code.
@@ -60,6 +60,7 @@ def __read_configuration() -> dict:  # pylint: disable=too-many-locals
             - If there is an error in reading or parsing the YAML file (`yaml.YAMLError`).
             - For any other unexpected errors that occur during the file reading process.
     """
+    config_data: dict[str, Any] = {}
 
     if settings.LOCAL_MODE:
 
@@ -96,7 +97,6 @@ def __read_configuration() -> dict:  # pylint: disable=too-many-locals
     # RSPY__TOKEN__<service>__<station>__<section_name>__<rest of the info for key>
     # Regular expression to match the pattern RSPY__TOKEN__<service>__<station>__<section>__<rest_of_the_key>
     pattern = r"^RSPY__TOKEN__([^__]+)__([^__]+)__([^__]+)(__.*)?$"
-    config_data: dict[str, Any] = {}
 
     # Iterate over all environment variables
     for var, value in os.environ.items():

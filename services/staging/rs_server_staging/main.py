@@ -89,7 +89,7 @@ if common_settings.CLUSTER_MODE:
 
 else:
 
-    async def just_for_the_lock_icon():
+    async def just_for_the_lock_icon():  # type: ignore # different signature than above
         """In local mode it does nothing."""
 
 

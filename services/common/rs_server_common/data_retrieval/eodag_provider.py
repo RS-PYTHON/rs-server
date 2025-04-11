@@ -84,7 +84,8 @@ class CustomEODataAccessGateway(EODataAccessGateway):
 
         Args:
             provider: the name of the eodag provider (=station name)
-            external_config: external provider (=station) authentication from rs-server.yaml file or RSPY__TOKEN__xxx env vars
+            external_config: external provider (=station) authentication from rs-server.yaml file
+            or RSPY__TOKEN__xxx env vars
         """
 
         # In a lock, call this function only once by provider, to avoid changing the config
