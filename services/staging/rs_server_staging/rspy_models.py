@@ -13,6 +13,9 @@
 # limitations under the License.
 """Module used to type-check input of rs-staging."""
 
+
+from typing import Any
+
 from pydantic import BaseModel, Field  # pylint: disable=no-name-in-module
 from stac_pydantic.shared import Asset  # Importing directly for clarity
 
@@ -45,7 +48,7 @@ class Feature(BaseModel):
 
     type: str
     geometry: dict | None = None
-    properties: dict[str, str | None]
+    properties: dict[str, Any]
     bbox: list[int | float] | None = None
     id: str
     stac_version: str
