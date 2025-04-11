@@ -821,14 +821,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.3.0"
+version = "3.2.1"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "eodag-3.3.0-py3-none-any.whl", hash = "sha256:6e491173e9daccff9f2a40dab6f01eb03d96559f3871abdc3645b4529ee7a89b"},
-    {file = "eodag-3.3.0.tar.gz", hash = "sha256:311b393beffc1ca09e5fc4008e4d59f2e5608b860ec28d96a81754205bbd2fa9"},
+    {file = "eodag-3.2.1-py3-none-any.whl", hash = "sha256:d72ed7cfb0927ccd6a0635d5713c51b50708818baaffad23a59b271c7d68ba6b"},
+    {file = "eodag-3.2.1.tar.gz", hash = "sha256:78419943989a916a7045934085fbe61ea9fe4b2db064bf866abe734d342e2124"},
 ]
 
 [package.dependencies]
@@ -2176,14 +2176,14 @@ files = [
 
 [[package]]
 name = "pydantic"
-version = "2.11.2"
+version = "2.11.3"
 description = "Data validation using Python type hints"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "pydantic-2.11.2-py3-none-any.whl", hash = "sha256:7f17d25846bcdf89b670a86cdfe7b29a9f1c9ca23dee154221c9aa81845cfca7"},
-    {file = "pydantic-2.11.2.tar.gz", hash = "sha256:2138628e050bd7a1e70b91d4bf4a91167f4ad76fdb83209b107c8d84b854917e"},
+    {file = "pydantic-2.11.3-py3-none-any.whl", hash = "sha256:a082753436a07f9ba1289c6ffa01cd93db3548776088aa917cc43b63f68fa60f"},
+    {file = "pydantic-2.11.3.tar.gz", hash = "sha256:7471657138c16adad9322fe3070c0116dd6c3ad8d649300e3cbdfe91f4db4ec3"},
 ]
 
 [package.dependencies]
@@ -3636,4 +3636,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "c515f8965f235032f4f43c3fc3173864b63924faf2cd6a4c1dbefc1c5abd1c12"
+content-hash = "2dbaa99086a1cbf6b1b5f3b871abef5ad1ae9ee4645032adaf99406d9b1e223e"
