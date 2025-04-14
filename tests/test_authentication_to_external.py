@@ -16,15 +16,19 @@
 
 """Unit tests for the authentication."""
 
+import asyncio
 import datetime
 import json
 import os
+import re
 from importlib import reload
 
 import pytest
 import responses
 import yaml
+from eodag.plugins.authentication.token import TokenAuth
 from fastapi import HTTPException
+from fastapi.concurrency import run_in_threadpool
 from rs_server_adgs import adgs_retriever
 from rs_server_cadip import cadip_retriever
 from rs_server_common.authentication import authentication_to_external
@@ -44,6 +48,8 @@ from rs_server_common.authentication.token_auth import (
 )
 from rs_server_common.utils.logging import Logging
 from starlette.status import HTTP_200_OK, HTTP_403_FORBIDDEN
+
+from tests.app import ROUTER_PREFIX_AUXIP, ROUTER_PREFIX_CADIP
 
 # Dummy url for the uac manager check endpoint
 RSPY_UAC_CHECK_URL = "http://www.rspy-uac-manager.com"
@@ -954,3 +960,81 @@ def test_set_eodag_auth_token_config_not_found(mocker):
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Failed to retrieve the configuration for the station token."
+
+
+@responses.activate
+@pytest.mark.parametrize(
+    "fastapi_app, station_id",
+    ((ROUTER_PREFIX_CADIP, "cadip"), (ROUTER_PREFIX_AUXIP, "adgs")),
+    ids=["cadip", "adgs"],
+    indirect=["fastapi_app"],
+)
+async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-locals
+    mocker,
+    monkeypatch,
+    client,
+    station_id,
+    adgs_response,
+    cadip_file_response,
+    cadip_session_response,
+):
+    """Test that requesting an auxip/cadip auth token with eodag happens only once per station."""
+    content_type = "application/json"
+    r_headers = {"Content-Type": content_type}
+
+    # Don't patch this env var, use the "true" search configuration
+    monkeypatch.delenv("RSPY_ADGS_SEARCH_CONFIG")
+    monkeypatch.delenv("RSPY_CADIP_SEARCH_CONFIG")
+
+    def mock_station_response(request):
+        """Mock station response"""
+        if station_id == "adgs":
+            body = adgs_response
+        else:  # cadip
+            if request.path_url.startswith("/Sessions"):
+                body = cadip_session_response
+            else:
+                body = cadip_file_response
+        return HTTP_200_OK, r_headers, json.dumps(body)
+
+    # Mock station response for adgs, cadip sessions and cadip files
+    for path in "Products", "Sessions", "Files":
+        responses.add_callback(
+            responses.GET,
+            re.compile(f"http://127.0.0.1:.*/{path}.*"),
+            callback=mock_station_response,
+            content_type=content_type,
+        )
+
+    # Mock token request
+    token = {
+        "access_token": "my_access_token",
+        "expires_in": 3600,
+        "refresh_token": "my_refresh_token",
+        "refresh_expires_in": 7200,
+        "token_type": "Bearer",
+    }
+    responses.add_callback(
+        responses.POST,
+        re.compile("http://127.0.0.1:.*/oauth2/token"),
+        callback=lambda _: (HTTP_200_OK, r_headers, json.dumps(token)),
+        content_type=content_type,
+    )
+    spy_token_request = mocker.spy(TokenAuth, "_token_request")
+
+    # Call the search endpoint in parallel
+    async def mytest():
+        url = f"{os.getenv('router_prefix')}/search"  # ?collections=cadip"
+        response = await run_in_threadpool(client.get, url)
+        response.raise_for_status()
+
+    async with asyncio.TaskGroup() as tg:
+        for _ in range(10):
+            tg.create_task(mytest())
+
+    # Check that a token was requested only once per station (=provider)
+    assert not spy_token_request.spy_exception
+    assert {response.status_code for response in spy_token_request.spy_return_list} == {HTTP_200_OK}
+    token_providers = [call[0][0].provider for call in spy_token_request.call_args_list]
+    assert len(token_providers) > 1
+    assert len(token_providers) == len(set(token_providers))
