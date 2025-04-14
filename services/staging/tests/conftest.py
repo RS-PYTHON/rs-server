@@ -22,6 +22,7 @@
 import asyncio
 import os
 import os.path as osp
+import threading
 from datetime import datetime
 from importlib import reload
 from pathlib import Path
@@ -123,38 +124,42 @@ def dbj_():
         {
             "identifier": "job_1",
             "status": "running",
+            "type": "process",
             "progress": 0.0,
             "message": TEST_DETAIL,
-            "process_id": "staging",
-            "created": str(datetime(2024, 1, 1, 12, 0, 0)),
-            "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
+            "created": datetime(2024, 1, 1, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "updated": datetime(2024, 1, 1, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "processID": "staging",
         },
         {
             "identifier": "job_2",
             "status": "running",
+            "type": "process",
             "progress": 55.0,
             "message": TEST_DETAIL,
-            "process_id": "staging",
-            "created": str(datetime(2024, 1, 2, 12, 0, 0)),
-            "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
+            "created": datetime(2024, 1, 2, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "updated": datetime(2024, 1, 2, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "processID": "staging",
         },
         {
             "identifier": "job_3",
             "status": "running",
+            "type": "process",
             "progress": 15.0,
             "message": TEST_DETAIL,
-            "process_id": "staging",
-            "created": str(datetime(2024, 1, 3, 12, 0, 0)),
-            "updated": str(datetime(2024, 1, 3, 13, 0, 0)),
+            "created": datetime(2024, 1, 3, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "updated": datetime(2024, 1, 3, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "processID": "staging",
         },
         {
             "identifier": "job_4",
             "status": "successful",
+            "type": "process",
             "progress": 100.0,
             "message": TEST_DETAIL,
-            "process_id": "staging",
-            "created": str(datetime(2024, 1, 4, 12, 0, 0)),
-            "updated": str(datetime(2024, 1, 4, 13, 0, 0)),
+            "created": datetime(2024, 1, 4, 12, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "updated": datetime(2024, 1, 4, 13, 0, 0).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "processID": "staging",
         },
     ]
 
@@ -175,8 +180,8 @@ def feature(f_id: str) -> dict:
 def staging_inputs():
     """Fixture to mock the staging execution inputs"""
     return {
-        "collection": {"id": "test_collection"},
-        "items": {"type": "FeatureCollection", "features": [feature("1"), feature("2")]},
+        "collection": "test_collection",
+        "items": {"value": {"type": "FeatureCollection", "features": [feature("1"), feature("2")]}},
     }
 
 
@@ -186,7 +191,6 @@ def staging(mocker, config):
     # Mock dependencies for Staging
     mock_credentials = mocker.Mock()
     mock_credentials.headers = {"cookie": "fake-cookie", "host": "fake-host"}
-    mock_item = "test_item"
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
     # Mock station_token_list as an iterable
@@ -225,7 +229,6 @@ def staging(mocker, config):
     # Instantiate the Staging class with the mocked dependencies
     staging_instance = Staging(
         credentials=mock_credentials,
-        item=mock_item,
         db_process_manager=mock_db,
         cluster=mock_cluster,
         station_token_list=mock_station_token_list,
@@ -274,6 +277,22 @@ def authentication_config():
     )
 
 
+@pytest.fixture(name="mock_app")
+def get_mock_app(mocker, staging_client):
+    """
+    Mock the FastAPI application variable
+    """
+    mock_app = mocker.patch.object(
+        staging_client.app,
+        "extra",
+        {
+            "station_token_list": mocker.MagicMock(),  # Mock auth list to prevent KeyError
+            "station_token_list_lock": mocker.Mock(spec=threading.Lock),
+        },
+    )
+    return mock_app
+
+
 @pytest.fixture(name="mock_db_table")
 def get_mock_db_table(mocker):
     """
@@ -285,18 +304,22 @@ def get_mock_db_table(mocker):
             {
                 "identifier": "job_1",
                 "status": "successful",
+                "type": "process",
                 "progress": 100.0,
                 "message": TEST_DETAIL,
-                "created": str(datetime(2024, 1, 1, 12, 0, 0)),
-                "updated": str(datetime(2024, 1, 1, 13, 0, 0)),
+                "created": datetime(2024, 1, 1, 12, 0, 0),
+                "updated": datetime(2024, 1, 1, 13, 0, 0),
+                "processID": "staging",
             },
             {
                 "identifier": "job_2",
                 "status": "running",
+                "type": "process",
                 "progress": 90.25,
                 "message": TEST_DETAIL,
-                "created": str(datetime(2024, 1, 2, 12, 0, 0)),
-                "updated": str(datetime(2024, 1, 2, 13, 0, 0)),
+                "created": datetime(2024, 1, 2, 12, 0, 0),
+                "updated": datetime(2024, 1, 2, 13, 0, 0),
+                "processID": "staging",
             },
         ],
         "numberMatched": 2,

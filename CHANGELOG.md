@@ -24,6 +24,36 @@ Changed
 
 None
 
+[0.2a12] - Sprint 22 - 2025-04-14
+================================
+
+## Added
+
+- RSPY-236: Upgrade to Ubuntu 24.04.1
+- RSPY-343: Implement access control to the Staging service (with execute UAC)
+- RSPY-561: Smarter handling of Staging OAuth2 tokens
+- RSPY-611: Publish our own STAC extension(s)
+- RSPY-631: Update to latest stable version of Prefect 3 and drop Prefect 2
+- RSPY-634: Sprint 22 corrections of issues
+- RSPY-638: [S3L0 demo] Test EOPF with Stéphane's Sentinel-3 data
+- RSPY-639: handle token expiration for wazuh agent install ( 1 pt )
+- RSPY-644: [S3L0 demo] Use OpenTelemetry
+- RSPY-650: Remove /catalog/collections/{collectionId}/search endpoint
+- RSPY-589: Staging: precise implementation of /processes/staging/execution endpoint
+- RSPY-588: Staging: precise implementation of /processes and /processes/staging endpoints
+- RSPY-590: Staging: precise implementation of /jobs* endpoints
+
+## Fixed
+
+- RSPY-535: RS-Client cannot be used from laptop or GitHub because of RSPY_UAC_CHECK_URL
+- RSPY-551: No opentelemetry data for rs-server-adgs, rs-server-cadip, rs-server-staging after start/stop platform
+- RSPY-595: The RS-Documentation can't be generated anymore
+- RSPY-632: [RS-SERVER-STAGING] 422 Error when staging session with null value for parameters start_datetime, end_datetime,cadip:antenna_status_ok, cadip:front_end_status_ok, cadip:downlink_status_ok or cadip:delivery_push_ok
+- RSPY-635: STAC validation: invalid content-type header (CADIP/AUXIP) (1 pt)
+- RSPY-636: CADIP/AUXIP STAC APIs return HTTP 422 for request validation errors instead of HTTP 400 (1 pt)
+- RSPY-637: CADIP/AUXIP STAC APIs reject search request containing bbox parameter (1 pt)
+- RSPY-646: Can't retrieve AX___OSF_AX products from ADGS (1 pt)
+
 [0.2a11] - Sprint 21 - 2025-03-12
 ================================
 

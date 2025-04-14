@@ -13,11 +13,14 @@
 # limitations under the License.
 
 """rs server staging main module."""
+import copy
+
 # pylint: disable=E0401
 import os
 import pathlib
 import threading
 from contextlib import asynccontextmanager
+from datetime import datetime
 from string import Template
 from time import sleep
 from typing import Annotated
@@ -25,7 +28,7 @@ from typing import Annotated
 import httpx
 import yaml
 from dask.distributed import LocalCluster
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Security
+from fastapi import APIRouter, Depends, FastAPI, Path, Security
 from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from pygeoapi.api import API
 from pygeoapi.process.base import JobNotFoundError
@@ -43,8 +46,10 @@ from rs_server_common.middlewares import (
 from rs_server_common.utils import opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
-from rs_server_staging.processors import (
-    processors,
+from rs_server_staging.processors import processors
+from rs_server_staging.staging_endpoints_validation import (
+    validate_request,
+    validate_response,
 )
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import (
@@ -55,13 +60,16 @@ from starlette.requests import Request  # pylint: disable=C0411
 from starlette.responses import JSONResponse  # pylint: disable=C0411
 from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
+    HTTP_201_CREATED,
     HTTP_404_NOT_FOUND,
-    HTTP_503_SERVICE_UNAVAILABLE,
+    HTTP_500_INTERNAL_SERVER_ERROR,
 )
+
+# DON'T REMOVE (needed for SQLAlchemy)
+from . import jobs_table  # pylint: disable=unused-import
 
 # flake8: noqa: F401
 # pylint: disable=W0611
-from . import jobs_table  # DON'T REMOVE (needed for SQLAlchemy)
 from .rspy_models import ProcessMetadataModel
 
 REFRESH_TOKENS_TIMEOUT = 40
@@ -71,6 +79,27 @@ logger = Logging.default(__name__)
 # Initialize a FastAPI application
 app = FastAPI(title="rs-staging", root_path="", debug=True)
 router = APIRouter(tags=["Staging service"])
+
+JOB_ATTRS_MAPPING = {"identifier": "jobID"}
+OGC_UNCOMPLIANT_JOB_ATTRS = ["_sa_instance_state", "location", "mimetype"]
+
+
+def ogc_error_response(status_code: int, detail: str):
+    """Generate an OGC-compliant error response"""
+    error_response = {
+        "type": f"https://developer.mozilla.org/en/docs/Web/HTTP/Reference/Status/{status_code}",
+        "status": status_code,
+        "detail": detail,
+    }
+    return JSONResponse(status_code=status_code, content=error_response)
+
+
+class DatabaseJobFormatError(Exception):
+    """Exception raised when an error occurred during the init of a provider."""
+
+
+class JobsFormatError(Exception):
+    """Exception raised when an error occurred during the init of a provider."""
 
 
 def must_be_authenticated(path: str) -> bool:
@@ -91,6 +120,11 @@ else:
 
     async def just_for_the_lock_icon():  # type: ignore # different signature than above
         """In local mode it does nothing."""
+
+
+async def validate_request_dependency(request: Request):
+    """Dependency to validate the body of the input request"""
+    await validate_request(request)
 
 
 app.add_middleware(AuthenticationMiddleware, must_be_authenticated=must_be_authenticated)
@@ -274,23 +308,38 @@ async def ping():
     return JSONResponse(status_code=HTTP_200_OK, content="Healthy")
 
 
-@router.get("/processes", dependencies=[Depends(just_for_the_lock_icon)])
-async def get_processes():
+@router.get("/processes", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
+async def get_processes(request: Request):
     """Returns list of all available processes from config."""
-    if processes := [
-        {"name": resource, "processor": api.config["resources"][resource]["processor"]["name"]}
-        for resource in api.config["resources"]
-    ]:
-        return JSONResponse(status_code=HTTP_200_OK, content={"processes": processes})
-    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content="No processes found")
+    try:
+        processes = {
+            "processes": [],
+            "links": [
+                {"href": str(request.url), "rel": "self", "type": "application/json", "title": "List of processes"},
+            ],
+        }
+        for resource in api.config["resources"]:
+            processes["processes"].append(
+                {
+                    "id": api.config["resources"][resource]["processor"]["name"],
+                    "version": "1.0.0",
+                },
+            )
+        validate_response(request, processes)
+        return JSONResponse(status_code=HTTP_200_OK, content=processes)
+
+    except Exception as e:  # pylint: disable=W0718
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
-@router.get("/processes/{resource}", dependencies=[Depends(just_for_the_lock_icon)])
+@router.get(
+    "/processes/{resource}",
+    dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)],
+)
 async def get_resource(request: Request, resource: str):
     """Should return info about a specific resource."""
     # rs_processes_{resource}_read role needed to access this endpoint.
-    auth_validation("read", resource, request=request, staging_process=True)
-    if resource_info := next(
+    if resource_info := next(  # pylint: disable=W0612
         (
             api.config["resources"][defined_resource]
             for defined_resource in api.config["resources"]
@@ -298,82 +347,203 @@ async def get_resource(request: Request, resource: str):
         ),
         None,
     ):
-        return JSONResponse(status_code=HTTP_200_OK, content=resource_info)
-    return JSONResponse(status_code=HTTP_404_NOT_FOUND, content={"detail": "Resource not found"})
+        try:
+            auth_validation("read", resource, request=request, staging_process=True)
+            process = {
+                "id": api.config["resources"][resource]["processor"]["name"],
+                "version": "1.0.0",
+            }
+            validate_response(request, process)
+            return JSONResponse(status_code=HTTP_200_OK, content=process)
+
+        except Exception as e:  # pylint: disable=W0718
+            return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
+    return ogc_error_response(HTTP_404_NOT_FOUND, f"Resource {resource} not found")
+
+
+def format_job_data(job: dict):
+    """
+    Method to apply reformatting on job data to make it compliant with OGC (process) standards
+    Args:
+        job: information on a specific job to fromat: the job must have the same attributes
+        than the columns from the PostgreSql database
+    Result:
+        reformatted and validated job_data variable to put in the response
+    """
+    # Check that the input job have the same struture as the jobs contained in the PostgreSQL database
+    if "identifier" not in job:
+        raise DatabaseJobFormatError(
+            """Input job must have the same structure than the jobs stored in the """
+            """PostgreSql database: attribute 'identifier' is missing""",
+        )
+    job_data = copy.deepcopy(job)
+    # Rename attribute "identifier" to be compliant with OGC standards
+    job_data[JOB_ATTRS_MAPPING["identifier"]] = job_data.pop("identifier")
+    # Remove attributes which should not be part of the response
+    for attr in OGC_UNCOMPLIANT_JOB_ATTRS:
+        if attr in job_data:
+            job_data.pop(attr)
+    for key, value in job_data.items():
+        # Reformat datetime object to string
+        if isinstance(value, datetime):
+            job_data[key] = value.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Remove "finished" attribute if its value is None
+    if "finished" in job_data and job_data.get("finished") is None:
+        job_data.pop("finished")
+    return job_data
+
+
+def format_jobs_data(jobs: dict):
+    """
+    Method validate information on all existing jobs
+
+    Args:
+        jobs: information on all existing jobs
+    Result:
+        reformatted and validated jobs_data variable to provide to the response
+    """
+    if not isinstance(jobs, dict):
+        raise JobsFormatError("Expected a dictionary as input")
+    if "jobs" not in jobs:
+        raise JobsFormatError("Invalid format for input jobs: missing 'jobs' key")
+    jobs_data = copy.deepcopy(jobs)
+    # Add "links" mandatory field to the response
+    jobs_data.update(
+        {
+            "links": [
+                {
+                    "href": "string",
+                    "rel": "service",
+                    "type": "application/json",
+                    "hreflang": "en",
+                    "title": "List of jobs",
+                },
+            ],
+        },
+    )
+    # Remove SQLAlchemy _sa_instance_state objects and convert datetime
+    for i, job_data in enumerate(jobs_data["jobs"]):
+        jobs_data["jobs"][i] = format_job_data(job_data)
+    return jobs_data
 
 
 # Endpoint to execute the staging process and generate a job ID
 @router.post("/processes/{resource}/execution", dependencies=[Depends(just_for_the_lock_icon)])
-async def execute_process(req: Request, resource: str, data: ProcessMetadataModel):
+async def execute_process(
+    request: Request,
+    resource: str,
+    data: ProcessMetadataModel,
+):  # pylint: disable=unused-argument
     """Used to execute processing jobs."""
-    # rs_processes_{resource}_execute role needed to access this endpoint.
-    auth_validation("execute", resource, request=req, staging_process=True)
+
+    # check if the input resource exists
     if resource not in api.config["resources"]:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Process resource '{resource}' not found")
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Process resource '{resource}' not found")
+
+    # Validate request payload
+    try:
+        valid_body = await validate_request(request)
+        # rs_processes_{resource}_execute role needed to access this endpoint.
+        auth_validation("execute", resource, request=request, staging_process=True)
+    except Exception as e:  # pylint: disable=W0718
+        # Handle exceptions and return an appropriate error message
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
     processor_name = api.config["resources"][resource]["processor"]["name"]
     if processor_name in processors:
         processor = processors[processor_name]
         _, staging_status = await processor(
-            req,
-            data.outputs["result"].id,
+            request,
             app.extra["process_manager"],
             app.extra["dask_cluster"],
             app.extra["station_token_list"],
             app.extra["station_token_list_lock"],
-        ).execute(data.inputs.dict())
-        return JSONResponse(status_code=HTTP_200_OK, content={"status": staging_status})
+        ).execute(valid_body["inputs"])
 
-    raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Processor '{processor_name}' not found")
+        # Get identifier of the current job
+        status_dict = {
+            "accepted": HTTP_201_CREATED,
+            "running": HTTP_201_CREATED,
+            "successful": HTTP_201_CREATED,
+            "failed": HTTP_500_INTERNAL_SERVER_ERROR,
+            "dismissed": HTTP_500_INTERNAL_SERVER_ERROR,
+        }
+        id_key = [status for status in status_dict if status in staging_status][0]
+        formatted_job_data = format_job_data(app.extra["process_manager"].get_job(staging_status[id_key]))
+        validate_response(request, formatted_job_data, HTTP_201_CREATED)
+        return JSONResponse(status_code=HTTP_201_CREATED, content=formatted_job_data)
+    return ogc_error_response(HTTP_404_NOT_FOUND, f"Processor '{processor_name}' not found")
 
 
 # Endpoint to get the status of a job by job_id
-@router.get("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon)])
+@router.get("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def get_job_status_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Used to get status of processing job."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
-        auth_validation("read", job["process_id"], request=request, staging_process=True)
-        return job
-    except JobNotFoundError as error:
+    except JobNotFoundError:  # pylint: disable=W0718
         # Handle case when job_id is not found
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
+
+    try:
+        auth_validation("read", job["processID"], request=request, staging_process=True)
+        formatted_job_data = format_job_data(job)
+        validate_response(request, formatted_job_data)
+        return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
+    except Exception as e:  # pylint: disable=W0718
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
-@router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon)])
-async def get_jobs_endpoint():
+@router.get("/jobs", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
+async def get_jobs_endpoint(request: Request):
     """Returns the status of all jobs."""
     try:
-        return app.extra["process_manager"].get_jobs()
-    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Generate an output conform to OGC process specifications
+        formatted_jobs_data = format_jobs_data(app.extra["process_manager"].get_jobs())
+        validate_response(request, formatted_jobs_data)
+        return JSONResponse(status_code=HTTP_200_OK, content=formatted_jobs_data)
+    except Exception as e:  # pylint: disable=W0718
         # Handle exceptions and return an appropriate error message
-        raise HTTPException(status_code=HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+        return ogc_error_response(HTTP_404_NOT_FOUND, str(e))
 
 
-@router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon)])
+@router.delete("/jobs/{job_id}", dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)])
 async def delete_job_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job to delete")):
     """Deletes a specific job from the database."""
     try:
         job = app.extra["process_manager"].get_job(job_id)
-        auth_validation("dismiss", job["process_id"], request=request, staging_process=True)
+    # Handle case when job_id is not found
+    except JobNotFoundError:  # pylint: disable=W0718
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
+    try:
+        auth_validation("dismiss", job["processID"], request=request, staging_process=True)
         app.extra["process_manager"].delete_job(job_id)
-        return {"message": f"Job {job_id} deleted successfully"}
-    except JobNotFoundError as error:
-        # Handle case when job_id is not found
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+        # Create job response with a status message to confirm the job deletion
+        job["message"] = f"Job {job_id} deleted successfully"
+        formatted_job_data = format_job_data(job)
+        validate_response(request, formatted_job_data)
+        return JSONResponse(status_code=HTTP_200_OK, content=formatted_job_data)
+    except Exception as e:  # pylint: disable=W0718
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
-@router.get("/jobs/{job_id}/results", dependencies=[Depends(just_for_the_lock_icon)])
+@router.get(
+    "/jobs/{job_id}/results",
+    dependencies=[Depends(just_for_the_lock_icon), Depends(validate_request_dependency)],
+)
 async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(..., title="The ID of the job")):
     """Get result from a specific job."""
     try:
         # Query the database to find the job by job_id
         job = app.extra["process_manager"].get_job(job_id)
-        auth_validation("read", job["process_id"], request=request, staging_process=True)
+    except JobNotFoundError:
+        return ogc_error_response(HTTP_404_NOT_FOUND, f"Job with ID {job_id} not found")
+    try:
+        auth_validation("read", job["processID"], request=request, staging_process=True)
+        validate_response(request, job["status"])
         return JSONResponse(status_code=HTTP_200_OK, content=job["status"])
-    except JobNotFoundError as error:
-        # Handle case when job_id is not found
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found") from error
+    except Exception as e:  # pylint: disable=W0718
+        return ogc_error_response(HTTP_500_INTERNAL_SERVER_ERROR, str(e))
 
 
 if common_settings.LOCAL_MODE:

@@ -49,7 +49,7 @@ class JobsTable(Base):  # pylint: disable=too-few-public-methods
 
     type = Column(Enum(JobType), nullable=False, server_default=JobType.process.value)
     identifier = Column(String, primary_key=True, unique=True, index=True)
-    process_id = Column(String, nullable=False)
+    processID = Column(String, nullable=False)
     status = Column(Enum(JobStatus), nullable=False)
     progress = Column(Integer, server_default="0", nullable=False)
     # Pylint issue with func.now, check this: https://github.com/sqlalchemy/sqlalchemy/issues/9189

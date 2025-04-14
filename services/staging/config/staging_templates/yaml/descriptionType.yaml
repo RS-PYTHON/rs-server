@@ -11,18 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-services:
-
-  stac-db:
-    image: ghcr.io/stac-utils/pgstac:v0.9.6
-    container_name: postgres-${POSTGRES_DB}
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - ${POSTGRES_PORT}:5432
-    command: postgres -N 500
+type: object
+properties:
+  title:
+    type: string
+  description:
+    type: string
+  keywords:
+    type: array
+    items:
+      type: string
+  metadata:
+    type: array
+    items:
+      $ref: "metadata.yaml"
+  additionalParameters:
+    allOf:
+      - $ref: "metadata.yaml"
+      - type: object
+        properties:
+          parameters:
+            type: array
+            items:
+              $ref: "additionalParameter.yaml"

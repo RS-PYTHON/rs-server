@@ -314,7 +314,6 @@ class Staging(
     def __init__(
         self,
         credentials: Request,
-        item: str,
         db_process_manager: PostgreSQLManager,
         cluster: LocalCluster,
         station_token_list: list[RefreshTokenData],
@@ -326,7 +325,6 @@ class Staging(
 
         Args:
             credentials (Headers): Authentication headers used for requests.
-            item (str): The specific item to process within the collection.
             db_process_manager (PostgreSQLManager): The pygeoapi Postgresql Manager used to track job execution
                 status and metadata.
             cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
@@ -349,11 +347,18 @@ class Staging(
         """
         #################
         # Locals
+        self.logger = Logging.default(__name__)
         self.request = credentials
         self.headers: Headers = credentials.headers
         self.stream_list: list[Feature] = []
         #################
         # Env section
+        # Set a list containing all possibles server url
+        self.server_url = [
+            os.getenv("RSPY_HOST_CADIP", "http://127.0.0.1:8002"),
+            os.getenv("RSPY_HOST_ADGS", "http://127.0.0.1:8001"),
+        ]
+
         self.catalog_url: str = os.environ.get(
             "RSPY_HOST_CATALOG",
             "http://127.0.0.1:8003",
@@ -368,20 +373,17 @@ class Staging(
         self.create_job_execution()
         #################
         # Inputs section
-        self.catalog_item_name: str = item
         self.assets_info: list = []
 
-        self.logger = Logging.default(__name__)
         self.cluster = cluster
         self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
         self.station_token_list = station_token_list
         self.station_token_list_lock = station_token_list_lock
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
-    async def execute(
+    async def execute(  # pylint: disable=too-many-return-statements
         self,
         data: dict,
-        outputs: dict | None = None,  # pylint: disable=unused-argument
     ) -> tuple[str, dict]:
         """
         Asynchronously execute the RSPY staging process, starting with a catalog check and
@@ -397,7 +399,6 @@ class Staging(
 
         Args:
             data (dict): input data that the process needs in order to execute
-            outputs (dict | list): not used
 
         Returns:
             tuple: tuple of MIME type and process response (dictionary containing the job ID and a
@@ -411,11 +412,51 @@ class Staging(
             None: This method doesn't raise any exceptions directly but logs errors if the
                 catalog check fails.
         """
+        # If the content of the staging body is a link STAC itemCollection
+        # (and has no 'value' field containing a STAC ItemCollection)
+        # we launch a request to the corresponding service to load the STAC itemCollection
+        try:
+            if "items" in data and "href" in data["items"] and "value" not in data["items"]:
+
+                # Check if the given url is either the cadip or the
+                # auxip - we don't want to send our apikey to any url
+                if not any(href in data["items"]["href"] for href in self.server_url):
+                    return self.log_job_execution(
+                        JobStatus.failed,
+                        0,
+                        "The domain name specified in the input link must correspond to an existing server",
+                    )
+                response = requests.get(
+                    data["items"]["href"],
+                    headers={
+                        "cookie": self.headers.get("cookie", None),
+                        "x-api-key": self.headers.get("x-api-key", None),
+                    },
+                    timeout=5,
+                )
+                response.raise_for_status()
+                response_dict = response.json()
+                if "type" not in response_dict or response_dict["type"] != "FeatureCollection":
+                    raise RequestException(
+                        f"The input link must point to a FeatureCollection: invalid response {response_dict}",
+                    )
+
+                data["items"]["value"] = response_dict
+        except (RequestException, JSONDecodeError, RuntimeError) as exc:
+            return self.log_job_execution(
+                JobStatus.failed,
+                0,
+                f"Failed to retrieve the ItemCollection from the input link: {exc}",
+            )
+
         # self.logger.debug(f"Executing staging processor for {data}")
         item_collection: FeatureCollectionModel | None = (
-            FeatureCollectionModel.parse_obj(data["items"]) if "items" in data else None
+            FeatureCollectionModel.parse_obj(data["items"]["value"])
+            if "items" in data and "value" in data["items"]
+            else None
         )
-        catalog_collection: str = data["collection"]["id"]
+        catalog_collection: str = data["collection"]
+
         # Check for the proper input
         # Check if item collection is provided
         if not item_collection or not hasattr(item_collection, "features"):
@@ -424,6 +465,9 @@ class Staging(
                 0,
                 "No valid items were provided in the input for staging",
             )
+        # Handle the case where we have an empty ItemCollection
+        if len(item_collection.features) == 0:
+            return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
         # Filter out features with no assets
         item_collection.features = [feature for feature in item_collection.features if feature.assets]
@@ -479,7 +523,7 @@ class Staging(
         """
         job_metadata = {
             "identifier": self.job_id,
-            "process_id": "staging",
+            "processID": "staging",
             "status": self.status.value,
             "progress": self.progress,
             "message": self.message,
@@ -551,7 +595,7 @@ class Staging(
         try:
             response = requests.get(
                 search_url,
-                headers={"cookie": self.headers.get("cookie", None)},
+                headers={"cookie": self.headers.get("cookie", None), "x-api-key": self.headers.get("x-api-key", None)},
                 params=filter_object,
                 timeout=5,
             )

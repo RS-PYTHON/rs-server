@@ -111,7 +111,7 @@ PageType = Annotated[Optional[str], Query(description="Page number to be display
 class Queryables(BaseModel):
     """
     BaseModel used to describe queryable holder.
-    See: site-packages/pypgstac/migrations/pgstac.0.9.2.sql
+    See: site-packages/pypgstac/migrations/pgstac.0.9.6.sql
     """
 
     id: str = Field("", alias="$id")
