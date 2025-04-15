@@ -15,7 +15,7 @@
 """Unit tests for OpenTelemetry."""
 
 from fastapi import FastAPI
-from rs_server_common.utils import opentelemetry
+from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 
 
@@ -26,8 +26,8 @@ async def test_opentelemetry(mocker):
     """
 
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
-    mocker.patch("rs_server_common.utils.opentelemetry.FROM_PYTEST", new=True, autospec=False)
+    mocker.patch("rs_server_common.utils.init_opentelemetry.FROM_PYTEST", new=True, autospec=False)
 
     Logging.default(__name__)
     app = FastAPI()
-    opentelemetry.init_traces(app, "pytest")
+    init_opentelemetry.init_traces(app, "pytest")

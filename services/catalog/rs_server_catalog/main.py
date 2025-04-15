@@ -44,7 +44,7 @@ from rs_server_common.middlewares import (
     HandleExceptionsMiddleware,
     apply_middlewares,
 )
-from rs_server_common.utils import opentelemetry
+from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
@@ -306,7 +306,7 @@ async def lifespan(my_app: FastAPI):
 app.router.lifespan_context = lifespan
 
 # Configure OpenTelemetry
-opentelemetry.init_traces(app, "rs.server.catalog")
+init_opentelemetry.init_traces(app, "rs.server.catalog")
 
 
 # In cluster mode, we add a FastAPI dependency to every authenticated endpoint so the lock icon (to enter an API key)
