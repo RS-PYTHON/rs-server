@@ -40,7 +40,7 @@ import botocore
 from fastapi import HTTPException
 from pygeofilter.ast import Attribute, Equal, Like, Node
 from pygeofilter.parsers.cql2_json import parse as parse_cql2_json
-from pygeofilter.parsers.ecql import parse as parse_ecql
+from pygeofilter.parsers.cql2_text import parse as parse_cql2_text
 from rs_server_catalog import timestamps_extension
 from rs_server_catalog.authentication_catalog import get_authorisation
 from rs_server_catalog.landing_page import (
@@ -481,27 +481,27 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             return "Failed to generate presigned url", HTTP_400_BAD_REQUEST
         return response, HTTP_302_FOUND
 
-    def find_owner_id(self, ecql_ast: Node) -> str:
+    def find_owner_id(self, cql2_ast: Node) -> str:
         """Browse an abstract syntax tree (AST) to find the owner_id.
         Then return it.
 
         Args:
-            ecql_ast (_type_): The AST
+            cql2_ast (_type_): The AST
 
         Returns:
             str: The owner_id
         """
         res = ""
-        if hasattr(ecql_ast, "lhs"):
-            if isinstance(ecql_ast.lhs, Attribute) and ecql_ast.lhs.name == "owner":
-                if isinstance(ecql_ast, Like):
-                    res = ecql_ast.pattern
-                elif isinstance(ecql_ast, Equal):
-                    res = ecql_ast.rhs
-            elif left := self.find_owner_id(ecql_ast.lhs):
+        if hasattr(cql2_ast, "lhs"):
+            if isinstance(cql2_ast.lhs, Attribute) and cql2_ast.lhs.name == "owner":
+                if isinstance(cql2_ast, Like):
+                    res = cql2_ast.pattern
+                elif isinstance(cql2_ast, Equal):
+                    res = cql2_ast.rhs
+            elif left := self.find_owner_id(cql2_ast.lhs):
                 res = left
-            elif hasattr(ecql_ast, "rhs"):
-                if right := self.find_owner_id(ecql_ast.rhs):
+            elif hasattr(cql2_ast, "rhs"):
+                if right := self.find_owner_id(cql2_ast.rhs):
                     res = right
         return res
 
@@ -576,7 +576,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             if not self.request_ids["owner_id"]:
                 self.request_ids["owner_id"] = (
                     (
-                        self.find_owner_id(parse_ecql(query_params_dict["filter"]))
+                        self.find_owner_id(parse_cql2_text(query_params_dict["filter"]))
                         if "filter" in query_params_dict
                         else ""
                     )
@@ -634,7 +634,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             query = parse_qs(request.url.query)
             if "filter" in query:
                 qs_filter = query["filter"][0]
-                filters = parse_ecql(qs_filter)
+                filters = parse_cql2_text(qs_filter)
         elif request.method == "POST":
             query = await request.json()
             if "filter" in query:
