@@ -28,6 +28,7 @@ from requests.auth import AuthBase
 from rs_server_common.authentication.external_authentication_config import (
     ExternalAuthenticationConfig,
 )
+from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
 from starlette.status import (
@@ -38,6 +39,12 @@ from starlette.status import (
 )
 
 logger = Logging.default(__name__)
+
+
+def log_http_exception(*args, **kwargs) -> type[HTTPException]:
+    """Log error and return an HTTP execption to be raised by the caller"""
+    return utils2.log_http_exception(logger, *args, **kwargs)
+
 
 HEADER_CONTENT_TYPE = "application/x-www-form-urlencoded"
 
@@ -55,7 +62,7 @@ MANDATORY_TOKEN_ATTRS = [
 ]
 
 
-class TokenDataNotFound(Exception):
+class TokenDataNotFound(HTTPException):
     """Raised if there are missing data in the dictionary to handle information about the token"""
 
 
@@ -91,6 +98,48 @@ class TokenAuth(AuthBase):
         return "RSPY Token handler"
 
 
+def prepare_data(external_auth_config: ExternalAuthenticationConfig, call_refresh: bool) -> dict[str, str]:
+    """Prepare data for token requests based on authentication configuration.
+
+    Args:
+        external_auth_config (ExternalAuthenticationConfig): Configuration object containing authentication details.
+
+    Returns:
+        Dict[str, str]: Dictionary containing the prepared data for the request.
+    """
+    data_to_send = {"client_id": external_auth_config.client_id, "client_secret": external_auth_config.client_secret}
+    if call_refresh:
+        data_to_send["grant_type"] = "refresh_token"
+    else:
+        data_to_send.update(
+            {
+                "grant_type": external_auth_config.grant_type,
+                "username": external_auth_config.username,
+                "password": external_auth_config.password,
+            },
+        )
+        if external_auth_config.scope:
+            data_to_send["scope"] = external_auth_config.scope
+
+    return data_to_send
+
+
+def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> dict[str, str]:
+    """Prepare HTTP headers for token requests.
+
+    Args:
+        external_auth_config (ExternalAuthenticationConfig): Configuration object containing authentication details.
+
+    Returns:
+        Dict[str, str]: Dictionary containing the prepared headers.
+    """
+    headers = {"Content-Type": HEADER_CONTENT_TYPE}
+    # Add Authorization header if it exists
+    if external_auth_config.authorization:
+        headers["Authorization"] = external_auth_config.authorization
+    return headers
+
+
 def validate_token_dict(token_dict: Any, config: ExternalAuthenticationConfig):
     """
     Check if the token variable contains the mandatory attributes
@@ -103,24 +152,73 @@ def validate_token_dict(token_dict: Any, config: ExternalAuthenticationConfig):
         token_dict (Dict): dictionary containing information about the current token
         information of the current token used to request data on the current station
     """
-    if token_dict:
-        for attr in MANDATORY_TOKEN_ATTRS:
-            if attr not in token_dict:
-                logger.error(
-                    f"""Mandatory attribute {attr} is not defined in the token variable """
-                    f"""of the station {config.station_id}!""",
-                )
-                raise TokenDataNotFound(
-                    f"""Mandatory attribute {attr} is not defined in the token variable
-                                        of the station {config.station_id}!""",
-                )
-            if not token_dict[attr]:
-                logger.error(
-                    f"""Token variable attribute {attr} of the station {config.station_id} is None !""",
-                )
-                raise TokenDataNotFound(
-                    f"""Token variable attribute {attr} of the station {config.station_id} is None !""",
-                )
+    if not token_dict:
+        return
+
+    for attr in MANDATORY_TOKEN_ATTRS:
+        if attr not in token_dict:
+            raise log_http_exception(
+                HTTP_500_INTERNAL_SERVER_ERROR,
+                f"Mandatory attribute {attr} is not defined in the token variable "
+                f"of the station {config.station_id}!",
+                None,
+                TokenDataNotFound,
+            )
+        if not token_dict[attr]:
+            raise log_http_exception(
+                HTTP_500_INTERNAL_SERVER_ERROR,
+                f"Token variable attribute {attr} of the station {config.station_id} is None !",
+                None,
+                TokenDataNotFound,
+            )
+    for attr in "access_token", "refresh_token":
+        validate_token_format(attr)
+
+
+def validate_token_format(token: str) -> None:
+    """Validate the format of a given token.
+
+    Args:
+        token (str): The token string to be validated.
+
+    Raises:
+        HTTPException: If the token format does not match the expected pattern.
+    """
+    # Check if the token matches the expected format using a regular expression
+    if not re.match(r"^[A-Za-z0-9\-_\.]+$", token):
+        # Raise an HTTP exception if the token format is invalid
+        raise log_http_exception(
+            status_code=HTTP_400_BAD_REQUEST,
+            detail="Invalid token format received from the station.",
+        )
+
+
+def __request_token(external_auth_config: ExternalAuthenticationConfig, data_to_send: dict[str, str]):
+    """
+    Subfunction of get_station_token. Request either access or refresh token.
+    """
+    try:
+        response = requests.post(
+            external_auth_config.token_url,
+            data=data_to_send,
+            timeout=5,
+            headers=prepare_headers(external_auth_config),
+        )
+    except requests.exceptions.RequestException as e:
+        raise log_http_exception(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Request to token endpoint failed: {str(e)}",
+        ) from e
+
+    # Check response status
+    if response.status_code != HTTP_200_OK:
+        raise log_http_exception(
+            status_code=response.status_code,
+            detail=f"Failed to get the token from the station {external_auth_config.station_id}. "
+            f"Response from the station: {response.text or ''}",
+        )
+
+    return response.json()
 
 
 def get_station_token(external_auth_config: ExternalAuthenticationConfig, original_token_dict: dict) -> dict:
@@ -148,7 +246,7 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
                        if the token request fails, or if the token format is invalid.
     """
     if not external_auth_config:
-        raise HTTPException(
+        raise log_http_exception(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Failed to retrieve the configuration for the station token.",
         )
@@ -180,39 +278,16 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
                 f"""Current access and refresh token expired -> fetching access token """
                 f"""from station url: {external_auth_config.token_url}""",
             )
-        try:
-            response = requests.post(
-                external_auth_config.token_url,
-                data=prepare_data(external_auth_config, call_refresh=False),
-                timeout=5,
-                headers=prepare_headers(external_auth_config),
-            )
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request to token endpoint failed: {str(e)}")
-            raise HTTPException(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Request to token endpoint failed: {str(e)}",
-            ) from e
-
-        # Check response status
-        if response.status_code != HTTP_200_OK:
-            logger.error(
-                f"Failed to get the token from the station {external_auth_config.station_id}. "
-                f"Response from the station: {response.text or ''}",
-            )
-            raise HTTPException(
-                status_code=response.status_code,
-                detail=f"Failed to get the token from the station {external_auth_config.station_id}. "
-                f"Response from the station: {response.text or ''}",
-            )
 
         # Get the new token and add its creation date
-        token_dict.update(response.json())
+        data_to_send = prepare_data(external_auth_config, call_refresh=False)
+        token_dict.update(__request_token(external_auth_config, data_to_send))
         token_dict["access_token_creation_date"] = token_dict["refresh_token_creation_date"] = datetime.datetime.now()
 
         logger.info(f"Access token retrieved from the station url: {external_auth_config.token_url} ")
         # Validate the token variable and then update the shared token
         validate_token_dict(token_dict, external_auth_config)
+
     else:
         # Check that the token variable contains the mandatory elements
         validate_token_dict(token_dict, external_auth_config)
@@ -224,99 +299,16 @@ def get_station_token(external_auth_config: ExternalAuthenticationConfig, origin
 
         if diff_in_sec > token_dict["expires_in"] - nb_secs_before_token_exp:
             logger.info("Current access_token is about to expire. Launching request to refresh the token...")
-            data_to_send = prepare_data(external_auth_config, call_refresh=True)
 
+            data_to_send = prepare_data(external_auth_config, call_refresh=True)
             data_to_send.update({"refresh_token": token_dict["refresh_token"]})
 
-            try:
-                response = requests.post(
-                    external_auth_config.token_url,
-                    data=data_to_send,
-                    timeout=5,
-                    headers=prepare_headers(external_auth_config),
-                )
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Request to token endpoint failed: {str(e)}")
-                raise HTTPException(
-                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Request to token endpoint failed: {str(e)}",
-                ) from e
-
-            # Check response status
-            if response.status_code != HTTP_200_OK:
-                logger.error(
-                    f"Failed to get the token from the station {external_auth_config.station_id}. "
-                    f"Response from the station: {response.text or ''}",
-                )
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Failed to get the token from the station {external_auth_config.station_id}. "
-                    f"Response from the station: {response.text or ''}",
-                )
-
             # Refresh the token and add the creation date of the newly created token
-            token_dict.update(response.json())
+            token_dict.update(__request_token(external_auth_config, data_to_send))
             token_dict["access_token_creation_date"] = datetime.datetime.now()
 
             # Validate the new token dictionary and update the shared token variable with this dictionary
             validate_token_dict(token_dict, external_auth_config)
             logger.info("Access token has been successfully refreshed !")
+
     return token_dict
-
-
-def prepare_headers(external_auth_config: ExternalAuthenticationConfig) -> dict[str, str]:
-    """Prepare HTTP headers for token requests.
-
-    Args:
-        external_auth_config (ExternalAuthenticationConfig): Configuration object containing authentication details.
-
-    Returns:
-        Dict[str, str]: Dictionary containing the prepared headers.
-    """
-    headers = {"Content-Type": HEADER_CONTENT_TYPE}
-    # Add Authorization header if it exists
-    if external_auth_config.authorization:
-        headers["Authorization"] = external_auth_config.authorization
-    return headers
-
-
-def prepare_data(external_auth_config: ExternalAuthenticationConfig, call_refresh: bool) -> dict[str, str]:
-    """Prepare data for token requests based on authentication configuration.
-
-    Args:
-        external_auth_config (ExternalAuthenticationConfig): Configuration object containing authentication details.
-
-    Returns:
-        Dict[str, str]: Dictionary containing the prepared data for the request.
-    """
-    data_to_send = {"client_id": external_auth_config.client_id, "client_secret": external_auth_config.client_secret}
-    if call_refresh:
-        data_to_send["grant_type"] = "refresh_token"
-    else:
-        data_to_send.update(
-            {
-                "grant_type": external_auth_config.grant_type,
-                "username": external_auth_config.username,
-                "password": external_auth_config.password,
-            },
-        )
-        if external_auth_config.scope:
-            data_to_send["scope"] = external_auth_config.scope
-
-    return data_to_send
-
-
-def validate_token_format(token: str) -> None:
-    """Validate the format of a given token.
-
-    Args:
-        token (str): The token string to be validated.
-
-    Raises:
-        HTTPException: If the token format does not match the expected pattern.
-    """
-    # Check if the token matches the expected format using a regular expression
-    if not re.match(r"^[A-Za-z0-9\-_\.]+$", token):
-        # Raise an HTTP exception if the token format is invalid
-        logger.error("Invalid token format received from the station.")
-        raise HTTPException(status_code=HTTP_400_BAD_REQUEST, detail="Invalid token format received from the station.")
