@@ -29,7 +29,7 @@ from importlib import reload
 # flake8: noqa
 # pylint: disable=wrong-import-order,wrong-import-position
 os.environ["RSPY_LOCAL_MODE"] = "1"
-from rs_server_common import settings
+from rs_server_common import settings, stac_api_common
 
 reload(settings)
 
@@ -45,8 +45,8 @@ import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from rs_server_adgs import adgs_retriever
-from rs_server_cadip import cadip_retriever
+from rs_server_adgs import adgs_retriever, adgs_utils
+from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
@@ -247,7 +247,13 @@ def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-ar
 def clear_caches():
     """Clear caches at the end of each test"""
     yield
+    adgs_utils.read_conf.cache_clear()
+    cadip_utils.read_conf.cache_clear()
+    cadip_utils.cadip_stac_mapper.cache_clear()
     CustomEODataAccessGateway.create.cache_clear()
+    stac_api_common.map_stac_platform.cache_clear()
+    stac_api_common.get_cadip_queryables.cache_clear()
+    stac_api_common.get_adgs_queryables.cache_clear()
 
 
 @pytest.fixture(scope="function")
