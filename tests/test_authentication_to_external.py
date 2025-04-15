@@ -98,10 +98,8 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
     )
     with pytest.raises(TokenDataNotFound) as exc:
         get_station_token(ext_auth_config, {})
-    assert f"""Mandatory attribute access_token is not defined in the token variable
-                                        of the station {ext_auth_config.station_id}!""" in str(
-        exc.value,
-    )
+    assert "Mandatory attribute access_token is not defined in the token variable of the station "
+    f"{ext_auth_config.station_id}!" in str(exc.value)
 
     # ---------- Test valid token retrieval if we don't have any token yet
     # Simulate a token response from the authentication service
@@ -1036,13 +1034,13 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
         assert {response.status_code for response in spy_token_request.spy_return_list} == {HTTP_200_OK}
 
         # Return the list of stations (=providers) for which a token was requested
-        token_auths = {call[0][0] for call in spy_token_request.call_args_list}
-        token_providers = {auth.provider for auth in token_auths}
+        token_auths = [call[0][0] for call in spy_token_request.call_args_list]
+        token_providers = [auth.provider for auth in token_auths]
         return token_auths, token_providers
 
     # Check that a token was requested only once per station (=provider)
     token_auths, token_providers = await parallel_search()
-    assert token_providers == all_providers
+    assert sorted(token_providers) == sorted(all_providers)
 
     # Assert that the refresh_token was not called
     assert len(all_requests) == len(all_providers)
@@ -1061,7 +1059,7 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
         token_auth.token_expiration = datetime.datetime(1900, 1, 1)
     spy_token_request.reset_mock()
     _, token_providers = await parallel_search()
-    assert token_providers == all_providers
+    assert sorted(token_providers) == sorted(all_providers)
 
     # Assert that the refresh_token was  called
     assert len(all_requests) == len(all_providers)
