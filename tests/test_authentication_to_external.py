@@ -29,8 +29,8 @@ import yaml
 from eodag.plugins.authentication.token import TokenAuth
 from fastapi import HTTPException
 from fastapi.concurrency import run_in_threadpool
-from rs_server_adgs import adgs_retriever
-from rs_server_cadip import cadip_retriever
+from rs_server_adgs import adgs_retriever, adgs_utils
+from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import authentication_to_external
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
@@ -982,13 +982,29 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
     content_type = "application/json"
     r_headers = {"Content-Type": content_type}
 
-    # Don't patch this env var, use the "true" search configuration
+    adgs = station_id == "adgs"
+    cadip = station_id == "cadip"
+
+    # Don't patch this env var, use the "true" (for local mode) eodag configuration
     monkeypatch.delenv("RSPY_ADGS_SEARCH_CONFIG")
     monkeypatch.delenv("RSPY_CADIP_SEARCH_CONFIG")
 
+    # Read the search configuration yaml file
+    search_yaml = adgs_utils.search_yaml if adgs else cadip_utils.search_yaml
+    with open(search_yaml, encoding="utf-8") as opened:
+
+        # Read collection list
+        collections = yaml.safe_load(opened)["collections"]
+        collection_ids = {collection["id"] for collection in collections}
+
+        # Read eodag provider list = stations.
+        # With cadip, add the _session suffixes.
+        all_providers = {collection["station"] for collection in collections}
+        if cadip:
+            all_providers = {provider + suffix for provider in all_providers for suffix in ("", "_session")}
+
     def mock_station_response(request):
-        """Mock station response"""
-        if station_id == "adgs":
+        if adgs:
             body = adgs_response
         else:  # cadip
             if request.path_url.startswith("/Sessions"):
@@ -1006,35 +1022,80 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
             content_type=content_type,
         )
 
-    # Mock token request
-    token = {
-        "access_token": "my_access_token",
-        "expires_in": 3600,
-        "refresh_token": "my_refresh_token",
-        "refresh_expires_in": 7200,
-        "token_type": "Bearer",
-    }
+    all_requests = []
+
+    def mock_token_request(request):
+
+        # Save the request
+        all_requests.append(request)
+
+        # Return a mock token
+        token = {
+            "access_token": "my_access_token",
+            "expires_in": 3600,
+            "refresh_token": "my_refresh_token",
+            "refresh_expires_in": 7200,
+            "token_type": "Bearer",
+        }
+        return HTTP_200_OK, r_headers, json.dumps(token)
+
+    # Mock token request, without refresh
     responses.add_callback(
         responses.POST,
         re.compile("http://127.0.0.1:.*/oauth2/token"),
-        callback=lambda _: (HTTP_200_OK, r_headers, json.dumps(token)),
+        callback=mock_token_request,
         content_type=content_type,
     )
+
+    # Spy on the eodag method that requests a token
     spy_token_request = mocker.spy(TokenAuth, "_token_request")
 
-    # Call the search endpoint in parallel
-    async def mytest():
-        url = f"{os.getenv('router_prefix')}/search"  # ?collections=cadip"
+    # Call the search endpoint from an async function, just like the real search endpoint does
+    async def search(collection_id):
+        url = f"{os.getenv('router_prefix')}/search?collections={collection_id}"
         response = await run_in_threadpool(client.get, url)
         response.raise_for_status()
 
-    async with asyncio.TaskGroup() as tg:
-        for _ in range(10):
-            tg.create_task(mytest())
+    # Call the search endpoint in parallel for each collection
+    async def parallel_search():
+        async with asyncio.TaskGroup() as tg:
+            for collection_id in collection_ids:
+                for _ in range(5):  # n parallel calls for each collection
+                    tg.create_task(search(collection_id))
+
+        # Assert that the token request method had no error
+        assert not spy_token_request.spy_exception
+        assert {response.status_code for response in spy_token_request.spy_return_list} == {HTTP_200_OK}
+
+        # Return the list of stations (=providers) for which a token was requested
+        token_auths = {call[0][0] for call in spy_token_request.call_args_list}
+        token_providers = {auth.provider for auth in token_auths}
+        return token_auths, token_providers
 
     # Check that a token was requested only once per station (=provider)
-    assert not spy_token_request.spy_exception
-    assert {response.status_code for response in spy_token_request.spy_return_list} == {HTTP_200_OK}
-    token_providers = [call[0][0].provider for call in spy_token_request.call_args_list]
-    assert len(token_providers) > 1
-    assert len(token_providers) == len(set(token_providers))
+    token_auths, token_providers = await parallel_search()
+    assert token_providers == all_providers
+
+    # Assert that the refresh_token was not called
+    assert len(all_requests) == len(all_providers)
+    for request in all_requests:
+        assert "refresh_token" not in request.body
+    all_requests.clear()
+
+    # If we call the search again, no token should be requested, because the token is still valid
+    spy_token_request.reset_mock()
+    _, token_providers = await parallel_search()
+    assert not token_providers
+    assert not all_requests
+
+    # When the token expires, a refresh token should be requested one for each station
+    for token_auth in token_auths:
+        token_auth.token_expiration = datetime.datetime(1900, 1, 1)
+    spy_token_request.reset_mock()
+    _, token_providers = await parallel_search()
+    assert token_providers == all_providers
+
+    # Assert that the refresh_token was  called
+    assert len(all_requests) == len(all_providers)
+    for request in all_requests:
+        assert "refresh_token" in request.body
