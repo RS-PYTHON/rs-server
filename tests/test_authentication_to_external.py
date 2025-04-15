@@ -776,7 +776,8 @@ def test_create_external_auth_config_missing_keys(mocker):
 
 @pytest.mark.unit
 @pytest.mark.parametrize("station_id", ["adgs", "ins"])
-def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id):
+@pytest.mark.parametrize("with_scope", [True, False])
+def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id, with_scope):
     """
     Unit test for setting the EODAG environment with a valid authentication configuration.
 
@@ -791,45 +792,9 @@ def test_set_eodag_auth_env_success(mocker, get_external_auth_config, station_id
     - Environment is correctly set for the station's authentication details (e.g., auth_uri, client_id,
       client_secret, username, password, grant_type, scope).
     """
-    mocker.patch(
-        "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
-        return_value=get_external_auth_config,
-    )
-    eodag_provider = (
-        adgs_retriever.init_adgs_provider(station_id)
-        if "adgs" in station_id
-        else cadip_retriever.init_cadip_provider(station_id)
-    )
-    config = eodag_provider.client.providers_config[station_id]
-
-    assert config.auth.auth_uri == get_external_auth_config.token_url
-    assert config.auth.req_data["client_id"] == get_external_auth_config.client_id
-    assert config.auth.req_data["client_secret"] == get_external_auth_config.client_secret
-    assert config.auth.req_data["username"] == get_external_auth_config.username
-    assert config.auth.req_data["password"] == get_external_auth_config.password
-    assert config.auth.req_data["grant_type"] == get_external_auth_config.grant_type
-    assert config.auth.req_data["scope"] == get_external_auth_config.scope
-
-
-@pytest.mark.unit
-@pytest.mark.parametrize("station_id", ["adgs", "ins"])
-def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config, station_id):
-    """
-    Unit test for setting the EODAG environment without a scope in the configuration.
-
-    This test modifies the ExternalAuthenticationConfig object to have no "scope" and verifies
-    that the environment variable for scope is not set.
-
-    Args:
-        mocker: Pytest fixture for patching and mocking.
-        get_external_auth_config: Fixture that provides an ExternalAuthenticationConfig object.
-
-    The test checks:
-    - All environment (except "scope") is set correctly.
-    - The "scope" variable is not set when scope is None.
-    """
     # Modify the config to have no scope
-    get_external_auth_config.scope = None
+    if not with_scope:
+        get_external_auth_config.scope = None
 
     mocker.patch(
         "rs_server_common.authentication.authentication_to_external.load_external_auth_config_by_station_service",
@@ -848,8 +813,11 @@ def test_set_eodag_auth_env_no_scope(mocker, get_external_auth_config, station_i
     assert config.auth.req_data["username"] == get_external_auth_config.username
     assert config.auth.req_data["password"] == get_external_auth_config.password
     assert config.auth.req_data["grant_type"] == get_external_auth_config.grant_type
-    # The "scope" should not be set in this case
-    assert "scope" not in config.auth.req_data
+
+    if with_scope:
+        assert config.auth.req_data["scope"] == get_external_auth_config.scope
+    else:
+        assert "scope" not in config.auth.req_data
 
 
 @pytest.mark.unit
