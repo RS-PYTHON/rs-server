@@ -98,8 +98,10 @@ def test_get_station_token(get_external_auth_config, mock_token_dict):
     )
     with pytest.raises(TokenDataNotFound) as exc:
         get_station_token(ext_auth_config, {})
-    assert "Mandatory attribute access_token is not defined in the token variable of the station "
-    f"{ext_auth_config.station_id}!" in str(exc.value)
+    assert (
+        "Mandatory attribute access_token is not defined in the token variable of the station "
+        f"{ext_auth_config.station_id}!"
+    ) in str(exc.value)
 
     # ---------- Test valid token retrieval if we don't have any token yet
     # Simulate a token response from the authentication service
