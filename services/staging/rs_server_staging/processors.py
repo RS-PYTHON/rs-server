@@ -294,8 +294,8 @@ class Staging(
 
     • If there are features that haven’t been staged, the processor connects to a specified Dask cluster as a client.
 
-    • Once connected, the processor begins asynchronously streaming each feature directly into the rs-cluster-catalog
-    bucket using a Dask-distributed process.
+    • Once connected, the processor begins asynchronously streaming each feature directly into the
+    rs-dev-cluster-catalog bucket using a Dask-distributed process.
 
     • The job status is updated after each feature is processed, and overall progress can be tracked via the
     /jobs/{job-id} endpoint.
@@ -376,7 +376,7 @@ class Staging(
         self.assets_info: list = []
 
         self.cluster = cluster
-        self.catalog_bucket = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
+        self.catalog_bucket = os.environ["RSPY_CATALOG_BUCKET"]
         self.station_token_list = station_token_list
         self.station_token_list_lock = station_token_list_lock
 

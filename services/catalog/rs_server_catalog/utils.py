@@ -75,7 +75,7 @@ def get_s3_filename_from_asset(asset: dict) -> tuple[str, bool]:
         "filename": {
             "alternate": {
                 "s3": {
-                    "href": "s3://rs-cluster-catalog/path/to/filename"
+                    "href": "s3://rs-dev-cluster-catalog/path/to/filename"
                 }
             },
             "href": "https://127.0.0.1:8083/catalog/collections/user:collection_name/items/filename/download/file",

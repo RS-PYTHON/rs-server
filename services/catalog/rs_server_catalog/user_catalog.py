@@ -91,7 +91,7 @@ from starlette.status import (
 )
 
 PRESIGNED_URL_EXPIRATION_TIME = int(os.environ.get("RSPY_PRESIGNED_URL_EXPIRATION_TIME", "1800"))  # 30 minutes
-CATALOG_BUCKET = os.environ.get("RSPY_CATALOG_BUCKET", "rs-cluster-catalog")
+CATALOG_BUCKET = os.environ["RSPY_CATALOG_BUCKET"]
 DEFAULT_GEOM = {
     "type": "Polygon",
     "coordinates": [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
