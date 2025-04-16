@@ -59,10 +59,10 @@ orjson = [ # we need the same markers and versions as in eodag: https://github.c
     {version = "<3.10.0", markers = "python_version>='3.12' and platform_system=='Windows'"},
     {version = "^3.10", markers = "python_version<'3.12' or platform_system!='Windows'"},
 ]
-opentelemetry-distro = "^0.53b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-instrumentation-aws-lambda = "^0.53b0"
-opentelemetry-test-utils = "^0.53b0"
-opentelemetry-exporter-otlp = "^1.32.0"
+opentelemetry-distro = "^0.53b1" # then run 'poetry run opentelemetry-bootstrap -a install'
+opentelemetry-instrumentation-aws-lambda = "^0.53b1"
+opentelemetry-test-utils = "^0.53b1"
+opentelemetry-exporter-otlp = "^1.32.1"
 python-logging-loki = "^0.3.1"
 stac-pydantic = "^3.1.4"
 authlib = "^1.5.0"
