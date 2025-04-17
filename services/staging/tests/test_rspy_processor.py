@@ -22,9 +22,7 @@ import pytest
 import requests
 from dask_gateway import Gateway
 from pygeoapi.util import JobStatus
-from rs_server_common.authentication.authentication_to_external import (
-    TokenAuth,
-)
+from rs_server_common.authentication.token_auth import TokenAuth
 from rs_server_staging.processors import (
     Staging,
     streaming_task,
@@ -959,7 +957,7 @@ class TestStagingMainExecution:
             return_value=mocker.Mock(),
         )
         mocker.patch(
-            "rs_server_common.authentication.authentication_to_external.get_station_token",
+            "rs_server_common.authentication.token_auth.get_station_token",
             return_value="mock_token",
         )
 

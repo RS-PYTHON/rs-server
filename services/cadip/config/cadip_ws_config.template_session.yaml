@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: this file contains configuration values for eodag.
+# The 'PLACEHOLDER' values will be replaced by values from RSPY__TOKEN__ env vars or rs-server.yaml file.
+
 template:
   auth:
     type: TokenAuth
-    auth_uri:
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -194,8 +199,6 @@ template:
       downloadLink:
 
 cadip_session:
-  auth:
-    auth_uri: "http://127.0.0.1:5000/oauth2/token"
   search:
     api_endpoint: "http://127.0.0.1:5000/Sessions"
     metadata_mapping:
@@ -208,8 +211,6 @@ cadip_session:
       downloadLink: "http://127.0.0.1:5000/Files({uid})/$value"
 
 ins_session:
-  auth:
-    auth_uri: "http://127.0.0.1:5100/oauth2/token"
   search:
     api_endpoint: "http://127.0.0.1:5100/Sessions"
     metadata_mapping:
@@ -222,8 +223,6 @@ ins_session:
       downloadLink: "http://127.0.0.1:5100/Files({uid})/$value"
 
 mps_session:
-  auth:
-    auth_uri: "http://127.0.0.1:5101/oauth2/token"
   search:
     api_endpoint: "http://127.0.0.1:5101/Sessions"
     metadata_mapping:
@@ -236,8 +235,6 @@ mps_session:
       downloadLink: "http://127.0.0.1:5101/Files({uid})/$value"
 
 mti_session:
-  auth:
-    auth_uri: "http://127.0.0.1:5102/oauth2/token"
   search:
     api_endpoint: "http://127.0.0.1:5102/Sessions"
     metadata_mapping:
@@ -250,8 +247,6 @@ mti_session:
       downloadLink: "http://127.0.0.1:5102/Files({uid})/$value"
 
 nsg_session:
-  auth:
-    auth_uri: "http://127.0.0.1:5103/oauth2/token"
   search:
     api_endpoint: "http://127.0.0.1:5103/Sessions"
     metadata_mapping:
@@ -264,8 +259,6 @@ nsg_session:
       downloadLink: "http://127.0.0.1:5103/Files({uid})/$value"
 
 sgs_session:
-  auth:
-    auth_uri: "http://127.0.0.1:5104/oauth2/token"
   search:
     api_endpoint: "http://127.0.0.1:5104/Sessions"
     metadata_mapping:

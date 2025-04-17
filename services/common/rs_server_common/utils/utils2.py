@@ -70,10 +70,11 @@ def log_http_exception(
                 """,
         ),
     ] = None,
-) -> HTTPException:
+    exception_type: type[HTTPException] = HTTPException,
+) -> type[HTTPException]:
     """Log error and return an HTTP execption to be raised by the caller"""
     logger.error(detail)
-    return HTTPException(status_code, detail, headers)
+    return exception_type(status_code, detail, headers)  # type: ignore
 
 
 def read_response_error(response):

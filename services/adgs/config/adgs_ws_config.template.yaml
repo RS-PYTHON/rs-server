@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: this file contains configuration values for eodag.
+# The 'PLACEHOLDER' values will be replaced by values from RSPY__TOKEN__ env vars or rs-server.yaml file.
+
 template:
   auth:
     type: TokenAuth
-    auth_uri:
+    auth_uri: PLACEHOLDER
     token_type: json
     token_key: access_token
+    refresh_token_key: refresh_token
+    token_expiration_key: expires_in
     request_method: POST
     req_data:
       client_id: PLACEHOLDER
@@ -152,8 +157,6 @@ template:
       downloadLink:
 
 adgs:
-  auth:
-    auth_uri: "http://127.0.0.1:5000/oauth2/token"
   search:
     api_endpoint: "http://127.0.0.1:5000/Products"
     metadata_mapping:
@@ -167,8 +170,6 @@ adgs:
       downloadLink: "http://127.0.0.1:5000/Products({uid})/$value"
 
 adgs2:
-  auth:
-    auth_uri: "http://127.0.0.1:5001/oauth2/token"
   search:
     api_endpoint: "http://127.0.0.1:5001/Products"
     metadata_mapping:

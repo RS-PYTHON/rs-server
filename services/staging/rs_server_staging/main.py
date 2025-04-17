@@ -37,16 +37,13 @@ from pygeoapi.provider.postgresql import get_engine
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication import auth_validation
-from rs_server_common.authentication.authentication_to_external import (
-    init_rs_server_config_yaml,
-)
 from rs_server_common.db import Base
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
     apply_middlewares,
 )
-from rs_server_common.utils import opentelemetry
+from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
 from rs_server_staging.processors import processors
@@ -112,10 +109,17 @@ def must_be_authenticated(path: str) -> bool:
     return not no_auth
 
 
-async def just_for_the_lock_icon(
-    apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
-):
-    """Dummy function to add a lock icon in Swagger to enter an API key."""
+if common_settings.CLUSTER_MODE:
+
+    async def just_for_the_lock_icon(
+        apikey_value: Annotated[str, Security(APIKEY_AUTH_HEADER)] = "",  # pylint: disable=unused-argument
+    ):
+        """Dummy function to add a lock icon in Swagger to enter an API key."""
+
+else:
+
+    async def just_for_the_lock_icon():  # type: ignore # different signature than above
+        """In local mode it does nothing."""
 
 
 async def validate_request_dependency(request: Request):
@@ -268,8 +272,6 @@ async def app_lifespan(fastapi_app: FastAPI):  # pylint: disable=too-many-statem
         KeyError: If no clusters are found during an attempt to connect via the `Gateway`.
     """
     logger.info("Starting up the application...")
-    # Init the rs-server configuration file for authentication to the external stations
-    init_rs_server_config_yaml()
     # Create jobs table
     process_manager = init_db()
     # In local mode, if the gateway is not defined, create a dask LocalCluster
@@ -546,7 +548,7 @@ async def get_specific_job_result_endpoint(request: Request, job_id: str = Path(
 
 if common_settings.LOCAL_MODE:
 
-    @router.post("/staging/dask/auth")
+    @router.post("/staging/dask/auth", include_in_schema=False)
     async def dask_auth(local_dask_username: str, local_dask_password: str):
         """Set dask cluster authentication, only in local mode."""
         os.environ["LOCAL_DASK_USERNAME"] = local_dask_username
@@ -554,7 +556,7 @@ if common_settings.LOCAL_MODE:
 
 
 # Configure OpenTelemetry
-opentelemetry.init_traces(app, "rs.server.staging")
+init_opentelemetry.init_traces(app, "rs.server.staging")
 
 app.include_router(router)
 app.router.lifespan_context = app_lifespan

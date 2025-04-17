@@ -52,12 +52,13 @@ class TestOperatorDefinedCollections:
             ("/auxip/collections/adgs_invalid_no_stop/items", status.HTTP_400_BAD_REQUEST),
         ],
     )
-    def test_invalid_defined_collections(self, client, mocker, mock_token_validation, endpoint, code):
+    def test_invalid_defined_collections(
+        self,
+        client,
+        endpoint,
+        code,
+    ):
         """Test cases with invalid defined collections requests send to /session endpoint"""
-        # Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
-        # usage of the internal token module  for getting the token and setting it to the eodag
-        mock_token_validation()
-        mocker.patch("rs_server_common.authentication.authentication_to_external.env_bool", return_value=True)
         assert client.get(endpoint).status_code == code
 
 
@@ -408,7 +409,6 @@ class TestFeatureOdataStacMapping:
     def test_cadip_feature_mapping(
         self,
         client: TestClient,
-        mock_token_validation,
         cadip_feature,
         cadip_session_response,
         cadip_file_response,
@@ -416,8 +416,6 @@ class TestFeatureOdataStacMapping:
         """Test a cadip pickup response with 2 assets is correctly mapped to a stac Feature
         Visit conftest to view content of cadip_feature and cadip_response.
         """
-        # Mock pickup response and token validation
-        mock_token_validation()
         # Note: for /items/{item-id} top is always set to 1.
         responses.add(
             responses.GET,
@@ -440,9 +438,8 @@ class TestFeatureOdataStacMapping:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_CADIP], indirect=["fastapi_app"])
-    def test_cadip_empty_feature_mapping(self, client, mock_token_validation, cadip_feature):
+    def test_cadip_empty_feature_mapping(self, client, cadip_feature):
         """Test to verify the output of rs-server when pick-up point response is empty."""
-        mock_token_validation()
         responses.add(
             responses.GET,
             "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312'"
@@ -459,9 +456,8 @@ class TestFeatureOdataStacMapping:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
-    def test_adgs_feature_mapping(self, client: TestClient, mock_token_validation, adgs_feature, adgs_response):
+    def test_adgs_feature_mapping(self, client: TestClient, adgs_feature, adgs_response):
         """Test mapping of an adgs reponse with expanded attributes"""
-        mock_token_validation()
         responses.add(
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=contains(Name, "
@@ -481,9 +477,8 @@ class TestFeatureOdataStacMapping:
     @pytest.mark.unit
     @responses.activate
     @pytest.mark.parametrize("fastapi_app", [ROUTER_PREFIX_AUXIP], indirect=["fastapi_app"])
-    def test_adgs_empty_feature_mapping(self, client, mock_token_validation, adgs_feature):
+    def test_adgs_empty_feature_mapping(self, client, adgs_feature):
         """Test to verify the output of rs-server when pick-up point response is empty."""
-        mock_token_validation()
         responses.add(
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=contains(Name, 'S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411"
@@ -537,9 +532,8 @@ class TestFeatureOdataStacMapping:
             ),
         ],
     )
-    def test_adgs_invalid_item_mapping(self, client, mock_token_validation, endpoint, odata_url, detail):
+    def test_adgs_invalid_item_mapping(self, client, endpoint, odata_url, detail):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
-        mock_token_validation()
         responses.add(
             responses.GET,
             odata_url,
@@ -567,14 +561,12 @@ class TestFeatureOdataStacMapping:
     def test_cadip_invalid_item_mapping(
         self,
         client,
-        mock_token_validation,
         endpoint,
         odata_session_url,
         odata_file_url,
         detail,
     ):
         """Test to verify the output of rs-server when given collection is valid and item is invalid."""
-        mock_token_validation()
         # Collection URL is valid, returning items
         responses.add(
             responses.GET,
@@ -603,7 +595,6 @@ class TestFeatureCollectionOdataStacMapping:
     def test_cadip_feature_collection_mapping(
         self,
         client: TestClient,
-        mock_token_validation,
         cadip_feature,
         cadip_file_response,
         cadip_session_response,
@@ -612,7 +603,6 @@ class TestFeatureCollectionOdataStacMapping:
         Visit conftest to view content of cadip_feature and cadip_response.
         """
         # Mock pickup response and token validation
-        mock_token_validation()
         # Note, for /items, top value is the one defined in collection.
         responses.add(
             responses.GET,
@@ -640,12 +630,10 @@ class TestFeatureCollectionOdataStacMapping:
     def test_adgs_feature_collection_mapping(
         self,
         client: TestClient,
-        mock_token_validation,
         adgs_feature,
         adgs_response,
     ):
         """Test mapping of an adgs reponse with expanded attributes"""
-        mock_token_validation()
         responses.add(
             responses.GET,
             "http://127.0.0.1:5001/Products?$filter=Attributes/OData.CSC.StringAttribute/any(att:att/Name eq "
@@ -786,9 +774,8 @@ class TestFeatureCollectionOdataStacMapping:
         ],
     )
     @responses.activate
-    def test_cadip_query_filter(self, client, mock_token_validation, endpoint, odata, expected_code):
+    def test_cadip_query_filter(self, client, endpoint, odata, expected_code):
         """Test used for joining default collections with additional queries from filter param."""
-        mock_token_validation()
         responses.add(responses.GET, odata, json={"value": []}, status=200)
         response = client.get(endpoint)
         assert response.status_code == expected_code
@@ -964,14 +951,13 @@ class TestFeatureCollectionOdataStacMapping:
         ],
     )
     @responses.activate
-    def test_bigger_limit_than_allowed(self, client, mock_token_validation, endpoint, odata):
+    def test_bigger_limit_than_allowed(self, client, endpoint, odata):
         """
         Test that if user request with a limit value bigger than max allowed in config
         the limit value is set to max_allowed - 1.
         Limit in request is set to 1_000_000, for given collection max allowed is set to 10000, therefore
         in the final odata request, $top is set to 9999.
         """
-        mock_token_validation()
         responses.add(responses.GET, odata, json={"value": []}, status=200)
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
@@ -1003,9 +989,8 @@ class TestFeatureCollectionOdataStacMapping:
         ],
     )
     @responses.activate
-    def test_invalid_sortby_values(self, client, mock_token_validation, endpoint):
+    def test_invalid_sortby_values(self, client, endpoint):
         """Test endpoint call with invalid pages (str, negative, 0)"""
-        mock_token_validation()
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert "parameter is not sortable" in response.json()["detail"]
@@ -1124,9 +1109,8 @@ class TestFeatureCollectionOdataStacMapping:
         ids=["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"],
     )
     @responses.activate
-    def test_valid_datetime(self, client, mock_token_validation, endpoint, odata, expected_code):
+    def test_valid_datetime(self, client, endpoint, odata, expected_code):
         """Test used to group all combination of datetime values. Fixed, closed/open interval."""
-        mock_token_validation()
         responses.add(responses.GET, odata, json={"value": []}, status=200)
         response = client.get(endpoint)
         assert response.status_code == expected_code
@@ -1145,7 +1129,6 @@ class TestFeatureCollectionOdataStacMapping:
     def test_token_in_url(
         self,
         client,
-        mock_token_validation,
         adgs_response_10_items,
         cadip_session_response_10_items,
         endpoint,
@@ -1153,7 +1136,6 @@ class TestFeatureCollectionOdataStacMapping:
         is_last,
     ):
         """Used to test if application correctly builds next/previous token."""
-        mock_token_validation()
         base_cadip_uri = (
             "http://127.0.0.1:5000/Sessions?$filter=SessionId eq 'S1A_20200105072204051312'"
             "&$orderby=PublicationDate desc&"
@@ -1259,7 +1241,6 @@ class TestCollection:
     def test_valid_collection_request(
         self,
         client,
-        mock_token_validation,
         endpoint,
         odata_request,
         href,
@@ -1267,7 +1248,6 @@ class TestCollection:
         adgs_response,
     ):
         """Test a valid call to /collections endpoint, check that found collection is converted to a item link."""
-        mock_token_validation()
         selected_response = self.setup(
             "adgs" if "auxip" in endpoint else "cadip",
             cadip_session_response,
@@ -1307,10 +1287,9 @@ class TestCollection:
             ),
         ],
     )
-    def test_valid_empty_collection(self, client, mock_token_validation, endpoint, odata_request, self_href):
+    def test_valid_empty_collection(self, client, endpoint, odata_request, self_href):
         """Test when response from pickup is empty, the result should still be 200 oK,
         and contain a link to the license."""
-        mock_token_validation()
         responses.add(responses.GET, odata_request, json={"value": []}, status=200)
         response = client.get(endpoint)
         assert response.status_code == status.HTTP_200_OK
@@ -1327,7 +1306,6 @@ class TestCollection:
 )
 def test_search_parameters(
     mocker,
-    mock_token_validation,
     client,
     filter_type,
     method,
@@ -1341,7 +1319,6 @@ def test_search_parameters(
     adgs = service == "adgs"
     cadip = service == "cadip"
 
-    mock_token_validation(service)
     spy_search = mocker.spy(Provider, "search")
 
     if adgs:
@@ -1690,20 +1667,17 @@ def test_search_parameters(
 
 
 @pytest.mark.parametrize(
-    "fastapi_app, service",
-    [(ROUTER_PREFIX_AUXIP, "adgs")],
+    "fastapi_app",
+    [ROUTER_PREFIX_AUXIP],
     ids=["adgs"],
     indirect=["fastapi_app"],
 )
 def test_search_all_collections(
     mocker,
-    mock_token_validation,
     client,
-    service,
     adgs_response,
 ):
     """Test searching all collections at the same time."""
-    mock_token_validation(service)
     spy_search = mocker.spy(Provider, "search")
 
     # Read the first adgs or cadip collection, keep everything except the id and hardcoded query

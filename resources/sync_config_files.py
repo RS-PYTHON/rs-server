@@ -144,13 +144,13 @@ DCB_CLOSE = "DOUBLE_CURLY_BRACES_CLOSE"
 rs_server_dir = Path(__file__).parent.parent
 rs_demo_dir = rs_server_dir.parent / "rs-demo"
 rs_helm_dir = rs_server_dir.parent / "rs-helm"
-rs_infra_dir = rs_server_dir.parent / "rs-server-deployment"
+rs_deploy_dir = rs_server_dir.parent / "rs-server-deployment"
 if not rs_demo_dir.is_dir():
     logger.warning(f"No 'rs-demo' repository found under: '{rs_demo_dir!s}'")
 if not rs_helm_dir.is_dir():
     logger.warning(f"No 'rs-helm' repository found under: '{rs_helm_dir!s}'")
-if not rs_infra_dir.is_dir():
-    logger.warning(f"No 'rs-server-deployment' repository found under: '{rs_infra_dir!s}'")
+if not rs_deploy_dir.is_dir():
+    logger.warning(f"No 'rs-server-deployment' repository found under: '{rs_deploy_dir!s}'")
 
 # Extract the copyright header from this current file. It will be added to yaml files modified from a template.
 COPYRIGHT_HEADER = ""
@@ -691,7 +691,7 @@ if __name__ == "__main__":
         remove_session_stations,
     )
     copy_to_helm_or_infra([station_params], rs_helm_dir / "charts/rs-server-station-secrets/values.yaml")
-    copy_to_helm_or_infra([station_params], rs_infra_dir / "apps/01-rs-server-station-secrets/values.yaml")
+    copy_to_helm_or_infra([station_params], rs_deploy_dir / "apps/01-rs-server-station-secrets/values.yaml")
 
     copy_to_helm_or_infra(
         [

@@ -20,36 +20,38 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 (pytest will automatically discover them).
 """
 
-import datetime
-import json
 import os
 import os.path as osp
+from importlib import reload
+
+# We are in local mode (no cluster).
+# Do this before any other imports.
+# flake8: noqa
+# pylint: disable=wrong-import-order,wrong-import-position
+os.environ["RSPY_LOCAL_MODE"] = "1"
+from rs_server_common import settings, stac_api_common
+
+reload(settings)
+
+import datetime
+import json
 import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
 
-# We are in local mode (no cluster).
-# Do this before any other imports.
-# pylint: disable=wrong-import-position
-# flake8: noqa
-os.environ["RSPY_LOCAL_MODE"] = "1"
-from importlib import reload
-
-from rs_server_common import settings
-
-reload(settings)
-
 import pytest
-import responses
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from rs_server_adgs import adgs_retriever, adgs_utils
+from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
 )
+from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
 from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
@@ -78,13 +80,6 @@ def before_and_after(session_mocker):
     ####################
     # Before all tests #
     ####################
-
-    # Use this default value for the configuration file for authentication to external stations.
-    session_mocker.patch(
-        "rs_server_common.authentication.authentication_to_external.CONFIG_PATH_AUTH_TO_EXTERNAL",
-        new=str((Path(__file__).parent.parent / "services/common/config/rs-server.yaml").resolve()),
-        autospec=False,
-    )
 
     # Avoid errors:
     # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in 1s
@@ -204,9 +199,6 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
         monkeypatch.setenv("OIDC_CLIENT_ID", "OIDC_CLIENT_ID")
         monkeypatch.setenv("OIDC_CLIENT_SECRET", "OIDC_CLIENT_SECRET")
         monkeypatch.setenv("RSPY_COOKIE_SECRET", "RSPY_COOKIE_SECRET")
-        # In cluster mode, deactivate the creation of the configuration file for authentication to extenal stations.
-        # All the tests that need it should create a mocked version in a temporary directory.
-        mocker.patch("rs_server_common.fastapi_app.init_rs_server_config_yaml", side_effect=None)
 
         # Reload the oauth2 module with the cluster info
         reload(oauth2)
@@ -249,6 +241,37 @@ def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-ar
 ##################
 # OTHER FIXTURES #
 ##################
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clear_caches():
+    """Clear caches at the end of each test"""
+    yield
+    adgs_utils.read_conf.cache_clear()
+    cadip_utils.read_conf.cache_clear()
+    cadip_utils.cadip_stac_mapper.cache_clear()
+    CustomEODataAccessGateway.create.cache_clear()
+    stac_api_common.map_stac_platform.cache_clear()
+    stac_api_common.get_cadip_queryables.cache_clear()
+    stac_api_common.get_adgs_queryables.cache_clear()
+
+
+@pytest.fixture(scope="function")
+def use_module_for_station_token(monkeypatch):
+    """
+    Mock the env var RSPY_USE_MODULE_FOR_STATION_TOKEN to True. This will trigger the
+    usage of the internal token module  for getting the token and setting it to the eodag
+    """
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", True)
+    reload(adgs_retriever)
+    reload(cadip_retriever)
+
+    yield
+
+    # Restore default value = False at the end of the test function
+    monkeypatch.setenv("RSPY_USE_MODULE_FOR_STATION_TOKEN", False)
+    reload(adgs_retriever)
+    reload(cadip_retriever)
 
 
 @pytest.fixture(scope="module", name="a_product")
@@ -513,29 +536,6 @@ def get_external_auth_config_fixture(station_id) -> ExternalAuthenticationConfig
         scope="openid",
         authorization="Basic test",
     )
-
-
-@pytest.fixture(name="mock_token_validation")
-def validate_token(mocker):
-    """Fixture used to mock rs server service that authorize eodag ops."""
-
-    def _validate_token(service: str | None = None):
-        if not service:
-            # If not defined, mock both adgs and cadip
-            mocker.patch("rs_server_cadip.api.cadip_search.set_eodag_auth_token", side_effect=None)
-            mocker.patch("rs_server_adgs.api.adgs_search.set_eodag_auth_token", side_effect=None)
-        else:
-            # If defined, custom path mock
-            mocker.patch(f"rs_server_{service}.api.{service}_search.set_eodag_auth_token", side_effect=None)
-        responses.add(
-            responses.POST,
-            TOKEN_URL,
-            json={"access_token": "dummy_token", "token_type": "Bearer", "expires_in": 3600},
-            status=200,
-        )
-        return service  # If needed, return the value to be used later in the test
-
-    return _validate_token
 
 
 @pytest.fixture(name="cadip_feature")

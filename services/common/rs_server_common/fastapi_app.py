@@ -28,14 +28,11 @@ from httpx._config import DEFAULT_TIMEOUT_CONFIG
 from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
-from rs_server_common.authentication.authentication_to_external import (
-    init_rs_server_config_yaml,
-)
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
 from rs_server_common.db.database import sessionmanager
 from rs_server_common.middlewares import HandleExceptionsMiddleware
 from rs_server_common.schemas.health_schema import HealthSchema
-from rs_server_common.utils import opentelemetry
+from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.errors import add_exception_handlers
@@ -102,9 +99,6 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         # STARTUP #
         ###########
 
-        # Init the rs-server configuration file for authentication to extenal stations
-        init_rs_server_config_yaml()
-
         # Open database session. Loop until the connection works.
         if app.state.init_db:
             db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
@@ -154,7 +148,7 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
     app = FastAPI(title="RS-Server", version=api_version, lifespan=lifespan, **docs_params)
 
     # Configure OpenTelemetry
-    opentelemetry.init_traces(app, settings.SERVICE_NAME)
+    init_opentelemetry.init_traces(app, settings.SERVICE_NAME)
 
     # Pass arguments to the app so they can be used in the lifespan function above.
     app.state.init_db = init_db

@@ -23,7 +23,6 @@ from threading import Lock
 
 import yaml
 from eodag import EODataAccessGateway, EOProduct, SearchResult
-from eodag.api.core import override_config_from_env
 from eodag.utils.exceptions import (
     AuthenticationError,
     MisconfiguredError,
@@ -31,12 +30,14 @@ from eodag.utils.exceptions import (
     ValidationError,
 )
 from fastapi import HTTPException, status
+from rs_server_common.authentication.external_authentication_config import (
+    ExternalAuthenticationConfig,
+)
+from rs_server_common.authentication.token_auth import get_station_token
+from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed
-
-# from fastapi import HTTPException
-
 
 logger = Logging.default(__name__)
 
@@ -50,6 +51,7 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Constructor"""
 
         self.lock = Lock()
+        self.all_auth_providers = []  # all authenticated providers
 
         # Init environment
         self.eodag_cfg_dir = tempfile.TemporaryDirectory()  # pylint: disable=consider-using-with
@@ -76,15 +78,53 @@ class CustomEODataAccessGateway(EODataAccessGateway):
         """Return a cached instance of the class."""
         return cls(*args, **kwargs)
 
-    def override_config_from_env(self):
+    def authenticate_provider(self, provider: str, external_config: ExternalAuthenticationConfig):
         """
-        Update the eodag conf from the latest EODAG__<provider>__auth__... env vars
-        that are set in authentication_to_external.py, if they have changed
+        Set the authentication for an external provider (=station).
+
+        Args:
+            provider: the name of the eodag provider (=station name)
+            external_config: external provider (=station) authentication from rs-server.yaml file
+            or RSPY__TOKEN__xxx env vars
         """
-        with self.lock:  # safer to use a thread lock before calling eodag and modifying a global var
-            if (new_environ := dict(os.environ)) != self.old_environ:
-                self.old_environ = new_environ
-                override_config_from_env(self.providers_config)
+
+        # In a lock, call this function only once by provider, to avoid changing the config
+        # and using it (when calling a search) at the same time.
+        with self.lock:
+            if provider in self.all_auth_providers:
+                return
+            self.all_auth_providers.append(provider)
+
+            provider_config = self.providers_config[provider]
+            if env_bool("RSPY_USE_MODULE_FOR_STATION_TOKEN", default=False):
+                provider_config.update(
+                    {"auth": {"credentials": {"token": get_station_token(external_config, {})["access_token"]}}},
+                )
+            else:
+                # mandatory keys
+                provider_config.update(
+                    {
+                        "auth": {
+                            "auth_uri": external_config.token_url,
+                            "refresh_uri": external_config.token_url,
+                            "req_data": {
+                                "client_id": external_config.client_id,
+                                "client_secret": external_config.client_secret,
+                                "username": external_config.username,
+                                "password": external_config.password,
+                                "grant_type": external_config.grant_type,
+                            },
+                        },
+                    },
+                )
+
+                # Used to set the authorization for token retrieval
+                if external_config.authorization is not None:
+                    provider_config.update({"auth": {"credentials": {"auth_for_token": external_config.authorization}}})
+
+                # optional keys
+                if external_config.scope:
+                    provider_config.update({"auth": {"req_data": {"scope": external_config.scope}}})
 
 
 class EodagProvider(Provider):
@@ -93,25 +133,24 @@ class EodagProvider(Provider):
     It uses EODAG to provide data from external sources.
     """
 
-    def __init__(self, config_file: Path, provider: str):  # type: ignore
+    def __init__(self, external_config: ExternalAuthenticationConfig, eodag_config_path: Path, provider: str):
         """Create a EODAG provider.
 
         Args:
-            config_file: the path to the eodag configuration file
-            provider: the name of the eodag provider
+            external_config: external provider (=station) authentication from rs-server.yaml file
+            or RSPY__TOKEN__xxx env vars. Override values from the eodag config file (below).
+            eodag_config_path: path to the eodag configuration file (adgs_ws_config.yaml or cadip_ws_config.yaml)
+            provider: the name of the eodag provider (=station name)
         """
         self.provider: str = provider
-        self.config_file = config_file.resolve().as_posix()
+        self.eodag_config_path = eodag_config_path.resolve().as_posix()
         try:
             with global_lock:  # use a thread lock before calling the lru_cache
-                self.client = CustomEODataAccessGateway.create(self.config_file)
+                self.client = CustomEODataAccessGateway.create(self.eodag_config_path)
         except Exception as e:
             raise CreateProviderFailed(f"Can't initialize {self.provider} provider") from e
         self.client.set_preferred_provider(self.provider)
-
-        # If the eodag object was already existing and retrieved from the lru_cache,
-        # we need to update its configuration from the latest env vars, if they have changed
-        self.client.override_config_from_env()
+        self.client.authenticate_provider(self.provider, external_config)
 
     def _specific_search(self, **kwargs) -> SearchResult | list:
         """
@@ -257,7 +296,7 @@ class EodagProvider(Provider):
 
         """
         try:
-            with open(self.config_file, encoding="utf-8") as f:
+            with open(self.eodag_config_path, encoding="utf-8") as f:
                 base_uri = yaml.safe_load(f)[self.provider.lower()]["download"]["base_uri"]
             return EOProduct(
                 self.provider,
