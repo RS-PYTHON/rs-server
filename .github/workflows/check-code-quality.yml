@@ -121,7 +121,7 @@ jobs:
   check-security:
     runs-on: ubuntu-latest
     name: Check security (bandit, safety, trivy)
-    continue-on-error: true # TODO: the .safety-policy.yml file does not seem to work...
+    # continue-on-error: true
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
