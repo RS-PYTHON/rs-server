@@ -54,10 +54,10 @@ uvicorn = ">=0.31,<0.35"
 httpx = "^0.27.2"
 cachetools = ">=5.5.2" # idem as stac-fastapi-pgstac
 asyncache = "^0.3.1"
-opentelemetry-distro = "^0.53b0" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-instrumentation-aws-lambda = "^0.53b0"
-opentelemetry-test-utils = "^0.53b0"
-opentelemetry-exporter-otlp = "^1.32.0"
+opentelemetry-distro = "^0.53b1" # then run 'poetry run opentelemetry-bootstrap -a install'
+opentelemetry-instrumentation-aws-lambda = "^0.53b1"
+opentelemetry-test-utils = "^0.53b1"
+opentelemetry-exporter-otlp = "^1.32.1"
 python-logging-loki = "^0.3.1"
 stac-pydantic = "^3.1.4"
 authlib = "^1.5.0"
