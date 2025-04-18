@@ -1,0 +1,224 @@
+{
+    "features": [
+        {
+            "id": "R1",
+            "bbox": [-180, -90, 180, 90],
+            "type": "Feature",
+            "assets": {
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "roles": ["data"]
+                }
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-180, -90],
+                        [180, -90],
+                        [180, 90],
+                        [-180, 90],
+                        [-180, -90]
+                    ]
+                ]
+            },
+            "collection": "temporal_filters_test_data",
+            "properties": {
+                "owner": "testowner",
+                "created": "2024-05-27T09:44:09.509000Z",
+                "datetime": "2025-04-17T00:00:00Z",
+                "published": "2025-04-17T14:00:00Z",
+                "start_datetime": "2025-02-01T00:00:00Z",
+                "end_datetime": "2025-04-01T00:00:00Z"
+            },
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+                "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
+            ],
+            "links": [
+                {
+                "rel": "root",
+                "type": "application/json",
+                "href": "https://dev-rspy.esa-copernicus.eu/catalog/catalogs/toto"
+                }
+            ]
+        },
+        {
+            "id": "R2",
+            "bbox": [-180, -90, 180, 90],
+            "type": "Feature",
+            "assets": {
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "roles": ["data"]
+                }
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-180, -90],
+                        [180, -90],
+                        [180, 90],
+                        [-180, 90],
+                        [-180, -90]
+                    ]
+                ]
+            },
+            "collection": "temporal_filters_test_data",
+            "properties": {
+                "owner": "testowner",
+                "created": "2024-05-27T09:44:09.509000Z",
+                "datetime": "2025-04-17T00:00:00Z",
+                "published": "2025-04-17T14:00:00Z",
+                "start_datetime": "2025-02-01T00:00:00Z",
+                "end_datetime": "2025-07-01T00:00:00Z"
+            },
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+                "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
+            ],
+            "links": [
+                {
+                "rel": "root",
+                "type": "application/json",
+                "href": "https://dev-rspy.esa-copernicus.eu/catalog/catalogs/toto"
+                }
+            ]
+        },
+        {
+            "id": "R3",
+            "bbox": [-180, -90, 180, 90],
+            "type": "Feature",
+            "assets": {
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "roles": ["data"]
+                }
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-180, -90],
+                        [180, -90],
+                        [180, 90],
+                        [-180, 90],
+                        [-180, -90]
+                    ]
+                ]
+            },
+            "collection": "temporal_filters_test_data",
+            "properties": {
+                "owner": "testowner",
+                "created": "2024-05-27T09:44:09.509000Z",
+                "datetime": "2025-04-17T00:00:00Z",
+                "published": "2025-04-17T14:00:00Z",
+                "start_datetime": "2025-05-01T00:00:00Z",
+                "end_datetime": "2025-07-01T00:00:00Z"
+            },
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+                "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
+            ],
+            "links": [
+                {
+                "rel": "root",
+                "type": "application/json",
+                "href": "https://dev-rspy.esa-copernicus.eu/catalog/catalogs/toto"
+                }
+            ]
+        },
+        {
+            "id": "R4",
+            "bbox": [-180, -90, 180, 90],
+            "type": "Feature",
+            "assets": {
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "roles": ["data"]
+                }
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-180, -90],
+                        [180, -90],
+                        [180, 90],
+                        [-180, 90],
+                        [-180, -90]
+                    ]
+                ]
+            },
+            "collection": "temporal_filters_test_data",
+            "properties": {
+                "owner": "testowner",
+                "created": "2024-05-27T09:44:09.509000Z",
+                "datetime": "2025-04-17T00:00:00Z",
+                "published": "2025-04-17T14:00:00Z",
+                "start_datetime": "2025-01-01T00:00:00Z",
+                "end_datetime": "2025-02-01T00:00:00Z"
+            },
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+                "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
+            ],
+            "links": [
+                {
+                "rel": "root",
+                "type": "application/json",
+                "href": "https://dev-rspy.esa-copernicus.eu/catalog/catalogs/toto"
+                }
+            ]
+        },
+        {
+            "id": "R1",
+            "bbox": [-180, -90, 180, 90],
+            "type": "Feature",
+            "assets": {
+                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
+                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
+                "roles": ["data"]
+                }
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [-180, -90],
+                        [180, -90],
+                        [180, 90],
+                        [-180, 90],
+                        [-180, -90]
+                    ]
+                ]
+            },
+            "collection": "temporal_filters_test_data",
+            "properties": {
+                "owner": "testowner",
+                "created": "2024-05-27T09:44:09.509000Z",
+                "datetime": "2025-04-17T00:00:00Z",
+                "published": "2025-04-17T14:00:00Z",
+                "start_datetime": "2025-07-01T00:00:00Z",
+                "end_datetime": "2025-08-01T00:00:00Z"
+            },
+            "stac_version": "1.0.0",
+            "stac_extensions": [
+                "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+                "https://stac-extensions.github.io/projection/v1.0.0/schema.json"
+            ],
+            "links": [
+                {
+                "rel": "root",
+                "type": "application/json",
+                "href": "https://dev-rspy.esa-copernicus.eu/catalog/catalogs/toto"
+                }
+            ]
+        }
+    ]
+}
