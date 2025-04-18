@@ -15,7 +15,6 @@
 """Common fixture for catalog service."""
 
 import os
-import os.path as osp
 import subprocess  # nosec ignore security issue
 from importlib import reload
 
@@ -32,19 +31,28 @@ init_app_cluster_mode()
 from collections.abc import Iterator
 
 # flake8: noqa: E402
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
-from sqlalchemy_utils import database_exists
+
+from .helpers import (
+    RESOURCES_FOLDER,
+    Collection,
+    Feature,
+    a_collection,
+    a_feature,
+    add_collection,
+    add_feature,
+    add_features_from_file,
+    is_db_up,
+)
 
 # Clean before running.
 # No security risks since this file is not released into production.
-RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+
 subprocess.run(
     [RESOURCES_FOLDER / "../../../../tests/resources/clean.sh"],
     check=False,
@@ -57,23 +65,6 @@ app.openapi()
 # Restore the local mode by default
 os.environ["RSPY_LOCAL_MODE"] = "1"
 reload(common_settings)
-
-
-def is_db_up(db_url: str) -> bool:
-    """Check if the database is up.
-
-    Args:
-        db_url: database url
-
-    Returns:
-        True if the database is up.
-        False otherwise.
-
-    """
-    try:
-        return database_exists(db_url)
-    except ConnectionError:
-        return False
 
 
 @pytest.fixture(scope="session", name="docker_compose_file")
@@ -119,74 +110,6 @@ def client_empty_catalog_fixture(start_database):  # pylint: disable=missing-fun
         yield client  # Does NOT trigger setup_database!
 
 
-@dataclass
-class Collection:
-    """A collection for test purpose."""
-
-    user: str | None
-    name: str
-
-    @property
-    def id_(self) -> str:
-        """Returns the id."""
-        return f"{self.user}_{self.name}" if self.user else f"{self.name}"
-
-    @property
-    def properties(self) -> dict[str, Any]:
-        """Returns the properties."""
-        properites = {
-            "id": self.name,
-            "type": "Collection",
-            "links": [
-                {
-                    "rel": "items",
-                    "type": "application/geo+json",
-                    "href": f"http://localhost:8082/collections/{self.name}/items",
-                },
-                {"rel": "parent", "type": "application/json", "href": "http://localhost:8082/"},
-                {"rel": "root", "type": "application/json", "href": "http://localhost:8082/"},
-                {
-                    "rel": "self",
-                    "type": "application/json",
-                    "href": f"""http://localhost:8082/collections/{self.name}""",
-                },
-                {
-                    "rel": "license",
-                    "href": "https://creativecommons.org/licenses/publicdomain/",
-                    "title": "public domain",
-                },
-            ],
-            "extent": {
-                "spatial": {"bbox": [[-94.6911621, 37.0332547, -94.402771, 37.1077651]]},
-                "temporal": {"interval": [["2000-02-01T00:00:00Z", "2000-02-12T00:00:00Z"]]},
-            },
-            "license": "public-domain",
-            "description": "Some description",
-            "stac_version": "1.0.0",
-        }
-        if self.user:
-            properites["owner"] = self.user
-
-        return properites
-
-
-def a_collection(user: str | None, name: str) -> Collection:
-    """Create a collection for test purpose.
-
-    The collection is built from a prototype.
-    Only the id varies from a collection to another.
-    The id is built with the given user and name : user_name
-
-    Args:
-        user: the collection owner
-        name: the collection name
-
-    Returns: the initialized collection
-
-    """
-    return Collection(user, name)
-
-
 @pytest.fixture(scope="session", name="toto_s1_l1")
 def toto_s1_l1_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection("toto", "S1_L1")
@@ -210,94 +133,6 @@ def pyteam_s1_l1_fixture() -> Collection:  # pylint: disable=missing-function-do
 @pytest.fixture(scope="session", name="unset_user_s2_l2")
 def unset_user_s2_l2_fixture() -> Collection:  # pylint: disable=missing-function-docstring
     return a_collection(None, "S2_L2")
-
-
-def add_collection(client: TestClient, collection: Collection):
-    """Add the given collection in the STAC catalog.
-
-    Args:
-        client: the catalog client
-        collection: the collection to add
-
-    Returns:
-        None
-
-    Raises:
-        Error if the collection addition failed.
-    """
-    response = client.post(
-        "/catalog/collections",
-        json=collection.properties,
-    )
-    response.raise_for_status()
-
-
-@dataclass
-class Feature:
-    """A feature for test purpose."""
-
-    owner_id: str
-    id_: str
-    collection: str
-
-    @property
-    def properties(self) -> dict[str, Any]:  # pylint: disable=missing-function-docstring
-        return {
-            "id": self.id_,
-            "bbox": [-94.6334839, 37.0332547, -94.6005249, 37.0595608],
-            "type": "Feature",
-            "assets": {
-                "may24C355000e4102500n.tif": {
-                    "href": f"""s3://temp-bucket/{self.collection}/images/may24C355000e4102500n.tif""",
-                    "type": "image/tiff; application=geotiff; profile=cloud-optimized",
-                    "title": "NOAA STORM COG",
-                },
-            },
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [-94.6334839, 37.0595608],
-                        [-94.6334839, 37.0332547],
-                        [-94.6005249, 37.0332547],
-                        [-94.6005249, 37.0595608],
-                        [-94.6334839, 37.0595608],
-                    ],
-                ],
-            },
-            "collection": f"{self.collection}",
-            "properties": {
-                "gsd": 0.5971642834779395,
-                "width": 2500,
-                "height": 2500,
-                "datetime": "2000-02-02T00:00:00Z",
-                "proj:epsg": 3857,
-                "orientation": "nadir",
-                "owner_id": f"{self.owner_id}",
-            },
-            "stac_version": "1.0.0",
-            "stac_extensions": [
-                "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
-                "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
-            ],
-            "links": [{"href": "./.zattrs.json", "rel": "self", "type": "application/json"}],
-        }
-
-
-def a_feature(owner_id: str, id_: str, in_collection: str) -> Feature:
-    """Create a feature for test purpose.
-
-    The feature is built from a prototype.
-    Only the feature id and the parent collection is stored are configurable.
-
-    Args:
-        id_: the feature id
-        in_collection: the collection id containing the feature
-
-    Returns:
-        The initialized feature
-    """
-    return Feature(owner_id, id_, in_collection)
 
 
 @pytest.fixture(scope="session", name="feature_toto_s1_l1_0")
@@ -452,20 +287,6 @@ def a_incorrect_feature_fixture() -> dict:
     }
 
 
-def add_feature(client: TestClient, feature: Feature):
-    """Add the given feature in the STAC catalogue.
-
-    Args:
-        client (TestClient): The catalog client.
-        feature (Feature): The feature to add.
-    """
-    response = client.post(
-        f"/catalog/collections/{feature.owner_id}:{feature.collection}/items",
-        json=feature.properties,
-    )
-    response.raise_for_status()
-
-
 @pytest.mark.integration
 @pytest.fixture(scope="session", autouse=True)
 def setup_database(
@@ -508,3 +329,4 @@ def setup_database(
     add_feature(client, feature_toto_s2_l3_0)
     add_feature(client, feature_titi_s2_l1_0)
     add_feature(client, feature_pyteam_s1_l1_0)
+    add_features_from_file(client, "test_data.json")
