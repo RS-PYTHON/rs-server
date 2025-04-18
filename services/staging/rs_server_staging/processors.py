@@ -57,7 +57,6 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils.logging import Logging
-from starlette.datastructures import Headers
 from starlette.requests import Request
 
 from .rspy_models import Feature, FeatureCollectionModel
@@ -350,12 +349,13 @@ class Staging(
         # Locals
         self.logger = Logging.default(__name__)
         self.request = request
-        self.auth_headers: dict[str, str] = {
-            APIKEY_HEADER: self.request.headers.get(APIKEY_HEADER, None),
-            "cookie": self.request.headers.get("cookie", None),
-        }
-        self.logger.debug(f"\n\n{self.auth_headers}\n\n")  # REMOVE THIS !!!!!
         self.stream_list: list[Feature] = []
+        #################
+        # Copy authentication headers from original HTTP request
+        self.auth_headers: dict[str, str] = {}
+        for key in APIKEY_HEADER, "cookie":
+            if value := self.request.headers.get(key):
+                self.auth_headers[key] = value
         #################
         # Env section
         # Set a list containing all possibles server url

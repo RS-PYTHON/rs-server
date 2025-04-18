@@ -22,6 +22,7 @@ import pytest
 import requests
 from dask_gateway import Gateway
 from pygeoapi.util import JobStatus
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.token_auth import TokenAuth
 from rs_server_staging.processors import (
     Staging,
@@ -426,7 +427,7 @@ class TestStagingCatalog:
         # Assert that requests.get was called with the correct parameters
         requests.get.assert_called_once_with(  # type: ignore
             f"{staging_instance.catalog_url}/catalog/search",
-            headers={"cookie": "fake-cookie", "x-api-key": None},
+            headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
             params=expected_filter_object,
             timeout=5,
         )
@@ -1068,7 +1069,7 @@ class TestStagingPublishCatalog:
         assert result is True  # Should return True for successful publishing
         mock_post.assert_called_once_with(
             f"{staging_instance.catalog_url}/catalog/collections/test_collection/items",
-            headers={"cookie": "fake-cookie", "host": "fake-host"},
+            headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
             data=feature.json(),
             timeout=10,
         )
@@ -1097,7 +1098,7 @@ class TestStagingPublishCatalog:
             assert result is False  # Should return False for failure
             mock_post.assert_called_once_with(
                 f"{staging_instance.catalog_url}/catalog/collections/test_collection/items",
-                headers={"cookie": "fake-cookie", "host": "fake-host"},
+                headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
                 data=feature.json(),
                 timeout=10,
             )
@@ -1126,12 +1127,12 @@ class TestStagingUnpublishCatalog:
         # Assert that delete was called with the correct URL and headers
         mock_delete.assert_any_call(
             f"{staging_instance.catalog_url}/catalog/collections/test_collection/items/feature-1",
-            headers={"cookie": "fake-cookie"},
+            headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
             timeout=3,
         )
         mock_delete.assert_any_call(
             f"{staging_instance.catalog_url}/catalog/collections/test_collection/items/feature-2",
-            headers={"cookie": "fake-cookie"},
+            headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
             timeout=3,
         )
         # Ensure no error was logged
@@ -1157,7 +1158,7 @@ class TestStagingUnpublishCatalog:
 
             mock_delete.assert_any_call(
                 f"{staging_instance.catalog_url}/catalog/collections/test_collection/items/feature-1",
-                headers={"cookie": "fake-cookie"},
+                headers={"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"},
                 timeout=3,
             )
             mock_logger.error.assert_called_once_with("Error while deleting the item from rspy catalog %s", mocker.ANY)
