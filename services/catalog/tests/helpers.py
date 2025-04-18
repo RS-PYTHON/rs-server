@@ -15,11 +15,13 @@
 """Various helpers for tests and tests fixtures."""
 
 import json
+import os
 import os.path as osp
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import yaml
 from fastapi.testclient import TestClient
 from sqlalchemy_utils import database_exists
 
@@ -41,6 +43,38 @@ def is_db_up(db_url: str) -> bool:
         return database_exists(db_url)
     except ConnectionError:
         return False
+
+
+def export_aws_credentials():
+    """Export AWS credentials as environment variables for testing purposes.
+
+    This function sets the following environment variables with dummy values for AWS credentials:
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - AWS_SECURITY_TOKEN
+    - AWS_SESSION_TOKEN
+    - AWS_DEFAULT_REGION
+
+    Note: This function is intended for testing purposes only, and it should not be used in production.
+
+    Returns:
+        None
+
+    Raises:
+        None
+    """
+    with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
+        s3_config = yaml.safe_load(f)
+        os.environ.update(s3_config["s3"])
+        os.environ.update(s3_config["boto"])
+
+
+def clear_aws_credentials():
+    """Clear AWS credentials from environment variables."""
+    with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
+        s3_config = yaml.safe_load(f)
+        for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
+            del os.environ[env_var]
 
 
 @dataclass

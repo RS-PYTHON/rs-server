@@ -329,4 +329,4 @@ def setup_database(
     add_feature(client, feature_toto_s2_l3_0)
     add_feature(client, feature_titi_s2_l1_0)
     add_feature(client, feature_pyteam_s1_l1_0)
-    add_features_from_file(client, "test_data.json")
+    add_features_from_file(client, "temporal_filters_test_data.json")
