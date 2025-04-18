@@ -39,6 +39,7 @@ from pygeoapi.process.manager.postgresql import (
 from pygeoapi.util import JobStatus
 from requests.exceptions import RequestException
 from rs_server_common import settings as common_settings
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
     ServiceNotFound,
@@ -313,7 +314,7 @@ class Staging(
 
     def __init__(
         self,
-        credentials: Request,
+        request: Request,
         db_process_manager: PostgreSQLManager,
         cluster: LocalCluster,
         station_token_list: list[RefreshTokenData],
@@ -324,13 +325,13 @@ class Staging(
         database, and cluster configuration.
 
         Args:
-            credentials (Headers): Authentication headers used for requests.
+            request (Headers): original HTTP request.
             db_process_manager (PostgreSQLManager): The pygeoapi Postgresql Manager used to track job execution
                 status and metadata.
             cluster (LocalCluster): The Dask LocalCluster instance used to manage distributed computation tasks.
 
         Attributes:
-            headers (Headers): Stores the provided authentication headers.
+            auth_headers (dict): authentication headers from the original HTTP request.
             stream_list (list): A list to hold streaming information for processing.
             catalog_url (str): URL of the catalog service, fetched from environment or default value.
             download_url (str): URL of the RS server, fetched from environment or default value.
@@ -348,8 +349,12 @@ class Staging(
         #################
         # Locals
         self.logger = Logging.default(__name__)
-        self.request = credentials
-        self.headers: Headers = credentials.headers
+        self.request = request
+        self.auth_headers: dict[str, str] = {
+            APIKEY_HEADER: self.request.headers.get(APIKEY_HEADER, None),
+            "cookie": self.request.headers.get("cookie", None),
+        }
+        self.logger.debug(f"\n\n{self.auth_headers}\n\n")  # REMOVE THIS !!!!!
         self.stream_list: list[Feature] = []
         #################
         # Env section
@@ -428,10 +433,7 @@ class Staging(
                     )
                 response = requests.get(
                     data["items"]["href"],
-                    headers={
-                        "cookie": self.headers.get("cookie", None),
-                        "x-api-key": self.headers.get("x-api-key", None),
-                    },
+                    headers=self.auth_headers,
                     timeout=5,
                 )
                 response.raise_for_status()
@@ -595,7 +597,7 @@ class Staging(
         try:
             response = requests.get(
                 search_url,
-                headers={"cookie": self.headers.get("cookie", None), "x-api-key": self.headers.get("x-api-key", None)},
+                headers=self.auth_headers,
                 params=filter_object,
                 timeout=5,
             )
@@ -1215,7 +1217,7 @@ class Staging(
         try:
             response = requests.post(
                 publish_url,
-                headers={"cookie": self.headers.get("cookie", None), "host": self.headers.get("host", None)},
+                headers=self.auth_headers,
                 data=feature.json(),
                 timeout=10,
             )
@@ -1244,7 +1246,7 @@ class Staging(
         1. **Request Construction**:
             - For each `feature_id` in the list, the method constructs the DELETE request URL using the
             base catalog URL, the collection name, and the feature ID.
-            - The request includes a `cookie` header obtained from `self.headers`.
+            - The request includes a `cookie` or api key header obtained from the original HTTP request.
 
         2. **Error Handling**:
             - The method handles the following exceptions:
@@ -1264,7 +1266,7 @@ class Staging(
                 catalog_delete_item = f"{self.catalog_url}/catalog/collections/{catalog_collection}/items/{feature_id}"
                 response = requests.delete(
                     catalog_delete_item,
-                    headers={"cookie": self.headers.get("cookie", None)},
+                    headers=self.auth_headers,
                     timeout=3,
                 )
                 response.raise_for_status()  # Raise an error for HTTP error responses
