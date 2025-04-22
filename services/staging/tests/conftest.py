@@ -30,6 +30,7 @@ from pathlib import Path
 import pytest
 import yaml
 from fastapi.testclient import TestClient
+from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
@@ -189,8 +190,8 @@ def staging_inputs():
 def staging(mocker, config):
     """Fixture to mock the Staging object"""
     # Mock dependencies for Staging
-    mock_credentials = mocker.Mock()
-    mock_credentials.headers = {"cookie": "fake-cookie", "host": "fake-host"}
+    mock_request = mocker.Mock()
+    mock_request.headers = {"cookie": "fake-cookie", APIKEY_HEADER: "fake-api-key"}
     mock_db = mocker.Mock()  # Mock for PostgreSQL Manager
     mock_cluster = mocker.Mock()  # Mock for LocalCluster
     # Mock station_token_list as an iterable
@@ -228,7 +229,7 @@ def staging(mocker, config):
 
     # Instantiate the Staging class with the mocked dependencies
     staging_instance = Staging(
-        credentials=mock_credentials,
+        request=mock_request,
         db_process_manager=mock_db,
         cluster=mock_cluster,
         station_token_list=mock_station_token_list,
