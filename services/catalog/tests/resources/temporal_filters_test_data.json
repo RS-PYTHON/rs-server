@@ -4,12 +4,7 @@
             "id": "R1",
             "bbox": [-180, -90, 180, 90],
             "type": "Feature",
-            "assets": {
-                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                "roles": ["data"]
-                }
-            },
+            "assets": {},
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
@@ -48,12 +43,7 @@
             "id": "R2",
             "bbox": [-180, -90, 180, 90],
             "type": "Feature",
-            "assets": {
-                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                "roles": ["data"]
-                }
-            },
+            "assets": {},
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
@@ -92,12 +82,7 @@
             "id": "R3",
             "bbox": [-180, -90, 180, 90],
             "type": "Feature",
-            "assets": {
-                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                "roles": ["data"]
-                }
-            },
+            "assets": {},
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
@@ -136,12 +121,7 @@
             "id": "R4",
             "bbox": [-180, -90, 180, 90],
             "type": "Feature",
-            "assets": {
-                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                "roles": ["data"]
-                }
-            },
+            "assets": {},
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
@@ -180,12 +160,7 @@
             "id": "R5",
             "bbox": [-180, -90, 180, 90],
             "type": "Feature",
-            "assets": {
-                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                "roles": ["data"]
-                }
-            },
+            "assets": {},
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
@@ -224,12 +199,7 @@
             "id": "R6",
             "bbox": [-180, -90, 180, 90],
             "type": "Feature",
-            "assets": {
-                "S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip": {
-                "href": "s3://temp-bucket/S1SIWOCN_20220412T054447_0024_S139_T717.zarr.zip",
-                "roles": ["data"]
-                }
-            },
+            "assets": {},
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [

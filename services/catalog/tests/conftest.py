@@ -47,6 +47,7 @@ from .helpers import (
     add_collection,
     add_feature,
     add_features_from_file,
+    delete_collection,
     is_db_up,
 )
 
@@ -190,7 +191,7 @@ def a_minimal_collection_fixture(client) -> Iterator[None]:
 
     yield
     # teardown cleanup, delete collection (doesn't matter if it exists or not, so no assertion here)
-    client.delete("/catalog/collections/fixture_owner:fixture_collection")
+    delete_collection(client, "fixture_owner", "fixture_collection")
 
 
 @pytest.fixture(scope="session", name="a_correct_feature")
@@ -287,6 +288,17 @@ def a_incorrect_feature_fixture() -> dict:
     }
 
 
+@pytest.fixture(scope="session", name="temporal_filters_test_data")
+def temporal_filters_test_data_fixture(client):
+    """Fixture to load test data for adavnced temporal filters tests from file into catalog,
+    and to delete it afterwards.
+    """
+    test_data_file = "temporal_filters_test_data.json"
+    owner, collection_name = add_features_from_file(client, test_data_file)
+    yield
+    delete_collection(client, owner, collection_name)
+
+
 @pytest.mark.integration
 @pytest.fixture(scope="session", autouse=True)
 def setup_database(
@@ -329,4 +341,3 @@ def setup_database(
     add_feature(client, feature_toto_s2_l3_0)
     add_feature(client, feature_titi_s2_l1_0)
     add_feature(client, feature_pyteam_s1_l1_0)
-    add_features_from_file(client, "temporal_filters_test_data.json")

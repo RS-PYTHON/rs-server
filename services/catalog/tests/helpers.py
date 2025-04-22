@@ -165,7 +165,7 @@ def add_collection(client: TestClient, collection: Collection):
     response.raise_for_status()
 
 
-def add_collection_from_dict(client: TestClient, collection: dict):
+def add_collection_from_dict(client: TestClient, collection: dict) -> tuple[str, str]:
     """
     Adds a collection in the STAC catalog unless it already exists.
 
@@ -183,6 +183,7 @@ def add_collection_from_dict(client: TestClient, collection: dict):
     if collection_check.status_code == 404:
         response = client.post("/catalog/collections", json=collection)
         response.raise_for_status()
+    return (collection["owner"], collection["id"])
 
 
 @dataclass
@@ -267,7 +268,7 @@ def add_feature(client: TestClient, feature: Feature):
     response.raise_for_status()
 
 
-def add_feature_from_dict(client: TestClient, feature: dict):
+def add_feature_from_dict(client: TestClient, feature: dict) -> tuple[str, str]:
     """Add the given feature in the STAC catalogue.
 
     Args:
@@ -289,6 +290,8 @@ def add_feature_from_dict(client: TestClient, feature: dict):
             json=feature,
         )
         response.raise_for_status()
+
+    return (owner_id, collection)
 
 
 def build_minimal_collection_from_feature_data(feature: dict) -> dict:
@@ -318,7 +321,7 @@ def build_minimal_collection_from_feature_data(feature: dict) -> dict:
     }
 
 
-def add_features_from_file(client: TestClient, collection_file_name: str):
+def add_features_from_file(client: TestClient, collection_file_name: str) -> tuple[str, str]:
     """Reads a collection from the given file and adds it to the STAC catalog.
 
     Args:
@@ -333,12 +336,14 @@ def add_features_from_file(client: TestClient, collection_file_name: str):
         Error if the collection addition failed.
     """
     collection_file = Path.joinpath(RESOURCES_FOLDER, collection_file_name)
+    collection_owner = ""
+    collection_name = ""
     with open(collection_file, encoding="utf-8") as json_file:
         collection = json.load(json_file)
 
     # 1st case: ONE feature
     if isinstance(collection, dict) and "type" in collection.keys() and collection["type"] == "Feature":
-        add_feature_from_dict(client, collection)
+        (collection_owner, collection_name) = add_feature_from_dict(client, collection)
 
     # 2nd case: a list of features
     if isinstance(collection, dict) and "features" in collection.keys():
@@ -346,4 +351,21 @@ def add_features_from_file(client: TestClient, collection_file_name: str):
 
     if isinstance(collection, list):
         for feature in collection:
-            add_feature_from_dict(client, feature)
+            (collection_owner, collection_name) = add_feature_from_dict(client, feature)
+
+    return (collection_owner, collection_name)
+
+
+def delete_collection(client: TestClient, collection_owner: str, collection_name: str):
+    """Deletes the collection linked to the given owner and name
+
+    Args:
+        client: the catalog client
+        collection_owner: name of the owner of the collection
+        collection_name: name of the collection
+
+    Returns:
+        None
+
+    """
+    client.delete(f"/catalog/collections/{collection_owner}:{collection_name}")

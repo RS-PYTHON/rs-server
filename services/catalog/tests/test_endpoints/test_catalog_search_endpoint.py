@@ -15,6 +15,7 @@
 """Integration tests for search endpoint of user_catalog module."""
 
 # pylint: disable=missing-function-docstring
+# pylint: disable=unused-argument
 
 import json
 import pathlib
@@ -287,7 +288,7 @@ class TestCatalogSearchEndpoint:
 class TestCatalogSearchEndpointWithTemporalFilters:
     """This class contains integration tests for the endpoint '/catalog/search' using advanced temporal filters.
 
-    The filter used are the ones defined here:
+    The filters used are the ones defined here:
         https://pforge-exchange2.astrium.eads.net/confluence/display/COPRS/4.+External+data+selection+policies
 
     The test data follows the specifications examples. The time intervals used for the tests are :
@@ -299,7 +300,7 @@ class TestCatalogSearchEndpointWithTemporalFilters:
         "method",
         ["POST", "GET"],
     )
-    def test_filter_valcover(self, client, method):
+    def test_filter_valcover(self, client, method, temporal_filters_test_data):
         """Test for ValCover filter on search endpoint with POST and GET methods.
         This filter returns all files entirely covering the given time interval.
         With our test data from 'temporal_filters_test_data.json' this corresponds to R2.
