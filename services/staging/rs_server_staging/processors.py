@@ -353,7 +353,7 @@ class Staging(
         #################
         # Copy authentication headers from original HTTP request
         self.auth_headers: dict[str, str] = {}
-        for key in APIKEY_HEADER, "cookie":
+        for key in APIKEY_HEADER, "cookie", "host":
             if value := self.request.headers.get(key):
                 self.auth_headers[key] = value
         #################
