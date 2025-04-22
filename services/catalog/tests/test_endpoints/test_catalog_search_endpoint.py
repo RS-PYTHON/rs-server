@@ -282,3 +282,50 @@ class TestCatalogSearchEndpoint:
                 raise RuntimeError("error") from e
             finally:
                 pathlib.Path("queryables.json").unlink(missing_ok=True)
+
+
+class TestCatalogSearchEndpointWithTemporalFilters:
+    """This class contains integration tests for the endpoint '/catalog/search' using advanced temporal filters.
+
+    The filter used are the ones defined here:
+        https://pforge-exchange2.astrium.eads.net/confluence/display/COPRS/4.+External+data+selection+policies
+
+    The test data follows the specifications examples. The time intervals used for the tests are :
+        t0-dt0 = 2025-03-01T00:00:00Z
+        t1+dt1 = 2025-06-01T00:00:00Z
+    """
+
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "GET"],
+    )
+    def test_filter_valcover(self, client, method):
+        """Test for ValCover filter on search endpoint with POST and GET methods.
+        This filter returns all files entirely covering the given time interval.
+        With our test data from 'temporal_filters_test_data.json' this corresponds to R2.
+        """
+        if method == "POST":
+            test_json = {
+                "collections": ["temporal_filters_test_data"],
+                "owner": "testowner",
+                "filter": {
+                    "op": "t_contains",
+                    "args": [
+                        {"interval": [{"property": "start_datetime"}, {"property": "end_datetime"}]},
+                        {"interval": ["2025-03-01T00:00:00Z", "2025-06-01T00:00:00Z"]},
+                    ],
+                },
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {
+                "collections": "temporal_filters_test_data",
+                "filter-lang": "cql2-text",
+                "owner": "testowner",
+                "filter": "T_CONTAINS(INTERVAL(start_datetime,end_datetime),INTERVAL(TIMESTAMP('2025-03-01T00:00:00Z'),TIMESTAMP('2025-06-01T00:00:00Z')))",
+            }
+            response = client.get("/catalog/search", params=test_params)
+
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert "features" in response.json() and len(response.json()["features"]) == 2
+        assert response.json()["features"][0]["id"] == "R2" and response.json()["features"][1]["id"] == "R3"
