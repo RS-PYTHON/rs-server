@@ -45,7 +45,7 @@ include = [
 python = "^3.11"
 fastapi = "^0.115.12"
 starlette = ">=0.46.2,<0.47"
-pygeoapi = ">=0.20,<0.21"
+pygeoapi = ">=0.20"
 uvicorn = ">=0.30.6,<0.35.0"
 opentelemetry-distro = "^0.53b1" # then run 'poetry run opentelemetry-bootstrap -a install'
 opentelemetry-instrumentation-aws-lambda = "^0.53b1"
