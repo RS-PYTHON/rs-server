@@ -83,7 +83,6 @@ class DatabaseSessionManager:
                 try:
                     # Create all tables.
                     # Warning: this only works if the database table modules have been imported
-                    # e.g. import rs_server_adgs.adgs_download_status
                     self.create_all()
 
                 # It fails if the database is unreachable, but even in this case the engine and session are not None.
