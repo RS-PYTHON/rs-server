@@ -406,3 +406,73 @@ class TestCatalogSearchEndpointWithTemporalFilters:
 
         list_of_ids = [feature["id"] for feature in response.json()["features"]]
         assert sorted(["R1", "R2", "R3", "R4"]) == sorted(list_of_ids)
+
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "GET"],
+    )
+    def test_filter_latestvalintersect(self, client, method, temporal_filters_test_data):
+        """Test for LatestValIntersect filter on search endpoint with POST and GET methods.
+        This filter returns the latest file that covers partly the given time interval.
+        With our test data from 'temporal_filters_test_data.json' this corresponds to R4.
+        """
+        if method == "POST":
+            test_json = {
+                "collections": ["temporal_filters_test_data"],
+                "owner": "testowner",
+                "filter": {
+                    "op": "t_intersects",
+                    "args": [
+                        {"interval": [{"property": "start_datetime"}, {"property": "end_datetime"}]},
+                        {"interval": ["2025-03-01T00:00:00Z", "2025-06-01T00:00:00Z"]},
+                    ],
+                },
+                "sortby": [{"field": "created", "direction": "desc"}],
+                "limit": 1,
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {
+                "collections": "temporal_filters_test_data",
+                "filter-lang": "cql2-text",
+                "owner": "testowner",
+                "filter": "T_INTERSECTS(INTERVAL(start_datetime,end_datetime),INTERVAL(TIMESTAMP('2025-03-01T00:00:00Z'),TIMESTAMP('2025-06-01T00:00:00Z')))",
+                "sortby": "-properties.created",
+                "limit": "1",
+            }
+            response = client.get("/catalog/search", params=test_params)
+
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert "features" in response.json() and len(response.json()["features"]) == 1
+        assert response.json()["features"][0]["id"] == "R4"
+
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "GET"],
+    )
+    def test_filter_latestvalidity(self, client, method, temporal_filters_test_data):
+        """Test for LatestValidity filter on search endpoint with POST and GET methods.
+        This filter returns the file with the latest Validity Start Time.
+        With our test data from 'temporal_filters_test_data.json' this corresponds to R6.
+        """
+        if method == "POST":
+            test_json = {
+                "collections": ["temporal_filters_test_data"],
+                "owner": "testowner",
+                "sortby": [{"field": "start_datetime", "direction": "desc"}],
+                "limit": 1,
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {
+                "collections": "temporal_filters_test_data",
+                "filter-lang": "cql2-text",
+                "owner": "testowner",
+                "sortby": "-properties.start_datetime",
+                "limit": "1",
+            }
+            response = client.get("/catalog/search", params=test_params)
+
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert "features" in response.json() and len(response.json()["features"]) == 1
+        assert response.json()["features"][0]["id"] == "R6"
