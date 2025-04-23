@@ -303,7 +303,7 @@ class TestCatalogSearchEndpointWithTemporalFilters:
     def test_filter_valcover(self, client, method, temporal_filters_test_data):
         """Test for ValCover filter on search endpoint with POST and GET methods.
         This filter returns all files entirely covering the given time interval.
-        With our test data from 'temporal_filters_test_data.json' this corresponds to R2.
+        With our test data from 'temporal_filters_test_data.json' this corresponds to R2 and R3.
         """
         if method == "POST":
             test_json = {
@@ -330,3 +330,79 @@ class TestCatalogSearchEndpointWithTemporalFilters:
         assert response.status_code == fastapi.status.HTTP_200_OK
         assert "features" in response.json() and len(response.json()["features"]) == 2
         assert response.json()["features"][0]["id"] == "R2" and response.json()["features"][1]["id"] == "R3"
+
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "GET"],
+    )
+    def test_filter_latestvalcover(self, client, method, temporal_filters_test_data):
+        """Test for LatestValCover filter on search endpoint with POST and GET methods.
+        This filter returns the latest file entirely covering the given time interval.
+        With our test data from 'temporal_filters_test_data.json' this corresponds to R3.
+        """
+        if method == "POST":
+            test_json = {
+                "collections": ["temporal_filters_test_data"],
+                "owner": "testowner",
+                "filter": {
+                    "op": "t_contains",
+                    "args": [
+                        {"interval": [{"property": "start_datetime"}, {"property": "end_datetime"}]},
+                        {"interval": ["2025-03-01T00:00:00Z", "2025-06-01T00:00:00Z"]},
+                    ],
+                },
+                "sortby": [{"field": "created", "direction": "desc"}],
+                "limit": 1,
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {
+                "collections": "temporal_filters_test_data",
+                "filter-lang": "cql2-text",
+                "owner": "testowner",
+                "filter": "T_CONTAINS(INTERVAL(start_datetime,end_datetime),INTERVAL(TIMESTAMP('2025-03-01T00:00:00Z'),TIMESTAMP('2025-06-01T00:00:00Z')))",
+                "sortby": "-properties.created",
+                "limit": "1",
+            }
+            response = client.get("/catalog/search", params=test_params)
+
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert "features" in response.json() and len(response.json()["features"]) == 1
+        assert response.json()["features"][0]["id"] == "R3"
+
+    @pytest.mark.parametrize(
+        "method",
+        ["POST", "GET"],
+    )
+    def test_filter_valintersect(self, client, method, temporal_filters_test_data):
+        """Test for ValIntersect filter on search endpoint with POST and GET methods.
+        This filter returns all files that cover partly the given time interval.
+        With our test data from 'temporal_filters_test_data.json' this corresponds to R1, R2, R3 and R4.
+        """
+        if method == "POST":
+            test_json = {
+                "collections": ["temporal_filters_test_data"],
+                "owner": "testowner",
+                "filter": {
+                    "op": "t_intersects",
+                    "args": [
+                        {"interval": [{"property": "start_datetime"}, {"property": "end_datetime"}]},
+                        {"interval": ["2025-03-01T00:00:00Z", "2025-06-01T00:00:00Z"]},
+                    ],
+                },
+            }
+            response = client.post("/catalog/search", json=test_json)
+        else:
+            test_params = {
+                "collections": "temporal_filters_test_data",
+                "filter-lang": "cql2-text",
+                "owner": "testowner",
+                "filter": "T_INTERSECTS(INTERVAL(start_datetime,end_datetime),INTERVAL(TIMESTAMP('2025-03-01T00:00:00Z'),TIMESTAMP('2025-06-01T00:00:00Z')))",
+            }
+            response = client.get("/catalog/search", params=test_params)
+
+        assert response.status_code == fastapi.status.HTTP_200_OK
+        assert "features" in response.json() and len(response.json()["features"]) == 4
+
+        list_of_ids = [feature["id"] for feature in response.json()["features"]]
+        assert sorted(["R1", "R2", "R3", "R4"]) == sorted(list_of_ids)
