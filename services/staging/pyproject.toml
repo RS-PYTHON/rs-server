@@ -28,12 +28,6 @@ classifiers = [
 packages = [
     { include = "rs_server_staging" },
     { include = "tests", format = "sdist" },
-
-    # TEMP: because of the pydantic conflict:
-    # Use the rs_server_common source directory instead of using rs-server-common as a dependency.
-    # But this doesn't work when building the wheel. So for the whl, copy the rs_server_common
-    # directory and remove the from=../common part.
-    { include = "rs_server_common", from = "../common" },
 ]
 
 # Add configuration files to the .whl package
@@ -43,40 +37,15 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-fastapi = "^0.115.12"
-starlette = ">=0.46.2,<0.47"
-pygeoapi = ">=0.20"
-uvicorn = ">=0.30.6,<0.35.0"
-opentelemetry-distro = "^0.53b1" # then run 'poetry run opentelemetry-bootstrap -a install'
-opentelemetry-instrumentation-aws-lambda = "^0.53b1"
-opentelemetry-test-utils = "^0.53b1"
-opentelemetry-exporter-otlp = "^1.32.1"
-python-logging-loki = "^0.3.1"
-stac-pydantic = "2.0.3"
+rs-server-common = {path = "../common", develop = true}
+#pygeoapi = ">=0.21"
+pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", branch = "master" }
 geoalchemy2 = ">=0.17,<0.18"
 SQLAlchemy = "^2.0.37"
-jsonpatch = "^1.33"
 dask-gateway = "2024.1.0"
 # same dask version as in the cluster i.e. same as eopf
 dask = {extras = ["distributed"], version = "2024.5.2"}
 openapi-core = "^0.19.5"
-
-# TEMP: because of the pydantic conflict
-# we also need the rs-server-common dependencies. We duplicate them here
-# except duplicates and dependencies on which we have version conflicts.
-boto3 = ">=1.35.40"
-botocore = ">=1.35.40"
-markdown = "^3.6"
-python-dotenv = "^1.0.0"
-psycopg2 = "^2.9.9"
-filelock = "^3.16.1"
-httpx = "^0.27.2"
-cachetools = ">=5.5.2" # idem as stac-fastapi-pgstac
-asyncache = "^0.3.1"
-authlib = "^1.5.0"
-python-keycloak = "5.5.0"
-itsdangerous = "^2.2.0"
-pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 
 [tool.poetry.group.dev]
 optional = true
