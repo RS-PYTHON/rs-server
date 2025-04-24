@@ -47,8 +47,8 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
     # Install dependencies
     if [[ " $@ " == *" --install "* ]]; then
         (set -x
-            cd "$proj_dir" && poetry -q install --with dev
-            poetry -q run opentelemetry-bootstrap -a install || true
+            cd "$proj_dir" && poetry -q install --with dev > /dev/null
+            poetry -q run opentelemetry-bootstrap -a install > /dev/null || true
         )
     fi
 
@@ -66,8 +66,10 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
         cd "$ROOT_DIR"
         cmd="poetry \
 --directory $proj_dir run pytest $tests_dir \
--s --disable-pytest-warnings \
+-ra --disable-pytest-warnings \
+--color=yes \
 --durations=0 \
+--durations-min=0.05 \
 --error-for-skips \
 --cov=. \
 --cov-report=term \
