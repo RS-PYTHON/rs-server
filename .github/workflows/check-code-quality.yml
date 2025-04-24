@@ -23,7 +23,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     # run this worflow only for code/test related changes (avoid it for documentation)
-    paths: ['**.json', '**.lock', '**.py', '**.raw', '**.toml', '**.yaml', '**.yml']
+    paths: ['**.json', '**.lock', '**.py', '**.raw', '**.sh', '**.toml', '**.yaml', '**.yml']
   workflow_dispatch:
 
 env:
