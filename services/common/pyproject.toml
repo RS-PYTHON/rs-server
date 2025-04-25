@@ -43,8 +43,8 @@ boto3 = ">=1.35.40"
 botocore = ">=1.35.99"
 sqlalchemy = "^2.0.35"
 # TODO: replace by official eodag version tag that will contain this feature
-eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "1593-client-auth-for-refresh-token" }
-#eodag = "==v3.3.0"
+# eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "1593-client-auth-for-refresh-token" }
+eodag = "==v3.3.1"
 pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pydantic = ">=2.9.2,<2.12.0"
 markdown = "^3.6"
