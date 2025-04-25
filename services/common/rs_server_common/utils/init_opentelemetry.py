@@ -58,13 +58,13 @@ def parse_data(data) -> str:
     # Try to convert to a dict
     try:
         data = dict(data)
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception:  # pylint: disable=broad-exception-caught # nosec
         pass
 
     # Or to parse to a dict
     try:
         data = json.loads(data)
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception:  # pylint: disable=broad-exception-caught # nosec
         pass
 
     # If we have a dict, try to format it as json
