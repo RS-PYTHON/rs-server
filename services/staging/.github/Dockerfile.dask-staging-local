@@ -21,7 +21,7 @@ ARG USER=dask:dask
 
 # Install dependencies for compilation
 USER root
-RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
+RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc git
 USER $USER
 
 # The CI builds the wheel packages, downloads them into ./whl/, then builds this Dockerfile from ./whl/,
@@ -32,7 +32,7 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install -U --no-cache-dir rs_server_staging-*.whl
+RUN cd /tmp/whl && pip install -U --no-cache-dir rs_server_common-*.whl rs_server_staging-*.whl
 
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install

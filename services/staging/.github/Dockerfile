@@ -17,7 +17,7 @@
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
 
 # Install dependencies
-RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc
+RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc git
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip
@@ -30,7 +30,7 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_staging-*.whl
+RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_staging-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
