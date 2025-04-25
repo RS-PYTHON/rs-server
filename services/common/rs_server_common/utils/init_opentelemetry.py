@@ -15,6 +15,7 @@
 """OpenTelemetry utility"""
 
 import inspect
+import json
 import os
 import pkgutil
 import sys
@@ -32,27 +33,77 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 
 logger = Logging.default(__name__)
 
 FROM_PYTEST = False
 
+# Show details of http headers and body/content in tempo/grafana ?
+TRACE_HEADERS = env_bool("OTEL_PYTHON_REQUESTS_TRACE_HEADERS", default=False)
+TRACE_BODY = env_bool("OTEL_PYTHON_REQUESTS_TRACE_BODY", default=False)
+
+
+def parse_data(data) -> str:
+    """Convert data to a string representation"""
+
+    if not data:
+        return ""
+
+    # Try to decode bytes
+    if isinstance(data, bytes):
+        data = data.decode("utf-8")
+
+    # Try to convert to a dict
+    try:
+        data = dict(data)
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+
+    # Or to parse to a dict
+    try:
+        data = json.loads(data)
+    except Exception:  # pylint: disable=broad-exception-caught
+        pass
+
+    # If we have a dict, try to format it as json
+    if isinstance(data, dict):
+        data = json.dumps(data, indent=2)
+
+    return data
+
 
 def request_hook(span, request):
     """
     HTTP requests intrumentation
     """
-    if span:
-        span.set_attribute("http.request.headers", str(request.headers))
+    if not span:
+        return
+
+    # Copy the http.url attribute into _url so it appears at the
+    # top in the grafana UI, it's more readable
+    span.set_attribute("_url", span.attributes.get("http.url"))
+
+    if TRACE_HEADERS:
+        span.set_attribute("http.request.headers", parse_data(request.headers))
+
+    if TRACE_BODY:
+        span.set_attribute("http.request.body", parse_data(request.body))
 
 
 def response_hook(span, request, response):  # pylint: disable=W0613
     """
     HTTP responses intrumentation
     """
-    if span:
-        span.set_attribute("http.response.headers", str(response.headers))
+    if not span:
+        return
+
+    if TRACE_HEADERS:
+        span.set_attribute("http.response.headers", parse_data(response.headers))
+
+    if TRACE_BODY:
+        span.set_attribute("http.response.content", parse_data(response.content))
 
 
 def init_traces(app: fastapi.FastAPI, service_name: str):
@@ -132,7 +183,7 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
             if callable(_instrument):
 
                 _class_instance = _class()
-                if _class == RequestsInstrumentor and os.getenv("OTEL_PYTHON_REQUESTS_TRACE_HEADERS"):
+                if _class == RequestsInstrumentor and (TRACE_HEADERS or TRACE_BODY):
                     _class_instance.instrument(
                         tracer_provider=otel_tracer,
                         request_hook=request_hook,
