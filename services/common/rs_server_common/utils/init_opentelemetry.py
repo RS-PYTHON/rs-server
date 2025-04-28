@@ -40,9 +40,18 @@ default_logger = Logging.default(__name__)
 
 FROM_PYTEST = False
 
+
 # Show details of http headers and body/content in tempo/grafana ?
-TRACE_HEADERS = env_bool("OTEL_PYTHON_REQUESTS_TRACE_HEADERS", default=False)
-TRACE_BODY = env_bool("OTEL_PYTHON_REQUESTS_TRACE_BODY", default=False)
+# Don't store results in global variables because the env var values can change
+# after this module was loaded.
+def trace_headers():
+    """Trace request headers ?"""
+    return env_bool("OTEL_PYTHON_REQUESTS_TRACE_HEADERS", default=False)
+
+
+def trace_body():
+    """Trace request bodies and response contents ?"""
+    return env_bool("OTEL_PYTHON_REQUESTS_TRACE_BODY", default=False)
 
 
 def parse_data(data) -> str:
@@ -71,7 +80,7 @@ def parse_data(data) -> str:
     if isinstance(data, dict):
         data = json.dumps(data, indent=2)
 
-    return data
+    return data or ""
 
 
 def request_hook(span, request):
@@ -85,10 +94,10 @@ def request_hook(span, request):
     # top in the grafana UI, it's more readable
     span.set_attribute("_url", span.attributes.get("http.url"))
 
-    if TRACE_HEADERS:
+    if trace_headers():
         span.set_attribute("http.request.headers", parse_data(request.headers))
 
-    if TRACE_BODY:
+    if trace_body():
         span.set_attribute("http.request.body", parse_data(request.body))
 
 
@@ -99,10 +108,10 @@ def response_hook(span, request, response):  # pylint: disable=W0613
     if not span:
         return
 
-    if TRACE_HEADERS:
+    if trace_headers():
         span.set_attribute("http.response.headers", parse_data(response.headers))
 
-    if TRACE_BODY:
+    if trace_body():
         span.set_attribute("http.response.content", parse_data(response.content))
 
 
@@ -187,7 +196,7 @@ def init_traces(app: fastapi.FastAPI, service_name: str, logger=None):
             if callable(_instrument):
 
                 _class_instance = _class()
-                if _class == RequestsInstrumentor and (TRACE_HEADERS or TRACE_BODY):
+                if _class == RequestsInstrumentor and (trace_headers() or trace_body()):
                     _class_instance.instrument(
                         tracer_provider=otel_tracer,
                         request_hook=request_hook,
