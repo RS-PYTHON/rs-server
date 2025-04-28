@@ -36,7 +36,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 
-logger = Logging.default(__name__)
+default_logger = Logging.default(__name__)
 
 FROM_PYTEST = False
 
@@ -106,22 +106,26 @@ def response_hook(span, request, response):  # pylint: disable=W0613
         span.set_attribute("http.response.content", parse_data(response.content))
 
 
-def init_traces(app: fastapi.FastAPI, service_name: str):
+def init_traces(app: fastapi.FastAPI, service_name: str, logger=None):
     """
     Init instrumentation of OpenTelemetry traces.
 
     Args:
         app (fastapi.FastAPI): FastAPI application
         service_name (str): service name
+        logger: non-default logger to user
     """
 
     # See: https://github.com/softwarebloat/python-tracing-demo/tree/main
+
+    logger = logger or default_logger
 
     # Don't call this line from pytest because it causes errors:
     # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ..s.
     if not FROM_PYTEST:
         tempo_endpoint = os.getenv("TEMPO_ENDPOINT")
         if not tempo_endpoint:
+            logger.warning("'TEMPO_ENDPOINT' variable is missing, cannot initialize OpenTelemetry")
             return
 
         # TODO: to avoid errors in local mode:
