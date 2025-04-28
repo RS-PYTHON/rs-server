@@ -40,6 +40,6 @@ async def test_opentelemetry(mocker, monkeypatch):
 
     # Run a dummy http request to be instrumented by opentelemetry
     try:
-        requests.get("http://dummy", timeout=1)
+        requests.get("https://dummy", timeout=1)
     except RequestsConnectionError:
         pass
