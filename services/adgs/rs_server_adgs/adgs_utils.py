@@ -70,7 +70,7 @@ def serialize_adgs_asset(feature_collection, products):
             feature.assets["file"].href = re.sub(r"\([^\)]*\)", f"({auxip_id})", matched_product.properties["href"])
         # Rename "file" asset to feature.id
         feature.assets[feature.id] = feature.assets.pop("file")
-
+        feature.id = feature.id.rsplit(".", 1)[0] # remove extension if any
     return feature_collection
 
 
