@@ -14,7 +14,7 @@
         "processing:datetime": "2021-02-21T10:21:05.821Z",
         "processing:facility": "FOS"
     },
-    "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF",
+    "id": "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001",
     "stac_version": "1.0.0",
     "assets": {
         "S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF": {
@@ -44,7 +44,7 @@
         {
             "rel": "self",
             "type": "application/geo+json",
-            "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001.EOF"
+            "href": "http://testserver/auxip/collections/s2_adgs2_AUX_OBMEMC/items/S1A_OPER_MPL_ORBPRE_20210214T021411_20210221T021411_0001"
         }
     ],
     "stac_extensions": [
