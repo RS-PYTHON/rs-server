@@ -78,7 +78,7 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
     """
     path = request.url.path
     method = request.method
-    patterns = [r"/_mgmt/ping", r"/api", r"/favicon.ico"]
+    patterns = [r"/_mgmt/ping", r"/_mgmt/health", r"/api", r"/favicon.ico"]
 
     # Catch one endpoint of the following list
     regexp_list = [
@@ -99,16 +99,12 @@ def reroute_url(  # type: ignore # pylint: disable=too-many-branches,too-many-st
             is_in_regexp_list = True
             break
     if is_in_regexp_list:
-        # Don't validate other conditions if we alredy matched the previous regexps
+        # Don't validate other conditions if we already matched the previous regexps
         pass
 
     # Catch authentication endpoints (path should be left as it is in this case)
     elif path.startswith(f"{AUTH_PREFIX}/"):
         pass
-
-    # Catch health endpoints
-    elif "/health" in path:
-        path = "/health"
 
     # The endpoint PUT "/catalog/collections" does not exists.
     elif path.rstrip("/") == CATALOG_COLLECTION and method != "PUT":

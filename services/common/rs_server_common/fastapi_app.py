@@ -52,7 +52,12 @@ technical_router = APIRouter(tags=["Technical"])
 
 
 # include_in_schema=False: hide this endpoint from the swagger
-@technical_router.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
+@technical_router.get(
+    "/_mgmt/health",
+    response_model=HealthSchema,
+    name="Check service health",
+    include_in_schema=False,
+)
 async def health() -> HealthSchema:
     """
     Always return a flag set to 'true' when the service is up and running.

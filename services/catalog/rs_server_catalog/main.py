@@ -76,7 +76,7 @@ from starlette.routing import Route
 logger = Logging.default(__name__)
 
 # Technical endpoints (no authentication)
-TECH_ENDPOINTS = ["/_mgmt/ping"]
+TECH_ENDPOINTS = ["/_mgmt/ping", "/_mgmt/health"]
 
 
 def must_be_authenticated(route_path: str) -> bool:
@@ -85,7 +85,7 @@ def must_be_authenticated(route_path: str) -> bool:
     # Remove the /catalog prefix, if any
     path = route_path.removeprefix("/catalog")
 
-    no_auth = (path in TECH_ENDPOINTS) or (path in ["/api", "/api.html", "/health"]) or path.startswith("/auth/")
+    no_auth = (path in TECH_ENDPOINTS) or (path in ["/api", "/api.html"]) or path.startswith("/auth/")
     return not no_auth
 
 

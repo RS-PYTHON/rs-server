@@ -192,19 +192,20 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         assert request.scope["path"] == ""
         assert request_ids == valid_request_ids
 
-    def test_work_with_ping_endpoinst(self, request_ids):
-        request = Request(
-            scope={
-                "type": "http",
-                "method": "GET",
-                "path": "/_mgmt/ping",
-                "query_string": "",
-                "user": "",
-                "headers": {},
-            },
-        )
-        reroute_url(request, request_ids)
-        assert request.scope["path"] == ("/_mgmt/ping")
+    def test_work_with_tech_endpoints(self, request_ids):
+        for path in ["/_mgmt/ping", "/_mgmt/health"]:
+            request = Request(
+                scope={
+                    "type": "http",
+                    "method": "GET",
+                    "path": path,
+                    "query_string": "",
+                    "user": "",
+                    "headers": {},
+                },
+            )
+            reroute_url(request, request_ids)
+            assert request.scope["path"] == (path)
 
     def test_reroute_oauth2(self, request_ids):
         request = Request(
@@ -271,27 +272,20 @@ class TestRerouteURL:  # pylint: disable=missing-function-docstring
         reroute_url(request, request_ids)
         assert request.scope["path"] == "/queryables"
 
-    @pytest.mark.parametrize(
-        "path, expected",
-        [
-            ("/whatever-test/health", "/health"),
-            ("/health", "/health"),
-        ],
-    )
-    def test_reroute_health(self, request_ids, path, expected):
-        """Test that reroute_url catch health endpoints "/health"."""
+    def test_reroute_health(self, request_ids):
+        """Test that reroute_url catch health endpoint "/_mgmt/health"."""
         request = Request(
             scope={
                 "type": "http",
                 "method": "GET",
-                "path": path,
+                "path": "/_mgmt/health",
                 "query_string": "",
                 "user": "",
                 "headers": {},
             },
         )
         reroute_url(request, request_ids)
-        assert request.scope["path"] == expected
+        assert request.scope["path"] == "/_mgmt/health"
 
     def test_reroute_collections_queryables(self, request_ids):
         request = Request(

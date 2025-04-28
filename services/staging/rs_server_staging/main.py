@@ -105,7 +105,7 @@ class JobsFormatError(Exception):
 def must_be_authenticated(path: str) -> bool:
     """Return true if a user must be authenticated to use this endpoint route path."""
 
-    no_auth = (path in ["/api", "/api.html", "/health", "/_mgmt/ping"]) or path.startswith("/auth/")
+    no_auth = (path in ["/api", "/api.html", "/_mgmt/health", "/_mgmt/ping"]) or path.startswith("/auth/")
     return not no_auth
 
 

@@ -134,7 +134,7 @@ async def test_error_when_not_authenticated(  # pylint: disable=too-many-locals
 
 def test_authenticated_endpoints():
     """Test that the catalog endpoints need authentication."""
-    for route_path in ["/api", "/api.html", "/health", "/_mgmt/ping"]:
+    for route_path in ["/api", "/api.html", "/_mgmt/health", "/_mgmt/ping"]:
         assert not must_be_authenticated(route_path)
     for route_path in [
         "/processes",

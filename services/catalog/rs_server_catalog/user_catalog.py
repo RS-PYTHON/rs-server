@@ -1288,7 +1288,7 @@ collection or an item from a collection owned by the '{self.request_ids['owner_i
             if not self.request_ids["item_id"] and request_body.get("type") == "Feature":
                 self.request_ids["item_id"] = request_body.get("id")
 
-        if "/health" in request.scope["path"]:
+        if "/_mgmt/health" in request.scope["path"]:
             # return true if up and running
             return JSONResponse(content="Healthy", status_code=HTTP_200_OK)
 

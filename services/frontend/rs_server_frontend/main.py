@@ -75,7 +75,12 @@ class Frontend:
             raise FrontendFailed("Unable to serve openapi specification.") from e
 
         # include_in_schema=False: hide this endpoint from the swagger
-        @self.app.get("/health", response_model=HealthSchema, name="Check service health", include_in_schema=False)
+        @self.app.get(
+            "/_mgmt/health",
+            response_model=HealthSchema,
+            name="Check service health",
+            include_in_schema=False,
+        )
         async def health() -> HealthSchema:
             """
             Always return a flag set to 'true' when the service is up and running.

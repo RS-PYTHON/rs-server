@@ -117,8 +117,8 @@ if [[ " $@ " == *" --run-services "* ]]; then
     # Use the same values as in services.yml
 
     # Use postgres database
-    run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "health"
-    run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "health"
+    run_local_service "../adgs" "rs_server_adgs.fastapi.adgs_app:app" 8001 "_mgmt/health"
+    run_local_service "../cadip" "rs_server_cadip.fastapi.cadip_app:app" 8002 "_mgmt/health"
     RSPY_LOCAL_MODE=1 \
         run_local_service "../staging" "rs_server_staging.main:app" 8004 "_mgmt/ping"
 
