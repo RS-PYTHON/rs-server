@@ -15,8 +15,11 @@
 """Contains all functions for timestamps extension management."""
 
 import datetime
-import os
 from typing import Literal
+
+from rs_server_common.s3_storage_handler.s3_storage_config import (
+    get_expiration_delay_from_config,
+)
 
 ISO_8601_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -47,9 +50,12 @@ def set_updated_expires_timestamp(
         if expiration:
             item["properties"]["expires"] = expiration.strftime(ISO_8601_FORMAT)
         else:
-            expiration_range = int(os.environ.get("ITEM_EXPIRATION_DAYS", "30"))
-            plus_30_days = current_time + datetime.timedelta(days=expiration_range)
-            item["properties"]["expires"] = plus_30_days.strftime(ISO_8601_FORMAT)
+            item_owner = item["properties"].get("owner", "*")
+            item_collection = item.get("collection", "*")
+            item_eopf_type = item["properties"].get("eopf:type", "*")
+            expiration_range = get_expiration_delay_from_config(item_owner, item_collection, item_eopf_type)
+            expiration_date = current_time + datetime.timedelta(days=expiration_range)
+            item["properties"]["expires"] = expiration_date.strftime(ISO_8601_FORMAT)
     elif operation == "update":  # We update an existing item so we keep the original "expires" & "published" field.
         item["properties"]["expires"] = original_expires
         item["properties"]["published"] = original_published
