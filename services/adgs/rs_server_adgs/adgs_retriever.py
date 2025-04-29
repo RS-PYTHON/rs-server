@@ -16,6 +16,7 @@
 
 import os
 import os.path as osp
+from functools import lru_cache
 from pathlib import Path
 
 from rs_server_common.authentication.authentication_to_external import (
@@ -33,6 +34,7 @@ else:
     DEFAULT_EODAG_CONFIG = Path(osp.realpath(osp.dirname(__file__))).parent / "config" / "adgs_ws_config.yaml"
 
 
+@lru_cache
 def init_adgs_provider(station: str) -> EodagProvider:
     """Initialize the adgs provider for the given station.
 

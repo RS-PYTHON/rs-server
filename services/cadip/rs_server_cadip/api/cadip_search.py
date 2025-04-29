@@ -29,6 +29,7 @@ from typing import Annotated, Literal
 import requests
 import sqlalchemy
 import stac_pydantic
+from eodag.plugins.authentication.base import Authentication
 from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Query, Request, status
@@ -70,6 +71,7 @@ from rs_server_common.utils.utils import (
     validate_sort_input,
     validate_str_list,
 )
+from rs_server_common.utils.utils2 import log_http_exception
 from stac_fastapi.api.models import GeoJSONResponse
 
 # pylint: disable=duplicate-code # with adgs_search
@@ -498,13 +500,46 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
         HTTPException (fastapi.exceptions): If there is a value error during mapping.
     """
     try:
-        products = init_cadip_provider(f"{station}_session").search(
+        # Get the cadip session provider
+        station_session = f"{station}_session"
+        session_provider = init_cadip_provider(station_session)
+
+        # Authenticate and search sessions
+        products = session_provider.search(
             **validate(queryables),
             sessions_search=True,
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),
             page=page,
         )
+
+        # The station authentication is the same for both the session and assets providers so copy it manually.
+        eodag_gateway = session_provider.client  # same for both providers
+        providers_config = eodag_gateway.providers_config
+        plugin_manager = eodag_gateway._plugins_manager  # pylint: disable=protected-access
+
+        # See: eodag/plugins/manager.py::get_auth_plugins
+        auth_session = plugin_manager._build_plugin(  # pylint: disable=protected-access
+            station_session,
+            providers_config[station_session].auth,
+            Authentication,
+        )
+        auth_assets = plugin_manager._build_plugin(  # pylint: disable=protected-access
+            station,
+            providers_config[station].auth,
+            Authentication,
+        )
+
+        # Copy parameters between auth plugins, see: eodag/plugins/authentication/token.py
+        try:
+            auth_assets.token = auth_session.token
+            auth_assets.refresh_token = auth_session.refresh_token
+            auth_assets.token_expiration = auth_session.token_expiration
+
+        # If anything goes wrong, just log the error. The token will be fetched two times but it's OK.
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            log_http_exception(logger, status.HTTP_500_INTERNAL_SERVER_ERROR, e)
+
         products = validate_products(products)
         feature_template_path = CADIP_CONFIG / "cadip_session_ODataToSTAC_template.json"
         stac_mapper_path = CADIP_CONFIG / "cadip_sessions_stac_mapper.json"
