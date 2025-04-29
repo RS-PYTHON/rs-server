@@ -15,6 +15,7 @@
 """OpenTelemetry utility"""
 
 import inspect
+import json
 import os
 import pkgutil
 import sys
@@ -32,45 +33,108 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from rs_server_common.settings import env_bool
 from rs_server_common.utils.logging import Logging
 
-logger = Logging.default(__name__)
+default_logger = Logging.default(__name__)
 
 FROM_PYTEST = False
+
+
+# Show details of http headers and body/content in tempo/grafana ?
+# Don't store results in global variables because the env var values can change
+# after this module was loaded.
+def trace_headers():
+    """Trace request headers ?"""
+    return env_bool("OTEL_PYTHON_REQUESTS_TRACE_HEADERS", default=False)
+
+
+def trace_body():
+    """Trace request bodies and response contents ?"""
+    return env_bool("OTEL_PYTHON_REQUESTS_TRACE_BODY", default=False)
+
+
+def parse_data(data) -> str:
+    """Convert data to a string representation"""
+
+    if not data:
+        return ""
+
+    # Try to decode bytes
+    if isinstance(data, bytes):
+        data = data.decode("utf-8")
+
+    # Try to convert to a dict
+    try:
+        data = dict(data)
+    except Exception:  # pylint: disable=broad-exception-caught # nosec
+        pass
+
+    # Or to parse to a dict
+    try:
+        data = json.loads(data)
+    except Exception:  # pylint: disable=broad-exception-caught # nosec
+        pass
+
+    # If we have a dict, try to format it as json
+    if isinstance(data, dict):
+        data = json.dumps(data, indent=2)
+
+    return data or ""
 
 
 def request_hook(span, request):
     """
     HTTP requests intrumentation
     """
-    if span:
-        span.set_attribute("http.request.headers", str(request.headers))
+    if not span:
+        return
+
+    # Copy the http.url attribute into _url so it appears at the
+    # top in the grafana UI, it's more readable
+    span.set_attribute("_url", span.attributes.get("http.url"))
+
+    if trace_headers():
+        span.set_attribute("http.request.headers", parse_data(request.headers))
+
+    if trace_body():
+        span.set_attribute("http.request.body", parse_data(request.body))
 
 
 def response_hook(span, request, response):  # pylint: disable=W0613
     """
     HTTP responses intrumentation
     """
-    if span:
-        span.set_attribute("http.response.headers", str(response.headers))
+    if not span:
+        return
+
+    if trace_headers():
+        span.set_attribute("http.response.headers", parse_data(response.headers))
+
+    if trace_body():
+        span.set_attribute("http.response.content", parse_data(response.content))
 
 
-def init_traces(app: fastapi.FastAPI, service_name: str):
+def init_traces(app: fastapi.FastAPI, service_name: str, logger=None):
     """
     Init instrumentation of OpenTelemetry traces.
 
     Args:
         app (fastapi.FastAPI): FastAPI application
         service_name (str): service name
+        logger: non-default logger to user
     """
 
     # See: https://github.com/softwarebloat/python-tracing-demo/tree/main
+
+    logger = logger or default_logger
 
     # Don't call this line from pytest because it causes errors:
     # Transient error StatusCode.UNAVAILABLE encountered while exporting metrics to localhost:4317, retrying in ..s.
     if not FROM_PYTEST:
         tempo_endpoint = os.getenv("TEMPO_ENDPOINT")
         if not tempo_endpoint:
+            logger.warning("'TEMPO_ENDPOINT' variable is missing, cannot initialize OpenTelemetry")
             return
 
         # TODO: to avoid errors in local mode:
@@ -132,7 +196,7 @@ def init_traces(app: fastapi.FastAPI, service_name: str):
             if callable(_instrument):
 
                 _class_instance = _class()
-                if _class == RequestsInstrumentor and os.getenv("OTEL_PYTHON_REQUESTS_TRACE_HEADERS"):
+                if _class == RequestsInstrumentor and (trace_headers() or trace_body()):
                     _class_instance.instrument(
                         tracer_provider=otel_tracer,
                         request_hook=request_hook,
