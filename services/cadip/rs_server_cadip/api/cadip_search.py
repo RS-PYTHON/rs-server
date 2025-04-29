@@ -35,8 +35,7 @@ from fastapi import Path as FPath
 from fastapi import Query, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import validate_call
-from rs_server_cadip import cadip_tags
-from rs_server_cadip.cadip_retriever import init_cadip_provider
+from rs_server_cadip import cadip_retriever, cadip_tags
 from rs_server_cadip.cadip_utils import (
     CADIP_CONFIG,
     cadip_map_mission,
@@ -502,7 +501,7 @@ def process_session_search(  # type: ignore # pylint: disable=too-many-arguments
     try:
         # Get the cadip session provider
         station_session = f"{station}_session"
-        session_provider = init_cadip_provider(station_session)
+        session_provider = cadip_retriever.init_cadip_provider(station_session)
 
         # Authenticate and search sessions
         products = session_provider.search(
@@ -615,7 +614,7 @@ def process_files_search(  # pylint: disable=too-many-locals
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Pagination cannot be less 0")
     # Init dataretriever / get products / return
     try:
-        products = init_cadip_provider(station).search(
+        products = cadip_retriever.init_cadip_provider(station).search(
             **validate(queryables),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby) if (sortby := kwargs.get("sortby")) else None,
