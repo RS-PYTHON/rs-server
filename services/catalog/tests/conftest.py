@@ -40,6 +40,7 @@ from rs_server_common import settings as common_settings
 
 from .helpers import (
     RESOURCES_FOLDER,
+    S3_EXPIRATION_BUCKET_CSV_FILE,
     Collection,
     Feature,
     a_collection,
@@ -330,6 +331,7 @@ def setup_database(
         user id titi.
     """
 
+    os.environ["BUCKET_CONFIG_FILE_PATH"] = S3_EXPIRATION_BUCKET_CSV_FILE
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s2_l1)

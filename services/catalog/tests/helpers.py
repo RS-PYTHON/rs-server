@@ -26,6 +26,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy_utils import database_exists
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "s3/expiration_bucket.csv")
 
 
 def is_db_up(db_url: str) -> bool:
