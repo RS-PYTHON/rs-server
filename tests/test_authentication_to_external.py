@@ -937,7 +937,7 @@ def test_set_eodag_auth_token_config_not_found(mocker):
     ids=["cadip", "adgs"],
     indirect=["fastapi_app"],
 )
-async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-locals
+async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-locals,too-many-statements
     mocker,
     monkeypatch,
     client,
@@ -966,10 +966,9 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
         collection_ids = {collection["id"] for collection in collections}
 
         # Read eodag provider list = stations.
-        # With cadip, add the _session suffixes.
-        all_providers = {collection["station"] for collection in collections}
-        if cadip:
-            all_providers = {provider + suffix for provider in all_providers for suffix in ("", "_session")}
+        # With cadip, only the token for _session providers are retrieved.
+        suffix = "_session" if cadip else ""
+        all_providers = sorted({collection["station"] + suffix for collection in collections})
 
     def mock_station_response(request):
         if adgs:
@@ -1042,7 +1041,7 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
 
     # Check that a token was requested only once per station (=provider)
     token_auths, token_providers = await parallel_search()
-    assert sorted(token_providers) == sorted(all_providers)
+    assert sorted(token_providers) == all_providers
 
     # Assert that the refresh_token was not called
     assert len(all_requests) == len(all_providers)
@@ -1061,9 +1060,9 @@ async def test_set_eodag_auth_token_called_once(  # pylint: disable=too-many-loc
         token_auth.token_expiration = datetime.datetime(1900, 1, 1)
     spy_token_request.reset_mock()
     _, token_providers = await parallel_search()
-    assert sorted(token_providers) == sorted(all_providers)
+    assert sorted(token_providers) == all_providers
 
-    # Assert that the refresh_token was  called
+    # Assert that the refresh_token was called
     assert len(all_requests) == len(all_providers)
     for request in all_requests:
         assert "refresh_token" in request.body

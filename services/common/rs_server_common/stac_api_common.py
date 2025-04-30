@@ -34,7 +34,6 @@ from typing import (
 )
 
 import stac_pydantic
-import stac_pydantic.links
 import yaml
 from fastapi import HTTPException
 from fastapi import Path as FPath

@@ -30,8 +30,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi import Path as FPath
 from fastapi import Request, status
 from fastapi.responses import RedirectResponse
-from rs_server_adgs import adgs_tags
-from rs_server_adgs.adgs_retriever import init_adgs_provider
+from rs_server_adgs import adgs_retriever, adgs_tags
 from rs_server_adgs.adgs_utils import (
     auxip_map_mission,
     prepare_collection,
@@ -347,7 +346,7 @@ def process_product_search(  # pylint: disable=too-many-locals
         HTTPException: If there is a general failure during the process.
     """
     try:
-        products = init_adgs_provider(station).search(
+        products = adgs_retriever.init_adgs_provider(station).search(
             **validate(queryables),
             items_per_page=limit,
             sort_by=validate_sort_input(sortby),

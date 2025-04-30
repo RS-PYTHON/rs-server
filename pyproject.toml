@@ -102,7 +102,15 @@ markers = [
     "unit", # mark a test as unittest
     "integration", # mark a test as integration test
 ]
+asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
+# https://github.com/CS-SI/eodag/issues/1623
+filterwarnings = [
+    "ignore::DeprecationWarning:pkg_resources",
+    "ignore::DeprecationWarning:eodag.plugins.manager",
+    "ignore::DeprecationWarning:pydantic._internal._config",
+    "ignore::DeprecationWarning:pydantic.fields"
+]
 
 [tool.mypy]
 warn_redundant_casts = true

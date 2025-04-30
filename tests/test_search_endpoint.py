@@ -349,18 +349,18 @@ class TestModelValidationError:
     @pytest.mark.unit
     def test_adgs_search_error(self, client, mocker):
         """Test ADGS process_product_search throwing errors"""
-        mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=CreateProviderFailed)
+        mocker.patch("rs_server_adgs.adgs_retriever.init_adgs_provider", side_effect=CreateProviderFailed)
         response = client.get("/auxip/collections/adgs_by_platform/items")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.json() == {"detail": "Bad station identifier: "}
         mocker.patch(
-            "rs_server_adgs.api.adgs_search.init_adgs_provider",
+            "rs_server_adgs.adgs_retriever.init_adgs_provider",
             side_effect=requests.exceptions.ConnectionError,
         )
         response = client.get("/auxip/collections/adgs_by_platform/items")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.json() == {"detail": "Station ADGS connection error: "}
-        mocker.patch("rs_server_adgs.api.adgs_search.init_adgs_provider", side_effect=Exception)
+        mocker.patch("rs_server_adgs.adgs_retriever.init_adgs_provider", side_effect=Exception)
         response = client.get("/auxip/collections/adgs_by_platform/items")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
         assert response.json() == {"detail": "General failure: "}
