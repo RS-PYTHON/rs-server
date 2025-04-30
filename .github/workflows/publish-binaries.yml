@@ -590,11 +590,13 @@ jobs:
   # See https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event
   trigger-rs-infra-core:
     needs: [set-env]
-    if: (github.actor != 'dependabot[bot]') && (${{ needs.set-env.outputs.branch_name }} == 'develop')
+    if: (github.actor != 'dependabot[bot]') && (needs.set-env.outputs.branch_name == 'develop')
     runs-on: ubuntu-latest
     name: "Trigger rs-infra-core workflow"
     steps:
       - run: |
+          echo ${{ needs.set-env.outputs.branch_name }}
+          exit 1
           set -x
           curl -L \
             -X POST \
@@ -604,3 +606,5 @@ jobs:
             https://api.github.com/repos/RS-PYTHON/rs-infra-core/actions/workflows/publish-image.yml/dispatches \
             -d '{"ref":"develop","inputs":{"docker_tag":"latest"}}'
         shell: bash
+
+#
