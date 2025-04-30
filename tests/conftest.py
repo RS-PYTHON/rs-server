@@ -247,7 +247,9 @@ def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-ar
 def clear_caches():
     """Clear caches at the end of each test"""
     yield
+    adgs_retriever.init_adgs_provider.cache_clear()
     adgs_utils.read_conf.cache_clear()
+    cadip_retriever.init_cadip_provider.cache_clear()
     cadip_utils.read_conf.cache_clear()
     cadip_utils.cadip_stac_mapper.cache_clear()
     CustomEODataAccessGateway.create.cache_clear()
