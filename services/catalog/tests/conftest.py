@@ -17,7 +17,12 @@
 import os
 import subprocess  # nosec ignore security issue
 from importlib import reload
+from urllib.parse import quote_plus as quote
 
+import psycopg
+from pypgstac.db import PgstacDB
+from pypgstac.migrate import Migrate
+from pytest_postgresql.janitor import DatabaseJanitor
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
@@ -35,6 +40,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from pytest_postgresql.factories.process import _pg_exe
 from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
 
@@ -48,7 +54,6 @@ from .helpers import (
     add_feature,
     add_features_from_file,
     delete_collection,
-    is_db_up,
 )
 
 # Clean before running.
@@ -67,25 +72,41 @@ app.openapi()
 os.environ["RSPY_LOCAL_MODE"] = "1"
 reload(common_settings)
 
-
-@pytest.fixture(scope="session", name="docker_compose_file")
-def docker_compose_file_():
-    """Return the path to the docker-compose.yml file to run before tests."""
-    return Path(__file__).parent / "docker-compose.yml"
-
-
-@pytest.mark.integration
-@pytest.fixture(scope="session", name="db_url")
-def db_url_fixture(docker_ip, docker_services) -> str:  # pylint: disable=missing-function-docstring
-    port = docker_services.port_for("stac-db", 5432)
-    return f"postgresql://postgres:password@{docker_ip}:{port}/{os.getenv('POSTGRES_DB')}"
+postgresql_ctl = _pg_exe(None, {"exec": "/does-not-exist"})
+if not Path(postgresql_ctl).is_file():
+    raise OSError(f"{postgresql_ctl!r} does not exist, try installing 'sudo apt install postgis*'")
 
 
 @pytest.mark.integration
 @pytest.fixture(scope="session", autouse=True, name="start_database")
-def start_database_fixture(docker_services, db_url):
+def start_database_fixture(postgresql_proc):
     """Ensure pgstac database in available."""
-    docker_services.wait_until_responsive(timeout=30.0, pause=0.1, check=lambda: is_db_up(db_url))
+
+    os.environ["POSTGRES_USER"] = str(postgresql_proc.user)
+    os.environ["POSTGRES_PORT"] = str(postgresql_proc.port)
+    os.environ["POSTGRES_HOST"] = str(postgresql_proc.host)
+    os.environ["POSTGRES_HOST_READER"] = str(postgresql_proc.host)
+    os.environ["POSTGRES_HOST_WRITER"] = str(postgresql_proc.host)
+
+    # Init the postgres mockup.
+    # Taken from: https://github.com/stac-utils/stac-fastapi-pgstac/blob/main/tests/conftest.py
+    with DatabaseJanitor(
+        user=postgresql_proc.user,
+        host=postgresql_proc.host,
+        port=postgresql_proc.port,
+        dbname=os.environ["POSTGRES_DB"],
+        version=postgresql_proc.version,
+        password=os.environ["POSTGRES_PASSWORD"],
+    ) as jan:
+        connection = f"postgresql://{jan.user}:{quote(jan.password)}@{jan.host}:{jan.port}/{jan.dbname}"
+        with PgstacDB(dsn=connection) as db:
+            migrator = Migrate(db)
+            try:
+                version = migrator.run_migration()
+            except psycopg.errors.FeatureNotSupported as exception:
+                raise OSError("Try installing 'sudo apt install postgis*'") from exception
+            assert version
+        yield jan
 
 
 @pytest.mark.integration

@@ -200,8 +200,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
+      - name: install lib postgres
+        uses: nyurik/action-setup-postgis@v2
       - name: Run pytest
-        run: ./resources/all_pytests.sh --install
+        run: cd services/catalog && poetry install --with dev && poetry run opentelemetry-bootstrap -a install && poetry run pytest ./tests
+        # run: ./resources/all_pytests.sh --install
         shell: bash
 
       - name: Display code coverage summary in this console

@@ -62,6 +62,8 @@ sqlalchemy-utils = "^0.41.2"
 psycopg2 = "^2.9.9"
 pytest-httpx = ">=0.32,<0.35"
 pytest-asyncio = ">=0.24,<0.27"
+pytest-postgresql = "^7.0.1"
+pypgstac = {extras = ["psycopg"], version = "^0.9.6"}
 
 
 [tool.black]
@@ -88,3 +90,6 @@ metadata = false
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
 build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.bandit.assert_used]
+skips = ['*/test_*.py']
