@@ -14,15 +14,6 @@
 
 """Common fixture for catalog service."""
 
-import os
-import subprocess  # nosec ignore security issue
-from importlib import reload
-from urllib.parse import quote_plus as quote
-
-import psycopg
-from pypgstac.db import PgstacDB
-from pypgstac.migrate import Migrate
-from pytest_postgresql.janitor import DatabaseJanitor
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
@@ -33,19 +24,25 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 # pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
 init_app_cluster_mode()
 
+import os
 from collections.abc import Iterator
+from importlib import reload
 
 # flake8: noqa: E402
 from pathlib import Path
+from urllib.parse import quote_plus as quote
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
+from pypgstac.db import PgstacDB
+from pypgstac.migrate import Migrate
 from pytest_postgresql.factories.process import _pg_exe
+from pytest_postgresql.janitor import DatabaseJanitor
 from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
 
 from .helpers import (
-    RESOURCES_FOLDER,
     Collection,
     Feature,
     a_collection,
@@ -55,15 +52,6 @@ from .helpers import (
     add_features_from_file,
     delete_collection,
 )
-
-# Clean before running.
-# No security risks since this file is not released into production.
-
-subprocess.run(
-    [RESOURCES_FOLDER / "../../../../tests/resources/clean.sh"],
-    check=False,
-    shell=False,
-)  # nosec ignore security issue
 
 app.openapi = extract_openapi_specification
 app.openapi()

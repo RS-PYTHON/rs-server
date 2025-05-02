@@ -21,7 +21,6 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 """
 
 import os
-import os.path as osp
 from importlib import reload
 
 # We are in local mode (no cluster).
@@ -35,16 +34,22 @@ reload(settings)
 
 import datetime
 import json
-import subprocess  # nosec ignore security issue
+import os.path as osp
 from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import quote_plus as quote
 
+import psycopg
 import pytest
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pypgstac.db import PgstacDB
+from pypgstac.migrate import Migrate
+from pytest_postgresql.factories.process import _pg_exe
+from pytest_postgresql.janitor import DatabaseJanitor
 from rs_server_adgs import adgs_retriever, adgs_utils
 from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
@@ -136,38 +141,52 @@ def export_aws_credentials():
 # FASTAPI AND DATABASE #
 ########################
 
-# Init the FastAPI application and database
-# See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
-# But I have error
-#     pytest_postgresql.exceptions.ExecutableMissingException: Could not found /usr/lib/postgresql/14/bin/pg_ctl.
-#     Is PostgreSQL server installed?
-#     Alternatively pg_config installed might be from different version that postgresql-server.
-# See commit bbc6290df7c92fd306908830cbade8975e1eea6c
-
-# Clean before running.
-# No security risks since this file is not released into production.
-subprocess.run([RESOURCES_FOLDER / "clean.sh"], check=False, shell=False)  # nosec ignore security issue
+postgresql_ctl = _pg_exe(None, {"exec": "/does-not-exist"})
+if not Path(postgresql_ctl).is_file():
+    raise OSError(f"{postgresql_ctl!r} does not exist, try installing 'sudo apt install postgis*'")
 
 
-@pytest.fixture(scope="session", name="docker_compose_file")
-def docker_compose_file_():
-    """Return the path to the docker-compose.yml file to run before tests."""
-    return RESOURCES_FOLDER / "db" / "docker-compose.yml"
+@pytest.mark.integration
+@pytest.fixture(scope="session", autouse=True, name="start_database")
+def start_database_fixture(postgresql_proc):
+    """Ensure pgstac database in available."""
+
+    os.environ["POSTGRES_DB"] = "rspy_pytest"
+    os.environ["POSTGRES_PASSWORD"] = "postgres"
+    os.environ["POSTGRES_USER"] = str(postgresql_proc.user)
+    os.environ["POSTGRES_PORT"] = str(postgresql_proc.port)
+    os.environ["POSTGRES_HOST"] = str(postgresql_proc.host)
+    os.environ["POSTGRES_HOST_READER"] = str(postgresql_proc.host)
+    os.environ["POSTGRES_HOST_WRITER"] = str(postgresql_proc.host)
+
+    # Init the postgres mockup.
+    # Taken from: https://github.com/stac-utils/stac-fastapi-pgstac/blob/main/tests/conftest.py
+    with DatabaseJanitor(
+        user=postgresql_proc.user,
+        host=postgresql_proc.host,
+        port=postgresql_proc.port,
+        dbname=os.environ["POSTGRES_DB"],
+        version=postgresql_proc.version,
+        password=os.environ["POSTGRES_PASSWORD"],
+    ) as jan:
+        connection = f"postgresql://{jan.user}:{quote(jan.password)}@{jan.host}:{jan.port}/{jan.dbname}"
+        with PgstacDB(dsn=connection) as db:
+            migrator = Migrate(db)
+            try:
+                version = migrator.run_migration()
+            except psycopg.errors.FeatureNotSupported as exception:
+                raise OSError("Try installing 'sudo apt install postgis*'") from exception
+            assert version
+        yield jan
 
 
 @pytest.fixture(name="fastapi_app")
-def fastapi_app_(  # pylint: disable=too-many-arguments
+def fastapi_app_(
     request,
     mocker,
     monkeypatch,
-    docker_ip,
-    docker_services,
-    docker_compose_file,
-):  # pylint: disable=unused-argument
-    """
-    Init the FastAPI application and the database connection from the docker-compose.yml file.
-    docker_ip, docker_services are used by pytest-docker that runs docker compose.
-    """
+):
+    """Init the FastAPI application"""
 
     # Mock cluster/local mode to enable or disable authentication.
     try:
@@ -188,9 +207,6 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
     # Patch the global variables. See: https://stackoverflow.com/a/69685866
     mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
-
-    # Read the .env file that comes with docker-compose.yml
-    load_dotenv(RESOURCES_FOLDER / "db" / ".env")
 
     # Mock the oauth2 environment variables for the cluster mode
     if cluster_mode:
