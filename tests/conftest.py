@@ -21,6 +21,7 @@ Fixtures defined in a conftest.py can be used by any test in that package withou
 """
 
 import os
+import os.path as osp
 from importlib import reload
 
 # We are in local mode (no cluster).
@@ -34,22 +35,14 @@ reload(settings)
 
 import datetime
 import json
-import os.path as osp
 from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
-from urllib.parse import quote_plus as quote
 
-import psycopg
 import pytest
 import yaml
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from pypgstac.db import PgstacDB
-from pypgstac.migrate import Migrate
-from pytest_postgresql.factories.process import _pg_exe
-from pytest_postgresql.janitor import DatabaseJanitor
 from rs_server_adgs import adgs_retriever, adgs_utils
 from rs_server_cadip import cadip_retriever, cadip_utils
 from rs_server_common.authentication import oauth2  # pylint: disable=ungrouped-imports
@@ -57,7 +50,6 @@ from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
 )
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
-from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
 from tests.app import init_app
@@ -137,47 +129,9 @@ def export_aws_credentials():
         os.environ.update(s3_config["s3"])
 
 
-########################
-# FASTAPI AND DATABASE #
-########################
-
-postgresql_ctl = _pg_exe(None, {"exec": "/does-not-exist"})
-if not Path(postgresql_ctl).is_file():
-    raise OSError(f"{postgresql_ctl!r} does not exist, try installing 'sudo apt install postgis*'")
-
-
-@pytest.mark.integration
-@pytest.fixture(scope="session", autouse=True, name="start_database")
-def start_database_fixture(postgresql_proc):
-    """Ensure pgstac database in available."""
-
-    os.environ["POSTGRES_DB"] = "rspy_pytest"
-    os.environ["POSTGRES_PASSWORD"] = "postgres"
-    os.environ["POSTGRES_USER"] = str(postgresql_proc.user)
-    os.environ["POSTGRES_PORT"] = str(postgresql_proc.port)
-    os.environ["POSTGRES_HOST"] = str(postgresql_proc.host)
-    os.environ["POSTGRES_HOST_READER"] = str(postgresql_proc.host)
-    os.environ["POSTGRES_HOST_WRITER"] = str(postgresql_proc.host)
-
-    # Init the postgres mockup.
-    # Taken from: https://github.com/stac-utils/stac-fastapi-pgstac/blob/main/tests/conftest.py
-    with DatabaseJanitor(
-        user=postgresql_proc.user,
-        host=postgresql_proc.host,
-        port=postgresql_proc.port,
-        dbname=os.environ["POSTGRES_DB"],
-        version=postgresql_proc.version,
-        password=os.environ["POSTGRES_PASSWORD"],
-    ) as jan:
-        connection = f"postgresql://{jan.user}:{quote(jan.password)}@{jan.host}:{jan.port}/{jan.dbname}"
-        with PgstacDB(dsn=connection) as db:
-            migrator = Migrate(db)
-            try:
-                version = migrator.run_migration()
-            except psycopg.errors.FeatureNotSupported as exception:
-                raise OSError("Try installing 'sudo apt install postgis*'") from exception
-            assert version
-        yield jan
+###########
+# FASTAPI #
+###########
 
 
 @pytest.fixture(name="fastapi_app")
@@ -226,32 +180,16 @@ def fastapi_app_(
 
 @pytest.fixture(name="client")
 def client_(fastapi_app: FastAPI):
-    """Test the FastAPI application, opens the database session."""
+    """Test the FastAPI application"""
     with TestClient(fastapi_app) as client:
         yield client
 
 
-@pytest.fixture(scope="function", autouse=True)
-def create_tables(client):  # pylint: disable=unused-argument
-    """Drop and create all tables."""
-    sessionmanager.drop_all()
-    sessionmanager.create_all()
-
-
-@pytest.fixture(scope="function", autouse=True)
-def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-argument
-    """Override the default database session"""
-
-    # pylint: disable=duplicate-code
-    # NOTE: don't understand why we must duplicate this code.
-    def get_db_override():
-        try:
-            with sessionmanager.session() as session:
-                yield session
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            DatabaseSessionManager.reraise_http_exception(exception)
-
-    fastapi_app.dependency_overrides[get_db] = get_db_override
+@pytest.fixture(autouse=True)
+def workaround_fixture(client):  # pylint: disable=unused-argument
+    """
+    I need this or I have the error "function uses no fixture 'fastapi_app'", I can't understand why.
+    """
 
 
 ##################

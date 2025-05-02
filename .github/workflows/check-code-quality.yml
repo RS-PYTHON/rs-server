@@ -203,8 +203,7 @@ jobs:
       - name: install lib postgres
         uses: nyurik/action-setup-postgis@v2
       - name: Run pytest
-        run: cd services/catalog && poetry install --with dev && poetry run opentelemetry-bootstrap -a install && poetry run pytest ./tests
-        # run: ./resources/all_pytests.sh --install
+        run: ./resources/all_pytests.sh --install
         shell: bash
 
       - name: Display code coverage summary in this console

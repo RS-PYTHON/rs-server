@@ -48,7 +48,7 @@ from starlette.status import (
     HTTP_422_UNPROCESSABLE_ENTITY,
 )
 
-from .conftest import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
+from .helpers import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
 
 logger = Logging.default(__name__)
 

@@ -60,7 +60,7 @@ app.openapi()
 os.environ["RSPY_LOCAL_MODE"] = "1"
 reload(common_settings)
 
-postgresql_ctl = _pg_exe(None, {"exec": "/does-not-exist"})
+postgresql_ctl = _pg_exe(None, {"exec": "/does-not-exist"})  # type: ignore[typeddict-item]
 if not Path(postgresql_ctl).is_file():
     raise OSError(f"{postgresql_ctl!r} does not exist, try installing 'sudo apt install postgis*'")
 
@@ -86,7 +86,7 @@ def start_database_fixture(postgresql_proc):
         version=postgresql_proc.version,
         password=os.environ["POSTGRES_PASSWORD"],
     ) as jan:
-        connection = f"postgresql://{jan.user}:{quote(jan.password)}@{jan.host}:{jan.port}/{jan.dbname}"
+        connection = f"postgresql://{jan.user}:{quote(jan.password or '')}@{jan.host}:{jan.port}/{jan.dbname}"
         with PgstacDB(dsn=connection) as db:
             migrator = Migrate(db)
             try:
