@@ -20,7 +20,7 @@ import enum
 from threading import Lock
 
 from pygeoapi.util import JobStatus
-from rs_server_common.db import Base
+from rs_server_staging import Base
 from sqlalchemy import Column, DateTime, Enum, Integer, String, func, orm
 
 # pylint: disable=attribute-defined-outside-init

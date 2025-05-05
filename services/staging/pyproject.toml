@@ -46,6 +46,7 @@ dask-gateway = "2024.1.0"
 # same dask version as in the cluster i.e. same as eopf
 dask = {extras = ["distributed"], version = "2024.5.2"}
 openapi-core = "^0.19.5"
+psycopg2 = "^2.9.9"
 
 [tool.poetry.group.dev]
 optional = true

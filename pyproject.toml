@@ -85,8 +85,6 @@ flask-cors = "^5.0.1"
 sphinx = "^8.2.3"
 sphinx-rtd-theme = "^3.0.1"
 sqlalchemy-utils = "^0.41.2"
-pytest-postgresql = "^7.0.1"
-pypgstac = {extras = ["psycopg"], version = "^0.9.6"}
 
 [tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
 enable = true

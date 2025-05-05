@@ -64,6 +64,7 @@ pytest-httpx = ">=0.32,<0.35"
 pytest-asyncio = ">=0.24,<0.27"
 pytest-postgresql = "^7.0.1"
 pypgstac = {extras = ["psycopg"], version = "^0.9.6"}
+pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 
 
 [tool.black]
