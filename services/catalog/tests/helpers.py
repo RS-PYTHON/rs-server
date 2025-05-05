@@ -30,11 +30,14 @@ RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
 
 def is_db_up(db_url: str) -> bool:
     """Check if the database is up.
+
     Args:
         db_url: database url
+
     Returns:
         True if the database is up.
         False otherwise.
+
     """
     try:
         return database_exists(db_url)

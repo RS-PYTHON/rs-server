@@ -14,9 +14,6 @@
 
 """Common fixture for catalog service."""
 
-import subprocess
-
-from dotenv import load_dotenv
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
@@ -27,24 +24,18 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 # pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
 init_app_cluster_mode()
 
+# flake8: noqa: E402
+
 import os
+import subprocess  # nosec ignore security issue
 from collections.abc import Iterator
 from importlib import reload
 
-# flake8: noqa: E402
-from pathlib import Path
-from urllib.parse import quote_plus as quote
-
-import psycopg
 import pytest
+from dotenv import load_dotenv
 from fastapi.testclient import TestClient
-from pypgstac.db import PgstacDB
-from pypgstac.migrate import Migrate
-from pytest_postgresql.factories.process import _pg_exe
-from pytest_postgresql.janitor import DatabaseJanitor
 from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
-from rs_server_common.settings import env_bool
 
 from .helpers import (
     RESOURCES_FOLDER,
@@ -92,11 +83,9 @@ def db_url_fixture(docker_ip, docker_services) -> str:  # pylint: disable=missin
 
 @pytest.mark.integration
 @pytest.fixture(scope="session", autouse=True, name="start_database")
-def start_database_fixture(request):
+def start_database_fixture(docker_services, db_url):
     """Ensure pgstac database in available."""
-    docker_services = request.getfixturevalue("docker_services")
-    db_url = request.getfixturevalue("db_url")
-    yield docker_services.wait_until_responsive(timeout=30.0, pause=0.1, check=lambda: is_db_up(db_url))
+    docker_services.wait_until_responsive(timeout=30.0, pause=0.1, check=lambda: is_db_up(db_url))
 
 
 @pytest.mark.integration

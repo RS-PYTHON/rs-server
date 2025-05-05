@@ -200,7 +200,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
-
       - name: Run pytest
         run: ./resources/all_pytests.sh --install
         shell: bash

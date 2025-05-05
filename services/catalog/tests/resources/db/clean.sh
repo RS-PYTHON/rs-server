@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 # Try to kill the existing postgres docker container if it exists
 # and prune the docker pytest networks to clean the IPv4 address pool
 docker rm -f $(docker ps -aqf name=postgres-rspy_pytest) >/dev/null 2>&1
