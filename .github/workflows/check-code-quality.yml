@@ -201,7 +201,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
 
-      - name: Install postgres libs # in your local env, run 'sudo apt install postgis*'
+      - name: Install postgres and postgis libs # in your local env, run 'sudo apt install postgis*'
         uses: nyurik/action-setup-postgis@v2
 
       - name: Run pytest
