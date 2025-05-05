@@ -76,8 +76,6 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         api_version (str): version of our application (not the version of the OpenAPI specification
         nor the version of FastAPI being used)
         routers (list[APIRouter]): list of FastAPI routers to add to the application.
-        timeout (int): timeout in seconds to wait for the database connection.
-        pause (int): pause in seconds to wait for the database connection.
         router_prefix (str): used by stac_fastapi
     """
 
