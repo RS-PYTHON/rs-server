@@ -754,13 +754,13 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.3.2"
+version = "3.4.0"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "eodag-3.3.2-py3-none-any.whl", hash = "sha256:8623ce6a6c5d79afe7a1e21b275419f3543181da274b320871e1ba4f5b637e5b"},
-    {file = "eodag-3.3.2.tar.gz", hash = "sha256:4da9fe86b2a142f3011af24c135c4806dbd8f1015b87f0e22c6d3630b1640a1e"},
+    {file = "eodag-3.4.0-py3-none-any.whl", hash = "sha256:8e3b30dee13528da38aa7770124710eab8984c830cca4d9fd24cc790909c011f"},
+    {file = "eodag-3.4.0.tar.gz", hash = "sha256:ea2d6a7d316756ebec07a491262223d4b73cb628d194e9cbfd0d0fbe3328983c"},
 ]
 
 [package.dependencies]
@@ -769,6 +769,7 @@ boto3 = "*"
 botocore = "*"
 click = "*"
 geojson = "*"
+importlib_metadata = ">=5.0"
 jsonpath-ng = "*"
 lxml = "*"
 orjson = "*"
@@ -781,7 +782,6 @@ pystac = ">=1.0.0b1"
 python-dateutil = "*"
 PyYAML = "*"
 requests = "*"
-setuptools = "*"
 shapely = ">=2.0.6"
 stream-zip = "*"
 tqdm = "*"
@@ -2727,26 +2727,6 @@ botocore = ">=1.37.4,<2.0a.0"
 crt = ["botocore[crt] (>=1.37.4,<2.0a.0)"]
 
 [[package]]
-name = "setuptools"
-version = "80.3.1"
-description = "Easily download, build, install, upgrade, and uninstall Python packages"
-optional = false
-python-versions = ">=3.9"
-files = [
-    {file = "setuptools-80.3.1-py3-none-any.whl", hash = "sha256:ea8e00d7992054c4c592aeb892f6ad51fe1b4d90cc6947cc45c45717c40ec537"},
-    {file = "setuptools-80.3.1.tar.gz", hash = "sha256:31e2c58dbb67c99c289f51c16d899afedae292b978f8051efaf6262d8212f927"},
-]
-
-[package.extras]
-check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1)", "ruff (>=0.8.0)"]
-core = ["importlib_metadata (>=6)", "jaraco.functools (>=4)", "jaraco.text (>=3.7)", "more_itertools", "more_itertools (>=8.8)", "packaging (>=24.2)", "platformdirs (>=4.2.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
-cover = ["pytest-cov"]
-doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier", "towncrier (<24.7)"]
-enabler = ["pytest-enabler (>=2.2)"]
-test = ["build[virtualenv] (>=1.0.3)", "filelock (>=3.4.0)", "ini2toml[lite] (>=0.14)", "jaraco.develop (>=7.21)", "jaraco.envs (>=2.2)", "jaraco.path (>=3.7.2)", "jaraco.test (>=5.5)", "packaging (>=24.2)", "pip (>=19.1)", "pyproject-hooks (!=1.1)", "pytest (>=6,!=8.1.*)", "pytest-home (>=0.5)", "pytest-perf", "pytest-subprocess", "pytest-timeout", "pytest-xdist (>=3)", "tomli-w (>=1.0.0)", "virtualenv (>=13.0.0)", "wheel (>=0.44.0)"]
-type = ["importlib_metadata (>=7.0.2)", "jaraco.develop (>=7.21)", "mypy (==1.14.*)", "pytest-mypy"]
-
-[[package]]
 name = "shapely"
 version = "2.1.0"
 description = "Manipulation and analysis of geometric objects"
@@ -3363,4 +3343,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "21b56632751752110eb73668deb0800e0eafd44901c2935562137216a09c68a8"
+content-hash = "d4b37bb8fe726e53fda0ffd9d876642cf6c38da663502b78631c8c102ef12471"
