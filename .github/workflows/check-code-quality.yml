@@ -138,7 +138,7 @@ jobs:
 
       - id: safety
         name: Run safety
-        if: always()
+        if: always() && github.actor != 'dependabot[bot]' # dependabot does not have access to secrets
         run: |
           set -x
           poetry run safety --key ${{ secrets.SAFETY_API_KEY }} scan --detailed-output
