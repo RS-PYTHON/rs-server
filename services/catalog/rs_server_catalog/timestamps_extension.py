@@ -51,7 +51,7 @@ def set_updated_expires_timestamp(
             item["properties"]["expires"] = expiration.strftime(ISO_8601_FORMAT)
         else:
             item_owner = item["properties"].get("owner", "*")
-            item_collection = item.get("collection", "*")
+            item_collection = item.get("collection", "*").removeprefix(f"{item_owner}_")
             item_eopf_type = item["properties"].get("eopf:type", "*")
             expiration_range = get_expiration_delay_from_config(item_owner, item_collection, item_eopf_type)
             expiration_date = current_time + datetime.timedelta(days=expiration_range)
