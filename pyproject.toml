@@ -141,4 +141,4 @@ notes = ["XXX"]  # No errors on TODO and FIXME
 min-similarity-lines = 10  # Minimum lines number of a similarity
 
 [tool.bandit.assert_used]
-skips = ['*/test_*.py']
+skips = ['*/test_*.py', '*/conftest.py']

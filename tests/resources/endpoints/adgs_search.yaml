@@ -216,7 +216,7 @@ collections:
     query: null
     stac_extensions: [ "https://stac-extensions.github.io/eo/v1.0.0/schema.json", "https://stac-extensions.github.io/projection/v1.0.0/schema.json", "https://stac-extensions.github.io/view/v1.0.0/schema.json" ]
     title: 'Test collection'
-    description: 'Sentinel-1 test CADIP sessions'
+    description: 'Auxiliary files from ADGS'
     license: other
     extent:
       spatial:
@@ -242,3 +242,14 @@ collections:
     station: adgs2
     query:
       limit: 100
+    description: 'Auxiliary files from ADGS2'
+    license: other
+    extent:
+      spatial:
+        bbox: [[ -180, -82.85, 180, 82.82 ]]
+      temporal:
+        interval: [[ '2024-06-12T02:57:21.459000Z', '2024-08-22T11:30:12.767000Z' ]]
+    links:
+      - rel: license
+        href: 'https://scihub.copernicus.eu/twiki/pub/SciHubWebPortal/TermsConditions/Sentinel_Data_Terms_and_Conditions.pdf'
+        title: 'Legal notice on the use of Copernicus Sentinel Data and Service Information'

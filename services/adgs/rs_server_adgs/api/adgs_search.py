@@ -87,6 +87,7 @@ class MockPgstacAdgs(MockPgstac):
             select_config=select_config,
             stac_to_odata=stac_to_odata,
             map_mission=auxip_map_mission,
+            temporal_mapping={"start_datetime": "ContentDate/Start", "end_datetime": "ContentDate/End"},
         )
 
         # Default sortby value

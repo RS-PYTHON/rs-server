@@ -14,13 +14,11 @@
 
 """Init the FastAPI application."""
 
-import asyncio
 import typing
 from contextlib import asynccontextmanager
 from os import environ as env
 
 import httpx
-import sqlalchemy
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
@@ -29,11 +27,9 @@ from rs_server_common import settings
 from rs_server_common.authentication import oauth2
 from rs_server_common.authentication.authentication import authenticate
 from rs_server_common.authentication.oauth2 import AUTH_PREFIX
-from rs_server_common.db.database import sessionmanager
 from rs_server_common.middlewares import HandleExceptionsMiddleware
 from rs_server_common.schemas.health_schema import HealthSchema
 from rs_server_common.utils import init_opentelemetry
-from rs_server_common.utils.logging import Logging
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.errors import add_exception_handlers
 from stac_fastapi.api.middleware import ProxyHeaderMiddleware
@@ -70,9 +66,6 @@ async def health() -> HealthSchema:
 def init_app(  # pylint: disable=too-many-locals, too-many-statements
     api_version: str,
     routers: list[APIRouter],
-    init_db: bool = True,
-    pause: int = 3,
-    timeout: int = None,
     router_prefix: str = "",
 ) -> FastAPI:  # pylint: disable=too-many-arguments
     """
@@ -83,39 +76,16 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
         api_version (str): version of our application (not the version of the OpenAPI specification
         nor the version of FastAPI being used)
         routers (list[APIRouter]): list of FastAPI routers to add to the application.
-        init_db (bool): should we init the database session ?
-        timeout (int): timeout in seconds to wait for the database connection.
-        pause (int): pause in seconds to wait for the database connection.
         router_prefix (str): used by stac_fastapi
     """
 
-    logger = Logging.default(__name__)
-
     @asynccontextmanager
-    async def lifespan(app: FastAPI):
+    async def lifespan(*_):
         """Automatically executed when starting and stopping the FastAPI server."""
 
         ###########
         # STARTUP #
         ###########
-
-        # Open database session. Loop until the connection works.
-        if app.state.init_db:
-            db_info = f"'{env['POSTGRES_USER']}@{env['POSTGRES_HOST']}:{env['POSTGRES_PORT']}'"
-            while True:
-                try:
-                    sessionmanager.open_session()
-                    logger.info(f"Reached {env['POSTGRES_DB']!r} database on {db_info}")
-                    break
-                except sqlalchemy.exc.OperationalError:
-                    logger.warning(f"Trying to reach {env['POSTGRES_DB']!r} database on {db_info}")
-
-                    # Sleep for n seconds and raise exception if timeout is reached.
-                    if app.state.pg_timeout is not None:
-                        app.state.pg_timeout -= app.state.pg_pause
-                        if app.state.pg_timeout < 0:
-                            raise
-                    await asyncio.sleep(app.state.pg_pause)
 
         # Init objects for dependency injection
         settings.set_http_client(httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_CONFIG))
@@ -128,13 +98,6 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
         # Close objects for dependency injection
         await settings.del_http_client()
-
-        # Close database session
-        if app.state.init_db:
-            try:
-                await sessionmanager.close()
-            except TypeError:  # TypeError: object NoneType can't be used in 'await' expression
-                sessionmanager.close()
 
     # For cluster deployment: override the swagger /docs URL from an environment variable.
     # Also set the openapi.json URL under the same path.
@@ -149,11 +112,6 @@ def init_app(  # pylint: disable=too-many-locals, too-many-statements
 
     # Configure OpenTelemetry
     init_opentelemetry.init_traces(app, settings.SERVICE_NAME)
-
-    # Pass arguments to the app so they can be used in the lifespan function above.
-    app.state.init_db = init_db
-    app.state.pg_pause = pause
-    app.state.pg_timeout = timeout
 
     # Init a pgstac client for adgs and cadip.
     # TODO: remove this when adgs and cadip switch to a stac_fastapi application.

@@ -37,7 +37,6 @@ from pygeoapi.provider.postgresql import get_engine
 from rs_server_common import settings as common_settings
 from rs_server_common.authentication.apikey import APIKEY_AUTH_HEADER
 from rs_server_common.authentication.authentication import auth_validation
-from rs_server_common.db import Base
 from rs_server_common.middlewares import (
     AuthenticationMiddleware,
     HandleExceptionsMiddleware,
@@ -46,6 +45,7 @@ from rs_server_common.middlewares import (
 from rs_server_common.utils import init_opentelemetry
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils2 import filelock
+from rs_server_staging import Base
 from rs_server_staging.processors import processors
 from rs_server_staging.staging_endpoints_validation import (
     validate_request,

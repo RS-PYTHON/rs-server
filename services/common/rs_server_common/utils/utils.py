@@ -224,3 +224,8 @@ def validate_sort_input(sortby: str):
     """
     sortby = sortby.strip("'\"").lower().replace("properties.", "")
     return [(sortby[1:] if sortby[0] in ["-", "+"] else sortby, "DESC" if sortby[0] == "-" else "ASC")]
+
+
+def strftime_millis(date: datetime):
+    """Format datetime with milliseconds precision"""
+    return date.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"

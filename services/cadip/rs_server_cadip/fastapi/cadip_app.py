@@ -29,7 +29,7 @@ from rs_server_common.fastapi_app import init_app
 warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
 
 # Init the FastAPI application with the cadip routers.
-app = init_app(__version__, cadip_routers, init_db=True, router_prefix="/cadip")
+app = init_app(__version__, cadip_routers, router_prefix="/cadip")
 
 # Set properties for the cadip service
 app.state.get_connection = MockPgstacCadip.get_connection

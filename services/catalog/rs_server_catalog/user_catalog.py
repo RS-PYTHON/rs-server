@@ -539,9 +539,7 @@ collections/{user}:{collection_id}/items/{self.request_ids['item_id']}/download/
             if not self.request_ids["owner_id"]:
                 filters = parse_cql2_json(content["filter"]) if "filter" in content else None
                 self.request_ids["owner_id"] = (
-                    self.find_owner_id(filters)
-                    if filters
-                    else None
+                    (self.find_owner_id(filters) if filters else None)
                     or content.get("owner")
                     or get_user(self.request_ids["owner_id"], self.request_ids["user_login"])
                 )

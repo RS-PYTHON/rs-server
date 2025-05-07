@@ -32,6 +32,7 @@ from fastapi import HTTPException, status
 from rs_server_common.rspy_models import Item
 from rs_server_common.stac_api_common import map_stac_platform
 from rs_server_common.utils.logging import Logging
+from rs_server_common.utils.utils import strftime_millis
 from stac_pydantic import ItemCollection, ItemProperties
 from stac_pydantic.shared import Asset
 
@@ -227,7 +228,7 @@ def link_assets_to_session(session_features: list[Item], asset_items: list[dict]
             # Using one of the fields REQUIRES inclusion of the other field as well to enable a user to search STAC
             # records by the provided times. So if you use start_datetime you need to add end_datetime and vice-versa.
             if start_date and end_date:
-                properties.end_datetime = end_date.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"  # type: ignore
+                properties.end_datetime = strftime_millis(end_date)  # type: ignore
             elif start_date or end_date:
                 logger.warning(f"{feature.id} has only one time range property: {start_date}/{end_date}")
                 properties.start_datetime = None

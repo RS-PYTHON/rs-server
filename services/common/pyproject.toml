@@ -45,11 +45,9 @@ sqlalchemy = "^2.0.35"
 eodag = "==v3.4.0"
 # NOTE: to use a forked eodag version we would use:
 # eodag = { git = "https://github.com/jgaucher-cs/eodag", branch = "my-branch-name" }
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pydantic = ">=2.9.2,<2.12.0"
 markdown = "^3.6"
 python-dotenv = "^1.0.0"
-psycopg2 = "^2.9.9"
 filelock = "^3.16.1"
 uvicorn = ">=0.31,<0.35"
 httpx = "^0.27.2"
