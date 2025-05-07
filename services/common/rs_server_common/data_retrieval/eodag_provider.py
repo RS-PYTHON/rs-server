@@ -35,6 +35,7 @@ from rs_server_common.authentication.external_authentication_config import (
 )
 from rs_server_common.authentication.token_auth import get_station_token
 from rs_server_common.settings import env_bool
+from rs_server_common.stac_cql2 import temporal_operations
 from rs_server_common.utils.logging import Logging
 
 from .provider import CreateProviderFailed, Provider, SearchProductFailed
@@ -152,7 +153,7 @@ class EodagProvider(Provider):
         self.client.set_preferred_provider(self.provider)
         self.client.authenticate_provider(self.provider, external_config)
 
-    def _specific_search(self, **kwargs) -> SearchResult | list:
+    def _specific_search(self, **kwargs) -> SearchResult | list:  # pylint: disable=too-many-branches,too-many-locals
         """
         Conducts a search for products using the specified OData arguments.
 
@@ -207,6 +208,11 @@ class EodagProvider(Provider):
                     "StopPublicationDate": end,
                 },
             )
+
+        for op in temporal_operations:
+            if query := kwargs.pop(op, None):
+                mapped_search_args[op] = query
+
         max_items_allowed = int(self.client.providers_config[self.provider].search.pagination["max_items_per_page"])
         if int(kwargs["items_per_page"]) > max_items_allowed:
             logger.warning(
@@ -216,7 +222,7 @@ class EodagProvider(Provider):
             logger.warning(f"Number of items per page was set to {max_items_allowed - 1}.")
             kwargs["items_per_page"] = max_items_allowed - 1
         try:
-            logger.info(f"Searching from {self.provider} with parameters {mapped_search_args}")
+            logger.info(f"Searching from {self.provider} with parameters {mapped_search_args} and kwargs {kwargs}")
             # Start search -> user defined search params in mapped_search_args (id), pagination in kwargs (top, limit).
             # search_method = self.client.search if "session" not in self.provider else self.client.search_iter_page
             products = self.client.search(

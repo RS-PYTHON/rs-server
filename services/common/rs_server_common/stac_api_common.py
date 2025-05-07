@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable=too-many-lines
+
 """Module to share common functionalities for validating / creating stac items"""
 import copy
 import json
+import re
 import threading
 import traceback
 import urllib.parse
@@ -43,6 +46,7 @@ from fastapi.datastructures import QueryParams
 from pydantic import BaseModel, Field, ValidationError
 from rs_server_common import settings
 from rs_server_common.rspy_models import Item, ItemCollection
+from rs_server_common.stac_cql2 import temporal_op_query, temporal_operations
 from rs_server_common.utils import utils2
 from rs_server_common.utils.logging import Logging
 from rs_server_common.utils.utils import (
@@ -60,7 +64,7 @@ logger = Logging.default(__name__)
 
 
 def log_http_exception(*args, **kwargs) -> HTTPException:
-    """Log error and return an HTTP execption to be raised by the caller"""
+    """Log error and return an HTTP exception to be raised by the caller"""
     return utils2.log_http_exception(logger, *args, **kwargs)
 
 
@@ -81,9 +85,8 @@ FilterType = Annotated[
     Optional[str],
     Query(
         alias="filter",
-        description="""A CQL filter expression for filtering items.\n
-Supports `CQL-JSON` as defined in https://portal.ogc.org/files/96288\n
-Remember to URL encode the CQL-JSON if using GET""",
+        description="""A CQL2 filter expression for filtering items.\n
+Supports `CQL2` as defined in https://docs.ogc.org/is/21-065r2/21-065r2.html""",
         json_schema_extra={
             "example": "id='LC08_L1TP_060247_20180905_20180912_01_T1_L1TP' AND collection='landsat8_l1tp'",
         },
@@ -93,7 +96,7 @@ FilterLangType = Annotated[
     Optional[FilterLang],
     Query(
         alias="filter-lang",
-        description="The CQL filter encoding that the 'filter' value uses.",
+        description="The CQL2 filter encoding that the 'filter' value uses.",
     ),
 ]
 SortByType = Annotated[Optional[str], Query(description="Sort by +/-fieldName (ascending/descending)")]
@@ -153,6 +156,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     select_config: Callable = lambda: None
     stac_to_odata: Callable = lambda: None
     map_mission: Callable = lambda: None
+    temporal_mapping: dict[str, str] | None = None
 
     # Is the service adgs or cadip ?
     adgs: bool = False
@@ -300,10 +304,12 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
     ) -> dict[str, Any]:
         """Synchronized search."""
 
+        logger.debug(f"sync_search with params: {params}")
+
         #
         # Step 1: read input params
 
-        stac_params = {}
+        stac_params: dict[str, Any] = {}
 
         def format_dict(field: dict):
             """Used for error handling."""
@@ -445,7 +451,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             """Use a recursive function to read all CQL filter levels"""
             if not filt:
                 return
-            op = filt.get("op")
+            op: str = filt.get("op")  # type: ignore
             args = filt.get("args", [])
 
             # Read a single property
@@ -459,44 +465,58 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 read_property(prop, value)
                 return
 
+            # Read temporal operators
+            if op in temporal_operations:
+                temporal_query: str = temporal_op_query(op, args, self.temporal_mapping)
+                logger.debug(f"Temporal operator {op} with args {args} -> {temporal_query}")
+                stac_params[op] = temporal_query
+                return
+
             # Else we are reading several properties
             if op != "and":
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid CQL2 filter, only '=' and 'and' operators are allowed: {format_dict(filt)}",
+                    f"Invalid CQL2 filter, only '=', 'and' and temporal operators are allowed: {format_dict(filt)}",
                 )
             for sub_filter in args:
                 read_cql(sub_filter)
 
         def read_query(query_arg: str | None):
-            """Used to read query parameter cql2-text filter.
-            filter=prop1 = prop2
-            """
+            """Used to read query parameter cql2-text filter."""
             if not query_arg:
                 return
             # If there are more filters defined and joined by AND keyword, process each one and update stac_params.
-            if "AND" in query_arg:  # only AND for now.
-                conditions = [c.strip() for c in query_arg.split("AND")]
+            if re.search(r"\bAND\b", query_arg, re.IGNORECASE):  # only AND for now.
+                conditions = [c.strip() for c in re.split(r"\bAND\b", query_arg, flags=re.IGNORECASE)]
                 for condition in conditions:
                     read_query(condition)
                 return
-            # Handle only '=' for now
-            op = "="
-            if op not in query_arg:
+            # Handle '='
+            if "=" in query_arg:
+                kv = query_arg.split("=")
+                # Extract prop and check if it's in the queryables.
+                if (prop := kv[0].strip()) not in allowed_properties:
+                    raise log_http_exception(
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
+                    )
+                value = str(kv[1]).strip("'\"")
+                check_input_type(self.get_queryables(), prop, value)
+                # Update stac params
+                stac_params[prop] = value  # type: ignore
+            # Handle CQL2 temporal operators
+            elif match := re.search(
+                r"\b(" + "|".join(map(re.escape, temporal_operations.keys())) + r")\b",
+                query_arg,
+                re.IGNORECASE,
+            ):
+                op = match.group(1).lower()
+                logger.debug(f"Temporal operator detected: {op} -> {stac_params[op]}")
+            else:
                 raise log_http_exception(
                     status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    "Invalid query filter, only '=' operator is allowed",
+                    "Invalid query filter, only '=' and temporal operators are allowed",
                 )
-            # Extract prop and check if it's in the queryables.
-            if (prop := query_arg.split(op)[0].strip()) not in allowed_properties:
-                raise log_http_exception(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    f"Invalid query filter property: {prop!r}, allowed properties are: {allowed_properties}",
-                )
-            value = str(query_arg.split(op)[1]).strip("'\"")
-            check_input_type(self.get_queryables(), prop, value)
-            # Update stac params
-            stac_params[prop] = value  # type: ignore
 
         read_cql(params.pop("filter", {}))
         read_query(self.request.query_params.get("filter"))
@@ -607,8 +627,8 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
 
     def process_collection(  # pylint: disable=too-many-locals, too-many-branches, too-many-statements
         self,
-        collection_id,
-        stac_params,
+        collection_id: str,
+        stac_params: dict,
         return_values: list[Sequence[Item] | Exception],
     ):
         """Method used to process a collection and perform search."""
@@ -616,6 +636,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
         empty_selection = False
         # Convert search params from STAC keys to OData keys
         odata_params = self.stac_to_odata(stac_params)
+        logger.debug(f"STAC/OData parameters mapping: {stac_params} => {odata_params}")
         try:
             # Some OData search params are hardcoded in the collection configuration.
             collection = self.select_config(collection_id)
@@ -686,6 +707,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 search_page = 1
 
             # Do the search for this collection
+            logger.debug(f"Searching with OData parameters {self.odata}")
             features = (self.process_search(collection, self.odata, search_limit, search_page)).features
 
             # If search return maximum number of elements, increase page and process next elements
