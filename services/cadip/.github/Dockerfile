@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# Build stage for multi stage build.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
-
-# Install dependencies
-RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc git
+# Don't use alpine, it's too different from the build stage.
+FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip
@@ -31,18 +27,6 @@ ADD ./*.whl /tmp/whl
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_cadip-*.whl
-
-# Final stage. Don't use alpine, it's too different from the build stage.
-FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
-
-# Install dependencies necessary for execution (e.g. libpq) not compilation (gcc)
-RUN \
-    apt update && apt upgrade -y && \
-    apt install -y libpq-dev libexpat1 && \
-    rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
-
-# Copy the whole /usr/local dir (that contains the python installation) from the build stage
-COPY --from=builder /usr/local /usr/local
 
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install

@@ -14,10 +14,6 @@
 
 """Common fixture for catalog service."""
 
-import os
-import subprocess  # nosec ignore security issue
-from importlib import reload
-
 from rs_server_common.utils.pytest.pytest_authentication_utils import (
     init_app_cluster_mode,
 )
@@ -28,12 +24,15 @@ from rs_server_common.utils.pytest.pytest_authentication_utils import (
 # pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
 init_app_cluster_mode()
 
-from collections.abc import Iterator
-
 # flake8: noqa: E402
-from pathlib import Path
+
+import os
+import subprocess  # nosec ignore security issue
+from collections.abc import Iterator
+from importlib import reload
 
 import pytest
+from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from rs_server_catalog.main import app, extract_openapi_specification
 from rs_server_common import settings as common_settings
@@ -51,14 +50,8 @@ from .helpers import (
     is_db_up,
 )
 
-# Clean before running.
-# No security risks since this file is not released into production.
-
-subprocess.run(
-    [RESOURCES_FOLDER / "../../../../tests/resources/clean.sh"],
-    check=False,
-    shell=False,
-)  # nosec ignore security issue
+# Load the .env file
+load_dotenv(RESOURCES_FOLDER / "db/.env")
 
 app.openapi = extract_openapi_specification
 app.openapi()
@@ -67,14 +60,21 @@ app.openapi()
 os.environ["RSPY_LOCAL_MODE"] = "1"
 reload(common_settings)
 
+# Clean docker compose before running.
+# No security risks since this file is not released into production.
+subprocess.run(
+    [RESOURCES_FOLDER / "db/clean.sh"],
+    check=False,
+    shell=False,
+)  # nosec ignore security issue
+
 
 @pytest.fixture(scope="session", name="docker_compose_file")
 def docker_compose_file_():
     """Return the path to the docker-compose.yml file to run before tests."""
-    return Path(__file__).parent / "docker-compose.yml"
+    return RESOURCES_FOLDER / "db/docker-compose.yml"
 
 
-@pytest.mark.integration
 @pytest.fixture(scope="session", name="db_url")
 def db_url_fixture(docker_ip, docker_services) -> str:  # pylint: disable=missing-function-docstring
     port = docker_services.port_for("stac-db", 5432)

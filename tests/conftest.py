@@ -35,14 +35,12 @@ reload(settings)
 
 import datetime
 import json
-import subprocess  # nosec ignore security issue
 from contextlib import ExitStack
 from functools import lru_cache
 from pathlib import Path
 
 import pytest
 import yaml
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from rs_server_adgs import adgs_retriever, adgs_utils
@@ -52,7 +50,6 @@ from rs_server_common.authentication.authentication_to_external import (
     ExternalAuthenticationConfig,
 )
 from rs_server_common.data_retrieval.eodag_provider import CustomEODataAccessGateway
-from rs_server_common.db.database import DatabaseSessionManager, get_db, sessionmanager
 from rs_server_common.utils.logging import Logging
 
 from tests.app import init_app
@@ -132,42 +129,18 @@ def export_aws_credentials():
         os.environ.update(s3_config["s3"])
 
 
-########################
-# FASTAPI AND DATABASE #
-########################
-
-# Init the FastAPI application and database
-# See: https://praciano.com.br/fastapi-and-async-sqlalchemy-20-with-pytest-done-right.html
-# But I have error
-#     pytest_postgresql.exceptions.ExecutableMissingException: Could not found /usr/lib/postgresql/14/bin/pg_ctl.
-#     Is PostgreSQL server installed?
-#     Alternatively pg_config installed might be from different version that postgresql-server.
-# See commit bbc6290df7c92fd306908830cbade8975e1eea6c
-
-# Clean before running.
-# No security risks since this file is not released into production.
-subprocess.run([RESOURCES_FOLDER / "clean.sh"], check=False, shell=False)  # nosec ignore security issue
-
-
-@pytest.fixture(scope="session", name="docker_compose_file")
-def docker_compose_file_():
-    """Return the path to the docker-compose.yml file to run before tests."""
-    return RESOURCES_FOLDER / "db" / "docker-compose.yml"
+###########
+# FASTAPI #
+###########
 
 
 @pytest.fixture(name="fastapi_app")
-def fastapi_app_(  # pylint: disable=too-many-arguments
+def fastapi_app_(
     request,
     mocker,
     monkeypatch,
-    docker_ip,
-    docker_services,
-    docker_compose_file,
-):  # pylint: disable=unused-argument
-    """
-    Init the FastAPI application and the database connection from the docker-compose.yml file.
-    docker_ip, docker_services are used by pytest-docker that runs docker compose.
-    """
+):
+    """Init the FastAPI application"""
 
     # Mock cluster/local mode to enable or disable authentication.
     try:
@@ -189,9 +162,6 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
     mocker.patch("rs_server_common.settings.LOCAL_MODE", new=not cluster_mode, autospec=False)
     mocker.patch("rs_server_common.settings.CLUSTER_MODE", new=cluster_mode, autospec=False)
 
-    # Read the .env file that comes with docker-compose.yml
-    load_dotenv(RESOURCES_FOLDER / "db" / ".env")
-
     # Mock the oauth2 environment variables for the cluster mode
     if cluster_mode:
         monkeypatch.setenv("OIDC_ENDPOINT", "http://OIDC_ENDPOINT")
@@ -210,32 +180,16 @@ def fastapi_app_(  # pylint: disable=too-many-arguments
 
 @pytest.fixture(name="client")
 def client_(fastapi_app: FastAPI):
-    """Test the FastAPI application, opens the database session."""
+    """Test the FastAPI application"""
     with TestClient(fastapi_app) as client:
         yield client
 
 
-@pytest.fixture(scope="function", autouse=True)
-def create_tables(client):  # pylint: disable=unused-argument
-    """Drop and create all tables."""
-    sessionmanager.drop_all()
-    sessionmanager.create_all()
-
-
-@pytest.fixture(scope="function", autouse=True)
-def session_override(client, fastapi_app: FastAPI):  # pylint: disable=unused-argument
-    """Override the default database session"""
-
-    # pylint: disable=duplicate-code
-    # NOTE: don't understand why we must duplicate this code.
-    def get_db_override():
-        try:
-            with sessionmanager.session() as session:
-                yield session
-        except Exception as exception:  # pylint: disable=broad-exception-caught
-            DatabaseSessionManager.reraise_http_exception(exception)
-
-    fastapi_app.dependency_overrides[get_db] = get_db_override
+@pytest.fixture(autouse=True)
+def workaround_fixture(client):  # pylint: disable=unused-argument
+    """
+    I need this or I have the error "function uses no fixture 'fastapi_app'", I can't understand why.
+    """
 
 
 ##################

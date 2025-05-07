@@ -48,9 +48,6 @@ def init_app(router_prefix: str = "") -> FastAPI:
     app: FastAPI = init_app_with_args(
         api_version="test",
         routers=routers,
-        init_db=True,
-        pause=3,
-        timeout=6,
         router_prefix=router_prefix,
     )
     app.state.get_connection = MockPgstacTest.get_connection

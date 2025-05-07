@@ -29,7 +29,7 @@ from rs_server_common.fastapi_app import init_app
 warnings.filterwarnings("ignore", category=UserWarning, module="stac_pydantic")
 
 # Init the FastAPI application with the adgs routers.
-app = init_app(__version__, adgs_routers, init_db=True, router_prefix="/auxip")
+app = init_app(__version__, adgs_routers, router_prefix="/auxip")
 
 # Set properties for the adgs service
 app.state.get_connection = MockPgstacAdgs.get_connection
