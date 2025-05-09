@@ -643,7 +643,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
             odata_hardcoded = collection.get("query") or {}
 
             # Merge the user input params with the hardcoded params (which have higher priority)
-            self.odata = {**odata_params, **odata_hardcoded}
+            odata_merged = {**odata_params, **odata_hardcoded}
 
             # Handle conflicts, i.e. for each key that is defined in both params
             for key in set(odata_params.keys()).intersection(odata_hardcoded.keys()):
@@ -662,7 +662,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                     if start >= stop:
                         empty_selection = True
                         break  # try next collection
-                    self.odata[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
+                    odata_merged[key] = f"{start.strftime(DATETIME_FORMAT)}/{stop.strftime(DATETIME_FORMAT)}"
                 # Comma-separated lists
                 if key in ("platformSerialIdentifier", "platformShortName", "Satellite", "productType"):
 
@@ -692,7 +692,7 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                             break  # try next collection
 
                     # Save the intersection
-                    self.odata[key] = intersection
+                    odata_merged[key] = intersection
             if empty_selection:
                 return
 
@@ -707,14 +707,14 @@ class MockPgstac(ABC):  # pylint: disable=too-many-instance-attributes
                 search_page = 1
 
             # Do the search for this collection
-            logger.debug(f"Searching with OData parameters {self.odata}")
-            features = (self.process_search(collection, self.odata, search_limit, search_page)).features
+            logger.debug(f"Searching with OData parameters {odata_merged}")
+            features = (self.process_search(collection, odata_merged, search_limit, search_page)).features
 
             # If search return maximum number of elements, increase page and process next elements
             if len(features) == SEARCH_LIMIT:
                 while True:
                     search_page += 1
-                    next_features = (self.process_search(collection, self.odata, search_limit, search_page)).features
+                    next_features = (self.process_search(collection, odata_merged, search_limit, search_page)).features
                     features.extend(next_features)  # type: ignore
                     # Extend current features.
                     # Break the loop when result is less the maximum possible, meaning there is no next page.
