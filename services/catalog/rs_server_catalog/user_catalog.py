@@ -745,8 +745,8 @@ field is not permitted also.",
 
                 if content:
                     if request.method == "POST":
-                        content = timestamps_extension.set_updated_expires_timestamp(content, "creation")
-                        content = timestamps_extension.set_updated_expires_timestamp(content, "insertion")
+                        content = timestamps_extension.set_timestamps_for_creation(content)
+                        content = timestamps_extension.set_timestamps_for_insertion(content)
                     else:  # PUT
                         published = expires = ""
                         if item and item.get("properties"):
@@ -755,9 +755,8 @@ field is not permitted also.",
                         if not published and not expires:
                             detail = {"error": f"Item {content['id']} not found."}
                             return JSONResponse(content=detail, status_code=HTTP_400_BAD_REQUEST)
-                        content = timestamps_extension.set_updated_expires_timestamp(
+                        content = timestamps_extension.set_timestamps_for_update(
                             content,
-                            "update",
                             original_published=published,
                             original_expires=expires,
                         )
