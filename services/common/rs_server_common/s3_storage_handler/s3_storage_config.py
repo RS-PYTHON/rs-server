@@ -55,7 +55,7 @@ def get_storage_settings_from_config(
         return settings
 
 
-def get_settings_from_reader(reader, owner: str, collection: str, eopf_type: str) -> tuple[str, str] | None:
+def get_settings_from_reader(reader, owner: str, collection: str, eopf_type: str):
     """Reads CSV file to extract correct settings corresponding to the parameters given.
     Logic used:
         - Try to map the three parameters (owner, collection, eopf:type)
