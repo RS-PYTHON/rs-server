@@ -39,7 +39,8 @@ include = [
 python = "^3.11"
 rs-server-common = {path = "../common", develop = true}
 pypgstac = {extras = ["psycopg"], version = "^0.9.6"}
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
+pygeofilter = {path = "../pygeofilter"}
+# pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 
 [tool.poetry.group.dev]
 optional = true
