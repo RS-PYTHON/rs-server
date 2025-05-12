@@ -24,6 +24,39 @@ Changed
 
 None
 
+[0.2a13] - Sprint 23 - 2025-05-07
+================================
+
+## Added
+
+- RSPY-160: Implement basic Data Selection Policies (AUX get from Catalog, no custom function)
+- RSPY-487: Deploy a configmap to configure both rs-catalog and rs-staging
+- RSPY-557: Smarter handling of AUXIP/CADIP OAuth2 tokens
+- RSPY-588: Staging: precise implementation of /processes and /processes/staging endpoints
+- RSPY-589: Staging: precise implementation of /processes/staging/execution endpoint
+- RSPY-590: Staging: precise implementation of /jobs* endpoints
+- RSPY-594: [CI/CD] use latest rs-server-staging and rs-client-libraries
+- RSPY-617: Remove extension from AUXIP item identifiers
+- RSPY-633: Re-implement the S3L0 processing flow
+- RSPY-640: [S3L0 demo] Update rs-testmeans for S3 bucket
+- RSPY-641: Implement CQL2 temporal operators in rs-server-auxip
+- RSPY-642: [S3L0 demo] Write a new Jupyter notebook
+- RSPY-643: [S3L0 demo] New Prefect tasks using rs-client-libraries
+- RSPY-645: [S3L0 demo] Test everything on local then on cluster
+- RSPY-652: Implement "DPR as a service": execution endpoint
+- RSPY-653: Implement "DPR as a service": job endpoint
+- RSPY-654: Implement "DPR as a service": tasktable endpoint
+- RSPY-656: Patch pygeofilter CQL2 filter handling
+- RSPY-664: Test and optimize staging performance
+- RSPY-668: Sprint 23 corrections of issues
+
+## Fixed
+
+- RSPY-452: Pydantic version conflict in rs-staging (2 pt: requires pygeoapi 0.21)
+- RSPY-662: AUXIP: cannot search by id in CQL2 filter (1 pt)
+- RSPY-666: Use API key when the staging calls the catalog (2 pt)
+- RSPY-670: Secret for adgs2 is not mounted to the rs-server-staging pod
+
 [0.2a12] - Sprint 22 - 2025-04-14
 ================================
 
