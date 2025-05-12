@@ -30,7 +30,7 @@ def get_storage_settings_from_config(
     collection: str,
     eopf_type: str,
     config_file_path: str = "",
-) -> tuple[int, str] | tuple[str, str]:
+) -> tuple[int, str] | tuple[str, str] | None:
     """Reads configuration file for the S3 storage to extract the correct settings for the parameters given.
 
     Args:
