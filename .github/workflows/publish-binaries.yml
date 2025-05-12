@@ -227,7 +227,7 @@ jobs:
       - run: |
           set -x
           echo ========== ON EST OU ==========
-          ls
+          pwd
           git clone https://github.com/RS-PYTHON/pygeofilter -b rspy
           for dep in rs-server-common; do
             sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/catalog/pyproject.toml
