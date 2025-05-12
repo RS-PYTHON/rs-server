@@ -229,6 +229,10 @@ jobs:
           echo ========== ON EST OU ==========
           pwd
           git clone https://github.com/RS-PYTHON/pygeofilter -b rspy
+          ls
+          cd pygeofilter
+          pwd
+          cd ..
           for dep in rs-server-common; do
             sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/catalog/pyproject.toml
           done
