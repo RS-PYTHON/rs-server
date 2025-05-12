@@ -1,10 +1,24 @@
+# Copyright 2025 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Unit tests for s3_storage_config functions."""
 
 import os
 from pathlib import Path
 
 import pytest
-import rs_server_common.s3_storage_handler.s3_storage_config as s3_storage_config
+from rs_server_common.s3_storage_handler import s3_storage_config
 
 RESOURCES_FOLDER = Path(os.path.realpath(os.path.dirname(__file__))) / ".." / "testresources"
 S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "expiration_bucket.csv")

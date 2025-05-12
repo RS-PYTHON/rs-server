@@ -29,7 +29,7 @@ def get_storage_settings_from_config(
     owner: str,
     collection: str,
     eopf_type: str,
-    config_file_path: str = None,
+    config_file_path: str = "",
 ) -> tuple[int, str] | tuple[str, str]:
     """Reads configuration file for the S3 storage to extract the correct settings for the parameters given.
 
@@ -55,7 +55,7 @@ def get_storage_settings_from_config(
         return settings
 
 
-def get_settings_from_reader(reader, owner: str, collection: str, eopf_type: str) -> tuple[str, str]:
+def get_settings_from_reader(reader, owner: str, collection: str, eopf_type: str) -> tuple[str, str] | None:
     """Reads CSV file to extract correct settings corresponding to the parameters given.
     Logic used:
         - Try to map the three parameters (owner, collection, eopf:type)
@@ -108,10 +108,9 @@ def get_expiration_delay_from_config(owner: str, collection: str, eopf_type: str
     settings = get_storage_settings_from_config(owner, collection, eopf_type)
     if settings is not None and isinstance(settings[0], int):
         return settings[0]
-    else:
-        raise S3StorageConfigurationError(
-            f"Could not find expected settings for given configuration (settings retrieved: '{settings}')",
-        )
+    raise S3StorageConfigurationError(
+        f"Could not find expected settings for given configuration (settings retrieved: '{settings}')",
+    )
 
 
 def get_bucket_name_from_config(owner: str, collection: str, eopf_type: str) -> str:
@@ -131,7 +130,6 @@ def get_bucket_name_from_config(owner: str, collection: str, eopf_type: str) -> 
     settings = get_storage_settings_from_config(owner, collection, eopf_type)
     if settings is not None and isinstance(settings[1], str):
         return settings[1]
-    else:
-        raise S3StorageConfigurationError(
-            f"Could not find expected settings for given configuration (settings retrieved: '{settings}')",
-        )
+    raise S3StorageConfigurationError(
+        f"Could not find expected settings for given configuration (settings retrieved: '{settings}')",
+    )
