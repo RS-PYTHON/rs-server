@@ -54,6 +54,7 @@ optional = true
 python = "^3.11"
 rs-server-common = {path = "../common", develop = true}
 pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", branch = "master" }
+pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pre-commit = ">=3.7.1,<5.0.0"
 pylint = "^3.3.2"
 pytest = "^8.3.3"
