@@ -32,7 +32,10 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install -U --no-cache-dir --find-links=. rs_server_common-*.whl rs_server_staging-*.whl
+# https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
+RUN cd /tmp/whl && pip install -U --no-cache-dir \
+    --extra-index-url=https://home.rs-python.eu/local-pypi/ \
+    rs_server_common-*.whl rs_server_staging-*.whl
 
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install
@@ -42,7 +45,7 @@ RUN pip install dask[complete]
 
 # Remove dependencies for compilation
 USER root
-RUN apt autoremove -y gcc
+RUN apt autoremove -y gcc git
 
 # Install dependencies necessary for execution not compilation
 RUN apt install -y libexpat1

@@ -16,7 +16,7 @@
 # Build stage for multi stage build.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm AS builder
 
-# Install dependencies
+# Install dependencies for compilation
 RUN apt update && apt upgrade -y && apt install -y libpq-dev gcc git
 
 # Update pip version
@@ -30,7 +30,10 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install --no-cache-dir --find-links=. rs_server_common-*.whl rs_server_staging-*.whl
+# https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
+RUN cd /tmp/whl && pip install --no-cache-dir \
+    --extra-index-url=https://home.rs-python.eu/local-pypi/ \
+    rs_server_common-*.whl rs_server_staging-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm

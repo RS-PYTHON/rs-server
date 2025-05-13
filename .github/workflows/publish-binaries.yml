@@ -274,13 +274,6 @@ jobs:
           name: ${{ needs.services-adgs-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Build .whl dependencies
-        run: |
-          set -x
-          git clone https://github.com/RS-PYTHON/pygeofilter.git -b rspy
-          (cd pygeofilter && pip install wheel && python setup.py bdist_wheel --universal --dist-dir ../build_context_path)
-        shell:  bash
-
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
@@ -323,13 +316,6 @@ jobs:
           name: ${{ needs.services-cadip-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Build .whl dependencies
-        run: |
-          set -x
-          git clone https://github.com/RS-PYTHON/pygeofilter.git -b rspy
-          (cd pygeofilter && pip install wheel && python setup.py bdist_wheel --universal --dist-dir ../build_context_path)
-        shell:  bash
-
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
@@ -370,13 +356,6 @@ jobs:
         with:
           name: ${{ needs.services-catalog-whl.outputs.package_name }}
           path: ./build_context_path
-
-      - name: Build .whl dependencies
-        run: |
-          set -x
-          git clone https://github.com/RS-PYTHON/pygeofilter.git -b rspy
-          (cd pygeofilter && pip install wheel && python setup.py bdist_wheel --universal --dist-dir ../build_context_path)
-        shell:  bash
 
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
@@ -462,16 +441,6 @@ jobs:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
           path: ./build_context_path
 
-      - name: Build .whl dependencies
-        run: |
-          set -x
-          git clone https://github.com/RS-PYTHON/pygeofilter.git -b rspy
-          (cd pygeofilter && pip install wheel && python setup.py bdist_wheel --universal --dist-dir ../build_context_path)
-
-          git clone https://github.com/geopython/pygeoapi.git -b master
-          (cd pygeoapi && pip install wheel && python setup.py bdist_wheel --universal --dist-dir ../build_context_path)
-        shell:  bash
-
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
         run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
@@ -513,16 +482,6 @@ jobs:
         with:
           name: ${{ needs.services-staging-whl.outputs.package_name }}
           path: ./build_context_path
-
-      - name: Build .whl dependencies
-        run: |
-          set -x
-          git clone https://github.com/RS-PYTHON/pygeofilter.git -b rspy
-          (cd pygeofilter && pip install wheel && python setup.py bdist_wheel --universal --dist-dir ../build_context_path)
-
-          git clone https://github.com/geopython/pygeoapi.git -b master
-          (cd pygeoapi && pip install wheel && python setup.py bdist_wheel --universal --dist-dir ../build_context_path)
-        shell:  bash
 
       - id: publish-docker
         uses: ./.github/actions/publish-docker
