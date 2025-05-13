@@ -30,7 +30,7 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install --no-cache-dir pygeoapi-*.whl rs_server_common-*.whl rs_server_staging-*.whl
+RUN cd /tmp/whl && pip install --no-cache-dir --find-links=. rs_server_common-*.whl rs_server_staging-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm

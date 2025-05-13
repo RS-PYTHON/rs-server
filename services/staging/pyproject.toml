@@ -38,7 +38,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.11"
 rs-server-common = "*"
-pygeoapi = ">=0.21"
+pygeoapi = ">=0.21.dev0"
 geoalchemy2 = ">=0.17,<0.18"
 SQLAlchemy = "^2.0.37"
 dask-gateway = "2024.1.0"

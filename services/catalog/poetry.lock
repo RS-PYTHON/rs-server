@@ -3269,6 +3269,7 @@ opentelemetry-instrumentation-aws-lambda = "^0.53b1"
 opentelemetry-test-utils = "^0.53b1"
 pydantic = ">=2.9.2,<2.12.0"
 pydantic-settings = ">2.2.1,<3.0.0,!=2.9.0"
+pygeofilter = ">=0.3.1.dev0"
 pyjwt = {version = "^2.9.0", extras = ["crypto"]}
 python-dotenv = "^1.0.0"
 python-keycloak = ">=5.3.1,<6.0"
@@ -4003,4 +4004,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "ad3efef6d6eb68cf784f9c5059288b75f785a6b023f4b991f82806c39615b009"
+content-hash = "7f4578a9b277466cb52eb50363b0ea1110f782ae10f9e3ce2ff090f09c7148b0"
