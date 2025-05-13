@@ -29,7 +29,7 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_catalog-*.whl
+RUN cd /tmp/whl && pip install --no-cache-dir pygeofilter-*.whl rs_server_common-*.whl rs_server_catalog-*.whl
 
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install

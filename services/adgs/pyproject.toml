@@ -37,12 +37,13 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-rs-server-common = {path = "../common", develop = true}
+rs-server-common = "*"
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+rs-server-common = {path = "../common", develop = true}
 pytest = "^8.3.3"
 pytest-asyncio = "^0.24.0"
 pytest-cov = ">=5,<7"

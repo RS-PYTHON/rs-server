@@ -140,16 +140,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/adgs/pyproject.toml
-          done
-        shell: bash
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
@@ -167,16 +157,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/cadip/pyproject.toml
-          done
-        shell: bash
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
@@ -194,16 +174,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/staging/pyproject.toml
-          done
-        shell: bash
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
@@ -221,16 +191,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # so that Dunamai produce the correct version
-
-      # Hack the pyproject.toml. TODO: find a cleaner to do this.
-      # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
-      - run: |
-          set -x
-          # for dep in rs-server-common; do
-          #   sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/catalog/pyproject.toml
-          # done
-        shell: bash
-
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
@@ -396,6 +356,15 @@ jobs:
         with:
           name: ${{ needs.services-catalog-whl.outputs.package_name }}
           path: ./build_context_path
+
+      - name: Build .whl dependencies
+        run: |
+          set -x
+          git clone git@github.com:RS-PYTHON/pygeofilter.git -b rspy
+          cd pygeofilter
+          pip install wheel
+          python setup.py bdist_wheel --universal --dist-dir ../build_context_path
+        shell:  bash
 
       - name: Copy debug mode dependencies
         if: ${{ needs.set-env.outputs.debug_mode }} == true
