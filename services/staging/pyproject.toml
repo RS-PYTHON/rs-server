@@ -38,8 +38,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.11"
 rs-server-common = "*"
-#pygeoapi = ">=0.21"
-pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", branch = "master" }
+pygeoapi = ">=0.21"
 geoalchemy2 = ">=0.17,<0.18"
 SQLAlchemy = "^2.0.37"
 dask-gateway = "2024.1.0"
@@ -54,6 +53,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 python = "^3.11"
 rs-server-common = {path = "../common", develop = true}
+pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", branch = "master" }
 pre-commit = ">=3.7.1,<5.0.0"
 pylint = "^3.3.2"
 pytest = "^8.3.3"

@@ -38,7 +38,7 @@ include = [
 [tool.poetry.dependencies]
 python = "^3.11"
 rs-server-common = "*"
-pygeofilter = "*"
+pygeofilter = ">=0.3.1"
 pypgstac = {extras = ["psycopg"], version = "^0.9.6"}
 
 [tool.poetry.group.dev]
