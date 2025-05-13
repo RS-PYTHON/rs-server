@@ -225,10 +225,10 @@ jobs:
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
       # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
       - run: |
-
-          for dep in rs-server-common; do
-            sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/catalog/pyproject.toml
-          done
+          set -x
+          # for dep in rs-server-common; do
+          #   sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/catalog/pyproject.toml
+          # done
         shell: bash
 
       - id: build-wheel
