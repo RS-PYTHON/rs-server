@@ -225,14 +225,7 @@ jobs:
       # Hack the pyproject.toml. TODO: find a cleaner to do this.
       # Replace '<dep> = {path = "./relative/path", develop = true}' by '<dep> = "*"'.
       - run: |
-          set -x
-          echo ========== ON EST OU ==========
-          pwd
-          git clone https://github.com/RS-PYTHON/pygeofilter -b rspy
-          ls
-          cd pygeofilter
-          pwd
-          cd ..
+
           for dep in rs-server-common; do
             sed -i "s|^.*${dep}.*path.*$|${dep} = \"\*\"|g"  services/catalog/pyproject.toml
           done
