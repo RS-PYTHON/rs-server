@@ -41,7 +41,6 @@ runs:
     - run: |
         set -x
         cd ${{ inputs.package_directory }}
-        poetry self add "poetry-dynamic-versioning[plugin]"
         poetry build
       shell: bash
 

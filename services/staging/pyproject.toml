@@ -1,6 +1,6 @@
 [project]
 name = "rs-server-staging"
-version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
+dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server-staging"
@@ -39,6 +39,7 @@ include = [
 python = "^3.11"
 rs-server-common = "*"
 pygeoapi = ">=0.21.dev0"
+flask = "^3.1.1" # for pygeoapi
 geoalchemy2 = ">=0.17,<0.18"
 SQLAlchemy = "^2.0.37"
 dask-gateway = "2024.1.0"
@@ -89,7 +90,10 @@ warn_redundant_casts = true
 check_untyped_defs = true
 ignore_missing_imports = true
 
-[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
 enable = true
 metadata = false
 

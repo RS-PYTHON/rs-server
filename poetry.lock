@@ -5043,7 +5043,7 @@ files = [
 
 [[package]]
 name = "rs-server-adgs"
-version = "0.0.0"
+version = "0.2a13.post25.dev0"
 description = "Copernicus Sentinel rs-server, AUXIP service."
 optional = false
 python-versions = "^3.11"
@@ -5060,7 +5060,7 @@ url = "services/adgs"
 
 [[package]]
 name = "rs-server-cadip"
-version = "0.0.0"
+version = "0.2a13.post25.dev0"
 description = "Copernicus Sentinel rs-server, CADIP service."
 optional = false
 python-versions = "^3.11"
@@ -5077,7 +5077,7 @@ url = "services/cadip"
 
 [[package]]
 name = "rs-server-catalog"
-version = "0.0.0"
+version = "0.2a13.post25.dev0"
 description = "Copernicus Sentinel rs-server, STAC catalog."
 optional = false
 python-versions = "^3.11"
@@ -5095,7 +5095,7 @@ url = "services/catalog"
 
 [[package]]
 name = "rs-server-common"
-version = "0.0.0"
+version = "0.2a13.post25.dev0"
 description = "Copernicus Sentinel rs-server, common services."
 optional = false
 python-versions = "^3.11"
@@ -5140,7 +5140,7 @@ url = "services/common"
 
 [[package]]
 name = "rs-server-frontend"
-version = "0.0.0"
+version = "0.2a13.post25.dev0"
 description = "Copernicus Sentinel rs-server, web frontend."
 optional = false
 python-versions = "^3.11"
@@ -5162,7 +5162,7 @@ url = "services/frontend"
 
 [[package]]
 name = "rs-server-staging"
-version = "0.0.0"
+version = "0.2a13.post25.dev0"
 description = "Copernicus Sentinel rs-server, staging service."
 optional = false
 python-versions = "^3.11"
