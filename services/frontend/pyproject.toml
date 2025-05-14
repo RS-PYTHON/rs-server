@@ -1,6 +1,6 @@
 [project]
 name = "rs-server-frontend"
-version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
+dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server-frontend"
@@ -72,7 +72,10 @@ markers = [
     "integration", # mark a test as integration test
 ]
 
-[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
 enable = true
 metadata = false
 
