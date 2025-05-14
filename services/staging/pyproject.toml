@@ -39,6 +39,7 @@ include = [
 python = "^3.11"
 rs-server-common = "*"
 pygeoapi = ">=0.21.dev0"
+flask = "^3.1.1" # for pygeoapi
 geoalchemy2 = ">=0.17,<0.18"
 SQLAlchemy = "^2.0.37"
 dask-gateway = "2024.1.0"
