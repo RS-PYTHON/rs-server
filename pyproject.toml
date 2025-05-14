@@ -54,14 +54,15 @@ rs-server-cadip = {path = "services/cadip", develop = true}
 rs-server-catalog = {path = "services/catalog", develop = true}
 rs-server-common = {path = "services/common", develop = true}
 rs-server-frontend = {path = "services/frontend", develop = true}
-# We cannot depend on rs-server-staging because it depends on sqlalchemy<2
-# rs-server-staging = {path = "services/staging", develop = true}
+rs-server-staging = {path = "services/staging", develop = true}
 
 [tool.poetry.group.dev]
 optional = true
 
 # All the dev dependencies are set here so they can be used by the CI.
 [tool.poetry.group.dev.dependencies]
+pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", rev = "1eb24cb" } # hardcode commit id from master
+pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 pytest = "^8.3.5"
 pytest-asyncio = "^0.26.0"
 pytest-cov = "^6.1.1"
@@ -85,6 +86,7 @@ flask-cors = "^5.0.1"
 sphinx = "^8.2.3"
 sphinx-rtd-theme = "^3.0.1"
 sqlalchemy-utils = "^0.41.2"
+click = "8.1.8"
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
