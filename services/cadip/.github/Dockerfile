@@ -15,6 +15,9 @@
 # Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
+# Install git to install dependencies from forked repositories
+RUN apt update && apt upgrade -y && apt install -y git
+
 # Update pip version
 RUN pip install --no-cache-dir --upgrade pip
 
@@ -26,10 +29,16 @@ ADD ./*.whl /tmp/whl
 
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
-RUN cd /tmp/whl && pip install --no-cache-dir rs_server_common-*.whl rs_server_cadip-*.whl
+# https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
+RUN cd /tmp/whl && pip install --no-cache-dir \
+    --extra-index-url=https://home.rs-python.eu/local-pypi/ \
+    rs_server_common-*.whl rs_server_cadip-*.whl
 
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install
+
+# Remove dependencies that are need only for compilation, not execution
+RUN apt autoremove -y git
 
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
