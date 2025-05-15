@@ -1,6 +1,6 @@
 [project]
 name = "rs-server-catalog"
-version = "0.0.0" # see: https://github.com/mtkennerly/poetry-dynamic-versioning
+dynamic = ["version"] # see: https://github.com/mtkennerly/poetry-dynamic-versioning
 
 [tool.poetry]
 name = "rs-server-catalog"
@@ -37,14 +37,15 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-rs-server-common = {path = "../common", develop = true}
+rs-server-common = "*"
 pypgstac = {extras = ["psycopg"], version = "^0.9.6"}
-pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+rs-server-common = {path = "../common", develop = true}
+pygeofilter = { git = "https://github.com/RS-PYTHON/pygeofilter", branch = "rspy" }
 # Formatting
 black = ">=24.8,<26.0"
 # Testing
@@ -80,7 +81,10 @@ asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
 
 
-[tool.poetry-dynamic-versioning] # needs: poetry self add "poetry-dynamic-versioning[plugin]"
+[tool.poetry.requires-plugins]
+poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
+
+[tool.poetry-dynamic-versioning]
 enable = true
 metadata = false
 

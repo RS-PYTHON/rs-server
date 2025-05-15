@@ -127,6 +127,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/poetry-install
 
+        # Remove the installed poetry plugins that trigger security issues
+      - name: Remove Poetry plugins folder
+        if: always()
+        run: rm -rf .poetry/plugins
+        shell: bash
+
       - id: bandit
         name: Run bandit
         if: always() # even if previous steps returned a non-zero exit code
