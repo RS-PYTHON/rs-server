@@ -1137,14 +1137,14 @@ zict = ">=3.0.0"
 
 [[package]]
 name = "eodag"
-version = "3.4.0"
+version = "3.4.2"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main", "dev"]
 files = [
-    {file = "eodag-3.4.0-py3-none-any.whl", hash = "sha256:8e3b30dee13528da38aa7770124710eab8984c830cca4d9fd24cc790909c011f"},
-    {file = "eodag-3.4.0.tar.gz", hash = "sha256:ea2d6a7d316756ebec07a491262223d4b73cb628d194e9cbfd0d0fbe3328983c"},
+    {file = "eodag-3.4.2-py3-none-any.whl", hash = "sha256:0d71f124a22e2367612728dde8b6b6dfe5ccafea8ce136d9e0d258cc0ab22dd9"},
+    {file = "eodag-3.4.2.tar.gz", hash = "sha256:6caebdc903c7ac25bfbe35796336ac60811bf5fe8875245e72decbc79fde5804"},
 ]
 
 [package.dependencies]
@@ -1492,7 +1492,7 @@ description = "Lightweight in-process concurrent programming"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
-markers = "(platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\") and python_version <= \"3.13\""
+markers = "python_version < \"3.14\" and (platform_machine == \"aarch64\" or platform_machine == \"ppc64le\" or platform_machine == \"x86_64\" or platform_machine == \"amd64\" or platform_machine == \"AMD64\" or platform_machine == \"win32\" or platform_machine == \"WIN32\")"
 files = [
     {file = "greenlet-3.2.2-cp310-cp310-macosx_11_0_universal2.whl", hash = "sha256:c49e9f7c6f625507ed83a7485366b46cbe325717c60837f7244fc99ba16ba9d6"},
     {file = "greenlet-3.2.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c3cc1a3ed00ecfea8932477f729a9f616ad7347a5e55d50929efa50a86cb7be7"},
@@ -4413,7 +4413,7 @@ authlib = "^1.5.0"
 boto3 = ">=1.35.40"
 botocore = ">=1.35.99"
 cachetools = ">=5.5.2"
-eodag = "==v3.4.0"
+eodag = "==v3.4.2"
 fastapi = "^0.115.12"
 filelock = "^3.16.1"
 geojson-pydantic = "1.2.0"
