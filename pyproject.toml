@@ -12,7 +12,7 @@ readme = "README.md"
 homepage = "https://home.rs-python.eu/"
 repository = "https://github.com/RS-PYTHON/operational-services"
 #documentation = "https://home.rs-python.eu/rs-documentation/operational-services/docs/doc/"
-keywords = ["stac", "copernicus", "sentinel", "processing"]
+keywords = ["copernicus", "sentinel", "processing"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Framework :: FastAPI",
@@ -43,12 +43,7 @@ optional = true
 
 # All the dev dependencies are set here so they can be used by the CI.
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.5"
-pytest-asyncio = "^0.26.0"
-pytest-cov = "^6.1.1"
-pytest-docker = "^3.2.1"
-pytest-error-for-skips = "^2.0.2"
-pytest-mock = "^3.14.0"
+python = "^3.11"
 black = "^25.1.0"
 mypy = "^1.15.0"
 pre-commit = "^4.2.0"
@@ -58,8 +53,6 @@ bandit = "^1.8.3"
 safety = "^3.3.0"
 pylint = "^3.3.7"
 flake8-pyproject = "^1.2.3"
-sphinx = "^8.2.3"
-sphinx-rtd-theme = "^3.0.1"
 
 [tool.poetry.requires-plugins]
 poetry-dynamic-versioning = { version = ">=1.0.0,<2.0.0", extras = ["plugin"] }
@@ -86,8 +79,6 @@ asyncio_mode = "auto"
 filterwarnings = [
     "ignore::DeprecationWarning:pkg_resources",
     "ignore::DeprecationWarning:eodag.plugins.manager",
-    "ignore::DeprecationWarning:pydantic._internal._config",
-    "ignore::DeprecationWarning:pydantic.fields"
 ]
 
 [tool.mypy]
