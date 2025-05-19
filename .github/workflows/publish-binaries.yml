@@ -187,7 +187,7 @@ jobs:
       - id: publish-docker
         uses: ./.github/actions/publish-docker
         with:
-          dockerfile: ./.github/Dockerfile
+          dockerfile: ./object_storage_access_manager/.github/Dockerfile
           build_context_path: ./build_context_path
           version_name: ${{ needs.osam-whl.outputs.version_name }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}

@@ -26,7 +26,7 @@ inputs:
     description: Docker image base name
     default: ${{ github.repository }} # = owner/repository-name
   image_suffix:
-    description: Docker image name suffix e.g. _services-cadip
+    description: Docker image name suffix e.g. _services
     required: true
   version_name:
     description: Version name e.g. 1.2.3a4.dev1a2b3c4d
