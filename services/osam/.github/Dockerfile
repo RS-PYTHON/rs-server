@@ -62,4 +62,3 @@ ENTRYPOINT [ \
 
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/operational-services"
 LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/object-storage-access-manager"
-
