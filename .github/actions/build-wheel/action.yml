@@ -1,0 +1,75 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: build-wheel
+description: Build wheel
+
+inputs:
+  package_directory:
+    description: Sub project directory
+    required: false
+    default: .
+
+outputs:
+  version_name:
+    description: version name
+    value: ${{ steps.version_name.outputs.version_name }}
+  package_name:
+    description: .whl package name
+    value: ${{ steps.package_name.outputs.package_name }}
+  sdist_name:
+    description: .tar.gz sdist name
+    value: ${{ steps.sdist_name.outputs.sdist_name }}
+
+runs:
+  using: "composite"
+  steps:
+
+    - uses: ./.github/actions/poetry-install
+
+    - run: |
+        set -x
+        cd ${{ inputs.package_directory }}
+        poetry build
+      shell: bash
+
+    # Run 'poetry dynamic-versioning' to find the version name, sed the result
+    - name: Find version name
+      id: version_name
+      run: "echo version_name=$(poetry dynamic-versioning |& sed -n 's|Version: ||p') >> $GITHUB_OUTPUT"
+      shell: bash
+
+    # Note: the wheel file is built in package_directory/dist
+    - name: Find wheel filename
+      id: package_name
+      run: echo package_name=$(basename ${{ inputs.package_directory }}/dist/*.whl) >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    # Note: the sdist file is built in package_directory/dist
+    - name: Find sdist filename
+      id: sdist_name
+      run: echo sdist_name=$(basename ${{ inputs.package_directory }}/dist/*.tar.gz) >> "$GITHUB_OUTPUT"
+      shell: bash
+
+    - name: Save wheel package as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.package_name.outputs.package_name }}
+        path: ${{ inputs.package_directory }}/dist/${{ steps.package_name.outputs.package_name }}
+
+    - name: Save sdist as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.sdist_name.outputs.sdist_name }}
+        path: ${{ inputs.package_directory }}/dist/${{ steps.sdist_name.outputs.sdist_name }}
