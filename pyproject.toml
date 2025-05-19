@@ -36,7 +36,7 @@ packages = [
 # All the dependencies for release are set in the sub-projects
 [tool.poetry.dependencies]
 python = "^3.11"
-object-storage-access-manager = {path = "object_storage_access_manager", develop = true}
+osam = {path = "object_storage_access_manager", develop = true}
 
 [tool.poetry.group.dev]
 optional = true

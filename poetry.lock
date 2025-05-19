@@ -1406,40 +1406,6 @@ files = [
 ]
 
 [[package]]
-name = "object-storage-access-manager"
-version = "0.1.0"
-description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
-optional = false
-python-versions = "^3.11"
-groups = ["main"]
-files = []
-develop = true
-
-[package.dependencies]
-bandit = "^1.8.3"
-fastapi = ">=0.115.12,<0.116.0"
-flake8-pyproject = "^1.2.3"
-httpx = "^0.28.1"
-jsonpatch = "^1.33"
-mypy = "^1.15.0"
-openapi-core = "^0.19.5"
-opentelemetry-api = "^1.32.0"
-opentelemetry-distro = "^0.53b0"
-opentelemetry-exporter-otlp = "^1.32.0"
-opentelemetry-instrumentation = "^0.53b0"
-opentelemetry-instrumentation-aws-lambda = "^0.53b1"
-opentelemetry-instrumentation-fastapi = "^0.53b0"
-opentelemetry-instrumentation-httpx = "^0.53b1"
-opentelemetry-sdk = "^1.32.0"
-pylint = "^3.3.6"
-python-keycloak = ">=5.5.0"
-uvicorn = ">=0.34.1,<0.35.0"
-
-[package.source]
-type = "directory"
-url = "object_storage_access_manager"
-
-[[package]]
 name = "openapi-core"
 version = "0.19.5"
 description = "client-side and server-side support for the OpenAPI Specification v3"
@@ -1793,6 +1759,40 @@ files = [
     {file = "opentelemetry_util_http-0.53b1-py3-none-any.whl", hash = "sha256:ee7ecc1cbe4598535a95eaf7742f80c0c924843bf8f7ef3bab4963a228a94dd0"},
     {file = "opentelemetry_util_http-0.53b1.tar.gz", hash = "sha256:7b0356584400b3406a643e244d36ff1bbb7c95e3b5ed0509d212e4a11c050a0e"},
 ]
+
+[[package]]
+name = "osam"
+version = "0.1.0"
+description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
+optional = false
+python-versions = "^3.11"
+groups = ["main"]
+files = []
+develop = true
+
+[package.dependencies]
+bandit = "^1.8.3"
+fastapi = ">=0.115.12,<0.116.0"
+flake8-pyproject = "^1.2.3"
+httpx = "^0.28.1"
+jsonpatch = "^1.33"
+mypy = "^1.15.0"
+openapi-core = "^0.19.5"
+opentelemetry-api = "^1.32.0"
+opentelemetry-distro = "^0.53b0"
+opentelemetry-exporter-otlp = "^1.32.0"
+opentelemetry-instrumentation = "^0.53b0"
+opentelemetry-instrumentation-aws-lambda = "^0.53b1"
+opentelemetry-instrumentation-fastapi = "^0.53b0"
+opentelemetry-instrumentation-httpx = "^0.53b1"
+opentelemetry-sdk = "^1.32.0"
+pylint = "^3.3.6"
+python-keycloak = ">=5.5.0"
+uvicorn = ">=0.34.1,<0.35.0"
+
+[package.source]
+type = "directory"
+url = "object_storage_access_manager"
 
 [[package]]
 name = "packaging"
@@ -3379,4 +3379,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "37127516bdaf5b4bafe9d91efbfb4460c6a7eace725655ac0cef13dd29c08736"
+content-hash = "23c35abfed2bb013893c55d481d09c669a65d3a637df4879de6f91f93deb1bc5"

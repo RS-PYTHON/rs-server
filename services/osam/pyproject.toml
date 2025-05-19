@@ -1,9 +1,9 @@
 [project]
-name = "object-storage-access-manager"
+name = "osam"
 version = "0.1.0"
 
 [tool.poetry]
-name = "object-storage-access-manager"
+name = "osam"
 version = "0.0.0"
 description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 license = "Apache-2.0"

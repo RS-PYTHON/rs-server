@@ -126,7 +126,7 @@ jobs:
       - id: build-wheel
         uses: ./.github/actions/build-wheel
         with:
-          package_directory: object_storage_access_manager/osam
+          package_directory: object_storage_access_manager
 
   ###################
   # Publish to PyPI #
