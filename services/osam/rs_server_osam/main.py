@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""rs dpr service main module."""
+"""osam main module."""
 
 import asyncio  # for handling asynchronous tasks
 import logging
