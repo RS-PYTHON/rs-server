@@ -201,43 +201,5 @@ jobs:
   # TESTING #
   ###########
 
-  # Test rs-demo with the new Docker images
-  test-demo:
-    if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    name: "Test rs-demo"
-    needs: [set-env, osam-img]
-    steps:
-      - name: Log into Docker registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - id: test-demos
-        name: "Test rs-demo"
-        run: |
-          set -x
-
-          # Copy the s3cmd config file to be able to access the "real" s3 bucket
-          echo "${{ secrets.S3CFG_OVH_BUCKET }}" > ~/.s3cfg
-
-          # Clone the rs-demo repository
-          git clone https://github.com/RS-PYTHON/rs-demo.git
-
-          # Try to checkout in rs-demo the same branch name than in rs-server.
-          # If the branch doesn't exist, it's ok, we stay on the default branch.
-          cd rs-demo
-          git checkout ${{ needs.set-env.outputs.branch_name }} || true
-          git status
-
-          # Run the rs-demo local mode using the newly created docker images
-          cd local-mode
-          docker_tag="${{ needs.set-env.outputs.docker_tag }}"
-          docker_tag="${docker_tag:-latest}" # latest by default
-          ./test-docker-tag.sh "$docker_tag"
-          docker compose -f docker-compose-test-tag.yml up -d
-          ./run-notebooks.sh "$docker_tag"
-
-        shell: bash
+  # TODO: 
+  

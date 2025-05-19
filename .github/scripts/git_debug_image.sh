@@ -46,7 +46,7 @@ cd ./operational-services
 # The rspy modules used by the fastapi service are installed under /usr/local/lib/python3.11/site-packages
 # We tell the service to use the git dirs instead. So we replace them by symlinks to git.
 py_site_packages=$(python -c "import site; print(site.getsitepackages()[0])")
-for git_pydir in $(pwd)/object_storage_access_manager; do
+for git_pydir in $(pwd)/object_storage_access_manager/osam; do
     pydir=$(basename "$git_pydir")
     if [ -d "$py_site_packages/$pydir" ]; then
         (set -x; cd "$py_site_packages" && rm -rf "$pydir" && ln -s "$git_pydir" .)
