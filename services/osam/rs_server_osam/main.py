@@ -27,7 +27,7 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
 )
 
-from object_storage_access_manager import opentelemetry
+from object_storage_access_manager.osam import opentelemetry
 
 DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40
 

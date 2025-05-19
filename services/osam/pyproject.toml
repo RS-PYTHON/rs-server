@@ -5,7 +5,7 @@ version = "0.1.0"
 [tool.poetry]
 name = "object-storage-access-manager"
 version = "0.0.0"
-description = ""
+description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 license = "Apache-2.0"
 authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
 readme = "README.md"
@@ -24,7 +24,9 @@ classifiers = [
 
 packages = [
 
-    { include = "osam", from = "."},
+    { include = "osam"},
+    # TODO add tests
+    # { include = "tests", format = "sdist" },
 ]
 
 [tool.poetry.dependencies]
