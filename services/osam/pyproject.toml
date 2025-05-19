@@ -29,7 +29,6 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pygeoapi = { git = "https://github.com/geopython/pygeoapi.git", branch = "master" }
 uvicorn = ">=0.34.1,<0.35.0"
 fastapi = ">=0.115.12,<0.116.0"
 opentelemetry-api = "^1.32.0"
