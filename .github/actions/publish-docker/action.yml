@@ -1,0 +1,193 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: publish-docker
+description: Publish Docker image
+
+inputs:
+  dockerfile:
+    description: Dockerfile path
+    required: true
+  build_context_path:
+    description: "'docker build' context path"
+    required: true
+  image_basename:
+    description: Docker image base name
+    default: ${{ github.repository }} # = owner/repository-name
+  image_suffix:
+    description: Docker image name suffix e.g. _services
+    required: true
+  version_name:
+    description: Version name e.g. 1.2.3a4.dev1a2b3c4d
+    required: true
+  dockerhub_username:
+    description: vars.DOCKERHUB_USERNAME
+    required: true
+  dockerhub_token:
+    description: secrets.DOCKERHUB_TOKEN
+    required: true
+  github_token:
+    description: secrets.GITHUB_TOKEN
+    required: true
+  docker_tag:
+    description: Tag the docker image
+    required: false
+  branch_name:
+    description: Current git branch name
+    required: true
+  debug_mode:
+    description: Add debug tools to the docker image
+    required: false
+  build_args:
+    description: List of build-time variables
+    required: false
+
+outputs:
+  docker_image:
+    description: Docker image name:tag
+    value: ${{ steps.docker_image.outputs.docker_image }}
+
+runs:
+  using: "composite"
+  steps:
+
+    # Login to Docker Hub to increase pull quota from 100 to 200 per 6 hours
+    - name: Log into Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ inputs.dockerhub_username }}
+        password: ${{ inputs.dockerhub_token }}
+
+    - name: Log into GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ inputs.github_token }}
+
+    # Replace invalid characters in the Docker version name, e.g. 1.2.3a4+dev1a2b3c4d becomes 1.2.3a4.dev1a2b3c4d
+    # Then we can use ${{ inputs.docker_version_name }}
+    - run: echo "docker_version_name=$(echo ${{ inputs.version_name }} | tr + .)" >> $GITHUB_ENV
+      shell: bash
+
+    # Full Docker image name:tag as ghcr.io/RS-PYTHON/object-storage-access-manager<suffix>:<version> in lowercase
+    - id: docker_image
+      run: |
+        docker_image=${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}
+        docker_image=${docker_image,,} # lowercase
+        echo docker_image=${docker_image} >> $GITHUB_ENV
+        echo docker_image=${docker_image} >> $GITHUB_OUTPUT
+      shell: bash
+
+    # Extract metadata from Git reference and GitHub events
+    - name: Extract Docker metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }} # ghcr.io/RS-PYTHON/operational-services
+
+    # Replace some parts of the Dockerfile depending on wether we're in debug mode or not.
+    # It would be cleaner to use 'if' blocks in the Dockerfile but this doesn't exist...
+    - name: Configure Dockerfile for debug mode
+      run: |
+        set -x
+        if [[ ${{ inputs.debug_mode }} == true ]]; then
+          commands=$(cat << "EOF"
+        USER root
+        COPY ./git_debug_image.sh ./git_debug_image.sh
+        RUN set -e; chmod u+x ./git_debug_image.sh; ./git_debug_image.sh ${{ inputs.branch_name }}; \
+            rm -f ./git_debug_image.sh
+        WORKDIR /home/user/operational-services
+        EOF
+          )
+          # Use awk instead of sed for multiline replace, see: https://stackoverflow.com/a/10107668
+          awk -v r="$commands" '{gsub(/# \[DEBUG_MODE_COMMANDS\]/,r)}1' ${{ inputs.dockerfile }} > tmp
+          mv tmp ${{ inputs.dockerfile }}
+          sed -i "s@\[DEBUG_MODE_RELOAD\]@--reload@g" ${{ inputs.dockerfile }}
+          sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@--reload@g" ${{ inputs.dockerfile }}
+          sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@ENV RELOAD=true@g" ${{ inputs.dockerfile }}
+        else
+          sed -i "s@# \[DEBUG_MODE_COMMANDS\]@@g" ${{ inputs.dockerfile }}
+          sed -i "s@, \"\[DEBUG_MODE_RELOAD\]\"@@g" ${{ inputs.dockerfile }}
+          sed -i "s@\[DEBUG_MODE_RELOAD_FRONTEND\]@@g" ${{ inputs.dockerfile }}
+          sed -i "s@# \[DEBUG_MODE_RELOAD_CATALOG\]@@g" ${{ inputs.dockerfile }}
+        fi
+        cat ${{ inputs.dockerfile }}
+      shell: bash
+
+    # Checkout code from the current branch and build Docker image.
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ inputs.build_context_path }}
+        file: ${{ inputs.dockerfile }}
+        load: true
+        tags: ${{ env.docker_image }}
+        labels: ${{ steps.meta.outputs.labels }}
+        push: false # push after the security scans below
+        build-args: ${{ inputs.build_args }}
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      env:
+        TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+      with:
+        image-ref: ${{ env.docker_image }}
+        format: sarif
+        output: trivy-results-docker.sarif
+        exit-code: 0
+        limit-severities-for-sarif: true
+        severity: HIGH,CRITICAL
+        #timeout: '30m'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: trivy-results-docker.sarif
+        category: ${{ env.docker_image }}
+
+    - name: Display link to Trivy results
+      run: |
+
+          set -x
+
+          # If this is not a pull request, the query is "is:open+branch:branch_name"
+          if [[ "${{ github.ref_name }}" != *merge* ]]; then
+            query="is:open+branch:${{ github.ref_name }}"
+
+          # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
+          else
+            query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+          fi
+
+          echo "Trivy scan results:" \
+          "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
+          >> $GITHUB_STEP_SUMMARY
+      shell: bash
+
+    - name: Push Docker image
+      run: docker push ${{ env.docker_image }}
+      shell: bash
+
+    # Add a docker image tag and push it into the registry.
+    - name: Push Docker tag e.g. 'latest'
+      if: always()
+      run: | # use sed to replace the last :<tag> by :docker_tag
+        set -x
+        if [[ -n "${{ inputs.docker_tag }}" ]]; then # Check if docker_tag is non-empty
+          docker_image_tag=$(echo "${{ env.docker_image }}" | sed "s|\(:[^:]*\)|:${{ inputs.docker_tag }}|")
+          docker tag "${{ env.docker_image }}" "${docker_image_tag}"
+          docker push "${docker_image_tag}"
+        fi
+      shell: bash

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""rs dpr service main module."""
+"""osam main module."""
 
 import asyncio  # for handling asynchronous tasks
 import logging
@@ -27,7 +27,7 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
 )
 
-from object_storage_access_manager import opentelemetry
+from object_storage_access_manager.osam import opentelemetry
 
 DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40
 
@@ -114,6 +114,7 @@ async def manage_keycloack_attributes(timeout: int = 60):
             # get the keycloack users
             # foreach user apply the logic requested in rspy 601
             time.sleep(5)
+            logger.debug("Slept 5 seconds")
 
             logger.debug("Getting the keycloack attributes finished")
 

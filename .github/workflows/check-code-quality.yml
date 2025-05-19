@@ -1,0 +1,206 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Check code quality
+
+on:
+  push:
+    branches:
+      - develop # pushes on the 'develop' branch
+    tags:
+      - '**' # new git tags (including hierarchical tags like v1.0/beta)
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # run this worflow only for code/test related changes (avoid it for documentation)
+    paths: ['**.json', '**.lock', '**.py', '**.raw', '**.toml', '**.yaml', '**.yml']
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: 3.11.7
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      conf: ${{ steps.filter.outputs.conf }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code: ['**.py']
+            conf: ['**.lock', '**.json', '**.raw', '**.toml', '**.yaml', '**.yml']
+
+  check-format:
+    runs-on: ubuntu-latest
+    name: Check format (pre-commit, black, isort)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/install-python
+      - run: >
+          echo
+          ":information_source: This job checks that you have run \`pre-commit run --all-files\` in
+          your local git repository before committing."
+          >> $GITHUB_STEP_SUMMARY
+      - uses: pre-commit/action@v3.0.1
+
+  check-license:
+    runs-on: ubuntu-latest
+    name: Check copyright license headers
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          docker run -v ${{ github.workspace }}:/src ghcr.io/google/addlicense -check .
+
+  check-linting:
+    runs-on: ubuntu-latest
+    name: Check linting (pylint, flake8)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    # continue-on-error: true # run other jobs, resolve issues later
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
+
+      - name: Run pylint
+        if: always() # even if previous steps returned a non-zero exit code
+        run: |
+          set -x
+          poetry run pylint "**/*.py" --output-format=colorized,parseable:./pylint-report.txt
+
+      - name: Run flake8
+        if: always()
+        run: |
+          set -x
+          poetry run flake8 . || true # run next line even if fails
+          poetry run flake8 . --output-file ./flake8-report.txt
+
+      - name: Save reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-linting
+          path: |
+            ./flake8-report.txt
+            ./pylint-report.txt
+          retention-days: 1
+
+  check-typing:
+    runs-on: ubuntu-latest
+    name: Check typing (mypy)
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    # continue-on-error: true # run other jobs, resolve issues later
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
+      - name: Run mypy
+        run: poetry run mypy --install-types --non-interactive --explicit-package-bases .
+        shell: bash
+
+  check-security:
+    runs-on: ubuntu-latest
+    name: Check security (bandit, safety, trivy)
+    # continue-on-error: true # run other jobs, resolve issues later
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/poetry-install
+        with:
+          rm-plugin-dir: true
+
+        # Remove the installed poetry plugins that trigger security issues
+      - name: Remove Poetry plugins folder
+        if: always()
+        run: rm -rf .poetry/plugins
+        shell: bash
+
+      - id: bandit
+        name: Run bandit
+        if: always() # even if previous steps returned a non-zero exit code
+        run: |
+          set -x
+          poetry run bandit -c pyproject.toml -r . || true # run next line even if fails
+          poetry run bandit -c pyproject.toml -r . -f json -o ./bandit-report.json
+        shell: bash
+
+      - id: safety
+        name: Run safety
+        if: always() && github.actor != 'dependabot[bot]' # dependabot does not have access to secrets
+        run: |
+          set -x
+          poetry run safety --key ${{ secrets.SAFETY_API_KEY }} scan --detailed-output
+        shell: bash
+
+      - name: Run Trivy vulnerability scanner
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
+        with:
+          scan-type: fs
+          ignore-unfixed: true
+          format: sarif
+          output: trivy-results-fs.sarif
+          exit-code: 1
+          #severity: 'CRITICAL'
+
+      - name: Save reports as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-security
+          path: |
+            ./bandit-report.json
+            ./trivy-results-fs.sarif
+          retention-days: 1
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results-fs.sarif
+          category: git repository
+
+      - name: "Display link to Trivy results"
+        if: always()
+        run: |
+
+          set -x
+
+          # If this is not a pull request, the query is "is:open+branch:branch_name"
+          if [[ "${{ github.ref_name }}" != *merge* ]]; then
+            query="is:open+branch:${{ github.ref_name }}"
+
+          # Else the ref_name is e.g. '13/merge'. Change it into 'pr:13'
+          else
+            query=$(sed "s|\(.*\)/merge|pr:\1|g" <<< "${{ github.ref_name }}")
+          fi
+
+          echo "Trivy scan results:" \
+          "https://github.com/${{ github.repository }}/security/code-scanning?query=${query}" \
+          >> $GITHUB_STEP_SUMMARY
+        shell: bash
