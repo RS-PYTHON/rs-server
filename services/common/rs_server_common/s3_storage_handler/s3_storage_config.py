@@ -16,6 +16,7 @@
 
 import csv
 import os
+import threading
 
 FILEPATH_ENV_VAR = "BUCKET_CONFIG_FILE_PATH"
 DEFAULT_FILEPATH = "/app/conf/expiration_bucket.csv"
@@ -66,6 +67,7 @@ class S3StorageConfigurationSingleton:
         cls.config_file_path = config_file_path
         cls.last_config_file_modification_date = cls.get_last_modification_date_of_config_file(config_file_path)
         cls.bucket_configuration_csv = data
+        cls.file_lock = threading.Lock()
 
     @classmethod
     def get_last_modification_date_of_config_file(cls, config_file_path: str) -> str:
@@ -78,7 +80,9 @@ class S3StorageConfigurationSingleton:
         Returns:
             str: Last time the file was modificated.
         """
-        return os.path.getmtime(config_file_path)
+        with cls.file_lock:
+            last_modification_time = os.path.getmtime(config_file_path)
+        return last_modification_time
 
     @classmethod
     def get_s3_bucket_configuration(cls, config_file_path: str) -> dict[dict]:
