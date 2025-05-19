@@ -63,14 +63,13 @@ def test_get_settings_with_correct_inputs():
 
 def test_errors_when_config_file_empty():
     """Test of errors throwing for one specific failing case"""
-    # Setting up correct env var
-    os.environ["BUCKET_CONFIG_FILE_PATH"] = EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE
+    empty_config_file = EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE
 
     owner_name = "titi"
     collection_name = "tata"
     eopf_type = "toto"
 
     with pytest.raises(s3_storage_config.S3StorageConfigurationError):
-        s3_storage_config.get_expiration_delay_from_config(owner_name, collection_name, eopf_type)
+        s3_storage_config.get_expiration_delay_from_config(owner_name, collection_name, eopf_type, empty_config_file)
     with pytest.raises(s3_storage_config.S3StorageConfigurationError):
-        s3_storage_config.get_bucket_name_from_config(owner_name, collection_name, eopf_type)
+        s3_storage_config.get_bucket_name_from_config(owner_name, collection_name, eopf_type, empty_config_file)
