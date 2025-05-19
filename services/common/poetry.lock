@@ -781,14 +781,14 @@ packaging = "*"
 
 [[package]]
 name = "eodag"
-version = "3.4.0"
+version = "3.4.2"
 description = "Earth Observation Data Access Gateway"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "eodag-3.4.0-py3-none-any.whl", hash = "sha256:8e3b30dee13528da38aa7770124710eab8984c830cca4d9fd24cc790909c011f"},
-    {file = "eodag-3.4.0.tar.gz", hash = "sha256:ea2d6a7d316756ebec07a491262223d4b73cb628d194e9cbfd0d0fbe3328983c"},
+    {file = "eodag-3.4.2-py3-none-any.whl", hash = "sha256:0d71f124a22e2367612728dde8b6b6dfe5ccafea8ce136d9e0d258cc0ab22dd9"},
+    {file = "eodag-3.4.2.tar.gz", hash = "sha256:6caebdc903c7ac25bfbe35796336ac60811bf5fe8875245e72decbc79fde5804"},
 ]
 
 [package.dependencies]
@@ -3477,4 +3477,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "99708b9ecdfac27bdee0df00ac7dfad61674633b952ce49e42bea168372ed213"
+content-hash = "230a4c757d63c0e8c5de6f3ec6eb44a42496429c7f90b869f17eb61cf502f326"
