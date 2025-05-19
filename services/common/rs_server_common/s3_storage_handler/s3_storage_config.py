@@ -33,9 +33,9 @@ class S3StorageConfigurationSingleton:
         if not hasattr(cls, "instance"):
             cls.instance = super().__new__(cls)
             cls.file_lock = threading.Lock()
-            cls.bucket_configuration_csv = []
-            cls.config_file_path = ""
-            cls.last_config_file_modification_date = 0
+            cls.bucket_configuration_csv: list[list] = []
+            cls.config_file_path: str = ""
+            cls.last_config_file_modification_date: float = 0
             if config_file_path:
                 cls.load_csv_file_into_variable(config_file_path)
         return cls.instance
@@ -70,7 +70,7 @@ class S3StorageConfigurationSingleton:
         cls.bucket_configuration_csv = data
 
     @classmethod
-    def get_last_modification_date_of_config_file(cls, config_file_path: str) -> str:
+    def get_last_modification_date_of_config_file(cls, config_file_path: str) -> float:
         """
         Returns last modification time for given file.
 
@@ -85,7 +85,7 @@ class S3StorageConfigurationSingleton:
         return last_modification_time
 
     @classmethod
-    def get_s3_bucket_configuration(cls, config_file_path: str) -> dict[dict]:
+    def get_s3_bucket_configuration(cls, config_file_path: str) -> list[list]:
         """
         Returns content of given CSV configuration file as a table.
 
@@ -93,7 +93,7 @@ class S3StorageConfigurationSingleton:
             config_file_path (str): Path to the CSV config file.
 
         Returns:
-            dict[dict]: Content of the CSV file.
+            list[list]: Content of the CSV file.
         """
         cls.load_csv_file_into_variable(config_file_path)
         return cls.bucket_configuration_csv
@@ -129,7 +129,7 @@ def get_storage_settings_from_config(
         return settings
 
 
-def get_settings_from_table(config_table: dict[dict], owner: str, collection: str, eopf_type: str):
+def get_settings_from_table(config_table: list[list], owner: str, collection: str, eopf_type: str):
     """
     Reads CSV table to extract correct settings corresponding to the parameters given.
     Logic used:
@@ -139,7 +139,7 @@ def get_settings_from_table(config_table: dict[dict], owner: str, collection: st
         - If previous step failed, use default configuration (STAR,STAR,STAR)
 
     Args:
-        config_table: Dict of dicts representing a CSV table.
+        config_table: List of lists representing a CSV table.
         owner (str): Owner of the file to upload.
         collection (str): Collection of the file to upload.
         eopf_type (str): 'eopf:type' of the file to upload.
