@@ -42,8 +42,10 @@ class S3StorageConfigurationSingleton:
     def load_csv_file_into_variable(cls, config_file_path: str) -> None:
         """
         To load a CSV file into the singleton.
-        If the file given is the same one as the one already in the singleton, and if this file hasn't changed since last execution, it will do nothing.
-        In other cases, it will load the content of the file in the singleton and update the file name and modification date values.
+        If the file given is the same one as the one already in the singleton,
+        and if this file hasn't changed since last execution, it will do nothing.
+        In other cases, it will load the content of the file in the singleton
+        and update the file name and modification date values.
 
         Args:
             config_file_path (str): Path to the config file.
