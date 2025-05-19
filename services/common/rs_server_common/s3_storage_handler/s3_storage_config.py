@@ -32,6 +32,7 @@ class S3StorageConfigurationSingleton:
     def __new__(cls, config_file_path: str = ""):
         if not hasattr(cls, "instance"):
             cls.instance = super().__new__(cls)
+            cls.file_lock = threading.Lock()
             cls.bucket_configuration_csv = []
             cls.config_file_path = ""
             cls.last_config_file_modification_date = 0
@@ -67,7 +68,6 @@ class S3StorageConfigurationSingleton:
         cls.config_file_path = config_file_path
         cls.last_config_file_modification_date = cls.get_last_modification_date_of_config_file(config_file_path)
         cls.bucket_configuration_csv = data
-        cls.file_lock = threading.Lock()
 
     @classmethod
     def get_last_modification_date_of_config_file(cls, config_file_path: str) -> str:
