@@ -46,6 +46,7 @@ opentelemetry-instrumentation-httpx = "^0.53b1"
 pylint = "^3.3.6"
 flake8-pyproject = "^1.2.3"
 httpx = "^0.28.1"
+python-keycloak = ">=5.5.0"
 
 [tool.poetry.group.dev]
 optional = true
