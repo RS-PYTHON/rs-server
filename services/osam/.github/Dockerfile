@@ -31,7 +31,7 @@ ADD ./*.whl /tmp/whl
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
 RUN cd /tmp/whl && pip install --no-cache-dir \
     --extra-index-url=https://home.rs-python.eu/local-pypi/ \
-    object_storage_access_manager-*.whl
+    osam-*.whl
 
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
@@ -61,4 +61,4 @@ ENTRYPOINT [ \
     "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
 
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/operational-services"
-LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/object-storage-access-manager"
+LABEL org.opencontainers.image.ref.name="ghcr.io/rs-python/osam"
