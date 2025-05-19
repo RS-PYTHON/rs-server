@@ -1,11 +1,11 @@
 [project]
-name = "object-storage-access-manager"
+name = "osam"
 version = "0.1.0"
 
 [tool.poetry]
-name = "object-storage-access-manager"
+name = "osam"
 version = "0.0.0"
-description = ""
+description = "Copernicus Sentinel OSAM (Object Storage Access Manager)."
 license = "Apache-2.0"
 authors = ["ESA under contract with Airbus and CS <ops_coprs@airbus.com>"]
 readme = "README.md"
@@ -24,7 +24,9 @@ classifiers = [
 
 packages = [
 
-    { include = "osam", from = "."},
+    { include = "osam"},
+    # TODO add tests
+    # { include = "tests", format = "sdist" },
 ]
 
 [tool.poetry.dependencies]
@@ -46,8 +48,7 @@ opentelemetry-instrumentation-httpx = "^0.53b1"
 pylint = "^3.3.6"
 flake8-pyproject = "^1.2.3"
 httpx = "^0.28.1"
-python-keycloak = ">=5.3.1,<6.0"
-ovh = "^1.2.0"
+python-keycloak = ">=5.5.0"
 
 [tool.poetry.group.dev]
 optional = true
