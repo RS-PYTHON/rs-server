@@ -1,0 +1,243 @@
+# Copyright 2024 CS Group
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Publish wheels and Docker images
+
+# Run workflow only for ...
+on:
+  pull_request: # pull requests
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - develop # pushes on the 'develop' branch
+    tags:
+      - '**' # new git tags (including hierarchical tags like v1.0/beta)
+  workflow_dispatch: # manual trigger
+    inputs:
+      docker_tag:
+        description: Tag the docker images as e.g. 'latest' or 'feat-rspy123'
+        required: false
+
+env:
+  PYTHON_VERSION: 3.11.7
+  DOCKER_REGISTRY: ghcr.io
+
+jobs:
+
+  # Calculate variables for this workflow
+  set-env:
+    if: github.actor != 'dependabot[bot]' # ignore pull requests by github bot
+    runs-on: ubuntu-latest
+    name: "Set environment"
+    outputs:
+      docker_tag: ${{ steps.set-env.outputs.docker_tag }}
+      branch_name: ${{ steps.set-env.outputs.branch_name }}
+      debug_mode: ${{ steps.set-env.outputs.debug_mode }}
+    steps:
+      - id: set-env
+        name: "Set environment"
+        run: |
+          set -x
+
+          # Get the current branch name (or source branch for a pull request)
+          if [[ ${{ github.event_name }} == pull_request ]]; then
+            branch_name=${{ github.event.pull_request.head.ref }}
+          else
+            branch_name=${{ github.ref_name }}
+          fi
+
+          # Determine the docker tag to set to new docker images.
+          # For a pull request, use the branch name
+          if [[ ${{ github.event_name }} == pull_request ]]; then
+            docker_tag="$branch_name"
+
+          # For a push on develop or a tag, use the docker tag :latest
+          elif [[ ${{ github.event_name }} == push ]]; then
+            docker_tag=latest
+
+          # For a manual trigger, use the user-defined tag
+          elif [[ ${{ github.event_name }} == workflow_dispatch ]]; then
+            docker_tag=${{ github.event.inputs.docker_tag }}
+
+          else
+            >&2 echo "Unknown trigger"
+            exit 1
+          fi
+
+          # Replace special characters by -
+          docker_tag=$(sed "s/[^a-zA-Z0-9]/-/g" <<< "$docker_tag")
+
+          # Always use the debug mode except for new tags
+          debug_mode=true
+          if [[ ${{ github.ref_type }} == tag ]]; then
+            debug_mode=false
+          fi
+
+          # Save values
+          echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+          echo "docker_tag=$docker_tag" >> $GITHUB_OUTPUT
+          echo "debug_mode=$debug_mode" >> $GITHUB_OUTPUT
+        shell: bash
+
+  ################
+  # Build wheels #
+  ################
+
+  complete-whl:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "complete wheel"
+#    outputs:
+#      version_name: ${{ steps.build-wheel.outputs.version_name }}
+#      package_name: ${{ steps.build-wheel.outputs.package_name }}
+    continue-on-error: true # TODO see how to publish a "complete wheel", this currently doesn't work
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
+#      - id: build-wheel
+#        uses: ./.github/actions/build-wheel
+#        with:
+#          package_directory: .
+
+  osam-whl:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "wheel"
+    outputs:
+      version_name: ${{ steps.build-wheel.outputs.version_name }}
+      package_name: ${{ steps.build-wheel.outputs.package_name }}
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so that Dunamai produce the correct version
+      - id: build-wheel
+        uses: ./.github/actions/build-wheel
+        with:
+          package_directory: .
+
+  ###################
+  # Publish to PyPI #
+  ###################
+
+  publish-pypi:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "Publish wheels and sdists"
+    needs: [osam-whl]
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      - name: Download dist dependencies
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: ./dist
+      - name: Publish wheel and sdist packages
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        with:
+          skip-existing: true
+          packages-dir: ./dist
+          verbose: true
+
+  #########################
+  # Publish Docker images #
+  #########################
+
+  osam-img:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "OSAM docker image"
+    needs: [set-env, osam-whl]
+    permissions: write-all
+    outputs:
+      docker_image: ${{ steps.publish-docker.outputs.docker_image}}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Download .whl files into a local dir
+      - name: Download .whl dependencies
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.osam-whl.outputs.package_name }}
+          path: ./build_context_path
+
+      - name: Copy debug mode dependencies
+        if: ${{ needs.set-env.outputs.debug_mode }} == true
+        run: cp -t ./build_context_path ./.github/scripts/git_debug_image.sh
+        shell: bash
+
+      - name: Debug docker_tag value
+        run: echo "docker_tag=${{ needs.set-env.outputs.docker_tag }}"
+        shell: bash
+
+      - id: publish-docker
+        uses: ./.github/actions/publish-docker
+        with:
+          dockerfile: ./.github/Dockerfile
+          build_context_path: ./build_context_path
+          version_name: ${{ needs.osam-whl.outputs.version_name }}
+          dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_tag: ${{ needs.set-env.outputs.docker_tag }}
+          branch_name: ${{ needs.set-env.outputs.branch_name }}
+          debug_mode: ${{ needs.set-env.outputs.debug_mode }}
+
+  ###########
+  # TESTING #
+  ###########
+
+  # Test rs-demo with the new Docker images
+  test-demo:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    name: "Test rs-demo"
+    needs: [set-env, osam-img]
+    steps:
+      - name: Log into Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: test-demos
+        name: "Test rs-demo"
+        run: |
+          set -x
+
+          # Copy the s3cmd config file to be able to access the "real" s3 bucket
+          echo "${{ secrets.S3CFG_OVH_BUCKET }}" > ~/.s3cfg
+
+          # Clone the rs-demo repository
+          git clone https://github.com/RS-PYTHON/rs-demo.git
+
+          # Try to checkout in rs-demo the same branch name than in rs-server.
+          # If the branch doesn't exist, it's ok, we stay on the default branch.
+          cd rs-demo
+          git checkout ${{ needs.set-env.outputs.branch_name }} || true
+          git status
+
+          # Run the rs-demo local mode using the newly created docker images
+          cd local-mode
+          docker_tag="${{ needs.set-env.outputs.docker_tag }}"
+          docker_tag="${docker_tag:-latest}" # latest by default
+          ./test-docker-tag.sh "$docker_tag"
+          docker compose -f docker-compose-test-tag.yml up -d
+          ./run-notebooks.sh "$docker_tag"
+
+        shell: bash
