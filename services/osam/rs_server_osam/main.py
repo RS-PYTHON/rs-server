@@ -27,9 +27,10 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
 )
 
-from object_storage_access_manager.osam import opentelemetry
+from osam import opentelemetry
+from osam.tasks import get_keycloak_configmap_values
 
-DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40
+DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 10))
 
 # Initialize a FastAPI application
 app = FastAPI(title="osam-service", root_path="", debug=True)
@@ -39,34 +40,17 @@ logger = logging.getLogger("my_logger")
 logger.setLevel(logging.DEBUG)
 
 
-def env_bool(var: str, default: bool) -> bool:
-    """
-    Return True if an environemnt variable is set to 1, true or yes (case insensitive).
-    Return False if set to 0, false or no (case insensitive).
-    Return the default value if not set or set to a different value.
-    """
-    val = os.getenv(var, str(default)).lower()
-    if val in ("y", "yes", "t", "true", "on", "1"):
-        return True
-    if val in ("n", "no", "f", "false", "off", "0"):
-        return False
-    return default
-
-
 @asynccontextmanager
 async def app_lifespan(fastapi_app: FastAPI):
     """Lifespann app to be implemented with start up / stop logic"""
     logger.info("Starting up the application...")
-    fastapi_app.extra["local_mode"] = env_bool("RSPY_LOCAL_MODE", default=False)
-    logger.info("Starting get attributes from keycloack thread")
     fastapi_app.extra["shutdown_event"] = asyncio.Event()
     # the following event may be called from the future endpoint requested in rspy 606
     fastapi_app.extra["keycloack_event"] = asyncio.Event()
     # Run the refresh loop in the background
     fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
-        manage_keycloack_attributes(timeout=DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES),
+        main_osam_task(timeout=DEFAULT_OSAM_FREQUENCY_SYNC),
     )
-
     # Yield control back to the application (this is where the app will run)
     yield
 
@@ -84,7 +68,7 @@ async def app_lifespan(fastapi_app: FastAPI):
     logger.info("Application gracefully stopped...")
 
 
-async def manage_keycloack_attributes(timeout: int = 60):
+async def main_osam_task(timeout: int = 60):
     """Background thread to refresh tokens when needed."""
     logger.info("Starting the background thread to refresh tokens")
     original_timeout = timeout
@@ -110,11 +94,14 @@ async def manage_keycloack_attributes(timeout: int = 60):
                 app.extra["keycloack_event"].release()
 
             logger.debug("Starting the process to get the keycloack attributes ")
+
+
+            kc_user, None = get_keycloak_configmap_values()
+            print(kc_user) # debug
             # logic here
             # get the keycloack users
-            # foreach user apply the logic requested in rspy 601
-            time.sleep(5)
-            logger.debug("Slept 5 seconds")
+
+
 
             logger.debug("Getting the keycloack attributes finished")
 
