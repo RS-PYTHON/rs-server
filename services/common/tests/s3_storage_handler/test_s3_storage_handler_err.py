@@ -36,7 +36,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 )
 
 # TODO: use fixture instead ? + set environment variables in monkeypatch
-from .conftest import (  # pylint: disable=no-name-in-module
+from .helpers import (  # pylint: disable=no-name-in-module
     RESOURCES_FOLDER,
     export_aws_credentials,
 )

@@ -40,7 +40,6 @@ from functools import lru_cache
 from pathlib import Path
 
 import pytest
-import yaml
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from rs_server_adgs import adgs_retriever, adgs_utils
@@ -104,29 +103,6 @@ def read_cli(request):
 #####################
 # SETUP ENVIRONMENT #
 #####################
-
-
-def export_aws_credentials():
-    """Export AWS credentials as environment variables for testing purposes.
-
-    This function sets the following environment variables with dummy values for AWS credentials:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - AWS_SECURITY_TOKEN
-    - AWS_SESSION_TOKEN
-    - AWS_DEFAULT_REGION
-
-    Note: This function is intended for testing purposes only, and it should not be used in production.
-
-    Returns:
-        None
-
-    Raises:
-        None
-    """
-    with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
-        s3_config = yaml.safe_load(f)
-        os.environ.update(s3_config["s3"])
 
 
 ###########

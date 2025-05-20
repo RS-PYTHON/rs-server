@@ -42,7 +42,7 @@ from rs_server_common.s3_storage_handler.s3_storage_handler import (
 from rs_server_common.utils.logging import Logging
 
 # TODO: use fixture instead ? + set environment variables in monkeypatch
-from .conftest import (  # pylint: disable=no-name-in-module
+from .helpers import (  # pylint: disable=no-name-in-module
     RESOURCES_FOLDER,
     export_aws_credentials,
 )
@@ -98,7 +98,7 @@ def test_get_s3_client_and_disconnect(endpoint: str):
         assert s3_handler.s3_client is None
     else:
         with pytest.raises(Exception):
-            assert S3StorageHandler(
+            S3StorageHandler(
                 secrets["accesskey"],
                 secrets["secretkey"],
                 secrets["s3endpoint"],
@@ -268,7 +268,6 @@ def test_list_s3_files_obj(endpoint: str, bucket: str, nb_of_files: int):
             s3_handler.check_bucket_access(bucket)
             server.stop()
             logger.error("The bucket %s does exist, for the tests it shouldn't", bucket)
-            assert False
         if bucket == "test-bucket":
             s3_handler.s3_client.create_bucket(Bucket=bucket)
             for idx in range(nb_of_files):
