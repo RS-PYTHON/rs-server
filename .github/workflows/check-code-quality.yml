@@ -44,7 +44,7 @@ jobs:
         id: filter
         with:
           filters: |
-            code: ['**.py']
+            code: ['**.py', '**.sh']
             conf: ['**.lock', '**.json', '**.raw', '**.toml', '**.yaml', '**.yml']
 
   check-format:
