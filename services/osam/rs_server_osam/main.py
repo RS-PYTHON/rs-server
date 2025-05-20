@@ -27,8 +27,8 @@ from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
 )
 
-from object_storage_access_manager.osam import opentelemetry
-from object_storage_access_manager.osam.utils.keycloak_handler import KeycloakHandler
+from osam import opentelemetry
+from osam.utils.keycloak_handler import KeycloakHandler
 
 DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40
 
@@ -67,7 +67,6 @@ async def app_lifespan(fastapi_app: FastAPI):
     fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
         manage_keycloack_attributes(timeout=DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES),
     )
-
     # Yield control back to the application (this is where the app will run)
     yield
 
