@@ -57,7 +57,7 @@ WORKDIR /home/user
 USER user
 
 ENTRYPOINT [ \
-    "python", "-m", "uvicorn", "object_storage_access_manager.main:app", \
+    "python", "-m", "uvicorn", "osam.main:app", \
     "--host", "0.0.0.0", "--port", "8000", "[DEBUG_MODE_RELOAD]" ]
 
 LABEL org.opencontainers.image.source="https://github.com/RS-PYTHON/operational-services"
