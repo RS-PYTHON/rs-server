@@ -114,9 +114,7 @@ async def manage_keycloack_attributes(timeout: int = 60):
             # get the keycloack users
             kc_client = KeycloakHandler()
             kc_users = kc_client.get_keycloak_users()
-            # foreach user apply the logic requested in rspy 601
-            time.sleep(5)
-            logger.debug("Slept 5 seconds")
+            logger.info(f"{kc_users=}")
 
             logger.debug("Getting the keycloack attributes finished")
 
