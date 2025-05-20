@@ -27,7 +27,7 @@ BRANCH_NAME="$1" # git branch name
 
 # Install components in the docker images
 apt update
-apt install -y git vim emacs-nox
+apt install -y git vim emacs-nox nano
 
 # Add aliases to bash
 cat << EOF >> /home/user/.bashrc
