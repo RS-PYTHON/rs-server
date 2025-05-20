@@ -95,7 +95,6 @@ async def main_osam_task(timeout: int = 60):
 
             logger.debug("Starting the process to get the keycloack attributes ")
 
-
             kc_user, _ = get_keycloak_configmap_values()
             print(kc_user) # debug
             # logic here

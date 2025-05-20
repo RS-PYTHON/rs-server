@@ -51,6 +51,9 @@ class KeycloakHandler:
                 f"realm_name={realm_name} with client_id={client_id}."
             ) from error
 
+    def get_keycloak_user_roles(self, keycloak_user: dict):
+        return self.keycloak_admin.get_realm_roles_of_user(keycloak_user['id'])
+
     def get_keycloak_users(self) -> list[dict]:
         return self.keycloak_admin.get_users({})
     
