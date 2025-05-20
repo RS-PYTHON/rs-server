@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import os
+
 import ovh
+
 
 class OVHApiHandler:
 
@@ -33,24 +35,30 @@ class OVHApiHandler:
                 endpoint=ovh_endpoint,
                 application_key=ovh_application_key,
                 application_secret=ovh_application_secret,
-                consumer_key=ovh_consumer_key
+                consumer_key=ovh_consumer_key,
             )
         except ovh.APIError as error:
-            raise RuntimeError(
-                f"Error connecting with OVH to '{ovh_endpoint}'."
-            ) from error
+            raise RuntimeError(f"Error connecting with OVH to '{ovh_endpoint}'.") from error
 
         return ovh_client
 
-
-    def get_all_users(self) -> dict:
-        # TODO ça retourne quoi ce truc ?
+    def get_all_users(self) -> list[dict]:
+        # Returns a list of users. Example of user format:
+        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
         return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user")
 
+    def get_user(self, user_id: str) -> dict:
+        # Example of user returned:
+        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
+        return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
 
-    def create_user(self, description: str=None, role=None, roles=None) -> dict:
-        return self.ovh_client.post(f"/cloud/project/{self.ovh_service_name}/user", description=description, role=role, roles=roles)
-
+    def create_user(self, description: str = None, role=None, roles=None) -> dict:
+        return self.ovh_client.post(
+            f"/cloud/project/{self.ovh_service_name}/user",
+            description=description,
+            role=role,
+            roles=roles,
+        )
 
     def delete_user(self, user_id=str):
         return self.ovh_client.delete(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
