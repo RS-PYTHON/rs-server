@@ -48,7 +48,7 @@ def link_rspython_users_and_obs_users():
 
     keycloak_handler = KeycloakHandler()
     ovh_handler = OVHApiHandler()
-    keycloak_users, None = get_keycloak_configmap_values(keycloak_handler)
+    keycloak_users, _ = get_keycloak_configmap_values(keycloak_handler)
 
     for user in keycloak_users:
         if not keycloak_handler.get_obs_user_from_keycloak_user(user):
