@@ -30,7 +30,7 @@ from starlette.status import (  # pylint: disable=C0411
 from osam import opentelemetry
 from osam.tasks import get_keycloak_configmap_values
 
-DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40 # os.environ
+DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 10))
 
 # Initialize a FastAPI application
 app = FastAPI(title="osam-service", root_path="", debug=True)
