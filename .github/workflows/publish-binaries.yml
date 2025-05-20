@@ -160,7 +160,7 @@ jobs:
   osam-img:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
-    name: "OSAM docker image"
+    name: "'object-storage-access-manager/osam' Docker image"
     needs: [set-env, osam-whl]
     permissions: write-all
     outputs:
@@ -189,6 +189,7 @@ jobs:
         with:
           dockerfile: ./object_storage_access_manager/.github/Dockerfile
           build_context_path: ./build_context_path
+          image_suffix: -osam
           version_name: ${{ needs.osam-whl.outputs.version_name }}
           dockerhub_username: ${{ vars.DOCKERHUB_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}

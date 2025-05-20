@@ -26,7 +26,7 @@ inputs:
     description: Docker image base name
     default: ${{ github.repository }} # = owner/repository-name
   image_suffix:
-    description: Docker image name suffix e.g. _services
+    description: Docker image name suffix e.g. '-osam'
     required: true
   version_name:
     description: Version name e.g. 1.2.3a4.dev1a2b3c4d
@@ -81,11 +81,13 @@ runs:
     - run: echo "docker_version_name=$(echo ${{ inputs.version_name }} | tr + .)" >> $GITHUB_ENV
       shell: bash
 
-    # Full Docker image name:tag as ghcr.io/RS-PYTHON/object-storage-access-manager<suffix>:<version> in lowercase
+    # Full Docker image name:tag as ghcr.io/RS-PYTHON/operational-services<suffix>:<version> in lowercase
     - id: docker_image
       run: |
         docker_image=${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}
         docker_image=${docker_image,,} # lowercase
+        echo TEST
+        echo ${docker_image}
         echo docker_image=${docker_image} >> $GITHUB_ENV
         echo docker_image=${docker_image} >> $GITHUB_OUTPUT
       shell: bash
