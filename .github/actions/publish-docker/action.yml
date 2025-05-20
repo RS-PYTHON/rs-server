@@ -84,7 +84,7 @@ runs:
     # Full Docker image name:tag as ghcr.io/RS-PYTHON/operational-services<suffix>:<version> in lowercase
     - id: docker_image
       run: |
-        docker_image=${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}        
+        docker_image=${{ env.DOCKER_REGISTRY }}/${{ inputs.image_basename }}${{ inputs.image_suffix }}:${{ env.docker_version_name }}
         docker_image=${docker_image,,} # lowercase
         echo TEST
         echo ${docker_image}
