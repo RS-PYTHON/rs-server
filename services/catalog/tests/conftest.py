@@ -39,6 +39,7 @@ from rs_server_common import settings as common_settings
 
 from .helpers import (
     RESOURCES_FOLDER,
+    S3_EXPIRATION_BUCKET_CSV_FILE,
     Collection,
     Feature,
     a_collection,
@@ -47,6 +48,7 @@ from .helpers import (
     add_feature,
     add_features_from_file,
     delete_collection,
+    delete_collections,
     is_db_up,
 )
 
@@ -290,13 +292,24 @@ def a_incorrect_feature_fixture() -> dict:
 
 @pytest.fixture(scope="session", name="temporal_filters_test_data")
 def temporal_filters_test_data_fixture(client):
-    """Fixture to load test data for adavnced temporal filters tests from file into catalog,
+    """Fixture to load test data for advanced temporal filters tests from file into catalog,
     and to delete it afterwards.
     """
     test_data_file = "temporal_filters_test_data.json"
-    owner, collection_name = add_features_from_file(client, test_data_file)
+    owners_collections_list = add_features_from_file(client, test_data_file)
     yield
-    delete_collection(client, owner, collection_name)
+    delete_collections(client, owners_collections_list)
+
+
+@pytest.fixture(scope="session", name="expiration_delays_test_data")
+def expiration_delays_test_data_fixture(client):
+    """Fixture to load test data for checking if retention times are correctly retrieved from
+    configuration.
+    """
+    test_data_file = "expiration_delays_test_data.json"
+    owners_collections_list = add_features_from_file(client, test_data_file)
+    yield
+    delete_collections(client, owners_collections_list)
 
 
 @pytest.mark.integration
@@ -330,6 +343,7 @@ def setup_database(
         user id titi.
     """
 
+    os.environ["BUCKET_CONFIG_FILE_PATH"] = S3_EXPIRATION_BUCKET_CSV_FILE
     add_collection(client, toto_s1_l1)
     add_collection(client, toto_s2_l3)
     add_collection(client, titi_s2_l1)

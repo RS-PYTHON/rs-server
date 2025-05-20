@@ -386,7 +386,7 @@ class Staging(
         self.station_token_list_lock = station_token_list_lock
 
     # Override from BaseProcessor, execute is async in RSPYProcessor
-    async def execute(  # pylint: disable=too-many-return-statements
+    async def execute(  # pylint: disable=too-many-return-statements,arguments-differ,invalid-overridden-method
         self,
         data: dict,
     ) -> tuple[str, dict]:

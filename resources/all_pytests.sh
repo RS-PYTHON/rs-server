@@ -64,14 +64,15 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 
         # Run pytest from the root directory. Update the coverage reports.
         cd "$ROOT_DIR"
-        cmd="poetry \
---directory $proj_dir run pytest $tests_dir \
--ra --disable-pytest-warnings \
+        cmd="\
+$(cd $proj_dir && poetry run which python) -m pytest $tests_dir \
+-ra \
+--disable-pytest-warnings \
 --color=yes \
 --durations=0 \
 --durations-min=0.05 \
 --error-for-skips \
---cov=. \
+--cov=$proj_dir \
 --cov-report=term \
 --cov-report=xml:./cov-report.xml \
 --junit-xml=./junit-xml-report-${junit}.xml \
@@ -85,6 +86,7 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 done
 
 # Merge the junit reports
+cd "$ROOT_DIR"
 junitparser merge ./junit-xml-report*.xml ./junit-xml-report.xml
 
 # There seems to be a bug in pytest cov with --cov-append.
@@ -93,8 +95,8 @@ junitparser merge ./junit-xml-report*.xml ./junit-xml-report.xml
 dummy="/tmp/empty-pytest"
 mkdir -p $dummy
 # Use the last project configuration
-cmd="poetry \
---directory $proj_dir run pytest $dummy \
+cmd="\
+$(cd $proj_dir && poetry run which python) -m pytest $dummy \
 --cov=$dummy \
 --cov-report=term \
 --cov-report=xml:./cov-report.xml \

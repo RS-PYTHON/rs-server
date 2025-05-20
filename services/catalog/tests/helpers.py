@@ -26,6 +26,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy_utils import database_exists
 
 RESOURCES_FOLDER = Path(osp.realpath(osp.dirname(__file__))) / "resources"
+S3_EXPIRATION_BUCKET_CSV_FILE = osp.join(RESOURCES_FOLDER, "s3/expiration_bucket.csv")
 
 
 def is_db_up(db_url: str) -> bool:
@@ -321,7 +322,7 @@ def build_minimal_collection_from_feature_data(feature: dict) -> dict:
     }
 
 
-def add_features_from_file(client: TestClient, collection_file_name: str) -> tuple[str, str]:
+def add_features_from_file(client: TestClient, collection_file_name: str) -> list[tuple[str, str]]:
     """Reads a collection from the given file and adds it to the STAC catalog.
 
     Args:
@@ -336,14 +337,13 @@ def add_features_from_file(client: TestClient, collection_file_name: str) -> tup
         Error if the collection addition failed.
     """
     collection_file = Path.joinpath(RESOURCES_FOLDER, collection_file_name)
-    collection_owner = ""
-    collection_name = ""
+    owners_and_collections_list = []
     with open(collection_file, encoding="utf-8") as json_file:
         collection = json.load(json_file)
 
     # 1st case: ONE feature
     if isinstance(collection, dict) and "type" in collection.keys() and collection["type"] == "Feature":
-        (collection_owner, collection_name) = add_feature_from_dict(client, collection)
+        owners_and_collections_list.append(add_feature_from_dict(client, collection))
 
     # 2nd case: a list of features
     if isinstance(collection, dict) and "features" in collection.keys():
@@ -351,9 +351,9 @@ def add_features_from_file(client: TestClient, collection_file_name: str) -> tup
 
     if isinstance(collection, list):
         for feature in collection:
-            (collection_owner, collection_name) = add_feature_from_dict(client, feature)
+            owners_and_collections_list.append(add_feature_from_dict(client, feature))
 
-    return (collection_owner, collection_name)
+    return owners_and_collections_list
 
 
 def delete_collection(client: TestClient, collection_owner: str, collection_name: str):
@@ -369,3 +369,18 @@ def delete_collection(client: TestClient, collection_owner: str, collection_name
 
     """
     client.delete(f"/catalog/collections/{collection_owner}:{collection_name}")
+
+
+def delete_collections(client: TestClient, owners_collections_list: list[tuple[str, str]]):
+    """Deletes all the collections in the given list of collections and owners
+
+    Args:
+        client: the catalog client
+        owners_collections_list: list of tuples, each tuple is (collection_owner, collection_name)
+
+    Returns:
+        None
+
+    """
+    for element in owners_collections_list:
+        delete_collection(client, collection_owner=element[0], collection_name=element[1])
