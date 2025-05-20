@@ -63,7 +63,6 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
         fi
 
         # Run pytest from the root directory. Update the coverage reports.
-        cd "$ROOT_DIR"
         cmd="poetry \
 --directory $proj_dir run pytest $tests_dir \
 -ra --disable-pytest-warnings \
@@ -73,8 +72,8 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 --error-for-skips \
 --cov=. \
 --cov-report=term \
---cov-report=xml:./cov-report.xml \
---junit-xml=./junit-xml-report-${junit}.xml \
+--cov-report=xml:${ROOT_DIR}/cov-report.xml \
+--junit-xml=${ROOT_DIR}/junit-xml-report-${junit}.xml \
 --cov-append \
 "
         trap "echo FAILED COMMAND: $cmd" EXIT # print the command if it fails
@@ -85,6 +84,7 @@ for toml in $(find "$ROOT_DIR" -name pyproject.toml | sort); do
 done
 
 # Merge the junit reports
+cd "$ROOT_DIR"
 junitparser merge ./junit-xml-report*.xml ./junit-xml-report.xml
 
 # There seems to be a bug in pytest cov with --cov-append.
