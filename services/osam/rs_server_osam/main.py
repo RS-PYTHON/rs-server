@@ -28,9 +28,9 @@ from starlette.status import (  # pylint: disable=C0411
 )
 
 from osam import opentelemetry
-from osam.utils.keycloak_handler import KeycloakHandler
+from osam.tasks import get_keycloak_configmap_values
 
-DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40
+DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40 # os.environ
 
 # Initialize a FastAPI application
 app = FastAPI(title="osam-service", root_path="", debug=True)
@@ -65,7 +65,7 @@ async def app_lifespan(fastapi_app: FastAPI):
     fastapi_app.extra["keycloack_event"] = asyncio.Event()
     # Run the refresh loop in the background
     fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
-        manage_keycloack_attributes(timeout=DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES),
+        main_osam_task(timeout=DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES),
     )
     # Yield control back to the application (this is where the app will run)
     yield
@@ -84,7 +84,7 @@ async def app_lifespan(fastapi_app: FastAPI):
     logger.info("Application gracefully stopped...")
 
 
-async def manage_keycloack_attributes(timeout: int = 60):
+async def main_osam_task(timeout: int = 60):
     """Background thread to refresh tokens when needed."""
     logger.info("Starting the background thread to refresh tokens")
     original_timeout = timeout
@@ -110,11 +110,14 @@ async def manage_keycloack_attributes(timeout: int = 60):
                 app.extra["keycloack_event"].release()
 
             logger.debug("Starting the process to get the keycloack attributes ")
+
+
+            kc_user, None = get_keycloak_configmap_values()
+            print(kc_user) # debug
             # logic here
             # get the keycloack users
-            kc_client = KeycloakHandler()
-            kc_users = kc_client.get_keycloak_users()
-            logger.info(f"{kc_users=}")
+
+
 
             logger.debug("Getting the keycloack attributes finished")
 
