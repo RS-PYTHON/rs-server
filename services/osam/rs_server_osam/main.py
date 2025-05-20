@@ -40,32 +40,16 @@ logger = logging.getLogger("my_logger")
 logger.setLevel(logging.DEBUG)
 
 
-def env_bool(var: str, default: bool) -> bool:
-    """
-    Return True if an environemnt variable is set to 1, true or yes (case insensitive).
-    Return False if set to 0, false or no (case insensitive).
-    Return the default value if not set or set to a different value.
-    """
-    val = os.getenv(var, str(default)).lower()
-    if val in ("y", "yes", "t", "true", "on", "1"):
-        return True
-    if val in ("n", "no", "f", "false", "off", "0"):
-        return False
-    return default
-
-
 @asynccontextmanager
 async def app_lifespan(fastapi_app: FastAPI):
     """Lifespann app to be implemented with start up / stop logic"""
     logger.info("Starting up the application...")
-    fastapi_app.extra["local_mode"] = env_bool("RSPY_LOCAL_MODE", default=False)
-    logger.info("Starting get attributes from keycloack thread")
     fastapi_app.extra["shutdown_event"] = asyncio.Event()
     # the following event may be called from the future endpoint requested in rspy 606
     fastapi_app.extra["keycloack_event"] = asyncio.Event()
     # Run the refresh loop in the background
     fastapi_app.extra["refresh_task"] = asyncio.get_event_loop().create_task(
-        main_osam_task(timeout=DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES),
+        main_osam_task(timeout=DEFAULT_OSAM_FREQUENCY_SYNC),
     )
     # Yield control back to the application (this is where the app will run)
     yield
