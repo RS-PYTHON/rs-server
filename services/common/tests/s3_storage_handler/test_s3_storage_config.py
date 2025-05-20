@@ -25,6 +25,28 @@ S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "expiration_bucke
 EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "empty_expiration_bucket.csv")
 
 
+def test_singleton():
+    """Test if singleton works properly"""
+    singleton = s3_storage_config.S3StorageConfigurationSingleton()
+    assert not singleton.config_file_path
+    assert not singleton.bucket_configuration_csv
+    assert singleton.last_config_file_modification_date == 0
+
+    singleton.get_s3_bucket_configuration(S3_EXPIRATION_BUCKET_CSV_FILE)
+    assert singleton.config_file_path == S3_EXPIRATION_BUCKET_CSV_FILE
+    assert singleton.bucket_configuration_csv
+    assert singleton.last_config_file_modification_date == singleton.get_last_modification_date_of_config_file(
+        S3_EXPIRATION_BUCKET_CSV_FILE,
+    )
+
+    singleton.get_s3_bucket_configuration(EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE)
+    assert singleton.config_file_path == EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE
+    assert not singleton.bucket_configuration_csv
+    assert singleton.last_config_file_modification_date == singleton.get_last_modification_date_of_config_file(
+        EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE,
+    )
+
+
 def test_get_settings_with_correct_inputs():
     """Test for correct use"""
     # Setting up correct env var
