@@ -28,6 +28,7 @@ from starlette.status import (  # pylint: disable=C0411
 )
 
 from object_storage_access_manager.osam import opentelemetry
+from object_storage_access_manager.osam.utils.keycloak_handler import KeycloakHandler
 
 DEFAULT_REFRESH_KEYCLOACK_ATTRIBUTES = 40
 
@@ -112,6 +113,8 @@ async def manage_keycloack_attributes(timeout: int = 60):
             logger.debug("Starting the process to get the keycloack attributes ")
             # logic here
             # get the keycloack users
+            kc_client = KeycloakHandler()
+            kc_users = kc_client.get_keycloak_users()
             # foreach user apply the logic requested in rspy 601
             time.sleep(5)
             logger.debug("Slept 5 seconds")
