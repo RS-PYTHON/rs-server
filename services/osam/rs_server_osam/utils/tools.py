@@ -17,10 +17,10 @@
 DEFAULT_DESCRIPTION_TEMPLATE = "## linked to keycloak user %keycloak-user%"
 
 
-def create_description_from_template(keycloak_user: str, template: str=DEFAULT_DESCRIPTION_TEMPLATE) -> str:
+def create_description_from_template(keycloak_user: str, template: str = DEFAULT_DESCRIPTION_TEMPLATE) -> str:
     """Applies the given Keycloak user name in the description, using the given template.
     The template must have a '%keycloak-user%' placeholder.
-    
+
     Args:
         keycloak_user (str): Keycloak user to set in the description.
         template (str, optionnal): Template to use. Default is '## linked to keycloak user %keycloak-user%'.
@@ -32,7 +32,7 @@ def create_description_from_template(keycloak_user: str, template: str=DEFAULT_D
     return template.replace(user_placeholder, keycloak_user)
 
 
-def get_keycloak_user_from_description(description: str, template: str=DEFAULT_DESCRIPTION_TEMPLATE) -> str:
+def get_keycloak_user_from_description(description: str, template: str = DEFAULT_DESCRIPTION_TEMPLATE) -> str:
     """Returns the Keycloak user name included in the given description using its template.
     The template must have a '%keycloak-user%' placeholder.
 
@@ -41,8 +41,13 @@ def get_keycloak_user_from_description(description: str, template: str=DEFAULT_D
         template (str, optionnal): Template to use. Default is '## linked to keycloak user %keycloak-user%'.
 
     Returns:
-        str: Keycloak user name.    
+        str: Keycloak user name.
     """
     user_placeholder = "%keycloak-user%"
-    template = template.replace(user_placeholder, '')
-    return description.replace(template, '')
+
+    # We use split to handle any case when the placeholder is in the middle of the description
+    templates = template.split(user_placeholder)
+    for template in templates:
+        description = description.replace(template, "")
+
+    return description
