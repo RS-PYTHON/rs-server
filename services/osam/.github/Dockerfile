@@ -44,7 +44,6 @@ COPY --from=builder /usr/local /usr/local
 
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install
-RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common"
 
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*

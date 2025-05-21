@@ -26,7 +26,6 @@ classifiers = [
 ]
 
 packages = [
-
     { include = "osam", from = "object_storage_access_manager"},
 ]
 
