@@ -682,8 +682,8 @@ class Staging(
             True if the info has been constructed, False otherwise
         """
         # Get infos from feature to retrieve S3 bucket name from configuration
-        owner = feature.properties["owner"]
-        eopf_type = feature.properties["eopf:type"]
+        owner = feature.properties.get("owner", "*")
+        eopf_type = feature.properties.get("eopf:type", "*")
         s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
 
         for asset_name, asset_content in feature.assets.items():
