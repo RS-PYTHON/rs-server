@@ -36,6 +36,9 @@ RUN cd /tmp/whl && pip install --no-cache-dir \
 # Final stage. Don't use alpine, it's too different from the build stage.
 FROM ghcr.io/rs-python/python:3.11.7-slim-bookworm
 
+# Reinstall git since this is a new image layer
+RUN apt update && apt install -y git && rm -rf /var/lib/apt/lists/*
+
 # Copy the whole /usr/local dir (that contains the python installation) from the build stage
 COPY --from=builder /usr/local /usr/local
 
