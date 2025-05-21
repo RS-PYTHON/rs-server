@@ -69,8 +69,8 @@ async def app_lifespan(fastapi_app: FastAPI):
 
 
 async def main_osam_task(timeout: int = 60):
-    """Background thread to refresh tokens when needed."""
-    logger.info("Starting the background thread to refresh tokens")
+    
+    logger.info("Starting the main background thread ")
     original_timeout = timeout
     while True:
         try:
@@ -87,7 +87,7 @@ async def main_osam_task(timeout: int = 60):
             )
 
             if app.extra["shutdown_event"].is_set():  # If shutting down, exit loop
-                logger.info("Finishing the background thread to refresh tokens")
+                logger.info("Finishing the main background thread  and exit")
                 break
             if app.extra["keycloack_event"].is_set():  # If shutting down, exit loop
                 logger.debug("Releasing keycloack_event")
