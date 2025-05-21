@@ -19,7 +19,8 @@ class OVHApiHandler:
 
     def __init__(self):
         self.ovh_client = self.__open_ovh_connection()
-        self.ovh_service_name = os.environ["OVH_SERVICE_NAME"]
+        # Get ovh name dinamically
+        self.ovh_service_name = self.ovh_client.get("/cloud/project")[0]
 
     def __open_ovh_connection(self) -> ovh.Client:
 
