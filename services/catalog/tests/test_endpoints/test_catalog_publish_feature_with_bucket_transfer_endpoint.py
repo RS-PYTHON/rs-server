@@ -491,13 +491,7 @@ class TestCatalogPublishFeatureWithBucketTransferEndpoint:
         """Test with other temp bucket name."""
         moto_endpoint = "http://localhost:8077"
         export_aws_credentials()
-        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        s3_handler = S3StorageHandler(None, None, moto_endpoint, "")
         os.environ["RSPY_LOCAL_CATALOG_MODE"] = "0"
         server = ThreadedMotoServer(port=8077)
         server.start()

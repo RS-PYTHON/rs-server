@@ -15,12 +15,12 @@
 """Unit tests for s3_storage_config functions."""
 
 import os
-from pathlib import Path
 
 import pytest
 from rs_server_common.s3_storage_handler import s3_storage_config
 
-RESOURCES_FOLDER = Path(os.path.realpath(os.path.dirname(__file__))) / ".." / "testresources"
+from .helpers import RESOURCES_FOLDER
+
 S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "expiration_bucket.csv")
 EMPTY_S3_EXPIRATION_BUCKET_CSV_FILE = os.path.join(RESOURCES_FOLDER, "empty_expiration_bucket.csv")
 

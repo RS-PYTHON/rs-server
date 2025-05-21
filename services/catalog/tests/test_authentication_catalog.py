@@ -17,11 +17,9 @@
 """Unit tests for the authentication."""
 
 import json
-import os
 
 import pytest
 import requests
-import yaml  # type: ignore
 from moto.server import ThreadedMotoServer
 from pytest_httpx import HTTPXMock
 from rs_server_catalog.main import app, must_be_authenticated
@@ -48,7 +46,10 @@ from starlette.status import (
     HTTP_422_UNPROCESSABLE_ENTITY,
 )
 
-from .helpers import RESOURCES_FOLDER  # pylint: disable=no-name-in-module
+from .helpers import (  # pylint: disable=no-name-in-module
+    clear_aws_credentials,
+    export_aws_credentials,
+)
 
 logger = Logging.default(__name__)
 
@@ -1167,36 +1168,6 @@ class TestAuthenticationSearch:
 class TestAuthenticationDownload:
     """Contains authentication tests when a user wants to do a download."""
 
-    def export_aws_credentials(self):
-        """Export AWS credentials as environment variables for testing purposes.
-
-        This function sets the following environment variables with dummy values for AWS credentials:
-        - AWS_ACCESS_KEY_ID
-        - AWS_SECRET_ACCESS_KEY
-        - AWS_SECURITY_TOKEN
-        - AWS_SESSION_TOKEN
-        - AWS_DEFAULT_REGION
-
-        Note: This function is intended for testing purposes only, and it should not be used in production.
-
-        Returns:
-            None
-
-        Raises:
-            None
-        """
-        with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
-            s3_config = yaml.safe_load(f)
-            os.environ.update(s3_config["s3"])
-            os.environ.update(s3_config["boto"])
-
-    def clear_aws_credentials(self):
-        """Clear AWS credentials from environment variables."""
-        with open(RESOURCES_FOLDER / "s3" / "s3.yml", encoding="utf-8") as f:
-            s3_config = yaml.safe_load(f)
-            for env_var in list(s3_config["s3"].keys()) + list(s3_config["boto"].keys()):
-                del os.environ[env_var]
-
     @pytest.mark.parametrize("test_apikey, test_oauth2", [[True, False], [False, True]], ids=["apikey", "oauth2"])
     async def test_http200_with_good_authentication(
         self,
@@ -1218,7 +1189,7 @@ class TestAuthenticationDownload:
 
         # Start moto server
         moto_endpoint = "http://localhost:8077"
-        self.export_aws_credentials()
+        export_aws_credentials()
         secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
         s3_handler = S3StorageHandler(
             secrets["accesskey"],
@@ -1277,7 +1248,7 @@ class TestAuthenticationDownload:
         finally:
             server.stop()
             # Remove bucket credentials form env variables / should create a s3_handler without credentials error
-            self.clear_aws_credentials()
+            clear_aws_credentials()
 
         response = client.get(
             "/catalog/collections/toto:S1_L1/items/fe916452-ba6f-4631-9154-c249924a122d/download/"
@@ -1300,14 +1271,8 @@ class TestAuthenticationDownload:
 
         # Start moto server
         moto_endpoint = "http://localhost:8077"
-        self.export_aws_credentials()
-        secrets = {"s3endpoint": moto_endpoint, "accesskey": None, "secretkey": None, "region": ""}
-        s3_handler = S3StorageHandler(
-            secrets["accesskey"],
-            secrets["secretkey"],
-            secrets["s3endpoint"],
-            secrets["region"],
-        )
+        export_aws_credentials()
+        s3_handler = S3StorageHandler(None, None, moto_endpoint, "")
         server = ThreadedMotoServer(port=8077)
         server.start()
 
@@ -1334,7 +1299,7 @@ class TestAuthenticationDownload:
         finally:
             server.stop()
             # Remove bucket credentials form env variables / should create a s3_handler without credentials error
-            self.clear_aws_credentials()
+            clear_aws_credentials()
 
 
 class TestAuthenticationDelete:
