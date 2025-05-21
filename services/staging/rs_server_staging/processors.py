@@ -50,6 +50,9 @@ from rs_server_common.authentication.token_auth import (
     TokenDataNotFound,
     get_station_token,
 )
+from rs_server_common.s3_storage_handler.s3_storage_config import (
+    get_bucket_name_from_config,
+)
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3_MAX_RETRIES,
     S3_RETRY_TIMEOUT,
@@ -59,14 +62,13 @@ from rs_server_common.settings import LOCAL_MODE
 from rs_server_common.utils.logging import Logging
 from starlette.requests import Request
 
+from .asset_info import AssetInfo
 from .rspy_models import Feature, FeatureCollectionModel
 
 
 def streaming_task(  # pylint: disable=R0913, R0917
-    product_url: str,
-    s3_file: str,
+    asset_info: AssetInfo,
     config: ExternalAuthenticationConfig,
-    bucket: str,
     auth: str,
 ):
     """
@@ -100,6 +102,10 @@ def streaming_task(  # pylint: disable=R0913, R0917
 
     logger_dask = logging.getLogger(__name__)
     logger_dask.info("The streaming task started")
+
+    product_url = asset_info.get_href()
+    s3_file = asset_info.get_s3_object_path()
+    bucket = asset_info.get_s3_bucket()
     # time.sleep(5)
     # get the retry timeout
     s3_retry_timeout = int(os.environ.get("S3_RETRY_TIMEOUT", S3_RETRY_TIMEOUT))
@@ -378,10 +384,9 @@ class Staging(
         self.create_job_execution()
         #################
         # Inputs section
-        self.assets_info: list = []
+        self.assets_info: list[AssetInfo] = []
 
         self.cluster = cluster
-        self.catalog_bucket = os.environ["RSPY_CATALOG_BUCKET"]
         self.station_token_list = station_token_list
         self.station_token_list_lock = station_token_list_lock
 
@@ -676,6 +681,10 @@ class Staging(
         Returns:
             True if the info has been constructed, False otherwise
         """
+        # Get infos from feature to retrieve S3 bucket name from configuration
+        owner = feature.properties["owner"]
+        eopf_type = feature.properties["eopf:type"]
+        s3_bucket_name = get_bucket_name_from_config(owner, catalog_collection, eopf_type)
 
         for asset_name, asset_content in feature.assets.items():
             if not asset_content.href or not asset_name:
@@ -684,7 +693,7 @@ class Staging(
             # Add the user_collection as main directory, as soon as the authentication will be
             # implemented in this staging process
             s3_obj_path = f"{catalog_collection}/{feature.id.rstrip('/')}/{asset_name}"
-            self.assets_info.append((asset_content.href, s3_obj_path))
+            self.assets_info.append(AssetInfo(asset_content.href, s3_obj_path, s3_bucket_name))
             # update the s3 path, this will be checked in the rs-server-catalog in the
             # publishing phase
             asset_content.href = f"s3://rtmpop/{s3_obj_path}"
@@ -728,13 +737,13 @@ class Staging(
 
             for s3_obj in self.assets_info:
                 try:
-                    s3_handler.delete_file_from_s3(self.catalog_bucket, s3_obj[1])
-                except RuntimeError as re:
+                    s3_handler.delete_file_from_s3(s3_obj.get_s3_bucket(), s3_obj.get_s3_object_path())
+                except RuntimeError as error:
                     self.logger.warning(
                         "Failed to delete from the bucket key s3://%s/%s : %s",
-                        self.catalog_bucket,
-                        s3_obj[1],
-                        re,
+                        s3_obj.get_s3_bucket(),
+                        s3_obj.get_s3_object_path(),
+                        error,
                     )
                     continue
         except KeyError as exc:
@@ -823,9 +832,8 @@ class Staging(
             initial_batch_tasks = {
                 client.submit(
                     streaming_task,
-                    *next(data_iter),
+                    next(data_iter),
                     refresh_token.config,
-                    self.catalog_bucket,
                     access_token,
                 )
                 for _ in range(max_parallel_tasks)
@@ -851,7 +859,6 @@ class Staging(
                 self.logger.debug("%s Task streaming completed", task.key)
                 # Submit a new task if available and no errors occurred
                 try:
-                    new_task = next(data_iter)
                     # refresh the token if needed
                     if not update_station_token(refresh_token, self.logger):
                         raise RuntimeError("Could not retrieve or refresh the station token")
@@ -860,9 +867,8 @@ class Staging(
                     tasks.add(
                         client.submit(
                             streaming_task,
-                            *new_task,
+                            next(data_iter),
                             refresh_token.config,
-                            self.catalog_bucket,
                             access_token,
                         ),
                     )
@@ -1141,7 +1147,7 @@ class Staging(
             return self.log_job_execution(JobStatus.successful, 100, "Finished without processing any tasks")
 
         # Step 2: Determine the domain and validate it, currently unable to stage from multiple domains
-        domains = list({urlparse(asset[0]).hostname for asset in self.assets_info})
+        domains = list({urlparse(asset.get_href()).hostname for asset in self.assets_info})
         self.logger.info(f"Staging from domain(s) {domains}")
         if len(domains) > 1:
             return self.log_job_execution(JobStatus.failed, 0, "Staging from multiple domains is not supported yet")
