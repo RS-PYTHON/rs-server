@@ -50,13 +50,13 @@ def link_rspython_users_and_obs_users():
     ovh_handler = OVHApiHandler()
     keycloak_users, _ = get_keycloak_configmap_values(keycloak_handler)
 
-    for user in keycloak_users:
-        if not keycloak_handler.get_obs_user_from_keycloak_user(user):
-            create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
+    #for user in keycloak_users:
+    #    if not keycloak_handler.get_obs_user_from_keycloak_user(user):
+    #        create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
 
     obs_users = ovh_handler.get_all_users()
-    for obs_user in obs_users:
-        delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
+    #for obs_user in obs_users:
+    #    delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
 
 @traced_function()
 def create_obs_user_account_for_keycloak_user(ovh_handler: OVHApiHandler, keycloak_handler: KeycloakHandler, keycloak_user: dict):

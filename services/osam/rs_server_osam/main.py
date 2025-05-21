@@ -28,7 +28,7 @@ from starlette.status import (  # pylint: disable=C0411
 )
 
 from osam import opentelemetry
-from osam.tasks import get_keycloak_configmap_values
+from osam.tasks import link_rspython_users_and_obs_users
 
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 10))
 
@@ -95,7 +95,7 @@ async def main_osam_task(timeout: int = 60):
 
             logger.debug("Starting the process to get the keycloack attributes ")
 
-            # link_rspython_users_and_obs_users() here
+            link_rspython_users_and_obs_users()
 
             logger.debug("Getting the keycloack attributes finished")
 
