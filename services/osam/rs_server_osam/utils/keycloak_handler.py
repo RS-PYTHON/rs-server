@@ -14,7 +14,10 @@
 
 import logging
 import os
+<<<<<<< HEAD
 from typing import Any
+=======
+>>>>>>> origin/feat/rspy-603-link-rs-python-users-and-obs-users
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
 
@@ -60,11 +63,13 @@ class KeycloakHandler:
 
     def get_obs_user_from_keycloak_user(self, keycloak_user: dict) -> str | None:
         try:
-            return keycloak_user["attributes"]["obs-user"]  # TODO est-ce la bonne manière de récupérer les attributes ?
+            return keycloak_user["attributes"]["obs-user"] 
         except KeyError:
             return None
 
     def set_obs_user_in_keycloak_user(self, keycloak_user: dict, obs_user: str) -> dict[Any, Any]:
+        if "attributes" not in keycloak_user.keys():
+            keycloak_user["attributes"] = {}
         keycloak_user["attributes"]["obs-user"] = obs_user
         return keycloak_user
 

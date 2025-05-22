@@ -23,12 +23,20 @@ from osam.utils.keycloak_handler import KeycloakHandler
 from rs_server_common.s3_storage_handler.s3_storage_handler import (
     S3StorageHandler,
 )
+from osam.utils.tools import (
+    create_description_from_template,
+    get_keycloak_user_from_description,
+)
+
+DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE")
+
 
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
 trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
+
 
 
 # Decorator to trace functions
@@ -118,11 +126,11 @@ def create_obs_user_account_for_keycloak_user(
     Returns:
         None
     """
-    new_user_description = f"## linked to keycloak user {keycloak_user['id']}"
+    new_user_description = create_description_from_template(keycloak_user["id"], template=DESCRIPTION_TEMPLATE)
     new_user = ovh_handler.create_user(description=new_user_description)
     keycloak_user = keycloak_handler.set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
     keycloak_handler.update_keycloak_user(keycloak_user["id"], keycloak_user)
-
+    
 
 @traced_function()
 def delete_obs_user_account_if_not_used_by_keycloak_account(
@@ -141,11 +149,14 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Returns:
         None
     """
-    keycloak_user_id = obs_user["description"].split()[-1]
+    
+    keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)
     does_user_exist = False
     for keycloak_user in keycloak_users:
         if keycloak_user["id"] == keycloak_user_id:
             does_user_exist = True
 
     if not does_user_exist:
-        ovh_handler.delete_user(obs_user["id"])
+        expected_description = create_description_from_template(keycloak_user_id, template=DESCRIPTION_TEMPLATE)
+        if obs_user["description"] == expected_description:
+            ovh_handler.delete_user(obs_user["id"])

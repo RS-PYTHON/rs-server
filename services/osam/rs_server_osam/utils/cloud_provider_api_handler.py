@@ -43,11 +43,17 @@ class OVHApiHandler:
 
         return ovh_client
 
-    def get_all_users(self) -> dict:
-        # TODO ça retourne quoi ce truc ?
+    def get_all_users(self) -> list[dict]:
+        # Returns a list of users. Example of user format:
+        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
         return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user")
 
-    def create_user(self, description: str | None = None, role=None, roles=None) -> dict:
+    def get_user(self, user_id: str) -> dict:
+        # Example of user returned:
+        # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
+        return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
+
+    def create_user(self, description: str = None, role=None, roles=None) -> dict:
         return self.ovh_client.post(
             f"/cloud/project/{self.ovh_service_name}/user",
             description=description,
