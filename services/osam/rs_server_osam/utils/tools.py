@@ -47,7 +47,7 @@ def get_keycloak_user_from_description(description: str, template: str = DEFAULT
 
     # We use split to handle any case when the placeholder is in the middle of the description
     templates = template.split(user_placeholder)
-    for template in templates:
-        description = description.replace(template, "")
+    for t in templates:
+        description = description.replace(t, "")
 
     return description

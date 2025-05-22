@@ -20,12 +20,12 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
 from osam.utils.keycloak_handler import KeycloakHandler
-from rs_server_common.s3_storage_handler.s3_storage_handler import (
-    S3StorageHandler,
-)
 from osam.utils.tools import (
     create_description_from_template,
     get_keycloak_user_from_description,
+)
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3StorageHandler,
 )
 
 DESCRIPTION_TEMPLATE = os.getenv("OBS_DESCRIPTION_TEMPLATE")
@@ -36,7 +36,6 @@ trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
 trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
-
 
 
 # Decorator to trace functions
@@ -130,7 +129,7 @@ def create_obs_user_account_for_keycloak_user(
     new_user = ovh_handler.create_user(description=new_user_description)
     keycloak_user = keycloak_handler.set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
     keycloak_handler.update_keycloak_user(keycloak_user["id"], keycloak_user)
-    
+
 
 @traced_function()
 def delete_obs_user_account_if_not_used_by_keycloak_account(
@@ -149,7 +148,7 @@ def delete_obs_user_account_if_not_used_by_keycloak_account(
     Returns:
         None
     """
-    
+
     keycloak_user_id = get_keycloak_user_from_description(obs_user["description"], template=DESCRIPTION_TEMPLATE)
     does_user_exist = False
     for keycloak_user in keycloak_users:

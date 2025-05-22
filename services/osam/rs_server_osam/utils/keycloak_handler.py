@@ -14,10 +14,7 @@
 
 import logging
 import os
-<<<<<<< HEAD
 from typing import Any
-=======
->>>>>>> origin/feat/rspy-603-link-rs-python-users-and-obs-users
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
 
@@ -63,7 +60,7 @@ class KeycloakHandler:
 
     def get_obs_user_from_keycloak_user(self, keycloak_user: dict) -> str | None:
         try:
-            return keycloak_user["attributes"]["obs-user"] 
+            return keycloak_user["attributes"]["obs-user"]
         except KeyError:
             return None
 

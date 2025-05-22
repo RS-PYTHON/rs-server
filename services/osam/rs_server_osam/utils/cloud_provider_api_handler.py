@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from typing import Optional
 
 import ovh
 
@@ -53,7 +54,7 @@ class OVHApiHandler:
         # https://eu.api.ovh.com/console/?section=%2Fcloud&branch=v1#get-/cloud/project/-serviceName-/user/-userId-
         return self.ovh_client.get(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
 
-    def create_user(self, description: str = None, role=None, roles=None) -> dict:
+    def create_user(self, description: str | None = None, role=None, roles=None) -> dict:
         return self.ovh_client.post(
             f"/cloud/project/{self.ovh_service_name}/user",
             description=description,
@@ -61,5 +62,5 @@ class OVHApiHandler:
             roles=roles,
         )
 
-    def delete_user(self, user_id=str):
+    def delete_user(self, user_id: str):
         return self.ovh_client.delete(f"/cloud/project/{self.ovh_service_name}/user/{user_id}")
