@@ -14,7 +14,10 @@
 
 import logging
 import os
+<<<<<<< HEAD
 from typing import Any
+=======
+>>>>>>> 98cb9ab27d5273168dea598402e47b57d2b0bb7c
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
 

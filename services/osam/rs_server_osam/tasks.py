@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Used to group all OSAM tasks"""
+import os
 from functools import wraps
 
 from opentelemetry import trace
@@ -20,12 +20,16 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 from osam.utils.cloud_provider_api_handler import OVHApiHandler
 from osam.utils.keycloak_handler import KeycloakHandler
+from rs_server_common.s3_storage_handler.s3_storage_handler import (
+    S3StorageHandler,
+)
 
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
 trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
+
 
 
 # Decorator to trace functions
@@ -78,7 +82,17 @@ def link_rspython_users_and_obs_users():
     keycloak_handler = KeycloakHandler()
     ovh_handler = OVHApiHandler()
     keycloak_users, _ = get_keycloak_configmap_values(keycloak_handler)
-
+    try:
+        s3_handler = S3StorageHandler(
+            os.environ["S3_ACCESSKEY"],
+            os.environ["S3_SECRETKEY"],
+            os.environ["S3_ENDPOINT"],
+            os.environ["S3_REGION"],
+        )
+    except KeyError as key_exc:
+        print(f"KeyError exception in getting the s3 storage handler: {key_exc}")
+        return
+    s3_handler.disconnect_s3()
     # for user in keycloak_users:
     #    if not keycloak_handler.get_obs_user_from_keycloak_user(user):
     #        create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
