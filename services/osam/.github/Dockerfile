@@ -26,6 +26,9 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN mkdir -p /tmp/whl
 ADD ./*.whl /tmp/whl
 
+# Install rs-server-common dependency from the "develop" branch before the osam wheel.
+RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common"
+
 # Install the wheel packages in the right order (dependencies first).
 # This also installs all the sub-dependencies e.g. fastapi etc ...
 # https://home.rs-python.eu/local-pypi is used for additional dependencies, see: https://github.com/RS-PYTHON/local-pypi
@@ -44,7 +47,6 @@ COPY --from=builder /usr/local /usr/local
 
 # Install opentelemetry instrumentation packages for dependencies
 RUN opentelemetry-bootstrap -a install
-RUN pip install --no-deps "git+https://github.com/RS-PYTHON/rs-server.git@develop#subdirectory=services/common"
 
 # Clean everything
 RUN rm -rf /tmp/whl /root/.cache/pip /var/cache/apt/archives /var/lib/apt/lists/*
