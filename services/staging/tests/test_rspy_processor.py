@@ -24,6 +24,7 @@ from dask_gateway import Gateway
 from pygeoapi.util import JobStatus
 from rs_server_common.authentication.apikey import APIKEY_HEADER
 from rs_server_common.authentication.token_auth import TokenAuth
+from rs_server_staging.asset_info import AssetInfo
 from rs_server_staging.processors import (
     Staging,
     streaming_task,
@@ -86,6 +87,7 @@ class TestStreaming:
             },
         )
         s3_key = "s3_path/file.zip"
+        test_asset_info = AssetInfo(product_url="https://example.com/product.zip", s3_file=s3_key, s3_bucket="bucket")
 
         # Mock S3StorageHandler instance
         mock_s3_handler = mocker.Mock()
@@ -94,10 +96,8 @@ class TestStreaming:
 
         assert (
             streaming_task(
-                product_url="https://example.com/product.zip",
-                s3_file=s3_key,
+                asset_info=test_asset_info,
                 config=config,
-                bucket="bucket",
                 auth=TokenAuth("fake_token"),
             )
             == s3_key
@@ -115,13 +115,16 @@ class TestStreaming:
             os.environ,
             {"S3_SECRETKEY": "fake_secret_key", "S3_ENDPOINT": "fake_endpoint", "S3_REGION": "fake_region"},
         )
+        test_asset_info = AssetInfo(
+            product_url="https://example.com/product.zip",
+            s3_file="file.zip",
+            s3_bucket="bucket",
+        )
 
         with pytest.raises(ValueError, match="Cannot create s3 connector object."):
             streaming_task(
-                product_url="https://example.com/product.zip",
-                s3_file="file.zip",
+                asset_info=test_asset_info,
                 config=config,
-                bucket="bucket",
                 auth=TokenAuth("fake_token"),
             )
 
@@ -137,6 +140,7 @@ class TestStreaming:
                 "S3_REGION": "fake_region",
             },
         )
+        test_asset_info = AssetInfo("https://example.com/product.zip", "file.zip", "bucket")
         # Mock the s3 handler
         mock_s3_handler = mocker.Mock()
         mocker.patch("rs_server_staging.processors.S3StorageHandler", return_value=mock_s3_handler)
@@ -147,10 +151,8 @@ class TestStreaming:
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
             streaming_task(
-                product_url="https://example.com/product.zip",
-                s3_file="file.zip",
+                asset_info=test_asset_info,
                 config=config,
-                bucket="bucket",
                 auth=TokenAuth("fake_token"),
             )
 
@@ -168,6 +170,7 @@ class TestStreaming:
                 "S3_MAX_RETRIES": str(s3_max_retries_env_var),
             },
         )
+        test_asset_info = AssetInfo("https://example.com/product.zip", "file.zip", "bucket")
 
         # Mock streaming upload to fail multiple times
         mock_s3_handler = mocker.Mock()
@@ -179,10 +182,8 @@ class TestStreaming:
             match=r"Dask task failed to stream file from https://example.com/product.zip to s3://bucket/file.zip",
         ):
             streaming_task(
-                product_url="https://example.com/product.zip",
-                s3_file="file.zip",
+                asset_info=test_asset_info,
                 config=config,
-                bucket="bucket",
                 auth=TokenAuth("fake_token"),
             )
 

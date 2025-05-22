@@ -19,31 +19,31 @@ class AssetInfo:
     """Dataclass with essential information for an asset to be staged.
 
     Args:
-        href (str): Link to the item to stage
-        s3_obj_path (str): Path for the object in the S3 storage
+        product_url (str): Link to the item to stage
+        s3_file (str): Path for the object in the S3 storage
         s3_bucket (str): Name of the bucket where the asset will be staged
     """
 
-    def __init__(self, href: str, s3_obj_path: str, s3_bucket: str):
-        self.href = href
-        self.s3_obj_path = s3_obj_path
+    def __init__(self, product_url: str, s3_file: str, s3_bucket: str):
+        self.product_url = product_url
+        self.s3_file = s3_file
         self.s3_bucket = s3_bucket
 
-    def get_href(self) -> str:
+    def get_product_url(self) -> str:
         """Returns asset's href.
 
         Returns:
             str: Link to the item (href)
         """
-        return self.href
+        return self.product_url
 
-    def get_s3_object_path(self) -> str:
+    def get_s3_file(self) -> str:
         """Returns asset's S3 object path.
 
         Returns:
             str: S3 object path for this item
         """
-        return self.s3_obj_path
+        return self.s3_file
 
     def get_s3_bucket(self) -> str:
         """Returns asset's S3 bucket name.
