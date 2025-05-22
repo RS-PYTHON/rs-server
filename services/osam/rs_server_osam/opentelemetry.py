@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """OpenTelemetry utility"""
-
+# pylint: disable = no-name-in-module
 import inspect
 import os
 import pkgutil

@@ -12,21 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from osam.utils.keycloak_handler import KeycloakHandler
-from osam.utils.cloud_provider_api_handler import OVHApiHandler
+"""Used to group all OSAM tasks"""
 from functools import wraps
+
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor, ConsoleSpanExporter
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+from osam.utils.cloud_provider_api_handler import OVHApiHandler
+from osam.utils.keycloak_handler import KeycloakHandler
 
 # Setup tracer
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 span_processor = SimpleSpanProcessor(ConsoleSpanExporter())
-trace.get_tracer_provider().add_span_processor(span_processor)
+trace.get_tracer_provider().add_span_processor(span_processor)  # type: ignore
+
 
 # Decorator to trace functions
 def traced_function(name=None):
+    """
+    Decorator to trace the execution of a function using OpenTelemetry spans.
+
+    Args:
+        name (str, optional): Custom name for the span. Defaults to the function's name.
+
+    Returns:
+        Callable: A wrapped function with tracing enabled.
+    """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -34,44 +47,92 @@ def traced_function(name=None):
             with tracer.start_as_current_span(span_name) as span:
                 span.set_attribute("function.name", func.__name__)
                 return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
+
 
 @traced_function()
 def get_keycloak_configmap_values(keycloak_handler: KeycloakHandler):
+    """
+    WIP
+    """
     kc_users = keycloak_handler.get_keycloak_users()
     # ps ps
     return kc_users, None
 
+
 @traced_function()
 def link_rspython_users_and_obs_users():
+    """
+    Coordinates linking between Keycloak users and OVH object storage (OBS) users.
 
+    - Retrieves Keycloak and OBS users.
+    - Optionally links or removes users based on whether mappings exist.
+
+    Note:
+        The linking/unlinking logic is currently commented out and should be implemented
+        based on specific integration rules.
+    """
     keycloak_handler = KeycloakHandler()
     ovh_handler = OVHApiHandler()
     keycloak_users, _ = get_keycloak_configmap_values(keycloak_handler)
 
-    #for user in keycloak_users:
+    # for user in keycloak_users:
     #    if not keycloak_handler.get_obs_user_from_keycloak_user(user):
     #        create_obs_user_account_for_keycloak_user(ovh_handler, keycloak_handler, user)
 
     obs_users = ovh_handler.get_all_users()
-    #for obs_user in obs_users:
+    # for obs_user in obs_users:
     #    delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler, obs_user, keycloak_users)
 
-@traced_function()
-def create_obs_user_account_for_keycloak_user(ovh_handler: OVHApiHandler, keycloak_handler: KeycloakHandler, keycloak_user: dict):
-    new_user_description = f"## linked to keycloak user {keycloak_user['id']}"
-    new_user = ovh_handler.create_user(description=new_user_description)
-    keycloak_user = keycloak_handler.set_obs_user_in_keycloak_user(keycloak_user, new_user['id'])
-    keycloak_handler.update_keycloak_user(keycloak_user['id'], keycloak_user)
 
 @traced_function()
-def delete_obs_user_account_if_not_used_by_keycloak_account(ovh_handler: OVHApiHandler, obs_user: dict, keycloak_users: list[dict]):
-    keycloak_user_id = obs_user['description'].split()[-1]
+def create_obs_user_account_for_keycloak_user(
+    ovh_handler: OVHApiHandler,
+    keycloak_handler: KeycloakHandler,
+    keycloak_user: dict,
+):
+    """
+    Creates an OBS user and links it to a Keycloak user.
+
+    Args:
+        ovh_handler (OVHApiHandler): Handler to interact with the OVH API.
+        keycloak_handler (KeycloakHandler): Handler to interact with Keycloak.
+        keycloak_user (dict): A dictionary representing the Keycloak user.
+
+    Returns:
+        None
+    """
+    new_user_description = f"## linked to keycloak user {keycloak_user['id']}"
+    new_user = ovh_handler.create_user(description=new_user_description)
+    keycloak_user = keycloak_handler.set_obs_user_in_keycloak_user(keycloak_user, new_user["id"])
+    keycloak_handler.update_keycloak_user(keycloak_user["id"], keycloak_user)
+
+
+@traced_function()
+def delete_obs_user_account_if_not_used_by_keycloak_account(
+    ovh_handler: OVHApiHandler,
+    obs_user: dict,
+    keycloak_users: list[dict],
+):
+    """
+    Deletes an OBS user if it is not linked to any Keycloak user.
+
+    Args:
+        ovh_handler (OVHApiHandler): Handler to interact with the OVH API.
+        obs_user (dict): Dictionary representing the OBS user.
+        keycloak_users (list[dict]): List of Keycloak user dictionaries.
+
+    Returns:
+        None
+    """
+    keycloak_user_id = obs_user["description"].split()[-1]
     does_user_exist = False
     for keycloak_user in keycloak_users:
-        if keycloak_user['id'] == keycloak_user_id:
+        if keycloak_user["id"] == keycloak_user_id:
             does_user_exist = True
 
     if not does_user_exist:
-        ovh_handler.delete_user(obs_user['id'])
+        ovh_handler.delete_user(obs_user["id"])
