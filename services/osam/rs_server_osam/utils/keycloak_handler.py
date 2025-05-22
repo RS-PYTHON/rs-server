@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import logging
+import os
 
 from keycloak import KeycloakAdmin, KeycloakError, KeycloakOpenIDConnection
 
@@ -48,25 +48,24 @@ class KeycloakHandler:
         except KeycloakError as error:
             raise RuntimeError(
                 f"Error connecting with keycloak to '{server_url}', "
-                f"realm_name={realm_name} with client_id={client_id}."
+                f"realm_name={realm_name} with client_id={client_id}.",
             ) from error
 
     def get_keycloak_user_roles(self, keycloak_user: dict):
-        return self.keycloak_admin.get_realm_roles_of_user(keycloak_user['id'])
+        return self.keycloak_admin.get_realm_roles_of_user(keycloak_user["id"])
 
     def get_keycloak_users(self) -> list[dict]:
         return self.keycloak_admin.get_users({})
-    
-    def get_obs_user_from_keycloak_user(self, keycloak_user: dict) -> str|None:
+
+    def get_obs_user_from_keycloak_user(self, keycloak_user: dict) -> str | None:
         try:
-            return keycloak_user['attributes']['obs-user']  # TODO est-ce la bonne manière de récupérer les attributes ?
+            return keycloak_user["attributes"]["obs-user"]  # TODO est-ce la bonne manière de récupérer les attributes ?
         except KeyError:
             return None
-        
+
     def set_obs_user_in_keycloak_user(self, keycloak_user: dict, obs_user: str) -> str:
-        keycloak_user['attributes']['obs-user'] = obs_user
+        keycloak_user["attributes"]["obs-user"] = obs_user
         return keycloak_user
-        
+
     def update_keycloak_user(self, user_id: str, payload: dict) -> dict:
         self.keycloak_admin.update_user(user_id=user_id, payload=payload)
-

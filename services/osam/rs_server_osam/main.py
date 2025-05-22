@@ -22,13 +22,12 @@ from contextlib import asynccontextmanager
 
 # from dask.distributed import LocalCluster
 from fastapi import APIRouter, FastAPI
+from osam import opentelemetry
+from osam.tasks import link_rspython_users_and_obs_users
 from starlette.responses import JSONResponse
 from starlette.status import (  # pylint: disable=C0411
     HTTP_200_OK,
 )
-
-from osam import opentelemetry
-from osam.tasks import link_rspython_users_and_obs_users
 
 DEFAULT_OSAM_FREQUENCY_SYNC = int(os.environ.get("DEFAULT_OSAM_FREQUENCY_SYNC", 10))
 
@@ -69,7 +68,7 @@ async def app_lifespan(fastapi_app: FastAPI):
 
 
 async def main_osam_task(timeout: int = 60):
-    
+
     logger.info("Starting the main background thread ")
     original_timeout = timeout
     while True:
